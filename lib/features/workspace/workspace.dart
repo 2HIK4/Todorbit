@@ -55,34 +55,31 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   }
 
   Future<String?> _nameDialog(String title, {String initial = ''}) async {
-    final input = TextEditingController(text: initial);
-    try {
-      return await showDialog<String>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(title),
-          content: TextField(
-            controller: input,
-            autofocus: true,
-            maxLength: 80,
-            decoration: const InputDecoration(labelText: 'Name'),
-            onSubmitted: (value) => Navigator.pop(context, value.trim()),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, input.text.trim()),
-              child: const Text('Save'),
-            ),
-          ],
+    var name = initial;
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: TextFormField(
+          initialValue: initial,
+          autofocus: true,
+          maxLength: 80,
+          decoration: const InputDecoration(labelText: 'Name'),
+          onChanged: (value) => name = value,
+          onFieldSubmitted: (value) => Navigator.pop(context, value.trim()),
         ),
-      );
-    } finally {
-      input.dispose();
-    }
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, name.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<bool> _confirm(String title, String message) async {
