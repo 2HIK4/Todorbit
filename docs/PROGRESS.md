@@ -21,6 +21,8 @@
 - Milestone 2 requires manual desktop behavior verification; main app development continues independently.
 - Milestone 3 scheduling core: persisted/editable availability, Smart Reschedule preview UI and transactional apply/history/restoration, recurrence, dependencies, and sequences remain.
 - Reproduce the reported task-row checkbox duplication in a native Windows session and capture its first exception/stack; widget tests have not reproduced it.
+- Widget keyboard-focus investigation: the desktop-attached window could be inspected but not activated by native automation. The runner incorrectly called `SetFocus` on `WM_ACTIVATE` even for `WA_INACTIVE`; it now focuses Flutter only on activation. A three-cycle Flutter widget test verifies that the text field can be refocused and tasks submitted after simulated app launches/lifecycle changes. The native open/close/typing sequence still requires manual verification; desktop-child activation may need further work if it fails.
+- Validation for the focus change: `flutter analyze` clean, all 16 `flutter test` cases pass, and `flutter build windows --debug` succeeds. No existing SQLite data was reset or migrated.
 
 ## Not yet implemented
 
@@ -31,6 +33,7 @@
 - Flutter 3.47.7 / Dart 3.13.5. Windows toolchain healthy. Android SDK command-line tools and license setup incomplete; Android is outside current scope.
 - Full visual UI interaction on a real desktop has not yet been manually verified. Widget parenting returned success; `Win + D` behavior and layering have not been verified.
 - Appearance choice currently resets on restart. Future planned sessions are not yet automatically retired when a task is completed early. There is no recoverable Trash; task and event deletion use explicit confirmation and are permanent.
+- Future widget design task: unify widget and main-app colors, typography, spacing, icons, and light/dark theme behavior, including compact layouts. Do this after the widget's native input behavior is reliable.
 
 ## Next action
 

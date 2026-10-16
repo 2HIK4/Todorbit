@@ -9,8 +9,9 @@ import '../../domain/models.dart';
 /// Small second-process UI used only for desktop attachment feasibility.
 /// Native runner owns positioning and attachment; this widget owns data actions.
 class DesktopWidgetApp extends StatelessWidget {
-  const DesktopWidgetApp({super.key, required this.onExit});
+  const DesktopWidgetApp({super.key, required this.onExit, this.onOpenApp});
   final Future<void> Function() onExit;
+  final Future<void> Function()? onOpenApp;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -20,13 +21,14 @@ class DesktopWidgetApp extends StatelessWidget {
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5365B5)),
     ),
-    home: _DesktopWidgetHome(onExit: onExit),
+    home: _DesktopWidgetHome(onExit: onExit, onOpenApp: onOpenApp),
   );
 }
 
 class _DesktopWidgetHome extends ConsumerStatefulWidget {
-  const _DesktopWidgetHome({required this.onExit});
+  const _DesktopWidgetHome({required this.onExit, this.onOpenApp});
   final Future<void> Function() onExit;
+  final Future<void> Function()? onOpenApp;
 
   @override
   ConsumerState<_DesktopWidgetHome> createState() => _DesktopWidgetHomeState();
@@ -108,13 +110,7 @@ class _DesktopWidgetHomeState extends ConsumerState<_DesktopWidgetHome> {
                   ),
                   IconButton(
                     tooltip: 'Open main app',
-                    onPressed: () => _run(() async {
-                      await Process.start(
-                        Platform.resolvedExecutable,
-                        const [],
-                        mode: ProcessStartMode.detached,
-                      );
-                    }),
+                    onPressed: () => _run(widget.onOpenApp ?? _openMainApp),
                     icon: const Icon(Icons.open_in_new, size: 20),
                   ),
                   IconButton(
@@ -179,6 +175,14 @@ class _DesktopWidgetHomeState extends ConsumerState<_DesktopWidgetHome> {
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _openMainApp() async {
+    await Process.start(
+      Platform.resolvedExecutable,
+      const [],
+      mode: ProcessStartMode.detached,
     );
   }
 }

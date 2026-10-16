@@ -39,4 +39,64 @@ void main() {
       await tester.binding.setSurfaceSize(null);
     }
   });
+
+  testWidgets('widget input refocuses after repeated app launches', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(360, 480));
+    final database = AppDatabase(NativeDatabase.memory());
+    final repository = LifeRepository(database);
+    final controller = AppController(repository);
+    await controller.refresh();
+    var launches = 0;
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appControllerProvider.overrideWith((ref) => controller)],
+          child: DesktopWidgetApp(
+            onExit: () async {},
+            onOpenApp: () async {
+              launches++;
+            },
+          ),
+        ),
+      );
+      final input = find.byType(TextField);
+      for (var i = 0; i < 3; i++) {
+        await tester.tap(find.byTooltip('Open main app'));
+        await tester.pumpAndSettle();
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.tap(find.byTooltip('Refresh'));
+        await tester.pumpAndSettle();
+        await tester.tap(input);
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<EditableText>(find.byType(EditableText))
+              .focusNode
+              .hasFocus,
+          isTrue,
+        );
+        await tester.enterText(input, 'Focus cycle $i');
+        await tester.tap(find.byTooltip('Add task'));
+        await tester.pumpAndSettle();
+      }
+      expect(launches, 3);
+      expect((await repository.tasks()).map((task) => task.title), [
+        'Focus cycle 2',
+        'Focus cycle 1',
+        'Focus cycle 0',
+      ]);
+      expect(tester.takeException(), isNull);
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await database.close();
+      await tester.binding.setSurfaceSize(null);
+    }
+  });
 }
