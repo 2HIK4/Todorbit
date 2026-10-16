@@ -11,11 +11,12 @@
 - Widget feasibility prototype: separate `--widget` process, desktop HWND parenting attempt, Today/Inbox list, task entry/completion/refresh, and main-app launch. Windows build, process smoke check, and widget interaction test succeed. All 5 tests pass. `Win + D` and visibility/layering are not manually verified.
 - Milestone 3 partial: calendar day/week/month views show real tasks, deadlines, and fixed events; fixed event create/edit/delete persists in SQLite schema v2. Migration test preserves v1 task rows. The existing app database upgraded from schema 1 to 2 during a Windows executable smoke check. Analyzer clean, 8 tests pass, Release Windows build succeeds.
 - Planned work sessions: create/edit/delete in calendar and task details, independent manual outcomes, “Late start” and “Needs confirmation” indicators, and calendar display. Schema v3 migration upgraded the existing Windows database from v2; tasks remained intact. Analyzer clean, 10 tests pass, Release Windows build succeeds.
+- Deterministic non-mutating repack calculation with weekday windows, date exceptions, fixed-event and session blocking, buffer, no-slot explanation, and deadline warning. Three domain tests added; analyzer clean and all 13 tests pass. There is no user-facing Apply action yet.
 
 ## In progress
 
 - Milestone 2 requires manual desktop behavior verification; main app development continues independently.
-- Milestone 3 scheduling core: availability, Smart Reschedule previews/history/restoration, recurrence, dependencies, and sequences remain.
+- Milestone 3 scheduling core: persisted/editable availability, Smart Reschedule preview UI and transactional apply/history/restoration, recurrence, dependencies, and sequences remain.
 
 ## Not yet implemented
 
@@ -29,4 +30,4 @@
 
 ## Next action
 
-Implement user-configurable weekday availability and date exceptions, then a deterministic scheduling preview for selected work sessions that treats fixed events as protected. Persist before/after changes transactionally. Manually verify the widget as described in `docs/features/windows-widget.md` when the desktop is available.
+Persist and expose weekday availability/date exceptions. Then connect the tested scheduling preview to selected sessions, add transactional before/after history and restoration, and only then expose Apply. Manually verify the widget as described in `docs/features/windows-widget.md` when the desktop is available.

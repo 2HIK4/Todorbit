@@ -9,3 +9,4 @@
 - **Widget feasibility:** a separate `--widget` process uses documented desktop HWND parenting first. Its appearance and `Win + D` behavior remain unverified. Avoid undocumented Explorer `WorkerW` manipulation without an explicit decision and approval.
 - **Fixed events:** store UTC instants, display in local time, and use interval overlap for multi-day calendar placement. Actual task deadlines remain independent date-only values.
 - **Work sessions:** store planned UTC intervals and a manual outcome independently of tasks. A transition to “In progress” records an actual start; elapsed upcoming sessions remain upcoming until confirmed.
+- **Scheduling engine:** compute immutable previews from local availability windows against UTC event/session intervals. Keep application of changes disabled until availability settings, transactional history, and conflict review are wired together.
