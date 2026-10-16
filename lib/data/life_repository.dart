@@ -115,6 +115,89 @@ class LifeRepository {
     );
   }
 
+  Future<List<WorkSession>> sessions() async {
+    final rows = await db
+        .customSelect('SELECT * FROM work_sessions ORDER BY starts_at')
+        .get();
+    return rows
+        .map(
+          (r) => WorkSession(
+            id: r.read<String>('id'),
+            taskId: r.read<String>('task_id'),
+            startsAt: DateTime.parse(r.read<String>('starts_at')),
+            endsAt: DateTime.parse(r.read<String>('ends_at')),
+            outcome: SessionOutcome.values.byName(r.read<String>('outcome')),
+            actualStartedAt: _parseNullable(
+              r.read<String?>('actual_started_at'),
+            ),
+            createdAt: DateTime.parse(r.read<String>('created_at')),
+            updatedAt: DateTime.parse(r.read<String>('updated_at')),
+          ),
+        )
+        .toList();
+  }
+
+  Future<WorkSession> addSession(SessionDraft draft) async {
+    _validateSession(draft);
+    final id = _uuid.v4();
+    final now = DateTime.now().toUtc().toIso8601String();
+    await db.customInsert(
+      '''
+      INSERT INTO work_sessions(id,task_id,starts_at,ends_at,outcome,actual_started_at,created_at,updated_at)
+      VALUES(?,?,?,?,?,?,?,?)
+    ''',
+      variables: [
+        Variable.withString(id),
+        Variable.withString(draft.taskId),
+        Variable.withString(draft.startsAt.toUtc().toIso8601String()),
+        Variable.withString(draft.endsAt.toUtc().toIso8601String()),
+        Variable.withString(draft.outcome.name),
+        Variable<String>(
+          draft.outcome == SessionOutcome.inProgress ? now : null,
+        ),
+        Variable.withString(now),
+        Variable.withString(now),
+      ],
+    );
+    return (await sessions()).firstWhere((session) => session.id == id);
+  }
+
+  Future<void> updateSession(WorkSession previous, SessionDraft draft) async {
+    _validateSession(draft);
+    final now = DateTime.now().toUtc().toIso8601String();
+    final actualStart =
+        previous.actualStartedAt?.toUtc().toIso8601String() ??
+        (draft.outcome == SessionOutcome.inProgress ? now : null);
+    await db.customUpdate(
+      '''
+      UPDATE work_sessions SET task_id=?,starts_at=?,ends_at=?,outcome=?,actual_started_at=?,updated_at=?
+      WHERE id=?
+    ''',
+      variables: [
+        Variable.withString(draft.taskId),
+        Variable.withString(draft.startsAt.toUtc().toIso8601String()),
+        Variable.withString(draft.endsAt.toUtc().toIso8601String()),
+        Variable.withString(draft.outcome.name),
+        Variable<String>(actualStart),
+        Variable.withString(now),
+        Variable.withString(previous.id),
+      ],
+    );
+  }
+
+  Future<void> deleteSession(String id) async {
+    await db.customUpdate(
+      'DELETE FROM work_sessions WHERE id=?',
+      variables: [Variable.withString(id)],
+    );
+  }
+
+  void _validateSession(SessionDraft draft) {
+    if (!draft.endsAt.isAfter(draft.startsAt)) {
+      throw ArgumentError('Session end must be after its start');
+    }
+  }
+
   void _validateEvent(EventDraft draft) {
     if (draft.title.trim().isEmpty) {
       throw ArgumentError('Event title is required');

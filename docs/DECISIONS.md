@@ -8,3 +8,4 @@
 - **Windows data path:** use the per-user `APPDATA` directory directly. This removes the path-provider plugin and its Windows symlink build requirement; Android data path will be revisited when Android development begins.
 - **Widget feasibility:** a separate `--widget` process uses documented desktop HWND parenting first. Its appearance and `Win + D` behavior remain unverified. Avoid undocumented Explorer `WorkerW` manipulation without an explicit decision and approval.
 - **Fixed events:** store UTC instants, display in local time, and use interval overlap for multi-day calendar placement. Actual task deadlines remain independent date-only values.
+- **Work sessions:** store planned UTC intervals and a manual outcome independently of tasks. A transition to “In progress” records an actual start; elapsed upcoming sessions remain upcoming until confirmed.

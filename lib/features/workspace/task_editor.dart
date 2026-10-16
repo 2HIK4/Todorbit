@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
+import '../calendar/session_editor.dart';
 
 class TaskEditor extends ConsumerStatefulWidget {
   const TaskEditor({super.key, this.task, this.onSaved, this.onCancel});
@@ -114,6 +115,26 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         }
       });
     }
+  }
+
+  Future<void> _editSession([WorkSession? session]) async {
+    final task = widget.task;
+    if (task == null) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => Dialog(
+        child: SizedBox(
+          width: 460,
+          height: 550,
+          child: SessionEditor(
+            session: session,
+            initialTaskId: task.id,
+            initialDay: scheduled ?? DateTime.now(),
+            onClose: () => Navigator.pop(context),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -240,6 +261,41 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                   () => _pickDate(true),
                   () => setState(() => deadline = null),
                 ),
+                if (widget.task != null) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Planned work sessions',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Add work session',
+                        onPressed: () => _editSession(),
+                        icon: const Icon(Icons.add),
+                      ),
+                    ],
+                  ),
+                  for (final session in controller.sessions.where(
+                    (item) => item.taskId == widget.task!.id,
+                  ))
+                    ListTile(
+                      dense: true,
+                      title: Text(
+                        '${localDate(session.startsAt.toLocal())} · ${session.outcome.name}',
+                      ),
+                      subtitle: Text(
+                        session.needsConfirmation
+                            ? 'Needs confirmation'
+                            : session.lateStart
+                            ? 'Late start'
+                            : 'Tap to edit',
+                      ),
+                      onTap: () => _editSession(session),
+                    ),
+                ],
               ],
             ),
           ),

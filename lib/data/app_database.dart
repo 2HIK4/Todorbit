@@ -36,7 +36,7 @@ class AppDatabase extends GeneratedDatabase {
   }
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   Iterable<TableInfo> get allTables => const [];
@@ -92,13 +92,16 @@ class AppDatabase extends GeneratedDatabase {
         'CREATE INDEX projects_category ON projects(category_id)',
       );
       await _createEvents();
+      await _createSessions();
     },
     onUpgrade: (migrator, from, to) async {
-      if (from == 1 && to == 2) {
-        await _createEvents();
-      } else {
+      if (from < 1 || from > 2 || to != 3) {
         throw StateError('No migration registered from schema $from to $to');
       }
+      if (from == 1) {
+        await _createEvents();
+      }
+      await _createSessions();
     },
   );
 
@@ -117,6 +120,28 @@ class AppDatabase extends GeneratedDatabase {
     ''');
     await customStatement(
       'CREATE INDEX fixed_events_start ON fixed_events(starts_at)',
+    );
+  }
+
+  Future<void> _createSessions() async {
+    await customStatement('''
+      CREATE TABLE work_sessions (
+        id TEXT PRIMARY KEY,
+        task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+        starts_at TEXT NOT NULL,
+        ends_at TEXT NOT NULL,
+        outcome TEXT NOT NULL CHECK(outcome IN ('upcoming','inProgress','completed','partial','missed','skipped')),
+        actual_started_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        CHECK(ends_at > starts_at)
+      )
+    ''');
+    await customStatement(
+      'CREATE INDEX work_sessions_start ON work_sessions(starts_at)',
+    );
+    await customStatement(
+      'CREATE INDEX work_sessions_task ON work_sessions(task_id)',
     );
   }
 }

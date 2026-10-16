@@ -130,6 +130,54 @@ void main() {
     expect(await repository.events(), isEmpty);
   });
 
+  test('session outcomes do not complete their parent task', () async {
+    final task = await repository.addTask(const TaskDraft(title: 'Study'));
+    final start = DateTime.utc(2026, 10, 17, 9);
+    final session = await repository.addSession(
+      SessionDraft(
+        taskId: task.id,
+        startsAt: start,
+        endsAt: start.add(const Duration(hours: 1)),
+      ),
+    );
+    expect(session.outcome, SessionOutcome.upcoming);
+    await repository.updateSession(
+      session,
+      SessionDraft(
+        taskId: task.id,
+        startsAt: start,
+        endsAt: start.add(const Duration(hours: 1)),
+        outcome: SessionOutcome.completed,
+      ),
+    );
+    expect(
+      (await repository.sessions()).single.outcome,
+      SessionOutcome.completed,
+    );
+    expect((await repository.tasks()).single.status, TaskStatus.notStarted);
+    await repository.setComplete(task, true);
+    expect(
+      (await repository.sessions()).single.outcome,
+      SessionOutcome.completed,
+    );
+  });
+
+  test(
+    'elapsed upcoming session asks for confirmation, not auto-missed',
+    () async {
+      final task = await repository.addTask(const TaskDraft(title: 'Review'));
+      final session = await repository.addSession(
+        SessionDraft(
+          taskId: task.id,
+          startsAt: DateTime.utc(2020, 1, 1),
+          endsAt: DateTime.utc(2020, 1, 1, 1),
+        ),
+      );
+      expect(session.needsConfirmation, isTrue);
+      expect(session.outcome, SessionOutcome.upcoming);
+    },
+  );
+
   test('schema migration preserves v1 tasks', () async {
     await database.close();
     final directory = await Directory.systemTemp.createTemp(

@@ -63,6 +63,57 @@ class EventDraft {
   final DateTime endsAt;
 }
 
+enum SessionOutcome {
+  upcoming,
+  inProgress,
+  completed,
+  partial,
+  missed,
+  skipped,
+}
+
+class WorkSession {
+  const WorkSession({
+    required this.id,
+    required this.taskId,
+    required this.startsAt,
+    required this.endsAt,
+    required this.outcome,
+    required this.createdAt,
+    required this.updatedAt,
+    this.actualStartedAt,
+  });
+  final String id;
+  final String taskId;
+  final DateTime startsAt;
+  final DateTime endsAt;
+  final SessionOutcome outcome;
+  final DateTime? actualStartedAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  bool get needsConfirmation =>
+      outcome == SessionOutcome.upcoming && endsAt.isBefore(DateTime.now());
+  bool get lateStart =>
+      outcome == SessionOutcome.upcoming &&
+      actualStartedAt == null &&
+      startsAt.isBefore(DateTime.now()) &&
+      !needsConfirmation;
+}
+
+class SessionDraft {
+  const SessionDraft({
+    required this.taskId,
+    required this.startsAt,
+    required this.endsAt,
+    this.outcome = SessionOutcome.upcoming,
+  });
+  final String taskId;
+  final DateTime startsAt;
+  final DateTime endsAt;
+  final SessionOutcome outcome;
+}
+
 class LifeTask {
   const LifeTask({
     required this.id,

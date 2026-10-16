@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import 'event_editor.dart';
+import 'session_editor.dart';
 
 enum CalendarMode { day, week, month }
 
@@ -50,6 +51,23 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
           height: 550,
           child: EventEditor(
             event: event,
+            initialDay: day,
+            onClose: () => Navigator.pop(context),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _editSession([WorkSession? session]) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => Dialog(
+        child: SizedBox(
+          width: 460,
+          height: 550,
+          child: SessionEditor(
+            session: session,
             initialDay: day,
             onClose: () => Navigator.pop(context),
           ),
@@ -110,6 +128,13 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                 onPressed: () => _editEvent(),
                 icon: const Icon(Icons.add),
                 label: const Text('Event'),
+              ),
+              OutlinedButton.icon(
+                onPressed: controller.tasks.any((task) => task.isOpen)
+                    ? () => _editSession()
+                    : null,
+                icon: const Icon(Icons.schedule),
+                label: const Text('Work session'),
               ),
             ],
           ),
@@ -307,17 +332,42 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
         list.add(_CalendarEntry('Deadline · ${task.title}', task: task));
       }
     }
+    for (final session in controller.sessions) {
+      final start = session.startsAt.toLocal();
+      final end = session.endsAt.toLocal();
+      final dayStart = DateTime(date.year, date.month, date.day);
+      final dayEnd = DateTime(date.year, date.month, date.day + 1);
+      if (start.isBefore(dayEnd) && end.isAfter(dayStart)) {
+        final task = controller.tasks
+            .where((item) => item.id == session.taskId)
+            .firstOrNull;
+        final state = session.needsConfirmation
+            ? 'Needs confirmation'
+            : session.lateStart
+            ? 'Late start'
+            : session.outcome.name;
+        list.add(
+          _CalendarEntry(
+            'Work · ${task?.title ?? 'Task'} · $state',
+            session: session,
+          ),
+        );
+      }
+    }
     return list;
   }
 
   Widget _entryTile(_CalendarEntry entry, {bool compact = false}) {
     final event = entry.event;
+    final session = entry.session;
     return Card(
       margin: EdgeInsets.symmetric(horizontal: compact ? 3 : 10, vertical: 3),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: event != null
             ? () => _editEvent(event)
+            : session != null
+            ? () => _editSession(session)
             : () => widget.onTaskTap(entry.task!),
         child: Padding(
           padding: EdgeInsets.all(compact ? 6 : 12),
@@ -334,10 +384,11 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
 }
 
 class _CalendarEntry {
-  const _CalendarEntry(this.label, {this.event, this.task});
+  const _CalendarEntry(this.label, {this.event, this.task, this.session});
   final String label;
   final FixedEvent? event;
   final LifeTask? task;
+  final WorkSession? session;
 }
 
 const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];

@@ -31,6 +31,7 @@ class AppController extends ChangeNotifier {
   List<Project> projects = [];
   List<LifeTask> tasks = [];
   List<FixedEvent> events = [];
+  List<WorkSession> sessions = [];
   WorkspaceView view = WorkspaceView.today;
   TaskSort sort = TaskSort.schedule;
   String? scopeId;
@@ -51,11 +52,13 @@ class AppController extends ChangeNotifier {
       repository.projects(),
       repository.tasks(),
       repository.events(),
+      repository.sessions(),
     ]);
     categories = result[0] as List<Category>;
     projects = result[1] as List<Project>;
     tasks = result[2] as List<LifeTask>;
     events = result[3] as List<FixedEvent>;
+    sessions = result[4] as List<WorkSession>;
     if (selectedTaskId != null && selectedTask == null) selectedTaskId = null;
     loading = false;
     notifyListeners();
@@ -173,6 +176,21 @@ class AppController extends ChangeNotifier {
 
   Future<void> deleteEvent(String id) async {
     await repository.deleteEvent(id);
+    await refresh();
+  }
+
+  Future<void> addSession(SessionDraft draft) async {
+    await repository.addSession(draft);
+    await refresh();
+  }
+
+  Future<void> updateSession(WorkSession previous, SessionDraft draft) async {
+    await repository.updateSession(previous, draft);
+    await refresh();
+  }
+
+  Future<void> deleteSession(String id) async {
+    await repository.deleteSession(id);
     await refresh();
   }
 
