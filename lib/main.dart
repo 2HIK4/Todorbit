@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,16 +7,25 @@ import 'app/app_controller.dart';
 import 'data/app_database.dart';
 import 'data/life_repository.dart';
 import 'features/workspace/workspace.dart';
+import 'features/widget/desktop_widget.dart';
 
-Future<void> main() async {
+Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   final database = await AppDatabase.openDefault();
   final controller = AppController(LifeRepository(database));
   await controller.refresh();
+  final widgetMode = Platform.isWindows && args.contains('--widget');
   runApp(
     ProviderScope(
       overrides: [appControllerProvider.overrideWith((ref) => controller)],
-      child: const LifeManagerApp(),
+      child: widgetMode
+          ? DesktopWidgetApp(
+              onExit: () async {
+                await database.close();
+                exit(0);
+              },
+            )
+          : const LifeManagerApp(),
     ),
   );
 }

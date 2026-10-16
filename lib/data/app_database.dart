@@ -10,11 +10,13 @@ class AppDatabase extends GeneratedDatabase {
   static Future<AppDatabase> openDefault() async {
     final String basePath;
     if (Platform.isWindows) {
-      basePath = Platform.environment['APPDATA'] ??
+      basePath =
+          Platform.environment['APPDATA'] ??
           (throw StateError('Windows APPDATA directory is unavailable'));
     } else {
       final home = Platform.environment['HOME'];
-      basePath = Platform.environment['XDG_DATA_HOME'] ??
+      basePath =
+          Platform.environment['XDG_DATA_HOME'] ??
           (home == null
               ? throw StateError('User data directory is unavailable')
               : path.join(home, '.local', 'share'));
