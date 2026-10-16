@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -49,6 +51,9 @@ void main() {
     final controller = AppController(repository);
     await controller.refresh();
     var launches = 0;
+    final diagnosticsDirectory = Directory.systemTemp.createTempSync(
+      'life_manager_focus_test_',
+    );
     try {
       await tester.pumpWidget(
         ProviderScope(
@@ -58,6 +63,8 @@ void main() {
             onOpenApp: () async {
               launches++;
             },
+            diagnostics: true,
+            diagnosticsDirectory: diagnosticsDirectory,
           ),
         ),
       );
@@ -92,11 +99,18 @@ void main() {
         'Focus cycle 1',
         'Focus cycle 0',
       ]);
+      final log = File(
+        '${diagnosticsDirectory.path}\\widget-flutter-diagnostics-$pid.log',
+      ).readAsStringSync();
+      expect(log, contains('open-app requested'));
+      expect(log, contains('input-focus hasFocus=true'));
+      expect(log, isNot(contains('Focus cycle')));
       expect(tester.takeException(), isNull);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
       await database.close();
       await tester.binding.setSurfaceSize(null);
+      diagnosticsDirectory.deleteSync(recursive: true);
     }
   });
 }

@@ -4,6 +4,7 @@
 #include <flutter_windows.h>
 
 #include "resource.h"
+#include "widget_diagnostics.h"
 
 namespace {
 
@@ -167,6 +168,8 @@ LRESULT CALLBACK Win32Window::WndProc(HWND const window,
     EnableFullDpiSupportIfAvailable(window);
     that->window_handle_ = window;
   } else if (Win32Window* that = GetThisFromHandle(window)) {
+    WidgetDiagnostics::WindowMessage(window, that->child_content_, window,
+                                     message, wparam, lparam);
     return that->MessageHandler(window, message, wparam, lparam);
   }
 
@@ -242,6 +245,7 @@ Win32Window* Win32Window::GetThisFromHandle(HWND const window) noexcept {
 void Win32Window::SetChildContent(HWND content) {
   child_content_ = content;
   SetParent(content, window_handle_);
+  WidgetDiagnostics::AttachFlutterView(window_handle_, content);
   RECT frame = GetClientArea();
 
   MoveWindow(content, frame.left, frame.top, frame.right - frame.left,

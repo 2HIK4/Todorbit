@@ -7,6 +7,7 @@
 #include "desktop_widget.h"
 #include "flutter_window.h"
 #include "utils.h"
+#include "widget_diagnostics.h"
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
@@ -28,6 +29,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   const bool widget_mode =
       std::find(command_line_arguments.begin(), command_line_arguments.end(),
                 "--widget") != command_line_arguments.end();
+  const bool diagnostics_requested = widget_mode &&
+      std::find(command_line_arguments.begin(), command_line_arguments.end(),
+                "--widget-diagnostics") != command_line_arguments.end();
+  WidgetDiagnostics::Start(diagnostics_requested);
+  WidgetDiagnostics::Log(L"widget process starting");
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
   FlutterWindow window(project);
@@ -36,19 +42,39 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
       widget_mode ? Win32Window::Size(360, 480) : Win32Window::Size(1280, 720);
   if (!window.Create(widget_mode ? L"Life Manager Widget" : L"life_manager",
                      origin, size)) {
+    WidgetDiagnostics::Log(L"window creation failed");
+    WidgetDiagnostics::Stop();
     return EXIT_FAILURE;
   }
+  WidgetDiagnostics::Snapshot(window.GetHandle(), nullptr, L"before desktop attachment");
   if (widget_mode && !AttachWidgetToDesktop(window.GetHandle())) {
+    WidgetDiagnostics::Log(L"desktop attachment failed");
+    WidgetDiagnostics::Stop();
     return EXIT_FAILURE;
   }
+  WidgetDiagnostics::Snapshot(window.GetHandle(), nullptr, L"after desktop attachment");
   window.SetQuitOnClose(true);
+
+  constexpr UINT_PTR kDiagnosticsTimer = 1;
+  if (WidgetDiagnostics::Enabled()) {
+    ::SetTimer(window.GetHandle(), kDiagnosticsTimer, 2000, nullptr);
+  }
 
   ::MSG msg;
   while (::GetMessage(&msg, nullptr, 0, 0)) {
+    if (WidgetDiagnostics::Enabled() && msg.hwnd == window.GetHandle() &&
+        msg.message == WM_TIMER && msg.wParam == kDiagnosticsTimer) {
+      WidgetDiagnostics::Poll(window.GetHandle());
+      continue;
+    }
     ::TranslateMessage(&msg);
     ::DispatchMessage(&msg);
   }
 
+  if (WidgetDiagnostics::Enabled() && window.GetHandle()) {
+    ::KillTimer(window.GetHandle(), kDiagnosticsTimer);
+  }
+  WidgetDiagnostics::Stop();
   ::CoUninitialize();
   return EXIT_SUCCESS;
 }

@@ -3,6 +3,7 @@
 #include <optional>
 
 #include "flutter/generated_plugin_registrant.h"
+#include "widget_diagnostics.h"
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -57,6 +58,9 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
         flutter_controller_->HandleTopLevelWindowProc(hwnd, message, wparam,
                                                       lparam);
     if (result) {
+      if (message == WM_SETFOCUS) {
+        WidgetDiagnostics::Log(L"Flutter engine handled outer WM_SETFOCUS");
+      }
       return *result;
     }
   }
@@ -67,5 +71,8 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
       break;
   }
 
+  if (message == WM_SETFOCUS) {
+    WidgetDiagnostics::Log(L"outer WM_SETFOCUS forwarded to runner");
+  }
   return Win32Window::MessageHandler(hwnd, message, wparam, lparam);
 }

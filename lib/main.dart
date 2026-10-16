@@ -20,6 +20,7 @@ Future<void> main(List<String> args) async {
       overrides: [appControllerProvider.overrideWith((ref) => controller)],
       child: widgetMode
           ? DesktopWidgetApp(
+              diagnostics: args.contains('--widget-diagnostics'),
               onExit: () async {
                 await database.close();
                 exit(0);

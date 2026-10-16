@@ -23,6 +23,8 @@
 - Reproduce the reported task-row checkbox duplication in a native Windows session and capture its first exception/stack; widget tests have not reproduced it.
 - Widget keyboard-focus investigation: the desktop-attached window could be inspected but not activated by native automation. The runner incorrectly called `SetFocus` on `WM_ACTIVATE` even for `WA_INACTIVE`; it now focuses Flutter only on activation. A three-cycle Flutter widget test verifies that the text field can be refocused and tasks submitted after simulated app launches/lifecycle changes. The native open/close/typing sequence still requires manual verification; desktop-child activation may need further work if it fails.
 - Validation for the focus change: `flutter analyze` clean, all 16 `flutter test` cases pass, and `flutter build windows --debug` succeeds. No existing SQLite data was reset or migrated.
+- Added Debug-only, `--widget-diagnostics` opt-in native and Flutter focus logs under `%APPDATA%\Life Manager\logs`, with 2 MiB caps and no typed content. Native replay confirms that after closing the main app, native focus returns to the outer widget HWND while Flutter reports its text field focused. A direct `SetFocus` attempt on the Flutter child returned error 87 and was not retained. The user confirmed `Win + D` hides the current widget; a timed diagnostic trace from that action is still needed before changing desktop layering. No architectural workaround has been committed.
+- Diagnostic instrumentation validation: `flutter analyze` clean, all 16 `flutter test` cases pass, `flutter build windows --debug` succeeds, and a debug widget launch produced both native and Flutter diagnostic files. The keyboard and Show Desktop defects are **not** resolved by this instrumentation.
 
 ## Not yet implemented
 
@@ -31,7 +33,7 @@
 ## Environment
 
 - Flutter 3.47.7 / Dart 3.13.5. Windows toolchain healthy. Android SDK command-line tools and license setup incomplete; Android is outside current scope.
-- Full visual UI interaction on a real desktop has not yet been manually verified. Widget parenting returned success; `Win + D` behavior and layering have not been verified.
+- Widget parenting returned success, but the user observed keyboard loss after main-app closure and disappearance under `Win + D`; the native desktop integration remains incomplete. The diagnostic parent is the `csrss`-owned system desktop HWND, not an Explorer shell layer.
 - Appearance choice currently resets on restart. Future planned sessions are not yet automatically retired when a task is completed early. There is no recoverable Trash; task and event deletion use explicit confirmation and are permanent.
 - Future widget design task: unify widget and main-app colors, typography, spacing, icons, and light/dark theme behavior, including compact layouts. Do this after the widget's native input behavior is reliable.
 
