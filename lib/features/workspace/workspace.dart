@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
+import '../calendar/calendar_view.dart';
 import 'task_editor.dart';
 
 class Workspace extends ConsumerStatefulWidget {
@@ -199,6 +200,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   WorkspaceView.inbox,
                   'Inbox',
                   Icons.inbox_outlined,
+                ),
+                _nav(
+                  controller,
+                  WorkspaceView.calendar,
+                  'Calendar',
+                  Icons.calendar_month_outlined,
                 ),
                 _nav(
                   controller,
@@ -421,6 +428,14 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   }
 
   Widget _mainPanel(AppController controller, bool wide) {
+    if (controller.view == WorkspaceView.calendar) {
+      return CalendarView(
+        onTaskTap: (task) {
+          controller.select(task.id);
+          if (!wide) _showNarrowEditor(task);
+        },
+      );
+    }
     final items = controller.visibleTasks;
     final today = localDate(DateTime.now());
     final overdueCount = controller.tasks
@@ -439,6 +454,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       WorkspaceView.overdue => 'Overdue',
       WorkspaceView.waiting => 'Waiting / On hold',
       WorkspaceView.completed => 'Completed',
+      WorkspaceView.calendar => 'Calendar',
       WorkspaceView.category =>
         controller.categories
                 .where((c) => c.id == controller.scopeId)

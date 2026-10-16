@@ -36,7 +36,7 @@ class AppDatabase extends GeneratedDatabase {
   }
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   Iterable<TableInfo> get allTables => const [];
@@ -91,9 +91,32 @@ class AppDatabase extends GeneratedDatabase {
       await customStatement(
         'CREATE INDEX projects_category ON projects(category_id)',
       );
+      await _createEvents();
     },
     onUpgrade: (migrator, from, to) async {
-      throw StateError('No migration registered from schema $from to $to');
+      if (from == 1 && to == 2) {
+        await _createEvents();
+      } else {
+        throw StateError('No migration registered from schema $from to $to');
+      }
     },
   );
+
+  Future<void> _createEvents() async {
+    await customStatement('''
+      CREATE TABLE fixed_events (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL CHECK(length(trim(title)) > 0),
+        notes TEXT NOT NULL DEFAULT '',
+        starts_at TEXT NOT NULL,
+        ends_at TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        CHECK(ends_at > starts_at)
+      )
+    ''');
+    await customStatement(
+      'CREATE INDEX fixed_events_start ON fixed_events(starts_at)',
+    );
+  }
 }

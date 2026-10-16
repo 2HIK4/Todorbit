@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:life_manager/data/app_database.dart';
 import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/domain/models.dart';
+import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {
   late AppDatabase database;
@@ -101,6 +102,74 @@ void main() {
         await second.close();
       }
     } finally {
+      await directory.delete(recursive: true);
+    }
+  });
+
+  test('fixed events can be created, edited, and deleted', () async {
+    final start = DateTime.utc(2026, 10, 16, 8);
+    final event = await repository.addEvent(
+      EventDraft(
+        title: 'Lecture',
+        startsAt: start,
+        endsAt: start.add(const Duration(hours: 2)),
+      ),
+    );
+    expect((await repository.events()).single.title, 'Lecture');
+    expect((await repository.events()).single.startsAt, start);
+    await repository.updateEvent(
+      event,
+      EventDraft(
+        title: 'Lab',
+        startsAt: start.add(const Duration(days: 1)),
+        endsAt: start.add(const Duration(days: 1, hours: 2)),
+      ),
+    );
+    expect((await repository.events()).single.title, 'Lab');
+    await repository.deleteEvent(event.id);
+    expect(await repository.events(), isEmpty);
+  });
+
+  test('schema migration preserves v1 tasks', () async {
+    await database.close();
+    final directory = await Directory.systemTemp.createTemp(
+      'life_manager_migration_',
+    );
+    final file = File('${directory.path}${Platform.pathSeparator}app.sqlite');
+    final legacy = sqlite.sqlite3.open(file.path);
+    legacy.execute('''
+      CREATE TABLE tasks (
+        id TEXT PRIMARY KEY, title TEXT NOT NULL, notes TEXT NOT NULL,
+        status TEXT NOT NULL, priority INTEGER NOT NULL, category_id TEXT,
+        project_id TEXT, scheduled_date TEXT, deadline_date TEXT,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL, completed_at TEXT
+      )
+    ''');
+    legacy.execute('''
+      INSERT INTO tasks VALUES(
+        'legacy-id','Keep me','','notStarted',0,NULL,NULL,NULL,NULL,
+        '2026-10-16T00:00:00.000Z','2026-10-16T00:00:00.000Z',NULL
+      )
+    ''');
+    legacy.execute('PRAGMA user_version = 1');
+    legacy.close();
+    final migrated = AppDatabase(NativeDatabase(file));
+    try {
+      expect((await LifeRepository(migrated).tasks()).single.title, 'Keep me');
+      expect(await LifeRepository(migrated).events(), isEmpty);
+      await LifeRepository(migrated).addEvent(
+        EventDraft(
+          title: 'After migration',
+          startsAt: DateTime.utc(2026, 10, 17),
+          endsAt: DateTime.utc(2026, 10, 17, 1),
+        ),
+      );
+      expect(
+        (await LifeRepository(migrated).events()).single.title,
+        'After migration',
+      );
+    } finally {
+      await migrated.close();
       await directory.delete(recursive: true);
     }
   });

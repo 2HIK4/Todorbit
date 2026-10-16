@@ -16,6 +16,7 @@ enum WorkspaceView {
   overdue,
   waiting,
   completed,
+  calendar,
   category,
   project,
 }
@@ -29,6 +30,7 @@ class AppController extends ChangeNotifier {
   List<Category> categories = [];
   List<Project> projects = [];
   List<LifeTask> tasks = [];
+  List<FixedEvent> events = [];
   WorkspaceView view = WorkspaceView.today;
   TaskSort sort = TaskSort.schedule;
   String? scopeId;
@@ -48,10 +50,12 @@ class AppController extends ChangeNotifier {
       repository.categories(),
       repository.projects(),
       repository.tasks(),
+      repository.events(),
     ]);
     categories = result[0] as List<Category>;
     projects = result[1] as List<Project>;
     tasks = result[2] as List<LifeTask>;
+    events = result[3] as List<FixedEvent>;
     if (selectedTaskId != null && selectedTask == null) selectedTaskId = null;
     loading = false;
     notifyListeners();
@@ -105,6 +109,8 @@ class AppController extends ChangeNotifier {
         case WorkspaceView.completed:
           return task.status == TaskStatus.completed ||
               task.status == TaskStatus.cancelled;
+        case WorkspaceView.calendar:
+          return false;
         case WorkspaceView.category:
           return task.isOpen && task.categoryId == scopeId;
         case WorkspaceView.project:
@@ -152,6 +158,21 @@ class AppController extends ChangeNotifier {
 
   Future<void> deleteTask(String id) async {
     await repository.deleteTask(id);
+    await refresh();
+  }
+
+  Future<void> addEvent(EventDraft draft) async {
+    await repository.addEvent(draft);
+    await refresh();
+  }
+
+  Future<void> updateEvent(FixedEvent previous, EventDraft draft) async {
+    await repository.updateEvent(previous, draft);
+    await refresh();
+  }
+
+  Future<void> deleteEvent(String id) async {
+    await repository.deleteEvent(id);
     await refresh();
   }
 

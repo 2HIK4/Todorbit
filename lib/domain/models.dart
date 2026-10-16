@@ -31,6 +31,38 @@ class Project {
   final DateTime createdAt;
 }
 
+class FixedEvent {
+  const FixedEvent({
+    required this.id,
+    required this.title,
+    required this.notes,
+    required this.startsAt,
+    required this.endsAt,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  final String id;
+  final String title;
+  final String notes;
+  final DateTime startsAt;
+  final DateTime endsAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+}
+
+class EventDraft {
+  const EventDraft({
+    required this.title,
+    required this.startsAt,
+    required this.endsAt,
+    this.notes = '',
+  });
+  final String title;
+  final String notes;
+  final DateTime startsAt;
+  final DateTime endsAt;
+}
+
 class LifeTask {
   const LifeTask({
     required this.id,

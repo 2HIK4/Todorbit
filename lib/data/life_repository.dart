@@ -49,6 +49,81 @@ class LifeRepository {
     return rows.map(_taskFromRow).toList();
   }
 
+  Future<List<FixedEvent>> events() async {
+    final rows = await db
+        .customSelect('SELECT * FROM fixed_events ORDER BY starts_at')
+        .get();
+    return rows
+        .map(
+          (r) => FixedEvent(
+            id: r.read<String>('id'),
+            title: r.read<String>('title'),
+            notes: r.read<String>('notes'),
+            startsAt: DateTime.parse(r.read<String>('starts_at')),
+            endsAt: DateTime.parse(r.read<String>('ends_at')),
+            createdAt: DateTime.parse(r.read<String>('created_at')),
+            updatedAt: DateTime.parse(r.read<String>('updated_at')),
+          ),
+        )
+        .toList();
+  }
+
+  Future<FixedEvent> addEvent(EventDraft draft) async {
+    _validateEvent(draft);
+    final id = _uuid.v4();
+    final now = DateTime.now().toUtc().toIso8601String();
+    await db.customInsert(
+      '''
+      INSERT INTO fixed_events(id,title,notes,starts_at,ends_at,created_at,updated_at)
+      VALUES(?,?,?,?,?,?,?)
+    ''',
+      variables: [
+        Variable.withString(id),
+        Variable.withString(draft.title.trim()),
+        Variable.withString(draft.notes),
+        Variable.withString(draft.startsAt.toUtc().toIso8601String()),
+        Variable.withString(draft.endsAt.toUtc().toIso8601String()),
+        Variable.withString(now),
+        Variable.withString(now),
+      ],
+    );
+    return (await events()).firstWhere((event) => event.id == id);
+  }
+
+  Future<void> updateEvent(FixedEvent previous, EventDraft draft) async {
+    _validateEvent(draft);
+    await db.customUpdate(
+      '''
+      UPDATE fixed_events SET title=?,notes=?,starts_at=?,ends_at=?,updated_at=?
+      WHERE id=?
+    ''',
+      variables: [
+        Variable.withString(draft.title.trim()),
+        Variable.withString(draft.notes),
+        Variable.withString(draft.startsAt.toUtc().toIso8601String()),
+        Variable.withString(draft.endsAt.toUtc().toIso8601String()),
+        Variable.withString(DateTime.now().toUtc().toIso8601String()),
+        Variable.withString(previous.id),
+      ],
+    );
+  }
+
+  Future<void> deleteEvent(String id) async {
+    await db.customUpdate(
+      'DELETE FROM fixed_events WHERE id=?',
+      variables: [Variable.withString(id)],
+    );
+  }
+
+  void _validateEvent(EventDraft draft) {
+    if (draft.title.trim().isEmpty) {
+      throw ArgumentError('Event title is required');
+    }
+    if (!draft.endsAt.isAfter(draft.startsAt)) {
+      throw ArgumentError('Event end must be after its start');
+    }
+  }
+
   LifeTask _taskFromRow(QueryRow r) => LifeTask(
     id: r.read<String>('id'),
     title: r.read<String>('title'),
