@@ -6,6 +6,7 @@ import 'package:life_manager/data/app_database.dart';
 import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/domain/models.dart';
 import 'package:life_manager/domain/recurrence.dart';
+import 'package:life_manager/domain/scheduling_engine.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {
@@ -99,6 +100,38 @@ void main() {
         tasks.every((task) => task.status == TaskStatus.completed),
         isTrue,
       );
+    },
+  );
+
+  test(
+    'Smart Reschedule moves one occurrence without changing its rule',
+    () async {
+      final first = await repository.addRecurringTask(
+        const TaskDraft(title: 'Practice', scheduledDate: '2026-10-17'),
+        RecurrenceRule(
+          kind: RecurrenceKind.daily,
+          startDate: '2026-10-17',
+          maxOccurrences: 3,
+        ),
+      );
+      final preview = const SchedulingEngine().shiftTasks(
+        selected: [first],
+        days: 3,
+        scope: 'recurrence:test',
+      );
+      await repository.applySchedulingPreview(preview);
+      await repository.ensureRecurringTasks('2026-10-17', '2026-10-31');
+      final tasks = await repository.tasks();
+      expect(tasks, hasLength(3));
+      final moved = tasks.singleWhere((task) => task.id == first.id);
+      expect(moved.nominalDate, '2026-10-17');
+      expect(moved.scheduledDate, '2026-10-20');
+      expect(moved.recurrenceRescheduled, isTrue);
+      expect(tasks.map((task) => task.nominalDate).toSet(), {
+        '2026-10-17',
+        '2026-10-18',
+        '2026-10-19',
+      });
     },
   );
 

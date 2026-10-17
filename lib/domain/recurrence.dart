@@ -22,10 +22,10 @@ class RecurrenceRule {
     required this.kind,
     required this.startDate,
     this.interval = 1,
-    this.weekdays = const {},
+    Set<int> weekdays = const {},
     this.endDate,
     this.maxOccurrences,
-  }) {
+  }) : weekdays = Set.unmodifiable(weekdays) {
     _parseDate(startDate);
     if (interval < 1) {
       throw ArgumentError('Recurrence interval must be positive');
@@ -40,6 +40,9 @@ class RecurrenceRule {
     if (kind == RecurrenceKind.weekdays) {
       if (weekdays.isEmpty || weekdays.any((day) => day < 1 || day > 7)) {
         throw ArgumentError('Select at least one valid weekday');
+      }
+      if (!weekdays.contains(_parseDate(startDate).weekday)) {
+        throw ArgumentError('The first planned day must be selected');
       }
     } else if (weekdays.isNotEmpty) {
       throw ArgumentError('Weekdays apply only to selected-weekday rules');

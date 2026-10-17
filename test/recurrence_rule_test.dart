@@ -100,6 +100,14 @@ void main() {
     );
     expect(
       () => RecurrenceRule(
+        kind: RecurrenceKind.weekdays,
+        startDate: '2026-01-01',
+        weekdays: {DateTime.monday},
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => RecurrenceRule(
         kind: RecurrenceKind.monthly,
         startDate: '2026-01-01',
         interval: 0,
@@ -114,5 +122,17 @@ void main() {
       ),
       throwsArgumentError,
     );
+  });
+
+  test('selected weekday rule keeps an immutable snapshot', () {
+    final chosen = {DateTime.monday};
+    final rule = RecurrenceRule(
+      kind: RecurrenceKind.weekdays,
+      startDate: '2026-10-19',
+      weekdays: chosen,
+    );
+    chosen.add(DateTime.friday);
+    expect(dates(rule, '2026-10-19', '2026-10-25'), ['2026-10-19']);
+    expect(() => rule.weekdays.add(DateTime.tuesday), throwsUnsupportedError);
   });
 }

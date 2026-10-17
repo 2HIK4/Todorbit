@@ -181,7 +181,7 @@ internal static class LifeManagerWidgetSelfTest {
               title,notes,priority,category_id,project_id,deadline_offset_days,
               planned_duration_minutes,remaining_work_minutes,scheduling_locked,
               created_at,updated_at)
-            VALUES('series','afterCompletion',$today,3,'',NULL,2,
+            VALUES('series','afterCompletion',$today,3,'',NULL,3,
               'Every three days','',0,NULL,NULL,NULL,NULL,NULL,0,$now,$now);
             INSERT INTO recurrence_occurrences(
               id,series_id,ordinal,nominal_date,task_id,created_at,updated_at)
@@ -194,6 +194,35 @@ internal static class LifeManagerWidgetSelfTest {
           command.ExecuteNonQuery();
         }
         v6Repository.CompleteTask(recurringId);
+        string completedBefore, completedAfter;
+        using (var check = new SqliteConnection(
+            $"Data Source={databasePath};Mode=ReadOnly;Pooling=False")) {
+          check.Open();
+          using var command = check.CreateCommand();
+          command.CommandText =
+            "SELECT completed_at FROM tasks WHERE id=$id";
+          command.Parameters.AddWithValue("$id", recurringId);
+          completedBefore = (string)command.ExecuteScalar()!;
+        }
+        var completedTask = v6Repository.LoadTask(recurringId)!;
+        v6Repository.UpdateTask(recurringId, new WidgetTaskUpdate(
+          completedTask.Title, "Updated note", "completed",
+          completedTask.Priority, completedTask.CategoryId,
+          completedTask.ProjectId, completedTask.ScheduledDate,
+          completedTask.DeadlineDate, completedTask.UpdatedAt));
+        using (var check = new SqliteConnection(
+            $"Data Source={databasePath};Mode=ReadOnly;Pooling=False")) {
+          check.Open();
+          using var command = check.CreateCommand();
+          command.CommandText =
+            "SELECT completed_at FROM tasks WHERE id=$id";
+          command.Parameters.AddWithValue("$id", recurringId);
+          completedAfter = (string)command.ExecuteScalar()!;
+        }
+        if (completedAfter != completedBefore) {
+          throw new InvalidOperationException(
+            "Editing a completed occurrence changed its completion time.");
+        }
         var nextDay = today.AddDays(3);
         var next = v6Repository.LoadTasks(nextDay)
           .Where(task => task.Title == "Every three days").ToList();
@@ -203,7 +232,17 @@ internal static class LifeManagerWidgetSelfTest {
           throw new InvalidOperationException(
             "Schema v6 completion did not create the next occurrence.");
         }
-        v6Repository.CompleteTask(next[0].Id);
+        v6Repository.UpdateTask(next[0].Id, new WidgetTaskUpdate(
+          next[0].Title, next[0].Notes, "completed", next[0].Priority,
+          next[0].CategoryId, next[0].ProjectId, next[0].ScheduledDate,
+          next[0].DeadlineDate, next[0].UpdatedAt));
+        var third = v6Repository.LoadTasks(nextDay)
+          .Where(task => task.Title == "Every three days").ToList();
+        if (third.Count != 1 || third[0].Id == next[0].Id) {
+          throw new InvalidOperationException(
+            "Schema v6 editor completion did not advance the series.");
+        }
+        v6Repository.CompleteTask(third[0].Id);
         if (v6Repository.LoadTasks(nextDay)
             .Any(task => task.Title == "Every three days")) {
           throw new InvalidOperationException(

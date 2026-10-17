@@ -111,9 +111,16 @@
 - Recurrence foundation validation: v5-to-v6 and v4-to-v6 disposable
   migration tests pass; recurrence rules, repository behavior, native v6
   self-test, and task-editor creation have focused regression coverage.
-  `flutter analyze`, all 54 Flutter tests, the native Release build, the
+  `flutter analyze`, all 54 Flutter tests at the first v6 checkpoint, the native Release build, the
   Windows Release build, and the packaged companion self-test pass. Manual
   recurrence UI acceptance has not been performed.
+- Recurrence follow-up: the widget editor now preserves a completed task's
+  original completion timestamp. Native self-test covers completion through
+  both checkbox and editor. The recurrence rule snapshots selected weekdays
+  and requires the first planned day to be one of them. Smart Reschedule has a
+  regression test proving it moves one occurrence while leaving nominal dates
+  and the rule intact. `flutter analyze`, all 56 Flutter tests, native Release
+  build/self-test, Windows Release build, and packaged companion self-test pass.
 
 ## In progress
 
@@ -138,7 +145,7 @@
   Smart Reschedule does not reset the production database.
 - A consistent SQLite online backup of the production v5 database was written
   under `%APPDATA%\Life Manager\backups` before schema v6 development. The
-  production database was not opened or migrated during this checkpoint.
+  production database was not migrated or modified during this checkpoint.
 - Launch-at-sign-in remains disabled by default and changes only through the
   explicit tray action.
 - Task and event deletion is permanent after confirmation; recoverable Trash is

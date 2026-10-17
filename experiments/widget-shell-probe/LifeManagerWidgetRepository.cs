@@ -162,13 +162,15 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
     using (var previousCommand = connection.CreateCommand()) {
       previousCommand.Transaction = transaction;
       previousCommand.CommandText =
-        "SELECT scheduled_date,status FROM tasks WHERE id=$id AND updated_at=$expected";
+        "SELECT scheduled_date,status,completed_at FROM tasks WHERE id=$id AND updated_at=$expected";
       previousCommand.Parameters.AddWithValue("$id", id);
       previousCommand.Parameters.AddWithValue("$expected", update.ExpectedUpdatedAt);
       using var reader = previousCommand.ExecuteReader();
       if (reader.Read()) {
         previousScheduledDate = reader.IsDBNull(0) ? null : reader.GetString(0);
         previousStatus = reader.GetString(1);
+        if (previousStatus == "completed" && update.Status == "completed" &&
+            !reader.IsDBNull(2)) completedAt = reader.GetString(2);
       }
     }
     if (schemaVersion >= 6 && previousStatus == "completed" &&
