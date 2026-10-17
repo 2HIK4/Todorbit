@@ -7,7 +7,7 @@ import 'package:path/path.dart' as path;
 class AppDatabase extends GeneratedDatabase {
   AppDatabase(super.executor);
 
-  static Future<AppDatabase> openDefault() async {
+  static Future<File> defaultFile() async {
     final String basePath;
     if (Platform.isWindows) {
       basePath =
@@ -23,7 +23,11 @@ class AppDatabase extends GeneratedDatabase {
     }
     final directory = Directory(path.join(basePath, 'Life Manager'));
     await directory.create(recursive: true);
-    final file = File(path.join(directory.path, 'life_manager.sqlite'));
+    return File(path.join(directory.path, 'life_manager.sqlite'));
+  }
+
+  static Future<AppDatabase> openDefault() async {
+    final file = await defaultFile();
     return AppDatabase(
       NativeDatabase.createInBackground(
         file,

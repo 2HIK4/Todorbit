@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../calendar/calendar_view.dart';
+import '../widget/native_widget_service.dart';
 import 'task_editor.dart';
 
 class Workspace extends ConsumerStatefulWidget {
@@ -16,6 +17,7 @@ class Workspace extends ConsumerStatefulWidget {
 
 class _WorkspaceState extends ConsumerState<Workspace> {
   bool creating = false;
+  final nativeWidget = NativeWidgetService();
 
   void _newTask() {
     ref.read(appControllerProvider).select(null);
@@ -361,10 +363,63 @@ class _WorkspaceState extends ConsumerState<Workspace> {
             ),
           ),
           Padding(
+            padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+            child: PopupMenuButton<String>(
+              tooltip: nativeWidget.isAvailable
+                  ? 'Native widget candidate'
+                  : 'Native widget companion is unavailable in this build',
+              enabled: nativeWidget.isAvailable,
+              onSelected: (action) => _run(() async {
+                switch (action) {
+                  case 'show':
+                    await nativeWidget.show();
+                    return;
+                  case 'hide':
+                    await nativeWidget.hide();
+                    return;
+                  case 'quick-add':
+                    await nativeWidget.quickAdd();
+                    return;
+                  case 'today':
+                    await nativeWidget.setView('today');
+                    return;
+                  case 'inbox':
+                    await nativeWidget.setView('inbox');
+                    return;
+                  case 'close':
+                    await nativeWidget.close();
+                    return;
+                }
+              }),
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'show', child: Text('Show widget')),
+                PopupMenuItem(value: 'hide', child: Text('Hide widget')),
+                PopupMenuItem(value: 'quick-add', child: Text('Quick Add')),
+                PopupMenuDivider(),
+                PopupMenuItem(value: 'today', child: Text('Show Today')),
+                PopupMenuItem(value: 'inbox', child: Text('Show Inbox')),
+                PopupMenuDivider(),
+                PopupMenuItem(value: 'close', child: Text('Close widget')),
+              ],
+              child: ListTile(
+                dense: true,
+                enabled: nativeWidget.isAvailable,
+                leading: const Icon(Icons.widgets_outlined),
+                title: const Text('Native widget (candidate)'),
+                trailing: const Icon(Icons.expand_more),
+              ),
+            ),
+          ),
+          Padding(
             padding: const EdgeInsets.all(8),
             child: PopupMenuButton<ThemeModePreference>(
               tooltip: 'Appearance',
-              onSelected: controller.setTheme,
+              onSelected: (theme) {
+                controller.setTheme(theme);
+                if (nativeWidget.isAvailable) {
+                  _run(() => nativeWidget.setTheme(theme.name));
+                }
+              },
               itemBuilder: (_) => const [
                 PopupMenuItem(
                   value: ThemeModePreference.system,

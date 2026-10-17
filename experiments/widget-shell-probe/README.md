@@ -34,14 +34,17 @@ desktop attachment; it does not prove shell-child composition.
 
 ## Native hybrid widget candidate
 
-`--widget` launches a separate integration candidate rather than the Flutter
-prototype. Its persistent display is one double-buffered, owner-drawn native
+`--widget` launches the native integration candidate rather than the Flutter
+prototype. The Windows build publishes it beside the main app as
+`life_manager_widget.exe`. Its persistent display is one double-buffered, owner-drawn native
 HWND created directly under Explorer's existing `SHELLDLL_DefView`; its Quick
 Add editor is an ordinary top-level modal dialog with normal keyboard
 activation. The candidate reads real schema-v3 task data,
 can add a task scheduled for today, complete a task, refresh, and open the main
-Flutter executable. It prevents duplicate instances and supports dark (default)
-and light (`--light`) palettes.
+Flutter executable. It prevents duplicate instances, persists system/light/dark
+appearance and Today/Inbox selection, watches SQLite changes without polling,
+and owns a lightweight tray workflow. Position and size persist per user and
+are clamped to connected monitor working areas.
 
 The repository boundary is intentionally narrow. It refuses to create or
 migrate the production database, checks `PRAGMA user_version = 3`, uses
@@ -53,15 +56,20 @@ Build and launch from the repository root:
 
 ```powershell
 dotnet build experiments\widget-shell-probe\widget-shell-probe.csproj -c Release
-experiments\widget-shell-probe\bin\Release\net10.0-windows\widget-shell-probe.exe --self-test
-experiments\widget-shell-probe\bin\Release\net10.0-windows\widget-shell-probe.exe --widget --app-exe build\windows\x64\runner\Debug\life_manager.exe
+dotnet run --project experiments\widget-shell-probe\widget-shell-probe.csproj -c Release -- --self-test
+dotnet run --project experiments\widget-shell-probe\widget-shell-probe.csproj -c Release -- --widget --app-exe build\windows\x64\runner\Debug\life_manager.exe
 ```
 
-For the light palette, append `--light`. Stop with the widget's Close button or
-terminate only its inspected PID. The candidate makes no persistent Explorer
-change. Explorer hosting remains undocumented and must be manually checked for
+Use the tray Appearance submenu or a `--widget-command theme-light` command to
+change the palette. Stop with the widget's Close button, tray Exit widget, or
+`--widget-command exit`. Launch at sign-in is disabled unless the user checks
+the tray option. The candidate makes no persistent Explorer change. Explorer
+hosting remains undocumented and must be manually checked for
 visible pixels, clicks, `Win + D`, normal-window coverage, repeated typing,
 multiple monitors, and Explorer restart before production integration.
+
+The integrated launch commands and acceptance checklist are maintained in
+`docs/windows-widget.md`.
 
 The original WinForms display was painted as a top-level Form and then
 cross-process reparented. Bounded diagnostics prove that it receives full-client

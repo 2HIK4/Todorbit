@@ -2,18 +2,226 @@ using System.Diagnostics;
 using System.Drawing.Drawing2D;
 
 internal sealed class NativeWidgetApplicationContext : ApplicationContext {
-  private readonly NativeDesktopWidgetHost host;
+  private readonly LifeManagerWidgetRepository repository;
+  private readonly string? appExe;
+  private readonly bool diagnostics;
+  private readonly WidgetSettingsStore settingsStore = new();
+  private readonly WidgetSettings settings;
+  private readonly WidgetCommandServer commandServer;
+  private readonly SynchronizationContext uiContext;
+  private readonly NotifyIcon trayIcon;
+  private readonly FileSystemWatcher databaseWatcher;
+  private readonly System.Windows.Forms.Timer refreshDebounce;
+  private readonly System.Windows.Forms.Timer explorerRecovery;
+  private NativeDesktopWidgetHost? host;
+  private readonly ExplorerRecoveryPolicy recoveryPolicy = new();
 
   internal NativeWidgetApplicationContext(
       LifeManagerWidgetRepository repository, string? appExe,
-      bool lightTheme, bool diagnostics) {
-    host = new NativeDesktopWidgetHost(repository, appExe,
-      lightTheme ? WidgetPalette.Light : WidgetPalette.Dark,
-      diagnostics, ExitThread);
+      bool diagnostics, string initialCommand) {
+    this.repository = repository;
+    this.appExe = appExe;
+    this.diagnostics = diagnostics;
+    settings = settingsStore.Load();
+    SynchronizationContext.SetSynchronizationContext(
+      SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext());
+    uiContext = SynchronizationContext.Current!;
+
+    refreshDebounce = new System.Windows.Forms.Timer { Interval = 250 };
+    refreshDebounce.Tick += (_, _) => {
+      refreshDebounce.Stop();
+      host?.RefreshFromDatabase();
+    };
+    databaseWatcher = new FileSystemWatcher(
+      Path.GetDirectoryName(repository.DatabasePath)!,
+      Path.GetFileName(repository.DatabasePath) + "*") {
+      NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size |
+        NotifyFilters.FileName,
+      EnableRaisingEvents = true,
+    };
+    databaseWatcher.Changed += DatabaseChanged;
+    databaseWatcher.Created += DatabaseChanged;
+    databaseWatcher.Renamed += DatabaseChanged;
+
+    explorerRecovery = new System.Windows.Forms.Timer { Interval = 1000 };
+    explorerRecovery.Tick += (_, _) => RecoverAfterExplorerRestart();
+    commandServer = new WidgetCommandServer(ExecuteCommand);
+    trayIcon = BuildTrayIcon();
+    trayIcon.Visible = true;
+    CreateHost();
+    ExecuteCommand(initialCommand);
+  }
+
+  private NotifyIcon BuildTrayIcon() {
+    var menu = new ContextMenuStrip();
+    menu.Items.Add("Open Life Manager", null, (_, _) => OpenMainApp());
+    menu.Items.Add("Show / hide widget", null, (_, _) => ExecuteCommand("toggle"));
+    menu.Items.Add("Quick Add", null, (_, _) => ExecuteCommand("quick-add"));
+    var view = new ToolStripMenuItem("Task view");
+    view.DropDownItems.Add("Today", null, (_, _) => ExecuteCommand("view-today"));
+    view.DropDownItems.Add("Inbox", null, (_, _) => ExecuteCommand("view-inbox"));
+    menu.Items.Add(view);
+    var theme = new ToolStripMenuItem("Appearance");
+    theme.DropDownItems.Add("System", null, (_, _) => ExecuteCommand("theme-system"));
+    theme.DropDownItems.Add("Light", null, (_, _) => ExecuteCommand("theme-light"));
+    theme.DropDownItems.Add("Dark", null, (_, _) => ExecuteCommand("theme-dark"));
+    menu.Items.Add(theme);
+    menu.Items.Add(new ToolStripSeparator());
+    var launch = new ToolStripMenuItem("Launch at Windows sign-in") {
+      Checked = StartupRegistration.IsEnabled(),
+    };
+    launch.Click += (_, _) => {
+      try {
+        var enabled = !launch.Checked;
+        StartupRegistration.SetEnabled(enabled);
+        launch.Checked = enabled;
+        settings.LaunchAtSignIn = enabled;
+        settingsStore.Save(settings);
+      } catch (Exception error) {
+        launch.Checked = StartupRegistration.IsEnabled();
+        MessageBox.Show(error.Message, "Life Manager widget",
+          MessageBoxButtons.OK, MessageBoxIcon.Error);
+      }
+    };
+    menu.Items.Add(launch);
+    menu.Items.Add("Exit widget", null, (_, _) => ExitThread());
+    menu.Items.Add("Exit Life Manager completely", null, (_, _) => ExitCompletely());
+    var icon = new NotifyIcon {
+      Icon = SystemIcons.Application,
+      Text = "Life Manager",
+      ContextMenuStrip = menu,
+    };
+    icon.DoubleClick += (_, _) => ExecuteCommand("toggle");
+    return icon;
+  }
+
+  private void DatabaseChanged(object sender, FileSystemEventArgs args) {
+    uiContext.Post(_ => {
+      try {
+        refreshDebounce.Stop();
+        refreshDebounce.Start();
+      } catch (InvalidOperationException) { }
+    }, null);
+  }
+
+  private void ExecuteCommand(string command) {
+    switch (command.ToLowerInvariant()) {
+      case "show": EnsureHost(); host?.Show(); break;
+      case "hide": host?.Hide(); break;
+      case "toggle": EnsureHost(); host?.Toggle(); break;
+      case "quick-add": EnsureHost(); host?.OpenQuickAddDialog(); break;
+      case "refresh": host?.RefreshFromDatabase(); break;
+      case "theme-system": SetTheme(WidgetThemePreference.System); break;
+      case "theme-light": SetTheme(WidgetThemePreference.Light); break;
+      case "theme-dark": SetTheme(WidgetThemePreference.Dark); break;
+      case "view-today": SetView(WidgetTaskView.Today); break;
+      case "view-inbox": SetView(WidgetTaskView.Inbox); break;
+      case "exit": ExitThread(); break;
+    }
+  }
+
+  private void SetTheme(WidgetThemePreference value) {
+    settings.Theme = value;
+    settingsStore.Save(settings);
+    host?.SetPalette(ResolvePalette(value));
+  }
+
+  private void SetView(WidgetTaskView value) {
+    settings.View = value;
+    settingsStore.Save(settings);
+    host?.SetView(value);
+  }
+
+  private static WidgetPalette ResolvePalette(WidgetThemePreference value) =>
+    value switch {
+      WidgetThemePreference.Light => WidgetPalette.Light,
+      WidgetThemePreference.Dark => WidgetPalette.Dark,
+      _ => SystemDarkMode() ? WidgetPalette.Dark : WidgetPalette.Light,
+    };
+
+  private static bool SystemDarkMode() {
+    using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+      @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+    return key?.GetValue("AppsUseLightTheme") is int value && value == 0;
+  }
+
+  private void CreateHost() {
+    try {
+      host = new NativeDesktopWidgetHost(repository, appExe,
+        ResolvePalette(settings.Theme), settings, settingsStore, diagnostics,
+        HostDestroyed, ExitThread);
+      recoveryPolicy.Reset();
+      explorerRecovery.Stop();
+    } catch (InvalidOperationException) {
+      ScheduleExplorerRecovery();
+    }
+  }
+
+  private void EnsureHost() {
+    if (host == null || host.Handle == 0) CreateHost();
+  }
+
+  private void HostDestroyed() {
+    host = null;
+    ScheduleExplorerRecovery();
+  }
+
+  private void ScheduleExplorerRecovery() {
+    if (recoveryPolicy.CanRetry) explorerRecovery.Start();
+  }
+
+  private void RecoverAfterExplorerRestart() {
+    recoveryPolicy.RecordFailure();
+    CreateHost();
+    if (host != null || !recoveryPolicy.CanRetry) explorerRecovery.Stop();
+  }
+
+  private void OpenMainApp() {
+    try {
+      Process.Start(new ProcessStartInfo(ResolveMainApp()) { UseShellExecute = true });
+    } catch (Exception error) {
+      MessageBox.Show(error.Message, "Life Manager widget",
+        MessageBoxButtons.OK, MessageBoxIcon.Error);
+    }
+  }
+
+  private string ResolveMainApp() {
+    if (!string.IsNullOrWhiteSpace(appExe) && File.Exists(appExe)) {
+      return Path.GetFullPath(appExe);
+    }
+    var sibling = Path.Combine(AppContext.BaseDirectory, "life_manager.exe");
+    if (File.Exists(sibling)) return sibling;
+    throw new FileNotFoundException("Life Manager is not beside the widget executable.");
+  }
+
+  private void ExitCompletely() {
+    if (MessageBox.Show("Close the widget and all running Life Manager windows?",
+        "Exit Life Manager", MessageBoxButtons.YesNo,
+        MessageBoxIcon.Question) != DialogResult.Yes) return;
+    try {
+      var expected = Path.GetFullPath(ResolveMainApp());
+      foreach (var process in Process.GetProcessesByName("life_manager")) {
+        try {
+          if (string.Equals(process.MainModule?.FileName, expected,
+              StringComparison.OrdinalIgnoreCase)) process.CloseMainWindow();
+        } catch { }
+        finally { process.Dispose(); }
+      }
+    } catch (FileNotFoundException) { }
+    ExitThread();
   }
 
   protected override void Dispose(bool disposing) {
-    if (disposing) host.Dispose();
+    if (disposing) {
+      trayIcon.Visible = false;
+      trayIcon.Dispose();
+      commandServer.Dispose();
+      databaseWatcher.Dispose();
+      refreshDebounce.Dispose();
+      explorerRecovery.Dispose();
+      host?.Dispose();
+      host = null;
+    }
     base.Dispose(disposing);
   }
 }
@@ -23,11 +231,11 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
 internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
   private const int LogicalWidth = 376;
   private const int LogicalHeight = 460;
-  private const int VisibleTaskRows = 5;
   private const int WmDestroy = 0x0002;
   private const int WmPaint = 0x000F;
   private const int WmEraseBackground = 0x0014;
   private const int WmMouseMove = 0x0200;
+  private const int WmLeftButtonDown = 0x0201;
   private const int WmMouseLeave = 0x02A3;
   private const int WmLeftButtonUp = 0x0202;
   private const int WmMouseWheel = 0x020A;
@@ -43,8 +251,11 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
 
   private readonly LifeManagerWidgetRepository repository;
   private readonly string? appExe;
-  private readonly WidgetPalette palette;
+  private WidgetPalette palette;
+  private readonly WidgetSettings settings;
+  private readonly WidgetSettingsStore settingsStore;
   private readonly WidgetRenderDiagnostics diagnostics;
+  private readonly Action unexpectedDestroy;
   private readonly Action exit;
   private IReadOnlyList<WidgetTask> tasks = [];
   private float scale = 1f;
@@ -53,28 +264,39 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
   private int hoverTask = -1;
   private string statusText = "Loading...";
   private bool disposed;
+  private bool dragging;
+  private bool resizing;
+  private Native.Point dragStart;
+  private Native.Rect dragBounds;
 
   internal NativeDesktopWidgetHost(
       LifeManagerWidgetRepository repository, string? appExe,
-      WidgetPalette palette, bool diagnosticsEnabled, Action exit) {
+      WidgetPalette palette, WidgetSettings settings,
+      WidgetSettingsStore settingsStore, bool diagnosticsEnabled,
+      Action unexpectedDestroy, Action exit) {
     this.repository = repository;
     this.appExe = appExe;
     this.palette = palette;
+    this.settings = settings;
+    this.settingsStore = settingsStore;
+    this.unexpectedDestroy = unexpectedDestroy;
     this.exit = exit;
     diagnostics = new WidgetRenderDiagnostics(diagnosticsEnabled);
-    var (parent, position) = ResolveDesktopIconHost();
-    var dpi = Native.GetDpiForWindow(parent);
-    scale = dpi == 0 ? 1f : dpi / 96f;
+    var (parent, position) = ResolveDesktopIconHost(settings);
+    var screen = Screen.AllScreens.FirstOrDefault(item =>
+      item.DeviceName == settings.MonitorDeviceName) ?? Screen.PrimaryScreen!;
+    scale = ScaleForScreen(screen);
     var parameters = new CreateParams {
       Caption = "Life Manager Desktop Widget",
       Parent = parent,
       X = position.X,
       Y = position.Y,
-      Width = Pixel(LogicalWidth),
-      Height = Pixel(LogicalHeight),
+      Width = Pixel(Math.Clamp(settings.Width, 340, 520)),
+      Height = Pixel(Math.Clamp(settings.Height, 420, 720)),
       Style = WsChild | WsVisible | WsClipChildren | WsClipSiblings,
     };
     CreateHandle(parameters);
+    settingsStore.Save(settings);
     diagnostics.Snapshot(Handle, "native-handle-created");
     RefreshTasks();
   }
@@ -93,12 +315,17 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
         MouseMove(LogicalPoint(message.LParam));
         message.Result = 0;
         return;
+      case WmLeftButtonDown:
+        BeginMoveOrResize(LogicalPoint(message.LParam));
+        message.Result = 0;
+        return;
       case WmMouseLeave:
         SetHover(HitTarget.None, -1);
         message.Result = 0;
         return;
       case WmLeftButtonUp:
-        Click(LogicalPoint(message.LParam));
+        if (dragging || resizing) EndMoveOrResize();
+        else Click(LogicalPoint(message.LParam));
         message.Result = 0;
         return;
       case WmMouseWheel:
@@ -111,7 +338,11 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
         Present("display-change");
         break;
       case WmDestroy:
-        if (!disposed) exit();
+        if (!disposed) {
+          disposed = true;
+          diagnostics.Dispose();
+          unexpectedDestroy();
+        }
         break;
     }
     base.WndProc(ref message);
@@ -141,8 +372,10 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
   }
 
   private void DrawWidget(Graphics graphics) {
+    var logicalWidth = LogicalClientWidth;
+    var logicalHeight = LogicalClientHeight;
     using var border = new Pen(palette.Border);
-    graphics.DrawRectangle(border, 0, 0, LogicalWidth - 1, LogicalHeight - 1);
+    graphics.DrawRectangle(border, 0, 0, logicalWidth - 1, logicalHeight - 1);
     using var titleFont = new Font("Segoe UI Semibold", 15, FontStyle.Bold);
     using var bodyFont = new Font("Segoe UI", 9.5f);
     using var smallFont = new Font("Segoe UI", 8);
@@ -151,8 +384,8 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     using var foreground = new SolidBrush(palette.Foreground);
     using var muted = new SolidBrush(palette.Muted);
 
-    graphics.DrawString("Life Manager", titleFont, foreground,
-      new RectangleF(16, 12, 170, 32));
+    graphics.DrawString($"Life Manager - {settings.View}", titleFont, foreground,
+      new RectangleF(16, 12, Math.Max(80, RefreshRect.Left - 24), 32));
     graphics.DrawString(DateTime.Now.ToString("dddd, MMM d"), bodyFont, muted,
       new RectangleF(17, 43, 170, 24));
     DrawButton(graphics, RefreshRect, "Refresh", buttonFont,
@@ -167,7 +400,9 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     }
     if (tasks.Count == 0) {
       using var emptyFormat = CenterFormat();
-      graphics.DrawString("Nothing due today\nYour Inbox is clear.",
+      var emptyText = settings.View == WidgetTaskView.Today
+        ? "Nothing planned for today." : "Your Inbox is clear.";
+      graphics.DrawString(emptyText,
         bodyFont, muted, TaskArea, emptyFormat);
     } else {
       var end = Math.Min(tasks.Count, scrollOffset + VisibleTaskRows);
@@ -182,7 +417,8 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
           LineAlignment = StringAlignment.Far,
         };
         graphics.DrawString(range, smallFont, muted,
-          new RectangleF(24, 354, 326, 23), rangeFormat);
+          new RectangleF(24, TaskArea.Bottom - 30,
+            logicalWidth - 50, 23), rangeFormat);
       }
     }
 
@@ -201,7 +437,7 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
       AddRect, addFormat);
     using var statusFormat = CenterFormat();
     graphics.DrawString(statusText, smallFont, muted,
-      new RectangleF(16, 439, 344, 18), statusFormat);
+      new RectangleF(16, logicalHeight - 21, logicalWidth - 32, 18), statusFormat);
   }
 
   private void DrawTask(Graphics graphics, WidgetTask task,
@@ -239,6 +475,10 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
   }
 
   private void MouseMove(PointF point) {
+    if (dragging || resizing) {
+      ContinueMoveOrResize();
+      return;
+    }
     var tracking = new Native.TrackMouseEventData {
       Size = (uint)System.Runtime.InteropServices.Marshal.SizeOf<Native.TrackMouseEventData>(),
       Flags = 0x00000002,
@@ -247,7 +487,62 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     Native.TrackMouseEvent(ref tracking);
     var (target, task) = HitTest(point);
     SetHover(target, task);
-    Cursor.Current = target == HitTarget.None ? Cursors.Default : Cursors.Hand;
+    Cursor.Current = IsResizeGrip(point) ? Cursors.SizeNWSE :
+      target == HitTarget.None ? Cursors.Default : Cursors.Hand;
+  }
+
+  private void BeginMoveOrResize(PointF point) {
+    if (HitTest(point).Target != HitTarget.None) return;
+    resizing = IsResizeGrip(point);
+    dragging = !resizing && point.Y <= 66;
+    if (!dragging && !resizing) return;
+    Native.GetCursorPos(out dragStart);
+    Native.GetWindowRect(Handle, out dragBounds);
+    Native.SetCapture(Handle);
+  }
+
+  private void ContinueMoveOrResize() {
+    if (!Native.GetCursorPos(out var cursor)) return;
+    var dx = cursor.X - dragStart.X;
+    var dy = cursor.Y - dragStart.Y;
+    var width = resizing
+      ? Math.Clamp(dragBounds.Right - dragBounds.Left + dx, Pixel(340), Pixel(520))
+      : dragBounds.Right - dragBounds.Left;
+    var height = resizing
+      ? Math.Clamp(dragBounds.Bottom - dragBounds.Top + dy, Pixel(420), Pixel(720))
+      : dragBounds.Bottom - dragBounds.Top;
+    var screenPoint = new Native.Point {
+      X = dragging ? dragBounds.Left + dx : dragBounds.Left,
+      Y = dragging ? dragBounds.Top + dy : dragBounds.Top,
+    };
+    var screen = Screen.FromPoint(new Point(screenPoint.X, screenPoint.Y));
+    screenPoint.X = Math.Clamp(screenPoint.X, screen.WorkingArea.Left,
+      Math.Max(screen.WorkingArea.Left, screen.WorkingArea.Right - width));
+    screenPoint.Y = Math.Clamp(screenPoint.Y, screen.WorkingArea.Top,
+      Math.Max(screen.WorkingArea.Top, screen.WorkingArea.Bottom - height));
+    var parentPoint = screenPoint;
+    if (!Native.ScreenToClient(Native.GetParent(Handle), ref parentPoint)) return;
+    Native.SetWindowPos(Handle, 0, parentPoint.X, parentPoint.Y,
+      width, height, SwpNoActivate);
+    Present("move-resize", updateNow: false);
+  }
+
+  private void EndMoveOrResize() {
+    dragging = false;
+    resizing = false;
+    Native.ReleaseCapture();
+    if (!Native.GetWindowRect(Handle, out var bounds)) return;
+    settings.X = bounds.Left;
+    settings.Y = bounds.Top;
+    settings.Width = (int)Math.Round((bounds.Right - bounds.Left) / scale);
+    settings.Height = (int)Math.Round((bounds.Bottom - bounds.Top) / scale);
+    var screen = Screen.FromRectangle(new Rectangle(
+      bounds.Left, bounds.Top, bounds.Right - bounds.Left,
+      bounds.Bottom - bounds.Top));
+    settings.MonitorDeviceName = screen.DeviceName;
+    scale = ScaleForScreen(screen);
+    settingsStore.Save(settings);
+    Reposition();
   }
 
   private void Click(PointF point) {
@@ -304,9 +599,37 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     Present("task-scroll", updateNow: false);
   }
 
+  internal void RefreshFromDatabase() => RefreshTasks();
+
+  internal void SetPalette(WidgetPalette value) {
+    palette = value;
+    Present("theme-changed");
+  }
+
+  internal void SetView(WidgetTaskView value) {
+    settings.View = value;
+    settingsStore.Save(settings);
+    RefreshTasks();
+  }
+
+  internal void Show() {
+    if (Handle != 0) Native.ShowWindow(Handle, 5);
+  }
+
+  internal void Hide() {
+    if (Handle != 0) Native.ShowWindow(Handle, 0);
+  }
+
+  internal void Toggle() {
+    if (Handle != 0) Native.ShowWindow(Handle,
+      Native.IsWindowVisible(Handle) ? 0 : 5);
+  }
+
+  internal void OpenQuickAddDialog() => OpenQuickAdd();
+
   private void RefreshTasks() {
     RunAction(() => {
-      tasks = repository.LoadTasks(DateTime.Now);
+      tasks = repository.LoadTasks(DateTime.Now, settings.View);
       scrollOffset = Math.Min(scrollOffset,
         Math.Max(0, tasks.Count - VisibleTaskRows));
       statusText = $"Updated {DateTime.Now:h:mm tt}";
@@ -368,18 +691,30 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     if (Handle == 0) return;
     var parent = Native.GetParent(Handle);
     if (parent == 0 || Native.ClassName(parent) != "SHELLDLL_DefView") return;
-    var primary = Screen.PrimaryScreen?.WorkingArea;
-    if (primary is null) return;
+    var screen = Screen.AllScreens.FirstOrDefault(item =>
+      item.DeviceName == settings.MonitorDeviceName) ?? Screen.PrimaryScreen;
+    if (screen is null) return;
+    scale = ScaleForScreen(screen);
+    var width = Pixel(Math.Clamp(settings.Width, 340, 520));
+    var height = Pixel(Math.Clamp(settings.Height, 420, 720));
+    var x = Math.Clamp(settings.X, screen.WorkingArea.Left,
+      Math.Max(screen.WorkingArea.Left, screen.WorkingArea.Right - width));
+    var y = Math.Clamp(settings.Y, screen.WorkingArea.Top,
+      Math.Max(screen.WorkingArea.Top, screen.WorkingArea.Bottom - height));
     var point = new Native.Point {
-      X = primary.Value.Right - Pixel(LogicalWidth) - 24,
-      Y = primary.Value.Top + 24,
+      X = x,
+      Y = y,
     };
     if (!Native.ScreenToClient(parent, ref point)) return;
     Native.SetWindowPos(Handle, 0, point.X, point.Y,
-      Pixel(LogicalWidth), Pixel(LogicalHeight), SwpNoActivate);
+      width, height, SwpNoActivate);
+    settings.X = x;
+    settings.Y = y;
+    settingsStore.Save(settings);
   }
 
-  private static (nint Parent, Native.Point Position) ResolveDesktopIconHost() {
+  private static (nint Parent, Native.Point Position) ResolveDesktopIconHost(
+      WidgetSettings settings) {
     var shell = Native.GetShellWindow();
     if (shell == 0 || Native.ClassName(shell) != "Progman" ||
         !Native.IsWindowVisible(shell)) {
@@ -392,21 +727,44 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
       throw new InvalidOperationException(
         "Explorer's desktop icon host is unavailable.");
     }
-    var primary = Screen.PrimaryScreen?.WorkingArea;
-    if (primary is null) {
+    var screen = Screen.AllScreens.FirstOrDefault(item =>
+      item.DeviceName == settings.MonitorDeviceName) ?? Screen.PrimaryScreen;
+    var working = screen?.WorkingArea;
+    if (working is null) {
       throw new InvalidOperationException("No primary display is available.");
     }
-    var dpi = Native.GetDpiForWindow(parent);
-    var scale = dpi == 0 ? 1f : dpi / 96f;
-    var point = new Native.Point {
-      X = primary.Value.Right - (int)Math.Round(LogicalWidth * scale) - 24,
-      Y = primary.Value.Top + 24,
-    };
+    var scale = ScaleForScreen(screen!);
+    var width = (int)Math.Round(Math.Clamp(settings.Width, 340, 520) * scale);
+    var height = (int)Math.Round(Math.Clamp(settings.Height, 420, 720) * scale);
+    var x = settings.X == int.MinValue
+      ? working.Value.Right - width - 24 : settings.X;
+    var y = settings.Y == int.MinValue ? working.Value.Top + 24 : settings.Y;
+    x = Math.Clamp(x, working.Value.Left,
+      Math.Max(working.Value.Left, working.Value.Right - width));
+    y = Math.Clamp(y, working.Value.Top,
+      Math.Max(working.Value.Top, working.Value.Bottom - height));
+    settings.X = x;
+    settings.Y = y;
+    settings.MonitorDeviceName = screen!.DeviceName;
+    var point = new Native.Point { X = x, Y = y };
     if (!Native.ScreenToClient(parent, ref point)) {
       throw new InvalidOperationException(
         "The widget position could not be mapped into Explorer coordinates.");
     }
     return (parent, point);
+  }
+
+  private static float ScaleForScreen(Screen screen) {
+    var center = new Native.Point {
+      X = screen.Bounds.Left + screen.Bounds.Width / 2,
+      Y = screen.Bounds.Top + screen.Bounds.Height / 2,
+    };
+    var monitor = Native.MonitorFromPoint(center, 2);
+    if (monitor != 0 && Native.GetDpiForMonitor(
+        monitor, 0, out var dpiX, out _) == 0 && dpiX > 0) {
+      return dpiX / 96f;
+    }
+    return 1f;
   }
 
   private PointF LogicalPoint(nint parameter) {
@@ -418,17 +776,33 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
 
   private int Pixel(int logical) => (int)Math.Round(logical * scale);
 
-  private static RectangleF TaskRowRect(int visibleIndex) =>
-    new(23, 89 + visibleIndex * 51, 330, 46);
+  private RectangleF TaskRowRect(int visibleIndex) =>
+    new(23, 89 + visibleIndex * 51, LogicalClientWidth - 46, 46);
 
   private static RectangleF CheckboxRect(int visibleIndex) =>
     new(33, 103 + visibleIndex * 51, 18, 18);
 
-  private static RectangleF RefreshRect => new(190, 17, 64, 30);
-  private static RectangleF OpenRect => new(258, 17, 48, 30);
-  private static RectangleF CloseRect => new(310, 17, 50, 30);
-  private static RectangleF TaskArea => new(16, 82, 344, 302);
-  private static RectangleF AddRect => new(16, 397, 344, 40);
+  private RectangleF RefreshRect => new(LogicalClientWidth - 186, 17, 64, 30);
+  private RectangleF OpenRect => new(LogicalClientWidth - 118, 17, 48, 30);
+  private RectangleF CloseRect => new(LogicalClientWidth - 66, 17, 50, 30);
+  private RectangleF TaskArea => new(16, 82, LogicalClientWidth - 32,
+    LogicalClientHeight - 158);
+  private RectangleF AddRect => new(16, LogicalClientHeight - 63,
+    LogicalClientWidth - 32, 40);
+  private int VisibleTaskRows => Math.Max(1,
+    (int)Math.Floor((TaskArea.Height - 12) / 51));
+  private int LogicalClientWidth => LogicalClientSize.Width;
+  private int LogicalClientHeight => LogicalClientSize.Height;
+  private Size LogicalClientSize {
+    get {
+      Native.GetClientRect(Handle, out var bounds);
+      return new Size(
+        Math.Max(1, (int)Math.Round((bounds.Right - bounds.Left) / scale)),
+        Math.Max(1, (int)Math.Round((bounds.Bottom - bounds.Top) / scale)));
+    }
+  }
+  private bool IsResizeGrip(PointF point) =>
+    point.X >= LogicalClientWidth - 18 && point.Y >= LogicalClientHeight - 18;
 
   private static StringFormat CenterFormat() => new() {
     Alignment = StringAlignment.Center,

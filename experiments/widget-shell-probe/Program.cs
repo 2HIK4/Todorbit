@@ -1,39 +1,54 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
-if (args.Length >= 1 && args[0] is
-    "--widget" or "--widget-standalone" or "--widget-legacy-reparent") {
+if (args.Length >= 1 && args[0] is "--widget" or "--widget-command") {
   var appExe = ArgumentValue(args, "--app-exe");
-  var lightTheme = args.Contains("--light", StringComparer.OrdinalIgnoreCase);
   var diagnostics = args.Contains(
     "--render-diagnostics", StringComparer.OrdinalIgnoreCase);
-  var hostMode = args[0] switch {
-    "--widget-standalone" => WidgetHostMode.Standalone,
-    "--widget-legacy-reparent" => WidgetHostMode.LegacyReparent,
-    _ => (WidgetHostMode?)null,
-  };
+  var initialCommand = args[0] == "--widget-command"
+    ? ArgumentValue(args, "--widget-command") ?? "show"
+    : "show";
   using var instance = new Mutex(initiallyOwned: true,
-    name: $"Local\\LifeManagerDesktopWidget-{hostMode?.ToString() ?? "Native"}",
+    name: "Local\\LifeManagerDesktopWidget-Native",
     out var ownsMutex);
   if (!ownsMutex) {
-    Console.WriteLine("A Life Manager desktop widget is already running.");
+    if (!WidgetCommandServer.TrySend(initialCommand)) {
+      Console.Error.WriteLine("The running widget did not accept the command.");
+      Environment.ExitCode = 2;
+    }
+    return;
+  }
+  if (args[0] == "--widget-command" && initialCommand is "hide" or "exit") {
     return;
   }
   ApplicationConfiguration.Initialize();
   try {
     using var repository = LifeManagerWidgetRepository.OpenDefault();
-    if (hostMode == null) {
-      Application.Run(new NativeWidgetApplicationContext(
-        repository, appExe, lightTheme, diagnostics));
-    } else {
-      Application.Run(new LifeManagerWidget(
-        repository, appExe, lightTheme, hostMode.Value, diagnostics));
-    }
+    Application.Run(new NativeWidgetApplicationContext(
+      repository, appExe, diagnostics,
+      initialCommand == "toggle" ? "show" : initialCommand));
   } catch (Exception error) {
     MessageBox.Show(error.Message, "Life Manager widget",
       MessageBoxButtons.OK, MessageBoxIcon.Error);
     Environment.ExitCode = 1;
   }
+  return;
+}
+if (args.Length >= 1 && args[0] is
+    "--widget-standalone" or "--widget-legacy-reparent") {
+  var appExe = ArgumentValue(args, "--app-exe");
+  var lightTheme = args.Contains("--light", StringComparer.OrdinalIgnoreCase);
+  var diagnostics = args.Contains(
+    "--render-diagnostics", StringComparer.OrdinalIgnoreCase);
+  var hostMode = args[0] == "--widget-standalone"
+    ? WidgetHostMode.Standalone : WidgetHostMode.LegacyReparent;
+  using var instance = new Mutex(initiallyOwned: true,
+    name: $"Local\\LifeManagerDesktopWidget-{hostMode}", out var ownsMutex);
+  if (!ownsMutex) return;
+  ApplicationConfiguration.Initialize();
+  using var repository = LifeManagerWidgetRepository.OpenDefault();
+  Application.Run(new LifeManagerWidget(
+    repository, appExe, lightTheme, hostMode, diagnostics));
   return;
 }
 if (args is ["--self-test"]) {
@@ -77,7 +92,7 @@ if (args is ["--inspect-pid", var delayedPidText, "--delay-seconds", var delayTe
   return;
 }
 if (args.Length != 0) {
-  Console.Error.WriteLine("Usage: widget-shell-probe [--widget|--widget-standalone|--widget-legacy-reparent [--light] [--render-diagnostics] [--app-exe PATH] | --self-test | --standalone | --standalone-capture PNG | --inspect-pid PID [--delay-seconds 1..15] | --attach-prototype]");
+  Console.Error.WriteLine("Usage: life_manager_widget [--widget [--render-diagnostics] [--app-exe PATH] | --widget-command show|hide|toggle|quick-add|refresh|exit | --self-test | diagnostic options]");
   return;
 }
 
@@ -261,6 +276,16 @@ internal static class Native {
   internal static extern bool ClientToScreen(nint window, ref Point point);
 
   [DllImport("user32.dll")]
+  internal static extern bool GetCursorPos(out Point point);
+
+  [DllImport("user32.dll")]
+  internal static extern nint SetCapture(nint window);
+
+  [DllImport("user32.dll")]
+  [return: MarshalAs(UnmanagedType.Bool)]
+  internal static extern bool ReleaseCapture();
+
+  [DllImport("user32.dll")]
   internal static extern nint WindowFromPoint(Point point);
 
   [DllImport("user32.dll")]
@@ -304,6 +329,10 @@ internal static class Native {
   [DllImport("user32.dll")]
   [return: MarshalAs(UnmanagedType.Bool)]
   internal static extern bool IsWindowVisible(nint window);
+
+  [DllImport("user32.dll")]
+  [return: MarshalAs(UnmanagedType.Bool)]
+  internal static extern bool ShowWindow(nint window, int command);
 
   [DllImport("user32.dll", CharSet = CharSet.Unicode)]
   private static extern int GetClassName(nint window, StringBuilder name, int maxLength);

@@ -7,16 +7,24 @@
 - `lib/domain/`: entity models. `lib/data/`: SQLite and repository. `lib/features/`: screens and reusable controls. `lib/app/`: shell, state, theme.
 - Windows widget and tray code will live behind a separate integration boundary.
 
-The current integration candidate is a separate .NET companion in
-`experiments/widget-shell-probe`. Its persistent display is one owner-drawn
+The current integration candidate is a separately packaged .NET companion,
+implemented in `experiments/widget-shell-probe` and published beside
+`life_manager.exe` as `life_manager_widget.exe`. Its persistent display is one owner-drawn
 native HWND created directly as an Explorer `SHELLDLL_DefView` child, while
 keyboard entry is an ordinary activated WinForms top-level dialog. This avoids
 both shell-child Flutter focus and post-paint WinForms reparenting. A
 narrow native repository reads and writes only task fields already owned by
 schema v3, validates the schema before opening, uses UUIDs/UTC timestamps and
-transactions, and never performs migrations. Explorer hosting is an
-undocumented compatibility dependency; the existing Flutter `--widget`
-prototype remains unchanged until manual desktop acceptance succeeds.
+transactions, and never performs migrations. A named-pipe command boundary
+lets Flutter show, hide, toggle, refresh, open Quick Add, select Today/Inbox,
+change theme, or close the single native instance. Both processes use
+debounced filesystem events on the SQLite database/WAL rather than polling.
+The companion owns its tray lifecycle, persists geometry/theme/view to a
+separate JSON settings file, clamps placement to connected monitors, and makes
+bounded recreation attempts if Explorer destroys its child HWND. Explorer
+hosting remains an undocumented compatibility dependency; the existing
+Flutter `--widget` prototype remains an explicitly labeled development
+fallback until manual desktop acceptance succeeds.
 
 Data integrity: foreign keys on, WAL, indexed common filters, schema versioning, and transactions for related writes. Date-only values use local calendar dates (`YYYY-MM-DD`); instants use UTC ISO 8601.
 

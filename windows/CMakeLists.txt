@@ -52,6 +52,27 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")
 
+# Package the Windows-only native widget companion beside the Flutter runner.
+# It is a self-contained single file so debug and packaged builds resolve the
+# same sibling path without relying on a developer machine's .NET install.
+find_program(DOTNET_EXECUTABLE dotnet REQUIRED)
+set(WIDGET_PROJECT
+  "${CMAKE_CURRENT_SOURCE_DIR}/../experiments/widget-shell-probe/widget-shell-probe.csproj")
+set(WIDGET_PUBLISH_DIR "${CMAKE_CURRENT_BINARY_DIR}/widget_host/$<CONFIG>")
+add_custom_target(life_manager_widget ALL
+  COMMAND "${DOTNET_EXECUTABLE}" publish "${WIDGET_PROJECT}"
+    --configuration "$<CONFIG>"
+    --runtime win-x64
+    --self-contained true
+    -p:PublishSingleFile=true
+    -p:IncludeNativeLibrariesForSelfExtract=true
+    -p:DebugType=None
+    --output "${WIDGET_PUBLISH_DIR}"
+  BYPRODUCTS "${WIDGET_PUBLISH_DIR}/life_manager_widget.exe"
+  COMMENT "Publishing native Life Manager widget companion"
+  VERBATIM)
+add_dependencies(${BINARY_NAME} life_manager_widget)
+
 
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
@@ -74,6 +95,9 @@ set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}")
 
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
+
+install(FILES "${WIDGET_PUBLISH_DIR}/life_manager_widget.exe"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}" COMPONENT Runtime)
 
 install(FILES "${FLUTTER_ICU_DATA_FILE}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   COMPONENT Runtime)

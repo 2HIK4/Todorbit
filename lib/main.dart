@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import 'features/widget/desktop_widget.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  final databaseFile = await AppDatabase.defaultFile();
   final database = await AppDatabase.openDefault();
   final controller = AppController(LifeRepository(database));
   await controller.refresh();
@@ -26,16 +28,60 @@ Future<void> main(List<String> args) async {
                 exit(0);
               },
             )
-          : const LifeManagerApp(),
+          : LifeManagerApp(databaseFile: databaseFile),
     ),
   );
 }
 
-class LifeManagerApp extends ConsumerWidget {
-  const LifeManagerApp({super.key});
+class LifeManagerApp extends ConsumerStatefulWidget {
+  const LifeManagerApp({super.key, this.databaseFile});
+
+  final File? databaseFile;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LifeManagerApp> createState() => _LifeManagerAppState();
+}
+
+class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
+    with WidgetsBindingObserver {
+  StreamSubscription<FileSystemEvent>? _databaseChanges;
+  Timer? _refreshDebounce;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final file = widget.databaseFile;
+    if (Platform.isWindows && file != null) {
+      _databaseChanges = file.parent.watch().listen((event) {
+        if (!event.path.toLowerCase().startsWith(file.path.toLowerCase())) {
+          return;
+        }
+        _refreshDebounce?.cancel();
+        _refreshDebounce = Timer(const Duration(milliseconds: 250), () {
+          if (mounted) ref.read(appControllerProvider).refresh();
+        });
+      });
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.read(appControllerProvider).refresh();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _refreshDebounce?.cancel();
+    _databaseChanges?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final preference = ref.watch(appControllerProvider).theme;
     final mode = switch (preference) {
       ThemeModePreference.light => ThemeMode.light,

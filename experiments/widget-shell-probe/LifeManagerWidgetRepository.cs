@@ -6,8 +6,10 @@ internal sealed record WidgetTask(string Id, string Title);
 internal sealed class LifeManagerWidgetRepository : IDisposable {
   private const int SupportedSchemaVersion = 3;
   private readonly SqliteConnection connection;
+  internal string DatabasePath { get; }
 
   private LifeManagerWidgetRepository(string databasePath) {
+    DatabasePath = Path.GetFullPath(databasePath);
     var builder = new SqliteConnectionStringBuilder {
       DataSource = databasePath,
       Mode = SqliteOpenMode.ReadWrite,
@@ -44,19 +46,22 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
   internal static LifeManagerWidgetRepository OpenForTest(string databasePath) =>
     new(databasePath);
 
-  internal IReadOnlyList<WidgetTask> LoadTasks(DateTime localToday) {
+  internal IReadOnlyList<WidgetTask> LoadTasks(
+      DateTime localToday, WidgetTaskView view = WidgetTaskView.Today) {
     using var command = connection.CreateCommand();
     command.CommandText = """
       SELECT id, title
       FROM tasks
       WHERE status NOT IN ('completed', 'cancelled')
-        AND (scheduled_date = $today OR
-          (category_id IS NULL AND project_id IS NULL))
+        AND (($view = 'today' AND scheduled_date = $today) OR
+          ($view = 'inbox' AND category_id IS NULL AND project_id IS NULL))
       ORDER BY priority DESC, scheduled_date ASC, created_at DESC
       LIMIT 20
       """;
     command.Parameters.AddWithValue("$today",
       localToday.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+    command.Parameters.AddWithValue("$view",
+      view == WidgetTaskView.Today ? "today" : "inbox");
     using var reader = command.ExecuteReader();
     var tasks = new List<WidgetTask>();
     while (reader.Read()) {
