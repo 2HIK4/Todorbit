@@ -1,0 +1,137 @@
+using System.Runtime.InteropServices;
+using System.Text;
+
+if (args.Contains("--attach-prototype", StringComparer.OrdinalIgnoreCase)) {
+  ApplicationConfiguration.Initialize();
+  Application.Run(new ShellHostPrototype());
+  return;
+}
+
+// Read-only shell inventory. Never sends messages to Explorer or changes windows.
+var windows = new List<nint>();
+Native.EnumWindows((window, _) => {
+  windows.Add(window);
+  return true;
+}, 0);
+
+PrintSpecial("desktop", Native.GetDesktopWindow());
+PrintSpecial("shell", Native.GetShellWindow());
+Console.WriteLine("shell children (front to back):");
+for (var child = Native.GetWindow(Native.GetShellWindow(), 5u);
+     child != 0;
+     child = Native.GetWindow(child, 2u)) {
+  PrintWindow("  sibling", child);
+}
+for (var index = 0; index < windows.Count; index++) {
+  var window = windows[index];
+  var className = Native.ClassName(window);
+  if (!IsShellClass(className) && !HasShellChild(window)) continue;
+  PrintWindow($"top[{index}]", window);
+  Native.EnumChildWindows(window, (child, _) => {
+    var childClass = Native.ClassName(child);
+    if (IsShellClass(childClass)) PrintWindow("  child", child);
+    return true;
+  }, 0);
+}
+
+static bool IsShellClass(string value) =>
+  value is "WorkerW" or "Progman" or "SHELLDLL_DefView" or "SysListView32";
+
+static bool HasShellChild(nint window) {
+  var found = false;
+  Native.EnumChildWindows(window, (child, _) => {
+    if (IsShellClass(Native.ClassName(child))) found = true;
+    return !found;
+  }, 0);
+  return found;
+}
+
+static void PrintSpecial(string label, nint window) => PrintWindow(label, window);
+
+static void PrintWindow(string label, nint window) {
+  Native.GetWindowThreadProcessId(window, out var processId);
+  Native.GetWindowRect(window, out var bounds);
+  var parent = Native.GetParent(window);
+  var owner = Native.GetWindow(window, 4);
+  Console.WriteLine(
+    $"{label} hwnd=0x{window:X} class={Native.ClassName(window)} pid={processId} " +
+    $"parent=0x{parent:X} owner=0x{owner:X} visible={Native.IsWindowVisible(window)} " +
+    $"rect=({bounds.Left},{bounds.Top})-({bounds.Right},{bounds.Bottom})");
+}
+
+internal static class Native {
+  internal delegate bool EnumWindowCallback(nint window, nint parameter);
+
+  [StructLayout(LayoutKind.Sequential)]
+  internal struct Rect {
+    internal int Left;
+    internal int Top;
+    internal int Right;
+    internal int Bottom;
+  }
+
+  [StructLayout(LayoutKind.Sequential)]
+  internal struct Point {
+    internal int X;
+    internal int Y;
+  }
+
+  [DllImport("user32.dll")]
+  internal static extern bool EnumWindows(EnumWindowCallback callback, nint parameter);
+
+  [DllImport("user32.dll")]
+  internal static extern bool EnumChildWindows(nint parent, EnumWindowCallback callback, nint parameter);
+
+  [DllImport("user32.dll")]
+  internal static extern nint GetDesktopWindow();
+
+  [DllImport("user32.dll")]
+  internal static extern nint GetShellWindow();
+
+  [DllImport("user32.dll")]
+  internal static extern nint GetParent(nint window);
+
+  [DllImport("user32.dll")]
+  internal static extern nint GetWindow(nint window, uint command);
+
+  [DllImport("user32.dll")]
+  internal static extern nint GetForegroundWindow();
+
+  [DllImport("user32.dll")]
+  internal static extern nint GetFocus();
+
+  [DllImport("user32.dll")]
+  internal static extern nint GetActiveWindow();
+
+  [DllImport("user32.dll", SetLastError = true)]
+  internal static extern nint SetParent(nint child, nint newParent);
+
+  [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
+  internal static extern nint GetWindowLongPtr(nint window, int index);
+
+  [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
+  internal static extern nint SetWindowLongPtr(nint window, int index, nint value);
+
+  [DllImport("user32.dll", SetLastError = true)]
+  [return: MarshalAs(UnmanagedType.Bool)]
+  internal static extern bool SetWindowPos(
+    nint window, nint after, int x, int y, int width, int height, uint flags);
+
+  [DllImport("user32.dll")]
+  internal static extern uint GetWindowThreadProcessId(nint window, out uint processId);
+
+  [DllImport("user32.dll")]
+  internal static extern bool GetWindowRect(nint window, out Rect bounds);
+
+  [DllImport("user32.dll")]
+  [return: MarshalAs(UnmanagedType.Bool)]
+  internal static extern bool IsWindowVisible(nint window);
+
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+  private static extern int GetClassName(nint window, StringBuilder name, int maxLength);
+
+  internal static string ClassName(nint window) {
+    var name = new StringBuilder(256);
+    return GetClassName(window, name, name.Capacity) == 0 ? "?" : name.ToString();
+  }
+}
