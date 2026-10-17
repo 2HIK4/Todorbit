@@ -6,6 +6,7 @@ import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../../domain/appearance.dart';
 import '../calendar/calendar_view.dart';
+import '../scheduling/smart_reschedule.dart';
 import '../widget/native_widget_service.dart';
 import 'task_editor.dart';
 
@@ -105,6 +106,35 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         ) ??
         false;
   }
+
+  Future<void> _showSmart({
+    List<String>? taskIds,
+    List<String>? sessionIds,
+    String? scope,
+  }) async {
+    final controller = ref.read(appControllerProvider);
+    await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => SmartRescheduleDialog(
+        scope: scope ?? _scheduleScope(controller),
+        taskIds:
+            taskIds ?? controller.visibleTasks.map((task) => task.id).toList(),
+        sessionIds: sessionIds ?? const [],
+      ),
+    );
+  }
+
+  Future<void> _showHistory() => showDialog<void>(
+    context: context,
+    builder: (_) => const ScheduleHistoryDialog(),
+  );
+
+  String _scheduleScope(AppController controller) => switch (controller.view) {
+    WorkspaceView.category => 'category:${controller.scopeId}',
+    WorkspaceView.project => 'project:${controller.scopeId}',
+    _ => 'view:${controller.view.name}',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -492,6 +522,19 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           controller.select(task.id);
           if (!wide) _showNarrowEditor(task);
         },
+        onSmartReschedule: () {
+          final sessions = controller.sessions
+              .where(
+                (session) =>
+                    session.outcome == SessionOutcome.upcoming ||
+                    session.outcome == SessionOutcome.missed ||
+                    session.outcome == SessionOutcome.skipped ||
+                    session.outcome == SessionOutcome.partial,
+              )
+              .map((session) => session.id)
+              .toList();
+          _showSmart(sessionIds: sessions, scope: 'calendar');
+        },
       );
     }
     final items = controller.visibleTasks;
@@ -571,6 +614,16 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   ),
                 ],
                 icon: const Icon(Icons.sort),
+              ),
+              IconButton(
+                tooltip: 'Schedule history',
+                onPressed: _showHistory,
+                icon: const Icon(Icons.history),
+              ),
+              OutlinedButton.icon(
+                onPressed: items.isEmpty ? null : () => _showSmart(),
+                icon: const Icon(Icons.auto_fix_high),
+                label: const Text('Reschedule'),
               ),
               const SizedBox(width: 8),
               FilledButton.icon(
@@ -738,6 +791,10 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     value: 'complete',
                     child: Text(done ? 'Reopen' : 'Complete'),
                   ),
+                  const PopupMenuItem(
+                    value: 'reschedule',
+                    child: Text('Smart Reschedule'),
+                  ),
                   const PopupMenuItem(value: 'delete', child: Text('Delete')),
                 ],
                 onSelected: (action) async {
@@ -747,6 +804,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     if (!wide) _showNarrowEditor(task);
                   } else if (action == 'complete') {
                     _run(() => controller.setComplete(task, !done));
+                  } else if (action == 'reschedule') {
+                    _showSmart(taskIds: [task.id], scope: 'task:${task.id}');
                   } else if (await _confirm(
                     'Delete task?',
                     'This permanently deletes “${task.title}”. Trash is not available yet.',

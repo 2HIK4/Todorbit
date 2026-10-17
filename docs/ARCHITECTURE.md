@@ -14,7 +14,7 @@ native HWND created directly as an Explorer `SHELLDLL_DefView` child, while
 keyboard entry uses short-lived activated WinForms top-level surfaces. This avoids
 both shell-child Flutter focus and post-paint WinForms reparenting. A
 narrow native repository reads and writes only task fields already owned by
-schema v3, validates the schema before opening, uses UUIDs/UTC timestamps and
+schema v4, validates the schema before opening, uses UUIDs/UTC timestamps and
 transactions, rejects stale edits, and never creates or migrates the database.
 A named-pipe command boundary lets Flutter show, hide, toggle, refresh, open
 Quick Add, select Today/Inbox/All Tasks/Upcoming, or close the single native
@@ -36,6 +36,21 @@ widget controls never select it. The native companion is also directly
 launchable as `life_manager_widget.exe --widget`.
 
 Data integrity: foreign keys on, WAL, indexed common filters, schema versioning, and transactions for related writes. Date-only values use local calendar dates (`YYYY-MM-DD`); instants use UTC ISO 8601.
+
+Schema v4 adds task duration/remaining-work estimates and a scheduling lock,
+weekly availability and date exceptions, plus focused scheduling operation and
+change history. Migrations from v1, v2, and v3 preserve existing rows. Smart
+Reschedule applies reviewed task/session changes in one repository transaction
+after optimistic `updated_at` and before-value checks. History stores only the
+affected scheduling fields, not full-database snapshots. Restores are new
+operations and compare current scheduling values with the selected operation's
+after-state so later manual changes remain protected.
+
+The deterministic engine in `lib/domain/` has no database dependency. It keeps
+local date-only task plans separate from UTC work-session intervals and fixed
+events. Local availability is converted at the proposed date, so calendar-day
+movement observes the host time zone and preserves session duration across date
+and daylight-saving boundaries. The repository remains the only Flutter writer.
 
 Schema v2 adds `fixed_events` with UTC start/end instants and a start-time index. The v1→v2 migration preserves task rows.
 

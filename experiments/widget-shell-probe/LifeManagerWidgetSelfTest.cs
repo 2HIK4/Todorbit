@@ -30,7 +30,7 @@ internal static class LifeManagerWidgetSelfTest {
         }
         repository.UpdateTask(id, new WidgetTaskUpdate(
           "Edited title", "Widget notes", "inProgress", 3,
-          categories[0].Id, projects[0].Id, "2026-10-17", "2026-10-20",
+          categories[0].Id, projects[0].Id, "2026-10-18", "2026-10-20",
           original.UpdatedAt));
         var edited = repository.LoadTask(id);
         if (edited == null || edited.Title != "Edited title" ||
@@ -75,6 +75,14 @@ internal static class LifeManagerWidgetSelfTest {
             reader.IsDBNull(1)) {
           throw new InvalidOperationException(
             "Completion was not persisted correctly.");
+        }
+        reader.Close();
+        using var history = verification.CreateCommand();
+        history.CommandText =
+          "SELECT COUNT(*) FROM scheduling_operations WHERE source='manual'";
+        if (Convert.ToInt32(history.ExecuteScalar()) != 1) {
+          throw new InvalidOperationException(
+            "Widget scheduling edit was not added to schedule history.");
         }
       }
       VerifySettingsRoundTrip(directory);
@@ -193,7 +201,7 @@ internal static class LifeManagerWidgetSelfTest {
     connection.Open();
     using var command = connection.CreateCommand();
     command.CommandText = """
-      PRAGMA user_version = 3;
+      PRAGMA user_version = 4;
       CREATE TABLE categories (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -219,7 +227,32 @@ internal static class LifeManagerWidgetSelfTest {
         deadline_date TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        completed_at TEXT
+        completed_at TEXT,
+        planned_duration_minutes INTEGER,
+        remaining_work_minutes INTEGER,
+        scheduling_locked INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE TABLE scheduling_operations (
+        id TEXT PRIMARY KEY,
+        operation_type TEXT NOT NULL,
+        source TEXT NOT NULL,
+        scope TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        reverts_operation_id TEXT
+      );
+      CREATE TABLE scheduling_changes (
+        id TEXT PRIMARY KEY,
+        operation_id TEXT NOT NULL REFERENCES scheduling_operations(id),
+        target_kind TEXT NOT NULL,
+        target_id TEXT NOT NULL,
+        before_date TEXT,
+        after_date TEXT,
+        before_starts_at TEXT,
+        before_ends_at TEXT,
+        after_starts_at TEXT,
+        after_ends_at TEXT,
+        before_updated_at TEXT,
+        after_updated_at TEXT
       );
       INSERT INTO categories VALUES(
         'category-1','Personal','2026-10-17T00:00:00Z','2026-10-17T00:00:00Z');

@@ -128,6 +128,9 @@ class LifeTask {
     this.scheduledDate,
     this.deadlineDate,
     this.completedAt,
+    this.plannedDurationMinutes,
+    this.remainingWorkMinutes,
+    this.schedulingLocked = false,
   });
 
   final String id;
@@ -142,6 +145,9 @@ class LifeTask {
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? completedAt;
+  final int? plannedDurationMinutes;
+  final int? remainingWorkMinutes;
+  final bool schedulingLocked;
 
   bool get isOpen =>
       status != TaskStatus.completed && status != TaskStatus.cancelled;
@@ -157,6 +163,9 @@ class TaskDraft {
     this.projectId,
     this.scheduledDate,
     this.deadlineDate,
+    this.plannedDurationMinutes,
+    this.remainingWorkMinutes,
+    this.schedulingLocked = false,
   });
 
   final String title;
@@ -167,6 +176,9 @@ class TaskDraft {
   final String? projectId;
   final String? scheduledDate;
   final String? deadlineDate;
+  final int? plannedDurationMinutes;
+  final int? remainingWorkMinutes;
+  final bool schedulingLocked;
 }
 
 String localDate(DateTime value) =>

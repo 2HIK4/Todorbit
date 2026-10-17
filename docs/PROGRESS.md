@@ -15,6 +15,12 @@
 - Deterministic, non-mutating scheduling preview logic with availability
   windows, exceptions, fixed-event/session blocking, buffers, no-slot reasons,
   and deadline warnings.
+- Smart Reschedule integrated into task lists, task actions, project/category
+  scopes, and Calendar sessions. Move, Shift, Push, Pull, Swap, Reorder, Repack,
+  and Split generate reviewable proposals and persist only after explicit Apply.
+- Schema v4 persists editable availability, task schedule protection, focused
+  manual/Smart scheduling history, safe undo, and previous/original restoration.
+  Stale previews are rejected and later manual schedules are protected.
 - Category-dialog lifetime and task-row hover regressions covered by widget
   tests. The previously reported Windows-only checkbox duplication has not been
   reproduced in automated tests.
@@ -50,21 +56,28 @@
 
 - Flutter 3.47.7 / Dart 3.13.5; Windows toolchain healthy.
 - `flutter analyze`: clean.
-- `flutter test`: 18 passing tests.
+- `flutter test`: 33 passing tests, including engine, database, migration,
+  stale-apply, undo/restoration, split, persistence, and preview/Apply coverage.
 - Native Release build and disposable database/settings self-test: passing.
 - Native dependency audit: no vulnerable packages reported.
 - `flutter build windows` Release and Debug packages succeed and contain both
   `life_manager.exe` and `life_manager_widget.exe`.
 - Packaged `life_manager_widget.exe --self-test`: passing.
+- `flutter build windows --release`: passing; package contains the main app and
+  schema-v4-compatible native companion.
+- Manual visual check: the Release task-list entry point opened the themed Smart
+  Reschedule workspace with the real current scope, selected tasks,
+  Availability, Generate preview, Cancel, and disabled-until-preview Apply. It
+  was closed without applying changes. Automated widget coverage verifies the
+  preview and persisted Apply path.
 - The native companion never creates or migrates the production database; it
-  requires schema v3, enables foreign keys and a busy timeout, and uses
+  requires schema v4, enables foreign keys and a busy timeout, and uses
   parameterized transactional writes. Automated tests use an isolated database.
 
 ## In progress
 
-- Milestone 3 scheduling core: persisted/editable availability, Smart
-  Reschedule preview UI with transactional apply/history/restoration,
-  recurrence, dependencies, and sequences.
+- Milestone 3 follow-up: dependency and persistent-sequence models, recurrence,
+  richer multi-window availability editing, and drag-to-reorder sequence UX.
 - Reproduce the reported Windows task-row checkbox duplication and capture its
   first exception if it occurs again; widget tests remain stable.
 
@@ -77,8 +90,8 @@
 
 - Android SDK command-line tools and licenses remain incomplete; Android is
   outside the current milestone.
-- Existing task/category/project/event/session data was not reset during widget
-  integration. The widget milestone introduced no database schema change.
+- Existing task/category/project/event/session data is migrated forward in place;
+  Smart Reschedule does not reset the production database.
 - Launch-at-sign-in remains disabled by default and changes only through the
   explicit tray action.
 - Task and event deletion is permanent after confirmation; recoverable Trash is
@@ -86,6 +99,8 @@
 
 ## Next action
 
-Continue the scheduling milestone. Re-run the native widget regression checklist
-in `docs/windows-widget.md` whenever shell attachment, native input, rendering,
-DPI behavior, process lifecycle, or packaging changes.
+Add dependency and persistent-sequence models before claiming dependency
+ordering or saved sequence scheduling. Recurrence should target occurrence IDs
+without changing recurrence rules by default. Re-run the native widget regression
+checklist in `docs/windows-widget.md` whenever shell attachment, native input,
+rendering, DPI behavior, process lifecycle, or packaging changes.

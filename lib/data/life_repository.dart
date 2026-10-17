@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../domain/models.dart';
+import '../domain/scheduling_models.dart';
 import 'app_database.dart';
 
 class LifeRepository {
@@ -168,21 +169,50 @@ class LifeRepository {
     final actualStart =
         previous.actualStartedAt?.toUtc().toIso8601String() ??
         (draft.outcome == SessionOutcome.inProgress ? now : null);
-    await db.customUpdate(
-      '''
+    await db.transaction(() async {
+      final updated = await db.customUpdate(
+        '''
       UPDATE work_sessions SET task_id=?,starts_at=?,ends_at=?,outcome=?,actual_started_at=?,updated_at=?
-      WHERE id=?
+      WHERE id=? AND updated_at=?
     ''',
-      variables: [
-        Variable.withString(draft.taskId),
-        Variable.withString(draft.startsAt.toUtc().toIso8601String()),
-        Variable.withString(draft.endsAt.toUtc().toIso8601String()),
-        Variable.withString(draft.outcome.name),
-        Variable<String>(actualStart),
-        Variable.withString(now),
-        Variable.withString(previous.id),
-      ],
-    );
+        variables: [
+          Variable.withString(draft.taskId),
+          Variable.withString(draft.startsAt.toUtc().toIso8601String()),
+          Variable.withString(draft.endsAt.toUtc().toIso8601String()),
+          Variable.withString(draft.outcome.name),
+          Variable<String>(actualStart),
+          Variable.withString(now),
+          Variable.withString(previous.id),
+          Variable.withString(previous.updatedAt.toUtc().toIso8601String()),
+        ],
+      );
+      if (updated != 1) {
+        throw StateError(
+          'This work session changed elsewhere. Reopen it before saving.',
+        );
+      }
+      final nextStart = draft.startsAt.toUtc();
+      final nextEnd = draft.endsAt.toUtc();
+      if (previous.startsAt != nextStart || previous.endsAt != nextEnd) {
+        await _recordOperation(
+          type: ScheduleOperationType.move,
+          source: ScheduleChangeSource.manual,
+          scope: 'session:${previous.id}',
+          changes: [
+            ScheduleHistoryChange(
+              targetKind: ScheduleTargetKind.session,
+              targetId: previous.id,
+              beforeStartsAt: previous.startsAt,
+              beforeEndsAt: previous.endsAt,
+              afterStartsAt: nextStart,
+              afterEndsAt: nextEnd,
+              beforeUpdatedAt: previous.updatedAt,
+              afterUpdatedAt: DateTime.parse(now),
+            ),
+          ],
+        );
+      }
+    });
   }
 
   Future<void> deleteSession(String id) async {
@@ -220,6 +250,9 @@ class LifeRepository {
     createdAt: DateTime.parse(r.read<String>('created_at')),
     updatedAt: DateTime.parse(r.read<String>('updated_at')),
     completedAt: _parseNullable(r.read<String?>('completed_at')),
+    plannedDurationMinutes: r.read<int?>('planned_duration_minutes'),
+    remainingWorkMinutes: r.read<int?>('remaining_work_minutes'),
+    schedulingLocked: r.read<int>('scheduling_locked') == 1,
   );
 
   DateTime? _parseNullable(String? value) =>
@@ -299,8 +332,8 @@ class LifeRepository {
       await _checkAssignment(draft.categoryId, draft.projectId);
       await db.customInsert(
         '''
-        INSERT INTO tasks(id,title,notes,status,priority,category_id,project_id,scheduled_date,deadline_date,created_at,updated_at,completed_at)
-        VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+        INSERT INTO tasks(id,title,notes,status,priority,category_id,project_id,scheduled_date,deadline_date,created_at,updated_at,completed_at,planned_duration_minutes,remaining_work_minutes,scheduling_locked)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       ''',
         variables: _taskValues(
           id,
@@ -322,10 +355,10 @@ class LifeRepository {
         : null;
     await db.transaction(() async {
       await _checkAssignment(draft.categoryId, draft.projectId);
-      await db.customUpdate(
+      final updated = await db.customUpdate(
         '''
-        UPDATE tasks SET title=?,notes=?,status=?,priority=?,category_id=?,project_id=?,scheduled_date=?,deadline_date=?,updated_at=?,completed_at=?
-        WHERE id=?
+        UPDATE tasks SET title=?,notes=?,status=?,priority=?,category_id=?,project_id=?,scheduled_date=?,deadline_date=?,updated_at=?,completed_at=?,planned_duration_minutes=?,remaining_work_minutes=?,scheduling_locked=?
+        WHERE id=? AND updated_at=?
       ''',
         variables: [
           Variable.withString(draft.title.trim()),
@@ -338,9 +371,35 @@ class LifeRepository {
           Variable<String>(draft.deadlineDate),
           Variable.withString(now.toIso8601String()),
           Variable<String>(completed?.toIso8601String()),
+          Variable<int>(draft.plannedDurationMinutes),
+          Variable<int>(draft.remainingWorkMinutes),
+          Variable.withInt(draft.schedulingLocked ? 1 : 0),
           Variable.withString(previous.id),
+          Variable.withString(previous.updatedAt.toUtc().toIso8601String()),
         ],
       );
+      if (updated != 1) {
+        throw StateError(
+          'This task changed elsewhere. Reopen it before saving.',
+        );
+      }
+      if (previous.scheduledDate != draft.scheduledDate) {
+        await _recordOperation(
+          type: ScheduleOperationType.move,
+          source: ScheduleChangeSource.manual,
+          scope: 'task:${previous.id}',
+          changes: [
+            ScheduleHistoryChange(
+              targetKind: ScheduleTargetKind.task,
+              targetId: previous.id,
+              beforeDate: previous.scheduledDate,
+              afterDate: draft.scheduledDate,
+              beforeUpdatedAt: previous.updatedAt,
+              afterUpdatedAt: now,
+            ),
+          ],
+        );
+      }
     });
   }
 
@@ -399,6 +458,9 @@ class LifeRepository {
     Variable.withString(created.toIso8601String()),
     Variable.withString(updated.toIso8601String()),
     Variable<String>(completed?.toIso8601String()),
+    Variable<int>(draft.plannedDurationMinutes),
+    Variable<int>(draft.remainingWorkMinutes),
+    Variable.withInt(draft.schedulingLocked ? 1 : 0),
   ];
 
   void _validate(TaskDraft draft) {
@@ -407,6 +469,13 @@ class LifeRepository {
     }
     if (draft.priority < 0 || draft.priority > 3) {
       throw ArgumentError('Invalid priority');
+    }
+    if (draft.plannedDurationMinutes != null &&
+        draft.plannedDurationMinutes! <= 0) {
+      throw ArgumentError('Planned duration must be positive');
+    }
+    if (draft.remainingWorkMinutes != null && draft.remainingWorkMinutes! < 0) {
+      throw ArgumentError('Remaining work cannot be negative');
     }
     for (final date in [draft.scheduledDate, draft.deadlineDate]) {
       if (date != null && !RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(date)) {
@@ -427,4 +496,466 @@ class LifeRepository {
       throw ArgumentError('Project must belong to selected category');
     }
   }
+
+  Future<AvailabilityPlan> availability() async {
+    final weeklyRows = await db
+        .customSelect(
+          'SELECT weekday,start_minute,end_minute FROM availability_windows ORDER BY weekday,start_minute',
+        )
+        .get();
+    final exceptionRows = await db
+        .customSelect(
+          'SELECT local_date,start_minute,end_minute FROM availability_exceptions ORDER BY local_date,start_minute',
+        )
+        .get();
+    final weekly = <int, List<AvailabilityWindow>>{};
+    for (final row in weeklyRows) {
+      weekly
+          .putIfAbsent(row.read<int>('weekday'), () => [])
+          .add(
+            AvailabilityWindow(
+              row.read<int>('start_minute'),
+              row.read<int>('end_minute'),
+            ),
+          );
+    }
+    final exceptions = <String, List<AvailabilityWindow>>{};
+    for (final row in exceptionRows) {
+      final date = row.read<String>('local_date');
+      final start = row.read<int?>('start_minute');
+      final end = row.read<int?>('end_minute');
+      final windows = exceptions.putIfAbsent(date, () => []);
+      if (start != null && end != null) {
+        windows.add(AvailabilityWindow(start, end));
+      }
+    }
+    return AvailabilityPlan(weekly: weekly, exceptions: exceptions);
+  }
+
+  Future<void> saveAvailability(AvailabilityPlan plan) async {
+    final now = DateTime.now().toUtc().toIso8601String();
+    await db.transaction(() async {
+      await db.customUpdate('DELETE FROM availability_windows');
+      await db.customUpdate('DELETE FROM availability_exceptions');
+      for (final entry in plan.weekly.entries) {
+        for (final window in entry.value) {
+          await db.customInsert(
+            'INSERT INTO availability_windows(id,weekday,start_minute,end_minute,created_at,updated_at) VALUES(?,?,?,?,?,?)',
+            variables: [
+              Variable.withString(_uuid.v4()),
+              Variable.withInt(entry.key),
+              Variable.withInt(window.startMinute),
+              Variable.withInt(window.endMinute),
+              Variable.withString(now),
+              Variable.withString(now),
+            ],
+          );
+        }
+      }
+      for (final entry in plan.exceptions.entries) {
+        if (entry.value.isEmpty) {
+          await db.customInsert(
+            'INSERT INTO availability_exceptions(id,local_date,start_minute,end_minute,created_at,updated_at) VALUES(?,?,NULL,NULL,?,?)',
+            variables: [
+              Variable.withString(_uuid.v4()),
+              Variable.withString(entry.key),
+              Variable.withString(now),
+              Variable.withString(now),
+            ],
+          );
+        } else {
+          for (final window in entry.value) {
+            await db.customInsert(
+              'INSERT INTO availability_exceptions(id,local_date,start_minute,end_minute,created_at,updated_at) VALUES(?,?,?,?,?,?)',
+              variables: [
+                Variable.withString(_uuid.v4()),
+                Variable.withString(entry.key),
+                Variable.withInt(window.startMinute),
+                Variable.withInt(window.endMinute),
+                Variable.withString(now),
+                Variable.withString(now),
+              ],
+            );
+          }
+        }
+      }
+    });
+  }
+
+  Future<String> applySchedulingPreview(SchedulingPreview preview) async {
+    if (!preview.canApply) {
+      throw StateError('The scheduling preview contains hard conflicts');
+    }
+    final operationId = _uuid.v4();
+    await db.transaction(() async {
+      final stale = <String>[];
+      for (final change in preview.changes) {
+        if (change.createsSession) {
+          final duplicate = await db
+              .customSelect(
+                'SELECT id FROM work_sessions WHERE id=?',
+                variables: [Variable.withString(change.targetId)],
+              )
+              .get();
+          if (duplicate.isNotEmpty) stale.add(change.targetId);
+          continue;
+        }
+        final table = change.targetKind == ScheduleTargetKind.task
+            ? 'tasks'
+            : 'work_sessions';
+        final row = await db
+            .customSelect(
+              'SELECT * FROM $table WHERE id=?',
+              variables: [Variable.withString(change.targetId)],
+            )
+            .getSingleOrNull();
+        if (row == null ||
+            DateTime.parse(row.read<String>('updated_at')) !=
+                change.expectedUpdatedAt ||
+            !_scheduleMatches(row, change)) {
+          stale.add(change.targetId);
+        }
+      }
+      if (stale.isNotEmpty) throw StaleSchedulePreviewException(stale);
+
+      final now = DateTime.now().toUtc();
+      final history = <ScheduleHistoryChange>[];
+      for (final change in preview.changes) {
+        if (change.targetKind == ScheduleTargetKind.task) {
+          await db.customUpdate(
+            'UPDATE tasks SET scheduled_date=?,updated_at=? WHERE id=?',
+            variables: [
+              Variable<String>(change.afterDate),
+              Variable.withString(now.toIso8601String()),
+              Variable.withString(change.targetId),
+            ],
+          );
+        } else if (change.createsSession) {
+          await db.customInsert(
+            '''
+            INSERT INTO work_sessions(id,task_id,starts_at,ends_at,outcome,actual_started_at,created_at,updated_at)
+            VALUES(?,?,?,?,'upcoming',NULL,?,?)
+          ''',
+            variables: [
+              Variable.withString(change.targetId),
+              Variable.withString(change.taskId!),
+              Variable.withString(
+                change.afterStartsAt!.toUtc().toIso8601String(),
+              ),
+              Variable.withString(
+                change.afterEndsAt!.toUtc().toIso8601String(),
+              ),
+              Variable.withString(now.toIso8601String()),
+              Variable.withString(now.toIso8601String()),
+            ],
+          );
+        } else if (change.deleteSession) {
+          await db.customUpdate(
+            'DELETE FROM work_sessions WHERE id=?',
+            variables: [Variable.withString(change.targetId)],
+          );
+        } else {
+          await db.customUpdate(
+            'UPDATE work_sessions SET starts_at=?,ends_at=?,updated_at=? WHERE id=?',
+            variables: [
+              Variable.withString(
+                change.afterStartsAt!.toUtc().toIso8601String(),
+              ),
+              Variable.withString(
+                change.afterEndsAt!.toUtc().toIso8601String(),
+              ),
+              Variable.withString(now.toIso8601String()),
+              Variable.withString(change.targetId),
+            ],
+          );
+        }
+        history.add(
+          ScheduleHistoryChange(
+            targetKind: change.targetKind,
+            targetId: change.targetId,
+            beforeDate: change.beforeDate,
+            afterDate: change.afterDate,
+            beforeStartsAt: change.beforeStartsAt,
+            beforeEndsAt: change.beforeEndsAt,
+            afterStartsAt: change.afterStartsAt,
+            afterEndsAt: change.afterEndsAt,
+            beforeUpdatedAt: change.createsSession
+                ? null
+                : change.expectedUpdatedAt,
+            afterUpdatedAt: now,
+          ),
+        );
+      }
+      await _recordOperation(
+        id: operationId,
+        type: preview.operation,
+        source: ScheduleChangeSource.smartReschedule,
+        scope: preview.scope,
+        changes: history,
+        revertsOperationId:
+            preview.operation == ScheduleOperationType.undo ||
+                preview.operation == ScheduleOperationType.restorePrevious ||
+                preview.operation == ScheduleOperationType.restoreOriginal
+            ? preview.scope.split(':').last
+            : null,
+      );
+    });
+    return operationId;
+  }
+
+  bool _scheduleMatches(QueryRow row, ScheduleChange change) {
+    if (change.targetKind == ScheduleTargetKind.task) {
+      return row.read<String?>('scheduled_date') == change.beforeDate;
+    }
+    return DateTime.parse(row.read<String>('starts_at')) ==
+            change.beforeStartsAt &&
+        DateTime.parse(row.read<String>('ends_at')) == change.beforeEndsAt;
+  }
+
+  Future<List<SchedulingOperation>> schedulingHistory({int limit = 50}) async {
+    final operationRows = await db
+        .customSelect(
+          'SELECT * FROM scheduling_operations ORDER BY created_at DESC LIMIT ?',
+          variables: [Variable.withInt(limit)],
+        )
+        .get();
+    final result = <SchedulingOperation>[];
+    for (final operation in operationRows) {
+      final id = operation.read<String>('id');
+      final rows = await db
+          .customSelect(
+            'SELECT * FROM scheduling_changes WHERE operation_id=? ORDER BY rowid',
+            variables: [Variable.withString(id)],
+          )
+          .get();
+      result.add(
+        SchedulingOperation(
+          id: id,
+          type: ScheduleOperationType.values.byName(
+            operation.read<String>('operation_type'),
+          ),
+          source: ScheduleChangeSource.values.byName(
+            operation.read<String>('source'),
+          ),
+          scope: operation.read<String>('scope'),
+          createdAt: DateTime.parse(operation.read<String>('created_at')),
+          revertsOperationId: operation.read<String?>('reverts_operation_id'),
+          changes: rows.map(_historyChangeFromRow).toList(),
+        ),
+      );
+    }
+    return result;
+  }
+
+  ScheduleHistoryChange _historyChangeFromRow(QueryRow row) =>
+      ScheduleHistoryChange(
+        targetKind: ScheduleTargetKind.values.byName(
+          row.read<String>('target_kind'),
+        ),
+        targetId: row.read<String>('target_id'),
+        beforeDate: row.read<String?>('before_date'),
+        afterDate: row.read<String?>('after_date'),
+        beforeStartsAt: _parseNullable(row.read<String?>('before_starts_at')),
+        beforeEndsAt: _parseNullable(row.read<String?>('before_ends_at')),
+        afterStartsAt: _parseNullable(row.read<String?>('after_starts_at')),
+        afterEndsAt: _parseNullable(row.read<String?>('after_ends_at')),
+        beforeUpdatedAt: _parseNullable(row.read<String?>('before_updated_at')),
+        afterUpdatedAt: _parseNullable(row.read<String?>('after_updated_at')),
+      );
+
+  Future<SchedulingPreview> previewRestore(
+    String operationId, {
+    bool original = false,
+    bool undo = false,
+  }) async {
+    final operations = await schedulingHistory(limit: 500);
+    final selected = operations
+        .where((item) => item.id == operationId)
+        .firstOrNull;
+    if (selected == null) throw ArgumentError('Scheduling operation not found');
+    final issues = <ScheduleIssue>[];
+    final changes = <ScheduleChange>[];
+    for (final historical in selected.changes) {
+      final current = await _currentSchedule(
+        historical.targetKind,
+        historical.targetId,
+      );
+      if (current == null) {
+        issues.add(
+          ScheduleIssue(
+            kind: ScheduleIssueKind.stale,
+            severity: ScheduleIssueSeverity.warning,
+            targetId: historical.targetId,
+            message: 'Item no longer exists and cannot be restored.',
+          ),
+        );
+        continue;
+      }
+      if (!current.eligible) {
+        issues.add(
+          ScheduleIssue(
+            kind: ScheduleIssueKind.completed,
+            severity: ScheduleIssueSeverity.warning,
+            targetId: historical.targetId,
+            message: 'Completed, started, cancelled, or protected work is preserved.',
+          ),
+        );
+        continue;
+      }
+      if (!_currentMatchesAfter(current, historical)) {
+        issues.add(
+          ScheduleIssue(
+            kind: ScheduleIssueKind.stale,
+            severity: ScheduleIssueSeverity.warning,
+            targetId: historical.targetId,
+            message: 'Later scheduling changes are protected for this item.',
+          ),
+        );
+        continue;
+      }
+      var desired = historical;
+      if (original) {
+        final chronological = operations.reversed
+            .expand((item) => item.changes)
+            .where(
+              (change) =>
+                  change.targetKind == historical.targetKind &&
+                  change.targetId == historical.targetId,
+            );
+        if (chronological.isNotEmpty) desired = chronological.first;
+      }
+      changes.add(
+        ScheduleChange(
+          targetKind: historical.targetKind,
+          targetId: historical.targetId,
+          expectedUpdatedAt: current.updatedAt,
+          beforeDate: current.date,
+          afterDate: desired.beforeDate,
+          beforeStartsAt: current.startsAt,
+          beforeEndsAt: current.endsAt,
+          afterStartsAt: desired.beforeStartsAt,
+          afterEndsAt: desired.beforeEndsAt,
+          deleteSession:
+              historical.targetKind == ScheduleTargetKind.session &&
+              desired.beforeStartsAt == null &&
+              desired.beforeEndsAt == null,
+        ),
+      );
+    }
+    return SchedulingPreview(
+      operation: undo
+          ? ScheduleOperationType.undo
+          : original
+          ? ScheduleOperationType.restoreOriginal
+          : ScheduleOperationType.restorePrevious,
+      scope: '${undo ? 'undo' : 'restore'}:$operationId',
+      changes: changes,
+      issues: issues,
+      createdAt: DateTime.now().toUtc(),
+    );
+  }
+
+  Future<_CurrentSchedule?> _currentSchedule(
+    ScheduleTargetKind kind,
+    String id,
+  ) async {
+    final table = kind == ScheduleTargetKind.task ? 'tasks' : 'work_sessions';
+    final row = await db
+        .customSelect(
+          'SELECT * FROM $table WHERE id=?',
+          variables: [Variable.withString(id)],
+        )
+        .getSingleOrNull();
+    if (row == null) return null;
+    return _CurrentSchedule(
+      updatedAt: DateTime.parse(row.read<String>('updated_at')),
+      eligible: kind == ScheduleTargetKind.task
+          ? row.read<String>('status') != TaskStatus.completed.name &&
+                row.read<String>('status') != TaskStatus.cancelled.name &&
+                row.read<int>('scheduling_locked') == 0
+          : row.read<String>('outcome') != SessionOutcome.completed.name &&
+                row.read<String>('outcome') != SessionOutcome.inProgress.name,
+      date: kind == ScheduleTargetKind.task
+          ? row.read<String?>('scheduled_date')
+          : null,
+      startsAt: kind == ScheduleTargetKind.session
+          ? DateTime.parse(row.read<String>('starts_at'))
+          : null,
+      endsAt: kind == ScheduleTargetKind.session
+          ? DateTime.parse(row.read<String>('ends_at'))
+          : null,
+    );
+  }
+
+  bool _currentMatchesAfter(
+    _CurrentSchedule current,
+    ScheduleHistoryChange history,
+  ) => history.targetKind == ScheduleTargetKind.task
+      ? current.date == history.afterDate
+      : current.startsAt == history.afterStartsAt &&
+            current.endsAt == history.afterEndsAt;
+
+  Future<String> _recordOperation({
+    String? id,
+    required ScheduleOperationType type,
+    required ScheduleChangeSource source,
+    required String scope,
+    required List<ScheduleHistoryChange> changes,
+    String? revertsOperationId,
+  }) async {
+    final operationId = id ?? _uuid.v4();
+    final createdAt = DateTime.now().toUtc().toIso8601String();
+    await db.customInsert(
+      'INSERT INTO scheduling_operations(id,operation_type,source,scope,created_at,reverts_operation_id) VALUES(?,?,?,?,?,?)',
+      variables: [
+        Variable.withString(operationId),
+        Variable.withString(type.name),
+        Variable.withString(source.name),
+        Variable.withString(scope),
+        Variable.withString(createdAt),
+        Variable<String>(revertsOperationId),
+      ],
+    );
+    for (final change in changes) {
+      await db.customInsert(
+        '''
+        INSERT INTO scheduling_changes(
+          id,operation_id,target_kind,target_id,before_date,after_date,
+          before_starts_at,before_ends_at,after_starts_at,after_ends_at,
+          before_updated_at,after_updated_at)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+      ''',
+        variables: [
+          Variable.withString(_uuid.v4()),
+          Variable.withString(operationId),
+          Variable.withString(change.targetKind.name),
+          Variable.withString(change.targetId),
+          Variable<String>(change.beforeDate),
+          Variable<String>(change.afterDate),
+          Variable<String>(change.beforeStartsAt?.toUtc().toIso8601String()),
+          Variable<String>(change.beforeEndsAt?.toUtc().toIso8601String()),
+          Variable<String>(change.afterStartsAt?.toUtc().toIso8601String()),
+          Variable<String>(change.afterEndsAt?.toUtc().toIso8601String()),
+          Variable<String>(change.beforeUpdatedAt?.toUtc().toIso8601String()),
+          Variable<String>(change.afterUpdatedAt?.toUtc().toIso8601String()),
+        ],
+      );
+    }
+    return operationId;
+  }
+}
+
+class _CurrentSchedule {
+  const _CurrentSchedule({
+    required this.updatedAt,
+    required this.eligible,
+    this.date,
+    this.startsAt,
+    this.endsAt,
+  });
+  final DateTime updatedAt;
+  final bool eligible;
+  final String? date;
+  final DateTime? startsAt;
+  final DateTime? endsAt;
 }

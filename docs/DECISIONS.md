@@ -19,3 +19,19 @@
 - **Fixed events:** store UTC instants, display in local time, and use interval overlap for multi-day calendar placement. Actual task deadlines remain independent date-only values.
 - **Work sessions:** store planned UTC intervals and a manual outcome independently of tasks. A transition to “In progress” records an actual start; elapsed upcoming sessions remain upcoming until confirmed.
 - **Scheduling engine:** compute immutable previews from local availability windows against UTC event/session intervals. Keep application of changes disabled until availability settings, transactional history, and conflict review are wired together.
+- **Smart Reschedule persistence:** schema v4 stores availability separately from
+  focused operation/change history. Apply is one optimistic transaction checking
+  both `updated_at` and reviewed scheduling values. Restore and undo append new
+  operations and protect later manual schedules by comparing historical
+  after-values; they never roll back completion, actual work, or unrelated fields.
+- **No invented availability:** a migrated or new profile starts with no working
+  windows. Repack is unavailable until the user configures weekly hours or date
+  exceptions. Buffer defaults to zero and the minimum generated session is 15
+  minutes.
+- **Scheduling boundaries:** date-only task movement stays date-only; work
+  sessions stay UTC intervals with local-time proposal generation. Dependencies,
+  recurrence, and persistent sequences remain explicit future models. Current
+  Push/Pull and Reorder operate only on the reviewed selection.
+- **Native widget schema v4:** keep its repository narrow and non-migrating, but
+  accept v4 and record a manual scheduling-history row transactionally when its
+  task editor changes a planned date. Window hosting and lifecycle are unchanged.

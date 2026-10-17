@@ -18,6 +18,8 @@ class TaskEditor extends ConsumerStatefulWidget {
 class _TaskEditorState extends ConsumerState<TaskEditor> {
   late final TextEditingController title;
   late final TextEditingController notes;
+  late final TextEditingController plannedDuration;
+  late final TextEditingController remainingWork;
   late TaskStatus status;
   late int priority;
   String? categoryId;
@@ -25,6 +27,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   DateTime? scheduled;
   DateTime? deadline;
   bool saving = false;
+  bool schedulingLocked = false;
 
   @override
   void initState() {
@@ -33,6 +36,13 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     final workspace = ref.read(appControllerProvider);
     title = TextEditingController(text: task?.title ?? '');
     notes = TextEditingController(text: task?.notes ?? '');
+    plannedDuration = TextEditingController(
+      text: task?.plannedDurationMinutes?.toString() ?? '',
+    );
+    remainingWork = TextEditingController(
+      text: task?.remainingWorkMinutes?.toString() ?? '',
+    );
+    schedulingLocked = task?.schedulingLocked ?? false;
     status = task?.status ?? TaskStatus.notStarted;
     priority = task?.priority ?? 0;
     categoryId = task?.categoryId;
@@ -59,6 +69,8 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   void dispose() {
     title.dispose();
     notes.dispose();
+    plannedDuration.dispose();
+    remainingWork.dispose();
     super.dispose();
   }
 
@@ -80,6 +92,9 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         projectId: projectId,
         scheduledDate: scheduled == null ? null : localDate(scheduled!),
         deadlineDate: deadline == null ? null : localDate(deadline!),
+        plannedDurationMinutes: int.tryParse(plannedDuration.text),
+        remainingWorkMinutes: int.tryParse(remainingWork.text),
+        schedulingLocked: schedulingLocked,
       );
       if (widget.task == null) {
         await controller.addTask(draft);
@@ -260,6 +275,40 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                   deadline,
                   () => _pickDate(true),
                   () => setState(() => deadline = null),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: plannedDuration,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Planned minutes',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: remainingWork,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Remaining minutes',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Protect schedule'),
+                  subtitle: const Text(
+                    'Smart Reschedule will not move this task or its sessions.',
+                  ),
+                  value: schedulingLocked,
+                  onChanged: (value) =>
+                      setState(() => schedulingLocked = value),
                 ),
                 if (widget.task != null) ...[
                   const SizedBox(height: 16),

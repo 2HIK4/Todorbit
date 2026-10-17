@@ -42,7 +42,7 @@ it beside the main app as
 `life_manager_widget.exe`. Its persistent display is one double-buffered, owner-drawn native
 HWND created directly under Explorer's existing `SHELLDLL_DefView`; its Quick
 Add editor is a temporary activatable top-level surface aligned over the
-painted field. The widget reads real schema-v3 task data, supports
+painted field. The widget reads real schema-v4 task data, supports
 Today/Inbox/All Tasks/Upcoming, creates tasks with view-specific scheduling,
 completes tasks, and opens a compact optimistic-concurrency task editor. It
 prevents duplicate instances, shares the app's persisted system/light/dark
@@ -51,7 +51,7 @@ lightweight tray workflow. Position, size, and selected view persist per user;
 all edges and corners resize and bounds are clamped to connected working areas.
 
 The repository boundary is intentionally narrow. It refuses to create or
-migrate the production database, checks `PRAGMA user_version = 3`, uses
+migrate the production database, checks `PRAGMA user_version = 4`, uses
 parameterized SQL, transactions, stable UUIDs, UTC timestamps, foreign keys,
 and a five-second busy timeout. `--self-test` validates creation and completion
 against a disposable temporary database; it never opens the production file.

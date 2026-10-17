@@ -5,6 +5,7 @@ import '../data/life_repository.dart';
 import '../data/appearance_preference_store.dart';
 import '../domain/models.dart';
 import '../domain/appearance.dart';
+import '../domain/scheduling_models.dart';
 
 final appControllerProvider = ChangeNotifierProvider<AppController>((ref) {
   throw StateError('AppController must be provided by the application');
@@ -35,6 +36,8 @@ class AppController extends ChangeNotifier {
   List<LifeTask> tasks = [];
   List<FixedEvent> events = [];
   List<WorkSession> sessions = [];
+  AvailabilityPlan availability = const AvailabilityPlan(weekly: {});
+  List<SchedulingOperation> schedulingHistory = [];
   WorkspaceView view = WorkspaceView.today;
   TaskSort sort = TaskSort.schedule;
   String? scopeId;
@@ -56,12 +59,16 @@ class AppController extends ChangeNotifier {
       repository.tasks(),
       repository.events(),
       repository.sessions(),
+      repository.availability(),
+      repository.schedulingHistory(),
     ]);
     categories = result[0] as List<Category>;
     projects = result[1] as List<Project>;
     tasks = result[2] as List<LifeTask>;
     events = result[3] as List<FixedEvent>;
     sessions = result[4] as List<WorkSession>;
+    availability = result[5] as AvailabilityPlan;
+    schedulingHistory = result[6] as List<SchedulingOperation>;
     if (selectedTaskId != null && selectedTask == null) selectedTaskId = null;
     loading = false;
     notifyListeners();
@@ -218,6 +225,23 @@ class AppController extends ChangeNotifier {
     await repository.deleteSession(id);
     await refresh();
   }
+
+  Future<void> saveAvailability(AvailabilityPlan value) async {
+    await repository.saveAvailability(value);
+    await refresh();
+  }
+
+  Future<String> applySchedulingPreview(SchedulingPreview preview) async {
+    final id = await repository.applySchedulingPreview(preview);
+    await refresh();
+    return id;
+  }
+
+  Future<SchedulingPreview> previewRestore(
+    String operationId, {
+    bool original = false,
+    bool undo = false,
+  }) => repository.previewRestore(operationId, original: original, undo: undo);
 
   Future<void> addCategory(String name) async {
     await repository.addCategory(name);

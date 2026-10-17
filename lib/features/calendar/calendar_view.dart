@@ -9,8 +9,13 @@ import 'session_editor.dart';
 enum CalendarMode { day, week, month }
 
 class CalendarView extends ConsumerStatefulWidget {
-  const CalendarView({super.key, required this.onTaskTap});
+  const CalendarView({
+    super.key,
+    required this.onTaskTap,
+    required this.onSmartReschedule,
+  });
   final void Function(LifeTask task) onTaskTap;
+  final VoidCallback onSmartReschedule;
 
   @override
   ConsumerState<CalendarView> createState() => _CalendarViewState();
@@ -135,6 +140,13 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                     : null,
                 icon: const Icon(Icons.schedule),
                 label: const Text('Work session'),
+              ),
+              OutlinedButton.icon(
+                onPressed: controller.sessions.isEmpty
+                    ? null
+                    : widget.onSmartReschedule,
+                icon: const Icon(Icons.auto_fix_high),
+                label: const Text('Reschedule'),
               ),
             ],
           ),

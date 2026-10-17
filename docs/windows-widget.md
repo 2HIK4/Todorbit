@@ -48,7 +48,7 @@ build\windows\x64\runner\Release\life_manager_widget.exe --widget-command exit
   unscheduled inbox-compatible task.
 - The checkbox completes a task. Clicking the title/row opens a compact native
   editor for title, notes, status, priority, category, project, scheduled day,
-  and deadline. Saves use the existing schema-v3 database and reject stale or
+  and deadline. Saves use the existing schema-v4 database and reject stale or
   deleted records instead of silently overwriting them. **Open full details**
   starts Flutter with `--task-id <uuid>`.
 - Today, Inbox, All Tasks, and Upcoming are selectable in the widget and tray.

@@ -12,7 +12,7 @@ internal sealed record WidgetTaskUpdate(
   string? DeadlineDate, string ExpectedUpdatedAt);
 
 internal sealed class LifeManagerWidgetRepository : IDisposable {
-  private const int SupportedSchemaVersion = 3;
+  private const int SupportedSchemaVersion = 4;
   private readonly SqliteConnection connection;
   internal string DatabasePath { get; }
 
@@ -147,6 +147,16 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
     var now = UtcNowString();
     var completedAt = update.Status == "completed" ? now : null;
     using var transaction = connection.BeginTransaction();
+    string? previousScheduledDate = null;
+    using (var previousCommand = connection.CreateCommand()) {
+      previousCommand.Transaction = transaction;
+      previousCommand.CommandText =
+        "SELECT scheduled_date FROM tasks WHERE id=$id AND updated_at=$expected";
+      previousCommand.Parameters.AddWithValue("$id", id);
+      previousCommand.Parameters.AddWithValue("$expected", update.ExpectedUpdatedAt);
+      var value = previousCommand.ExecuteScalar();
+      previousScheduledDate = value is null or DBNull ? null : (string)value;
+    }
     using var command = connection.CreateCommand();
     command.Transaction = transaction;
     command.CommandText = """
@@ -170,6 +180,39 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
     if (command.ExecuteNonQuery() != 1) {
       throw new InvalidOperationException(
         "This task changed in another window or no longer exists. Reopen it before saving.");
+    }
+    if (!String.Equals(previousScheduledDate, update.ScheduledDate,
+        StringComparison.Ordinal)) {
+      var operationId = Guid.NewGuid().ToString();
+      using var operation = connection.CreateCommand();
+      operation.Transaction = transaction;
+      operation.CommandText = """
+        INSERT INTO scheduling_operations(
+          id,operation_type,source,scope,created_at,reverts_operation_id)
+        VALUES($id,'move','manual',$scope,$now,NULL)
+        """;
+      operation.Parameters.AddWithValue("$id", operationId);
+      operation.Parameters.AddWithValue("$scope", $"widget:task:{id}");
+      operation.Parameters.AddWithValue("$now", now);
+      operation.ExecuteNonQuery();
+      using var change = connection.CreateCommand();
+      change.Transaction = transaction;
+      change.CommandText = """
+        INSERT INTO scheduling_changes(
+          id,operation_id,target_kind,target_id,before_date,after_date,
+          before_starts_at,before_ends_at,after_starts_at,after_ends_at,
+          before_updated_at,after_updated_at)
+        VALUES($id,$operation,'task',$target,$before,$after,
+          NULL,NULL,NULL,NULL,$beforeUpdated,$afterUpdated)
+        """;
+      change.Parameters.AddWithValue("$id", Guid.NewGuid().ToString());
+      change.Parameters.AddWithValue("$operation", operationId);
+      change.Parameters.AddWithValue("$target", id);
+      change.Parameters.AddWithValue("$before", DbValue(previousScheduledDate));
+      change.Parameters.AddWithValue("$after", DbValue(update.ScheduledDate));
+      change.Parameters.AddWithValue("$beforeUpdated", update.ExpectedUpdatedAt);
+      change.Parameters.AddWithValue("$afterUpdated", now);
+      change.ExecuteNonQuery();
     }
     transaction.Commit();
   }
