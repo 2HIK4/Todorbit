@@ -1,9 +1,27 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
-if (args.Contains("--attach-prototype", StringComparer.OrdinalIgnoreCase)) {
+if (args is ["--attach-prototype"]) {
   ApplicationConfiguration.Initialize();
   Application.Run(new ShellHostPrototype());
+  return;
+}
+if (args is ["--inspect-pid", var pidText] && uint.TryParse(pidText, out var targetPid)) {
+  ApplicationConfiguration.Initialize();
+  WindowDiagnostics.Inspect(targetPid);
+  return;
+}
+if (args is ["--inspect-pid", var delayedPidText, "--delay-seconds", var delayText] &&
+    uint.TryParse(delayedPidText, out var delayedPid) &&
+    int.TryParse(delayText, out var delaySeconds) && delaySeconds is >= 1 and <= 15) {
+  ApplicationConfiguration.Initialize();
+  Console.WriteLine($"Read-only snapshot in {delaySeconds} seconds. You may manually show the desktop now.");
+  Thread.Sleep(TimeSpan.FromSeconds(delaySeconds));
+  WindowDiagnostics.Inspect(delayedPid);
+  return;
+}
+if (args.Length != 0) {
+  Console.Error.WriteLine("Usage: widget-shell-probe [--inspect-pid PID [--delay-seconds 1..15] | --attach-prototype]");
   return;
 }
 
@@ -124,7 +142,54 @@ internal static class Native {
   internal static extern bool GetWindowRect(nint window, out Rect bounds);
 
   [DllImport("user32.dll")]
+  internal static extern bool GetClientRect(nint window, out Rect bounds);
+
+  [DllImport("user32.dll")]
   internal static extern bool ScreenToClient(nint window, ref Point point);
+
+  [DllImport("user32.dll")]
+  internal static extern bool ClientToScreen(nint window, ref Point point);
+
+  [DllImport("user32.dll")]
+  internal static extern nint WindowFromPoint(Point point);
+
+  [DllImport("user32.dll")]
+  internal static extern nint GetAncestor(nint window, uint flags);
+
+  [DllImport("user32.dll")]
+  internal static extern nint MonitorFromPoint(Point point, uint flags);
+
+  [DllImport("user32.dll")]
+  internal static extern uint GetDpiForWindow(nint window);
+
+  [DllImport("user32.dll")]
+  [return: MarshalAs(UnmanagedType.Bool)]
+  internal static extern bool IsIconic(nint window);
+
+  [DllImport("dwmapi.dll")]
+  internal static extern int DwmGetWindowAttribute(
+    nint window, uint attribute, out Rect value, uint size);
+
+  [DllImport("dwmapi.dll")]
+  internal static extern int DwmGetWindowAttribute(
+    nint window, uint attribute, out int value, uint size);
+
+  [DllImport("shcore.dll")]
+  internal static extern int GetDpiForMonitor(
+    nint monitor, int dpiType, out uint dpiX, out uint dpiY);
+
+  [DllImport("shcore.dll")]
+  internal static extern int GetScaleFactorForMonitor(
+    nint monitor, out int scalePercent);
+
+  [DllImport("shcore.dll")]
+  internal static extern int GetProcessDpiAwareness(nint process, out int awareness);
+
+  [DllImport("user32.dll")]
+  internal static extern nint GetWindowDpiAwarenessContext(nint window);
+
+  [DllImport("user32.dll")]
+  internal static extern int GetAwarenessFromDpiAwarenessContext(nint context);
 
   [DllImport("user32.dll")]
   [return: MarshalAs(UnmanagedType.Bool)]

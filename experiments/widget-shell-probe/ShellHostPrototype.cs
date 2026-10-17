@@ -135,6 +135,7 @@ internal sealed class ShellHostPrototype : Form {
     }
     Console.WriteLine($"Attached experimental surface pid={Environment.ProcessId} " +
       $"hwnd=0x{Handle:X} Progman=0x{shell:X}; close this process to remove it.");
+    WindowDiagnostics.Inspect((uint)Environment.ProcessId);
   }
 
   private void OpenInput() {
