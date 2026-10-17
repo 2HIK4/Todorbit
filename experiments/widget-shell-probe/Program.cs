@@ -124,6 +124,9 @@ internal static class Native {
   internal static extern bool GetWindowRect(nint window, out Rect bounds);
 
   [DllImport("user32.dll")]
+  internal static extern bool ScreenToClient(nint window, ref Point point);
+
+  [DllImport("user32.dll")]
   [return: MarshalAs(UnmanagedType.Bool)]
   internal static extern bool IsWindowVisible(nint window);
 

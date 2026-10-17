@@ -109,10 +109,25 @@ internal sealed class ShellHostPrototype : Form {
     }
     var originalStyle = Native.GetWindowLongPtr(Handle, -16);
     var childStyle = (originalStyle.ToInt64() & ~(WsPopup | WsOverlappedWindow)) | WsChild;
+    var primary = Screen.PrimaryScreen?.Bounds;
+    if (primary is null) {
+      Console.Error.WriteLine("No primary display; not attaching.");
+      Close();
+      return;
+    }
+    var position = new Native.Point {
+      X = primary.Value.Left + 24,
+      Y = primary.Value.Top + 24,
+    };
+    if (!Native.ScreenToClient(shell, ref position)) {
+      Console.Error.WriteLine("Could not map the primary display into Progman coordinates.");
+      Close();
+      return;
+    }
     Native.SetWindowLongPtr(Handle, -16, (nint)childStyle);
     Native.SetParent(Handle, shell);
     if (Native.GetParent(Handle) != shell ||
-        !Native.SetWindowPos(Handle, 0, 24, 24, 360, 228,
+        !Native.SetWindowPos(Handle, 0, position.X, position.Y, 360, 228,
           SwpFrameChanged | SwpShowWindow | SwpNoActivate)) {
       Console.Error.WriteLine($"Attachment failed, Win32 error={System.Runtime.InteropServices.Marshal.GetLastWin32Error()}.");
       Close();
@@ -123,7 +138,7 @@ internal sealed class ShellHostPrototype : Form {
   }
 
   private void OpenInput() {
-    inputPopup.Location = new Point(32, 250);
+    inputPopup.Location = PointToScreen(new Point(8, ClientSize.Height + 12));
     inputPopup.Show();
     inputPopup.Activate();
     editor.Focus();
