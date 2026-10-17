@@ -1,11 +1,20 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
-if (args.Length >= 1 && args[0] == "--widget") {
+if (args.Length >= 1 && args[0] is
+    "--widget" or "--widget-standalone" or "--widget-legacy-reparent") {
   var appExe = ArgumentValue(args, "--app-exe");
   var lightTheme = args.Contains("--light", StringComparer.OrdinalIgnoreCase);
+  var diagnostics = args.Contains(
+    "--render-diagnostics", StringComparer.OrdinalIgnoreCase);
+  var hostMode = args[0] switch {
+    "--widget-standalone" => WidgetHostMode.Standalone,
+    "--widget-legacy-reparent" => WidgetHostMode.LegacyReparent,
+    _ => (WidgetHostMode?)null,
+  };
   using var instance = new Mutex(initiallyOwned: true,
-    name: "Local\\LifeManagerDesktopWidget", out var ownsMutex);
+    name: $"Local\\LifeManagerDesktopWidget-{hostMode?.ToString() ?? "Native"}",
+    out var ownsMutex);
   if (!ownsMutex) {
     Console.WriteLine("A Life Manager desktop widget is already running.");
     return;
@@ -13,7 +22,13 @@ if (args.Length >= 1 && args[0] == "--widget") {
   ApplicationConfiguration.Initialize();
   try {
     using var repository = LifeManagerWidgetRepository.OpenDefault();
-    Application.Run(new LifeManagerWidget(repository, appExe, lightTheme));
+    if (hostMode == null) {
+      Application.Run(new NativeWidgetApplicationContext(
+        repository, appExe, lightTheme, diagnostics));
+    } else {
+      Application.Run(new LifeManagerWidget(
+        repository, appExe, lightTheme, hostMode.Value, diagnostics));
+    }
   } catch (Exception error) {
     MessageBox.Show(error.Message, "Life Manager widget",
       MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -62,7 +77,7 @@ if (args is ["--inspect-pid", var delayedPidText, "--delay-seconds", var delayTe
   return;
 }
 if (args.Length != 0) {
-  Console.Error.WriteLine("Usage: widget-shell-probe [--widget [--light] [--app-exe PATH] | --self-test | --standalone | --standalone-capture PNG | --inspect-pid PID [--delay-seconds 1..15] | --attach-prototype]");
+  Console.Error.WriteLine("Usage: widget-shell-probe [--widget|--widget-standalone|--widget-legacy-reparent [--light] [--render-diagnostics] [--app-exe PATH] | --self-test | --standalone | --standalone-capture PNG | --inspect-pid PID [--delay-seconds 1..15] | --attach-prototype]");
   return;
 }
 
@@ -143,6 +158,25 @@ internal static class Native {
     internal int Y;
   }
 
+  [StructLayout(LayoutKind.Sequential)]
+  internal struct PaintStruct {
+    internal nint DeviceContext;
+    [MarshalAs(UnmanagedType.Bool)] internal bool Erase;
+    internal Rect Paint;
+    [MarshalAs(UnmanagedType.Bool)] internal bool Restore;
+    [MarshalAs(UnmanagedType.Bool)] internal bool IncrementalUpdate;
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
+    internal byte[] Reserved;
+  }
+
+  [StructLayout(LayoutKind.Sequential)]
+  internal struct TrackMouseEventData {
+    internal uint Size;
+    internal uint Flags;
+    internal nint Window;
+    internal uint HoverTime;
+  }
+
   [DllImport("user32.dll")]
   internal static extern bool EnumWindows(EnumWindowCallback callback, nint parameter);
 
@@ -196,6 +230,29 @@ internal static class Native {
 
   [DllImport("user32.dll")]
   internal static extern bool GetClientRect(nint window, out Rect bounds);
+
+  [DllImport("user32.dll")]
+  internal static extern nint BeginPaint(
+    nint window, out PaintStruct paint);
+
+  [DllImport("user32.dll")]
+  [return: MarshalAs(UnmanagedType.Bool)]
+  internal static extern bool EndPaint(
+    nint window, ref PaintStruct paint);
+
+  [DllImport("user32.dll")]
+  [return: MarshalAs(UnmanagedType.Bool)]
+  internal static extern bool TrackMouseEvent(ref TrackMouseEventData data);
+
+  [DllImport("user32.dll")]
+  [return: MarshalAs(UnmanagedType.Bool)]
+  internal static extern bool GetUpdateRect(
+    nint window, out Rect bounds, [MarshalAs(UnmanagedType.Bool)] bool erase);
+
+  [DllImport("user32.dll", SetLastError = true)]
+  [return: MarshalAs(UnmanagedType.Bool)]
+  internal static extern bool RedrawWindow(
+    nint window, nint updateRect, nint updateRegion, uint flags);
 
   [DllImport("user32.dll")]
   internal static extern bool ScreenToClient(nint window, ref Point point);

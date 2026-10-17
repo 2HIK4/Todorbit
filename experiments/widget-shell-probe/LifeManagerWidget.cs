@@ -2,6 +2,11 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
 
+internal enum WidgetHostMode {
+  Standalone,
+  LegacyReparent,
+}
+
 internal sealed class LifeManagerWidget : Form {
   private const long WsChild = 0x40000000;
   private const long WsPopup = 0x80000000;
@@ -9,12 +14,20 @@ internal sealed class LifeManagerWidget : Form {
   private const uint SwpFrameChanged = 0x0020;
   private const uint SwpShowWindow = 0x0040;
   private const uint SwpNoActivate = 0x0010;
+  private const uint RdwInvalidate = 0x0001;
+  private const uint RdwErase = 0x0004;
+  private const uint RdwAllChildren = 0x0080;
+  private const uint RdwUpdateNow = 0x0100;
   private static readonly nint HwndTop = 0;
 
   private readonly LifeManagerWidgetRepository repository;
   private readonly string? appExe;
   private readonly WidgetPalette palette;
-  private readonly FlowLayoutPanel taskList = new();
+  private readonly WidgetHostMode hostMode;
+  private readonly WidgetRenderDiagnostics renderDiagnostics;
+  private readonly nint shellParent;
+  private readonly Native.Point shellPosition;
+  private readonly BufferedFlowLayoutPanel taskList = new();
   private readonly Label status = new();
   private readonly Button addButton = new();
   private readonly Button refreshButton = new();
@@ -24,19 +37,31 @@ internal sealed class LifeManagerWidget : Form {
 
   internal LifeManagerWidget(
       LifeManagerWidgetRepository repository, string? appExe,
-      bool lightTheme) {
+      bool lightTheme, WidgetHostMode hostMode, bool diagnostics) {
     this.repository = repository;
     this.appExe = appExe;
+    this.hostMode = hostMode;
     palette = lightTheme ? WidgetPalette.Light : WidgetPalette.Dark;
+    renderDiagnostics = new WidgetRenderDiagnostics(diagnostics);
+    if (hostMode == WidgetHostMode.LegacyReparent) {
+      (shellParent, shellPosition) = ResolveDesktopIconHost();
+    }
     Text = "Life Manager Desktop Widget";
-    FormBorderStyle = FormBorderStyle.None;
+    FormBorderStyle = hostMode == WidgetHostMode.Standalone
+      ? FormBorderStyle.FixedSingle
+      : FormBorderStyle.None;
     StartPosition = FormStartPosition.Manual;
     ClientSize = new Size(376, 460);
     BackColor = palette.Background;
     ForeColor = palette.Foreground;
-    ShowInTaskbar = false;
+    ShowInTaskbar = hostMode == WidgetHostMode.Standalone;
+    MaximizeBox = false;
     Font = new Font("Segoe UI", 9.5f);
     Padding = new Padding(16);
+    SetStyle(ControlStyles.UserPaint |
+      ControlStyles.AllPaintingInWmPaint |
+      ControlStyles.OptimizedDoubleBuffer |
+      ControlStyles.ResizeRedraw, true);
 
     var header = new Label {
       Text = "Life Manager",
@@ -51,9 +76,9 @@ internal sealed class LifeManagerWidget : Form {
       Location = new Point(17, 44),
       Size = new Size(180, 22),
     };
-    ConfigureHeaderButton(refreshButton, "Refresh", 222, palette);
-    ConfigureHeaderButton(openButton, "Open", 272, palette);
-    ConfigureHeaderButton(closeButton, "Close", 322, palette);
+    ConfigureHeaderButton(refreshButton, "Refresh", 190, 64, palette);
+    ConfigureHeaderButton(openButton, "Open", 258, 48, palette);
+    ConfigureHeaderButton(closeButton, "Close", 310, 50, palette);
     refreshButton.Click += (_, _) => RefreshTasks();
     openButton.Click += (_, _) => OpenMainApp();
     closeButton.Click += (_, _) => Close();
@@ -90,7 +115,8 @@ internal sealed class LifeManagerWidget : Form {
 
   protected override void OnShown(EventArgs eventArgs) {
     base.OnShown(eventArgs);
-    if (!AttachToDesktopIconHost()) {
+    if (hostMode == WidgetHostMode.LegacyReparent &&
+        !AttachToDesktopIconHostLegacy()) {
       MessageBox.Show(
         "Explorer's desktop icon host was not available. The widget was not attached.",
         "Life Manager widget", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -98,6 +124,18 @@ internal sealed class LifeManagerWidget : Form {
       return;
     }
     RefreshTasks();
+    PresentChanges("shown");
+    renderDiagnostics.Snapshot(this, "shown");
+  }
+
+  protected override void OnHandleCreated(EventArgs eventArgs) {
+    base.OnHandleCreated(eventArgs);
+    renderDiagnostics.Snapshot(this, "handle-created");
+  }
+
+  protected override void WndProc(ref Message message) {
+    renderDiagnostics.Message(this, message.Msg);
+    base.WndProc(ref message);
   }
 
   protected override void OnPaint(PaintEventArgs eventArgs) {
@@ -107,33 +145,48 @@ internal sealed class LifeManagerWidget : Form {
       ClientSize.Width - 1, ClientSize.Height - 1);
   }
 
-  private bool AttachToDesktopIconHost() {
+  private static (nint Parent, Native.Point Position) ResolveDesktopIconHost() {
     var shell = Native.GetShellWindow();
     if (shell == 0 || Native.ClassName(shell) != "Progman" ||
-        !Native.IsWindowVisible(shell)) return false;
+        !Native.IsWindowVisible(shell)) {
+      throw new InvalidOperationException(
+        "Explorer's visible Progman shell window is unavailable.");
+    }
     var desktopIconHost = Native.GetWindow(shell, 5u);
     if (desktopIconHost == 0 ||
         Native.ClassName(desktopIconHost) != "SHELLDLL_DefView" ||
-        !Native.IsWindow(desktopIconHost)) return false;
+        !Native.IsWindow(desktopIconHost)) {
+      throw new InvalidOperationException(
+        "Explorer's desktop icon host is unavailable.");
+    }
 
     var primary = Screen.PrimaryScreen?.WorkingArea;
-    if (primary is null) return false;
+    if (primary is null) {
+      throw new InvalidOperationException("No primary display is available.");
+    }
     var screenPoint = new Native.Point {
-      X = primary.Value.Right - ClientSize.Width - 24,
+      X = primary.Value.Right - 376 - 24,
       Y = primary.Value.Top + 24,
     };
-    if (!Native.ScreenToClient(desktopIconHost, ref screenPoint)) return false;
+    if (!Native.ScreenToClient(desktopIconHost, ref screenPoint)) {
+      throw new InvalidOperationException(
+        "The widget position could not be mapped into Explorer coordinates.");
+    }
+    return (desktopIconHost, screenPoint);
+  }
 
+  private bool AttachToDesktopIconHostLegacy() {
     var originalStyle = Native.GetWindowLongPtr(Handle, -16);
     var childStyle =
       (originalStyle.ToInt64() & ~(WsPopup | WsOverlappedWindow)) | WsChild;
     Native.SetWindowLongPtr(Handle, -16, (nint)childStyle);
-    Native.SetParent(Handle, desktopIconHost);
-    if (Native.GetParent(Handle) != desktopIconHost) {
+    Native.SetParent(Handle, shellParent);
+    if (Native.GetParent(Handle) != shellParent) {
       Native.SetWindowLongPtr(Handle, -16, originalStyle);
       return false;
     }
-    return Native.SetWindowPos(Handle, HwndTop, screenPoint.X, screenPoint.Y,
+    return Native.SetWindowPos(Handle, HwndTop,
+      shellPosition.X, shellPosition.Y,
       ClientSize.Width, ClientSize.Height,
       SwpFrameChanged | SwpShowWindow | SwpNoActivate);
   }
@@ -162,6 +215,7 @@ internal sealed class LifeManagerWidget : Form {
         taskList.ResumeLayout();
       }
       status.Text = $"Updated {DateTime.Now:h:mm tt}";
+      PresentChanges("tasks-refreshed");
     });
   }
 
@@ -247,6 +301,13 @@ internal sealed class LifeManagerWidget : Form {
     openButton.Enabled = enabled;
   }
 
+  private void PresentChanges(string reason) {
+    if (!IsHandleCreated) return;
+    Native.RedrawWindow(Handle, 0, 0,
+      RdwInvalidate | RdwErase | RdwAllChildren | RdwUpdateNow);
+    renderDiagnostics.Snapshot(this, reason);
+  }
+
   private void ShowError(string message) {
     status.Text = "Action failed";
     MessageBox.Show(message, "Life Manager widget",
@@ -254,15 +315,30 @@ internal sealed class LifeManagerWidget : Form {
   }
 
   private static void ConfigureHeaderButton(
-      Button button, string text, int x, WidgetPalette palette) {
+      Button button, string text, int x, int width, WidgetPalette palette) {
     button.Text = text;
     button.Location = new Point(x, 17);
-    button.Size = new Size(46, 30);
+    button.Size = new Size(width, 30);
     button.FlatStyle = FlatStyle.Flat;
     button.FlatAppearance.BorderSize = 0;
     button.BackColor = palette.Row;
     button.ForeColor = palette.Foreground;
     button.Font = new Font("Segoe UI", 8);
+  }
+
+
+  protected override void Dispose(bool disposing) {
+    if (disposing) renderDiagnostics.Dispose();
+    base.Dispose(disposing);
+  }
+}
+
+internal sealed class BufferedFlowLayoutPanel : FlowLayoutPanel {
+  internal BufferedFlowLayoutPanel() {
+    DoubleBuffered = true;
+    SetStyle(ControlStyles.AllPaintingInWmPaint |
+      ControlStyles.OptimizedDoubleBuffer |
+      ControlStyles.ResizeRedraw, true);
   }
 }
 

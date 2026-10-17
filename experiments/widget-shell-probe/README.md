@@ -35,9 +35,10 @@ desktop attachment; it does not prove shell-child composition.
 ## Native hybrid widget candidate
 
 `--widget` launches a separate integration candidate rather than the Flutter
-prototype. Its persistent native display is parented to Explorer's existing
-`SHELLDLL_DefView`; its Quick Add editor is an ordinary top-level modal dialog
-with normal keyboard activation. The candidate reads real schema-v3 task data,
+prototype. Its persistent display is one double-buffered, owner-drawn native
+HWND created directly under Explorer's existing `SHELLDLL_DefView`; its Quick
+Add editor is an ordinary top-level modal dialog with normal keyboard
+activation. The candidate reads real schema-v3 task data,
 can add a task scheduled for today, complete a task, refresh, and open the main
 Flutter executable. It prevents duplicate instances and supports dark (default)
 and light (`--light`) palettes.
@@ -61,3 +62,19 @@ terminate only its inspected PID. The candidate makes no persistent Explorer
 change. Explorer hosting remains undocumented and must be manually checked for
 visible pixels, clicks, `Win + D`, normal-window coverage, repeated typing,
 multiple monitors, and Explorer restart before production integration.
+
+The original WinForms display was painted as a top-level Form and then
+cross-process reparented. Bounded diagnostics prove that it receives full-client
+`WM_PAINT` messages while the user-visible surface remains black until a screen
+capture. Attempting to create that Form with a foreign parent is also invalid:
+WinForms moves it into a hidden parking window during `OnShown`. The default
+owner-drawn host avoids both transitions and redraws only after actual state,
+hover, scroll, or display changes. It has no continuous repaint timer.
+
+Comparison modes:
+
+- `--widget-standalone`: former WinForms UI as a normal top-level window.
+- `--widget-legacy-reparent`: former post-paint reparenting behavior.
+- `--widget`: current owner-drawn native shell child.
+- `--render-diagnostics`: bounded message/style log under
+  `%APPDATA%\Life Manager\logs`; no task text or keystrokes are recorded.

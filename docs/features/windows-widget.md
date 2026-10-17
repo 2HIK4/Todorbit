@@ -50,8 +50,10 @@ The approved first attachment did put only the experiment's window above the ico
 The experiment now also contains an integration candidate launched with
 `--widget`. It does not replace `life_manager.exe --widget`.
 
-- The persistent WinForms display is a child of Explorer's existing
-  `SHELLDLL_DefView`, positioned near the primary working area's top-right.
+- The persistent display is a single double-buffered, owner-drawn native HWND
+  created directly as a child of Explorer's existing `SHELLDLL_DefView`,
+  positioned near the primary working area's top-right. It is not a reparented
+  WinForms Form and has no persistent child controls.
 - Quick Add is a separate, ordinary modal top-level window, so text input does
   not depend on activating a shell child.
 - The native repository opens the existing database in read/write mode only
@@ -79,3 +81,10 @@ experiments\widget-shell-probe\bin\Release\net10.0-windows\widget-shell-probe.ex
 Append `--light` for the light palette. Run the isolated persistence check with
 `widget-shell-probe.exe --self-test`; it uses a temporary database and deletes
 only that temporary test directory.
+
+For controlled rendering comparison, `--widget-standalone` opens the former
+WinForms UI normally and `--widget-legacy-reparent` runs the black-surface host.
+Add `--render-diagnostics` to either candidate to write bounded paint/style
+metadata to `%APPDATA%\Life Manager\logs\native-widget-render-<PID>.log`.
+Diagnostics never record task text or keyboard input. The legacy mode exists
+only for diagnosis and is not the recommended widget.

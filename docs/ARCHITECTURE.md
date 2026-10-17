@@ -7,10 +7,11 @@
 - `lib/domain/`: entity models. `lib/data/`: SQLite and repository. `lib/features/`: screens and reusable controls. `lib/app/`: shell, state, theme.
 - Windows widget and tray code will live behind a separate integration boundary.
 
-The current integration candidate is a separate .NET/WinForms companion in
-`experiments/widget-shell-probe`. Its persistent display is an Explorer
-`SHELLDLL_DefView` child, while keyboard entry is an ordinary activated
-top-level dialog. This avoids trying to focus a shell-child Flutter view. A
+The current integration candidate is a separate .NET companion in
+`experiments/widget-shell-probe`. Its persistent display is one owner-drawn
+native HWND created directly as an Explorer `SHELLDLL_DefView` child, while
+keyboard entry is an ordinary activated WinForms top-level dialog. This avoids
+both shell-child Flutter focus and post-paint WinForms reparenting. A
 narrow native repository reads and writes only task fields already owned by
 schema v3, validates the schema before opening, uses UUIDs/UTC timestamps and
 transactions, and never performs migrations. Explorer hosting is an
