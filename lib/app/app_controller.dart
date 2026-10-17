@@ -236,6 +236,12 @@ class AppController extends ChangeNotifier {
     await refresh();
   }
 
+  Future<void> resumeCompletionSeries(LifeTask skipped, String nextDate) async {
+    final next = await repository.resumeCompletionSeries(skipped, nextDate);
+    await refresh();
+    select(next.id);
+  }
+
   List<LifeTask> unmetPrerequisites(String taskId) {
     final byId = {for (final task in tasks) task.id: task};
     return dependencies

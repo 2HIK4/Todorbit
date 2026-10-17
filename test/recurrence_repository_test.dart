@@ -135,6 +135,39 @@ void main() {
     },
   );
 
+  test('skipped completion series resumes only on an explicit day', () async {
+    final today = localDate(DateTime.now());
+    final first = await repository.addRecurringTask(
+      TaskDraft(title: 'Review', scheduledDate: today),
+      RecurrenceRule(
+        kind: RecurrenceKind.afterCompletion,
+        startDate: today,
+        interval: 3,
+        maxOccurrences: 3,
+      ),
+    );
+    await repository.skipRecurringOccurrence(first);
+    var tasks = await repository.tasks();
+    expect(tasks, hasLength(1));
+    final skipped = tasks.single;
+    expect(skipped.recurrenceDisposition, 'skipped');
+    final chosen = RecurrenceRule.shiftDate(today, 2);
+    final resumed = await repository.resumeCompletionSeries(skipped, chosen);
+    expect(resumed.recurrenceOrdinal, 1);
+    expect(resumed.scheduledDate, chosen);
+    await expectLater(
+      repository.resumeCompletionSeries(skipped, chosen),
+      throwsStateError,
+    );
+    await repository.setComplete(resumed, true);
+    tasks = await repository.tasks();
+    expect(tasks, hasLength(3));
+    expect(
+      tasks.singleWhere((task) => task.recurrenceOrdinal == 2).scheduledDate,
+      RecurrenceRule.shiftDate(today, 3),
+    );
+  });
+
   test('v5 migration preserves tasks and adds recurrence tables', () async {
     await database.close();
     final directory = await Directory.systemTemp.createTemp('life_recurrence_');
@@ -164,6 +197,55 @@ void main() {
         expect(await repo.tasks(), hasLength(2));
       } finally {
         await migrated.close();
+      }
+    } finally {
+      await directory.delete(recursive: true);
+    }
+  });
+
+  test('occurrence IDs, completion, and skip survive restart', () async {
+    await database.close();
+    final directory = await Directory.systemTemp.createTemp('life_series_');
+    final file = File('${directory.path}${Platform.pathSeparator}app.sqlite');
+    try {
+      final firstDatabase = AppDatabase(NativeDatabase(file));
+      final firstRepository = LifeRepository(firstDatabase);
+      final first = await firstRepository.addRecurringTask(
+        const TaskDraft(title: 'Review', scheduledDate: '2026-10-17'),
+        RecurrenceRule(
+          kind: RecurrenceKind.daily,
+          startDate: '2026-10-17',
+          maxOccurrences: 3,
+        ),
+      );
+      await firstRepository.ensureRecurringTasks('2026-10-17', '2026-10-19');
+      final before = await firstRepository.tasks();
+      final ids = {for (final task in before) task.nominalDate: task.id};
+      await firstRepository.setComplete(first, true);
+      await firstRepository.skipRecurringOccurrence(
+        before.singleWhere((task) => task.nominalDate == '2026-10-18'),
+      );
+      await firstDatabase.close();
+
+      final reopened = AppDatabase(NativeDatabase(file));
+      try {
+        final repo = LifeRepository(reopened);
+        await repo.ensureRecurringTasks('2026-10-17', '2026-10-19');
+        final after = await repo.tasks();
+        expect(after, hasLength(3));
+        expect({for (final task in after) task.nominalDate: task.id}, ids);
+        expect(
+          after.singleWhere((task) => task.nominalDate == '2026-10-17').status,
+          TaskStatus.completed,
+        );
+        expect(
+          after
+              .singleWhere((task) => task.nominalDate == '2026-10-18')
+              .recurrenceDisposition,
+          'skipped',
+        );
+      } finally {
+        await reopened.close();
       }
     } finally {
       await directory.delete(recursive: true);

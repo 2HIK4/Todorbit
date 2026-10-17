@@ -293,6 +293,31 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     }
   }
 
+  Future<void> _resumeCompletionSeries() async {
+    final skipped = currentTask;
+    if (skipped == null) return;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      helpText: 'Planned day for the next occurrence',
+    );
+    if (picked == null) return;
+    try {
+      await ref
+          .read(appControllerProvider)
+          .resumeCompletionSeries(skipped, localDate(picked));
+      if (mounted) widget.onSaved?.call();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not resume series: $error')),
+        );
+      }
+    }
+  }
+
   Future<void> _editSession([WorkSession? session]) async {
     final task = widget.task;
     if (task == null) return;
@@ -573,6 +598,16 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                   ),
                   if (widget.task!.recurrenceDisposition == 'skipped')
                     const Text('Skipped'),
+                  if (widget.task!.recurrenceDisposition == 'skipped' &&
+                      widget.task!.recurrenceKindName == 'afterCompletion')
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: _resumeCompletionSeries,
+                        icon: const Icon(Icons.restart_alt),
+                        label: const Text('Resume series on a chosen day'),
+                      ),
+                    ),
                   if (widget.task!.recurrenceRescheduled)
                     const Text('Rescheduled from the nominal day'),
                   if (widget.task!.isOpen)

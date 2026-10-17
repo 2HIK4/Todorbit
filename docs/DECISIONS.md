@@ -66,3 +66,7 @@
   Editing a task occurrence leaves the series template unchanged. Defer
   future/all-series edits until the operation can preserve completed work,
   sessions, and dependencies and can ask about date collisions explicitly.
+- **Completion-based skip:** skipping does not count as actual completion and
+  therefore does not calculate the next day. The user can resume the series on
+  a chosen planned day; that inserts one successor transactionally while the
+  skipped occurrence stays in history.

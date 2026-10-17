@@ -158,6 +158,7 @@ class LifeTask {
     this.recurrenceDisposition,
     this.recurrenceEdited = false,
     this.recurrenceRescheduled = false,
+    this.recurrenceKindName,
   });
 
   final String id;
@@ -181,6 +182,7 @@ class LifeTask {
   final String? recurrenceDisposition;
   final bool recurrenceEdited;
   final bool recurrenceRescheduled;
+  final String? recurrenceKindName;
 
   bool get isOpen =>
       status != TaskStatus.completed && status != TaskStatus.cancelled;

@@ -48,8 +48,10 @@ class LifeRepository {
               o.ordinal AS recurrence_ordinal, o.nominal_date,
               o.disposition AS recurrence_disposition,
               o.is_edited AS recurrence_edited,
-              o.is_rescheduled AS recurrence_rescheduled
+              o.is_rescheduled AS recurrence_rescheduled,
+              s.kind AS recurrence_kind
             FROM tasks t LEFT JOIN recurrence_occurrences o ON o.task_id=t.id
+            LEFT JOIN recurrence_series s ON s.id=o.series_id
             ORDER BY t.priority DESC, t.scheduled_date ASC, t.created_at DESC''',
     ).get();
     return rows.map(_taskFromRow).toList();
@@ -479,6 +481,7 @@ class LifeRepository {
     recurrenceDisposition: r.read<String?>('recurrence_disposition'),
     recurrenceEdited: r.read<int?>('recurrence_edited') == 1,
     recurrenceRescheduled: r.read<int?>('recurrence_rescheduled') == 1,
+    recurrenceKindName: r.read<String?>('recurrence_kind'),
   );
 
   DateTime? _parseNullable(String? value) =>
@@ -934,6 +937,64 @@ class LifeRepository {
         throw StateError('The recurrence link is missing');
       }
     });
+  }
+
+  /// An after-completion series has no calculated successor after a skip.
+  /// Resuming it requires an explicit planned day from the user.
+  Future<LifeTask> resumeCompletionSeries(
+    LifeTask skipped,
+    String nextDate,
+  ) async {
+    if (skipped.recurrenceKindName != RecurrenceKind.afterCompletion.name ||
+        skipped.recurrenceDisposition != 'skipped') {
+      throw ArgumentError('Only a skipped completion-based series can resume');
+    }
+    if (RecurrenceRule.daysBetween(skipped.nominalDate!, nextDate) < 1) {
+      throw ArgumentError('Resume day must follow the skipped occurrence');
+    }
+    final nextOrdinal = skipped.recurrenceOrdinal! + 1;
+    await db.transaction(() async {
+      final row = await db
+          .customSelect(
+            '''SELECT s.*, o.disposition, o.ordinal
+          FROM recurrence_occurrences o
+          JOIN recurrence_series s ON s.id=o.series_id
+          WHERE o.task_id=?''',
+            variables: [Variable.withString(skipped.id)],
+          )
+          .getSingleOrNull();
+      if (row == null ||
+          row.read<String>('disposition') != 'skipped' ||
+          row.read<int>('ordinal') != skipped.recurrenceOrdinal) {
+        throw StateError('The skipped occurrence changed elsewhere');
+      }
+      final rule = _ruleFromSeries(row);
+      if (rule.maxOccurrences != null && nextOrdinal >= rule.maxOccurrences!) {
+        throw StateError('The series has reached its occurrence limit');
+      }
+      if (rule.endDate != null && nextDate.compareTo(rule.endDate!) > 0) {
+        throw StateError('The resume day is after the series end');
+      }
+      final later = await db
+          .customSelect(
+            '''SELECT 1 FROM recurrence_occurrences
+          WHERE series_id=? AND ordinal>? LIMIT 1''',
+            variables: [
+              Variable.withString(skipped.recurrenceSeriesId!),
+              Variable.withInt(skipped.recurrenceOrdinal!),
+            ],
+          )
+          .getSingleOrNull();
+      if (later != null) {
+        throw StateError('The series already has a later occurrence');
+      }
+      await _insertOccurrence(row, RecurrenceSlot(nextDate, nextOrdinal));
+    });
+    return (await tasks()).singleWhere(
+      (task) =>
+          task.recurrenceSeriesId == skipped.recurrenceSeriesId &&
+          task.recurrenceOrdinal == nextOrdinal,
+    );
   }
 
   Future<void> deleteProject(String id) async {

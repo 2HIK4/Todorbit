@@ -121,6 +121,12 @@
   regression test proving it moves one occurrence while leaving nominal dates
   and the rule intact. `flutter analyze`, all 56 Flutter tests, native Release
   build/self-test, Windows Release build, and packaged companion self-test pass.
+- Completion-based skip recovery: a skipped occurrence remains in history and
+  does not invent a completion time. Task details now offer an explicit resume
+  day for that series, with a transactional successor and duplicate guard.
+  Disposable restart and resume tests pass. `flutter analyze`, all 58 Flutter
+  tests, Windows Release build, and packaged widget self-test pass. This
+  control still needs manual Windows UI acceptance.
 
 ## In progress
 
