@@ -46,6 +46,13 @@ affected scheduling fields, not full-database snapshots. Restores are new
 operations and compare current scheduling values with the selected operation's
 after-state so later manual changes remain protected.
 
+Schema v5 adds `task_sequences`, `sequence_tasks`, and `task_dependencies`.
+Sequences persist explicit positions; dependencies persist directed prerequisite
+edges. Repository transactions validate cycles and keep sequence reorders
+atomic. Smart Reschedule's reviewed dependency warnings are checked again at
+Apply, so a newly conflicting prerequisite cannot silently bypass the preview.
+The native widget accepts both v4 and v5 and never migrates either schema.
+
 The deterministic engine in `lib/domain/` has no database dependency. It keeps
 local date-only task plans separate from UTC work-session intervals and fixed
 events. Local availability is converted at the proposed date, so calendar-day

@@ -85,6 +85,61 @@ internal static class LifeManagerWidgetSelfTest {
             "Widget scheduling edit was not added to schedule history.");
         }
       }
+      using (var upgrade = new SqliteConnection(
+          $"Data Source={databasePath};Pooling=False")) {
+        upgrade.Open();
+        using var command = upgrade.CreateCommand();
+        command.CommandText = """
+          PRAGMA user_version = 5;
+          CREATE TABLE task_dependencies(
+            task_id TEXT NOT NULL,
+            prerequisite_id TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY(task_id,prerequisite_id)
+          );
+          """;
+        command.ExecuteNonQuery();
+      }
+      using (var upgradedRepository =
+          LifeManagerWidgetRepository.OpenForTest(databasePath)) {
+        if (upgradedRepository.LoadTask(id)?.Status != "completed") {
+          throw new InvalidOperationException(
+            "Widget could not read a schema v5 task.");
+        }
+        var blockerId = upgradedRepository.AddTask(
+          "Prerequisite", new DateTime(2026, 10, 25));
+        var dependentId = upgradedRepository.AddTask(
+          "Dependent", new DateTime(2026, 10, 17));
+        using (var link = new SqliteConnection(
+            $"Data Source={databasePath};Pooling=False")) {
+          link.Open();
+          using var command = link.CreateCommand();
+          command.CommandText = """
+            INSERT INTO task_dependencies(task_id,prerequisite_id,created_at)
+            VALUES($task,$prerequisite,'2026-10-17T00:00:00Z')
+            """;
+          command.Parameters.AddWithValue("$task", dependentId);
+          command.Parameters.AddWithValue("$prerequisite", blockerId);
+          command.ExecuteNonQuery();
+        }
+        var dependent = upgradedRepository.LoadTask(dependentId)!;
+        var update = new WidgetTaskUpdate("Dependent", "", "notStarted", 0,
+          null, null, "2026-10-20", null, dependent.UpdatedAt);
+        try {
+          upgradedRepository.UpdateTask(dependentId, update);
+          throw new InvalidOperationException(
+            "Unreviewed prerequisite conflict was accepted.");
+        } catch (DependencyReviewRequiredException conflict)
+            when (conflict.Conflicts.Single().Id == blockerId) { }
+        upgradedRepository.UpdateTask(dependentId, update with {
+          ReviewedPrerequisiteIds = [blockerId],
+        });
+        if (upgradedRepository.LoadTask(dependentId)?.ScheduledDate !=
+            "2026-10-20") {
+          throw new InvalidOperationException(
+            "Reviewed prerequisite override was not saved.");
+        }
+      }
       VerifySettingsRoundTrip(directory);
       VerifyAppearanceRoundTrip(directory);
       VerifySingleInstanceMutex();

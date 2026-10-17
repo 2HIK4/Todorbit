@@ -9,6 +9,8 @@ import '../calendar/calendar_view.dart';
 import '../scheduling/smart_reschedule.dart';
 import '../widget/native_widget_service.dart';
 import 'task_editor.dart';
+import 'sequence_dialog.dart';
+import 'quick_search.dart';
 
 class Workspace extends ConsumerStatefulWidget {
   const Workspace({super.key});
@@ -130,6 +132,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     builder: (_) => const ScheduleHistoryDialog(),
   );
 
+  Future<void> _showSearch() => showDialog<void>(
+    context: context,
+    builder: (_) => const QuickSearchDialog(),
+  );
+
   String _scheduleScope(AppController controller) => switch (controller.view) {
     WorkspaceView.category => 'category:${controller.scopeId}',
     WorkspaceView.project => 'project:${controller.scopeId}',
@@ -142,6 +149,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyN, control: true): _newTask,
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true):
+            _showSearch,
       },
       child: Focus(
         autofocus: true,
@@ -392,6 +401,24 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 ],
               ],
             ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              IconButton(
+                tooltip: 'Quick Search (Ctrl+K)',
+                onPressed: _showSearch,
+                icon: const Icon(Icons.search_outlined),
+              ),
+              IconButton(
+                tooltip: 'Task sequences',
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => const SequenceDialog(),
+                ),
+                icon: const Icon(Icons.format_list_numbered),
+              ),
+            ],
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
@@ -716,6 +743,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   Widget _taskRow(AppController controller, LifeTask task, bool wide) {
     final scheme = Theme.of(context).colorScheme;
     final done = task.status == TaskStatus.completed;
+    final unmetPrerequisites = controller.unmetPrerequisites(task.id);
     final overdue =
         task.isOpen &&
         task.deadlineDate != null &&
@@ -760,7 +788,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     if (task.scheduledDate != null ||
                         task.deadlineDate != null ||
                         task.status == TaskStatus.waiting ||
-                        task.status == TaskStatus.onHold)
+                        task.status == TaskStatus.onHold ||
+                        unmetPrerequisites.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Wrap(
@@ -794,6 +823,18 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            if (unmetPrerequisites.isNotEmpty)
+                              Tooltip(
+                                message:
+                                    'Waiting for ${unmetPrerequisites.map((item) => item.title).join(', ')}',
+                                child: Text(
+                                  'Blocked by ${unmetPrerequisites.length}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: scheme.error,
+                                  ),
                                 ),
                               ),
                           ],

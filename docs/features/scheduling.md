@@ -41,8 +41,11 @@ cancelled, and locked work is preserved.
 
 ## Deferred boundaries
 
-Dependencies, persistent task sequences, and recurring occurrences are still
-deferred product models. Consequently there is no dependency-order validation
-or drag-to-reorder sequence storage yet. When recurrence arrives, history
+Recurring occurrences are still deferred product models. Sequence order is
+stored, and the sequence action can open Smart Reschedule in that order.
+Dependency-order warnings are shown during preview and checked again at Apply;
+the user can acknowledge a warning to override the proposed order. Drag-and-drop
+sequence ordering is not yet available; up/down controls are functional.
+When recurrence arrives, history
 targets must reference occurrence IDs and reschedule one occurrence by default
 without editing its recurrence rule.

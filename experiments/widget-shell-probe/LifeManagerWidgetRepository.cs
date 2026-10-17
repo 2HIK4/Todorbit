@@ -9,11 +9,20 @@ internal sealed record WidgetChoice(string Id, string Name, string? ParentId = n
 internal sealed record WidgetTaskUpdate(
   string Title, string Notes, string Status, int Priority,
   string? CategoryId, string? ProjectId, string? ScheduledDate,
-  string? DeadlineDate, string ExpectedUpdatedAt);
+  string? DeadlineDate, string ExpectedUpdatedAt,
+  IReadOnlyCollection<string>? ReviewedPrerequisiteIds = null);
+internal sealed record WidgetDependencyConflict(string Id, string Title);
+internal sealed class DependencyReviewRequiredException(
+    IReadOnlyList<WidgetDependencyConflict> conflicts)
+    : Exception("The planned day is before unfinished prerequisites.") {
+  internal IReadOnlyList<WidgetDependencyConflict> Conflicts { get; } = conflicts;
+}
 
 internal sealed class LifeManagerWidgetRepository : IDisposable {
-  private const int SupportedSchemaVersion = 4;
+  private const int MinimumSchemaVersion = 4;
+  private const int MaximumSchemaVersion = 5;
   private readonly SqliteConnection connection;
+  private readonly int schemaVersion;
   internal string DatabasePath { get; }
 
   private LifeManagerWidgetRepository(string databasePath) {
@@ -32,9 +41,10 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
     versionCommand.CommandText = "PRAGMA user_version";
     var version = Convert.ToInt32(versionCommand.ExecuteScalar(),
       CultureInfo.InvariantCulture);
-    if (version != SupportedSchemaVersion) {
+    schemaVersion = version;
+    if (version < MinimumSchemaVersion || version > MaximumSchemaVersion) {
       throw new InvalidOperationException(
-        $"The Life Manager database schema is {version}; widget support requires schema {SupportedSchemaVersion}. Open the main app to migrate it first.");
+        $"The Life Manager database schema is {version}; widget support requires schema {MinimumSchemaVersion}–{MaximumSchemaVersion}. Open the main app to migrate it first.");
     }
   }
 
@@ -159,6 +169,36 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
     }
     using var command = connection.CreateCommand();
     command.Transaction = transaction;
+    if (schemaVersion >= 5 && update.ScheduledDate != null &&
+        !String.Equals(previousScheduledDate, update.ScheduledDate,
+          StringComparison.Ordinal)) {
+      var unreviewed = new List<WidgetDependencyConflict>();
+      using var prerequisites = connection.CreateCommand();
+      prerequisites.Transaction = transaction;
+      prerequisites.CommandText = """
+        SELECT p.id,p.title,p.status,p.scheduled_date
+        FROM task_dependencies d JOIN tasks p ON p.id=d.prerequisite_id
+        WHERE d.task_id=$id
+        """;
+      prerequisites.Parameters.AddWithValue("$id", id);
+      using var reader = prerequisites.ExecuteReader();
+      while (reader.Read()) {
+        var prerequisiteId = reader.GetString(0);
+        var plannedDay = reader.IsDBNull(3) ? null : reader.GetString(3);
+        if (reader.GetString(2) == "completed" ||
+            (plannedDay != null &&
+              String.CompareOrdinal(update.ScheduledDate, plannedDay) > 0)) {
+          continue;
+        }
+        if (update.ReviewedPrerequisiteIds?.Contains(prerequisiteId) != true) {
+          unreviewed.Add(new WidgetDependencyConflict(
+            prerequisiteId, reader.GetString(1)));
+        }
+      }
+      if (unreviewed.Count != 0) {
+        throw new DependencyReviewRequiredException(unreviewed);
+      }
+    }
     command.CommandText = """
       UPDATE tasks SET title=$title,notes=$notes,status=$status,priority=$priority,
         category_id=$category,project_id=$project,scheduled_date=$scheduled,

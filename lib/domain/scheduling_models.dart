@@ -31,6 +31,7 @@ enum ScheduleIssueKind {
   stale,
   insufficientCapacity,
   invalidSelection,
+  dependencyOrder,
 }
 
 class AvailabilityWindow {
@@ -63,12 +64,14 @@ class ScheduleIssue {
     required this.kind,
     required this.message,
     this.targetId,
+    this.relatedId,
     this.severity = ScheduleIssueSeverity.hard,
   });
 
   final ScheduleIssueKind kind;
   final ScheduleIssueSeverity severity;
   final String? targetId;
+  final String? relatedId;
   final String message;
   bool get isHard => severity == ScheduleIssueSeverity.hard;
 }

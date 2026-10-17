@@ -168,8 +168,11 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
         ),
       };
     } else {
-      final tasks = controller.tasks
-          .where((item) => selected.contains(item.id))
+      final tasksById = {for (final item in controller.tasks) item.id: item};
+      final tasks = widget.taskIds
+          .where(selected.contains)
+          .map((id) => tasksById[id])
+          .whereType<LifeTask>()
           .toList();
       next = switch (operation) {
         ScheduleOperationType.move => engine.moveTasks(
@@ -210,6 +213,60 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
         ),
       };
     }
+    final dependencyIssues = <ScheduleIssue>[];
+    final tasksById = {for (final task in controller.tasks) task.id: task};
+    final sessionsById = {
+      for (final session in controller.sessions) session.id: session,
+    };
+    final proposedTaskDays = <String, String?>{
+      for (final change in next.changes)
+        if (change.targetKind == ScheduleTargetKind.task)
+          change.targetId: change.afterDate,
+    };
+    for (final change in next.changes) {
+      final taskId = change.targetKind == ScheduleTargetKind.task
+          ? change.targetId
+          : change.taskId ?? sessionsById[change.targetId]?.taskId;
+      if (taskId == null) continue;
+      final proposedDay = change.targetKind == ScheduleTargetKind.task
+          ? change.afterDate
+          : change.afterStartsAt == null
+          ? null
+          : localDate(change.afterStartsAt!.toLocal());
+      if (proposedDay == null) continue;
+      for (final dependency in controller.dependencies.where(
+        (link) => link.taskId == taskId,
+      )) {
+        final prerequisite = tasksById[dependency.prerequisiteId];
+        if (prerequisite == null ||
+            prerequisite.status == TaskStatus.completed) {
+          continue;
+        }
+        final prerequisiteDay = proposedTaskDays.containsKey(prerequisite.id)
+            ? proposedTaskDays[prerequisite.id]
+            : prerequisite.scheduledDate;
+        if (prerequisiteDay == null ||
+            proposedDay.compareTo(prerequisiteDay) <= 0) {
+          dependencyIssues.add(
+            ScheduleIssue(
+              kind: ScheduleIssueKind.dependencyOrder,
+              severity: ScheduleIssueSeverity.warning,
+              targetId: change.targetId,
+              relatedId: prerequisite.id,
+              message:
+                  '“${tasksById[taskId]?.title ?? 'Task'}” is planned before unfinished prerequisite “${prerequisite.title}”.',
+            ),
+          );
+        }
+      }
+    }
+    next = SchedulingPreview(
+      operation: next.operation,
+      scope: next.scope,
+      changes: next.changes,
+      issues: [...next.issues, ...dependencyIssues],
+      createdAt: next.createdAt,
+    );
     setState(() {
       preview = next;
       included

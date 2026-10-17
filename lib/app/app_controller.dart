@@ -36,6 +36,8 @@ class AppController extends ChangeNotifier {
   List<LifeTask> tasks = [];
   List<FixedEvent> events = [];
   List<WorkSession> sessions = [];
+  List<TaskDependency> dependencies = [];
+  List<TaskSequence> sequences = [];
   AvailabilityPlan availability = const AvailabilityPlan(weekly: {});
   List<SchedulingOperation> schedulingHistory = [];
   WorkspaceView view = WorkspaceView.today;
@@ -61,6 +63,8 @@ class AppController extends ChangeNotifier {
       repository.sessions(),
       repository.availability(),
       repository.schedulingHistory(),
+      repository.dependencies(),
+      repository.sequences(),
     ]);
     categories = result[0] as List<Category>;
     projects = result[1] as List<Project>;
@@ -69,6 +73,8 @@ class AppController extends ChangeNotifier {
     sessions = result[4] as List<WorkSession>;
     availability = result[5] as AvailabilityPlan;
     schedulingHistory = result[6] as List<SchedulingOperation>;
+    dependencies = result[7] as List<TaskDependency>;
+    sequences = result[8] as List<TaskSequence>;
     if (selectedTaskId != null && selectedTask == null) selectedTaskId = null;
     loading = false;
     notifyListeners();
@@ -181,8 +187,16 @@ class AppController extends ChangeNotifier {
     select(task.id);
   }
 
-  Future<void> updateTask(LifeTask previous, TaskDraft draft) async {
-    await repository.updateTask(previous, draft);
+  Future<void> updateTask(
+    LifeTask previous,
+    TaskDraft draft, {
+    Set<String> reviewedPrerequisiteIds = const {},
+  }) async {
+    await repository.updateTask(
+      previous,
+      draft,
+      reviewedPrerequisiteIds: reviewedPrerequisiteIds,
+    );
     await refresh();
   }
 
@@ -193,6 +207,41 @@ class AppController extends ChangeNotifier {
 
   Future<void> deleteTask(String id) async {
     await repository.deleteTask(id);
+    await refresh();
+  }
+
+  List<LifeTask> unmetPrerequisites(String taskId) {
+    final byId = {for (final task in tasks) task.id: task};
+    return dependencies
+        .where((link) => link.taskId == taskId)
+        .map((link) => byId[link.prerequisiteId])
+        .whereType<LifeTask>()
+        .where((task) => task.status != TaskStatus.completed)
+        .toList();
+  }
+
+  Future<void> setPrerequisites(LifeTask task, Set<String> ids) async {
+    await repository.setPrerequisites(task, ids);
+    await refresh();
+  }
+
+  Future<void> addSequence(String name) async {
+    await repository.addSequence(name);
+    await refresh();
+  }
+
+  Future<void> renameSequence(TaskSequence sequence, String name) async {
+    await repository.renameSequence(sequence, name);
+    await refresh();
+  }
+
+  Future<void> deleteSequence(TaskSequence sequence) async {
+    await repository.deleteSequence(sequence);
+    await refresh();
+  }
+
+  Future<void> setSequenceTasks(TaskSequence sequence, List<String> ids) async {
+    await repository.setSequenceTasks(sequence, ids);
     await refresh();
   }
 

@@ -35,3 +35,22 @@
 - **Native widget schema v4:** keep its repository narrow and non-migrating, but
   accept v4 and record a manual scheduling-history row transactionally when its
   task editor changes a planned date. Window hosting and lifecycle are unchanged.
+- **Task relationships (schema v5):** named sequences and prerequisite edges are
+  distinct tables. A task belongs to at most one sequence; moving it between
+  categories or projects leaves sequence membership intact. Sequence membership
+  edits replace the ordered list in one transaction with an optimistic sequence
+  timestamp check. Prerequisite edits replace one task's edges transactionally
+  and use a recursive query to reject cycles, including cross-project cycles.
+  Completion does not follow prerequisite or sequence edges automatically.
+  Smart Reschedule warns about unfinished prerequisites planned on or after the
+  dependent's proposed day, using the prerequisite's proposed day when both
+  move in one operation; a warning must be reviewed to apply that conflict.
+  Prerequisite edits compare the loaded task revision, and manual Flutter date
+  edits require an explicit override for each current prerequisite conflict.
+  The native widget accepts schema v4 and v5 because its task columns are
+  unchanged, but remains non-migrating. Its compact editor also asks for an
+  explicit override when a schema-v5 planned date conflicts with prerequisites.
+- **Quick Search:** use the already loaded workspace records for an immediate
+  desktop search over tasks, notes, categories, and projects. It navigates to
+  live records and does not persist stale result lists. Keep advanced filters,
+  tags, and saved-view persistence for a later milestone.

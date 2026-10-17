@@ -50,6 +50,221 @@ class LifeRepository {
     return rows.map(_taskFromRow).toList();
   }
 
+  Future<List<TaskDependency>> dependencies() async {
+    final rows = await db
+        .customSelect(
+          'SELECT task_id, prerequisite_id FROM task_dependencies ORDER BY task_id, prerequisite_id',
+        )
+        .get();
+    return rows
+        .map(
+          (row) => TaskDependency(
+            taskId: row.read<String>('task_id'),
+            prerequisiteId: row.read<String>('prerequisite_id'),
+          ),
+        )
+        .toList();
+  }
+
+  /// Replaces one task's prerequisites atomically; a rejected cycle leaves the
+  /// previous links intact.
+  Future<void> setPrerequisites(
+    LifeTask previous,
+    Set<String> prerequisiteIds,
+  ) async {
+    final taskId = previous.id;
+    if (prerequisiteIds.contains(taskId)) {
+      throw ArgumentError('A task cannot depend on itself');
+    }
+    await db.transaction(() async {
+      final existing = await db
+          .customSelect(
+            'SELECT updated_at FROM tasks WHERE id=?',
+            variables: [Variable.withString(taskId)],
+          )
+          .getSingleOrNull();
+      if (existing == null ||
+          existing.read<String>('updated_at') !=
+              previous.updatedAt.toUtc().toIso8601String()) {
+        throw StateError(
+          'This task changed elsewhere. Reopen it before editing prerequisites.',
+        );
+      }
+      await db.customUpdate(
+        'DELETE FROM task_dependencies WHERE task_id=?',
+        variables: [Variable.withString(taskId)],
+      );
+      final now = DateTime.now().toUtc().toIso8601String();
+      for (final prerequisiteId in prerequisiteIds) {
+        final prerequisite = await db
+            .customSelect(
+              'SELECT id FROM tasks WHERE id=?',
+              variables: [Variable.withString(prerequisiteId)],
+            )
+            .getSingleOrNull();
+        if (prerequisite == null) {
+          throw ArgumentError('Prerequisite does not exist');
+        }
+        final cycle = await db
+            .customSelect(
+              '''
+          WITH RECURSIVE ancestors(id) AS (
+            SELECT prerequisite_id FROM task_dependencies WHERE task_id=?
+            UNION
+            SELECT d.prerequisite_id FROM task_dependencies d
+            JOIN ancestors a ON d.task_id=a.id
+          ) SELECT 1 FROM ancestors WHERE id=? LIMIT 1
+        ''',
+              variables: [
+                Variable.withString(prerequisiteId),
+                Variable.withString(taskId),
+              ],
+            )
+            .getSingleOrNull();
+        if (cycle != null) {
+          throw ArgumentError('Dependency would create a cycle');
+        }
+        await db.customInsert(
+          '''
+          INSERT INTO task_dependencies(task_id,prerequisite_id,created_at)
+          VALUES(?,?,?)
+        ''',
+          variables: [
+            Variable.withString(taskId),
+            Variable.withString(prerequisiteId),
+            Variable.withString(now),
+          ],
+        );
+      }
+      await db.customUpdate(
+        'UPDATE tasks SET updated_at=? WHERE id=?',
+        variables: [Variable.withString(now), Variable.withString(taskId)],
+      );
+    });
+  }
+
+  Future<List<TaskSequence>> sequences() async {
+    final rows = await db
+        .customSelect(
+          'SELECT * FROM task_sequences ORDER BY name COLLATE NOCASE, id',
+        )
+        .get();
+    final memberships = await db
+        .customSelect(
+          'SELECT sequence_id,task_id FROM sequence_tasks ORDER BY sequence_id,position',
+        )
+        .get();
+    final taskIdsBySequence = <String, List<String>>{};
+    for (final row in memberships) {
+      taskIdsBySequence
+          .putIfAbsent(row.read<String>('sequence_id'), () => [])
+          .add(row.read<String>('task_id'));
+    }
+    return rows
+        .map(
+          (row) => TaskSequence(
+            id: row.read<String>('id'),
+            name: row.read<String>('name'),
+            taskIds: taskIdsBySequence[row.read<String>('id')] ?? const [],
+            createdAt: DateTime.parse(row.read<String>('created_at')),
+            updatedAt: DateTime.parse(row.read<String>('updated_at')),
+          ),
+        )
+        .toList();
+  }
+
+  Future<TaskSequence> addSequence(String name) async {
+    final cleaned = name.trim();
+    if (cleaned.isEmpty) throw ArgumentError('Sequence name is required');
+    final id = _uuid.v4();
+    final now = DateTime.now().toUtc().toIso8601String();
+    await db.customInsert(
+      'INSERT INTO task_sequences(id,name,created_at,updated_at) VALUES(?,?,?,?)',
+      variables: [
+        Variable.withString(id),
+        Variable.withString(cleaned),
+        Variable.withString(now),
+        Variable.withString(now),
+      ],
+    );
+    return (await sequences()).firstWhere((sequence) => sequence.id == id);
+  }
+
+  Future<void> renameSequence(TaskSequence previous, String name) async {
+    final cleaned = name.trim();
+    if (cleaned.isEmpty) throw ArgumentError('Sequence name is required');
+    final count = await db.customUpdate(
+      '''
+      UPDATE task_sequences SET name=?,updated_at=? WHERE id=? AND updated_at=?
+    ''',
+      variables: [
+        Variable.withString(cleaned),
+        Variable.withString(DateTime.now().toUtc().toIso8601String()),
+        Variable.withString(previous.id),
+        Variable.withString(previous.updatedAt.toUtc().toIso8601String()),
+      ],
+    );
+    if (count != 1) throw StateError('Sequence changed elsewhere. Reopen it.');
+  }
+
+  Future<void> deleteSequence(TaskSequence previous) async {
+    final deleted = await db.customUpdate(
+      'DELETE FROM task_sequences WHERE id=? AND updated_at=?',
+      variables: [
+        Variable.withString(previous.id),
+        Variable.withString(previous.updatedAt.toUtc().toIso8601String()),
+      ],
+    );
+    if (deleted != 1) {
+      throw StateError('Sequence changed elsewhere. Reopen it.');
+    }
+  }
+
+  Future<void> setSequenceTasks(
+    TaskSequence previous,
+    List<String> taskIds,
+  ) async {
+    if (taskIds.length != taskIds.toSet().length) {
+      throw ArgumentError('A task may appear only once in a sequence');
+    }
+    await db.transaction(() async {
+      final current = await db
+          .customSelect(
+            'SELECT updated_at FROM task_sequences WHERE id=?',
+            variables: [Variable.withString(previous.id)],
+          )
+          .getSingleOrNull();
+      if (current == null ||
+          current.read<String>('updated_at') !=
+              previous.updatedAt.toUtc().toIso8601String()) {
+        throw StateError('Sequence changed elsewhere. Reopen it.');
+      }
+      await db.customUpdate(
+        'DELETE FROM sequence_tasks WHERE sequence_id=?',
+        variables: [Variable.withString(previous.id)],
+      );
+      for (var position = 0; position < taskIds.length; position++) {
+        await db.customInsert(
+          '''
+          INSERT INTO sequence_tasks(sequence_id,task_id,position) VALUES(?,?,?)
+        ''',
+          variables: [
+            Variable.withString(previous.id),
+            Variable.withString(taskIds[position]),
+            Variable.withInt(position),
+          ],
+        );
+      }
+      await db.customUpdate(
+        'UPDATE task_sequences SET updated_at=? WHERE id=?',
+        variables: [
+          Variable.withString(DateTime.now().toUtc().toIso8601String()),
+          Variable.withString(previous.id),
+        ],
+      );
+    });
+  }
+
   Future<List<FixedEvent>> events() async {
     final rows = await db
         .customSelect('SELECT * FROM fixed_events ORDER BY starts_at')
@@ -347,7 +562,11 @@ class LifeRepository {
     return (await tasks()).firstWhere((task) => task.id == id);
   }
 
-  Future<void> updateTask(LifeTask previous, TaskDraft draft) async {
+  Future<void> updateTask(
+    LifeTask previous,
+    TaskDraft draft, {
+    Set<String> reviewedPrerequisiteIds = const {},
+  }) async {
     _validate(draft);
     final now = DateTime.now().toUtc();
     final completed = draft.status == TaskStatus.completed
@@ -355,6 +574,33 @@ class LifeRepository {
         : null;
     await db.transaction(() async {
       await _checkAssignment(draft.categoryId, draft.projectId);
+      if (draft.scheduledDate != null &&
+          draft.scheduledDate != previous.scheduledDate) {
+        final prerequisites = await db
+            .customSelect(
+              '''
+          SELECT p.id,p.status,p.scheduled_date FROM task_dependencies d
+          JOIN tasks p ON p.id=d.prerequisite_id WHERE d.task_id=?
+        ''',
+              variables: [Variable.withString(previous.id)],
+            )
+            .get();
+        for (final prerequisite in prerequisites) {
+          final day = prerequisite.read<String?>('scheduled_date');
+          if (prerequisite.read<String>('status') ==
+                  TaskStatus.completed.name ||
+              (day != null && draft.scheduledDate!.compareTo(day) > 0)) {
+            continue;
+          }
+          if (!reviewedPrerequisiteIds.contains(
+            prerequisite.read<String>('id'),
+          )) {
+            throw StateError(
+              'Prerequisites changed. Review the planned date again.',
+            );
+          }
+        }
+      }
       final updated = await db.customUpdate(
         '''
         UPDATE tasks SET title=?,notes=?,status=?,priority=?,category_id=?,project_id=?,scheduled_date=?,deadline_date=?,updated_at=?,completed_at=?,planned_duration_minutes=?,remaining_work_minutes=?,scheduling_locked=?
@@ -405,8 +651,8 @@ class LifeRepository {
 
   Future<void> setComplete(LifeTask task, bool complete) async {
     final now = DateTime.now().toUtc().toIso8601String();
-    await db.customUpdate(
-      'UPDATE tasks SET status=?,completed_at=?,updated_at=? WHERE id=?',
+    final updated = await db.customUpdate(
+      'UPDATE tasks SET status=?,completed_at=?,updated_at=? WHERE id=? AND updated_at=?',
       variables: [
         Variable.withString(
           complete ? TaskStatus.completed.name : TaskStatus.notStarted.name,
@@ -414,8 +660,14 @@ class LifeRepository {
         Variable<String>(complete ? now : null),
         Variable.withString(now),
         Variable.withString(task.id),
+        Variable.withString(task.updatedAt.toUtc().toIso8601String()),
       ],
     );
+    if (updated != 1) {
+      throw StateError(
+        'This task changed elsewhere. Reopen it before changing completion.',
+      );
+    }
   }
 
   Future<void> deleteTask(String id) async {
@@ -617,6 +869,58 @@ class LifeRepository {
         }
       }
       if (stale.isNotEmpty) throw StaleSchedulePreviewException(stale);
+
+      final proposedTaskDays = <String, String?>{
+        for (final change in preview.changes)
+          if (change.targetKind == ScheduleTargetKind.task)
+            change.targetId: change.afterDate,
+      };
+      for (final change in preview.changes) {
+        final taskId = change.targetKind == ScheduleTargetKind.task
+            ? change.targetId
+            : change.taskId ??
+                  (await db
+                          .customSelect(
+                            'SELECT task_id FROM work_sessions WHERE id=?',
+                            variables: [Variable.withString(change.targetId)],
+                          )
+                          .getSingleOrNull())
+                      ?.read<String>('task_id');
+        final proposedDay = change.targetKind == ScheduleTargetKind.task
+            ? change.afterDate
+            : change.afterStartsAt == null
+            ? null
+            : localDate(change.afterStartsAt!.toLocal());
+        if (taskId == null || proposedDay == null) continue;
+        final prerequisites = await db
+            .customSelect(
+              '''
+          SELECT p.id,p.status,p.scheduled_date FROM task_dependencies d
+          JOIN tasks p ON p.id=d.prerequisite_id WHERE d.task_id=?
+        ''',
+              variables: [Variable.withString(taskId)],
+            )
+            .get();
+        for (final prerequisite in prerequisites) {
+          final prerequisiteId = prerequisite.read<String>('id');
+          final prerequisiteDay = proposedTaskDays.containsKey(prerequisiteId)
+              ? proposedTaskDays[prerequisiteId]
+              : prerequisite.read<String?>('scheduled_date');
+          if (prerequisite.read<String>('status') ==
+                  TaskStatus.completed.name ||
+              (prerequisiteDay != null &&
+                  proposedDay.compareTo(prerequisiteDay) > 0)) {
+            continue;
+          }
+          final reviewed = preview.issues.any(
+            (issue) =>
+                issue.kind == ScheduleIssueKind.dependencyOrder &&
+                issue.targetId == change.targetId &&
+                issue.relatedId == prerequisiteId,
+          );
+          if (!reviewed) throw StaleSchedulePreviewException([change.targetId]);
+        }
+      }
 
       final now = DateTime.now().toUtc();
       final history = <ScheduleHistoryChange>[];

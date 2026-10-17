@@ -31,6 +31,27 @@ class Project {
   final DateTime createdAt;
 }
 
+class TaskSequence {
+  const TaskSequence({
+    required this.id,
+    required this.name,
+    required this.taskIds,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  final String id;
+  final String name;
+  final List<String> taskIds;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+}
+
+class TaskDependency {
+  const TaskDependency({required this.taskId, required this.prerequisiteId});
+  final String taskId;
+  final String prerequisiteId;
+}
+
 class FixedEvent {
   const FixedEvent({
     required this.id,

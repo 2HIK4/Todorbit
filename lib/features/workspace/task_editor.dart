@@ -28,12 +28,20 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   DateTime? deadline;
   bool saving = false;
   bool schedulingLocked = false;
+  LifeTask? currentTask;
+  late Set<String> prerequisiteIds;
+  bool savingPrerequisites = false;
 
   @override
   void initState() {
     super.initState();
     final task = widget.task;
+    currentTask = task;
     final workspace = ref.read(appControllerProvider);
+    prerequisiteIds = workspace.dependencies
+        .where((link) => link.taskId == task?.id)
+        .map((link) => link.prerequisiteId)
+        .toSet();
     title = TextEditingController(text: task?.title ?? '');
     notes = TextEditingController(text: task?.notes ?? '');
     plannedDuration = TextEditingController(
@@ -83,6 +91,15 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     setState(() => saving = true);
     try {
       final controller = ref.read(appControllerProvider);
+      final plannedMinutes = _parseMinutes(
+        plannedDuration.text,
+        'Planned minutes',
+      );
+      final remainingMinutes = _parseMinutes(
+        remainingWork.text,
+        'Remaining minutes',
+        allowZero: true,
+      );
       final draft = TaskDraft(
         title: title.text,
         notes: notes.text,
@@ -92,14 +109,60 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         projectId: projectId,
         scheduledDate: scheduled == null ? null : localDate(scheduled!),
         deadlineDate: deadline == null ? null : localDate(deadline!),
-        plannedDurationMinutes: int.tryParse(plannedDuration.text),
-        remainingWorkMinutes: int.tryParse(remainingWork.text),
+        plannedDurationMinutes: plannedMinutes,
+        remainingWorkMinutes: remainingMinutes,
         schedulingLocked: schedulingLocked,
       );
-      if (widget.task == null) {
+      final reviewedPrerequisiteIds = <String>{};
+      if (currentTask != null &&
+          draft.scheduledDate != currentTask!.scheduledDate &&
+          draft.scheduledDate != null) {
+        final byId = {for (final task in controller.tasks) task.id: task};
+        final conflicts = controller.dependencies
+            .where((link) => link.taskId == currentTask!.id)
+            .map((link) => byId[link.prerequisiteId])
+            .whereType<LifeTask>()
+            .where(
+              (task) =>
+                  task.status != TaskStatus.completed &&
+                  (task.scheduledDate == null ||
+                      draft.scheduledDate!.compareTo(task.scheduledDate!) <= 0),
+            )
+            .toList();
+        if (conflicts.isNotEmpty) {
+          if (!mounted) return;
+          final proceed = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Plan before prerequisites?'),
+              content: Text(
+                'This day is before unfinished prerequisite work: '
+                '${conflicts.map((task) => task.title).join(', ')}.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Save anyway'),
+                ),
+              ],
+            ),
+          );
+          if (proceed != true) return;
+          reviewedPrerequisiteIds.addAll(conflicts.map((task) => task.id));
+        }
+      }
+      if (currentTask == null) {
         await controller.addTask(draft);
       } else {
-        await controller.updateTask(widget.task!, draft);
+        await controller.updateTask(
+          currentTask!,
+          draft,
+          reviewedPrerequisiteIds: reviewedPrerequisiteIds,
+        );
       }
       if (mounted) widget.onSaved?.call();
     } catch (error) {
@@ -111,6 +174,18 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     } finally {
       if (mounted) setState(() => saving = false);
     }
+  }
+
+  int? _parseMinutes(String input, String label, {bool allowZero = false}) {
+    final cleaned = input.trim();
+    if (cleaned.isEmpty) return null;
+    final value = int.tryParse(cleaned);
+    if (value == null || value < (allowZero ? 0 : 1)) {
+      throw FormatException(
+        '$label must be ${allowZero ? 'zero or a positive' : 'a positive'} whole number',
+      );
+    }
+    return value;
   }
 
   Future<void> _pickDate(bool isDeadline) async {
@@ -150,6 +225,30 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         ),
       ),
     );
+  }
+
+  Future<void> _savePrerequisites() async {
+    final task = currentTask;
+    if (task == null) return;
+    setState(() => savingPrerequisites = true);
+    try {
+      final controller = ref.read(appControllerProvider);
+      await controller.setPrerequisites(task, prerequisiteIds);
+      currentTask = controller.tasks.firstWhere((item) => item.id == task.id);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Prerequisites saved.')));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not save prerequisites: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => savingPrerequisites = false);
+    }
   }
 
   @override
@@ -311,6 +410,50 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                       setState(() => schedulingLocked = value),
                 ),
                 if (widget.task != null) ...[
+                  const SizedBox(height: 16),
+                  ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    title: const Text('Prerequisites'),
+                    subtitle: Text(
+                      controller.unmetPrerequisites(widget.task!.id).isEmpty
+                          ? 'No unmet prerequisites'
+                          : 'Blocked by ${controller.unmetPrerequisites(widget.task!.id).length} task(s)',
+                    ),
+                    children: [
+                      const Text(
+                        'A task can appear in any project. Sequence order is separate.',
+                      ),
+                      for (final candidate in controller.tasks.where(
+                        (item) => item.id != widget.task!.id,
+                      ))
+                        CheckboxListTile(
+                          dense: true,
+                          title: Text(candidate.title),
+                          subtitle: Text(
+                            candidate.status == TaskStatus.completed
+                                ? 'Completed'
+                                : 'Incomplete',
+                          ),
+                          value: prerequisiteIds.contains(candidate.id),
+                          onChanged: (value) => setState(() {
+                            if (value == true) {
+                              prerequisiteIds.add(candidate.id);
+                            } else {
+                              prerequisiteIds.remove(candidate.id);
+                            }
+                          }),
+                        ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: OutlinedButton(
+                          onPressed: savingPrerequisites
+                              ? null
+                              : _savePrerequisites,
+                          child: const Text('Save prerequisites'),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 16),
                   Row(
                     children: [

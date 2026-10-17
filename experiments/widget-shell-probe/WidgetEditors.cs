@@ -219,11 +219,24 @@ internal sealed class TaskEditorDialog : Form {
     try {
       var selectedStatus = (Choice)status.SelectedItem!;
       var selectedPriority = (Choice)priority.SelectedItem!;
-      repository.UpdateTask(original.Id, new WidgetTaskUpdate(
+      var update = new WidgetTaskUpdate(
         title.Text, notes.Text, selectedStatus.Value,
         int.Parse(selectedPriority.Value, CultureInfo.InvariantCulture),
         SelectedValue(category), SelectedValue(project), DateValue(scheduled),
-        DateValue(deadline), original.UpdatedAt));
+        DateValue(deadline), original.UpdatedAt);
+      try {
+        repository.UpdateTask(original.Id, update);
+      } catch (DependencyReviewRequiredException conflict) {
+        var names = String.Join(", ", conflict.Conflicts.Select(item => item.Title));
+        var answer = MessageBox.Show(this,
+          $"This day is before unfinished prerequisite work: {names}. Save anyway?",
+          "Plan before prerequisites?", MessageBoxButtons.YesNo,
+          MessageBoxIcon.Warning);
+        if (answer != DialogResult.Yes) return;
+        repository.UpdateTask(original.Id, update with {
+          ReviewedPrerequisiteIds = conflict.Conflicts.Select(item => item.Id).ToArray(),
+        });
+      }
       DialogResult = DialogResult.OK;
       Close();
     } catch (Exception error) {

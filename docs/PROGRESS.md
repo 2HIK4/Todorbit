@@ -23,6 +23,21 @@
 - Schema v4 persists editable availability, task schedule protection, focused
   manual/Smart scheduling history, safe undo, and previous/original restoration.
   Stale previews are rejected and later manual schedules are protected.
+- Schema v5 adds persistent named task sequences and cross-project prerequisite
+  links. Sequence order can be edited with accessible move controls, and the
+  sequence can be sent to Smart Reschedule in its stored order. Prerequisites
+  are edited from task details, cycles are rejected transactionally, and
+  incomplete prerequisites appear as blocked indicators. Smart Reschedule
+  warns about proposals before unfinished prerequisites and rejects applies
+  that gained an unreviewed conflict after preview.
+- Stale completion now rejects a newer task edit, and task duration input
+  rejects invalid text instead of silently clearing the estimate. Prerequisite
+  edits compare task revisions, and the narrow task editor keeps unsaved fields
+  after saving prerequisites.
+- Quick Search opens from the sidebar or Ctrl+K and searches persisted task
+  titles/notes plus category and project names. Results navigate to the real
+  task, category, or project. This is an in-memory search over the loaded
+  workspace; advanced filters, tags, and saved views remain unfinished.
 - Category-dialog lifetime and task-row hover regressions covered by widget
   tests. The previously reported Windows-only checkbox duplication has not been
   reproduced in automated tests.
@@ -58,35 +73,44 @@
 
 - Flutter 3.47.7 / Dart 3.13.5; Windows toolchain healthy.
 - `flutter analyze`: clean.
-- `flutter test`: 34 passing tests, including engine, database, migration,
+- `flutter test`: 45 passing tests, including engine, database, migration,
   stale-apply, undo/restoration, split, persistence, and preview/Apply coverage.
 - Native Release build and disposable database/settings self-test: passing.
 - Native dependency audit: no vulnerable packages reported.
 - `flutter build windows` Release and Debug packages succeed and contain both
   `life_manager.exe` and `life_manager_widget.exe`.
 - Packaged `life_manager_widget.exe --self-test`: passing.
-- `flutter build windows --release`: passing; package contains the main app and
-  schema-v4-compatible native companion.
+- `flutter build windows --release`: passing at the previous checkpoint; package
+  contains the main app and native companion.
 - Manual visual check: the Release task-list entry point opened the themed Smart
   Reschedule workspace with the real current scope, selected tasks,
   Availability, Generate preview, Cancel, and disabled-until-preview Apply. It
   was closed without applying changes. Automated widget coverage verifies the
   preview and persisted Apply path.
 - The native companion never creates or migrates the production database; it
-  requires schema v4, enables foreign keys and a busy timeout, and uses
+  accepts schema v4/v5, enables foreign keys and a busy timeout, and uses
   parameterized transactional writes. Automated tests use an isolated database.
+- Milestone B validation: focused v4→v5 migration, dependency-cycle/rollback,
+  stale-editor, sequence persistence, and joint schedule-conflict tests pass.
+  Native Release build and self-test pass for both accepted schema versions.
+  `flutter analyze` is clean, `flutter test` passed 45 tests, and the Windows
+  Release rebuild passed with the schema-v5-compatible widget companion.
+  Quick Search and prerequisite editing have widget-level interaction tests.
+  New GUI flows still need manual Windows acceptance testing.
 
 ## In progress
 
-- Milestone 3 follow-up: dependency and persistent-sequence models, recurrence,
-  richer multi-window availability editing, and drag-to-reorder sequence UX.
+- Milestone 3 follow-up: recurrence, richer multi-window availability editing,
+  and drag-to-reorder sequence UX. Sequences currently use accessible up/down
+  controls. A sequence owns at most one position per task, and a task can belong
+  to one sequence.
 - Reproduce the reported Windows task-row checkbox duplication and capture its
   first exception if it occurs again; widget tests remain stable.
 
 ## Not yet implemented
 
-- Habits, goals, timer, templates, search/saved views, backups, Trash,
-  notifications, privacy controls, and import/export.
+- Habits, goals, timer, templates, advanced search/saved views, backups, Trash,
+  notifications, privacy controls, import/export, and installer packaging.
 
 ## Environment and data notes
 
@@ -101,8 +125,9 @@
 
 ## Next action
 
-Add dependency and persistent-sequence models before claiming dependency
-ordering or saved sequence scheduling. Recurrence should target occurrence IDs
-without changing recurrence rules by default. Re-run the native widget regression
+Implement recurring series and stable occurrence IDs with exceptions; edits to
+one occurrence should not alter the series rule by default. Before schema v6,
+back up the user's database and preserve schema v5 relationships in migration.
+Re-run the native widget regression
 checklist in `docs/windows-widget.md` whenever shell attachment, native input,
 rendering, DPI behavior, process lifecycle, or packaging changes.

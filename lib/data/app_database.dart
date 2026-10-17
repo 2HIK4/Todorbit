@@ -40,7 +40,7 @@ class AppDatabase extends GeneratedDatabase {
   }
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   Iterable<TableInfo> get allTables => const [];
@@ -101,9 +101,10 @@ class AppDatabase extends GeneratedDatabase {
       await _createEvents();
       await _createSessions();
       await _createScheduling();
+      await _createRelationships();
     },
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 3 || to != 4) {
+      if (from < 1 || from > 4 || to != 5) {
         throw StateError('No migration registered from schema $from to $to');
       }
       if (from == 1) {
@@ -112,18 +113,53 @@ class AppDatabase extends GeneratedDatabase {
       if (from < 3) {
         await _createSessions();
       }
-      await customStatement(
-        'ALTER TABLE tasks ADD COLUMN planned_duration_minutes INTEGER CHECK(planned_duration_minutes IS NULL OR planned_duration_minutes > 0)',
-      );
-      await customStatement(
-        'ALTER TABLE tasks ADD COLUMN remaining_work_minutes INTEGER CHECK(remaining_work_minutes IS NULL OR remaining_work_minutes >= 0)',
-      );
-      await customStatement(
-        'ALTER TABLE tasks ADD COLUMN scheduling_locked INTEGER NOT NULL DEFAULT 0 CHECK(scheduling_locked IN (0,1))',
-      );
-      await _createScheduling();
+      if (from < 4) {
+        await customStatement(
+          'ALTER TABLE tasks ADD COLUMN planned_duration_minutes INTEGER CHECK(planned_duration_minutes IS NULL OR planned_duration_minutes > 0)',
+        );
+        await customStatement(
+          'ALTER TABLE tasks ADD COLUMN remaining_work_minutes INTEGER CHECK(remaining_work_minutes IS NULL OR remaining_work_minutes >= 0)',
+        );
+        await customStatement(
+          'ALTER TABLE tasks ADD COLUMN scheduling_locked INTEGER NOT NULL DEFAULT 0 CHECK(scheduling_locked IN (0,1))',
+        );
+        await _createScheduling();
+      }
+      await _createRelationships();
     },
   );
+
+  Future<void> _createRelationships() async {
+    await customStatement('''
+      CREATE TABLE task_sequences (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL CHECK(length(trim(name)) > 0),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await customStatement('''
+      CREATE TABLE sequence_tasks (
+        sequence_id TEXT NOT NULL REFERENCES task_sequences(id) ON DELETE CASCADE,
+        task_id TEXT NOT NULL UNIQUE REFERENCES tasks(id) ON DELETE CASCADE,
+        position INTEGER NOT NULL CHECK(position >= 0),
+        PRIMARY KEY(sequence_id, task_id),
+        UNIQUE(sequence_id, position)
+      )
+    ''');
+    await customStatement('''
+      CREATE TABLE task_dependencies (
+        task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+        prerequisite_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY(task_id, prerequisite_id),
+        CHECK(task_id <> prerequisite_id)
+      )
+    ''');
+    await customStatement(
+      'CREATE INDEX task_dependencies_prerequisite ON task_dependencies(prerequisite_id)',
+    );
+  }
 
   Future<void> _createEvents() async {
     await customStatement('''

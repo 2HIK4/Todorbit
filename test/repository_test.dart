@@ -83,6 +83,16 @@ void main() {
     expect(await repository.tasks(), isEmpty);
   });
 
+  test('stale completion cannot overwrite a later task edit', () async {
+    final stale = await repository.addTask(const TaskDraft(title: 'Original'));
+    await repository.updateTask(stale, const TaskDraft(title: 'Edited'));
+    await expectLater(repository.setComplete(stale, true), throwsStateError);
+    final current = (await repository.tasks()).single;
+    expect(current.title, 'Edited');
+    expect(current.status, TaskStatus.notStarted);
+    expect(current.completedAt, isNull);
+  });
+
   test('task survives database close and reopen', () async {
     await database.close();
     final directory = await Directory.systemTemp.createTemp(
