@@ -29,17 +29,32 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
   DateTime get weekStart =>
       DateTime(day.year, day.month, day.day - day.weekday + 1);
 
-  void _move(int direction) => setState(() {
-    selected = switch (mode) {
-      CalendarMode.day => DateTime(day.year, day.month, day.day + direction),
-      CalendarMode.week => DateTime(
-        day.year,
-        day.month,
-        day.day + 7 * direction,
-      ),
-      CalendarMode.month => _shiftMonth(direction),
-    };
-  });
+  Future<void> _move(int direction) async {
+    setState(() {
+      selected = switch (mode) {
+        CalendarMode.day => DateTime(day.year, day.month, day.day + direction),
+        CalendarMode.week => DateTime(
+          day.year,
+          day.month,
+          day.day + 7 * direction,
+        ),
+        CalendarMode.month => _shiftMonth(direction),
+      };
+    });
+    await _loadSelectedMonth();
+  }
+
+  Future<void> _loadSelectedMonth() async {
+    try {
+      await ref.read(appControllerProvider).ensureRecurringMonth(selected);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not load recurring tasks: $error')),
+        );
+      }
+    }
+  }
 
   DateTime _shiftMonth(int direction) {
     final first = DateTime(day.year, day.month + direction);
@@ -99,7 +114,10 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                     ?.copyWith(fontWeight: FontWeight.w700),
               ),
               OutlinedButton(
-                onPressed: () => setState(() => selected = DateTime.now()),
+                onPressed: () {
+                  setState(() => selected = DateTime.now());
+                  _loadSelectedMonth();
+                },
                 child: const Text('Today'),
               ),
               IconButton(

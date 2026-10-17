@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import '../data/life_repository.dart';
 import '../data/appearance_preference_store.dart';
 import '../domain/models.dart';
+import '../domain/recurrence.dart';
 import '../domain/appearance.dart';
 import '../domain/scheduling_models.dart';
 
@@ -55,6 +56,11 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> refresh() async {
+    final today = localDate(DateTime.now());
+    await repository.ensureRecurringTasks(
+      RecurrenceRule.shiftDate(today, -14),
+      RecurrenceRule.shiftDate(today, 30),
+    );
     final result = await Future.wait<Object>([
       repository.categories(),
       repository.projects(),
@@ -187,6 +193,21 @@ class AppController extends ChangeNotifier {
     select(task.id);
   }
 
+  Future<void> addRecurringTask(TaskDraft draft, RecurrenceRule rule) async {
+    final task = await repository.addRecurringTask(draft, rule);
+    await refresh();
+    select(task.id);
+  }
+
+  Future<void> ensureRecurringMonth(DateTime date) async {
+    final first = localDate(DateTime(date.year, date.month, 1));
+    await repository.ensureRecurringTasks(
+      RecurrenceRule.shiftDate(first, -7),
+      RecurrenceRule.shiftDate(first, 45),
+    );
+    await refresh();
+  }
+
   Future<void> updateTask(
     LifeTask previous,
     TaskDraft draft, {
@@ -207,6 +228,11 @@ class AppController extends ChangeNotifier {
 
   Future<void> deleteTask(String id) async {
     await repository.deleteTask(id);
+    await refresh();
+  }
+
+  Future<void> skipRecurringOccurrence(LifeTask task) async {
+    await repository.skipRecurringOccurrence(task);
     await refresh();
   }
 

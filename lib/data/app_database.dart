@@ -40,7 +40,7 @@ class AppDatabase extends GeneratedDatabase {
   }
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   Iterable<TableInfo> get allTables => const [];
@@ -102,9 +102,10 @@ class AppDatabase extends GeneratedDatabase {
       await _createSessions();
       await _createScheduling();
       await _createRelationships();
+      await _createRecurrence();
     },
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 4 || to != 5) {
+      if (from < 1 || from > 5 || to != 6) {
         throw StateError('No migration registered from schema $from to $to');
       }
       if (from == 1) {
@@ -125,9 +126,99 @@ class AppDatabase extends GeneratedDatabase {
         );
         await _createScheduling();
       }
-      await _createRelationships();
+      if (from < 5) {
+        await _createRelationships();
+      }
+      await _createRecurrence();
     },
   );
+
+  Future<void> _createRecurrence() async {
+    await customStatement('''
+      CREATE TABLE recurrence_series (
+        id TEXT PRIMARY KEY,
+        kind TEXT NOT NULL CHECK(kind IN ('daily','weekly','weekdays','monthly','yearly','afterCompletion')),
+        start_date TEXT NOT NULL,
+        interval INTEGER NOT NULL CHECK(interval > 0),
+        weekdays TEXT NOT NULL DEFAULT '',
+        end_date TEXT,
+        max_occurrences INTEGER CHECK(max_occurrences IS NULL OR max_occurrences > 0),
+        title TEXT NOT NULL CHECK(length(trim(title)) > 0),
+        notes TEXT NOT NULL DEFAULT '',
+        priority INTEGER NOT NULL DEFAULT 0 CHECK(priority BETWEEN 0 AND 3),
+        category_id TEXT REFERENCES categories(id) ON DELETE RESTRICT,
+        project_id TEXT REFERENCES projects(id) ON DELETE RESTRICT,
+        deadline_offset_days INTEGER,
+        planned_duration_minutes INTEGER CHECK(planned_duration_minutes IS NULL OR planned_duration_minutes > 0),
+        remaining_work_minutes INTEGER CHECK(remaining_work_minutes IS NULL OR remaining_work_minutes >= 0),
+        scheduling_locked INTEGER NOT NULL DEFAULT 0 CHECK(scheduling_locked IN (0,1)),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await customStatement('''
+      CREATE TABLE recurrence_occurrences (
+        id TEXT PRIMARY KEY,
+        series_id TEXT NOT NULL REFERENCES recurrence_series(id) ON DELETE CASCADE,
+        ordinal INTEGER NOT NULL CHECK(ordinal >= 0),
+        nominal_date TEXT NOT NULL,
+        task_id TEXT UNIQUE REFERENCES tasks(id) ON DELETE SET NULL,
+        disposition TEXT NOT NULL DEFAULT 'active'
+          CHECK(disposition IN ('active','skipped','cancelled')),
+        is_edited INTEGER NOT NULL DEFAULT 0 CHECK(is_edited IN (0,1)),
+        is_rescheduled INTEGER NOT NULL DEFAULT 0 CHECK(is_rescheduled IN (0,1)),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE(series_id, ordinal)
+      )
+    ''');
+    await customStatement(
+      'CREATE INDEX recurrence_occurrences_series_date ON recurrence_occurrences(series_id, nominal_date)',
+    );
+    await customStatement('''
+      CREATE TRIGGER recurrence_task_schedule_updated
+      AFTER UPDATE OF scheduled_date ON tasks
+      WHEN OLD.scheduled_date IS NOT NEW.scheduled_date
+      BEGIN
+        UPDATE recurrence_occurrences
+        SET is_rescheduled=(NEW.scheduled_date IS NOT nominal_date),
+            updated_at=NEW.updated_at
+        WHERE task_id=NEW.id;
+      END
+    ''');
+    await customStatement('''
+      CREATE TRIGGER recurrence_task_content_updated
+      AFTER UPDATE OF title,notes,priority,category_id,project_id,
+        deadline_date,planned_duration_minutes,remaining_work_minutes,
+        scheduling_locked ON tasks
+      WHEN OLD.title IS NOT NEW.title OR OLD.notes IS NOT NEW.notes OR
+        OLD.priority IS NOT NEW.priority OR
+        OLD.category_id IS NOT NEW.category_id OR
+        OLD.project_id IS NOT NEW.project_id OR
+        OLD.deadline_date IS NOT NEW.deadline_date OR
+        OLD.planned_duration_minutes IS NOT NEW.planned_duration_minutes OR
+        OLD.remaining_work_minutes IS NOT NEW.remaining_work_minutes OR
+        OLD.scheduling_locked IS NOT NEW.scheduling_locked
+      BEGIN
+        UPDATE recurrence_occurrences
+        SET is_edited=1, updated_at=NEW.updated_at
+        WHERE task_id=NEW.id;
+      END
+    ''');
+    await customStatement('''
+      CREATE TRIGGER recurrence_task_cancelled
+      AFTER UPDATE OF status ON tasks
+      WHEN OLD.status IS NOT NEW.status AND
+        (OLD.status='cancelled' OR NEW.status='cancelled')
+      BEGIN
+        UPDATE recurrence_occurrences
+        SET disposition=CASE WHEN NEW.status='cancelled'
+          THEN 'cancelled' ELSE 'active' END,
+          updated_at=NEW.updated_at
+        WHERE task_id=NEW.id;
+      END
+    ''');
+  }
 
   Future<void> _createRelationships() async {
     await customStatement('''

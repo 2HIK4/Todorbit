@@ -20,7 +20,7 @@ internal sealed class DependencyReviewRequiredException(
 
 internal sealed class LifeManagerWidgetRepository : IDisposable {
   private const int MinimumSchemaVersion = 4;
-  private const int MaximumSchemaVersion = 5;
+  private const int MaximumSchemaVersion = 6;
   private readonly SqliteConnection connection;
   private readonly int schemaVersion;
   internal string DatabasePath { get; }
@@ -158,15 +158,21 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
     var completedAt = update.Status == "completed" ? now : null;
     using var transaction = connection.BeginTransaction();
     string? previousScheduledDate = null;
+    string? previousStatus = null;
     using (var previousCommand = connection.CreateCommand()) {
       previousCommand.Transaction = transaction;
       previousCommand.CommandText =
-        "SELECT scheduled_date FROM tasks WHERE id=$id AND updated_at=$expected";
+        "SELECT scheduled_date,status FROM tasks WHERE id=$id AND updated_at=$expected";
       previousCommand.Parameters.AddWithValue("$id", id);
       previousCommand.Parameters.AddWithValue("$expected", update.ExpectedUpdatedAt);
-      var value = previousCommand.ExecuteScalar();
-      previousScheduledDate = value is null or DBNull ? null : (string)value;
+      using var reader = previousCommand.ExecuteReader();
+      if (reader.Read()) {
+        previousScheduledDate = reader.IsDBNull(0) ? null : reader.GetString(0);
+        previousStatus = reader.GetString(1);
+      }
     }
+    if (schemaVersion >= 6 && previousStatus == "completed" &&
+        update.Status != "completed") CheckRecurringReopen(id, transaction);
     using var command = connection.CreateCommand();
     command.Transaction = transaction;
     if (schemaVersion >= 5 && update.ScheduledDate != null &&
@@ -254,6 +260,10 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
       change.Parameters.AddWithValue("$afterUpdated", now);
       change.ExecuteNonQuery();
     }
+    if (schemaVersion >= 6 && previousStatus != "completed" &&
+        update.Status == "completed") {
+      AdvanceCompletionSeries(id, now, transaction);
+    }
     transaction.Commit();
   }
 
@@ -273,7 +283,119 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
       throw new InvalidOperationException(
         "The task was already changed or no longer exists.");
     }
+    if (schemaVersion >= 6) AdvanceCompletionSeries(id, now, transaction);
     transaction.Commit();
+  }
+
+  private void CheckRecurringReopen(string id, SqliteTransaction transaction) {
+    using var command = connection.CreateCommand();
+    command.Transaction = transaction;
+    command.CommandText = """
+      SELECT 1 FROM recurrence_occurrences current
+      JOIN recurrence_series s ON s.id=current.series_id
+      JOIN recurrence_occurrences later ON later.series_id=s.id
+      WHERE current.task_id=$id AND s.kind='afterCompletion'
+        AND later.ordinal>current.ordinal LIMIT 1
+      """;
+    command.Parameters.AddWithValue("$id", id);
+    if (command.ExecuteScalar() != null) {
+      throw new InvalidOperationException(
+        "A later occurrence already exists. Resolve it before reopening this task.");
+    }
+  }
+
+  private void AdvanceCompletionSeries(
+      string id, string now, SqliteTransaction transaction) {
+    string seriesId, title, notes, nextDate;
+    string? categoryId, projectId, deadlineDate, endDate;
+    int ordinal, interval, priority;
+    int? maxOccurrences, deadlineOffset, plannedMinutes, remainingMinutes;
+    bool locked;
+    using (var command = connection.CreateCommand()) {
+      command.Transaction = transaction;
+      command.CommandText = """
+        SELECT s.id,o.ordinal,s.interval,s.end_date,s.max_occurrences,
+          s.title,s.notes,s.priority,s.category_id,s.project_id,
+          s.deadline_offset_days,s.planned_duration_minutes,
+          s.remaining_work_minutes,s.scheduling_locked
+        FROM recurrence_occurrences o JOIN recurrence_series s ON s.id=o.series_id
+        WHERE o.task_id=$id AND s.kind='afterCompletion'
+        """;
+      command.Parameters.AddWithValue("$id", id);
+      using var reader = command.ExecuteReader();
+      if (!reader.Read()) return;
+      seriesId = reader.GetString(0);
+      ordinal = reader.GetInt32(1) + 1;
+      interval = reader.GetInt32(2);
+      endDate = reader.IsDBNull(3) ? null : reader.GetString(3);
+      maxOccurrences = reader.IsDBNull(4) ? null : reader.GetInt32(4);
+      title = reader.GetString(5);
+      notes = reader.GetString(6);
+      priority = reader.GetInt32(7);
+      categoryId = reader.IsDBNull(8) ? null : reader.GetString(8);
+      projectId = reader.IsDBNull(9) ? null : reader.GetString(9);
+      deadlineOffset = reader.IsDBNull(10) ? null : reader.GetInt32(10);
+      plannedMinutes = reader.IsDBNull(11) ? null : reader.GetInt32(11);
+      remainingMinutes = reader.IsDBNull(12) ? null : reader.GetInt32(12);
+      locked = reader.GetInt32(13) == 1;
+    }
+    if (maxOccurrences != null && ordinal >= maxOccurrences) return;
+    var nextDay = DateTime.Now.Date.AddDays(interval);
+    nextDate = nextDay.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    if (endDate != null &&
+        String.CompareOrdinal(nextDate, endDate) > 0) return;
+    deadlineDate = deadlineOffset == null ? null :
+      nextDay.AddDays(deadlineOffset.Value)
+        .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    using (var existing = connection.CreateCommand()) {
+      existing.Transaction = transaction;
+      existing.CommandText = """
+        SELECT 1 FROM recurrence_occurrences
+        WHERE series_id=$series AND ordinal=$ordinal LIMIT 1
+        """;
+      existing.Parameters.AddWithValue("$series", seriesId);
+      existing.Parameters.AddWithValue("$ordinal", ordinal);
+      if (existing.ExecuteScalar() != null) return;
+    }
+    var taskId = Guid.NewGuid().ToString();
+    using (var task = connection.CreateCommand()) {
+      task.Transaction = transaction;
+      task.CommandText = """
+        INSERT INTO tasks(id,title,notes,status,priority,category_id,
+          project_id,scheduled_date,deadline_date,created_at,updated_at,
+          completed_at,planned_duration_minutes,remaining_work_minutes,
+          scheduling_locked)
+        VALUES($id,$title,$notes,'notStarted',$priority,$category,$project,
+          $scheduled,$deadline,$now,$now,NULL,$planned,$remaining,$locked)
+        """;
+      task.Parameters.AddWithValue("$id", taskId);
+      task.Parameters.AddWithValue("$title", title);
+      task.Parameters.AddWithValue("$notes", notes);
+      task.Parameters.AddWithValue("$priority", priority);
+      task.Parameters.AddWithValue("$category", DbValue(categoryId));
+      task.Parameters.AddWithValue("$project", DbValue(projectId));
+      task.Parameters.AddWithValue("$scheduled", nextDate);
+      task.Parameters.AddWithValue("$deadline", DbValue(deadlineDate));
+      task.Parameters.AddWithValue("$now", now);
+      task.Parameters.AddWithValue("$planned", (object?)plannedMinutes ?? DBNull.Value);
+      task.Parameters.AddWithValue("$remaining", (object?)remainingMinutes ?? DBNull.Value);
+      task.Parameters.AddWithValue("$locked", locked ? 1 : 0);
+      task.ExecuteNonQuery();
+    }
+    using var occurrence = connection.CreateCommand();
+    occurrence.Transaction = transaction;
+    occurrence.CommandText = """
+      INSERT INTO recurrence_occurrences(
+        id,series_id,ordinal,nominal_date,task_id,created_at,updated_at)
+      VALUES($id,$series,$ordinal,$date,$task,$now,$now)
+      """;
+    occurrence.Parameters.AddWithValue("$id", Guid.NewGuid().ToString());
+    occurrence.Parameters.AddWithValue("$series", seriesId);
+    occurrence.Parameters.AddWithValue("$ordinal", ordinal);
+    occurrence.Parameters.AddWithValue("$date", nextDate);
+    occurrence.Parameters.AddWithValue("$task", taskId);
+    occurrence.Parameters.AddWithValue("$now", now);
+    occurrence.ExecuteNonQuery();
   }
 
   private IReadOnlyList<WidgetChoice> LoadChoices(string sql) {

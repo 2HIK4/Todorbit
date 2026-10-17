@@ -240,7 +240,7 @@ void main() {
     );
   });
 
-  test('schema v4 task data migrates to v5 relationships', () async {
+  test('schema v4 task data migrates through relationships to v6', () async {
     await database.close();
     final directory = await Directory.systemTemp.createTemp('life_manager_v4_');
     final file = File('${directory.path}${Platform.pathSeparator}app.sqlite');
@@ -250,6 +250,11 @@ void main() {
           .addTask(const TaskDraft(title: 'Keep me'));
       await first.close();
       final raw = sqlite.sqlite3.open(file.path);
+      raw.execute('DROP TRIGGER recurrence_task_schedule_updated');
+      raw.execute('DROP TRIGGER recurrence_task_content_updated');
+      raw.execute('DROP TRIGGER recurrence_task_cancelled');
+      raw.execute('DROP TABLE recurrence_occurrences');
+      raw.execute('DROP TABLE recurrence_series');
       raw.execute('DROP TABLE task_dependencies');
       raw.execute('DROP TABLE sequence_tasks');
       raw.execute('DROP TABLE task_sequences');

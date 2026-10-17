@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
+import '../../domain/recurrence.dart';
 import '../calendar/session_editor.dart';
 
 class TaskEditor extends ConsumerStatefulWidget {
@@ -20,12 +21,17 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   late final TextEditingController notes;
   late final TextEditingController plannedDuration;
   late final TextEditingController remainingWork;
+  late final TextEditingController recurrenceInterval;
+  late final TextEditingController recurrenceCount;
   late TaskStatus status;
   late int priority;
   String? categoryId;
   String? projectId;
   DateTime? scheduled;
   DateTime? deadline;
+  DateTime? recurrenceEnd;
+  RecurrenceKind? recurrenceKind;
+  Set<int> recurrenceWeekdays = {};
   bool saving = false;
   bool schedulingLocked = false;
   LifeTask? currentTask;
@@ -50,6 +56,8 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     remainingWork = TextEditingController(
       text: task?.remainingWorkMinutes?.toString() ?? '',
     );
+    recurrenceInterval = TextEditingController(text: '1');
+    recurrenceCount = TextEditingController();
     schedulingLocked = task?.schedulingLocked ?? false;
     status = task?.status ?? TaskStatus.notStarted;
     priority = task?.priority ?? 0;
@@ -79,6 +87,8 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     notes.dispose();
     plannedDuration.dispose();
     remainingWork.dispose();
+    recurrenceInterval.dispose();
+    recurrenceCount.dispose();
     super.dispose();
   }
 
@@ -156,7 +166,36 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         }
       }
       if (currentTask == null) {
-        await controller.addTask(draft);
+        if (recurrenceKind == null) {
+          await controller.addTask(draft);
+        } else {
+          if (draft.scheduledDate == null) {
+            throw const FormatException(
+              'Select a scheduled day for recurrence',
+            );
+          }
+          final interval = int.tryParse(recurrenceInterval.text.trim());
+          final countText = recurrenceCount.text.trim();
+          final count = countText.isEmpty ? null : int.tryParse(countText);
+          if (interval == null ||
+              interval < 1 ||
+              (countText.isNotEmpty && (count == null || count < 1))) {
+            throw const FormatException('Enter positive recurrence numbers');
+          }
+          await controller.addRecurringTask(
+            draft,
+            RecurrenceRule(
+              kind: recurrenceKind!,
+              startDate: draft.scheduledDate!,
+              interval: interval,
+              weekdays: recurrenceKind == RecurrenceKind.weekdays
+                  ? recurrenceWeekdays
+                  : const {},
+              endDate: recurrenceEnd == null ? null : localDate(recurrenceEnd!),
+              maxOccurrences: count,
+            ),
+          );
+        }
       } else {
         await controller.updateTask(
           currentTask!,
@@ -204,6 +243,53 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
           scheduled = picked;
         }
       });
+    }
+  }
+
+  Future<void> _pickRecurrenceEnd() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: recurrenceEnd ?? scheduled ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) setState(() => recurrenceEnd = picked);
+  }
+
+  Future<void> _skipOccurrence() async {
+    final task = currentTask;
+    if (task == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Skip this occurrence?'),
+        content: const Text(
+          'This occurrence will be kept in history as skipped. '
+          'For after-completion recurrence, no next day is calculated '
+          'without an actual completion.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep task'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Skip occurrence'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(appControllerProvider).skipRecurringOccurrence(task);
+      if (mounted) widget.onSaved?.call();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not skip occurrence: $error')),
+        );
+      }
     }
   }
 
@@ -295,6 +381,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<TaskStatus>(
+                  key: ValueKey('status:$status:$recurrenceKind'),
                   initialValue: status,
                   decoration: const InputDecoration(labelText: 'Status'),
                   items: TaskStatus.values
@@ -305,7 +392,9 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                         ),
                       )
                       .toList(),
-                  onChanged: (value) => setState(() => status = value!),
+                  onChanged: widget.task == null && recurrenceKind != null
+                      ? null
+                      : (value) => setState(() => status = value!),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
@@ -375,6 +464,127 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                   () => _pickDate(true),
                   () => setState(() => deadline = null),
                 ),
+                if (widget.task == null) ...[
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<RecurrenceKind?>(
+                    initialValue: recurrenceKind,
+                    decoration: const InputDecoration(labelText: 'Repeat'),
+                    items: const [
+                      DropdownMenuItem<RecurrenceKind?>(
+                        value: null,
+                        child: Text('Does not repeat'),
+                      ),
+                      DropdownMenuItem(
+                        value: RecurrenceKind.daily,
+                        child: Text('Daily'),
+                      ),
+                      DropdownMenuItem(
+                        value: RecurrenceKind.weekly,
+                        child: Text('Weekly'),
+                      ),
+                      DropdownMenuItem(
+                        value: RecurrenceKind.weekdays,
+                        child: Text('Selected weekdays'),
+                      ),
+                      DropdownMenuItem(
+                        value: RecurrenceKind.monthly,
+                        child: Text('Monthly'),
+                      ),
+                      DropdownMenuItem(
+                        value: RecurrenceKind.yearly,
+                        child: Text('Yearly'),
+                      ),
+                      DropdownMenuItem(
+                        value: RecurrenceKind.afterCompletion,
+                        child: Text('After completion'),
+                      ),
+                    ],
+                    onChanged: (value) => setState(() {
+                      recurrenceKind = value;
+                      if (value != null) status = TaskStatus.notStarted;
+                      if (value == RecurrenceKind.weekdays &&
+                          recurrenceWeekdays.isEmpty) {
+                        recurrenceWeekdays = {
+                          scheduled?.weekday ?? DateTime.now().weekday,
+                        };
+                      }
+                    }),
+                  ),
+                  if (recurrenceKind != null) ...[
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: recurrenceInterval,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText:
+                            recurrenceKind == RecurrenceKind.afterCompletion
+                            ? 'Days after completion'
+                            : 'Repeat every (days, weeks, months, or years)',
+                      ),
+                    ),
+                    if (recurrenceKind == RecurrenceKind.weekdays)
+                      Wrap(
+                        spacing: 4,
+                        children: [
+                          for (var weekday = 1; weekday <= 7; weekday++)
+                            FilterChip(
+                              label: Text(
+                                const [
+                                  'Mon',
+                                  'Tue',
+                                  'Wed',
+                                  'Thu',
+                                  'Fri',
+                                  'Sat',
+                                  'Sun',
+                                ][weekday - 1],
+                              ),
+                              selected: recurrenceWeekdays.contains(weekday),
+                              onSelected: (selected) => setState(() {
+                                if (selected) {
+                                  recurrenceWeekdays.add(weekday);
+                                } else {
+                                  recurrenceWeekdays.remove(weekday);
+                                }
+                              }),
+                            ),
+                        ],
+                      ),
+                    const SizedBox(height: 8),
+                    _dateRow(
+                      'Repeat until',
+                      recurrenceEnd,
+                      _pickRecurrenceEnd,
+                      () => setState(() => recurrenceEnd = null),
+                    ),
+                    TextField(
+                      controller: recurrenceCount,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText:
+                            'Stop after this many occurrences (optional)',
+                      ),
+                    ),
+                  ],
+                ] else if (widget.task!.recurrenceSeriesId != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'Recurring occurrence • ${widget.task!.nominalDate}. Edits here affect this occurrence.',
+                  ),
+                  if (widget.task!.recurrenceDisposition == 'skipped')
+                    const Text('Skipped'),
+                  if (widget.task!.recurrenceRescheduled)
+                    const Text('Rescheduled from the nominal day'),
+                  if (widget.task!.isOpen)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: _skipOccurrence,
+                        icon: const Icon(Icons.skip_next),
+                        label: const Text('Skip this occurrence'),
+                      ),
+                    ),
+                ],
                 const SizedBox(height: 4),
                 Row(
                   children: [

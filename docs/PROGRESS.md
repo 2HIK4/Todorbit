@@ -30,6 +30,16 @@
   incomplete prerequisites appear as blocked indicators. Smart Reschedule
   warns about proposals before unfinished prerequisites and rejects applies
   that gained an unreviewed conflict after preview.
+- Recurrence foundation (schema v6): date-only rules support daily, weekly,
+  selected weekdays, monthly, yearly, and interval-based schedules with end
+  dates/counts. The task editor creates a series; fixed occurrences are created
+  only for bounded task-list/calendar windows with stable UUIDs. Each is an
+  independent task. Completion-based rules create the next pending occurrence
+  from the actual local completion day in the same transaction; both Flutter
+  and the native widget perform this write. Occurrence edits and reschedules
+  are tracked separately from the series, and a selected occurrence can be
+  explicitly skipped. This is a verified foundation, not the completed
+  recurrence milestone; series-wide editing and collision review remain below.
 - Stale completion now rejects a newer task edit, and task duration input
   rejects invalid text instead of silently clearing the estimate. Prerequisite
   edits compare task revisions, and the narrow task editor keeps unsaved fields
@@ -98,9 +108,17 @@
   Quick Search and prerequisite editing have widget-level interaction tests.
   New GUI flows still need manual Windows acceptance testing.
 
+- Recurrence foundation validation: v5-to-v6 and v4-to-v6 disposable
+  migration tests pass; recurrence rules, repository behavior, native v6
+  self-test, and task-editor creation have focused regression coverage.
+  `flutter analyze`, all 54 Flutter tests, the native Release build, the
+  Windows Release build, and the packaged companion self-test pass. Manual
+  recurrence UI acceptance has not been performed.
+
 ## In progress
 
-- Milestone 3 follow-up: recurrence, richer multi-window availability editing,
+- Milestone 3 follow-up: complete recurrence series management, richer
+  multi-window availability editing,
   and drag-to-reorder sequence UX. Sequences currently use accessible up/down
   controls. A sequence owns at most one position per task, and a task can belong
   to one sequence.
@@ -118,6 +136,9 @@
   outside the current milestone.
 - Existing task/category/project/event/session data is migrated forward in place;
   Smart Reschedule does not reset the production database.
+- A consistent SQLite online backup of the production v5 database was written
+  under `%APPDATA%\Life Manager\backups` before schema v6 development. The
+  production database was not opened or migrated during this checkpoint.
 - Launch-at-sign-in remains disabled by default and changes only through the
   explicit tray action.
 - Task and event deletion is permanent after confirmation; recoverable Trash is
@@ -125,9 +146,12 @@
 
 ## Next action
 
-Implement recurring series and stable occurrence IDs with exceptions; edits to
-one occurrence should not alter the series rule by default. Before schema v6,
-back up the user's database and preserve schema v5 relationships in migration.
-Re-run the native widget regression
+Finish recurrence: add transactional Edit This and Future / Entire Series
+operations with reviewed collision choices (keep both, skip, combine),
+preserving completed work and linked sessions/dependencies. Expose these
+operations in task details; test exception persistence across restart,
+Smart Reschedule edits, and native widget completion/edit paths. Re-run the
+full Flutter suite and manual Windows UI acceptance. Then continue habits and
+the remaining Windows V1.0 roadmap. Re-run the native widget regression
 checklist in `docs/windows-widget.md` whenever shell attachment, native input,
 rendering, DPI behavior, process lifecycle, or packaging changes.

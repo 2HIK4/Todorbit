@@ -54,3 +54,15 @@
   desktop search over tasks, notes, categories, and projects. It navigates to
   live records and does not persist stale result lists. Keep advanced filters,
   tags, and saved-view persistence for a later milestone.
+- **Recurrence foundation (schema v6):** store a series rule and template apart
+  from per-occurrence task rows. Persist an occurrence UUID, ordinal, and
+  nominal local date so edits, reschedules, skips, and deleted-task tombstones
+  cannot cause regeneration. Generate only a bounded date window when the task
+  list or calendar needs it. Use UTC civil-date arithmetic for fixed rules and
+  clamp missing month/year anniversary days to the last valid day. Store UTC
+  completion instants; completion-based rules calculate the next local date
+  from actual completion, then create at most one successor transactionally.
+  The native widget accepts v6 and uses the same successor transaction.
+  Editing a task occurrence leaves the series template unchanged. Defer
+  future/all-series edits until the operation can preserve completed work,
+  sessions, and dependencies and can ask about date collisions explicitly.

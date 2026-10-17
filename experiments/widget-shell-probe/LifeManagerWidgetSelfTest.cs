@@ -140,6 +140,76 @@ internal static class LifeManagerWidgetSelfTest {
             "Reviewed prerequisite override was not saved.");
         }
       }
+      using (var upgrade = new SqliteConnection(
+          $"Data Source={databasePath};Pooling=False")) {
+        upgrade.Open();
+        using var command = upgrade.CreateCommand();
+        command.CommandText = """
+          CREATE TABLE recurrence_series(
+            id TEXT PRIMARY KEY, kind TEXT NOT NULL, start_date TEXT NOT NULL,
+            interval INTEGER NOT NULL, weekdays TEXT NOT NULL, end_date TEXT,
+            max_occurrences INTEGER, title TEXT NOT NULL, notes TEXT NOT NULL,
+            priority INTEGER NOT NULL, category_id TEXT, project_id TEXT,
+            deadline_offset_days INTEGER, planned_duration_minutes INTEGER,
+            remaining_work_minutes INTEGER, scheduling_locked INTEGER NOT NULL,
+            created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+          );
+          CREATE TABLE recurrence_occurrences(
+            id TEXT PRIMARY KEY, series_id TEXT NOT NULL, ordinal INTEGER NOT NULL,
+            nominal_date TEXT NOT NULL, task_id TEXT UNIQUE,
+            disposition TEXT NOT NULL DEFAULT 'active',
+            is_edited INTEGER NOT NULL DEFAULT 0,
+            is_rescheduled INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+            UNIQUE(series_id,ordinal)
+          );
+          PRAGMA user_version = 6;
+          """;
+        command.ExecuteNonQuery();
+      }
+      using (var v6Repository =
+          LifeManagerWidgetRepository.OpenForTest(databasePath)) {
+        var today = DateTime.Now.Date;
+        var recurringId = v6Repository.AddTask("Every three days", today);
+        using (var link = new SqliteConnection(
+            $"Data Source={databasePath};Pooling=False")) {
+          link.Open();
+          using var command = link.CreateCommand();
+          command.CommandText = """
+            INSERT INTO recurrence_series(
+              id,kind,start_date,interval,weekdays,end_date,max_occurrences,
+              title,notes,priority,category_id,project_id,deadline_offset_days,
+              planned_duration_minutes,remaining_work_minutes,scheduling_locked,
+              created_at,updated_at)
+            VALUES('series','afterCompletion',$today,3,'',NULL,2,
+              'Every three days','',0,NULL,NULL,NULL,NULL,NULL,0,$now,$now);
+            INSERT INTO recurrence_occurrences(
+              id,series_id,ordinal,nominal_date,task_id,created_at,updated_at)
+            VALUES('first','series',0,$today,$task,$now,$now);
+            """;
+          command.Parameters.AddWithValue("$today",
+            today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture));
+          command.Parameters.AddWithValue("$task", recurringId);
+          command.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+          command.ExecuteNonQuery();
+        }
+        v6Repository.CompleteTask(recurringId);
+        var nextDay = today.AddDays(3);
+        var next = v6Repository.LoadTasks(nextDay)
+          .Where(task => task.Title == "Every three days").ToList();
+        if (next.Count != 1 ||
+            next[0].ScheduledDate != nextDay.ToString("yyyy-MM-dd",
+              System.Globalization.CultureInfo.InvariantCulture)) {
+          throw new InvalidOperationException(
+            "Schema v6 completion did not create the next occurrence.");
+        }
+        v6Repository.CompleteTask(next[0].Id);
+        if (v6Repository.LoadTasks(nextDay)
+            .Any(task => task.Title == "Every three days")) {
+          throw new InvalidOperationException(
+            "Schema v6 completion exceeded the series count limit.");
+        }
+      }
       VerifySettingsRoundTrip(directory);
       VerifyAppearanceRoundTrip(directory);
       VerifySingleInstanceMutex();

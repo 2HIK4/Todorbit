@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../domain/models.dart';
+import '../domain/recurrence.dart';
 import '../domain/scheduling_models.dart';
 import 'app_database.dart';
 
@@ -42,11 +43,15 @@ class LifeRepository {
   }
 
   Future<List<LifeTask>> tasks() async {
-    final rows = await db
-        .customSelect(
-          'SELECT * FROM tasks ORDER BY priority DESC, scheduled_date ASC, created_at DESC',
-        )
-        .get();
+    final rows = await db.customSelect(
+      '''SELECT t.*, o.series_id AS recurrence_series_id,
+              o.ordinal AS recurrence_ordinal, o.nominal_date,
+              o.disposition AS recurrence_disposition,
+              o.is_edited AS recurrence_edited,
+              o.is_rescheduled AS recurrence_rescheduled
+            FROM tasks t LEFT JOIN recurrence_occurrences o ON o.task_id=t.id
+            ORDER BY t.priority DESC, t.scheduled_date ASC, t.created_at DESC''',
+    ).get();
     return rows.map(_taskFromRow).toList();
   }
 
@@ -468,6 +473,12 @@ class LifeRepository {
     plannedDurationMinutes: r.read<int?>('planned_duration_minutes'),
     remainingWorkMinutes: r.read<int?>('remaining_work_minutes'),
     schedulingLocked: r.read<int>('scheduling_locked') == 1,
+    recurrenceSeriesId: r.read<String?>('recurrence_series_id'),
+    recurrenceOrdinal: r.read<int?>('recurrence_ordinal'),
+    nominalDate: r.read<String?>('nominal_date'),
+    recurrenceDisposition: r.read<String?>('recurrence_disposition'),
+    recurrenceEdited: r.read<int?>('recurrence_edited') == 1,
+    recurrenceRescheduled: r.read<int?>('recurrence_rescheduled') == 1,
   );
 
   DateTime? _parseNullable(String? value) =>
@@ -562,6 +573,165 @@ class LifeRepository {
     return (await tasks()).firstWhere((task) => task.id == id);
   }
 
+  /// Creates a series and its first task in one transaction. Later fixed-date
+  /// occurrences are created only when a caller requests their date window.
+  Future<LifeTask> addRecurringTask(
+    TaskDraft draft,
+    RecurrenceRule rule,
+  ) async {
+    _validate(draft);
+    if (draft.status != TaskStatus.notStarted ||
+        draft.scheduledDate != rule.startDate) {
+      throw ArgumentError('A recurring task must start on its planned date');
+    }
+    final first = rule.kind == RecurrenceKind.afterCompletion
+        ? RecurrenceSlot(rule.startDate, 0)
+        : rule
+              .between(
+                rule.startDate,
+                RecurrenceRule.shiftDate(rule.startDate, 7 * rule.interval),
+              )
+              .firstOrNull;
+    if (first == null) {
+      throw ArgumentError('The recurrence has no first occurrence');
+    }
+    final seriesId = _uuid.v4();
+    final now = DateTime.now().toUtc().toIso8601String();
+    final deadlineOffset = draft.deadlineDate == null
+        ? null
+        : RecurrenceRule.daysBetween(rule.startDate, draft.deadlineDate!);
+    await db.transaction(() async {
+      await _checkAssignment(draft.categoryId, draft.projectId);
+      await db.customInsert(
+        '''INSERT INTO recurrence_series(
+          id,kind,start_date,interval,weekdays,end_date,max_occurrences,
+          title,notes,priority,category_id,project_id,deadline_offset_days,
+          planned_duration_minutes,remaining_work_minutes,scheduling_locked,
+          created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+        variables: [
+          Variable.withString(seriesId),
+          Variable.withString(rule.kind.name),
+          Variable.withString(rule.startDate),
+          Variable.withInt(rule.interval),
+          Variable.withString((rule.weekdays.toList()..sort()).join(',')),
+          Variable<String>(rule.endDate),
+          Variable<int>(rule.maxOccurrences),
+          Variable.withString(draft.title.trim()),
+          Variable.withString(draft.notes),
+          Variable.withInt(draft.priority),
+          Variable<String>(draft.categoryId),
+          Variable<String>(draft.projectId),
+          Variable<int>(deadlineOffset),
+          Variable<int>(draft.plannedDurationMinutes),
+          Variable<int>(draft.remainingWorkMinutes),
+          Variable.withInt(draft.schedulingLocked ? 1 : 0),
+          Variable.withString(now),
+          Variable.withString(now),
+        ],
+      );
+      final series = await db
+          .customSelect(
+            'SELECT * FROM recurrence_series WHERE id=?',
+            variables: [Variable.withString(seriesId)],
+          )
+          .getSingle();
+      await _insertOccurrence(series, first);
+    });
+    return (await tasks()).firstWhere(
+      (task) => task.recurrenceSeriesId == seriesId,
+    );
+  }
+
+  /// Materializes only the requested civil-date window. Existing occurrence
+  /// rows, including skipped/deleted tombstones, are never regenerated.
+  Future<void> ensureRecurringTasks(String fromDate, String throughDate) async {
+    final span = RecurrenceRule.daysBetween(fromDate, throughDate);
+    if (span < 0 || span > 93) {
+      throw ArgumentError('Request a recurrence window of at most 94 days');
+    }
+    await db.transaction(() async {
+      final seriesRows = await db
+          .customSelect(
+            "SELECT * FROM recurrence_series WHERE kind <> 'afterCompletion' "
+            'AND start_date <= ? AND (end_date IS NULL OR end_date >= ?)',
+            variables: [
+              Variable.withString(throughDate),
+              Variable.withString(fromDate),
+            ],
+          )
+          .get();
+      for (final series in seriesRows) {
+        final rule = _ruleFromSeries(series);
+        for (final slot in rule.between(fromDate, throughDate)) {
+          await _insertOccurrence(series, slot);
+        }
+      }
+    });
+  }
+
+  RecurrenceRule _ruleFromSeries(QueryRow row) => RecurrenceRule(
+    kind: RecurrenceKind.values.byName(row.read<String>('kind')),
+    startDate: row.read<String>('start_date'),
+    interval: row.read<int>('interval'),
+    weekdays: row.read<String>('weekdays').isEmpty
+        ? const {}
+        : row.read<String>('weekdays').split(',').map(int.parse).toSet(),
+    endDate: row.read<String?>('end_date'),
+    maxOccurrences: row.read<int?>('max_occurrences'),
+  );
+
+  Future<void> _insertOccurrence(QueryRow series, RecurrenceSlot slot) async {
+    final seriesId = series.read<String>('id');
+    final existing = await db
+        .customSelect(
+          'SELECT id FROM recurrence_occurrences WHERE series_id=? AND ordinal=?',
+          variables: [
+            Variable.withString(seriesId),
+            Variable.withInt(slot.ordinal),
+          ],
+        )
+        .getSingleOrNull();
+    if (existing != null) return;
+    final taskId = _uuid.v4();
+    final occurrenceId = _uuid.v4();
+    final now = DateTime.now().toUtc();
+    final offset = series.read<int?>('deadline_offset_days');
+    final draft = TaskDraft(
+      title: series.read<String>('title'),
+      notes: series.read<String>('notes'),
+      priority: series.read<int>('priority'),
+      categoryId: series.read<String?>('category_id'),
+      projectId: series.read<String?>('project_id'),
+      scheduledDate: slot.nominalDate,
+      deadlineDate: offset == null
+          ? null
+          : RecurrenceRule.shiftDate(slot.nominalDate, offset),
+      plannedDurationMinutes: series.read<int?>('planned_duration_minutes'),
+      remainingWorkMinutes: series.read<int?>('remaining_work_minutes'),
+      schedulingLocked: series.read<int>('scheduling_locked') == 1,
+    );
+    await db.customInsert(
+      '''INSERT INTO tasks(id,title,notes,status,priority,category_id,
+        project_id,scheduled_date,deadline_date,created_at,updated_at,
+        completed_at,planned_duration_minutes,remaining_work_minutes,
+        scheduling_locked) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+      variables: _taskValues(taskId, draft, now, now, null),
+    );
+    await db.customInsert(
+      '''INSERT INTO recurrence_occurrences(id,series_id,ordinal,nominal_date,
+        task_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?)''',
+      variables: [
+        Variable.withString(occurrenceId),
+        Variable.withString(seriesId),
+        Variable.withInt(slot.ordinal),
+        Variable.withString(slot.nominalDate),
+        Variable.withString(taskId),
+        Variable.withString(now.toIso8601String()),
+        Variable.withString(now.toIso8601String()),
+      ],
+    );
+  }
+
   Future<void> updateTask(
     LifeTask previous,
     TaskDraft draft, {
@@ -573,6 +743,10 @@ class LifeRepository {
         ? (previous.completedAt ?? now)
         : null;
     await db.transaction(() async {
+      if (previous.status == TaskStatus.completed &&
+          draft.status != TaskStatus.completed) {
+        await _checkRecurringReopen(previous.id);
+      }
       await _checkAssignment(draft.categoryId, draft.projectId);
       if (draft.scheduledDate != null &&
           draft.scheduledDate != previous.scheduledDate) {
@@ -646,28 +820,81 @@ class LifeRepository {
           ],
         );
       }
+      if (previous.status != TaskStatus.completed &&
+          draft.status == TaskStatus.completed) {
+        await _advanceCompletionSeries(previous.id, now);
+      }
     });
   }
 
   Future<void> setComplete(LifeTask task, bool complete) async {
-    final now = DateTime.now().toUtc().toIso8601String();
-    final updated = await db.customUpdate(
-      'UPDATE tasks SET status=?,completed_at=?,updated_at=? WHERE id=? AND updated_at=?',
-      variables: [
-        Variable.withString(
-          complete ? TaskStatus.completed.name : TaskStatus.notStarted.name,
-        ),
-        Variable<String>(complete ? now : null),
-        Variable.withString(now),
-        Variable.withString(task.id),
-        Variable.withString(task.updatedAt.toUtc().toIso8601String()),
-      ],
-    );
-    if (updated != 1) {
+    final now = DateTime.now().toUtc();
+    await db.transaction(() async {
+      if (!complete) await _checkRecurringReopen(task.id);
+      final updated = await db.customUpdate(
+        'UPDATE tasks SET status=?,completed_at=?,updated_at=? WHERE id=? AND updated_at=?',
+        variables: [
+          Variable.withString(
+            complete ? TaskStatus.completed.name : TaskStatus.notStarted.name,
+          ),
+          Variable<String>(complete ? now.toIso8601String() : null),
+          Variable.withString(now.toIso8601String()),
+          Variable.withString(task.id),
+          Variable.withString(task.updatedAt.toUtc().toIso8601String()),
+        ],
+      );
+      if (updated != 1) {
+        throw StateError(
+          'This task changed elsewhere. Reopen it before changing completion.',
+        );
+      }
+      if (complete && task.status != TaskStatus.completed) {
+        await _advanceCompletionSeries(task.id, now);
+      }
+    });
+  }
+
+  Future<void> _checkRecurringReopen(String taskId) async {
+    final later = await db
+        .customSelect(
+          '''SELECT 1 FROM recurrence_occurrences current
+        JOIN recurrence_series s ON s.id=current.series_id
+        JOIN recurrence_occurrences later ON later.series_id=s.id
+        WHERE current.task_id=? AND s.kind='afterCompletion'
+          AND later.ordinal>current.ordinal LIMIT 1''',
+          variables: [Variable.withString(taskId)],
+        )
+        .getSingleOrNull();
+    if (later != null) {
       throw StateError(
-        'This task changed elsewhere. Reopen it before changing completion.',
+        'A later occurrence already exists. Resolve it before reopening this task.',
       );
     }
+  }
+
+  Future<void> _advanceCompletionSeries(
+    String taskId,
+    DateTime completedAt,
+  ) async {
+    final row = await db
+        .customSelect(
+          '''SELECT s.*, o.ordinal FROM recurrence_occurrences o
+        JOIN recurrence_series s ON s.id=o.series_id
+        WHERE o.task_id=? AND s.kind='afterCompletion' ''',
+          variables: [Variable.withString(taskId)],
+        )
+        .getSingleOrNull();
+    if (row == null) return;
+    final nextOrdinal = row.read<int>('ordinal') + 1;
+    final rule = _ruleFromSeries(row);
+    if (rule.maxOccurrences != null && nextOrdinal >= rule.maxOccurrences!) {
+      return;
+    }
+    final nextDate = rule.nextAfterCompletion(localDate(completedAt.toLocal()));
+    if (rule.endDate != null && nextDate.compareTo(rule.endDate!) > 0) {
+      return;
+    }
+    await _insertOccurrence(row, RecurrenceSlot(nextDate, nextOrdinal));
   }
 
   Future<void> deleteTask(String id) async {
@@ -675,6 +902,38 @@ class LifeRepository {
       'DELETE FROM tasks WHERE id=?',
       variables: [Variable.withString(id)],
     );
+  }
+
+  Future<void> skipRecurringOccurrence(LifeTask task) async {
+    if (task.recurrenceSeriesId == null) {
+      throw ArgumentError('This task is not a recurring occurrence');
+    }
+    if (!task.isOpen) {
+      throw StateError('Only a pending occurrence can be skipped');
+    }
+    final now = DateTime.now().toUtc().toIso8601String();
+    await db.transaction(() async {
+      final updated = await db.customUpdate(
+        '''UPDATE tasks SET status='cancelled',completed_at=NULL,updated_at=?
+          WHERE id=? AND updated_at=?''',
+        variables: [
+          Variable.withString(now),
+          Variable.withString(task.id),
+          Variable.withString(task.updatedAt.toUtc().toIso8601String()),
+        ],
+      );
+      if (updated != 1) {
+        throw StateError('This occurrence changed elsewhere. Reopen it first.');
+      }
+      final marked = await db.customUpdate(
+        '''UPDATE recurrence_occurrences
+          SET disposition='skipped',updated_at=? WHERE task_id=?''',
+        variables: [Variable.withString(now), Variable.withString(task.id)],
+      );
+      if (marked != 1) {
+        throw StateError('The recurrence link is missing');
+      }
+    });
   }
 
   Future<void> deleteProject(String id) async {

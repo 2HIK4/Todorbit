@@ -152,6 +152,12 @@ class LifeTask {
     this.plannedDurationMinutes,
     this.remainingWorkMinutes,
     this.schedulingLocked = false,
+    this.recurrenceSeriesId,
+    this.recurrenceOrdinal,
+    this.nominalDate,
+    this.recurrenceDisposition,
+    this.recurrenceEdited = false,
+    this.recurrenceRescheduled = false,
   });
 
   final String id;
@@ -169,6 +175,12 @@ class LifeTask {
   final int? plannedDurationMinutes;
   final int? remainingWorkMinutes;
   final bool schedulingLocked;
+  final String? recurrenceSeriesId;
+  final int? recurrenceOrdinal;
+  final String? nominalDate;
+  final String? recurrenceDisposition;
+  final bool recurrenceEdited;
+  final bool recurrenceRescheduled;
 
   bool get isOpen =>
       status != TaskStatus.completed && status != TaskStatus.cancelled;

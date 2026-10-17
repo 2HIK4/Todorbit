@@ -11,6 +11,59 @@ import 'package:life_manager/features/workspace/task_editor.dart';
 import 'package:life_manager/main.dart';
 
 void main() {
+  testWidgets('creates a recurring task from the task editor', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    final database = AppDatabase(NativeDatabase.memory());
+    final repository = LifeRepository(database);
+    final controller = AppController(repository);
+    await controller.refresh();
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appControllerProvider.overrideWith((ref) => controller)],
+          child: const LifeManagerApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('New task'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Title *'),
+        'Daily reading',
+      );
+      final editorScroll = find
+          .descendant(
+            of: find.byType(TaskEditor),
+            matching: find.byType(Scrollable),
+          )
+          .first;
+      await tester.scrollUntilVisible(
+        find.text('Does not repeat'),
+        200,
+        scrollable: editorScroll,
+      );
+      await tester.tap(find.text('Does not repeat'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Daily').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Create task'));
+      await tester.pumpAndSettle();
+      final tasks = await repository.tasks();
+      expect(
+        tasks.where((task) => task.recurrenceSeriesId != null),
+        isNotEmpty,
+      );
+      expect(
+        tasks.where((task) => task.title == 'Daily reading').length,
+        greaterThan(1),
+      );
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await database.close();
+      await tester.binding.setSurfaceSize(null);
+    }
+  });
+
   testWidgets('creates a task from the Today workspace', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
     final database = AppDatabase(NativeDatabase.memory());
@@ -194,7 +247,10 @@ void main() {
       await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
       await tester.pumpAndSettle();
       expect(
-        find.widgetWithText(TextField, 'Search tasks, categories, and projects'),
+        find.widgetWithText(
+          TextField,
+          'Search tasks, categories, and projects',
+        ),
         findsOneWidget,
       );
     } finally {
