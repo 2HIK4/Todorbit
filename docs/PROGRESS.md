@@ -18,6 +18,8 @@
 - Smart Reschedule integrated into task lists, task actions, project/category
   scopes, and Calendar sessions. Move, Shift, Push, Pull, Swap, Reorder, Repack,
   and Split generate reviewable proposals and persist only after explicit Apply.
+- The All Tasks Schedule History toolbar action uses a reliable clock-arrow icon
+  with explicit light/dark, hover, focus, and disabled-state colors.
 - Schema v4 persists editable availability, task schedule protection, focused
   manual/Smart scheduling history, safe undo, and previous/original restoration.
   Stale previews are rejected and later manual schedules are protected.
@@ -56,7 +58,7 @@
 
 - Flutter 3.47.7 / Dart 3.13.5; Windows toolchain healthy.
 - `flutter analyze`: clean.
-- `flutter test`: 33 passing tests, including engine, database, migration,
+- `flutter test`: 34 passing tests, including engine, database, migration,
   stale-apply, undo/restoration, split, persistence, and preview/Apply coverage.
 - Native Release build and disposable database/settings self-test: passing.
 - Native dependency audit: no vulnerable packages reported.

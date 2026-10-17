@@ -616,9 +616,34 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 icon: const Icon(Icons.sort),
               ),
               IconButton(
-                tooltip: 'Schedule history',
+                key: const ValueKey('schedule-history-button'),
+                tooltip: 'Schedule History',
                 onPressed: _showHistory,
-                icon: const Icon(Icons.history),
+                style: ButtonStyle(
+                  foregroundColor: WidgetStateProperty.resolveWith((states) {
+                    if (states.contains(WidgetState.disabled)) {
+                      return Theme.of(context).colorScheme.onSurface
+                          .withValues(alpha: 0.38);
+                    }
+                    return Theme.of(context).colorScheme.onSurfaceVariant;
+                  }),
+                  overlayColor: WidgetStateProperty.resolveWith((states) {
+                    if (states.contains(WidgetState.hovered)) {
+                      return Theme.of(context).colorScheme.onSurface
+                          .withValues(alpha: 0.08);
+                    }
+                    if (states.contains(WidgetState.focused) ||
+                        states.contains(WidgetState.pressed)) {
+                      return Theme.of(context).colorScheme.onSurface
+                          .withValues(alpha: 0.12);
+                    }
+                    return null;
+                  }),
+                ),
+                icon: const Icon(
+                  Icons.restore_rounded,
+                  semanticLabel: 'Schedule History',
+                ),
               ),
               OutlinedButton.icon(
                 onPressed: items.isEmpty ? null : () => _showSmart(),
