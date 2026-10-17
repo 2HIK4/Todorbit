@@ -367,7 +367,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
             child: PopupMenuButton<String>(
               tooltip: nativeWidget.isAvailable
-                  ? 'Native widget candidate'
+                  ? 'Native Windows widget'
                   : 'Native widget companion is unavailable in this build',
               enabled: nativeWidget.isAvailable,
               onSelected: (action) => _run(() async {
@@ -387,6 +387,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   case 'inbox':
                     await nativeWidget.setView('inbox');
                     return;
+                  case 'all':
+                    await nativeWidget.setView('all');
+                    return;
+                  case 'upcoming':
+                    await nativeWidget.setView('upcoming');
+                    return;
                   case 'close':
                     await nativeWidget.close();
                     return;
@@ -399,6 +405,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 PopupMenuDivider(),
                 PopupMenuItem(value: 'today', child: Text('Show Today')),
                 PopupMenuItem(value: 'inbox', child: Text('Show Inbox')),
+                PopupMenuItem(value: 'all', child: Text('Show All Tasks')),
+                PopupMenuItem(value: 'upcoming', child: Text('Show Upcoming')),
                 PopupMenuDivider(),
                 PopupMenuItem(value: 'close', child: Text('Close widget')),
               ],
@@ -406,7 +414,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 dense: true,
                 enabled: nativeWidget.isAvailable,
                 leading: const Icon(Icons.widgets_outlined),
-                title: const Text('Native widget (candidate)'),
+                title: const Text('Windows widget'),
                 trailing: const Icon(Icons.expand_more),
               ),
             ),

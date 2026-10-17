@@ -26,11 +26,12 @@ Future<void> main(List<String> args) async {
   if (taskArgument >= 0 && taskArgument + 1 < args.length) {
     controller.select(args[taskArgument + 1]);
   }
-  final widgetMode = Platform.isWindows && args.contains('--widget');
+  final legacyWidgetMode =
+      Platform.isWindows && args.contains('--legacy-flutter-widget');
   runApp(
     ProviderScope(
       overrides: [appControllerProvider.overrideWith((ref) => controller)],
-      child: widgetMode
+      child: legacyWidgetMode
           ? DesktopWidgetApp(
               diagnostics: args.contains('--widget-diagnostics'),
               onExit: () async {

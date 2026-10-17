@@ -1,10 +1,10 @@
-# Windows widget integration candidate
+# Integrated Windows widget
 
-The packaged companion on `experiment/windows-widget-shell-host` keeps the
-working desktop-attached, owner-drawn HWND architecture. It remains a candidate
-until its shell-layer behavior is manually accepted on the target Windows
-installation; automated tests cannot prove `Win + D`, live composition, mouse
-delivery, or normal-window layering.
+The packaged owner-drawn native companion passed manual acceptance on the
+target Windows system, including continuous presentation, `Win + D`, Quick
+Add, task editing, resizing, icons, views, theme synchronization, and main-app
+lifecycle. Explorer hosting is still an undocumented Windows compatibility
+dependency, so the regression checklist remains part of release verification.
 
 ## Build and launch
 
@@ -16,7 +16,14 @@ build\windows\x64\runner\Release\life_manager.exe
 build\windows\x64\runner\Release\life_manager_widget.exe --widget --app-exe build\windows\x64\runner\Release\life_manager.exe
 ```
 
-The app sidebar can show/hide the candidate. Direct commands include:
+For compatibility, this also launches the native companion and exits without
+starting the old Flutter widget:
+
+```powershell
+build\windows\x64\runner\Release\life_manager.exe --widget
+```
+
+The app sidebar can show/hide the widget. Direct commands include:
 
 ```powershell
 build\windows\x64\runner\Release\life_manager_widget.exe --widget-command show
@@ -64,8 +71,9 @@ build\windows\x64\runner\Release\life_manager_widget.exe --widget-command exit
   running. Explorer recovery only recreates Life Manager's HWND with bounded
   retries and never changes or restarts Explorer.
 
-The original Flutter `life_manager.exe --widget` implementation remains a
-development fallback and is not the promoted desktop companion.
+The failed Flutter desktop-child prototype is retained only for explicit
+diagnostic work through `life_manager.exe --legacy-flutter-widget`. It is not
+used by the app, `--widget`, the tray, or optional sign-in registration.
 
 ## Automated checks
 
@@ -79,7 +87,7 @@ and reloading plus the existing task/calendar/widget behavior.
 These checks do not exercise physical keyboard activation, mouse dragging,
 Explorer composition, or `Win + D`.
 
-## Manual acceptance checklist
+## Manual regression checklist
 
 Record Pass/Fail plus Windows build, monitor topology, and scale:
 
@@ -113,5 +121,5 @@ Record Pass/Fail plus Windows build, monitor topology, and scale:
 15. If user-approved, restart Explorer once and confirm bounded widget recovery
     without Explorer modification or a duplicate companion.
 
-Do not merge this branch based solely on the build and test results; record the
-manual results first.
+The initial promotion gate passed. Repeat this checklist when changing Windows
+shell attachment, native input surfaces, rendering, DPI behavior, or packaging.

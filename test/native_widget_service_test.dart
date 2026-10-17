@@ -27,8 +27,10 @@ void main() {
       try {
         await service.show();
         await service.quickAdd();
+        await service.setView('all');
+        await service.setView('upcoming');
         await service.close();
-        expect(calls, hasLength(3));
+        expect(calls, hasLength(5));
         expect(calls.first.$1, widget.path);
         expect(calls.first.$2, [
           '--widget',
@@ -36,6 +38,8 @@ void main() {
           r'C:\package\life_manager.exe',
         ]);
         expect(calls[1].$2.take(2), ['--widget-command', 'quick-add']);
+        expect(calls[2].$2.take(2), ['--widget-command', 'view-all']);
+        expect(calls[3].$2.take(2), ['--widget-command', 'view-upcoming']);
         expect(calls.last.$2.take(2), ['--widget-command', 'exit']);
       } finally {
         await directory.delete(recursive: true);

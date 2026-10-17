@@ -1,6 +1,9 @@
 # Windows shell-host experiment (not the Life Manager widget)
 
-This tool is isolated from `life_manager.exe --widget`. Its default mode only enumerates the current desktop, `Progman`, `WorkerW`, and icon-view hierarchy using documented read-only Win32 APIs. It does not access the Life Manager database.
+This project contains the integrated native widget plus retained shell
+diagnostics. Its no-argument mode only enumerates the current desktop,
+`Progman`, `WorkerW`, and icon-view hierarchy using documented read-only Win32
+APIs. It does not access the Life Manager database.
 
 On the inspected Windows 11 session, `GetShellWindow()` returned a visible Explorer-owned `Progman` spanning both monitors. Its visible `SHELLDLL_DefView` child was in front of its visible `WorkerW` child; most other `WorkerW` windows were hidden and tiny. Merely parenting the widget beneath that `WorkerW` is therefore not evidence that it will be visible or clickable. This hierarchy is an Explorer implementation detail, not a supported widget-hosting API.
 
@@ -32,14 +35,14 @@ window, captures its own screen rectangle after painting, writes the requested
 PNG, and exits. This proved that the WinForms surface paints normally before
 desktop attachment; it does not prove shell-child composition.
 
-## Native hybrid widget candidate
+## Integrated native widget
 
-`--widget` launches the native integration candidate rather than the Flutter
-prototype. The Windows build publishes it beside the main app as
+`--widget` launches the integrated native widget. The Windows build publishes
+it beside the main app as
 `life_manager_widget.exe`. Its persistent display is one double-buffered, owner-drawn native
 HWND created directly under Explorer's existing `SHELLDLL_DefView`; its Quick
 Add editor is a temporary activatable top-level surface aligned over the
-painted field. The candidate reads real schema-v3 task data, supports
+painted field. The widget reads real schema-v3 task data, supports
 Today/Inbox/All Tasks/Upcoming, creates tasks with view-specific scheduling,
 completes tasks, and opens a compact optimistic-concurrency task editor. It
 prevents duplicate instances, shares the app's persisted system/light/dark
@@ -64,12 +67,12 @@ dotnet run --project experiments\widget-shell-probe\widget-shell-probe.csproj -c
 Use the tray Appearance submenu or a `--widget-command theme-light` command to
 change the palette. Stop with the widget's Close button, tray Exit widget, or
 `--widget-command exit`. Launch at sign-in is disabled unless the user checks
-the tray option. The candidate makes no persistent Explorer change. Explorer
+the tray option. The widget makes no persistent Explorer change. Explorer
 hosting remains undocumented and must be manually checked for
 visible pixels, clicks, `Win + D`, normal-window coverage, repeated typing,
 multiple monitors, and Explorer restart before production integration.
 
-The integrated launch commands and acceptance checklist are maintained in
+The integrated launch commands and regression checklist are maintained in
 `docs/windows-widget.md`.
 
 The original WinForms display was painted as a top-level Form and then

@@ -4,9 +4,14 @@ Investigate an integrated native companion that stays on the desktop under `Win 
 
 ## Feasibility prototype
 
-The same Windows executable accepts `--widget` and starts a separate Flutter process with a small task UI. The native runner changes that window to a child of the desktop HWND using documented `SetParent`. The process exits if parenting fails, rather than falling back to an ordinary window. This approach does not send undocumented Explorer messages or change Explorer configuration.
+The historical Flutter prototype is now available only with
+`--legacy-flutter-widget`. The native runner changes that diagnostic window to
+a child of the desktop HWND using documented `SetParent`. The process exits if
+parenting fails, rather than falling back to an ordinary window.
 
-Run `build\windows\x64\runner\Release\life_manager.exe --widget` from the repository. The prototype can list Today/Inbox tasks, add a task, complete a task, refresh, and open the main app. Closing the main app does not close the widget process. It currently has no drag/resize persistence, timer, tray, automatic refresh, or startup behavior.
+Run `build\windows\x64\runner\Debug\life_manager.exe --legacy-flutter-widget`
+only for explicit diagnostics. Normal `life_manager.exe --widget` now delegates
+to the integrated native companion and never creates this Flutter child.
 
 Native parenting succeeds, but the user confirmed that `Win + D` hides the widget. Diagnostics show the parent is the system desktop HWND (`#32769`, owned by `csrss`), not an Explorer `WorkerW`/`Progman` shell layer. This implementation uses public `SetParent`, but that API does not guarantee the required Show Desktop layering or keyboard activation. No undocumented Explorer messages are currently used. Do not expose this as a completed widget feature.
 
@@ -20,7 +25,7 @@ The same trace reports the widget visible, not minimized, and not DWM-cloaked wh
 
 ## Opt-in diagnostic build
 
-Build with `flutter build windows --debug`, then launch `build\windows\x64\runner\Debug\life_manager.exe --widget --widget-diagnostics`. The flag is effective only in a Debug native build and only in widget mode. Logs are written to `%APPDATA%\Life Manager\logs\widget-diagnostics-<widget PID>.log` (Win32 messages/window state) and `widget-flutter-diagnostics-<widget PID>.log` (Flutter focus/lifecycle). Each file is capped at 2 MiB; the native log rotates once to `.old`. Ordinary launches and production builds do not enable diagnostics.
+Build with `flutter build windows --debug`, then launch `build\windows\x64\runner\Debug\life_manager.exe --legacy-flutter-widget --widget-diagnostics`. The flag is effective only in a Debug native build and only in legacy diagnostic mode. Logs are written to `%APPDATA%\Life Manager\logs\widget-diagnostics-<widget PID>.log` (Win32 messages/window state) and `widget-flutter-diagnostics-<widget PID>.log` (Flutter focus/lifecycle). Each file is capped at 2 MiB; the native log rotates once to `.old`. Ordinary launches and production builds do not enable diagnostics.
 
 The logs contain timestamps, process/window IDs, classes, style flags, focus/visibility state, and event names. They do **not** contain key codes, typed characters, task titles, clipboard contents, or text-field values. Review them before sharing because process/window metadata and local timestamps may still be sensitive.
 
@@ -45,10 +50,10 @@ Branch `experiment/windows-widget-shell-host` contains a standalone [shell probe
 
 The approved first attachment did put only the experiment's window above the icon view. It landed on the left monitor because shell-relative coordinates were mistaken for primary-screen coordinates; the experimental process was stopped and Explorer remained responsive. A coordinate correction is built but untested. The computer-use tool could not target the attached child, so input, `Win + D`, normal-window coverage, and recovery are still manual tests, not verified outcomes. See the experiment README for exact steps and safe stop.
 
-## Native hybrid integration candidate
+## Integrated native widget
 
-The experiment now also contains an integration candidate launched with
-`--widget`. It does not replace `life_manager.exe --widget`.
+The .NET companion is launched directly with `--widget`, and
+`life_manager.exe --widget` delegates to it for compatibility.
 
 - The persistent display is a single double-buffered, owner-drawn native HWND
   created directly as a child of Explorer's existing `SHELLDLL_DefView`,
@@ -78,16 +83,16 @@ Build and run from the repository root:
 
 ```powershell
 dotnet build experiments\widget-shell-probe\widget-shell-probe.csproj -c Release
-experiments\widget-shell-probe\bin\Release\net10.0-windows\widget-shell-probe.exe --widget --app-exe build\windows\x64\runner\Debug\life_manager.exe
+experiments\widget-shell-probe\bin\Release\net10.0-windows\life_manager_widget.exe --widget --app-exe build\windows\x64\runner\Debug\life_manager.exe
 ```
 
 Run the isolated persistence check with
-`widget-shell-probe.exe --self-test`; it uses a temporary database and deletes
+`life_manager_widget.exe --self-test`; it uses a temporary database and deletes
 only that temporary test directory.
 
 For controlled rendering comparison, `--widget-standalone` opens the former
 WinForms UI normally and `--widget-legacy-reparent` runs the black-surface host.
-Add `--render-diagnostics` to either candidate to write bounded paint/style
+Add `--render-diagnostics` to a native diagnostic mode to write bounded paint/style
 metadata to `%APPDATA%\Life Manager\logs\native-widget-render-<PID>.log`.
 Diagnostics never record task text or keyboard input. The legacy mode exists
 only for diagnosis and is not the recommended widget.
