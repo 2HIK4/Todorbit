@@ -2,7 +2,9 @@ import 'package:flutter/foundation.dart' hide Category;
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../data/life_repository.dart';
+import '../data/appearance_preference_store.dart';
 import '../domain/models.dart';
+import '../domain/appearance.dart';
 
 final appControllerProvider = ChangeNotifierProvider<AppController>((ref) {
   throw StateError('AppController must be provided by the application');
@@ -24,8 +26,9 @@ enum WorkspaceView {
 enum TaskSort { schedule, priority, title, created }
 
 class AppController extends ChangeNotifier {
-  AppController(this.repository);
+  AppController(this.repository, {this.appearanceStore});
   final LifeRepository repository;
+  final AppearancePreferenceStore? appearanceStore;
 
   List<Category> categories = [];
   List<Project> projects = [];
@@ -81,9 +84,31 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setTheme(ThemeModePreference value) {
+  Future<void> initialize() async {
+    if (appearanceStore != null) theme = await appearanceStore!.load();
+    await refresh();
+  }
+
+  Future<void> reloadTheme() async {
+    final store = appearanceStore;
+    if (store == null) return;
+    final value = await store.load();
+    if (theme == value) return;
     theme = value;
     notifyListeners();
+  }
+
+  Future<void> setTheme(ThemeModePreference value) async {
+    final previous = theme;
+    theme = value;
+    notifyListeners();
+    try {
+      await appearanceStore?.save(value);
+    } catch (_) {
+      theme = previous;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   List<LifeTask> get visibleTasks {
@@ -226,5 +251,3 @@ class AppController extends ChangeNotifier {
     await refresh();
   }
 }
-
-enum ThemeModePreference { system, light, dark }

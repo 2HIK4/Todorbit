@@ -1,10 +1,10 @@
 # Windows widget integration candidate
 
-The packaged native widget is an integration candidate on
-`experiment/windows-widget-shell-host`. It is intentionally **not** promoted
-over the Flutter `--widget` development fallback because continuous live
-rendering, `Win + D`, normal-window coverage, and Quick Add keyboard input do
-not yet have documented positive manual confirmation.
+The packaged companion on `experiment/windows-widget-shell-host` keeps the
+working desktop-attached, owner-drawn HWND architecture. It remains a candidate
+until its shell-layer behavior is manually accepted on the target Windows
+installation; automated tests cannot prove `Win + D`, live composition, mouse
+delivery, or normal-window layering.
 
 ## Build and launch
 
@@ -16,68 +16,102 @@ build\windows\x64\runner\Release\life_manager.exe
 build\windows\x64\runner\Release\life_manager_widget.exe --widget --app-exe build\windows\x64\runner\Release\life_manager.exe
 ```
 
-The main app's sidebar exposes the same candidate commands. Direct command
-examples are:
+The app sidebar can show/hide the candidate. Direct commands include:
 
 ```powershell
 build\windows\x64\runner\Release\life_manager_widget.exe --widget-command show
-build\windows\x64\runner\Release\life_manager_widget.exe --widget-command hide
 build\windows\x64\runner\Release\life_manager_widget.exe --widget-command quick-add
+build\windows\x64\runner\Release\life_manager_widget.exe --widget-command view-upcoming
+build\windows\x64\runner\Release\life_manager_widget.exe --widget-command theme-system
 build\windows\x64\runner\Release\life_manager_widget.exe --widget-command exit
 ```
 
-The original Flutter implementation remains available only for development:
+## Current behavior
 
-```powershell
-build\windows\x64\runner\Release\life_manager.exe --widget
-```
+- The persistent surface is a double-buffered native child of Explorer's
+  existing `SHELLDLL_DefView`. It contains no persistent WinForms controls and
+  is not topmost.
+- Quick Add looks inline, but keyboard input is handled by a temporary
+  borderless, activatable Life Manager top-level window placed exactly over the
+  painted field. Enter validates and saves, Escape dismisses, and ordinary
+  TextBox editing supplies selection, paste, Backspace, and Delete. The surface
+  is destroyed after submit or dismissal.
+- The Quick Add destination appears at the field's right edge. Today schedules
+  for today, Upcoming schedules for tomorrow, and Inbox/All Tasks create an
+  unscheduled inbox-compatible task.
+- The checkbox completes a task. Clicking the title/row opens a compact native
+  editor for title, notes, status, priority, category, project, scheduled day,
+  and deadline. Saves use the existing schema-v3 database and reject stale or
+  deleted records instead of silently overwriting them. **Open full details**
+  starts Flutter with `--task-id <uuid>`.
+- Today, Inbox, All Tasks, and Upcoming are selectable in the widget and tray.
+  The selection is persisted in `%APPDATA%\Life Manager\widget-settings.json`.
+- Header actions use owner-drawn refresh, open, and close icons with separate
+  hit boxes and hover descriptions. Empty states and Quick Add destinations
+  follow the selected view.
+- Drag the empty title area to move. All four edges and four corners resize with
+  matching cursors. Logical size is limited to 340x420 through 720x900, then
+  scaled per monitor and clamped to the working area. Geometry persists.
+- The app and widget share one authoritative
+  `%APPDATA%\Life Manager\appearance-settings.json`. Both watch it using file
+  notifications, so System/Light/Dark changes propagate without polling. A
+  legacy widget-only theme is migrated once. Follow System also responds to
+  Windows preference changes.
+- SQLite/WAL changes are watched with a short debounce. Writes are
+  transactional, use stable UUIDs and UTC timestamps, and the native repository
+  refuses to create or migrate a production database.
+- A mutex prevents duplicate companions. Closing Flutter leaves the widget
+  running. Explorer recovery only recreates Life Manager's HWND with bounded
+  retries and never changes or restarts Explorer.
 
-## Behavior and data safety
+The original Flutter `life_manager.exe --widget` implementation remains a
+development fallback and is not the promoted desktop companion.
 
-- The widget is a separate process and remains alive when the main window
-  closes. A local named mutex prevents a second native instance.
-- The companion opens the existing schema-v3 database, refuses any other
-  schema, and never creates or migrates it. Task creation/completion uses
-  transactions, UUIDs, and UTC timestamps.
-- SQLite database/WAL notifications are debounced in both processes, so task
-  changes refresh without a continuous polling or redraw timer.
-- Geometry, monitor, size, Today/Inbox view, and theme are stored in
-  `%APPDATA%\Life Manager\widget-settings.json`, separate from user data.
-- Drag the empty header area to move. Drag the lower-right corner to resize.
-  Placement is clamped to connected working areas.
-- The tray menu opens Life Manager, toggles the widget, opens Quick Add,
-  selects view/theme, exits the widget, or requests complete exit. Launch at
-  sign-in is disabled by default and changes only after the user explicitly
-  checks the tray item.
-- If Explorer destroys the hosted child, the companion retries only creation
-  of its own HWND once per second for at most 30 attempts. It never restarts or
-  modifies Explorer.
+## Automated checks
+
+`life_manager_widget.exe --self-test` uses only a disposable database and
+temporary settings. It covers create/edit/complete persistence, stale-edit
+rejection, view filters and Quick Add destinations, settings/theme round trips,
+resize/DPI/monitor geometry, mutex exclusion, pipe delivery, and bounded
+Explorer recovery. Flutter tests cover application-side appearance persistence
+and reloading plus the existing task/calendar/widget behavior.
+
+These checks do not exercise physical keyboard activation, mouse dragging,
+Explorer composition, or `Win + D`.
 
 ## Manual acceptance checklist
 
-Do not infer these results from build output or screenshots. Record Pass/Fail
-and Windows/display details for each item:
+Record Pass/Fail plus Windows build, monitor topology, and scale:
 
-1. Leave the widget visible for at least five minutes; verify it never turns
-   black, disappears, or requires a capture to repaint.
-2. Press `Win + D` twice. Verify the widget remains part of the desktop layer
-   and returns correctly.
-3. Cover it with a normal application, then reveal the desktop. Verify normal
-   windows cover it and it is not topmost.
-4. Open Quick Add from the widget and tray. Type, edit, paste, Backspace, and
-   submit repeatedly, including after closing and reopening the main app.
-5. Create a task in each process and complete it in the other. Verify both
-   views update promptly and no duplicate or lost task appears.
-6. Open and close the main app at least three times. Verify one widget process
-   remains and its tray commands still work.
-7. Manually restart Explorer once. Verify the widget returns without Life
-   Manager restarting or changing Explorer. This test must be user-directed;
-   automated checks do not restart Explorer.
-8. Move and resize on every monitor, including different DPI scales if
-   available. Restart the widget and verify the saved rectangle remains fully
-   visible.
-9. Select system, light, and dark themes from both the app and tray; restart
-   and verify the persisted appearance and readable contrast.
+1. Leave the widget visible for five minutes; confirm no black surface or
+   capture-triggered repaint is needed.
+2. Press `Win + D` twice; confirm the widget remains in/returns with the desktop.
+3. Cover the widget with a normal app; confirm that app covers it and the widget
+   is never always-on-top.
+4. Click Quick Add. Type, select, paste, Backspace, Delete, press Escape, reopen,
+   and press Enter. Confirm the editor looks inline and keeps reliable focus.
+5. Add from Today and Inbox; confirm the main app updates immediately and the
+   scheduled/unscheduled destination is correct.
+6. Click a checkbox; confirm completion persists and the app updates.
+7. Click a task title, edit each supported field, save, and reopen it. Also leave
+   an editor open while changing/deleting the task elsewhere and confirm the
+   stale save is rejected.
+8. Use **Open full details** and confirm Flutter opens the requested task rather
+   than a generic home screen.
+9. Drag every supported edge/corner and the empty header. Confirm cursor shape,
+   minimum layout, and button hit boxes remain correct.
+10. Move and resize on each monitor, restart the widget, and confirm geometry
+    persists within accessible bounds at each available DPI scale.
+11. Exercise the refresh, open, and close icons; confirm their hover descriptions
+    and that header dragging does not steal their clicks.
+12. Switch Today, Inbox, All Tasks, and Upcoming in the widget; restart and
+    confirm selection, filtering, ordering, counts/ranges, and empty states.
+13. Select System, Light, and Dark from both processes, including with the other
+    process closed; reopen both and confirm synchronized persistence and contrast.
+14. Open and close Flutter three times. Confirm one widget process remains and
+    task/database synchronization continues.
+15. If user-approved, restart Explorer once and confirm bounded widget recovery
+    without Explorer modification or a duplicate companion.
 
-Only after all acceptance checks pass should the native command replace the
-Flutter `--widget` fallback or this branch be merged to the main branch.
+Do not merge this branch based solely on the build and test results; record the
+manual results first.

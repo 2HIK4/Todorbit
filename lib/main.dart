@@ -6,7 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/app_controller.dart';
 import 'data/app_database.dart';
+import 'data/appearance_preference_store.dart';
 import 'data/life_repository.dart';
+import 'domain/appearance.dart';
 import 'features/workspace/workspace.dart';
 import 'features/widget/desktop_widget.dart';
 
@@ -14,8 +16,16 @@ Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   final databaseFile = await AppDatabase.defaultFile();
   final database = await AppDatabase.openDefault();
-  final controller = AppController(LifeRepository(database));
-  await controller.refresh();
+  final appearanceStore = await AppearancePreferenceStore.openDefault();
+  final controller = AppController(
+    LifeRepository(database),
+    appearanceStore: appearanceStore,
+  );
+  await controller.initialize();
+  final taskArgument = args.indexOf('--task-id');
+  if (taskArgument >= 0 && taskArgument + 1 < args.length) {
+    controller.select(args[taskArgument + 1]);
+  }
   final widgetMode = Platform.isWindows && args.contains('--widget');
   runApp(
     ProviderScope(
@@ -28,15 +38,19 @@ Future<void> main(List<String> args) async {
                 exit(0);
               },
             )
-          : LifeManagerApp(databaseFile: databaseFile),
+          : LifeManagerApp(
+              databaseFile: databaseFile,
+              appearanceFile: appearanceStore.file,
+            ),
     ),
   );
 }
 
 class LifeManagerApp extends ConsumerStatefulWidget {
-  const LifeManagerApp({super.key, this.databaseFile});
+  const LifeManagerApp({super.key, this.databaseFile, this.appearanceFile});
 
   final File? databaseFile;
+  final File? appearanceFile;
 
   @override
   ConsumerState<LifeManagerApp> createState() => _LifeManagerAppState();
@@ -46,6 +60,8 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
     with WidgetsBindingObserver {
   StreamSubscription<FileSystemEvent>? _databaseChanges;
   Timer? _refreshDebounce;
+  bool _databaseRefreshPending = false;
+  bool _appearanceRefreshPending = false;
 
   @override
   void initState() {
@@ -54,12 +70,24 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
     final file = widget.databaseFile;
     if (Platform.isWindows && file != null) {
       _databaseChanges = file.parent.watch().listen((event) {
-        if (!event.path.toLowerCase().startsWith(file.path.toLowerCase())) {
-          return;
-        }
+        final changed = event.path.toLowerCase();
+        final databaseChanged = changed.startsWith(file.path.toLowerCase());
+        final appearanceChanged =
+            widget.appearanceFile != null &&
+            changed == widget.appearanceFile!.path.toLowerCase();
+        if (!databaseChanged && !appearanceChanged) return;
+        _databaseRefreshPending |= databaseChanged;
+        _appearanceRefreshPending |= appearanceChanged;
         _refreshDebounce?.cancel();
         _refreshDebounce = Timer(const Duration(milliseconds: 250), () {
-          if (mounted) ref.read(appControllerProvider).refresh();
+          if (!mounted) return;
+          final controller = ref.read(appControllerProvider);
+          final refreshDatabase = _databaseRefreshPending;
+          final refreshAppearance = _appearanceRefreshPending;
+          _databaseRefreshPending = false;
+          _appearanceRefreshPending = false;
+          if (refreshDatabase) controller.refresh();
+          if (refreshAppearance) controller.reloadTheme();
         });
       });
     }

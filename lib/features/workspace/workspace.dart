@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
+import '../../domain/appearance.dart';
 import '../calendar/calendar_view.dart';
 import '../widget/native_widget_service.dart';
 import 'task_editor.dart';
@@ -415,10 +416,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
             child: PopupMenuButton<ThemeModePreference>(
               tooltip: 'Appearance',
               onSelected: (theme) {
-                controller.setTheme(theme);
-                if (nativeWidget.isAvailable) {
-                  _run(() => nativeWidget.setTheme(theme.name));
-                }
+                _run(() => controller.setTheme(theme));
               },
               itemBuilder: (_) => const [
                 PopupMenuItem(

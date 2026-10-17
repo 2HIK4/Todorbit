@@ -38,13 +38,14 @@ desktop attachment; it does not prove shell-child composition.
 prototype. The Windows build publishes it beside the main app as
 `life_manager_widget.exe`. Its persistent display is one double-buffered, owner-drawn native
 HWND created directly under Explorer's existing `SHELLDLL_DefView`; its Quick
-Add editor is an ordinary top-level modal dialog with normal keyboard
-activation. The candidate reads real schema-v3 task data,
-can add a task scheduled for today, complete a task, refresh, and open the main
-Flutter executable. It prevents duplicate instances, persists system/light/dark
-appearance and Today/Inbox selection, watches SQLite changes without polling,
-and owns a lightweight tray workflow. Position and size persist per user and
-are clamped to connected monitor working areas.
+Add editor is a temporary activatable top-level surface aligned over the
+painted field. The candidate reads real schema-v3 task data, supports
+Today/Inbox/All Tasks/Upcoming, creates tasks with view-specific scheduling,
+completes tasks, and opens a compact optimistic-concurrency task editor. It
+prevents duplicate instances, shares the app's persisted system/light/dark
+appearance, watches SQLite/settings changes without polling, and owns a
+lightweight tray workflow. Position, size, and selected view persist per user;
+all edges and corners resize and bounds are clamped to connected working areas.
 
 The repository boundary is intentionally narrow. It refuses to create or
 migrate the production database, checks `PRAGMA user_version = 3`, uses

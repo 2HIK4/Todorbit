@@ -54,16 +54,19 @@ The experiment now also contains an integration candidate launched with
   created directly as a child of Explorer's existing `SHELLDLL_DefView`,
   positioned near the primary working area's top-right. It is not a reparented
   WinForms Form and has no persistent child controls.
-- Quick Add is a separate, ordinary modal top-level window, so text input does
-  not depend on activating a shell child.
+- Quick Add is a temporary borderless activatable top-level window aligned over
+  the widget's painted input field, so it looks inline without depending on
+  activating a shell child.
 - The native repository opens the existing database in read/write mode only
   when it already exists and reports schema version 3. It does not create or
   migrate the production database. Task inserts use UUIDs, UTC timestamps and
   a transaction; completion updates status, completion time and update time in
   a transaction.
-- The display supports manual refresh, task completion, an empty state, opening
-  the main application, clean close, duplicate-instance prevention, and dark
-  (default) or light (`--light`) palettes.
+- The display supports vector header actions, explicit Today/Inbox/All
+  Tasks/Upcoming selection, task completion, row editing, all-edge/corner
+  resizing, opening a specific task in Flutter, clean close, and
+  duplicate-instance prevention. Flutter and the companion share a persisted
+  System/Light/Dark preference.
 
 This architecture still depends on Explorer's undocumented window hierarchy.
 No undocumented Explorer messages are sent, and no Explorer-owned window is
@@ -78,7 +81,7 @@ dotnet build experiments\widget-shell-probe\widget-shell-probe.csproj -c Release
 experiments\widget-shell-probe\bin\Release\net10.0-windows\widget-shell-probe.exe --widget --app-exe build\windows\x64\runner\Debug\life_manager.exe
 ```
 
-Append `--light` for the light palette. Run the isolated persistence check with
+Run the isolated persistence check with
 `widget-shell-probe.exe --self-test`; it uses a temporary database and deletes
 only that temporary test directory.
 

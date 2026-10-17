@@ -21,6 +21,43 @@ internal static class LifeManagerWidgetSelfTest {
             tasks[0].Title != "Persistence test") {
           throw new InvalidOperationException("Created task was not reloaded.");
         }
+        var original = tasks[0];
+        var categories = repository.LoadCategories();
+        var projects = repository.LoadProjects();
+        if (categories.Count != 1 || projects.Count != 1 ||
+            projects[0].ParentId != categories[0].Id) {
+          throw new InvalidOperationException("Task editor choices did not load.");
+        }
+        repository.UpdateTask(id, new WidgetTaskUpdate(
+          "Edited title", "Widget notes", "inProgress", 3,
+          categories[0].Id, projects[0].Id, "2026-10-17", "2026-10-20",
+          original.UpdatedAt));
+        var edited = repository.LoadTask(id);
+        if (edited == null || edited.Title != "Edited title" ||
+            edited.Notes != "Widget notes" || edited.Status != "inProgress" ||
+            edited.Priority != 3 || edited.DeadlineDate != "2026-10-20" ||
+            edited.CategoryId != categories[0].Id ||
+            edited.ProjectId != projects[0].Id) {
+          throw new InvalidOperationException("Task editing was not persisted.");
+        }
+        try {
+          repository.UpdateTask(id, new WidgetTaskUpdate(
+            "Lost update", "", "notStarted", 0, null, null,
+            null, null, original.UpdatedAt));
+          throw new InvalidOperationException("A stale edit silently overwrote a task.");
+        } catch (InvalidOperationException error)
+            when (error.Message.StartsWith("This task changed")) { }
+        var inboxId = repository.AddTask("Inbox task", today, WidgetTaskView.Inbox);
+        if (repository.LoadTasks(today, WidgetTaskView.Inbox)
+            .All(item => item.Id != inboxId)) {
+          throw new InvalidOperationException("Inbox Quick Add semantics failed.");
+        }
+        var upcomingId = repository.AddTask(
+          "Upcoming task", today, WidgetTaskView.Upcoming);
+        if (repository.LoadTasks(today, WidgetTaskView.Upcoming)
+            .All(item => item.Id != upcomingId)) {
+          throw new InvalidOperationException("Upcoming view filtering failed.");
+        }
         repository.CompleteTask(id);
         if (repository.LoadTasks(today).Count != 0) {
           throw new InvalidOperationException("Completed task remained visible.");
@@ -41,12 +78,28 @@ internal static class LifeManagerWidgetSelfTest {
         }
       }
       VerifySettingsRoundTrip(directory);
+      VerifyAppearanceRoundTrip(directory);
       VerifySingleInstanceMutex();
       VerifyCommandPipe();
       VerifyExplorerRecoveryPolicy();
+      VerifyGeometry();
     } finally {
       SqliteConnection.ClearAllPools();
       if (Directory.Exists(directory)) Directory.Delete(directory, true);
+    }
+  }
+
+  private static void VerifyAppearanceRoundTrip(string directory) {
+    var path = Path.Combine(directory, "appearance.json");
+    var store = new AppearanceSettingsStore(path);
+    var settings = store.Load(WidgetThemePreference.Dark);
+    if (settings.Theme != WidgetThemePreference.Dark) {
+      throw new InvalidOperationException("Legacy appearance was not migrated.");
+    }
+    settings.Theme = WidgetThemePreference.Light;
+    store.Save(settings);
+    if (store.Load().Theme != WidgetThemePreference.Light) {
+      throw new InvalidOperationException("Shared appearance did not round-trip.");
     }
   }
 
@@ -117,26 +170,61 @@ internal static class LifeManagerWidgetSelfTest {
     }
   }
 
+  private static void VerifyGeometry() {
+    if (WidgetGeometry.ResizeEdgeAt(1, 1, 400, 500) !=
+        (WidgetResizeEdge.Left | WidgetResizeEdge.Top) ||
+        WidgetGeometry.ResizeEdgeAt(399, 499, 400, 500) !=
+        (WidgetResizeEdge.Right | WidgetResizeEdge.Bottom)) {
+      throw new InvalidOperationException("Resize edge hit testing failed.");
+    }
+    if (WidgetGeometry.LogicalSize(100, 1200) != new Size(340, 900) ||
+        WidgetGeometry.Scale(new Size(400, 500), 1.5f) != new Size(600, 750)) {
+      throw new InvalidOperationException("Resize or DPI sizing bounds failed.");
+    }
+    var clamped = WidgetGeometry.ClampToWorkingArea(
+      new Rectangle(-800, 900, 400, 500), new Rectangle(0, 0, 1920, 1040));
+    if (clamped != new Rectangle(0, 540, 400, 500)) {
+      throw new InvalidOperationException("Monitor placement clamping failed.");
+    }
+  }
+
   private static void CreateDatabase(string path) {
     using var connection = new SqliteConnection($"Data Source={path}");
     connection.Open();
     using var command = connection.CreateCommand();
     command.CommandText = """
       PRAGMA user_version = 3;
+      CREATE TABLE categories (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE TABLE projects (
+        id TEXT PRIMARY KEY,
+        category_id TEXT NOT NULL REFERENCES categories(id),
+        name TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
       CREATE TABLE tasks (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL CHECK(length(trim(title)) > 0),
         notes TEXT NOT NULL DEFAULT '',
         status TEXT NOT NULL,
         priority INTEGER NOT NULL DEFAULT 0,
-        category_id TEXT,
-        project_id TEXT,
+        category_id TEXT REFERENCES categories(id),
+        project_id TEXT REFERENCES projects(id),
         scheduled_date TEXT,
         deadline_date TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         completed_at TEXT
       );
+      INSERT INTO categories VALUES(
+        'category-1','Personal','2026-10-17T00:00:00Z','2026-10-17T00:00:00Z');
+      INSERT INTO projects VALUES(
+        'project-1','category-1','Home','2026-10-17T00:00:00Z','2026-10-17T00:00:00Z');
       """;
     command.ExecuteNonQuery();
   }
