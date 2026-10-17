@@ -1,9 +1,50 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
+if (args.Length >= 1 && args[0] == "--widget") {
+  var appExe = ArgumentValue(args, "--app-exe");
+  var lightTheme = args.Contains("--light", StringComparer.OrdinalIgnoreCase);
+  using var instance = new Mutex(initiallyOwned: true,
+    name: "Local\\LifeManagerDesktopWidget", out var ownsMutex);
+  if (!ownsMutex) {
+    Console.WriteLine("A Life Manager desktop widget is already running.");
+    return;
+  }
+  ApplicationConfiguration.Initialize();
+  try {
+    using var repository = LifeManagerWidgetRepository.OpenDefault();
+    Application.Run(new LifeManagerWidget(repository, appExe, lightTheme));
+  } catch (Exception error) {
+    MessageBox.Show(error.Message, "Life Manager widget",
+      MessageBoxButtons.OK, MessageBoxIcon.Error);
+    Environment.ExitCode = 1;
+  }
+  return;
+}
+if (args is ["--self-test"]) {
+  try {
+    LifeManagerWidgetSelfTest.Run();
+    Console.WriteLine("Widget persistence self-test passed.");
+  } catch (Exception error) {
+    Console.Error.WriteLine(error);
+    Environment.ExitCode = 1;
+  }
+  return;
+}
 if (args is ["--attach-prototype"]) {
   ApplicationConfiguration.Initialize();
-  Application.Run(new ShellHostPrototype());
+  Application.Run(new ShellHostPrototype(attachToShell: true));
+  return;
+}
+if (args is ["--standalone"]) {
+  ApplicationConfiguration.Initialize();
+  Application.Run(new ShellHostPrototype(attachToShell: false));
+  return;
+}
+if (args is ["--standalone-capture", var capturePath]) {
+  ApplicationConfiguration.Initialize();
+  Application.Run(new ShellHostPrototype(
+    attachToShell: false, capturePath: capturePath));
   return;
 }
 if (args is ["--inspect-pid", var pidText] && uint.TryParse(pidText, out var targetPid)) {
@@ -21,7 +62,7 @@ if (args is ["--inspect-pid", var delayedPidText, "--delay-seconds", var delayTe
   return;
 }
 if (args.Length != 0) {
-  Console.Error.WriteLine("Usage: widget-shell-probe [--inspect-pid PID [--delay-seconds 1..15] | --attach-prototype]");
+  Console.Error.WriteLine("Usage: widget-shell-probe [--widget [--light] [--app-exe PATH] | --self-test | --standalone | --standalone-capture PNG | --inspect-pid PID [--delay-seconds 1..15] | --attach-prototype]");
   return;
 }
 
@@ -64,6 +105,13 @@ static bool HasShellChild(nint window) {
   return found;
 }
 
+static string? ArgumentValue(string[] values, string name) {
+  for (var index = 0; index < values.Length - 1; index++) {
+    if (values[index] == name) return values[index + 1];
+  }
+  return null;
+}
+
 static void PrintSpecial(string label, nint window) => PrintWindow(label, window);
 
 static void PrintWindow(string label, nint window) {
@@ -72,7 +120,8 @@ static void PrintWindow(string label, nint window) {
   var parent = Native.GetParent(window);
   var owner = Native.GetWindow(window, 4);
   Console.WriteLine(
-    $"{label} hwnd=0x{window:X} class={Native.ClassName(window)} pid={processId} " +
+    $"{label} hwnd=0x{window:X} class={Native.ClassName(window)} " +
+    $"pid={processId} process={WindowDiagnostics.ProcessName(processId)} " +
     $"parent=0x{parent:X} owner=0x{owner:X} visible={Native.IsWindowVisible(window)} " +
     $"rect=({bounds.Left},{bounds.Top})-({bounds.Right},{bounds.Bottom})");
 }
@@ -108,6 +157,10 @@ internal static class Native {
 
   [DllImport("user32.dll")]
   internal static extern nint GetParent(nint window);
+
+  [DllImport("user32.dll")]
+  [return: MarshalAs(UnmanagedType.Bool)]
+  internal static extern bool IsWindow(nint window);
 
   [DllImport("user32.dll")]
   internal static extern nint GetWindow(nint window, uint command);

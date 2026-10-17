@@ -23,3 +23,41 @@ In the first approved run, `SetParent` succeeded and a read-only inventory showe
 If choosing to retest manually after reviewing the diagnostic code, first build Release, then launch `--attach-prototype` in one terminal and note its PID. In a second terminal, run `--inspect-pid PID --delay-seconds 5`, press `Win + D` yourself during the countdown, then restore the terminal to read/copy the output. Look for the panel at the top-left of the **primary** display, not the left secondary. Compare `actualMinusIntended`, actual monitor intersection, sibling order, `DWM cloak`, and the center `WindowFromPoint`. If the panel is not visible, record those lines and stop the experimental PID immediately rather than retrying. Do not move or restyle Explorer windows. Manual observation is still needed to distinguish normal-window occlusion from shell compositing or a drawing failure.
 
 This stage cannot validate real task CRUD, Flutter rendering, main-app lifecycle, resizing, or Explorer recovery. Those are subsequent integration steps only if shell layering and popup activation pass manually. A successful build or read-only inventory is not evidence that the attachment works.
+
+## Standalone paint check
+
+`--standalone` opens an ordinary bordered, taskbar-visible high-contrast test
+window. `--standalone-capture PATH.png` temporarily raises only that test
+window, captures its own screen rectangle after painting, writes the requested
+PNG, and exits. This proved that the WinForms surface paints normally before
+desktop attachment; it does not prove shell-child composition.
+
+## Native hybrid widget candidate
+
+`--widget` launches a separate integration candidate rather than the Flutter
+prototype. Its persistent native display is parented to Explorer's existing
+`SHELLDLL_DefView`; its Quick Add editor is an ordinary top-level modal dialog
+with normal keyboard activation. The candidate reads real schema-v3 task data,
+can add a task scheduled for today, complete a task, refresh, and open the main
+Flutter executable. It prevents duplicate instances and supports dark (default)
+and light (`--light`) palettes.
+
+The repository boundary is intentionally narrow. It refuses to create or
+migrate the production database, checks `PRAGMA user_version = 3`, uses
+parameterized SQL, transactions, stable UUIDs, UTC timestamps, foreign keys,
+and a five-second busy timeout. `--self-test` validates creation and completion
+against a disposable temporary database; it never opens the production file.
+
+Build and launch from the repository root:
+
+```powershell
+dotnet build experiments\widget-shell-probe\widget-shell-probe.csproj -c Release
+experiments\widget-shell-probe\bin\Release\net10.0-windows\widget-shell-probe.exe --self-test
+experiments\widget-shell-probe\bin\Release\net10.0-windows\widget-shell-probe.exe --widget --app-exe build\windows\x64\runner\Debug\life_manager.exe
+```
+
+For the light palette, append `--light`. Stop with the widget's Close button or
+terminate only its inspected PID. The candidate makes no persistent Explorer
+change. Explorer hosting remains undocumented and must be manually checked for
+visible pixels, clicks, `Win + D`, normal-window coverage, repeated typing,
+multiple monitors, and Explorer restart before production integration.

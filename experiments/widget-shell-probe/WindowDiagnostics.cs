@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
@@ -14,6 +15,14 @@ internal static class WindowDiagnostics {
   private const long WsExLayered = 0x00080000;
   private const long WsExTransparent = 0x00000020;
   private const long WsExNoActivate = 0x08000000;
+
+  internal static string ProcessName(uint processId) {
+    try {
+      return Process.GetProcessById(checked((int)processId)).ProcessName;
+    } catch {
+      return "unavailable";
+    }
+  }
 
   internal static void Inspect(uint targetPid) {
     Console.WriteLine($"READ-ONLY shell placement inspection for PID {targetPid}");
@@ -59,12 +68,20 @@ internal static class WindowDiagnostics {
       Native.GetWindowThreadProcessId(child, out var childPid);
       Native.GetWindowRect(child, out var childRect);
       Console.WriteLine($"  [{index++}] hwnd=0x{child:X} class={Native.ClassName(child)} " +
-        $"pid={childPid} visible={Native.IsWindowVisible(child)} " +
+        $"pid={childPid} process={ProcessName(childPid)} visible={Native.IsWindowVisible(child)} " +
         $"screen={RectText(childRect)}");
       if (childPid == targetPid) target = child;
     }
     if (target == 0) {
-      Console.WriteLine("No direct Progman child owned by that PID is present. " +
+      Native.EnumChildWindows(shell, (child, _) => {
+        Native.GetWindowThreadProcessId(child, out var childPid);
+        if (childPid != targetPid) return true;
+        target = child;
+        return false;
+      }, 0);
+    }
+    if (target == 0) {
+      Console.WriteLine("No Progman descendant owned by that PID is present. " +
         "The experiment may have exited or its window may have been destroyed.");
       return;
     }
@@ -74,6 +91,7 @@ internal static class WindowDiagnostics {
     var owner = Native.GetWindow(target, 4u);
     var parent = Native.GetParent(target);
     Console.WriteLine($"target hwnd=0x{target:X} parent=0x{parent:X} " +
+      $"parentClass={Native.ClassName(parent)} " +
       $"owner=0x{owner:X} screen={RectText(actual)} " +
       $"style=0x{style:X} exStyle=0x{exStyle:X} " +
       $"WS_CHILD={Has(style, WsChild)} WS_VISIBLE={Has(style, WsVisible)} " +
@@ -104,7 +122,7 @@ internal static class WindowDiagnostics {
     Native.GetWindowThreadProcessId(hit, out var hitPid);
     var hitRoot = Native.GetAncestor(hit, 2u);
     Console.WriteLine($"center={PointText(center)} WindowFromPoint=0x{hit:X} " +
-      $"class={Native.ClassName(hit)} pid={hitPid} " +
+      $"class={Native.ClassName(hit)} pid={hitPid} process={ProcessName(hitPid)} " +
       $"root=0x{hitRoot:X} rootClass={Native.ClassName(hitRoot)}; " +
       "a different hit target suggests occlusion or hit-test routing, not proof of drawing");
     Console.WriteLine("Visibility flags and Z-order do not prove pixels are drawn; " +
@@ -140,7 +158,7 @@ internal static class WindowDiagnostics {
     var hit = Native.WindowFromPoint(center);
     Native.GetWindowThreadProcessId(hit, out var hitPid);
     Console.WriteLine($"intended center={PointText(center)} WindowFromPoint=0x{hit:X} " +
-      $"class={Native.ClassName(hit)} pid={hitPid}");
+      $"class={Native.ClassName(hit)} pid={hitPid} process={ProcessName(hitPid)}");
     var overlaps = 0;
     var beforeShell = true;
     Native.EnumWindows((window, _) => {
@@ -156,7 +174,8 @@ internal static class WindowDiagnostics {
       if (overlaps <= 12) {
         Native.GetWindowThreadProcessId(window, out var pid);
         Console.WriteLine($"  top-level ahead of Progman at center: " +
-          $"hwnd=0x{window:X} class={Native.ClassName(window)} pid={pid} " +
+          $"hwnd=0x{window:X} class={Native.ClassName(window)} " +
+          $"pid={pid} process={ProcessName(pid)} " +
           $"screen={RectText(bounds)}");
       }
       return true;

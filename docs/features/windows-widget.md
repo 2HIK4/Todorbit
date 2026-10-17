@@ -44,3 +44,38 @@ The Win32 log samples visibility, minimization, cloaking, parent, and foreground
 Branch `experiment/windows-widget-shell-host` contains a standalone [shell probe](../../experiments/widget-shell-probe/README.md). Its default mode safely inventories existing shell windows without touching Explorer. In the inspected session, the visible `WorkerW` is behind `SHELLDLL_DefView` under `Progman`; direct WorkerW parenting would not establish clickability. A separate, guarded attachment mode puts only an experimental surface in front of that icon view and opens an ordinary top-level popup for keyboard input. This is not the production widget and does not access tasks or SQLite. Attachment was approved and tried once; no keyboard or Show Desktop success is claimed.
 
 The approved first attachment did put only the experiment's window above the icon view. It landed on the left monitor because shell-relative coordinates were mistaken for primary-screen coordinates; the experimental process was stopped and Explorer remained responsive. A coordinate correction is built but untested. The computer-use tool could not target the attached child, so input, `Win + D`, normal-window coverage, and recovery are still manual tests, not verified outcomes. See the experiment README for exact steps and safe stop.
+
+## Native hybrid integration candidate
+
+The experiment now also contains an integration candidate launched with
+`--widget`. It does not replace `life_manager.exe --widget`.
+
+- The persistent WinForms display is a child of Explorer's existing
+  `SHELLDLL_DefView`, positioned near the primary working area's top-right.
+- Quick Add is a separate, ordinary modal top-level window, so text input does
+  not depend on activating a shell child.
+- The native repository opens the existing database in read/write mode only
+  when it already exists and reports schema version 3. It does not create or
+  migrate the production database. Task inserts use UUIDs, UTC timestamps and
+  a transaction; completion updates status, completion time and update time in
+  a transaction.
+- The display supports manual refresh, task completion, an empty state, opening
+  the main application, clean close, duplicate-instance prevention, and dark
+  (default) or light (`--light`) palettes.
+
+This architecture still depends on Explorer's undocumented window hierarchy.
+No undocumented Explorer messages are sent, and no Explorer-owned window is
+moved, hidden, restyled, or destroyed. Manual acceptance remains mandatory for
+desktop-attached pixel visibility, click delivery, `Win + D`, ordinary-window
+coverage, repeated popup focus, multiple monitors, and Explorer restart.
+
+Build and run from the repository root:
+
+```powershell
+dotnet build experiments\widget-shell-probe\widget-shell-probe.csproj -c Release
+experiments\widget-shell-probe\bin\Release\net10.0-windows\widget-shell-probe.exe --widget --app-exe build\windows\x64\runner\Debug\life_manager.exe
+```
+
+Append `--light` for the light palette. Run the isolated persistence check with
+`widget-shell-probe.exe --self-test`; it uses a temporary database and deletes
+only that temporary test directory.
