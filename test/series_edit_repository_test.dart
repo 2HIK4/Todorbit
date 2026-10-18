@@ -49,6 +49,9 @@ void main() {
       await initial.close();
       final raw = sqlite.sqlite3.open(file.path);
       try {
+        raw.execute('DROP TABLE time_entry_history');
+        raw.execute('DROP TABLE time_entries');
+        raw.execute('DROP TABLE timer_runs');
         raw.execute('DROP TABLE goal_habit_links');
         raw.execute('DROP TABLE goal_project_links');
         raw.execute('DROP TABLE goal_task_links');

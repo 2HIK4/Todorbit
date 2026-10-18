@@ -103,3 +103,11 @@
   explicit choice independent of its numeric total; archive retains that
   state. Restrict habit links to Yes/No habits so later numeric target edits
   cannot silently reinterpret historical contributions.
+- **Actual work (schema v10):** store timer intervals and manual logs apart
+  from planned work sessions, which retain their own outcomes. One timer may
+  be active at a time. Running timers checkpoint once a minute while the app
+  is alive; a gap over two minutes requires an explicit keep-or-stop decision
+  before further timer actions. Stopping at the checkpoint preserves only
+  confirmed elapsed time. Manual log edits and clears retain an audit record;
+  interval totals merge overlaps to prevent inflated actual time. The native
+  widget only validates schema compatibility.

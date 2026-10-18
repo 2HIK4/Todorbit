@@ -8,12 +8,14 @@ import '../domain/recurrence.dart';
 import '../domain/series_edit.dart';
 import '../domain/habits.dart';
 import '../domain/goals.dart';
+import '../domain/time_tracking.dart';
 import '../domain/scheduling_models.dart';
 import 'app_database.dart';
 
 part 'series_edit_repository.dart';
 part 'habit_repository.dart';
 part 'goal_repository.dart';
+part 'time_repository.dart';
 
 class LifeRepository {
   LifeRepository(this.db);
@@ -931,6 +933,15 @@ class LifeRepository {
   }
 
   Future<void> deleteTask(String id) async {
+    final active = await db
+        .customSelect(
+          "SELECT 1 FROM timer_runs WHERE task_id=? AND state!='stopped'",
+          variables: [Variable.withString(id)],
+        )
+        .getSingleOrNull();
+    if (active != null) {
+      throw StateError('Stop the task timer before deleting this task');
+    }
     await db.customUpdate(
       'DELETE FROM tasks WHERE id=?',
       variables: [Variable.withString(id)],

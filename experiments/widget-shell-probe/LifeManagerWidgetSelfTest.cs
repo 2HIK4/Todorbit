@@ -331,6 +331,20 @@ internal static class LifeManagerWidgetSelfTest {
             "Widget could not read a schema v9 task.");
         }
       }
+      using (var upgrade = new SqliteConnection(
+          $"Data Source={databasePath};Pooling=False")) {
+        upgrade.Open();
+        using var command = upgrade.CreateCommand();
+        command.CommandText = "PRAGMA user_version = 10";
+        command.ExecuteNonQuery();
+      }
+      using (var v10Repository =
+          LifeManagerWidgetRepository.OpenForTest(databasePath)) {
+        if (v10Repository.LoadTask(id)?.Status != "completed") {
+          throw new InvalidOperationException(
+            "Widget could not read a schema v10 task.");
+        }
+      }
       VerifySettingsRoundTrip(directory);
       VerifyAppearanceRoundTrip(directory);
       VerifySingleInstanceMutex();

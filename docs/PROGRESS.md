@@ -63,6 +63,14 @@
   each completed task once. The Goals screen exposes progress, links,
   milestones, history, and correction controls. Today links to unfinished goals
   due within seven days.
+- Actual work (schema v10) stores timer runs and UTC work intervals separately
+  from planned sessions. Task details offer start, pause, resume, stop, and
+  historical manual logs with audited corrections. A running timer has a
+  sidebar control and minute checkpoints. After a gap of over two minutes,
+  users explicitly keep elapsed time or stop at the last checkpoint;
+  unreviewed time is not added to the displayed total. Overlapping intervals
+  count once in the displayed total. The native widget accepts schema v10
+  without editing time records.
 - Stale completion now rejects a newer task edit, and task duration input
   rejects invalid text instead of silently clearing the estimate. Prerequisite
   edits compare task revisions, and the narrow task editor keeps unsaved fields
@@ -106,7 +114,7 @@
 
 - Flutter 3.47.7 / Dart 3.13.5; Windows toolchain healthy.
 - `flutter analyze`: clean.
-- `flutter test`: 82 passing tests, including engine, database, migration,
+- `flutter test`: 88 passing tests, including engine, database, migration,
   stale-apply, undo/restoration, split, persistence, and preview/Apply coverage.
 - Native Release build and disposable database/settings self-test: passing.
 - Native dependency audit: no vulnerable packages reported.
@@ -167,6 +175,12 @@
   analyze` is clean; all 82 Flutter tests pass. Native Release build and
   self-test, Windows Release packaging, and packaged companion self-test pass.
   Manual Goals UI acceptance remains pending.
+- Schema v10 validation: disposable v9-to-v10 migration and restart,
+  timer state transitions, recovered-timer decision, manual log correction,
+  overlap accounting, and dialog interactions pass. `flutter analyze` is clean;
+  all 88 Flutter tests, native Release build/self-test, Windows Release build,
+  and packaged companion self-test pass. Manual Windows UI acceptance remains
+  pending.
 
 ## In progress
 
@@ -180,7 +194,7 @@
 
 ## Not yet implemented
 
-- Timer, templates, advanced search/saved views, backups, Trash,
+- Templates, advanced search/saved views, backups, Trash,
   notifications, privacy controls, import/export, and installer packaging.
 
 ## Environment and data notes
@@ -200,9 +214,8 @@
 
 ## Next action
 
-Implement timer-based and manual actual work tracking, preserving planned
-sessions and their independent outcomes. Then continue templates,
-templates, backups/Trash, and the remaining Windows V1.0 roadmap. Manually
+Implement reusable task and project templates next, then backups/Trash and the
+remaining Windows V1.0 roadmap. Manually
 exercise the recurrence editor, Smart Reschedule collision choices, and Habits
 screen on an isolated Windows profile before opening the production schema-v4
 database. Time-of-day recurrence is outside the current date-only task model;

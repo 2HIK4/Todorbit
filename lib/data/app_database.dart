@@ -40,7 +40,7 @@ class AppDatabase extends GeneratedDatabase {
   }
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   Iterable<TableInfo> get allTables => const [];
@@ -107,9 +107,10 @@ class AppDatabase extends GeneratedDatabase {
       await _createRecurrenceCollisionHistory();
       await _createHabits();
       await _createGoals();
+      await _createTimeTracking();
     },
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 8 || to != 9) {
+      if (from < 1 || from > 9 || to != 10) {
         throw StateError('No migration registered from schema $from to $to');
       }
       if (from == 1) {
@@ -143,7 +144,8 @@ class AppDatabase extends GeneratedDatabase {
         await _createRecurrenceCollisionHistory();
       }
       if (from < 8) await _createHabits();
-      await _createGoals();
+      if (from < 9) await _createGoals();
+      await _createTimeTracking();
     },
   );
 
@@ -315,6 +317,58 @@ class AppDatabase extends GeneratedDatabase {
         )
       ''');
     }
+  }
+
+  Future<void> _createTimeTracking() async {
+    await customStatement('''
+      CREATE TABLE timer_runs (
+        id TEXT PRIMARY KEY,
+        task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL,
+        state TEXT NOT NULL CHECK(state IN ('running','paused','stopped')),
+        started_at TEXT NOT NULL,
+        last_seen_at TEXT NOT NULL,
+        stopped_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await customStatement(
+      "CREATE UNIQUE INDEX one_active_timer ON timer_runs((1)) WHERE state!='stopped'",
+    );
+    await customStatement('''
+      CREATE TABLE time_entries (
+        id TEXT PRIMARY KEY,
+        task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL,
+        session_id TEXT REFERENCES work_sessions(id) ON DELETE SET NULL,
+        timer_run_id TEXT REFERENCES timer_runs(id) ON DELETE RESTRICT,
+        source TEXT NOT NULL CHECK(source IN ('manual','timer')),
+        starts_at TEXT NOT NULL,
+        ends_at TEXT,
+        notes TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        CHECK(ends_at IS NULL OR ends_at >= starts_at),
+        CHECK((source='manual' AND timer_run_id IS NULL AND ends_at IS NOT NULL)
+          OR (source='timer' AND timer_run_id IS NOT NULL))
+      )
+    ''');
+    await customStatement(
+      'CREATE INDEX time_entries_task ON time_entries(task_id,starts_at)',
+    );
+    await customStatement(
+      'CREATE UNIQUE INDEX time_entries_open_run ON time_entries(timer_run_id) WHERE ends_at IS NULL',
+    );
+    await customStatement('''
+      CREATE TABLE time_entry_history (
+        id TEXT PRIMARY KEY,
+        entry_id TEXT NOT NULL,
+        task_id TEXT,
+        action TEXT NOT NULL,
+        before_json TEXT,
+        after_json TEXT,
+        changed_at TEXT NOT NULL
+      )
+    ''');
   }
 
   Future<void> _createRecurrence() async {

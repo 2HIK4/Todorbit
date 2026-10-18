@@ -5,6 +5,7 @@ import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../../domain/recurrence.dart';
 import '../calendar/session_editor.dart';
+import '../time_tracking/time_tracking_dialog.dart';
 import 'series_editor.dart';
 
 class TaskEditor extends ConsumerStatefulWidget {
@@ -675,6 +676,16 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                 ),
                 if (widget.task != null) ...[
                   const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: () => showDialog<void>(
+                      context: context,
+                      builder: (_) =>
+                          TimeTrackingDialog(taskId: widget.task!.id),
+                    ),
+                    icon: const Icon(Icons.timer_outlined),
+                    label: const Text('Actual work and timer'),
+                  ),
+                  const SizedBox(height: 8),
                   ExpansionTile(
                     tilePadding: EdgeInsets.zero,
                     title: const Text('Prerequisites'),

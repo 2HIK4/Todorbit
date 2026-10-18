@@ -51,7 +51,7 @@ Sequences persist explicit positions; dependencies persist directed prerequisite
 edges. Repository transactions validate cycles and keep sequence reorders
 atomic. Smart Reschedule's reviewed dependency warnings are checked again at
 Apply, so a newly conflicting prerequisite cannot silently bypass the preview.
-The native widget accepts v4 through v7 and never migrates the database.
+The native widget accepts v4 through v10 and never migrates the database.
 
 Schema v6 separates recurring rule templates from independent task occurrences.
 Schema v7 links rule generations with a family ID and active date boundaries.
@@ -73,6 +73,13 @@ progress is recalculated from current completed tasks and stored habit logs.
 Direct and project task links use one contribution per task ID, so the same
 completion cannot count twice. Goal completion and archiving are independent
 of the numeric total. The native widget accepts v9 without goal access.
+
+Schema v10 stores timer runs, actual work intervals, and manual-correction
+history independently of planned sessions. A partial unique index admits one
+active timer and one open interval per run. The repository writes timer state
+and intervals in transactions. AppController heartbeats a running timer and
+stops heartbeat when recovery review is required. Actual totals merge
+overlapping intervals. The native widget accepts v10 without time access.
 
 The deterministic engine in `lib/domain/` has no database dependency. It keeps
 local date-only task plans separate from UTC work-session intervals and fixed

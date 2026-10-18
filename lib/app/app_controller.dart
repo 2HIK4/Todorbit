@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' hide Category;
 import 'package:flutter_riverpod/legacy.dart';
 
@@ -8,6 +10,7 @@ import '../domain/recurrence.dart';
 import '../domain/series_edit.dart';
 import '../domain/habits.dart';
 import '../domain/goals.dart';
+import '../domain/time_tracking.dart';
 import '../domain/appearance.dart';
 import '../domain/scheduling_models.dart';
 
@@ -49,6 +52,11 @@ class AppController extends ChangeNotifier {
   List<HabitRestDay> habitRestDays = [];
   List<Goal> goals = [];
   List<GoalMilestone> goalMilestones = [];
+  List<TimeEntry> timeEntries = [];
+  TimerRun? activeTimer;
+  String? timerError;
+  Timer? _timerHeartbeat;
+  bool _heartbeatBusy = false;
   AvailabilityPlan availability = const AvailabilityPlan(weekly: {});
   List<SchedulingOperation> schedulingHistory = [];
   WorkspaceView view = WorkspaceView.today;
@@ -71,7 +79,7 @@ class AppController extends ChangeNotifier {
       RecurrenceRule.shiftDate(today, -14),
       RecurrenceRule.shiftDate(today, 30),
     );
-    final result = await Future.wait<Object>([
+    final result = await Future.wait<Object?>([
       repository.categories(),
       repository.projects(),
       repository.tasks(),
@@ -86,6 +94,8 @@ class AppController extends ChangeNotifier {
       repository.habitRestDays(),
       repository.goals(),
       repository.goalMilestones(),
+      repository.timeEntries(),
+      repository.activeTimerRun(),
     ]);
     categories = result[0] as List<Category>;
     projects = result[1] as List<Project>;
@@ -101,9 +111,50 @@ class AppController extends ChangeNotifier {
     habitRestDays = result[11] as List<HabitRestDay>;
     goals = result[12] as List<Goal>;
     goalMilestones = result[13] as List<GoalMilestone>;
+    timeEntries = result[14] as List<TimeEntry>;
+    activeTimer = result[15] as TimerRun?;
+    _syncTimerHeartbeat();
     if (selectedTaskId != null && selectedTask == null) selectedTaskId = null;
     loading = false;
     notifyListeners();
+  }
+
+  void _syncTimerHeartbeat() {
+    final run = activeTimer;
+    if (run?.state != TimerState.running || run!.needsReview(DateTime.now())) {
+      _timerHeartbeat?.cancel();
+      _timerHeartbeat = null;
+      return;
+    }
+    _timerHeartbeat ??= Timer.periodic(const Duration(minutes: 1), (_) async {
+      final current = activeTimer;
+      if (_heartbeatBusy || current?.state != TimerState.running) return;
+      _heartbeatBusy = true;
+      try {
+        final seen = await repository.heartbeatTimer(current!);
+        if (seen == null) {
+          _timerHeartbeat?.cancel();
+          _timerHeartbeat = null;
+        } else if (activeTimer?.id == current.id) {
+          activeTimer = current.withLastSeen(seen);
+        }
+        timerError = null;
+        notifyListeners();
+      } catch (failure) {
+        timerError = '$failure';
+        _timerHeartbeat?.cancel();
+        _timerHeartbeat = null;
+        notifyListeners();
+      } finally {
+        _heartbeatBusy = false;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timerHeartbeat?.cancel();
+    super.dispose();
   }
 
   void navigate(WorkspaceView next, {String? id}) {
@@ -250,6 +301,61 @@ class AppController extends ChangeNotifier {
 
   Future<void> deleteTask(String id) async {
     await repository.deleteTask(id);
+    await refresh();
+  }
+
+  Future<void> startTimer(String taskId) async {
+    await repository.startTimer(taskId);
+    await refresh();
+  }
+
+  Future<void> pauseTimer() async {
+    await repository.pauseTimer(activeTimer!);
+    await refresh();
+  }
+
+  Future<void> resumeTimer() async {
+    await repository.resumeTimer(activeTimer!);
+    await refresh();
+  }
+
+  Future<void> stopTimer() async {
+    await repository.stopTimer(activeTimer!);
+    await refresh();
+  }
+
+  Future<void> keepRecoveredTimer() async {
+    await repository.keepRecoveredTimer(activeTimer!);
+    await refresh();
+  }
+
+  Future<void> stopRecoveredTimerAtCheckpoint() async {
+    await repository.stopRecoveredTimerAtCheckpoint(activeTimer!);
+    await refresh();
+  }
+
+  Future<void> addManualTime(
+    String taskId,
+    DateTime startsAt,
+    DateTime endsAt,
+    String notes,
+  ) async {
+    await repository.addManualTime(taskId, startsAt, endsAt, notes);
+    await refresh();
+  }
+
+  Future<void> updateManualTime(
+    TimeEntry previous,
+    DateTime startsAt,
+    DateTime endsAt,
+    String notes,
+  ) async {
+    await repository.updateManualTime(previous, startsAt, endsAt, notes);
+    await refresh();
+  }
+
+  Future<void> clearManualTime(TimeEntry previous) async {
+    await repository.clearManualTime(previous);
     await refresh();
   }
 

@@ -5,10 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../../domain/recurrence.dart';
+import '../../domain/time_tracking.dart';
 import '../../domain/appearance.dart';
 import '../calendar/calendar_view.dart';
 import '../habits/habits_view.dart';
 import '../goals/goals_view.dart';
+import '../time_tracking/time_tracking_dialog.dart';
 import '../scheduling/smart_reschedule.dart';
 import '../widget/native_widget_service.dart';
 import 'task_editor.dart';
@@ -140,6 +142,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     builder: (_) => const QuickSearchDialog(),
   );
 
+  Future<void> _showActiveTimer(String taskId) => showDialog<void>(
+    context: context,
+    builder: (_) => TimeTrackingDialog(taskId: taskId),
+  );
+
   String _scheduleScope(AppController controller) => switch (controller.view) {
     WorkspaceView.category => 'category:${controller.scopeId}',
     WorkspaceView.project => 'project:${controller.scopeId}',
@@ -206,6 +213,32 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (controller.activeTimer case final run?)
+            ListTile(
+              dense: true,
+              leading: Icon(
+                run.needsReview(DateTime.now())
+                    ? Icons.warning_amber_rounded
+                    : Icons.timer_outlined,
+              ),
+              title: Text(
+                run.needsReview(DateTime.now())
+                    ? 'Review timer'
+                    : run.state == TimerState.running
+                    ? 'Timer running'
+                    : 'Timer paused',
+              ),
+              subtitle: Text(
+                controller.tasks
+                        .where((task) => task.id == run.taskId)
+                        .map((task) => task.title)
+                        .firstOrNull ??
+                    'Deleted task',
+              ),
+              onTap: run.taskId == null
+                  ? null
+                  : () => _showActiveTimer(run.taskId!),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 20, 8, 14),
             child: Row(
