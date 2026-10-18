@@ -136,6 +136,7 @@
 - Import/export publishes a standalone SQLite snapshot at a chosen `.sqlite`
   path and stages an external Life Manager database in managed backups. Import
   checks integrity, supported schema, required tables, and foreign keys.
+  Export also checks required tables and foreign keys before publication.
   The restore preview shows source, schema, and size; replacement requires an
   explicit choice and occurs only on the next launch through the existing
   Before restore rollback flow. Cancelling either picker or the preview leaves
@@ -183,7 +184,7 @@
 
 - Flutter 3.47.7 / Dart 3.13.5; Windows toolchain healthy.
 - `flutter analyze`: clean.
-- `flutter test`: 130 passing tests, including engine, database, migration,
+- `flutter test`: 131 passing tests, including engine, database, migration,
   stale-apply, undo/restoration, split, persistence, and preview/Apply coverage.
 - Native Release build and disposable database/settings self-test: passing.
 - Native dependency audit: no vulnerable packages reported.
@@ -301,9 +302,10 @@
   contains the replaced database. Invalid SQLite, truncated data, newer
   schema, missing tables, and broken foreign keys are rejected without
   changing the active database or publishing a managed backup. Existing export
-  files are retained; cancelled pickers and cancelled restore review perform
+  files are retained; exports with broken relationships publish no file;
+  cancelled pickers and cancelled restore review perform
   no replacement. Dialog tests verify preview details and disabled controls
-  while a picker is pending. `flutter analyze` is clean; all 130 Flutter tests,
+  while a picker is pending. `flutter analyze` is clean; all 131 Flutter tests,
   Windows Release build, and packaged widget self-test pass. Native Windows
   file picker interaction and next-launch restore remain manual acceptance.
 

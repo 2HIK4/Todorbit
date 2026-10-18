@@ -143,8 +143,10 @@
 - **Portable database transfer:** use the same SQLite `VACUUM INTO` snapshot
   path for export and for staging an imported file. Validate the staged copy's
   integrity, compatible schema, expected Life Manager tables, and foreign
-  keys before publishing it in managed backups. The native Windows file dialog
-  selects paths without changing the active database. Import then uses the
+  keys before publishing it in managed backups. Export checks the same table
+  and relationship constraints before publishing a portable file. The native
+  Windows file dialog selects paths without changing the active database.
+  Import then uses the
   existing reviewed next-launch restore and Before restore rollback mechanism;
   cancelling review leaves the staged snapshot available as a manual backup.
 - **Recoverable Archive and Trash (schema v13):** archive task rows without

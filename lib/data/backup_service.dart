@@ -171,6 +171,7 @@ class BackupService {
       final sourcePath = databaseFile.path;
       final temporaryPath = temporary.path;
       await Isolate.run(() => _writeSnapshot(sourcePath, temporaryPath));
+      await Isolate.run(() => _validateLifeManagerSnapshot(temporaryPath));
       if (await destination.exists()) {
         throw StateError('The export filename was created by another process');
       }
@@ -207,7 +208,7 @@ class BackupService {
       if (schema < 1 || schema > appSchemaVersion) {
         throw StateError('Import schema $schema is unsupported');
       }
-      await Isolate.run(() => _validateImportedSnapshot(temporaryPath));
+      await Isolate.run(() => _validateLifeManagerSnapshot(temporaryPath));
       if (await destination.exists()) {
         throw StateError('Import name was created by another process');
       }
@@ -368,7 +369,7 @@ String _stamp(DateTime instant) =>
     '${instant.second.toString().padLeft(2, '0')}'
     '${(instant.millisecond * 1000 + instant.microsecond).toString().padLeft(6, '0')}Z';
 
-void _validateImportedSnapshot(String filePath) {
+void _validateLifeManagerSnapshot(String filePath) {
   final connection = sqlite.sqlite3.open(
     filePath,
     mode: sqlite.OpenMode.readOnly,
@@ -376,6 +377,9 @@ void _validateImportedSnapshot(String filePath) {
   try {
     final schema =
         connection.select('PRAGMA user_version').single.values.single as int;
+    if (schema < 1) {
+      throw StateError('Snapshot is not a Life Manager database');
+    }
     final names = connection
         .select("SELECT name FROM sqlite_master WHERE type='table'")
         .map((row) => row['name'] as String)
@@ -442,10 +446,10 @@ void _validateImportedSnapshot(String filePath) {
       required.addAll({'notification_settings', 'notification_deliveries'});
     }
     if (!names.containsAll(required)) {
-      throw StateError('Import is not a Life Manager database');
+      throw StateError('Snapshot is not a Life Manager database');
     }
     if (connection.select('PRAGMA foreign_key_check').isNotEmpty) {
-      throw StateError('Import has broken record relationships');
+      throw StateError('Snapshot has broken record relationships');
     }
   } finally {
     connection.close();

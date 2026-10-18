@@ -119,6 +119,38 @@ void main() {
   });
 
   test(
+    'export rejects broken relationships without publishing a file',
+    () async {
+      final directory = await Directory.systemTemp.createTemp('life-transfer-');
+      try {
+        final databaseFile = File('${directory.path}/live.sqlite');
+        final destination = File('${directory.path}/portable.sqlite');
+        final database = AppDatabase(NativeDatabase(databaseFile));
+        await LifeRepository(database).addTask(const TaskDraft(title: 'Work'));
+        await database.close();
+        final raw = sqlite.sqlite3.open(databaseFile.path);
+        try {
+          raw.execute('PRAGMA foreign_keys=OFF');
+          raw.execute("UPDATE tasks SET category_id='missing-category'");
+        } finally {
+          raw.close();
+        }
+        await expectLater(
+          BackupService(databaseFile).exportTo(destination),
+          throwsStateError,
+        );
+        expect(await destination.exists(), isFalse);
+        expect(
+          await File('${destination.path}.life-manager-tmp').exists(),
+          isFalse,
+        );
+      } finally {
+        await directory.delete(recursive: true);
+      }
+    },
+  );
+
+  test(
     'bad or newer import leaves live data and managed backups intact',
     () async {
       final directory = await Directory.systemTemp.createTemp('life-transfer-');
