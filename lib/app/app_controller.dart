@@ -6,6 +6,7 @@ import '../data/appearance_preference_store.dart';
 import '../domain/models.dart';
 import '../domain/recurrence.dart';
 import '../domain/series_edit.dart';
+import '../domain/habits.dart';
 import '../domain/appearance.dart';
 import '../domain/scheduling_models.dart';
 
@@ -22,6 +23,7 @@ enum WorkspaceView {
   waiting,
   completed,
   calendar,
+  habits,
   category,
   project,
 }
@@ -40,6 +42,9 @@ class AppController extends ChangeNotifier {
   List<WorkSession> sessions = [];
   List<TaskDependency> dependencies = [];
   List<TaskSequence> sequences = [];
+  List<Habit> habits = [];
+  List<HabitEntry> habitEntries = [];
+  List<HabitRestDay> habitRestDays = [];
   AvailabilityPlan availability = const AvailabilityPlan(weekly: {});
   List<SchedulingOperation> schedulingHistory = [];
   WorkspaceView view = WorkspaceView.today;
@@ -72,6 +77,9 @@ class AppController extends ChangeNotifier {
       repository.schedulingHistory(),
       repository.dependencies(),
       repository.sequences(),
+      repository.habits(includeArchived: true),
+      repository.habitEntries(),
+      repository.habitRestDays(),
     ]);
     categories = result[0] as List<Category>;
     projects = result[1] as List<Project>;
@@ -82,6 +90,9 @@ class AppController extends ChangeNotifier {
     schedulingHistory = result[6] as List<SchedulingOperation>;
     dependencies = result[7] as List<TaskDependency>;
     sequences = result[8] as List<TaskSequence>;
+    habits = result[9] as List<Habit>;
+    habitEntries = result[10] as List<HabitEntry>;
+    habitRestDays = result[11] as List<HabitRestDay>;
     if (selectedTaskId != null && selectedTask == null) selectedTaskId = null;
     loading = false;
     notifyListeners();
@@ -158,6 +169,7 @@ class AppController extends ChangeNotifier {
           return task.status == TaskStatus.completed ||
               task.status == TaskStatus.cancelled;
         case WorkspaceView.calendar:
+        case WorkspaceView.habits:
           return false;
         case WorkspaceView.category:
           return task.isOpen && task.categoryId == scopeId;
@@ -318,6 +330,53 @@ class AppController extends ChangeNotifier {
 
   Future<void> addSession(SessionDraft draft) async {
     await repository.addSession(draft);
+    await refresh();
+  }
+
+  Future<void> addHabit(HabitDraft draft) async {
+    await repository.addHabit(draft);
+    await refresh();
+  }
+
+  Future<void> updateHabit(Habit previous, HabitDraft draft) async {
+    await repository.updateHabit(previous, draft);
+    await refresh();
+  }
+
+  Future<void> setHabitArchived(Habit previous, bool archived) async {
+    await repository.setHabitArchived(previous, archived);
+    await refresh();
+  }
+
+  Future<void> recordHabitDay(
+    Habit habit,
+    String day,
+    double value, {
+    String notes = '',
+    HabitEntry? previous,
+  }) async {
+    await repository.recordHabitDay(
+      habit,
+      day,
+      value,
+      notes: notes,
+      previous: previous,
+    );
+    await refresh();
+  }
+
+  Future<void> clearHabitDay(HabitEntry previous) async {
+    await repository.clearHabitDay(previous);
+    await refresh();
+  }
+
+  Future<void> addHabitRestDay(Habit habit, String day) async {
+    await repository.addHabitRestDay(habit, day);
+    await refresh();
+  }
+
+  Future<void> removeHabitRestDay(HabitRestDay rest) async {
+    await repository.removeHabitRestDay(rest);
     await refresh();
   }
 

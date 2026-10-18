@@ -40,7 +40,7 @@ class AppDatabase extends GeneratedDatabase {
   }
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   Iterable<TableInfo> get allTables => const [];
@@ -105,9 +105,10 @@ class AppDatabase extends GeneratedDatabase {
       await _createRecurrence();
       await _createSeriesEditHistory();
       await _createRecurrenceCollisionHistory();
+      await _createHabits();
     },
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 6 || to != 7) {
+      if (from < 1 || from > 7 || to != 8) {
         throw StateError('No migration registered from schema $from to $to');
       }
       if (from == 1) {
@@ -133,11 +134,14 @@ class AppDatabase extends GeneratedDatabase {
       }
       if (from < 6) {
         await _createRecurrence();
-      } else {
+      } else if (from < 7) {
         await _upgradeRecurrenceVersions();
       }
-      await _createSeriesEditHistory();
-      await _createRecurrenceCollisionHistory();
+      if (from < 7) {
+        await _createSeriesEditHistory();
+        await _createRecurrenceCollisionHistory();
+      }
+      await _createHabits();
     },
   );
 
@@ -187,6 +191,67 @@ class AppDatabase extends GeneratedDatabase {
         planned_date TEXT NOT NULL,
         choice TEXT NOT NULL,
         created_at TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> _createHabits() async {
+    await customStatement('''
+      CREATE TABLE habits (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL CHECK(length(trim(title)) > 0),
+        notes TEXT NOT NULL DEFAULT '',
+        kind TEXT NOT NULL CHECK(kind IN ('binary','minimum','maximum')),
+        target REAL,
+        unit TEXT NOT NULL DEFAULT '',
+        schedule_kind TEXT NOT NULL CHECK(schedule_kind IN
+          ('daily','weekly','weekdays','monthly','yearly')),
+        start_date TEXT NOT NULL,
+        interval INTEGER NOT NULL CHECK(interval > 0),
+        weekdays TEXT NOT NULL DEFAULT '',
+        end_date TEXT,
+        archived_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        CHECK((kind='binary' AND target IS NULL) OR
+          (kind!='binary' AND target > 0))
+      )
+    ''');
+    await customStatement('''
+      CREATE TABLE habit_entries (
+        id TEXT PRIMARY KEY,
+        habit_id TEXT NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+        local_date TEXT NOT NULL,
+        value REAL NOT NULL CHECK(value >= 0),
+        notes TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE(habit_id,local_date)
+      )
+    ''');
+    await customStatement(
+      'CREATE INDEX habit_entries_date ON habit_entries(local_date,habit_id)',
+    );
+    await customStatement('''
+      CREATE TABLE habit_rest_days (
+        id TEXT PRIMARY KEY,
+        habit_id TEXT NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+        local_date TEXT NOT NULL,
+        notes TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        UNIQUE(habit_id,local_date)
+      )
+    ''');
+    await customStatement('''
+      CREATE TABLE habit_entry_history (
+        id TEXT PRIMARY KEY,
+        habit_id TEXT NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+        local_date TEXT NOT NULL,
+        before_value REAL,
+        after_value REAL,
+        before_notes TEXT,
+        after_notes TEXT,
+        changed_at TEXT NOT NULL
       )
     ''');
   }

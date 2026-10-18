@@ -20,7 +20,7 @@ internal sealed class DependencyReviewRequiredException(
 
 internal sealed class LifeManagerWidgetRepository : IDisposable {
   private const int MinimumSchemaVersion = 4;
-  private const int MaximumSchemaVersion = 7;
+  private const int MaximumSchemaVersion = 8;
   private readonly SqliteConnection connection;
   private readonly int schemaVersion;
   internal string DatabasePath { get; }

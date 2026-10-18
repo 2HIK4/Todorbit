@@ -49,6 +49,10 @@ void main() {
       await initial.close();
       final raw = sqlite.sqlite3.open(file.path);
       try {
+        raw.execute('DROP TABLE habit_entry_history');
+        raw.execute('DROP TABLE habit_rest_days');
+        raw.execute('DROP TABLE habit_entries');
+        raw.execute('DROP TABLE habits');
         raw.execute('DROP TABLE series_edit_history');
         raw.execute('DROP TABLE recurrence_collision_history');
         raw.execute('DROP INDEX recurrence_series_family');

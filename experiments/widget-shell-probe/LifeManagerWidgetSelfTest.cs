@@ -303,6 +303,20 @@ internal static class LifeManagerWidgetSelfTest {
             "Schema v7 completion generated after a series boundary.");
         }
       }
+      using (var upgrade = new SqliteConnection(
+          $"Data Source={databasePath};Pooling=False")) {
+        upgrade.Open();
+        using var command = upgrade.CreateCommand();
+        command.CommandText = "PRAGMA user_version = 8";
+        command.ExecuteNonQuery();
+      }
+      using (var v8Repository =
+          LifeManagerWidgetRepository.OpenForTest(databasePath)) {
+        if (v8Repository.LoadTask(id)?.Status != "completed") {
+          throw new InvalidOperationException(
+            "Widget could not read a schema v8 task.");
+        }
+      }
       VerifySettingsRoundTrip(directory);
       VerifyAppearanceRoundTrip(directory);
       VerifySingleInstanceMutex();

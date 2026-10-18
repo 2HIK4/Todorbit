@@ -250,6 +250,10 @@ void main() {
           .addTask(const TaskDraft(title: 'Keep me'));
       await first.close();
       final raw = sqlite.sqlite3.open(file.path);
+      raw.execute('DROP TABLE habit_entry_history');
+      raw.execute('DROP TABLE habit_rest_days');
+      raw.execute('DROP TABLE habit_entries');
+      raw.execute('DROP TABLE habits');
       raw.execute('DROP TRIGGER recurrence_task_schedule_updated');
       raw.execute('DROP TRIGGER recurrence_task_content_updated');
       raw.execute('DROP TRIGGER recurrence_task_cancelled');

@@ -62,6 +62,11 @@ checks same-family planned-date collisions inside its apply transaction and
 records each reviewed choice. The native widget respects completion-series
 boundaries when advancing or reopening occurrences.
 
+Schema v8 stores habits, daily value logs, rest days, and entry-change history
+apart from tasks. The domain computes rates and streaks from stored values and
+schedule dates; it does not materialize missed habit tasks. The native widget
+accepts v8 without reading or writing the habit tables.
+
 The deterministic engine in `lib/domain/` has no database dependency. It keeps
 local date-only task plans separate from UTC work-session intervals and fixed
 events. Local availability is converted at the proposed date, so calendar-day

@@ -88,3 +88,10 @@
   Combining distinct tasks in scheduling has no safe semantics, so it is
   explicitly unavailable. Recompute the collision set at Apply and record
   each resolution under the scheduling operation.
+- **Habits (schema v8):** store habits separately from task recurrence.
+  Yes/No, minimum-target, and maximum-limit outcomes are date-only values.
+  A missing log is unknown until its scheduled day passes; it never becomes a
+  task. Rest days remove dates from progress denominators without fabricating
+  successes. Retain entry logs when a rule changes, reject stale corrections,
+  audit log changes, and keep archive reversible. The native widget continues
+  task-only access and accepts the additive schema.

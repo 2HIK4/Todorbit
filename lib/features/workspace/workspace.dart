@@ -6,6 +6,7 @@ import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../../domain/appearance.dart';
 import '../calendar/calendar_view.dart';
+import '../habits/habits_view.dart';
 import '../scheduling/smart_reschedule.dart';
 import '../widget/native_widget_service.dart';
 import 'task_editor.dart';
@@ -245,6 +246,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   WorkspaceView.calendar,
                   'Calendar',
                   Icons.calendar_month_outlined,
+                ),
+                _nav(
+                  controller,
+                  WorkspaceView.habits,
+                  'Habits',
+                  Icons.insights_outlined,
                 ),
                 _nav(
                   controller,
@@ -543,6 +550,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   }
 
   Widget _mainPanel(AppController controller, bool wide) {
+    if (controller.view == WorkspaceView.habits) {
+      return const HabitsView();
+    }
     if (controller.view == WorkspaceView.calendar) {
       return CalendarView(
         onTaskTap: (task) {
@@ -583,6 +593,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       WorkspaceView.waiting => 'Waiting / On hold',
       WorkspaceView.completed => 'Completed',
       WorkspaceView.calendar => 'Calendar',
+      WorkspaceView.habits => 'Habits',
       WorkspaceView.category =>
         controller.categories
                 .where((c) => c.id == controller.scopeId)

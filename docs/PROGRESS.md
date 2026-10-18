@@ -50,6 +50,13 @@
   date in its family; Keep Both and Skip Moved are supported, while Combine is
   unavailable for distinct scheduled tasks. The native widget accepts schema
   v7 and respects completion-series version boundaries.
+- Habits (schema v8) are separate from recurring tasks. The Habits screen
+  creates Yes/No, minimum-target, and maximum-limit habits with fixed custom
+  schedules. Users can log or correct historical days, clear audited logs,
+  mark and remove rest days, and archive or restore habits. Week/month/year
+  rates and scheduled-day streaks derive from persisted values; missing days
+  create no task backlog. Future outcomes are rejected. Habit reminders and
+  native widget habit actions remain future integration work.
 - Stale completion now rejects a newer task edit, and task duration input
   rejects invalid text instead of silently clearing the estimate. Prerequisite
   edits compare task revisions, and the narrow task editor keeps unsaved fields
@@ -93,7 +100,7 @@
 
 - Flutter 3.47.7 / Dart 3.13.5; Windows toolchain healthy.
 - `flutter analyze`: clean.
-- `flutter test`: 70 passing tests, including engine, database, migration,
+- `flutter test`: 77 passing tests, including engine, database, migration,
   stale-apply, undo/restoration, split, persistence, and preview/Apply coverage.
 - Native Release build and disposable database/settings self-test: passing.
 - Native dependency audit: no vulnerable packages reported.
@@ -108,7 +115,7 @@
   was closed without applying changes. Automated widget coverage verifies the
   preview and persisted Apply path.
 - The native companion never creates or migrates the production database; it
-  accepts schema v4-v7, enables foreign keys and a busy timeout, and uses
+  accepts schema v4-v8, enables foreign keys and a busy timeout, and uses
   parameterized transactional writes. Automated tests use an isolated database.
 - Milestone B validation: focused v4→v5 migration, dependency-cycle/rollback,
   stale-editor, sequence persistence, and joint schedule-conflict tests pass.
@@ -143,6 +150,11 @@
   Flutter tests pass. Native Release build and self-test, Windows Release
   build, and packaged companion self-test pass. The new GUI flows still need
   manual Windows acceptance.
+- Schema v8 validation: disposable v7-to-v8 migration and restart persistence,
+  historical correction, rest-day and streak calculations, archive safety, and
+  a narrow-screen Habits widget flow pass. `flutter analyze`, all 77 Flutter
+  tests, native Release build/self-test, Windows Release build, and packaged
+  companion self-test pass. Manual Windows UI acceptance remains pending.
 
 ## In progress
 
@@ -156,7 +168,7 @@
 
 ## Not yet implemented
 
-- Habits, goals, timer, templates, advanced search/saved views, backups, Trash,
+- Goals, timer, templates, advanced search/saved views, backups, Trash,
   notifications, privacy controls, import/export, and installer packaging.
 
 ## Environment and data notes
@@ -176,11 +188,13 @@
 
 ## Next action
 
-Manually exercise the new recurrence editor and Smart Reschedule collision
-choices on an isolated Windows profile before opening the production schema-v4
-database. Then continue the Windows V1.0 roadmap with habits, goals, timer,
-templates, backup/Trash, and remaining reliability work. Time-of-day recurrence
-is outside the current date-only task model; planned work sessions retain their
-own UTC times. Re-run the native widget regression checklist in
+Implement goals and milestones with persisted manual and linked progress,
+ensuring linked work cannot double count. Then continue timer/time tracking,
+templates, backups/Trash, and the remaining Windows V1.0 roadmap. Manually
+exercise the recurrence editor, Smart Reschedule collision choices, and Habits
+screen on an isolated Windows profile before opening the production schema-v4
+database. Time-of-day recurrence is outside the current date-only task model;
+planned work sessions retain their own UTC times. Re-run the native widget
+regression checklist in
 `docs/windows-widget.md` whenever shell attachment, native input, rendering,
 DPI behavior, process lifecycle, or packaging changes.
