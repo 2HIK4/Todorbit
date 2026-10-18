@@ -182,6 +182,8 @@ void main() {
       raw.execute('DROP TRIGGER recurrence_task_schedule_updated');
       raw.execute('DROP TRIGGER recurrence_task_content_updated');
       raw.execute('DROP TRIGGER recurrence_task_cancelled');
+      raw.execute('DROP TABLE series_edit_history');
+      raw.execute('DROP TABLE recurrence_collision_history');
       raw.execute('DROP TABLE recurrence_occurrences');
       raw.execute('DROP TABLE recurrence_series');
       raw.execute('PRAGMA user_version = 5');

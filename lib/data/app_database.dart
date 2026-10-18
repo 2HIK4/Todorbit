@@ -40,7 +40,7 @@ class AppDatabase extends GeneratedDatabase {
   }
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   Iterable<TableInfo> get allTables => const [];
@@ -103,9 +103,11 @@ class AppDatabase extends GeneratedDatabase {
       await _createScheduling();
       await _createRelationships();
       await _createRecurrence();
+      await _createSeriesEditHistory();
+      await _createRecurrenceCollisionHistory();
     },
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 5 || to != 6) {
+      if (from < 1 || from > 6 || to != 7) {
         throw StateError('No migration registered from schema $from to $to');
       }
       if (from == 1) {
@@ -129,14 +131,73 @@ class AppDatabase extends GeneratedDatabase {
       if (from < 5) {
         await _createRelationships();
       }
-      await _createRecurrence();
+      if (from < 6) {
+        await _createRecurrence();
+      } else {
+        await _upgradeRecurrenceVersions();
+      }
+      await _createSeriesEditHistory();
+      await _createRecurrenceCollisionHistory();
     },
   );
+
+  Future<void> _upgradeRecurrenceVersions() async {
+    await customStatement(
+      'ALTER TABLE recurrence_series ADD COLUMN family_id TEXT',
+    );
+    await customStatement(
+      'ALTER TABLE recurrence_series ADD COLUMN active_from_date TEXT',
+    );
+    await customStatement(
+      'ALTER TABLE recurrence_series ADD COLUMN active_through_date TEXT',
+    );
+    await customStatement(
+      'UPDATE recurrence_series SET family_id=id, active_from_date=start_date',
+    );
+    await customStatement(
+      'CREATE INDEX recurrence_series_family ON recurrence_series(family_id,active_from_date)',
+    );
+  }
+
+  Future<void> _createSeriesEditHistory() async {
+    await customStatement('''
+      CREATE TABLE series_edit_history (
+        id TEXT PRIMARY KEY,
+        family_id TEXT NOT NULL,
+        source_task_id TEXT NOT NULL,
+        new_series_id TEXT NOT NULL REFERENCES recurrence_series(id),
+        scope TEXT NOT NULL,
+        effective_date TEXT NOT NULL,
+        details_json TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    ''');
+    await customStatement(
+      'CREATE INDEX series_edit_history_family ON series_edit_history(family_id,created_at)',
+    );
+  }
+
+  Future<void> _createRecurrenceCollisionHistory() async {
+    await customStatement('''
+      CREATE TABLE recurrence_collision_history (
+        id TEXT PRIMARY KEY,
+        operation_id TEXT NOT NULL REFERENCES scheduling_operations(id),
+        moved_task_id TEXT NOT NULL,
+        existing_task_ids TEXT NOT NULL,
+        planned_date TEXT NOT NULL,
+        choice TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    ''');
+  }
 
   Future<void> _createRecurrence() async {
     await customStatement('''
       CREATE TABLE recurrence_series (
         id TEXT PRIMARY KEY,
+        family_id TEXT NOT NULL,
+        active_from_date TEXT NOT NULL,
+        active_through_date TEXT,
         kind TEXT NOT NULL CHECK(kind IN ('daily','weekly','weekdays','monthly','yearly','afterCompletion')),
         start_date TEXT NOT NULL,
         interval INTEGER NOT NULL CHECK(interval > 0),
@@ -156,6 +217,9 @@ class AppDatabase extends GeneratedDatabase {
         updated_at TEXT NOT NULL
       )
     ''');
+    await customStatement(
+      'CREATE INDEX recurrence_series_family ON recurrence_series(family_id,active_from_date)',
+    );
     await customStatement('''
       CREATE TABLE recurrence_occurrences (
         id TEXT PRIMARY KEY,

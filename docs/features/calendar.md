@@ -4,4 +4,9 @@ Day, week, and month views currently combine planned task dates, actual deadline
 
 Planned work sessions now have separate UTC start/end times and a manually controlled outcome. They appear on the calendar and in task details. A past upcoming session is labeled “Needs confirmation”; a started but unfinished period is labeled “Late start.” Neither label mutates the stored outcome or completes the task.
 
-Recurrence occurrences, overlap warnings, and automated conflict blocking are not yet implemented. Fixed events will be hard constraints in Smart Reschedule. Cross-midnight event display is supported by interval overlap logic; DST behavior needs focused tests.
+Calendar views materialize recurring task occurrences only for their bounded
+date windows. Each occurrence has its own stable task ID and nominal day;
+moving its planned day does not rewrite the rule. Smart Reschedule previews
+fixed-event and session collisions and requires a choice for same-series task
+date collisions. Cross-midnight event display is supported by interval overlap
+logic; DST behavior still needs focused tests.

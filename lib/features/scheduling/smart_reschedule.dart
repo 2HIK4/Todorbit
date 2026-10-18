@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../../domain/scheduling_engine.dart';
+import '../../domain/series_edit.dart';
 
 class SmartRescheduleDialog extends ConsumerStatefulWidget {
   const SmartRescheduleDialog({
@@ -29,6 +30,8 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
   final included = <String>{};
   ScheduleOperationType operation = ScheduleOperationType.move;
   SchedulingPreview? preview;
+  List<SeriesScheduleCollision> seriesCollisions = const [];
+  final seriesChoices = <String, SeriesCollisionChoice>{};
   DateTime targetDay = DateTime.now();
   TimeOfDay targetTime = const TimeOfDay(hour: 9, minute: 0);
   int offsetDays = 1;
@@ -66,7 +69,7 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
           ScheduleOperationType.reorder,
         ];
 
-  void _generate(AppController controller) {
+  Future<void> _generate(AppController controller) async {
     SchedulingPreview next;
     if (sessionMode) {
       final sessions = controller.sessions
@@ -267,8 +270,12 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
       issues: [...next.issues, ...dependencyIssues],
       createdAt: next.createdAt,
     );
+    final collisions = await controller.scheduleSeriesCollisions(next);
+    if (!mounted) return;
     setState(() {
       preview = next;
+      seriesCollisions = collisions;
+      seriesChoices.clear();
       included
         ..clear()
         ..addAll(next.changes.map((change) => change.targetId));
@@ -303,9 +310,21 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
   Future<void> _apply(AppController controller) async {
     final reviewed = preview?.including(included);
     if (reviewed == null || !reviewed.canApply) return;
+    final reviewedCollisions = seriesCollisions
+        .where((item) => included.contains(item.movedTaskId))
+        .toList();
+    if (reviewedCollisions.any(
+      (item) => !seriesChoices.containsKey(item.movedTaskId),
+    )) {
+      return;
+    }
     setState(() => applying = true);
     try {
-      await controller.applySchedulingPreview(reviewed);
+      await controller.applySchedulingPreview(
+        reviewed,
+        seriesChoices: seriesChoices,
+        expectedSeriesCollisions: reviewedCollisions,
+      );
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
       if (mounted) {
@@ -315,6 +334,8 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
         setState(() {
           preview = null;
           included.clear();
+          seriesCollisions = const [];
+          seriesChoices.clear();
         });
       }
     } finally {
@@ -334,6 +355,11 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
               .toList();
     final reviewed = preview?.including(included);
     final hasWarnings = reviewed?.issues.any((issue) => !issue.isHard) ?? false;
+    final unresolvedSeriesCollisions = seriesCollisions.any(
+      (item) =>
+          included.contains(item.movedTaskId) &&
+          !seriesChoices.containsKey(item.movedTaskId),
+    );
     return Dialog(
       child: SizedBox(
         width: 880,
@@ -390,6 +416,8 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
                       onChanged: (value) => setState(() {
                         operation = value!;
                         preview = null;
+                        seriesCollisions = const [];
+                        seriesChoices.clear();
                       }),
                     ),
                   ),
@@ -531,6 +559,8 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
                                       ? selected.add(_sourceId(item))
                                       : selected.remove(_sourceId(item));
                                   preview = null;
+                                  seriesCollisions = const [];
+                                  seriesChoices.clear();
                                 }),
                               ),
                           ],
@@ -549,6 +579,56 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
                             : ListView(
                                 padding: const EdgeInsets.all(12),
                                 children: [
+                                  for (final collision
+                                      in seriesCollisions.where(
+                                        (item) =>
+                                            included.contains(item.movedTaskId),
+                                      ))
+                                    DropdownButtonFormField<
+                                      SeriesCollisionChoice
+                                    >(
+                                      key: ValueKey(
+                                        'schedule-collision:${collision.movedTaskId}:${seriesChoices[collision.movedTaskId]}',
+                                      ),
+                                      initialValue:
+                                          seriesChoices[collision.movedTaskId],
+                                      decoration: InputDecoration(
+                                        labelText:
+                                            'Recurring collision on ${collision.plannedDate}',
+                                        helperText:
+                                            '${collision.existingTaskIds.length} occurrence(s) already planned. Combine is unavailable for distinct scheduled tasks.',
+                                      ),
+                                      items: [
+                                        const DropdownMenuItem(
+                                          value: SeriesCollisionChoice.keepBoth,
+                                          child: Text('Keep both occurrences'),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: SeriesCollisionChoice.skipNew,
+                                          enabled: collision.canSkipMoved,
+                                          child: Text(
+                                            collision.canSkipMoved
+                                                ? 'Skip moved occurrence'
+                                                : 'Skip unavailable: linked or started work',
+                                          ),
+                                        ),
+                                        const DropdownMenuItem(
+                                          value: SeriesCollisionChoice.combine,
+                                          enabled: false,
+                                          child: Text('Combine unavailable'),
+                                        ),
+                                      ],
+                                      onChanged: (value) {
+                                        if (value != null) {
+                                          setState(
+                                            () =>
+                                                seriesChoices[collision
+                                                        .movedTaskId] =
+                                                    value,
+                                          );
+                                        }
+                                      },
+                                    ),
                                   for (final issue in preview!.issues)
                                     ListTile(
                                       dense: true,
@@ -618,6 +698,7 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
                   FilledButton.icon(
                     onPressed:
                         applying ||
+                            unresolvedSeriesCollisions ||
                             reviewed == null ||
                             !reviewed.canApply ||
                             (hasWarnings && !allowWarnings)

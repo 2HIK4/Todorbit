@@ -70,3 +70,21 @@
   therefore does not calculate the next day. The user can resume the series on
   a chosen planned day; that inserts one successor transactionally while the
   skipped occurrence stays in history.
+- **Recurring series edits (schema v7):** link immutable rule generations with
+  a family ID and active date boundaries. This and Future begins at the
+  selected nominal occurrence; Entire Series begins at the earliest open
+  materialized occurrence. Preserve completed, edited, rescheduled, skipped,
+  and linked task rows. Remove only untouched generated rows that no longer
+  fit. Reuse a compatible task/occurrence ID only by an explicit Combine
+  choice. Keep Both creates two independent task rows; Skip New records a
+  tombstone in the new generation. Compare series, occurrence, task, and link
+  snapshots before transactional Apply and log the chosen actions. A new
+  This and Future rule must anchor on or after the selected date so a count
+  does not consume past occurrences.
+- **Recurring Smart Reschedule collisions:** task moves remain occurrence
+  specific. When a proposed planned day matches another task in the same
+  family, require Keep Both or Skip Moved. Skip marks an unstarted, unlinked
+  moved occurrence as skipped; linked or started work cannot be skipped here.
+  Combining distinct tasks in scheduling has no safe semantics, so it is
+  explicitly unavailable. Recompute the collision set at Apply and record
+  each resolution under the scheduling operation.

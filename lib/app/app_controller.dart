@@ -5,6 +5,7 @@ import '../data/life_repository.dart';
 import '../data/appearance_preference_store.dart';
 import '../domain/models.dart';
 import '../domain/recurrence.dart';
+import '../domain/series_edit.dart';
 import '../domain/appearance.dart';
 import '../domain/scheduling_models.dart';
 
@@ -242,6 +243,29 @@ class AppController extends ChangeNotifier {
     select(next.id);
   }
 
+  Future<RecurrenceDefinition> recurrenceDefinition(String taskId) =>
+      repository.recurrenceDefinition(taskId);
+
+  Future<SeriesEditPreview> previewSeriesEdit({
+    required LifeTask selected,
+    required SeriesEditScope scope,
+    required TaskDraft draft,
+    required RecurrenceRule rule,
+  }) => repository.previewSeriesEdit(
+    selected: selected,
+    scope: scope,
+    draft: draft,
+    rule: rule,
+  );
+
+  Future<void> applySeriesEdit(
+    SeriesEditPreview preview,
+    Map<String, SeriesCollisionChoice> choices,
+  ) async {
+    await repository.applySeriesEdit(preview, choices);
+    await refresh();
+  }
+
   List<LifeTask> unmetPrerequisites(String taskId) {
     final byId = {for (final task in tasks) task.id: task};
     return dependencies
@@ -312,8 +336,20 @@ class AppController extends ChangeNotifier {
     await refresh();
   }
 
-  Future<String> applySchedulingPreview(SchedulingPreview preview) async {
-    final id = await repository.applySchedulingPreview(preview);
+  Future<List<SeriesScheduleCollision>> scheduleSeriesCollisions(
+    SchedulingPreview preview,
+  ) => repository.scheduleSeriesCollisions(preview);
+
+  Future<String> applySchedulingPreview(
+    SchedulingPreview preview, {
+    Map<String, SeriesCollisionChoice> seriesChoices = const {},
+    List<SeriesScheduleCollision> expectedSeriesCollisions = const [],
+  }) async {
+    final id = await repository.applySchedulingPreview(
+      preview,
+      seriesChoices: seriesChoices,
+      expectedSeriesCollisions: expectedSeriesCollisions,
+    );
     await refresh();
     return id;
   }

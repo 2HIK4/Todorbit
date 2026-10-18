@@ -51,7 +51,16 @@ Sequences persist explicit positions; dependencies persist directed prerequisite
 edges. Repository transactions validate cycles and keep sequence reorders
 atomic. Smart Reschedule's reviewed dependency warnings are checked again at
 Apply, so a newly conflicting prerequisite cannot silently bypass the preview.
-The native widget accepts both v4 and v5 and never migrates either schema.
+The native widget accepts v4 through v7 and never migrates the database.
+
+Schema v6 separates recurring rule templates from independent task occurrences.
+Schema v7 links rule generations with a family ID and active date boundaries.
+Series edits use a read-only impact preview, a task/occurrence/link revision
+snapshot, and one transaction for the split, materialization, collision choices,
+and audit row. The old version remains for historical tasks. Smart Reschedule
+checks same-family planned-date collisions inside its apply transaction and
+records each reviewed choice. The native widget respects completion-series
+boundaries when advancing or reopening occurrences.
 
 The deterministic engine in `lib/domain/` has no database dependency. It keeps
 local date-only task plans separate from UTC work-session intervals and fixed

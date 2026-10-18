@@ -5,6 +5,7 @@ import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../../domain/recurrence.dart';
 import '../calendar/session_editor.dart';
+import 'series_editor.dart';
 
 class TaskEditor extends ConsumerStatefulWidget {
   const TaskEditor({super.key, this.task, this.onSaved, this.onCancel});
@@ -318,6 +319,16 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     }
   }
 
+  Future<void> _editSeries() async {
+    final task = currentTask;
+    if (task == null) return;
+    final applied = await showDialog<bool>(
+      context: context,
+      builder: (context) => SeriesEditorDialog(selected: task),
+    );
+    if (applied == true && mounted) widget.onSaved?.call();
+  }
+
   Future<void> _editSession([WorkSession? session]) async {
     final task = widget.task;
     if (task == null) return;
@@ -595,6 +606,14 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                   const SizedBox(height: 12),
                   Text(
                     'Recurring occurrence • ${widget.task!.nominalDate}. Edits here affect this occurrence.',
+                  ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      onPressed: _editSeries,
+                      icon: const Icon(Icons.repeat),
+                      label: const Text('Edit recurring series'),
+                    ),
                   ),
                   if (widget.task!.recurrenceDisposition == 'skipped')
                     const Text('Skipped'),

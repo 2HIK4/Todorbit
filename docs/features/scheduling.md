@@ -30,6 +30,12 @@ capacity, task locks, completion state, and deadline warnings. Move and Shift
 detect event/session collisions; a user may explicitly turn an intentional
 overlap into a warning and then acknowledge it.
 
+When a task move would place two occurrences of one recurring family on the
+same planned day, preview asks whether to keep both or skip the moved pending
+occurrence. Skip is unavailable when that occurrence has started or has linked
+work, dependencies, or sequence membership. Combining distinct scheduled tasks
+is unavailable. Apply rechecks the collision set and records the choice.
+
 Scheduling history records stable operation/change IDs, source (manual or Smart
 Reschedule), scope, timestamps, target IDs, before/after schedule fields, and
 optimistic versions. Flutter task/session edits and native-widget planned-date
@@ -41,11 +47,10 @@ cancelled, and locked work is preserved.
 
 ## Deferred boundaries
 
-Recurring occurrences are still deferred product models. Sequence order is
-stored, and the sequence action can open Smart Reschedule in that order.
+Sequence order is stored, and the sequence action can open Smart Reschedule in
+that order.
 Dependency-order warnings are shown during preview and checked again at Apply;
 the user can acknowledge a warning to override the proposed order. Drag-and-drop
 sequence ordering is not yet available; up/down controls are functional.
-When recurrence arrives, history
-targets must reference occurrence IDs and reschedule one occurrence by default
-without editing its recurrence rule.
+Smart Reschedule targets independent recurring task IDs and moves one
+occurrence without changing its series rule.

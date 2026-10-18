@@ -20,7 +20,7 @@ internal sealed class DependencyReviewRequiredException(
 
 internal sealed class LifeManagerWidgetRepository : IDisposable {
   private const int MinimumSchemaVersion = 4;
-  private const int MaximumSchemaVersion = 6;
+  private const int MaximumSchemaVersion = 7;
   private readonly SqliteConnection connection;
   private readonly int schemaVersion;
   internal string DatabasePath { get; }
@@ -292,7 +292,15 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
   private void CheckRecurringReopen(string id, SqliteTransaction transaction) {
     using var command = connection.CreateCommand();
     command.Transaction = transaction;
-    command.CommandText = """
+    command.CommandText = schemaVersion >= 7 ? """
+      SELECT 1 FROM recurrence_occurrences current
+      JOIN recurrence_series s ON s.id=current.series_id
+      JOIN recurrence_series later_s ON later_s.family_id=s.family_id
+      JOIN recurrence_occurrences later ON later.series_id=later_s.id
+      WHERE current.task_id=$id AND s.kind='afterCompletion'
+        AND (later_s.created_at>s.created_at OR
+          (later_s.id=s.id AND later.ordinal>current.ordinal)) LIMIT 1
+      """ : """
       SELECT 1 FROM recurrence_occurrences current
       JOIN recurrence_series s ON s.id=current.series_id
       JOIN recurrence_occurrences later ON later.series_id=s.id
@@ -309,7 +317,7 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
   private void AdvanceCompletionSeries(
       string id, string now, SqliteTransaction transaction) {
     string seriesId, title, notes, nextDate;
-    string? categoryId, projectId, deadlineDate, endDate;
+    string? categoryId, projectId, deadlineDate, endDate, activeThrough;
     int ordinal, interval, priority;
     int? maxOccurrences, deadlineOffset, plannedMinutes, remainingMinutes;
     bool locked;
@@ -320,6 +328,7 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
           s.title,s.notes,s.priority,s.category_id,s.project_id,
           s.deadline_offset_days,s.planned_duration_minutes,
           s.remaining_work_minutes,s.scheduling_locked
+        """ + (schemaVersion >= 7 ? ",s.active_through_date " : " ") + """
         FROM recurrence_occurrences o JOIN recurrence_series s ON s.id=o.series_id
         WHERE o.task_id=$id AND s.kind='afterCompletion'
         """;
@@ -340,12 +349,16 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
       plannedMinutes = reader.IsDBNull(11) ? null : reader.GetInt32(11);
       remainingMinutes = reader.IsDBNull(12) ? null : reader.GetInt32(12);
       locked = reader.GetInt32(13) == 1;
+      activeThrough = schemaVersion >= 7 && !reader.IsDBNull(14)
+        ? reader.GetString(14) : null;
     }
     if (maxOccurrences != null && ordinal >= maxOccurrences) return;
     var nextDay = DateTime.Now.Date.AddDays(interval);
     nextDate = nextDay.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
     if (endDate != null &&
         String.CompareOrdinal(nextDate, endDate) > 0) return;
+    if (activeThrough != null &&
+        String.CompareOrdinal(nextDate, activeThrough) > 0) return;
     deadlineDate = deadlineOffset == null ? null :
       nextDay.AddDays(deadlineOffset.Value)
         .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);

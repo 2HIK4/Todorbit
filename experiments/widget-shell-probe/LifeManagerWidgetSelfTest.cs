@@ -249,6 +249,60 @@ internal static class LifeManagerWidgetSelfTest {
             "Schema v6 completion exceeded the series count limit.");
         }
       }
+      using (var upgrade = new SqliteConnection(
+          $"Data Source={databasePath};Pooling=False")) {
+        upgrade.Open();
+        using var command = upgrade.CreateCommand();
+        command.CommandText = """
+          ALTER TABLE recurrence_series ADD COLUMN family_id TEXT;
+          ALTER TABLE recurrence_series ADD COLUMN active_from_date TEXT;
+          ALTER TABLE recurrence_series ADD COLUMN active_through_date TEXT;
+          UPDATE recurrence_series SET family_id=id,active_from_date=start_date;
+          PRAGMA user_version = 7;
+          """;
+        command.ExecuteNonQuery();
+      }
+      using (var v7Repository =
+          LifeManagerWidgetRepository.OpenForTest(databasePath)) {
+        var today = DateTime.Now.Date;
+        var day = today.ToString("yyyy-MM-dd",
+          System.Globalization.CultureInfo.InvariantCulture);
+        var taskId = v7Repository.AddTask("Superseded recurrence", today);
+        using (var link = new SqliteConnection(
+            $"Data Source={databasePath};Pooling=False")) {
+          link.Open();
+          using var command = link.CreateCommand();
+          command.CommandText = """
+            INSERT INTO recurrence_series(
+              id,family_id,active_from_date,active_through_date,
+              kind,start_date,interval,weekdays,end_date,max_occurrences,
+              title,notes,priority,category_id,project_id,deadline_offset_days,
+              planned_duration_minutes,remaining_work_minutes,scheduling_locked,
+              created_at,updated_at)
+            VALUES('superseded','family',$day,$day,'afterCompletion',$day,1,
+              '',NULL,NULL,'Superseded recurrence','',0,NULL,NULL,NULL,
+              NULL,NULL,0,$now,$now);
+            INSERT INTO recurrence_occurrences(
+              id,series_id,ordinal,nominal_date,task_id,created_at,updated_at)
+            VALUES('superseded-first','superseded',0,$day,$task,$now,$now);
+            """;
+          command.Parameters.AddWithValue("$day", day);
+          command.Parameters.AddWithValue("$task", taskId);
+          command.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+          command.ExecuteNonQuery();
+        }
+        v7Repository.CompleteTask(taskId);
+        using var check = new SqliteConnection(
+          $"Data Source={databasePath};Mode=ReadOnly;Pooling=False");
+        check.Open();
+        using var query = check.CreateCommand();
+        query.CommandText =
+          "SELECT COUNT(*) FROM recurrence_occurrences WHERE series_id='superseded'";
+        if (Convert.ToInt32(query.ExecuteScalar()) != 1) {
+          throw new InvalidOperationException(
+            "Schema v7 completion generated after a series boundary.");
+        }
+      }
       VerifySettingsRoundTrip(directory);
       VerifyAppearanceRoundTrip(directory);
       VerifySingleInstanceMutex();

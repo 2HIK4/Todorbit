@@ -38,8 +38,18 @@
   from the actual local completion day in the same transaction; both Flutter
   and the native widget perform this write. Occurrence edits and reschedules
   are tracked separately from the series, and a selected occurrence can be
-  explicitly skipped. This is a verified foundation, not the completed
-  recurrence milestone; series-wide editing and collision review remain below.
+  explicitly skipped. Schema v7 extends this foundation with linked series
+  versions and reviewed edits.
+- Recurrence series editing (schema v7) previews This and Future or Entire
+  Series changes from an explicit boundary. It preserves completed and
+  individually changed occurrences and their links, reuses compatible task
+  IDs, excludes only untouched generated occurrences, and requires a choice
+  for each same-day collision. Apply rejects changed tasks, links, occurrences,
+  or series revisions and writes the new version and audit record in one
+  transaction. Smart Reschedule asks before moving an occurrence onto another
+  date in its family; Keep Both and Skip Moved are supported, while Combine is
+  unavailable for distinct scheduled tasks. The native widget accepts schema
+  v7 and respects completion-series version boundaries.
 - Stale completion now rejects a newer task edit, and task duration input
   rejects invalid text instead of silently clearing the estimate. Prerequisite
   edits compare task revisions, and the narrow task editor keeps unsaved fields
@@ -83,7 +93,7 @@
 
 - Flutter 3.47.7 / Dart 3.13.5; Windows toolchain healthy.
 - `flutter analyze`: clean.
-- `flutter test`: 45 passing tests, including engine, database, migration,
+- `flutter test`: 70 passing tests, including engine, database, migration,
   stale-apply, undo/restoration, split, persistence, and preview/Apply coverage.
 - Native Release build and disposable database/settings self-test: passing.
 - Native dependency audit: no vulnerable packages reported.
@@ -98,7 +108,7 @@
   was closed without applying changes. Automated widget coverage verifies the
   preview and persisted Apply path.
 - The native companion never creates or migrates the production database; it
-  accepts schema v4/v5, enables foreign keys and a busy timeout, and uses
+  accepts schema v4-v7, enables foreign keys and a busy timeout, and uses
   parameterized transactional writes. Automated tests use an isolated database.
 - Milestone B validation: focused v4→v5 migration, dependency-cycle/rollback,
   stale-editor, sequence persistence, and joint schedule-conflict tests pass.
@@ -127,10 +137,16 @@
   Disposable restart and resume tests pass. `flutter analyze`, all 58 Flutter
   tests, Windows Release build, and packaged widget self-test pass. This
   control still needs manual Windows UI acceptance.
+- Schema v7 validation: disposable v6-to-v7, v5-to-v7, and v4-to-v7 migrations,
+  series splits, completed and linked history, collision choices, stale
+  previews, and editor interactions pass. `flutter analyze` is clean; all 70
+  Flutter tests pass. Native Release build and self-test, Windows Release
+  build, and packaged companion self-test pass. The new GUI flows still need
+  manual Windows acceptance.
 
 ## In progress
 
-- Milestone 3 follow-up: complete recurrence series management, richer
+- Milestone 3 follow-up: manual recurrence UI acceptance, richer
   multi-window availability editing,
   and drag-to-reorder sequence UX. Sequences currently use accessible up/down
   controls. A sequence owns at most one position per task, and a task can belong
@@ -149,9 +165,10 @@
   outside the current milestone.
 - Existing task/category/project/event/session data is migrated forward in place;
   Smart Reschedule does not reset the production database.
-- A consistent SQLite online backup of the production v5 database was written
-  under `%APPDATA%\Life Manager\backups` before schema v6 development. The
-  production database was not migrated or modified during this checkpoint.
+- The existing production database is schema v4. A consistent SQLite online
+  backup with integrity check `ok` was written to
+  `%APPDATA%\Life Manager\backups\pre-schema-v7-20261018T052232Z.sqlite`.
+  The production database was not migrated or modified during this checkpoint.
 - Launch-at-sign-in remains disabled by default and changes only through the
   explicit tray action.
 - Task and event deletion is permanent after confirmation; recoverable Trash is
@@ -159,12 +176,11 @@
 
 ## Next action
 
-Finish recurrence: add transactional Edit This and Future / Entire Series
-operations with reviewed collision choices (keep both, skip, combine),
-preserving completed work and linked sessions/dependencies. Expose these
-operations in task details; test exception persistence across restart,
-Smart Reschedule edits, and native widget completion/edit paths. Re-run the
-full Flutter suite and manual Windows UI acceptance. Then continue habits and
-the remaining Windows V1.0 roadmap. Re-run the native widget regression
-checklist in `docs/windows-widget.md` whenever shell attachment, native input,
-rendering, DPI behavior, process lifecycle, or packaging changes.
+Manually exercise the new recurrence editor and Smart Reschedule collision
+choices on an isolated Windows profile before opening the production schema-v4
+database. Then continue the Windows V1.0 roadmap with habits, goals, timer,
+templates, backup/Trash, and remaining reliability work. Time-of-day recurrence
+is outside the current date-only task model; planned work sessions retain their
+own UTC times. Re-run the native widget regression checklist in
+`docs/windows-widget.md` whenever shell attachment, native input, rendering,
+DPI behavior, process lifecycle, or packaging changes.

@@ -1,10 +1,15 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../domain/models.dart';
 import '../domain/recurrence.dart';
+import '../domain/series_edit.dart';
 import '../domain/scheduling_models.dart';
 import 'app_database.dart';
+
+part 'series_edit_repository.dart';
 
 class LifeRepository {
   LifeRepository(this.db);
@@ -607,12 +612,14 @@ class LifeRepository {
       await _checkAssignment(draft.categoryId, draft.projectId);
       await db.customInsert(
         '''INSERT INTO recurrence_series(
-          id,kind,start_date,interval,weekdays,end_date,max_occurrences,
+          id,family_id,active_from_date,kind,start_date,interval,weekdays,end_date,max_occurrences,
           title,notes,priority,category_id,project_id,deadline_offset_days,
           planned_duration_minutes,remaining_work_minutes,scheduling_locked,
-          created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+          created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
         variables: [
           Variable.withString(seriesId),
+          Variable.withString(seriesId),
+          Variable.withString(rule.startDate),
           Variable.withString(rule.kind.name),
           Variable.withString(rule.startDate),
           Variable.withInt(rule.interval),
@@ -656,8 +663,12 @@ class LifeRepository {
       final seriesRows = await db
           .customSelect(
             "SELECT * FROM recurrence_series WHERE kind <> 'afterCompletion' "
-            'AND start_date <= ? AND (end_date IS NULL OR end_date >= ?)',
+            'AND start_date <= ? AND (end_date IS NULL OR end_date >= ?) '
+            'AND active_from_date <= ? '
+            'AND (active_through_date IS NULL OR active_through_date >= ?)',
             variables: [
+              Variable.withString(throughDate),
+              Variable.withString(fromDate),
               Variable.withString(throughDate),
               Variable.withString(fromDate),
             ],
@@ -665,7 +676,16 @@ class LifeRepository {
           .get();
       for (final series in seriesRows) {
         final rule = _ruleFromSeries(series);
-        for (final slot in rule.between(fromDate, throughDate)) {
+        final activeFrom = series.read<String>('active_from_date');
+        final activeThrough = series.read<String?>('active_through_date');
+        final lower = fromDate.compareTo(activeFrom) < 0
+            ? activeFrom
+            : fromDate;
+        final upper =
+            activeThrough != null && throughDate.compareTo(activeThrough) > 0
+            ? activeThrough
+            : throughDate;
+        for (final slot in rule.between(lower, upper)) {
           await _insertOccurrence(series, slot);
         }
       }
@@ -862,9 +882,11 @@ class LifeRepository {
         .customSelect(
           '''SELECT 1 FROM recurrence_occurrences current
         JOIN recurrence_series s ON s.id=current.series_id
-        JOIN recurrence_occurrences later ON later.series_id=s.id
+        JOIN recurrence_series later_s ON later_s.family_id=s.family_id
+        JOIN recurrence_occurrences later ON later.series_id=later_s.id
         WHERE current.task_id=? AND s.kind='afterCompletion'
-          AND later.ordinal>current.ordinal LIMIT 1''',
+          AND (later_s.created_at>s.created_at OR
+            (later_s.id=s.id AND later.ordinal>current.ordinal)) LIMIT 1''',
           variables: [Variable.withString(taskId)],
         )
         .getSingleOrNull();
@@ -895,6 +917,10 @@ class LifeRepository {
     }
     final nextDate = rule.nextAfterCompletion(localDate(completedAt.toLocal()));
     if (rule.endDate != null && nextDate.compareTo(rule.endDate!) > 0) {
+      return;
+    }
+    final activeThrough = row.read<String?>('active_through_date');
+    if (activeThrough != null && nextDate.compareTo(activeThrough) > 0) {
       return;
     }
     await _insertOccurrence(row, RecurrenceSlot(nextDate, nextOrdinal));
@@ -974,6 +1000,10 @@ class LifeRepository {
       }
       if (rule.endDate != null && nextDate.compareTo(rule.endDate!) > 0) {
         throw StateError('The resume day is after the series end');
+      }
+      final activeThrough = row.read<String?>('active_through_date');
+      if (activeThrough != null && nextDate.compareTo(activeThrough) > 0) {
+        throw StateError('This series version has been superseded');
       }
       final later = await db
           .customSelect(
@@ -1154,7 +1184,69 @@ class LifeRepository {
     });
   }
 
-  Future<String> applySchedulingPreview(SchedulingPreview preview) async {
+  Future<List<SeriesScheduleCollision>> scheduleSeriesCollisions(
+    SchedulingPreview preview,
+  ) async {
+    final proposed = {
+      for (final change in preview.changes)
+        if (change.targetKind == ScheduleTargetKind.task)
+          change.targetId: change.afterDate,
+    };
+    if (proposed.isEmpty) return const [];
+    final rows = await db.customSelect('''
+      SELECT t.id,t.status,t.scheduled_date,s.family_id,
+        (EXISTS(SELECT 1 FROM work_sessions w WHERE w.task_id=t.id) OR
+         EXISTS(SELECT 1 FROM task_dependencies d
+           WHERE d.task_id=t.id OR d.prerequisite_id=t.id) OR
+         EXISTS(SELECT 1 FROM sequence_tasks q WHERE q.task_id=t.id)) AS has_links
+      FROM tasks t JOIN recurrence_occurrences o ON o.task_id=t.id
+      JOIN recurrence_series s ON s.id=o.series_id
+      WHERE o.disposition='active' AND t.status!='cancelled'
+    ''').get();
+    final byId = {for (final row in rows) row.read<String>('id'): row};
+    final collisions = <SeriesScheduleCollision>[];
+    for (final change in preview.changes.where(
+      (item) =>
+          item.targetKind == ScheduleTargetKind.task &&
+          item.afterDate != null &&
+          item.afterDate != item.beforeDate,
+    )) {
+      final target = byId[change.targetId];
+      if (target == null) continue;
+      final date = change.afterDate!;
+      final family = target.read<String>('family_id');
+      final others = rows
+          .where((row) {
+            final id = row.read<String>('id');
+            return id != change.targetId &&
+                row.read<String>('family_id') == family &&
+                (proposed.containsKey(id)
+                        ? proposed[id]
+                        : row.read<String?>('scheduled_date')) ==
+                    date;
+          })
+          .map((row) => row.read<String>('id'))
+          .toList();
+      if (others.isEmpty) continue;
+      collisions.add(
+        SeriesScheduleCollision(
+          movedTaskId: change.targetId,
+          plannedDate: date,
+          existingTaskIds: others,
+          canSkipMoved:
+              target.read<String>('status') == TaskStatus.notStarted.name &&
+              target.read<int>('has_links') == 0,
+        ),
+      );
+    }
+    return collisions;
+  }
+
+  Future<String> applySchedulingPreview(
+    SchedulingPreview preview, {
+    Map<String, SeriesCollisionChoice> seriesChoices = const {},
+    List<SeriesScheduleCollision> expectedSeriesCollisions = const [],
+  }) async {
     if (!preview.canApply) {
       throw StateError('The scheduling preview contains hard conflicts');
     }
@@ -1189,6 +1281,28 @@ class LifeRepository {
         }
       }
       if (stale.isNotEmpty) throw StaleSchedulePreviewException(stale);
+
+      final seriesCollisions = await scheduleSeriesCollisions(preview);
+      String collisionSignature(List<SeriesScheduleCollision> value) =>
+          jsonEncode([
+            for (final item in value)
+              [item.movedTaskId, item.plannedDate, item.existingTaskIds],
+          ]);
+      if (collisionSignature(seriesCollisions) !=
+          collisionSignature(expectedSeriesCollisions)) {
+        throw StateError(
+          'Recurring collisions changed. Generate a new preview.',
+        );
+      }
+      for (final collision in seriesCollisions) {
+        final choice = seriesChoices[collision.movedTaskId];
+        if (choice == null ||
+            choice == SeriesCollisionChoice.combine ||
+            (choice == SeriesCollisionChoice.skipNew &&
+                !collision.canSkipMoved)) {
+          throw StateError('Review every recurring occurrence collision');
+        }
+      }
 
       final proposedTaskDays = <String, String?>{
         for (final change in preview.changes)
@@ -1244,7 +1358,32 @@ class LifeRepository {
 
       final now = DateTime.now().toUtc();
       final history = <ScheduleHistoryChange>[];
+      final skippedIds = {
+        for (final collision in seriesCollisions)
+          if (seriesChoices[collision.movedTaskId] ==
+              SeriesCollisionChoice.skipNew)
+            collision.movedTaskId,
+      };
       for (final change in preview.changes) {
+        if (skippedIds.contains(change.targetId)) {
+          await db.customUpdate(
+            '''UPDATE tasks SET status='cancelled',completed_at=NULL,
+              updated_at=? WHERE id=?''',
+            variables: [
+              Variable.withString(now.toIso8601String()),
+              Variable.withString(change.targetId),
+            ],
+          );
+          await db.customUpdate(
+            '''UPDATE recurrence_occurrences SET disposition='skipped',
+              updated_at=? WHERE task_id=?''',
+            variables: [
+              Variable.withString(now.toIso8601String()),
+              Variable.withString(change.targetId),
+            ],
+          );
+          continue;
+        }
         if (change.targetKind == ScheduleTargetKind.task) {
           await db.customUpdate(
             'UPDATE tasks SET scheduled_date=?,updated_at=? WHERE id=?',
@@ -1323,6 +1462,22 @@ class LifeRepository {
             ? preview.scope.split(':').last
             : null,
       );
+      for (final collision in seriesCollisions) {
+        await db.customInsert(
+          '''INSERT INTO recurrence_collision_history(
+            id,operation_id,moved_task_id,existing_task_ids,planned_date,
+            choice,created_at) VALUES(?,?,?,?,?,?,?)''',
+          variables: [
+            Variable.withString(_uuid.v4()),
+            Variable.withString(operationId),
+            Variable.withString(collision.movedTaskId),
+            Variable.withString(jsonEncode(collision.existingTaskIds)),
+            Variable.withString(collision.plannedDate),
+            Variable.withString(seriesChoices[collision.movedTaskId]!.name),
+            Variable.withString(now.toIso8601String()),
+          ],
+        );
+      }
     });
     return operationId;
   }
