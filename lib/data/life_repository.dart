@@ -9,6 +9,7 @@ import '../domain/series_edit.dart';
 import '../domain/habits.dart';
 import '../domain/goals.dart';
 import '../domain/time_tracking.dart';
+import '../domain/templates.dart';
 import '../domain/scheduling_models.dart';
 import 'app_database.dart';
 
@@ -16,6 +17,7 @@ part 'series_edit_repository.dart';
 part 'habit_repository.dart';
 part 'goal_repository.dart';
 part 'time_repository.dart';
+part 'template_repository.dart';
 
 class LifeRepository {
   LifeRepository(this.db);

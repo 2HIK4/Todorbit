@@ -111,3 +111,12 @@
   confirmed elapsed time. Manual log edits and clears retain an audit record;
   interval totals merge overlaps to prevent inflated actual time. The native
   widget only validates schema compatibility.
+- **Templates (schema v11):** store versioned JSON recipes separate from live
+  task/project rows. Capture the current recurrence definition for routine
+  templates, not materialized occurrence history. Apply creates fresh UUIDs,
+  resets task status, shifts date offsets from a user-selected anchor, and
+  remaps only internal project prerequisites in one transaction. Surface
+  omitted sessions and external dependencies to the user. A project with
+  recurring tasks must save those as separate routine templates so its
+  recurrence links are not silently lost. Compare the template revision at
+  Apply and delete.

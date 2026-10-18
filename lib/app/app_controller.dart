@@ -11,6 +11,7 @@ import '../domain/series_edit.dart';
 import '../domain/habits.dart';
 import '../domain/goals.dart';
 import '../domain/time_tracking.dart';
+import '../domain/templates.dart';
 import '../domain/appearance.dart';
 import '../domain/scheduling_models.dart';
 
@@ -53,6 +54,7 @@ class AppController extends ChangeNotifier {
   List<Goal> goals = [];
   List<GoalMilestone> goalMilestones = [];
   List<TimeEntry> timeEntries = [];
+  List<LifeTemplate> templates = [];
   TimerRun? activeTimer;
   String? timerError;
   Timer? _timerHeartbeat;
@@ -96,6 +98,7 @@ class AppController extends ChangeNotifier {
       repository.goalMilestones(),
       repository.timeEntries(),
       repository.activeTimerRun(),
+      repository.templates(),
     ]);
     categories = result[0] as List<Category>;
     projects = result[1] as List<Project>;
@@ -113,6 +116,7 @@ class AppController extends ChangeNotifier {
     goalMilestones = result[13] as List<GoalMilestone>;
     timeEntries = result[14] as List<TimeEntry>;
     activeTimer = result[15] as TimerRun?;
+    templates = result[16] as List<LifeTemplate>;
     _syncTimerHeartbeat();
     if (selectedTaskId != null && selectedTask == null) selectedTaskId = null;
     loading = false;
@@ -356,6 +360,44 @@ class AppController extends ChangeNotifier {
 
   Future<void> clearManualTime(TimeEntry previous) async {
     await repository.clearManualTime(previous);
+    await refresh();
+  }
+
+  Future<void> saveTaskTemplate(LifeTask source, String name) async {
+    await repository.saveTaskTemplate(source, name);
+    await refresh();
+  }
+
+  Future<void> saveProjectTemplate(Project project, String name) async {
+    await repository.saveProjectTemplate(project, name);
+    await refresh();
+  }
+
+  Future<String> instantiateTemplate(
+    LifeTemplate template, {
+    required String anchorDay,
+    String? categoryId,
+    String? projectId,
+    String? projectName,
+  }) async {
+    final id = await repository.instantiateTemplate(
+      template,
+      anchorDay: anchorDay,
+      categoryId: categoryId,
+      projectId: projectId,
+      projectName: projectName,
+    );
+    await refresh();
+    if (template.kind == TemplateKind.project) {
+      navigate(WorkspaceView.project, id: id);
+    } else {
+      select(id);
+    }
+    return id;
+  }
+
+  Future<void> deleteTemplate(LifeTemplate template) async {
+    await repository.deleteTemplate(template);
     await refresh();
   }
 

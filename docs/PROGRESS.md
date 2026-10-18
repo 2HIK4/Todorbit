@@ -71,6 +71,15 @@
   unreviewed time is not added to the displayed total. Overlapping intervals
   count once in the displayed total. The native widget accepts schema v10
   without editing time records.
+- Templates (schema v11) save standalone tasks, current recurring rule
+  definitions, and project task collections as reusable snapshots. Applying
+  one creates new task, project, and recurrence IDs and does not copy
+  completion or work history. Project templates copy internal prerequisite
+  edges with new task IDs; external links and planned sessions are disclosed
+  as omitted. Relative planned/deadline dates shift from a chosen anchor day,
+  while undated tasks stay undated. Project creation rolls back fully on a
+  conflict; stale/deleted template revisions are rejected. The Templates
+  manager previews the destination and generated task dates before Apply.
 - Stale completion now rejects a newer task edit, and task duration input
   rejects invalid text instead of silently clearing the estimate. Prerequisite
   edits compare task revisions, and the narrow task editor keeps unsaved fields
@@ -114,7 +123,7 @@
 
 - Flutter 3.47.7 / Dart 3.13.5; Windows toolchain healthy.
 - `flutter analyze`: clean.
-- `flutter test`: 88 passing tests, including engine, database, migration,
+- `flutter test`: 94 passing tests, including engine, database, migration,
   stale-apply, undo/restoration, split, persistence, and preview/Apply coverage.
 - Native Release build and disposable database/settings self-test: passing.
 - Native dependency audit: no vulnerable packages reported.
@@ -181,6 +190,12 @@
   all 88 Flutter tests, native Release build/self-test, Windows Release build,
   and packaged companion self-test pass. Manual Windows UI acceptance remains
   pending.
+- Schema v11 validation: disposable v10-to-v11 migration and restart,
+  standalone and recurring template creation, project dependency remapping,
+  date shifts, atomic rollback on project-name conflict, and manager UI flows
+  pass. `flutter analyze` is clean; all 94 Flutter tests and native Release
+  build/self-test, Windows Release build, and packaged companion self-test
+  pass. Manual Windows UI acceptance remains pending.
 
 ## In progress
 
@@ -194,7 +209,7 @@
 
 ## Not yet implemented
 
-- Templates, advanced search/saved views, backups, Trash,
+- Advanced search/saved views, backups, Trash,
   notifications, privacy controls, import/export, and installer packaging.
 
 ## Environment and data notes
@@ -214,7 +229,7 @@
 
 ## Next action
 
-Implement reusable task and project templates next, then backups/Trash and the
+Implement advanced search and saved views next, then backups/Trash and the
 remaining Windows V1.0 roadmap. Manually
 exercise the recurrence editor, Smart Reschedule collision choices, and Habits
 screen on an isolated Windows profile before opening the production schema-v4

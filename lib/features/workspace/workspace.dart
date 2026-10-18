@@ -11,6 +11,7 @@ import '../calendar/calendar_view.dart';
 import '../habits/habits_view.dart';
 import '../goals/goals_view.dart';
 import '../time_tracking/time_tracking_dialog.dart';
+import '../templates/templates_dialog.dart';
 import '../scheduling/smart_reschedule.dart';
 import '../widget/native_widget_service.dart';
 import 'task_editor.dart';
@@ -140,6 +141,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   Future<void> _showSearch() => showDialog<void>(
     context: context,
     builder: (_) => const QuickSearchDialog(),
+  );
+
+  Future<void> _showTemplates() => showDialog<void>(
+    context: context,
+    builder: (_) => const TemplatesDialog(),
   );
 
   Future<void> _showActiveTimer(String taskId) => showDialog<void>(
@@ -414,6 +420,10 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                           tooltip: 'Project actions',
                           itemBuilder: (_) => const [
                             PopupMenuItem(
+                              value: 'template',
+                              child: Text('Save as template'),
+                            ),
+                            PopupMenuItem(
                               value: 'rename',
                               child: Text('Rename'),
                             ),
@@ -423,7 +433,16 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                             ),
                           ],
                           onSelected: (action) async {
-                            if (action == 'rename') {
+                            if (action == 'template') {
+                              await showSaveTemplateDialog(
+                                context,
+                                sourceName: project.name,
+                                save: (name) => controller.saveProjectTemplate(
+                                  project,
+                                  name,
+                                ),
+                              );
+                            } else if (action == 'rename') {
                               final name = await _nameDialog(
                                 'Rename project',
                                 initial: project.name,
@@ -465,6 +484,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   builder: (_) => const SequenceDialog(),
                 ),
                 icon: const Icon(Icons.format_list_numbered),
+              ),
+              IconButton(
+                tooltip: 'Templates',
+                onPressed: _showTemplates,
+                icon: const Icon(Icons.copy_all_outlined),
               ),
             ],
           ),

@@ -6,6 +6,7 @@ import '../../domain/models.dart';
 import '../../domain/recurrence.dart';
 import '../calendar/session_editor.dart';
 import '../time_tracking/time_tracking_dialog.dart';
+import '../templates/templates_dialog.dart';
 import 'series_editor.dart';
 
 class TaskEditor extends ConsumerStatefulWidget {
@@ -676,6 +677,22 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                 ),
                 if (widget.task != null) ...[
                   const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      final task = currentTask;
+                      if (task == null) return;
+                      showSaveTemplateDialog(
+                        context,
+                        sourceName: task.title,
+                        save: (name) => ref
+                            .read(appControllerProvider)
+                            .saveTaskTemplate(task, name),
+                      );
+                    },
+                    icon: const Icon(Icons.copy_all_outlined),
+                    label: const Text('Save task or routine template'),
+                  ),
+                  const SizedBox(height: 8),
                   OutlinedButton.icon(
                     onPressed: () => showDialog<void>(
                       context: context,
