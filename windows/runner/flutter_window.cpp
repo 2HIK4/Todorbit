@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <shobjidl.h>
+#include <shellapi.h>
 #include <wrl/client.h>
 
 #include <flutter/standard_method_codec.h>
@@ -12,8 +13,8 @@
 
 namespace {
 
-void ShowDatabaseFileDialog(
-    HWND owner, bool save,
+void ShowFileDialog(
+    HWND owner, bool save, bool any_file, bool folder,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
   Microsoft::WRL::ComPtr<IFileDialog> dialog;
   HRESULT status = ::CoCreateInstance(
@@ -24,12 +25,13 @@ void ShowDatabaseFileDialog(
     return;
   }
   COMDLG_FILTERSPEC filter{L"SQLite database (*.sqlite)", L"*.sqlite"};
-  status = dialog->SetFileTypes(1, &filter);
+  if (!any_file && !folder) status = dialog->SetFileTypes(1, &filter);
   if (SUCCEEDED(status)) {
     DWORD options = 0;
     status = dialog->GetOptions(&options);
     if (SUCCEEDED(status)) {
       status = dialog->SetOptions(options | FOS_FORCEFILESYSTEM |
+                                  (folder ? FOS_PICKFOLDERS : 0) |
                                   (save ? FOS_OVERWRITEPROMPT : FOS_FILEMUSTEXIST));
     }
   }
@@ -63,6 +65,19 @@ void ShowDatabaseFileDialog(
   result->Success(flutter::EncodableValue(path));
 }
 
+std::wstring Utf16FromUtf8(const std::string& input) {
+  const int size = ::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+                                         input.c_str(), -1, nullptr, 0);
+  if (size <= 1) return {};
+  std::wstring output(size, L'\0');
+  if (::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+                            input.c_str(), -1, output.data(), size) == 0) {
+    return {};
+  }
+  output.pop_back();
+  return output;
+}
+
 }  // namespace
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
@@ -94,9 +109,32 @@ bool FlutterWindow::OnCreate() {
       [this](const flutter::MethodCall<flutter::EncodableValue>& call,
              std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
         if (call.method_name() == "openDatabase") {
-          ShowDatabaseFileDialog(GetHandle(), false, std::move(result));
+          ShowFileDialog(GetHandle(), false, false, false, std::move(result));
         } else if (call.method_name() == "saveDatabase") {
-          ShowDatabaseFileDialog(GetHandle(), true, std::move(result));
+          ShowFileDialog(GetHandle(), true, false, false, std::move(result));
+        } else if (call.method_name() == "openFile") {
+          ShowFileDialog(GetHandle(), false, true, false, std::move(result));
+        } else if (call.method_name() == "openFolder") {
+          ShowFileDialog(GetHandle(), false, true, true, std::move(result));
+        } else if (call.method_name() == "openResource") {
+          const auto* value = std::get_if<std::string>(call.arguments());
+          if (value == nullptr) {
+            result->Error("invalid_path", "A resource path is required");
+            return;
+          }
+          const std::wstring target = Utf16FromUtf8(*value);
+          if (target.empty()) {
+            result->Error("invalid_path", "The resource path could not be read");
+            return;
+          }
+          const auto opened = reinterpret_cast<INT_PTR>(
+              ::ShellExecuteW(GetHandle(), L"open", target.c_str(),
+                              nullptr, nullptr, SW_SHOWNORMAL));
+          if (opened <= 32) {
+            result->Error("open_failed", "Windows could not open the resource");
+            return;
+          }
+          result->Success();
         } else {
           result->NotImplemented();
         }

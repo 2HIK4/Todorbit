@@ -123,7 +123,10 @@ void main() {
         find.textContaining('Imported from: portable.sqlite'),
         findsOneWidget,
       );
-      expect(find.textContaining('Schema: 14'), findsOneWidget);
+      expect(
+        find.textContaining('Schema: ${AppDatabase.currentSchemaVersion}'),
+        findsOneWidget,
+      );
       expect(service.scheduleCalls, 0);
       await tester.tap(find.text('Cancel').last);
       await tester.pumpAndSettle();

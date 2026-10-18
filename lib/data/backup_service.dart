@@ -135,6 +135,7 @@ class BackupService {
       final schema = await Isolate.run(
         () => _writeSnapshot(sourcePath, temporaryPath),
       );
+      await Isolate.run(() => _validateLifeManagerSnapshot(temporaryPath));
       await temporary.rename(destination.path);
       if (kind == BackupKind.automatic) await _pruneAutomatic();
       final stat = await destination.stat();
@@ -265,6 +266,7 @@ class BackupService {
     final verifiedSchema = await Isolate.run(
       () => _inspectSnapshot(selectedPath),
     );
+    await Isolate.run(() => _validateLifeManagerSnapshot(selectedPath));
     if (verifiedSchema < 1 ||
         verifiedSchema > appSchemaVersion ||
         verifiedSchema != selected.schemaVersion) {
@@ -323,6 +325,7 @@ class BackupService {
     final sourceSchema = await Isolate.run(
       () => _inspectSnapshot(snapshotPath),
     );
+    await Isolate.run(() => _validateLifeManagerSnapshot(snapshotPath));
     if (sourceSchema != marker['schema'] ||
         sourceSchema < 1 ||
         sourceSchema > appSchemaVersion) {
@@ -445,11 +448,42 @@ void _validateLifeManagerSnapshot(String filePath) {
     if (schema >= 14) {
       required.addAll({'notification_settings', 'notification_deliveries'});
     }
+    if (schema >= 15) required.add('task_resources');
     if (!names.containsAll(required)) {
       throw StateError('Snapshot is not a Life Manager database');
     }
     if (connection.select('PRAGMA foreign_key_check').isNotEmpty) {
       throw StateError('Snapshot has broken record relationships');
+    }
+    if (schema >= 15) {
+      if (connection.select(
+        "SELECT 1 FROM task_resources WHERE kind='managed' AND length(content)>16777216 LIMIT 1",
+      ).isNotEmpty) {
+        throw StateError('Snapshot has an oversized managed attachment');
+      }
+      final statement = connection.prepare(
+        "SELECT id, byte_size, sha256, original_name, content FROM task_resources WHERE kind='managed'",
+      );
+      try {
+        final cursor = statement.selectCursor();
+        while (cursor.moveNext()) {
+          final row = cursor.current;
+          final bytes = row['content'] as List<int>;
+          final originalName = row['original_name'] as String;
+          if (originalName.isEmpty ||
+              originalName == '.' ||
+              originalName == '..' ||
+              RegExp(r'[<>:"/\\|?*\x00-\x1F]').hasMatch(originalName)) {
+            throw StateError('Snapshot has an unsafe attachment filename');
+          }
+          if (bytes.length != row['byte_size'] ||
+              sha256.convert(bytes).toString() != row['sha256']) {
+            throw StateError('Snapshot has a damaged managed attachment');
+          }
+        }
+      } finally {
+        statement.close();
+      }
     }
   } finally {
     connection.close();

@@ -7,7 +7,7 @@ import 'package:path/path.dart' as path;
 class AppDatabase extends GeneratedDatabase {
   AppDatabase(super.executor);
 
-  static const currentSchemaVersion = 14;
+  static const currentSchemaVersion = 15;
 
   static Future<File> defaultFile() async {
     final String basePath;
@@ -117,9 +117,10 @@ class AppDatabase extends GeneratedDatabase {
       await _createSavedViews();
       await _createTrash();
       await _createNotifications();
+      await _createTaskResources();
     },
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 13 || to != 14) {
+      if (from < 1 || from > 14 || to != 15) {
         throw StateError('No migration registered from schema $from to $to');
       }
       if (from == 1) {
@@ -159,8 +160,31 @@ class AppDatabase extends GeneratedDatabase {
       await _createSavedViews();
       await _createTrash();
       await _createNotifications();
+      await _createTaskResources();
     },
   );
+
+  Future<void> _createTaskResources() async {
+    await customStatement('''CREATE TABLE IF NOT EXISTS task_resources (
+      id TEXT PRIMARY KEY,
+      task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL CHECK(kind IN ('managed','externalFile','externalFolder','url')),
+      label TEXT NOT NULL CHECK(length(trim(label)) > 0),
+      target TEXT,
+      content BLOB,
+      byte_size INTEGER,
+      sha256 TEXT,
+      original_name TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      CHECK((kind='managed' AND target IS NULL AND content IS NOT NULL
+        AND byte_size IS NOT NULL AND sha256 IS NOT NULL AND original_name IS NOT NULL)
+        OR (kind!='managed' AND target IS NOT NULL AND content IS NULL))
+    )''');
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS task_resources_task ON task_resources(task_id, created_at)',
+    );
+  }
 
   Future<void> _createNotifications() async {
     await customStatement('''CREATE TABLE IF NOT EXISTS notification_settings (

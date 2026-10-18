@@ -8,6 +8,7 @@ import '../calendar/session_editor.dart';
 import '../time_tracking/time_tracking_dialog.dart';
 import '../templates/templates_dialog.dart';
 import 'series_editor.dart';
+import 'task_resources_section.dart';
 
 class TaskEditor extends ConsumerStatefulWidget {
   const TaskEditor({super.key, this.task, this.onSaved, this.onCancel});
@@ -418,6 +419,17 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                   decoration: const InputDecoration(labelText: 'Notes'),
                 ),
                 const SizedBox(height: 12),
+                if (currentTask case final task?) ...[
+                  TaskResourcesSection(
+                    key: ValueKey('resources:${task.id}'),
+                    taskId: task.id,
+                    repository: controller.repository,
+                  ),
+                  const SizedBox(height: 16),
+                ] else ...[
+                  const Text('Save the task before adding resources.'),
+                  const SizedBox(height: 12),
+                ],
                 DropdownButtonFormField<TaskStatus>(
                   key: ValueKey('status:$status:$recurrenceKind'),
                   initialValue: status,

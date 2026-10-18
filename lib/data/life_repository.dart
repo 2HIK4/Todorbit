@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:drift/drift.dart';
+import 'package:crypto/crypto.dart';
+import 'package:path/path.dart' as path;
 import 'package:uuid/uuid.dart';
 
 import '../domain/models.dart';
@@ -13,6 +16,7 @@ import '../domain/templates.dart';
 import '../domain/saved_views.dart';
 import '../domain/trash.dart';
 import '../domain/notifications.dart';
+import '../domain/task_resources.dart';
 import '../domain/scheduling_models.dart';
 import 'app_database.dart';
 
@@ -25,6 +29,7 @@ part 'saved_view_repository.dart';
 part 'trash_repository.dart';
 part 'reports_repository.dart';
 part 'notification_repository.dart';
+part 'task_resource_repository.dart';
 
 class LifeRepository {
   LifeRepository(this.db);

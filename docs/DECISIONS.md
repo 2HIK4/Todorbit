@@ -149,6 +149,17 @@
   Import then uses the
   existing reviewed next-launch restore and Before restore rollback mechanism;
   cancelling review leaves the staged snapshot available as a manual backup.
+- **Task resources (schema v15):** keep managed attachment bytes inside SQLite
+  with their task row, UUID, original filename, length, and SHA-256 digest.
+  Limit each copied file to 16 MB and reject changes detected during reading.
+  This keeps the existing versioned SQLite snapshot format complete for managed
+  data; no separate archive extraction or second restore commit is needed.
+  Verify attachment hashes and filenames before exporting, scheduling, or
+  applying a restore. Store external file/folder paths and URLs as references
+  only; never copy or delete external files. Each recurring occurrence owns its
+  own resources. Archive/Trash retain rows, and permanent task purge cascades
+  them. Task templates omit resources rather than copying outside references
+  or potentially large bytes into every new task.
 - **Recoverable Archive and Trash (schema v13):** archive task rows without
   changing completion or work history. A recurring occurrence can be archived
   or trashed independently; a whole family action marks every series version

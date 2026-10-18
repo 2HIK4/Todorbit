@@ -2,7 +2,12 @@
 
 A task requires a nonblank title. Optional category, project, notes, status, priority, scheduled day and deadline are foundation fields. Projects belong to one category; assigning a project also determines its category. Unassigned tasks belong to Inbox. Completion records a UTC timestamp and can be reopened. Tasks can be archived or moved to recoverable Trash. Permanent deletion requires explicit confirmation and is blocked while linked records would be lost.
 
-Future fields include tags, subtasks, attachments, and richer task history. Validate project/category consistency, preserve timestamps, and test create/edit/complete/reopen/persistence.
+Schema v15 stores copied attachments (up to 16 MB each), external file/folder
+references, and URL links per task. Copied bytes travel with SQLite backups;
+external content does not. Missing external paths remain visible as unavailable.
+Tags, subtasks, and richer task history remain future work. Validate
+project/category consistency, preserve timestamps, and test
+create/edit/complete/reopen/persistence.
 
 Schema v5 implements prerequisites and persistent task sequences. Task details
 can add or remove prerequisites from any project. Cycles are rejected without

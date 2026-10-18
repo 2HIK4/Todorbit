@@ -141,6 +141,19 @@
   explicit choice and occurs only on the next launch through the existing
   Before restore rollback flow. Cancelling either picker or the preview leaves
   the active database unchanged.
+- Schema v15 adds task resources: managed attachments, external file and folder
+  references, and website/application URLs. Managed attachment bytes live in
+  SQLite with stable UUIDs, original filenames, size, and SHA-256 digest. The
+  attachment limit is 16 MB per file. This makes automatic backups, manual
+  snapshots, Before restore backups, and portable SQLite exports complete for
+  managed attachments without a second archive or arbitrary extraction path.
+  External file and folder contents are never copied into backups. The task
+  editor supports adding, opening, renaming, editing URLs, availability display,
+  and confirmed removal. Files opened from managed storage are verified and
+  placed in an app-owned cache; executable/shortcut extensions are blocked.
+  Task archive and Trash retain resource rows; permanent task purge cascades
+  them. Resource changes are not copied by task templates or recurrence rules:
+  each task or occurrence owns only its explicitly added resources.
 - Stale completion now rejects a newer task edit, and task duration input
   rejects invalid text instead of silently clearing the estimate. Prerequisite
   edits compare task revisions, and the narrow task editor keeps unsaved fields
@@ -184,7 +197,7 @@
 
 - Flutter 3.47.7 / Dart 3.13.5; Windows toolchain healthy.
 - `flutter analyze`: clean.
-- `flutter test`: 131 passing tests, including engine, database, migration,
+- `flutter test`: 138 passing tests, including engine, database, migration,
   stale-apply, undo/restoration, split, persistence, and preview/Apply coverage.
 - Native Release build and disposable database/settings self-test: passing.
 - Native dependency audit: no vulnerable packages reported.
@@ -308,6 +321,19 @@
   while a picker is pending. `flutter analyze` is clean; all 131 Flutter tests,
   Windows Release build, and packaged widget self-test pass. Native Windows
   file picker interaction and next-launch restore remain manual acceptance.
+- Task resources validation: disposable v14-to-v15 migration preserves tasks;
+  managed bytes survive source-file removal, archive, Trash, and restoration,
+  while permanent task deletion removes the association. Duplicate filenames
+  get distinct UUIDs; invalid URLs, missing paths, oversized files, and a
+  source changed during copying leave no resource row. Portable export/import
+  restores managed bytes and rejects corrupted content or unsafe original
+  filenames. A blocked restore retains the live attachment and pending request
+  until the lock clears. Widget tests cover attach, rename, confirmed removal,
+  and a missing external file remaining visible. `flutter analyze` is clean;
+  all 138 Flutter tests, Windows Release build,
+  and packaged widget self-test pass. The native widget self-test checks v15
+  compatibility. Native Windows picker/opening flows still need manual
+  acceptance on an isolated profile.
 
 ## In progress
 
@@ -321,7 +347,7 @@
 
 ## Not yet implemented
 
-- Privacy controls, attachments and external links, and
+- Privacy controls and
   installer packaging. Habit and session-specific reminders remain future work.
 
 ## Environment and data notes
@@ -362,7 +388,9 @@
 
 ## Next action
 
-Implement task attachments and external resource links next. Manually verify
+Implement privacy settings and optional application lock next. Manually verify
+task resource selection/opening through native Windows dialogs on an isolated
+profile. Manually verify
 import/export through the native Windows file picker and the reviewed
 next-launch restore using the isolated profile. Manually verify a due reminder and daily summary
 through the Windows tray on an isolated profile, including after closing the

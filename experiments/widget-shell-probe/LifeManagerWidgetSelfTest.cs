@@ -467,6 +467,18 @@ internal static class LifeManagerWidgetSelfTest {
             new DateTime(2026, 10, 20, 9, 1, 0)).Count != 0)
           throw new InvalidOperationException("Disabled reminders were delivered.");
       }
+      using (var upgrade = new SqliteConnection(
+          $"Data Source={databasePath};Pooling=False")) {
+        upgrade.Open();
+        using var command = upgrade.CreateCommand();
+        command.CommandText = "CREATE TABLE task_resources (id TEXT PRIMARY KEY, task_id TEXT NOT NULL); PRAGMA user_version=15;";
+        command.ExecuteNonQuery();
+      }
+      using (var v15Repository =
+          LifeManagerWidgetRepository.OpenForTest(databasePath)) {
+        if (v15Repository.LoadTask(inboxId) == null)
+          throw new InvalidOperationException("Widget could not read a schema v15 task.");
+      }
       VerifySettingsRoundTrip(directory);
       VerifyAppearanceRoundTrip(directory);
       VerifySingleInstanceMutex();
