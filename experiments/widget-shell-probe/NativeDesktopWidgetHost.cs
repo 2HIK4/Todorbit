@@ -17,6 +17,7 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
   private readonly System.Windows.Forms.Timer refreshDebounce;
   private readonly System.Windows.Forms.Timer appearanceDebounce;
   private readonly System.Windows.Forms.Timer explorerRecovery;
+  private readonly System.Windows.Forms.Timer notificationTimer;
   private NativeDesktopWidgetHost? host;
   private readonly ExplorerRecoveryPolicy recoveryPolicy = new();
 
@@ -72,11 +73,15 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
 
     explorerRecovery = new System.Windows.Forms.Timer { Interval = 1000 };
     explorerRecovery.Tick += (_, _) => RecoverAfterExplorerRestart();
+    notificationTimer = new System.Windows.Forms.Timer { Interval = 30000 };
+    notificationTimer.Tick += (_, _) => CheckNotifications();
     commandServer = new WidgetCommandServer(ExecuteCommand);
     trayIcon = BuildTrayIcon();
     trayIcon.Visible = true;
-    CreateHost();
+    if (initialCommand != "background") CreateHost();
     ExecuteCommand(initialCommand);
+    notificationTimer.Start();
+    CheckNotifications();
   }
 
   private NotifyIcon BuildTrayIcon() {
@@ -121,7 +126,19 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
       ContextMenuStrip = menu,
     };
     icon.DoubleClick += (_, _) => ExecuteCommand("toggle");
+    icon.BalloonTipClicked += (_, _) => OpenMainApp();
     return icon;
+  }
+
+  private void CheckNotifications() {
+    try {
+      var messages = repository.ClaimDailyNotifications(DateTime.Now);
+      if (messages.Count == 0) return;
+      trayIcon.ShowBalloonTip(10000, "Life Manager", string.Join("\n", messages),
+        ToolTipIcon.Info);
+    } catch (Exception error) {
+      Debug.WriteLine($"Life Manager notification check failed: {error}");
+    }
   }
 
   private void DatabaseChanged(object sender, FileSystemEventArgs args) {
@@ -155,6 +172,7 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
       case "toggle": EnsureHost(); host?.Toggle(); break;
       case "quick-add": EnsureHost(); host?.OpenQuickAddDialog(); break;
       case "refresh": host?.RefreshFromDatabase(); break;
+      case "background": break;
       case "theme-system": SetTheme(WidgetThemePreference.System); break;
       case "theme-light": SetTheme(WidgetThemePreference.Light); break;
       case "theme-dark": SetTheme(WidgetThemePreference.Dark); break;
@@ -268,6 +286,7 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
       refreshDebounce.Dispose();
       appearanceDebounce.Dispose();
       explorerRecovery.Dispose();
+      notificationTimer.Dispose();
       host?.Dispose();
       host = null;
     }

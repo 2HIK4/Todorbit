@@ -28,6 +28,9 @@ class NativeWidgetService {
 
   Future<void> show() => _run(['--widget', '--app-exe', appExecutablePath]);
 
+  Future<void> ensureRemindersRunning() =>
+      _run(['--widget', '--background', '--app-exe', appExecutablePath]);
+
   Future<void> hide() => _command('hide');
   Future<void> toggle() => _command('toggle');
   Future<void> quickAdd() => _command('quick-add');

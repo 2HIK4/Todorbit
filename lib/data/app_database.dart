@@ -7,7 +7,7 @@ import 'package:path/path.dart' as path;
 class AppDatabase extends GeneratedDatabase {
   AppDatabase(super.executor);
 
-  static const currentSchemaVersion = 13;
+  static const currentSchemaVersion = 14;
 
   static Future<File> defaultFile() async {
     final String basePath;
@@ -116,9 +116,10 @@ class AppDatabase extends GeneratedDatabase {
       await _createTemplates();
       await _createSavedViews();
       await _createTrash();
+      await _createNotifications();
     },
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 12 || to != 13) {
+      if (from < 1 || from > 13 || to != 14) {
         throw StateError('No migration registered from schema $from to $to');
       }
       if (from == 1) {
@@ -157,8 +158,28 @@ class AppDatabase extends GeneratedDatabase {
       await _createTemplates();
       await _createSavedViews();
       await _createTrash();
+      await _createNotifications();
     },
   );
+
+  Future<void> _createNotifications() async {
+    await customStatement('''CREATE TABLE IF NOT EXISTS notification_settings (
+      id INTEGER PRIMARY KEY CHECK(id=1),
+      due_reminders INTEGER NOT NULL DEFAULT 0 CHECK(due_reminders IN (0,1)),
+      daily_summary INTEGER NOT NULL DEFAULT 0 CHECK(daily_summary IN (0,1)),
+      local_minute INTEGER NOT NULL DEFAULT 540 CHECK(local_minute BETWEEN 0 AND 1439),
+      updated_at TEXT NOT NULL
+    )''');
+    await customStatement(
+      '''CREATE TABLE IF NOT EXISTS notification_deliveries (
+      id TEXT PRIMARY KEY,
+      kind TEXT NOT NULL CHECK(kind IN ('due','summary')),
+      local_day TEXT NOT NULL,
+      delivered_at TEXT NOT NULL,
+      UNIQUE(kind, local_day)
+    )''',
+    );
+  }
 
   Future<void> _createTrash() async {
     await customStatement('''CREATE TABLE IF NOT EXISTS categories (
@@ -175,7 +196,9 @@ class AppDatabase extends GeneratedDatabase {
       notes TEXT NOT NULL DEFAULT '', starts_at TEXT NOT NULL,
       ends_at TEXT NOT NULL, created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL, CHECK(ends_at > starts_at))''');
-    await customStatement('CREATE INDEX IF NOT EXISTS fixed_events_start ON fixed_events(starts_at)');
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS fixed_events_start ON fixed_events(starts_at)',
+    );
     for (final table in [
       'tasks',
       'projects',

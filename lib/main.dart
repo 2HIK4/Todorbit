@@ -51,6 +51,17 @@ Future<void> main(List<String> args) async {
     backupService: backupService,
   );
   await controller.initialize();
+  if (Platform.isWindows) {
+    final companion = NativeWidgetService();
+    if (companion.isAvailable &&
+        (await controller.repository.notificationSettings()).enabled) {
+      try {
+        await companion.ensureRemindersRunning();
+      } catch (failure) {
+        debugPrint('Could not start reminder companion: $failure');
+      }
+    }
+  }
   final taskArgument = args.indexOf('--task-id');
   if (taskArgument >= 0 && taskArgument + 1 < args.length) {
     controller.select(args[taskArgument + 1]);
@@ -124,7 +135,7 @@ class _StartupFailureAppState extends State<_StartupFailureApp> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                    'Life Manager could not prepare its database. The main app was not started and no migration was run.',
+                'Life Manager could not prepare its database. The main app was not started and no migration was run.',
               ),
               const SizedBox(height: 12),
               SelectableText(widget.failure),

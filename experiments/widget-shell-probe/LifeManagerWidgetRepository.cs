@@ -20,7 +20,7 @@ internal sealed class DependencyReviewRequiredException(
 
 internal sealed class LifeManagerWidgetRepository : IDisposable {
   private const int MinimumSchemaVersion = 4;
-  private const int MaximumSchemaVersion = 13;
+  private const int MaximumSchemaVersion = 14;
   private const string ActiveTaskClause = """
      AND deleted_at IS NULL AND archived_at IS NULL
      AND (category_id IS NULL OR EXISTS
@@ -32,7 +32,7 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
        WHERE o.task_id=tasks.id AND (s.deleted_at IS NOT NULL OR s.archived_at IS NOT NULL))
     """;
   private readonly SqliteConnection connection;
-  private readonly int schemaVersion;
+  private int schemaVersion;
   internal string DatabasePath { get; }
 
   private LifeManagerWidgetRepository(string databasePath) {
@@ -73,6 +73,66 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
 
   internal static LifeManagerWidgetRepository OpenForTest(string databasePath) =>
     new(databasePath);
+
+  // Claim before showing a tray balloon so a restart or a second timer tick
+  // cannot repeat it. A notification can be claimed only for the current day.
+  internal IReadOnlyList<string> ClaimDailyNotifications(DateTime localNow) {
+    RefreshSchemaVersion();
+    if (schemaVersion < 14) return [];
+    using var settingsCommand = connection.CreateCommand();
+    settingsCommand.CommandText = "SELECT due_reminders,daily_summary,local_minute FROM notification_settings WHERE id=1";
+    using var settings = settingsCommand.ExecuteReader();
+    if (!settings.Read()) return [];
+    var dueEnabled = settings.GetInt32(0) == 1;
+    var summaryEnabled = settings.GetInt32(1) == 1;
+    var minute = settings.GetInt32(2);
+    settings.Close();
+    if (!dueEnabled && !summaryEnabled) return [];
+    var elapsed = (int)localNow.TimeOfDay.TotalMinutes - minute;
+    if (elapsed < 0 || elapsed >= 60) return [];
+    var day = localNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    using var transaction = connection.BeginTransaction();
+    var results = new List<string>();
+    var due = CountActiveTasks("deadline_date <= $day", day, transaction);
+    if (dueEnabled && due > 0 && Claim("due", day, transaction)) {
+      results.Add($"{due} open task{(due == 1 ? "" : "s")} due or overdue.");
+    }
+    if (summaryEnabled && Claim("summary", day, transaction)) {
+      var planned = CountActiveTasks("scheduled_date = $day", day, transaction);
+      results.Add($"Today: {planned} planned task{(planned == 1 ? "" : "s")}, {due} due or overdue.");
+    }
+    transaction.Commit();
+    return results;
+  }
+
+  private void RefreshSchemaVersion() {
+    using var command = connection.CreateCommand();
+    command.CommandText = "PRAGMA user_version";
+    var version = Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+    if (version is >= MinimumSchemaVersion and <= MaximumSchemaVersion)
+      schemaVersion = version;
+  }
+
+  private int CountActiveTasks(string condition, string day,
+      SqliteTransaction transaction) {
+    using var command = connection.CreateCommand();
+    command.Transaction = transaction;
+    command.CommandText = "SELECT COUNT(*) FROM tasks WHERE status NOT IN ('completed','cancelled') AND " +
+      condition + ActiveTaskClause;
+    command.Parameters.AddWithValue("$day", day);
+    return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+  }
+
+  private bool Claim(string kind, string day, SqliteTransaction transaction) {
+    using var command = connection.CreateCommand();
+    command.Transaction = transaction;
+    command.CommandText = "INSERT OR IGNORE INTO notification_deliveries(id,kind,local_day,delivered_at) VALUES($id,$kind,$day,$at)";
+    command.Parameters.AddWithValue("$id", Guid.NewGuid().ToString());
+    command.Parameters.AddWithValue("$kind", kind);
+    command.Parameters.AddWithValue("$day", day);
+    command.Parameters.AddWithValue("$at", UtcNowString());
+    return command.ExecuteNonQuery() == 1;
+  }
 
   internal IReadOnlyList<WidgetTask> LoadTasks(
       DateTime localToday, WidgetTaskView view = WidgetTaskView.Today) {

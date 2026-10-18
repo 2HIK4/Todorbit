@@ -16,6 +16,7 @@ import '../time_tracking/time_tracking_dialog.dart';
 import '../templates/templates_dialog.dart';
 import '../search/advanced_search_dialog.dart';
 import '../settings/backup_dialog.dart';
+import '../settings/notification_dialog.dart';
 import '../scheduling/smart_reschedule.dart';
 import '../widget/native_widget_service.dart';
 import 'task_editor.dart';
@@ -292,6 +293,14 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   ),
                 ),
                 IconButton(
+                  tooltip: 'Notifications',
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    builder: (_) => const NotificationDialog(),
+                  ),
+                  icon: const Icon(Icons.notifications_outlined, size: 20),
+                ),
+                IconButton(
                   tooltip: 'Archive and Trash',
                   onPressed: _showArchiveTrash,
                   icon: const Icon(Icons.archive_outlined, size: 20),
@@ -363,7 +372,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   'Completed',
                   Icons.task_alt_outlined,
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     const Expanded(

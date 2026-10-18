@@ -415,6 +415,58 @@ internal static class LifeManagerWidgetSelfTest {
           throw new InvalidOperationException("Trashed category remained in widget.");
         }
       }
+      using var survivor = LifeManagerWidgetRepository.OpenForTest(databasePath);
+      using (var upgrade = new SqliteConnection(
+          $"Data Source={databasePath};Pooling=False")) {
+        upgrade.Open();
+        using var command = upgrade.CreateCommand();
+        command.CommandText = """
+          CREATE TABLE notification_settings (
+            id INTEGER PRIMARY KEY CHECK(id=1), due_reminders INTEGER NOT NULL,
+            daily_summary INTEGER NOT NULL, local_minute INTEGER NOT NULL,
+            updated_at TEXT NOT NULL);
+          CREATE TABLE notification_deliveries (
+            id TEXT PRIMARY KEY, kind TEXT NOT NULL, local_day TEXT NOT NULL,
+            delivered_at TEXT NOT NULL, UNIQUE(kind,local_day));
+          UPDATE categories SET deleted_at=NULL;
+          UPDATE tasks SET archived_at=NULL WHERE id=$inbox;
+          UPDATE tasks SET status='notStarted', deadline_date='2026-10-18'
+            WHERE id=$id;
+          INSERT INTO notification_settings VALUES
+            (1,1,1,540,'2026-10-18T00:00:00Z');
+          PRAGMA user_version=14;
+          """;
+        command.Parameters.AddWithValue("$id", id);
+        command.Parameters.AddWithValue("$inbox", inboxId);
+        command.ExecuteNonQuery();
+      }
+      using (var v14Repository =
+          LifeManagerWidgetRepository.OpenForTest(databasePath)) {
+        var before = new DateTime(2026, 10, 18, 8, 59, 0);
+        var due = new DateTime(2026, 10, 18, 9, 1, 0);
+        if (v14Repository.ClaimDailyNotifications(before).Count != 0)
+          throw new InvalidOperationException("Reminder fired early.");
+        var messages = survivor.ClaimDailyNotifications(due);
+        if (messages.Count != 2 || !messages[0].Contains("1 open task"))
+          throw new InvalidOperationException("A companion opened before migration did not detect v14 notifications.");
+        if (v14Repository.ClaimDailyNotifications(due).Count != 0)
+          throw new InvalidOperationException("Reminder was duplicated.");
+        using var mutation = new SqliteConnection(
+          $"Data Source={databasePath};Pooling=False");
+        mutation.Open();
+        using var change = mutation.CreateCommand();
+        change.CommandText = "UPDATE categories SET deleted_at='2026-10-18T12:00:00Z'";
+        change.ExecuteNonQuery();
+        var nextDay = v14Repository.ClaimDailyNotifications(
+          new DateTime(2026, 10, 19, 9, 1, 0));
+        if (nextDay.Count != 1 || !nextDay[0].Contains("0 due or overdue"))
+          throw new InvalidOperationException("Trashed tasks appeared in reminders.");
+        change.CommandText = "UPDATE notification_settings SET daily_summary=0,due_reminders=0";
+        change.ExecuteNonQuery();
+        if (v14Repository.ClaimDailyNotifications(
+            new DateTime(2026, 10, 20, 9, 1, 0)).Count != 0)
+          throw new InvalidOperationException("Disabled reminders were delivered.");
+      }
       VerifySettingsRoundTrip(directory);
       VerifyAppearanceRoundTrip(directory);
       VerifySingleInstanceMutex();

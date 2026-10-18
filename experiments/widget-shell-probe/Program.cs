@@ -7,7 +7,8 @@ if (args.Length >= 1 && args[0] is "--widget" or "--widget-command") {
     "--render-diagnostics", StringComparer.OrdinalIgnoreCase);
   var initialCommand = args[0] == "--widget-command"
     ? ArgumentValue(args, "--widget-command") ?? "show"
-    : "show";
+    : args.Contains("--background", StringComparer.OrdinalIgnoreCase)
+      ? "background" : "show";
   using var instance = new Mutex(initiallyOwned: true,
     name: "Local\\LifeManagerDesktopWidget-Native",
     out var ownsMutex);

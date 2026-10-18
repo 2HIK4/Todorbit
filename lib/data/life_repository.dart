@@ -12,6 +12,7 @@ import '../domain/time_tracking.dart';
 import '../domain/templates.dart';
 import '../domain/saved_views.dart';
 import '../domain/trash.dart';
+import '../domain/notifications.dart';
 import '../domain/scheduling_models.dart';
 import 'app_database.dart';
 
@@ -23,6 +24,7 @@ part 'template_repository.dart';
 part 'saved_view_repository.dart';
 part 'trash_repository.dart';
 part 'reports_repository.dart';
+part 'notification_repository.dart';
 
 class LifeRepository {
   LifeRepository(this.db);
@@ -1157,7 +1159,9 @@ class LifeRepository {
   }
 
   Future<void> _requireActiveTask(String id) async {
-    final row = await db.customSelect('''
+    final row = await db
+        .customSelect(
+          '''
       SELECT 1 FROM tasks t
       LEFT JOIN categories c ON c.id=t.category_id
       LEFT JOIN projects p ON p.id=t.project_id
@@ -1167,7 +1171,10 @@ class LifeRepository {
         AND (c.id IS NULL OR c.deleted_at IS NULL)
         AND (p.id IS NULL OR p.deleted_at IS NULL)
         AND (s.id IS NULL OR (s.deleted_at IS NULL AND s.archived_at IS NULL))
-    ''', variables: [Variable.withString(id)]).getSingleOrNull();
+    ''',
+          variables: [Variable.withString(id)],
+        )
+        .getSingleOrNull();
     if (row == null) throw StateError('Task is archived or in Trash');
   }
 

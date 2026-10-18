@@ -122,6 +122,17 @@
   checkpoint. Archived task history is included, Trash is excluded. Goal
   counts are explicitly labeled as current rather than historical. The
   Reports view reads current persisted snapshots and never fabricates data.
+- Schema v14 adds opt-in Windows tray notifications for open due/overdue tasks
+  and a daily planned/due summary at a chosen local time. Both are off by
+  default. The native companion can start in a background tray mode without
+  showing the desktop widget, continues after the main window closes, and
+  checks every 30 seconds. A unique per-type/local-day delivery record avoids
+  duplicates after restart. Delivery occurs only in the first hour after the
+  selected time while the companion is running; no missed-day backlog is sent.
+  Archived, trashed, completed, and cancelled tasks are excluded. The dialog
+  exposes the opt-in and time controls; the app starts the companion at launch
+  when notifications are enabled. Windows notification visibility still needs
+  manual acceptance on an isolated profile.
 - Stale completion now rejects a newer task edit, and task duration input
   rejects invalid text instead of silently clearing the estimate. Prerequisite
   edits compare task revisions, and the narrow task editor keeps unsaved fields
@@ -266,6 +277,17 @@
   date-span UI interaction pass. `flutter analyze` and all 122 Flutter tests
   pass. Windows Release build and packaged widget self-test pass. Manual UI
   acceptance is pending.
+- Notification validation: disposable v13-to-v14 migration, default-off
+  settings, invalid-time rejection, dialog opt-in and companion launch,
+  native due/summary claim timing, duplicate suppression, disabled settings,
+  and trashed-task exclusion pass. `flutter analyze` is clean and all 125
+  Flutter tests pass. Native Release self-test, Windows Release build, and
+  packaged companion self-test pass. On an isolated
+  Windows profile, the Notifications dialog showed both toggles off, Archive
+  and Trash tabs rendered, a task archived and restored through the UI, and
+  Reports rendered persisted empty counts. Actual tray balloon visibility,
+  notification opt-in via Windows UI, Trash restoration, and populated Reports
+  remain manual acceptance work.
 
 ## In progress
 
@@ -279,8 +301,8 @@
 
 ## Not yet implemented
 
-- Notifications and daily summaries, privacy controls, import/export,
-  attachments and external links, and installer packaging.
+- Privacy controls, import/export, attachments and external links, and
+  installer packaging. Habit and session-specific reminders remain future work.
 
 ## Environment and data notes
 
@@ -298,6 +320,17 @@
   v13 implementation. Only disposable databases were upgraded in automated
   tests. Before eventual production upgrade, the startup backup must verify a
   consistent snapshot.
+- V14 automated tests and the successful manual UI launch used disposable
+  databases. An initial manual launcher did not inherit the intended APPDATA
+  override and was stopped before UI interaction. The production SQLite main
+  file and WAL modification times were unchanged when checked afterward; no
+  production migration was observed. A later launcher set APPDATA explicitly
+  in the child process and its isolated SQLite file was verified before UI
+  interaction.
+- The manual UI acceptance profile is left at
+  `%LOCALAPPDATA%\Temp\life-manager-v14-manual-20261018` after its window was
+  closed; automated cleanup was rejected by command review. It contains only
+  disposable test data and can be removed later.
 - Trash retains records indefinitely unless the user explicitly confirms
   permanent deletion. The displayed 30 day date is a retention guide, not an
   automatic purge date. Records with linked history can remain nonpurgeable
@@ -306,7 +339,9 @@
 
 ## Next action
 
-Implement opt-in notifications, reminders, and daily summaries next. Manually
+Implement import/export next. Manually verify a due reminder and daily summary
+through the Windows tray on an isolated profile, including after closing the
+main window. Manually
 exercise Archive, Trash, and Reports on an isolated profile. Manually
 exercise the recurrence editor, Smart Reschedule collision choices, and Habits
 screen on an isolated Windows profile before opening the production schema-v4
