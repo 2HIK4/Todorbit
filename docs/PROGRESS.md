@@ -115,6 +115,13 @@
   never purges automatically at startup. Unlinked occurrence tasks can be
   purged while retaining their series slots. A series can be purged only after
   its occurrence tasks and edit history are resolved.
+- Statistics and reports calculate actual task completions, creations, planned
+  dates, recorded work, habit outcomes, and project completion counts over
+  last-7, last-30, last-90, or custom local-day ranges. Work is clipped to
+  days and overlaps count once; unreviewed timer time ends at the last
+  checkpoint. Archived task history is included, Trash is excluded. Goal
+  counts are explicitly labeled as current rather than historical. The
+  Reports view reads current persisted snapshots and never fabricates data.
 - Stale completion now rejects a newer task edit, and task duration input
   rejects invalid text instead of silently clearing the estimate. Prerequisite
   edits compare task revisions, and the narrow task editor keeps unsaved fields
@@ -158,7 +165,7 @@
 
 - Flutter 3.47.7 / Dart 3.13.5; Windows toolchain healthy.
 - `flutter analyze`: clean.
-- `flutter test`: 117 passing tests, including engine, database, migration,
+- `flutter test`: 122 passing tests, including engine, database, migration,
   stale-apply, undo/restoration, split, persistence, and preview/Apply coverage.
 - Native Release build and disposable database/settings self-test: passing.
 - Native dependency audit: no vulnerable packages reported.
@@ -252,8 +259,13 @@
   parent restoration order, linked-record purge rejection, occurrence identity,
   family archive/Trash, 30 day retention without automatic purge, event/session
   restore, foreign key checks, and Archive/Trash widget restore flow pass.
-  `flutter analyze` is clean; all 117 Flutter tests, native Release self-test,
+  `flutter analyze` is clean; all 122 Flutter tests, native Release self-test,
   and Windows Release build pass. Manual UI acceptance is pending.
+- Report validation: range bounds, midnight clipping, overlapping intervals,
+  unreviewed timer checkpoint, archived versus trashed task inclusion, and
+  date-span UI interaction pass. `flutter analyze` and all 122 Flutter tests
+  pass. Windows Release build and packaged widget self-test pass. Manual UI
+  acceptance is pending.
 
 ## In progress
 
@@ -267,7 +279,7 @@
 
 ## Not yet implemented
 
-- Statistics and reports, notifications, privacy controls, import/export,
+- Notifications and daily summaries, privacy controls, import/export,
   attachments and external links, and installer packaging.
 
 ## Environment and data notes
@@ -294,8 +306,8 @@
 
 ## Next action
 
-Manually exercise Archive and Trash on an isolated profile, then implement real
-statistics and reports. Manually
+Implement opt-in notifications, reminders, and daily summaries next. Manually
+exercise Archive, Trash, and Reports on an isolated profile. Manually
 exercise the recurrence editor, Smart Reschedule collision choices, and Habits
 screen on an isolated Windows profile before opening the production schema-v4
 database. Time-of-day recurrence is outside the current date-only task model;

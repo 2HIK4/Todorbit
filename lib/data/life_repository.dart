@@ -22,6 +22,7 @@ part 'time_repository.dart';
 part 'template_repository.dart';
 part 'saved_view_repository.dart';
 part 'trash_repository.dart';
+part 'reports_repository.dart';
 
 class LifeRepository {
   LifeRepository(this.db);

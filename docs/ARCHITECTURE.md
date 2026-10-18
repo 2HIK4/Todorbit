@@ -103,6 +103,11 @@ Recurring occurrence slots remain after an individual task purge so bounded
 materialization cannot recreate that occurrence. Startup performs no Trash
 purge.
 
+Reports use a read-only repository query that includes archived tasks and
+excludes Trash, then a pure domain calculator merges actual work intervals by
+local day and combines persisted habit and goal state. Reports add no schema
+tables or synthetic history.
+
 `BackupService` runs SQLite integrity checks and `VACUUM INTO` in a worker
 isolate, producing one self-contained file under the per-user `backups`
 directory. The startup path invokes it before opening Drift, so a schema

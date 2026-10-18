@@ -11,6 +11,7 @@ import '../../domain/appearance.dart';
 import '../calendar/calendar_view.dart';
 import '../habits/habits_view.dart';
 import '../goals/goals_view.dart';
+import '../reports/reports_view.dart';
 import '../time_tracking/time_tracking_dialog.dart';
 import '../templates/templates_dialog.dart';
 import '../search/advanced_search_dialog.dart';
@@ -98,7 +99,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     );
   }
 
-  Future<bool> _confirm(String title, String message, {String confirmLabel = 'Delete'}) async {
+  Future<bool> _confirm(
+    String title,
+    String message, {
+    String confirmLabel = 'Delete',
+  }) async {
     return await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
@@ -547,6 +552,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                           : _deleteSavedView(savedView),
                     ),
                   ),
+                _nav(
+                  controller,
+                  WorkspaceView.reports,
+                  'Reports',
+                  Icons.bar_chart_outlined,
+                ),
               ],
             ),
           ),
@@ -724,6 +735,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     if (controller.view == WorkspaceView.goals) {
       return const GoalsView();
     }
+    if (controller.view == WorkspaceView.reports) {
+      return const ReportsView();
+    }
     if (controller.view == WorkspaceView.calendar) {
       return CalendarView(
         onTaskTap: (task) {
@@ -766,6 +780,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       WorkspaceView.calendar => 'Calendar',
       WorkspaceView.habits => 'Habits',
       WorkspaceView.goals => 'Goals',
+      WorkspaceView.reports => 'Reports',
       WorkspaceView.saved =>
         controller.savedViews
                 .where((item) => item.id == controller.scopeId)

@@ -18,6 +18,7 @@ import '../domain/saved_views.dart';
 import '../domain/appearance.dart';
 import '../domain/scheduling_models.dart';
 import '../domain/trash.dart';
+import '../domain/reports.dart';
 
 final appControllerProvider = ChangeNotifierProvider<AppController>((ref) {
   throw StateError('AppController must be provided by the application');
@@ -34,6 +35,7 @@ enum WorkspaceView {
   calendar,
   habits,
   goals,
+  reports,
   saved,
   category,
   project,
@@ -66,6 +68,7 @@ class AppController extends ChangeNotifier {
   List<TrashItem> trashItems = [];
   List<LifeTask> archivedTasks = [];
   List<ArchivedSeries> archivedSeries = [];
+  List<LifeTask> reportTasks = [];
   TimerRun? activeTimer;
   String? timerError;
   Timer? _timerHeartbeat;
@@ -114,6 +117,7 @@ class AppController extends ChangeNotifier {
       repository.trash(),
       repository.archivedTasks(),
       repository.archivedSeries(),
+      repository.reportTasks(),
     ]);
     categories = result[0] as List<Category>;
     projects = result[1] as List<Project>;
@@ -136,6 +140,7 @@ class AppController extends ChangeNotifier {
     trashItems = result[18] as List<TrashItem>;
     archivedTasks = result[19] as List<LifeTask>;
     archivedSeries = result[20] as List<ArchivedSeries>;
+    reportTasks = result[21] as List<LifeTask>;
     _syncTimerHeartbeat();
     if (selectedTaskId != null && selectedTask == null) selectedTaskId = null;
     loading = false;
@@ -273,6 +278,7 @@ class AppController extends ChangeNotifier {
         case WorkspaceView.calendar:
         case WorkspaceView.habits:
         case WorkspaceView.goals:
+        case WorkspaceView.reports:
           return false;
         case WorkspaceView.saved:
           return savedIds.contains(task.id);
@@ -298,6 +304,20 @@ class AppController extends ChangeNotifier {
     });
     return items;
   }
+
+  StatisticsReport report(String fromDate, String throughDate) =>
+      StatisticsReport.calculate(
+        tasks: reportTasks,
+        timeEntries: timeEntries,
+        habits: habits,
+        habitEntries: habitEntries,
+        restDays: habitRestDays,
+        goals: goals,
+        activeTimer: activeTimer,
+        fromDate: fromDate,
+        throughDate: throughDate,
+        now: DateTime.now(),
+      );
 
   List<LifeTask> searchTasks(TaskFilter filter) {
     final byId = {for (final task in tasks) task.id: task};

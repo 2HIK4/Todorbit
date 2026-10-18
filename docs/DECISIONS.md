@@ -156,3 +156,13 @@
   only after all occurrence tasks are resolved, with occurrence and series
   tombstones recorded for future synchronization. Active Flutter and native
   views exclude hidden items, while the data and history remain stored.
+- **Statistics and reports:** calculate read-only, local-day reports from the
+  persisted task, work, habit, and goal snapshots. Completed task counts use
+  UTC completion instants converted to local days; planned counts use the
+  independent date-only planned field. Archived tasks remain in history, while
+  Trash and descendants of trashed parents or series are excluded. Work
+  intervals are clipped to each local day and merged so overlaps count once;
+  a timer awaiting recovery review ends at its last confirmed checkpoint.
+  Habit rates use scheduled days and stored outcomes, including rest days.
+  Goal counts are labeled as current state because historical goal snapshots
+  are not stored. Reports never infer completion from missed plans.
