@@ -1,13 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'dart:io';
+
 import '../../data/backup_service.dart';
 import '../../data/app_database.dart';
+import 'windows_database_file_dialog.dart';
 
 class BackupDialog extends StatefulWidget {
-  const BackupDialog({super.key, required this.service, this.automaticError});
+  const BackupDialog({
+    super.key,
+    required this.service,
+    this.automaticError,
+    this.chooseImport,
+    this.chooseExport,
+  });
   final BackupService service;
   final String? automaticError;
+  final Future<File?> Function()? chooseImport;
+  final Future<File?> Function()? chooseExport;
 
   @override
   State<BackupDialog> createState() => _BackupDialogState();
@@ -17,6 +28,7 @@ class _BackupDialogState extends State<BackupDialog> {
   List<BackupRecord>? records;
   String? pendingName;
   String? error;
+  String? success;
   bool busy = false;
 
   @override
@@ -56,14 +68,70 @@ class _BackupDialogState extends State<BackupDialog> {
     }
   }
 
-  Future<void> _schedule(BackupRecord record) async {
+  Future<void> _export() async {
+    setState(() {
+      busy = true;
+      error = null;
+      success = null;
+    });
+    try {
+      final destination =
+          await (widget.chooseExport ??
+              const WindowsDatabaseFileDialog().chooseExport)();
+      if (destination == null || !mounted) return;
+      final exported = await widget.service.exportTo(destination);
+      if (mounted) {
+        setState(
+          () => success =
+              'Exported a verified SQLite snapshot to ${exported.path}',
+        );
+      }
+    } catch (failure) {
+      if (mounted) setState(() => error = '$failure');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _import() async {
+    setState(() {
+      busy = true;
+      error = null;
+      success = null;
+    });
+    try {
+      final source =
+          await (widget.chooseImport ??
+              const WindowsDatabaseFileDialog().chooseImport)();
+      if (source == null || !mounted) return;
+      final imported = await widget.service.importSnapshot(
+        source,
+        appSchemaVersion: AppDatabase.currentSchemaVersion,
+      );
+      if (!mounted) return;
+      setState(() {
+        success = 'Staged a verified snapshot from ${source.path}';
+      });
+      await _reload();
+      if (mounted) await _schedule(imported, importedFrom: source.path);
+    } catch (failure) {
+      if (mounted) setState(() => error = '$failure');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _schedule(BackupRecord record, {String? importedFrom}) async {
     final approved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Restore this snapshot on next launch?'),
         content: Text(
-          'Life Manager will replace its current database with '
-          '${record.file.uri.pathSegments.last} when it next starts. '
+          '${importedFrom == null ? 'Stored snapshot' : 'Imported from: $importedFrom'}\n'
+          'Snapshot: ${record.file.uri.pathSegments.last}\n'
+          'Schema: ${record.schemaVersion} · Size: ${_size(record.bytes)}\n\n'
+          'Life Manager will replace its current database with this snapshot '
+          'when it next starts. '
           'Current data will first be saved in a separate Before restore backup. '
           'Changes made after this snapshot will no longer appear in the active database.',
         ),
@@ -141,6 +209,26 @@ class _BackupDialogState extends State<BackupDialog> {
               'Automatic snapshots are taken daily and before a schema upgrade. The newest 14 daily copies are retained; manual and pre-upgrade copies are kept.',
             ),
             const SizedBox(height: 8),
+            const Text(
+              'Export a standalone SQLite copy or import one from another Life Manager installation. Import stages a verified copy, then asks before replacing this database on the next launch.',
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: busy ? null : _export,
+                  icon: const Icon(Icons.file_upload_outlined),
+                  label: const Text('Export SQLite'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: busy || pendingName != null ? null : _import,
+                  icon: const Icon(Icons.file_download_outlined),
+                  label: const Text('Import SQLite'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
             SelectableText(widget.service.backupDirectory.path),
             Align(
               alignment: Alignment.centerLeft,
@@ -162,6 +250,7 @@ class _BackupDialogState extends State<BackupDialog> {
                 error!,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
+            if (success != null) SelectableText(success!),
             if (pendingName != null)
               Card(
                 child: Padding(

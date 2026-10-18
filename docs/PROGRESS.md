@@ -133,6 +133,13 @@
   exposes the opt-in and time controls; the app starts the companion at launch
   when notifications are enabled. Windows notification visibility still needs
   manual acceptance on an isolated profile.
+- Import/export publishes a standalone SQLite snapshot at a chosen `.sqlite`
+  path and stages an external Life Manager database in managed backups. Import
+  checks integrity, supported schema, required tables, and foreign keys.
+  The restore preview shows source, schema, and size; replacement requires an
+  explicit choice and occurs only on the next launch through the existing
+  Before restore rollback flow. Cancelling either picker or the preview leaves
+  the active database unchanged.
 - Stale completion now rejects a newer task edit, and task duration input
   rejects invalid text instead of silently clearing the estimate. Prerequisite
   edits compare task revisions, and the narrow task editor keeps unsaved fields
@@ -176,7 +183,7 @@
 
 - Flutter 3.47.7 / Dart 3.13.5; Windows toolchain healthy.
 - `flutter analyze`: clean.
-- `flutter test`: 122 passing tests, including engine, database, migration,
+- `flutter test`: 130 passing tests, including engine, database, migration,
   stale-apply, undo/restoration, split, persistence, and preview/Apply coverage.
 - Native Release build and disposable database/settings self-test: passing.
 - Native dependency audit: no vulnerable packages reported.
@@ -288,6 +295,17 @@
   Reports rendered persisted empty counts. Actual tray balloon visibility,
   notification opt-in via Windows UI, Trash restoration, and populated Reports
   remain manual acceptance work.
+- Import/export validation: on disposable databases, a live WAL export is
+  consistent and independent of later writes; import and reviewed restore
+  preserve task IDs, categories, projects, and relationships; Before restore
+  contains the replaced database. Invalid SQLite, truncated data, newer
+  schema, missing tables, and broken foreign keys are rejected without
+  changing the active database or publishing a managed backup. Existing export
+  files are retained; cancelled pickers and cancelled restore review perform
+  no replacement. Dialog tests verify preview details and disabled controls
+  while a picker is pending. `flutter analyze` is clean; all 130 Flutter tests,
+  Windows Release build, and packaged widget self-test pass. Native Windows
+  file picker interaction and next-launch restore remain manual acceptance.
 
 ## In progress
 
@@ -301,7 +319,7 @@
 
 ## Not yet implemented
 
-- Privacy controls, import/export, attachments and external links, and
+- Privacy controls, attachments and external links, and
   installer packaging. Habit and session-specific reminders remain future work.
 
 ## Environment and data notes
@@ -331,6 +349,9 @@
   `%LOCALAPPDATA%\Temp\life-manager-v14-manual-20261018` after its window was
   closed; automated cleanup was rejected by command review. It contains only
   disposable test data and can be removed later.
+- PID 19828 was absent on inspection; its executable path and command line
+  therefore could not be verified. The isolated profile above was left in
+  place. No production database or settings were used for import/export tests.
 - Trash retains records indefinitely unless the user explicitly confirms
   permanent deletion. The displayed 30 day date is a retention guide, not an
   automatic purge date. Records with linked history can remain nonpurgeable
@@ -339,7 +360,9 @@
 
 ## Next action
 
-Implement import/export next. Manually verify a due reminder and daily summary
+Implement task attachments and external resource links next. Manually verify
+import/export through the native Windows file picker and the reviewed
+next-launch restore using the isolated profile. Manually verify a due reminder and daily summary
 through the Windows tray on an isolated profile, including after closing the
 main window. Manually
 exercise Archive, Trash, and Reports on an isolated profile. Manually

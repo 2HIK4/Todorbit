@@ -115,14 +115,7 @@ class BackupService {
     }
     await backupDirectory.create(recursive: true);
     final instant = now?.toUtc() ?? DateTime.now().toUtc();
-    final stamp =
-        '${instant.year.toString().padLeft(4, '0')}'
-        '${instant.month.toString().padLeft(2, '0')}'
-        '${instant.day.toString().padLeft(2, '0')}T'
-        '${instant.hour.toString().padLeft(2, '0')}'
-        '${instant.minute.toString().padLeft(2, '0')}'
-        '${instant.second.toString().padLeft(2, '0')}'
-        '${(instant.millisecond * 1000 + instant.microsecond).toString().padLeft(6, '0')}Z';
+    final stamp = _stamp(instant);
     final prefix = switch (kind) {
       BackupKind.automatic => 'auto',
       BackupKind.beforeUpgrade => 'before-upgrade',
@@ -148,6 +141,81 @@ class BackupService {
       return BackupRecord(
         file: destination,
         kind: kind,
+        createdAt: instant,
+        bytes: stat.size,
+        schemaVersion: schema,
+      );
+    } catch (_) {
+      if (await temporary.exists()) await temporary.delete();
+      rethrow;
+    }
+  }
+
+  /// Publishes a consistent, standalone SQLite export at a user-chosen path.
+  /// An existing file is never intentionally replaced.
+  Future<File> exportTo(File destination) async {
+    if (!await databaseFile.exists()) {
+      throw StateError('There is no database to export');
+    }
+    if (path.extension(destination.path).toLowerCase() != '.sqlite') {
+      throw ArgumentError('Choose a .sqlite filename');
+    }
+    if (!await destination.parent.exists()) {
+      throw StateError('The export folder does not exist');
+    }
+    final temporary = File('${destination.path}.life-manager-tmp');
+    if (await destination.exists() || await temporary.exists()) {
+      throw StateError('The export filename already exists');
+    }
+    try {
+      final sourcePath = databaseFile.path;
+      final temporaryPath = temporary.path;
+      await Isolate.run(() => _writeSnapshot(sourcePath, temporaryPath));
+      if (await destination.exists()) {
+        throw StateError('The export filename was created by another process');
+      }
+      await temporary.rename(destination.path);
+      return destination;
+    } catch (_) {
+      if (await temporary.exists()) await temporary.delete();
+      rethrow;
+    }
+  }
+
+  /// Stages an external SQLite file as a verified managed snapshot. The live
+  /// database is changed only by the reviewed next-launch restore flow.
+  Future<BackupRecord> importSnapshot(
+    File source, {
+    required int appSchemaVersion,
+  }) async {
+    if (!await source.exists()) throw StateError('Import file is missing');
+    await backupDirectory.create(recursive: true);
+    final instant = DateTime.now().toUtc();
+    final destination = File(
+      path.join(backupDirectory.path, 'manual-${_stamp(instant)}.sqlite'),
+    );
+    final temporary = File('${destination.path}.tmp');
+    if (await destination.exists() || await temporary.exists()) {
+      throw StateError('An import with this timestamp already exists');
+    }
+    try {
+      final sourcePath = source.path;
+      final temporaryPath = temporary.path;
+      final schema = await Isolate.run(
+        () => _writeSnapshot(sourcePath, temporaryPath),
+      );
+      if (schema < 1 || schema > appSchemaVersion) {
+        throw StateError('Import schema $schema is unsupported');
+      }
+      await Isolate.run(() => _validateImportedSnapshot(temporaryPath));
+      if (await destination.exists()) {
+        throw StateError('Import name was created by another process');
+      }
+      await temporary.rename(destination.path);
+      final stat = await destination.stat();
+      return BackupRecord(
+        file: destination,
+        kind: BackupKind.manual,
         createdAt: instant,
         bytes: stat.size,
         schemaVersion: schema,
@@ -289,6 +357,99 @@ DateTime _timeFromFilename(String name) {
     microseconds ~/ 1000,
     microseconds % 1000,
   );
+}
+
+String _stamp(DateTime instant) =>
+    '${instant.year.toString().padLeft(4, '0')}'
+    '${instant.month.toString().padLeft(2, '0')}'
+    '${instant.day.toString().padLeft(2, '0')}T'
+    '${instant.hour.toString().padLeft(2, '0')}'
+    '${instant.minute.toString().padLeft(2, '0')}'
+    '${instant.second.toString().padLeft(2, '0')}'
+    '${(instant.millisecond * 1000 + instant.microsecond).toString().padLeft(6, '0')}Z';
+
+void _validateImportedSnapshot(String filePath) {
+  final connection = sqlite.sqlite3.open(
+    filePath,
+    mode: sqlite.OpenMode.readOnly,
+  );
+  try {
+    final schema =
+        connection.select('PRAGMA user_version').single.values.single as int;
+    final names = connection
+        .select("SELECT name FROM sqlite_master WHERE type='table'")
+        .map((row) => row['name'] as String)
+        .toSet();
+    final required = <String>{'tasks', 'categories', 'projects'};
+    if (schema >= 2) {
+      required.add('fixed_events');
+    }
+    if (schema >= 3) {
+      required.add('work_sessions');
+    }
+    if (schema >= 4) {
+      required.addAll({
+        'availability_windows',
+        'availability_exceptions',
+        'scheduling_operations',
+        'scheduling_changes',
+      });
+    }
+    if (schema >= 5) {
+      required.addAll({
+        'task_sequences',
+        'sequence_tasks',
+        'task_dependencies',
+      });
+    }
+    if (schema >= 6) {
+      required.addAll({'recurrence_series', 'recurrence_occurrences'});
+    }
+    if (schema >= 7) {
+      required.addAll({'series_edit_history', 'recurrence_collision_history'});
+    }
+    if (schema >= 8) {
+      required.addAll({
+        'habits',
+        'habit_entries',
+        'habit_rest_days',
+        'habit_entry_history',
+      });
+    }
+    if (schema >= 9) {
+      required.addAll({
+        'goals',
+        'goal_milestones',
+        'goal_progress_entries',
+        'goal_task_links',
+        'goal_project_links',
+        'goal_habit_links',
+      });
+    }
+    if (schema >= 10) {
+      required.addAll({'timer_runs', 'time_entries', 'time_entry_history'});
+    }
+    if (schema >= 11) {
+      required.add('templates');
+    }
+    if (schema >= 12) {
+      required.add('saved_views');
+    }
+    if (schema >= 13) {
+      required.add('deletion_tombstones');
+    }
+    if (schema >= 14) {
+      required.addAll({'notification_settings', 'notification_deliveries'});
+    }
+    if (!names.containsAll(required)) {
+      throw StateError('Import is not a Life Manager database');
+    }
+    if (connection.select('PRAGMA foreign_key_check').isNotEmpty) {
+      throw StateError('Import has broken record relationships');
+    }
+  } finally {
+    connection.close();
+  }
 }
 
 int _inspectSnapshot(String sourcePath) {

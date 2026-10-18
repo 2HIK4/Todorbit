@@ -140,6 +140,13 @@
   database with an exclusive destination connection. Verify integrity/schema
   before opening Drift. Keep the pending request on any failure, so the user
   can retry or cancel. Older snapshots migrate forward after replacement.
+- **Portable database transfer:** use the same SQLite `VACUUM INTO` snapshot
+  path for export and for staging an imported file. Validate the staged copy's
+  integrity, compatible schema, expected Life Manager tables, and foreign
+  keys before publishing it in managed backups. The native Windows file dialog
+  selects paths without changing the active database. Import then uses the
+  existing reviewed next-launch restore and Before restore rollback mechanism;
+  cancelling review leaves the staged snapshot available as a manual backup.
 - **Recoverable Archive and Trash (schema v13):** archive task rows without
   changing completion or work history. A recurring occurrence can be archived
   or trashed independently; a whole family action marks every series version
