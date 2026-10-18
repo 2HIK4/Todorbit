@@ -96,7 +96,14 @@
   checks daily backup eligibility every six hours and on resume. The latest
   14 automatic snapshots are retained; manual and pre-upgrade copies are
   preserved. A Backups dialog lists verification state and allows a manual
-  snapshot. In-app restoration and recoverable Trash remain unfinished.
+  snapshot. Restore is reviewed and scheduled for the next launch. The
+  selected file is integrity checked and hashed; startup closes the native
+  companion, saves a Before restore rollback snapshot, replaces SQLite data
+  through its backup API, verifies the result, and migrates an older snapshot
+  forward. A changed snapshot or busy database leaves the restore pending;
+  the startup error screen can cancel that request and retry the current
+  database.
+  Recoverable Trash remains unfinished.
 - Stale completion now rejects a newer task edit, and task duration input
   rejects invalid text instead of silently clearing the estimate. Prerequisite
   edits compare task revisions, and the narrow task editor keeps unsaved fields
@@ -140,7 +147,7 @@
 
 - Flutter 3.47.7 / Dart 3.13.5; Windows toolchain healthy.
 - `flutter analyze`: clean.
-- `flutter test`: 101 passing tests, including engine, database, migration,
+- `flutter test`: 106 passing tests, including engine, database, migration,
   stale-apply, undo/restoration, split, persistence, and preview/Apply coverage.
 - Native Release build and disposable database/settings self-test: passing.
 - Native dependency audit: no vulnerable packages reported.
@@ -224,6 +231,12 @@
   pass on disposable databases. `flutter analyze` is clean; all 101 Flutter
   tests, the Windows Release build, and packaged companion self-test pass.
   The Backups dialog still needs manual Windows UI acceptance.
+- Restore validation: disposable round trips preserve a rollback snapshot,
+  reject changed size or content digest, wait for an active reader, and
+  upgrade an older restored schema. `flutter analyze` is clean; all 106
+  Flutter tests, Windows Release build, and packaged companion self-test
+  pass. The restore dialog and next-launch flow still need manual Windows
+  UI acceptance on an isolated profile.
 
 ## In progress
 
@@ -237,7 +250,7 @@
 
 ## Not yet implemented
 
-- In-app backup restoration, Trash,
+- Trash,
   notifications, privacy controls, import/export, and installer packaging.
 
 ## Environment and data notes
@@ -257,8 +270,8 @@
 
 ## Next action
 
-Implement reviewed, recoverable backup restoration and Trash next, then the
-remaining Windows V1.0 roadmap. Manually
+Implement recoverable Trash and archiving next, then the remaining Windows
+V1.0 roadmap. Manually
 exercise the recurrence editor, Smart Reschedule collision choices, and Habits
 screen on an isolated Windows profile before opening the production schema-v4
 database. Time-of-day recurrence is outside the current date-only task model;

@@ -39,6 +39,7 @@ dependencies:
   path: ^1.9.1
   uuid: ^4.6.0
   sqlite3: ^3.7.1
+  crypto: ^3.0.7
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -1,10 +1,12 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
 import 'package:path/path.dart' as path;
 import 'package:sqlite3/sqlite3.dart' as sqlite;
+import 'package:crypto/crypto.dart';
 
-enum BackupKind { automatic, beforeUpgrade, manual }
+enum BackupKind { automatic, beforeUpgrade, beforeRestore, manual }
 
 class BackupRecord {
   const BackupRecord({
@@ -28,8 +30,11 @@ class BackupService {
   final File databaseFile;
   static const automaticRetention = 14;
   static final _managedName = RegExp(
-    r'^(auto|before-upgrade|manual)-\d{8}T\d{6}\d{6}Z\.sqlite$',
+    r'^(auto|before-upgrade|before-restore|manual)-\d{8}T\d{6}\d{6}Z\.sqlite$',
   );
+
+  File get _restoreMarker =>
+      File(path.join(databaseFile.parent.path, 'pending-restore.json'));
 
   Directory get backupDirectory =>
       Directory(path.join(databaseFile.parent.path, 'backups'));
@@ -51,6 +56,8 @@ class BackupService {
           ? BackupKind.automatic
           : name.startsWith('before-upgrade-')
           ? BackupKind.beforeUpgrade
+          : name.startsWith('before-restore-')
+          ? BackupKind.beforeRestore
           : BackupKind.manual;
       final stat = await file.stat();
       final filename = file.path;
@@ -119,6 +126,7 @@ class BackupService {
     final prefix = switch (kind) {
       BackupKind.automatic => 'auto',
       BackupKind.beforeUpgrade => 'before-upgrade',
+      BackupKind.beforeRestore => 'before-restore',
       BackupKind.manual => 'manual',
     };
     final destination = File(
@@ -157,6 +165,111 @@ class BackupService {
     for (final stale in records.skip(automaticRetention)) {
       await stale.file.delete();
     }
+  }
+
+  Future<String?> pendingRestoreName() async {
+    if (!await _restoreMarker.exists()) return null;
+    final marker = jsonDecode(await _restoreMarker.readAsString()) as Map;
+    return marker['filename'] as String;
+  }
+
+  Future<bool> hasScheduledRestore() => _restoreMarker.exists();
+
+  Future<void> scheduleRestore(
+    BackupRecord selected, {
+    required int appSchemaVersion,
+  }) async {
+    if (await _restoreMarker.exists()) {
+      throw StateError('A restore is already scheduled. Cancel it first.');
+    }
+    final filename = path.basename(selected.file.path);
+    if (!_managedName.hasMatch(filename) ||
+        path.normalize(selected.file.absolute.path).toLowerCase() !=
+            path
+                .normalize(path.join(backupDirectory.absolute.path, filename))
+                .toLowerCase()) {
+      throw ArgumentError(
+        'Select a managed backup in the Life Manager backup folder',
+      );
+    }
+    final selectedPath = selected.file.path;
+    final verifiedSchema = await Isolate.run(
+      () => _inspectSnapshot(selectedPath),
+    );
+    if (verifiedSchema < 1 ||
+        verifiedSchema > appSchemaVersion ||
+        verifiedSchema != selected.schemaVersion) {
+      throw StateError('Backup schema is unsupported or changed');
+    }
+    final stat = await selected.file.stat();
+    if (stat.size != selected.bytes) {
+      throw StateError('Backup changed. Reload the list.');
+    }
+    final digest = await Isolate.run(() => _hashFile(selectedPath));
+    final temporary = File('${_restoreMarker.path}.tmp');
+    if (await temporary.exists()) await temporary.delete();
+    await temporary.writeAsString(
+      jsonEncode({
+        'filename': filename,
+        'bytes': stat.size,
+        'modified_us': stat.modified.toUtc().microsecondsSinceEpoch,
+        'schema': verifiedSchema,
+        'sha256': digest,
+      }),
+      flush: true,
+    );
+    await temporary.rename(_restoreMarker.path);
+  }
+
+  Future<void> cancelScheduledRestore() async {
+    if (await _restoreMarker.exists()) await _restoreMarker.delete();
+  }
+
+  /// Call before opening Drift. The caller first closes the native widget.
+  Future<BackupRecord?> applyScheduledRestore({
+    required int appSchemaVersion,
+  }) async {
+    if (!await _restoreMarker.exists()) return null;
+    final marker = (jsonDecode(await _restoreMarker.readAsString()) as Map)
+        .cast<String, dynamic>();
+    final filename = marker['filename'] as String;
+    if (!_managedName.hasMatch(filename) ||
+        path.basename(filename) != filename) {
+      throw StateError('Invalid restore marker');
+    }
+    final snapshot = File(path.join(backupDirectory.path, filename));
+    if (!await snapshot.exists()) {
+      throw StateError('Scheduled backup is missing');
+    }
+    final stat = await snapshot.stat();
+    if (stat.size != marker['bytes'] ||
+        stat.modified.toUtc().microsecondsSinceEpoch != marker['modified_us']) {
+      throw StateError('Scheduled backup changed after review');
+    }
+    final snapshotPath = snapshot.path;
+    final digest = await Isolate.run(() => _hashFile(snapshotPath));
+    if (digest != marker['sha256']) {
+      throw StateError('Scheduled backup content changed after review');
+    }
+    final sourceSchema = await Isolate.run(
+      () => _inspectSnapshot(snapshotPath),
+    );
+    if (sourceSchema != marker['schema'] ||
+        sourceSchema < 1 ||
+        sourceSchema > appSchemaVersion) {
+      throw StateError('Scheduled backup schema is unsupported or changed');
+    }
+    final rollback = await createBackup(BackupKind.beforeRestore);
+    final targetPath = databaseFile.path;
+    await Isolate.run(() => _restoreSnapshot(snapshotPath, targetPath));
+    final restoredSchema = await Isolate.run(
+      () => _inspectSnapshot(targetPath),
+    );
+    if (restoredSchema != sourceSchema) {
+      throw StateError('Restored database failed schema verification');
+    }
+    await _restoreMarker.delete();
+    return rollback;
   }
 }
 
@@ -211,3 +324,23 @@ int _writeSnapshot(String sourcePath, String destinationPath) {
   }
   return _inspectSnapshot(destinationPath);
 }
+
+Future<void> _restoreSnapshot(String snapshotPath, String targetPath) async {
+  final source = sqlite.sqlite3.open(
+    snapshotPath,
+    mode: sqlite.OpenMode.readOnly,
+  );
+  final target = sqlite.sqlite3.open(targetPath);
+  try {
+    target.execute('PRAGMA busy_timeout=0');
+    target.execute('PRAGMA locking_mode=EXCLUSIVE');
+    target.select('PRAGMA quick_check');
+    await source.backup(target, nPage: -1).drain<void>();
+  } finally {
+    target.close();
+    source.close();
+  }
+}
+
+Future<String> _hashFile(String filePath) async =>
+    (await sha256.bind(File(filePath).openRead()).first).toString();

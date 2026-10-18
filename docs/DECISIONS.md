@@ -131,5 +131,11 @@
   copying a live database/WAL pair. Verify source and snapshot integrity and
   create a snapshot before any migration. Refuse startup if that safety step
   fails. Keep 14 managed daily backups while retaining manual and pre-upgrade
-  copies. A snapshot can be created while SQLite is open; restoration requires
-  a separate reviewed, offline replacement flow and is not yet exposed.
+  copies. A snapshot can be created while SQLite is open.
+- **Reviewed restoration:** queue only managed, verified backup files and
+  record their SHA-256 digest. On the next launch, close the native companion,
+  create a Before restore rollback snapshot, then use SQLite's
+  [online backup API](https://www.sqlite.org/backup.html) to replace the
+  database with an exclusive destination connection. Verify integrity/schema
+  before opening Drift. Keep the pending request on any failure, so the user
+  can retry or cancel. Older snapshots migrate forward after replacement.

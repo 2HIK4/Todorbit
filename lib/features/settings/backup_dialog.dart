@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../data/backup_service.dart';
+import '../../data/app_database.dart';
 
 class BackupDialog extends StatefulWidget {
   const BackupDialog({super.key, required this.service, this.automaticError});
@@ -14,6 +15,7 @@ class BackupDialog extends StatefulWidget {
 
 class _BackupDialogState extends State<BackupDialog> {
   List<BackupRecord>? records;
+  String? pendingName;
   String? error;
   bool busy = false;
 
@@ -26,9 +28,11 @@ class _BackupDialogState extends State<BackupDialog> {
   Future<void> _reload() async {
     try {
       final loaded = await widget.service.list();
+      final pending = await widget.service.pendingRestoreName();
       if (mounted) {
         setState(() {
           records = loaded;
+          pendingName = pending;
           error = null;
         });
       }
@@ -44,6 +48,62 @@ class _BackupDialogState extends State<BackupDialog> {
     });
     try {
       await widget.service.createBackup(BackupKind.manual);
+      await _reload();
+    } catch (failure) {
+      if (mounted) setState(() => error = '$failure');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _schedule(BackupRecord record) async {
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Restore this snapshot on next launch?'),
+        content: Text(
+          'Life Manager will replace its current database with '
+          '${record.file.uri.pathSegments.last} when it next starts. '
+          'Current data will first be saved in a separate Before restore backup. '
+          'Changes made after this snapshot will no longer appear in the active database.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Schedule restore'),
+          ),
+        ],
+      ),
+    );
+    if (approved != true || !mounted) return;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      await widget.service.scheduleRestore(
+        record,
+        appSchemaVersion: AppDatabase.currentSchemaVersion,
+      );
+      await _reload();
+    } catch (failure) {
+      if (mounted) setState(() => error = '$failure');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _cancelRestore() async {
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      await widget.service.cancelScheduledRestore();
       await _reload();
     } catch (failure) {
       if (mounted) setState(() => error = '$failure');
@@ -102,6 +162,25 @@ class _BackupDialogState extends State<BackupDialog> {
                 error!,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
+            if (pendingName != null)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Restore scheduled: $pendingName'),
+                      const Text(
+                        'Close and reopen Life Manager to apply it. The current database will be backed up first.',
+                      ),
+                      TextButton(
+                        onPressed: busy ? null : _cancelRestore,
+                        child: const Text('Cancel scheduled restore'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             Row(
               children: [
                 const Expanded(
@@ -138,6 +217,17 @@ class _BackupDialogState extends State<BackupDialog> {
                               '${_size(record.bytes)} · ${record.schemaVersion < 0 ? 'Integrity check failed' : 'Schema ${record.schemaVersion}'}',
                             ),
                             isThreeLine: true,
+                            trailing:
+                                record.schemaVersion < 1 ||
+                                    record.schemaVersion >
+                                        AppDatabase.currentSchemaVersion ||
+                                    pendingName != null ||
+                                    busy
+                                ? null
+                                : TextButton(
+                                    onPressed: () => _schedule(record),
+                                    child: const Text('Restore'),
+                                  ),
                           ),
                       ],
                     ),
@@ -152,6 +242,7 @@ class _BackupDialogState extends State<BackupDialog> {
 String _kind(BackupKind kind) => switch (kind) {
   BackupKind.automatic => 'Automatic',
   BackupKind.beforeUpgrade => 'Before upgrade',
+  BackupKind.beforeRestore => 'Before restore',
   BackupKind.manual => 'Manual',
 };
 

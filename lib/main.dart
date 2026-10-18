@@ -12,30 +12,33 @@ import 'data/life_repository.dart';
 import 'domain/appearance.dart';
 import 'features/workspace/workspace.dart';
 import 'features/widget/desktop_widget.dart';
+import 'features/widget/native_widget_service.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   final databaseFile = await AppDatabase.defaultFile();
   final backupService = BackupService(databaseFile);
   try {
+    if (await backupService.pendingRestoreName() != null) {
+      final companion = NativeWidgetService();
+      if (companion.isAvailable) {
+        await companion.close();
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      }
+      await backupService.applyScheduledRestore(
+        appSchemaVersion: AppDatabase.currentSchemaVersion,
+      );
+    }
     await backupService.ensureAutomaticBackup(
       appSchemaVersion: AppDatabase.currentSchemaVersion,
     );
   } catch (failure) {
     runApp(
-      MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(
-                'Life Manager could not verify and back up its database. '
-                'The database was not opened or migrated. Check disk space and file access, '
-                'then restart the app.\n\n$failure',
-              ),
-            ),
-          ),
-        ),
+      _StartupFailureApp(
+        backupService: backupService,
+        hasPendingRestore: await backupService.hasScheduledRestore(),
+        arguments: args,
+        failure: '$failure',
       ),
     );
     return;
@@ -69,6 +72,78 @@ Future<void> main(List<String> args) async {
               databaseFile: databaseFile,
               appearanceFile: appearanceStore.file,
             ),
+    ),
+  );
+}
+
+class _StartupFailureApp extends StatefulWidget {
+  const _StartupFailureApp({
+    required this.backupService,
+    required this.hasPendingRestore,
+    required this.arguments,
+    required this.failure,
+  });
+  final BackupService backupService;
+  final bool hasPendingRestore;
+  final List<String> arguments;
+  final String failure;
+
+  @override
+  State<_StartupFailureApp> createState() => _StartupFailureAppState();
+}
+
+class _StartupFailureAppState extends State<_StartupFailureApp> {
+  bool busy = false;
+  String? error;
+
+  Future<void> _cancelRestore() async {
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      await widget.backupService.cancelScheduledRestore();
+      await main(widget.arguments);
+    } catch (failure) {
+      if (mounted) {
+        setState(() {
+          error = '$failure';
+          busy = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                    'Life Manager could not prepare its database. The main app was not started and no migration was run.',
+              ),
+              const SizedBox(height: 12),
+              SelectableText(widget.failure),
+              const SizedBox(height: 12),
+              const Text(
+                'Check disk space and file access, then restart the app.',
+              ),
+              if (widget.hasPendingRestore)
+                OutlinedButton(
+                  onPressed: busy ? null : _cancelRestore,
+                  child: const Text(
+                    'Cancel scheduled restore and retry current database',
+                  ),
+                ),
+              if (error != null) Text(error!),
+            ],
+          ),
+        ),
+      ),
     ),
   );
 }

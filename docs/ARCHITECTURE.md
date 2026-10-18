@@ -99,6 +99,12 @@ isolate, producing one self-contained file under the per-user `backups`
 directory. The startup path invokes it before opening Drift, so a schema
 upgrade always has a verified source snapshot. Automatic retention touches
 only backup files with Life Manager's managed automatic name pattern.
+Restoration is queued in an atomic local marker containing the chosen managed
+backup's size, modification time, schema, and SHA-256 digest. The next startup
+closes the native companion and uses SQLite's online backup API to copy the
+reviewed snapshot into the live database before Drift opens. It creates an
+unpruned Before restore snapshot first and refuses a changed file or an active
+external reader. The marker remains until restoration and verification succeed.
 
 The deterministic engine in `lib/domain/` has no database dependency. It keeps
 local date-only task plans separate from UTC work-session intervals and fixed
