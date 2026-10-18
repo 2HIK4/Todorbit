@@ -20,6 +20,7 @@ import '../widget/native_widget_service.dart';
 import 'task_editor.dart';
 import 'sequence_dialog.dart';
 import 'quick_search.dart';
+import 'trash_dialog.dart';
 
 class Workspace extends ConsumerStatefulWidget {
   const Workspace({super.key});
@@ -97,7 +98,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     );
   }
 
-  Future<bool> _confirm(String title, String message) async {
+  Future<bool> _confirm(String title, String message, {String confirmLabel = 'Delete'}) async {
     return await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
@@ -110,7 +111,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text('Delete'),
+                child: Text(confirmLabel),
               ),
             ],
           ),
@@ -153,6 +154,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   Future<void> _showTemplates() => showDialog<void>(
     context: context,
     builder: (_) => const TemplatesDialog(),
+  );
+
+  Future<void> _showArchiveTrash() => showDialog<void>(
+    context: context,
+    builder: (_) => const ArchiveTrashDialog(),
   );
 
   Future<void> _showAdvancedSearch([SavedView? savedView]) => showDialog<void>(
@@ -279,6 +285,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     'Life Manager',
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
                   ),
+                ),
+                IconButton(
+                  tooltip: 'Archive and Trash',
+                  onPressed: _showArchiveTrash,
+                  icon: const Icon(Icons.archive_outlined, size: 20),
                 ),
               ],
             ),
@@ -421,7 +432,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                           }
                         } else if (await _confirm(
                           'Delete category?',
-                          'A category containing projects or tasks cannot be deleted.',
+                          'Move this category to Trash? Its projects and tasks will be hidden until restored.',
                         )) {
                           _run(() => controller.deleteCategory(category.id));
                         }
@@ -480,7 +491,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                               }
                             } else if (await _confirm(
                               'Delete project?',
-                              'A project containing tasks cannot be deleted.',
+                              'Move this project to Trash? Its tasks will be hidden until restored.',
                             )) {
                               _run(() => controller.deleteProject(project.id));
                             }
@@ -1057,7 +1068,32 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                       value: 'reschedule',
                       child: Text('Smart Reschedule'),
                     ),
-                  const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                  PopupMenuItem(
+                    value: 'archive',
+                    child: Text(
+                      task.recurrenceSeriesId == null
+                          ? 'Archive'
+                          : 'Archive occurrence',
+                    ),
+                  ),
+                  if (task.recurrenceSeriesId != null)
+                    const PopupMenuItem(
+                      value: 'archiveSeries',
+                      child: Text('Archive entire series'),
+                    ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Text(
+                      task.recurrenceSeriesId == null
+                          ? 'Delete'
+                          : 'Move occurrence to Trash',
+                    ),
+                  ),
+                  if (task.recurrenceSeriesId != null)
+                    const PopupMenuItem(
+                      value: 'deleteSeries',
+                      child: Text('Move entire series to Trash'),
+                    ),
                 ],
                 onSelected: (action) async {
                   if (action == 'edit') {
@@ -1068,9 +1104,26 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     _run(() => controller.setComplete(task, !done));
                   } else if (action == 'reschedule') {
                     _showSmart(taskIds: [task.id], scope: 'task:${task.id}');
+                  } else if (action == 'archive') {
+                    _run(() => controller.archiveTask(task));
+                  } else if (action == 'archiveSeries') {
+                    if (await _confirm(
+                      'Archive entire series?',
+                      'Hide every occurrence in this series? History is retained and the series can be restored.',
+                      confirmLabel: 'Archive series',
+                    )) {
+                      _run(() => controller.archiveSeries(task));
+                    }
+                  } else if (action == 'deleteSeries') {
+                    if (await _confirm(
+                      'Move entire series to Trash?',
+                      'Every occurrence will be hidden. Restoring the series preserves its history.',
+                    )) {
+                      _run(() => controller.deleteSeries(task));
+                    }
                   } else if (await _confirm(
                     'Delete task?',
-                    'This permanently deletes “${task.title}”. Trash is not available yet.',
+                    'Move “${task.title}” to Trash? It can be restored with its history.',
                   )) {
                     _run(() => controller.deleteTask(task.id));
                   }

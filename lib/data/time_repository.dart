@@ -49,7 +49,15 @@ extension TimeRepository on LifeRepository {
     await db.transaction(() async {
       final task = await db
           .customSelect(
-            'SELECT 1 FROM tasks WHERE id=?',
+            '''SELECT 1 FROM tasks t
+              LEFT JOIN categories c ON c.id=t.category_id
+              LEFT JOIN projects p ON p.id=t.project_id
+              LEFT JOIN recurrence_occurrences o ON o.task_id=t.id
+              LEFT JOIN recurrence_series s ON s.id=o.series_id
+              WHERE t.id=? AND t.deleted_at IS NULL AND t.archived_at IS NULL
+                AND (c.id IS NULL OR c.deleted_at IS NULL)
+                AND (p.id IS NULL OR p.deleted_at IS NULL)
+                AND (s.id IS NULL OR (s.deleted_at IS NULL AND s.archived_at IS NULL))''',
             variables: [Variable.withString(taskId)],
           )
           .getSingleOrNull();

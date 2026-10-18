@@ -11,6 +11,7 @@ import '../domain/goals.dart';
 import '../domain/time_tracking.dart';
 import '../domain/templates.dart';
 import '../domain/saved_views.dart';
+import '../domain/trash.dart';
 import '../domain/scheduling_models.dart';
 import 'app_database.dart';
 
@@ -20,6 +21,7 @@ part 'goal_repository.dart';
 part 'time_repository.dart';
 part 'template_repository.dart';
 part 'saved_view_repository.dart';
+part 'trash_repository.dart';
 
 class LifeRepository {
   LifeRepository(this.db);
@@ -28,7 +30,9 @@ class LifeRepository {
 
   Future<List<Category>> categories() async {
     final rows = await db
-        .customSelect('SELECT * FROM categories ORDER BY name COLLATE NOCASE')
+        .customSelect(
+          'SELECT * FROM categories WHERE deleted_at IS NULL ORDER BY name COLLATE NOCASE',
+        )
         .get();
     return rows
         .map(
@@ -42,9 +46,10 @@ class LifeRepository {
   }
 
   Future<List<Project>> projects() async {
-    final rows = await db
-        .customSelect('SELECT * FROM projects ORDER BY name COLLATE NOCASE')
-        .get();
+    final rows = await db.customSelect('''SELECT p.* FROM projects p
+          JOIN categories c ON c.id=p.category_id
+          WHERE p.deleted_at IS NULL AND c.deleted_at IS NULL
+          ORDER BY p.name COLLATE NOCASE''').get();
     return rows
         .map(
           (r) => Project(
@@ -67,17 +72,25 @@ class LifeRepository {
               s.kind AS recurrence_kind
             FROM tasks t LEFT JOIN recurrence_occurrences o ON o.task_id=t.id
             LEFT JOIN recurrence_series s ON s.id=o.series_id
+            LEFT JOIN categories c ON c.id=t.category_id
+            LEFT JOIN projects p ON p.id=t.project_id
+            WHERE t.deleted_at IS NULL AND t.archived_at IS NULL
+              AND (s.id IS NULL OR (s.deleted_at IS NULL AND s.archived_at IS NULL))
+              AND (c.id IS NULL OR c.deleted_at IS NULL)
+              AND (p.id IS NULL OR p.deleted_at IS NULL)
             ORDER BY t.priority DESC, t.scheduled_date ASC, t.created_at DESC''',
     ).get();
     return rows.map(_taskFromRow).toList();
   }
 
   Future<List<TaskDependency>> dependencies() async {
-    final rows = await db
-        .customSelect(
-          'SELECT task_id, prerequisite_id FROM task_dependencies ORDER BY task_id, prerequisite_id',
-        )
-        .get();
+    final rows = await db.customSelect(
+      '''SELECT d.task_id, d.prerequisite_id FROM task_dependencies d
+          JOIN tasks t ON t.id=d.task_id JOIN tasks p ON p.id=d.prerequisite_id
+          WHERE t.deleted_at IS NULL AND t.archived_at IS NULL
+            AND p.deleted_at IS NULL AND p.archived_at IS NULL
+          ORDER BY d.task_id, d.prerequisite_id''',
+    ).get();
     return rows
         .map(
           (row) => TaskDependency(
@@ -99,6 +112,7 @@ class LifeRepository {
       throw ArgumentError('A task cannot depend on itself');
     }
     await db.transaction(() async {
+      await _requireActiveTask(taskId);
       final existing = await db
           .customSelect(
             'SELECT updated_at FROM tasks WHERE id=?',
@@ -120,7 +134,7 @@ class LifeRepository {
       for (final prerequisiteId in prerequisiteIds) {
         final prerequisite = await db
             .customSelect(
-              'SELECT id FROM tasks WHERE id=?',
+              'SELECT id FROM tasks WHERE id=? AND deleted_at IS NULL AND archived_at IS NULL',
               variables: [Variable.withString(prerequisiteId)],
             )
             .getSingleOrNull();
@@ -289,7 +303,9 @@ class LifeRepository {
 
   Future<List<FixedEvent>> events() async {
     final rows = await db
-        .customSelect('SELECT * FROM fixed_events ORDER BY starts_at')
+        .customSelect(
+          'SELECT * FROM fixed_events WHERE deleted_at IS NULL ORDER BY starts_at',
+        )
         .get();
     return rows
         .map(
@@ -330,10 +346,10 @@ class LifeRepository {
 
   Future<void> updateEvent(FixedEvent previous, EventDraft draft) async {
     _validateEvent(draft);
-    await db.customUpdate(
+    final changed = await db.customUpdate(
       '''
       UPDATE fixed_events SET title=?,notes=?,starts_at=?,ends_at=?,updated_at=?
-      WHERE id=?
+      WHERE id=? AND updated_at=? AND deleted_at IS NULL
     ''',
       variables: [
         Variable.withString(draft.title.trim()),
@@ -342,21 +358,29 @@ class LifeRepository {
         Variable.withString(draft.endsAt.toUtc().toIso8601String()),
         Variable.withString(DateTime.now().toUtc().toIso8601String()),
         Variable.withString(previous.id),
+        Variable.withString(previous.updatedAt.toUtc().toIso8601String()),
       ],
     );
+    if (changed != 1) throw StateError('Event changed or is in Trash');
   }
 
   Future<void> deleteEvent(String id) async {
-    await db.customUpdate(
-      'DELETE FROM fixed_events WHERE id=?',
-      variables: [Variable.withString(id)],
-    );
+    await moveToTrash(TrashKind.event, id);
   }
 
   Future<List<WorkSession>> sessions() async {
-    final rows = await db
-        .customSelect('SELECT * FROM work_sessions ORDER BY starts_at')
-        .get();
+    final rows = await db.customSelect('''SELECT w.* FROM work_sessions w
+          JOIN tasks t ON t.id=w.task_id
+          LEFT JOIN recurrence_occurrences o ON o.task_id=t.id
+          LEFT JOIN recurrence_series s ON s.id=o.series_id
+          LEFT JOIN categories c ON c.id=t.category_id
+          LEFT JOIN projects p ON p.id=t.project_id
+          WHERE w.deleted_at IS NULL
+            AND t.deleted_at IS NULL AND t.archived_at IS NULL
+            AND (s.id IS NULL OR (s.deleted_at IS NULL AND s.archived_at IS NULL))
+            AND (c.id IS NULL OR c.deleted_at IS NULL)
+            AND (p.id IS NULL OR p.deleted_at IS NULL)
+          ORDER BY w.starts_at''').get();
     return rows
         .map(
           (r) => WorkSession(
@@ -377,6 +401,22 @@ class LifeRepository {
 
   Future<WorkSession> addSession(SessionDraft draft) async {
     _validateSession(draft);
+    final task = await db
+        .customSelect(
+          '''
+      SELECT 1 FROM tasks t LEFT JOIN categories c ON c.id=t.category_id
+      LEFT JOIN projects p ON p.id=t.project_id
+      LEFT JOIN recurrence_occurrences o ON o.task_id=t.id
+      LEFT JOIN recurrence_series s ON s.id=o.series_id
+      WHERE t.id=? AND t.deleted_at IS NULL AND t.archived_at IS NULL
+        AND (s.id IS NULL OR (s.deleted_at IS NULL AND s.archived_at IS NULL))
+        AND (c.id IS NULL OR c.deleted_at IS NULL)
+        AND (p.id IS NULL OR p.deleted_at IS NULL)
+    ''',
+          variables: [Variable.withString(draft.taskId)],
+        )
+        .getSingleOrNull();
+    if (task == null) throw StateError('Task is unavailable for scheduling');
     final id = _uuid.v4();
     final now = DateTime.now().toUtc().toIso8601String();
     await db.customInsert(
@@ -410,7 +450,7 @@ class LifeRepository {
       final updated = await db.customUpdate(
         '''
       UPDATE work_sessions SET task_id=?,starts_at=?,ends_at=?,outcome=?,actual_started_at=?,updated_at=?
-      WHERE id=? AND updated_at=?
+      WHERE id=? AND updated_at=? AND deleted_at IS NULL
     ''',
         variables: [
           Variable.withString(draft.taskId),
@@ -453,10 +493,7 @@ class LifeRepository {
   }
 
   Future<void> deleteSession(String id) async {
-    await db.customUpdate(
-      'DELETE FROM work_sessions WHERE id=?',
-      variables: [Variable.withString(id)],
-    );
+    await moveToTrash(TrashKind.session, id);
   }
 
   void _validateSession(SessionDraft draft) {
@@ -672,7 +709,13 @@ class LifeRepository {
     await db.transaction(() async {
       final seriesRows = await db
           .customSelect(
-            "SELECT * FROM recurrence_series WHERE kind <> 'afterCompletion' "
+            "SELECT s.* FROM recurrence_series s "
+            'LEFT JOIN categories c ON c.id=s.category_id '
+            'LEFT JOIN projects p ON p.id=s.project_id '
+            "WHERE s.kind <> 'afterCompletion' "
+            'AND s.deleted_at IS NULL AND s.archived_at IS NULL '
+            'AND (c.id IS NULL OR c.deleted_at IS NULL) '
+            'AND (p.id IS NULL OR p.deleted_at IS NULL) '
             'AND start_date <= ? AND (end_date IS NULL OR end_date >= ?) '
             'AND active_from_date <= ? '
             'AND (active_through_date IS NULL OR active_through_date >= ?)',
@@ -776,6 +819,7 @@ class LifeRepository {
         ? (previous.completedAt ?? now)
         : null;
     await db.transaction(() async {
+      await _requireActiveTask(previous.id);
       if (previous.status == TaskStatus.completed &&
           draft.status != TaskStatus.completed) {
         await _checkRecurringReopen(previous.id);
@@ -811,7 +855,7 @@ class LifeRepository {
       final updated = await db.customUpdate(
         '''
         UPDATE tasks SET title=?,notes=?,status=?,priority=?,category_id=?,project_id=?,scheduled_date=?,deadline_date=?,updated_at=?,completed_at=?,planned_duration_minutes=?,remaining_work_minutes=?,scheduling_locked=?
-        WHERE id=? AND updated_at=?
+        WHERE id=? AND updated_at=? AND deleted_at IS NULL AND archived_at IS NULL
       ''',
         variables: [
           Variable.withString(draft.title.trim()),
@@ -863,9 +907,10 @@ class LifeRepository {
   Future<void> setComplete(LifeTask task, bool complete) async {
     final now = DateTime.now().toUtc();
     await db.transaction(() async {
+      await _requireActiveTask(task.id);
       if (!complete) await _checkRecurringReopen(task.id);
       final updated = await db.customUpdate(
-        'UPDATE tasks SET status=?,completed_at=?,updated_at=? WHERE id=? AND updated_at=?',
+        'UPDATE tasks SET status=?,completed_at=?,updated_at=? WHERE id=? AND updated_at=? AND deleted_at IS NULL AND archived_at IS NULL',
         variables: [
           Variable.withString(
             complete ? TaskStatus.completed.name : TaskStatus.notStarted.name,
@@ -915,7 +960,8 @@ class LifeRepository {
         .customSelect(
           '''SELECT s.*, o.ordinal FROM recurrence_occurrences o
         JOIN recurrence_series s ON s.id=o.series_id
-        WHERE o.task_id=? AND s.kind='afterCompletion' ''',
+        WHERE o.task_id=? AND s.kind='afterCompletion'
+          AND s.deleted_at IS NULL AND s.archived_at IS NULL ''',
           variables: [Variable.withString(taskId)],
         )
         .getSingleOrNull();
@@ -937,19 +983,7 @@ class LifeRepository {
   }
 
   Future<void> deleteTask(String id) async {
-    final active = await db
-        .customSelect(
-          "SELECT 1 FROM timer_runs WHERE task_id=? AND state!='stopped'",
-          variables: [Variable.withString(id)],
-        )
-        .getSingleOrNull();
-    if (active != null) {
-      throw StateError('Stop the task timer before deleting this task');
-    }
-    await db.customUpdate(
-      'DELETE FROM tasks WHERE id=?',
-      variables: [Variable.withString(id)],
-    );
+    await moveToTrash(TrashKind.task, id);
   }
 
   Future<void> skipRecurringOccurrence(LifeTask task) async {
@@ -1047,17 +1081,11 @@ class LifeRepository {
   }
 
   Future<void> deleteProject(String id) async {
-    await db.customUpdate(
-      'DELETE FROM projects WHERE id=?',
-      variables: [Variable.withString(id)],
-    );
+    await moveToTrash(TrashKind.project, id);
   }
 
   Future<void> deleteCategory(String id) async {
-    await db.customUpdate(
-      'DELETE FROM categories WHERE id=?',
-      variables: [Variable.withString(id)],
-    );
+    await moveToTrash(TrashKind.category, id);
   }
 
   List<Variable> _taskValues(
@@ -1106,16 +1134,40 @@ class LifeRepository {
   }
 
   Future<void> _checkAssignment(String? categoryId, String? projectId) async {
+    if (categoryId != null) {
+      final category = await db
+          .customSelect(
+            'SELECT 1 FROM categories WHERE id=? AND deleted_at IS NULL',
+            variables: [Variable.withString(categoryId)],
+          )
+          .getSingleOrNull();
+      if (category == null) throw ArgumentError('Category is unavailable');
+    }
     if (projectId == null) return;
     final rows = await db
         .customSelect(
-          'SELECT category_id FROM projects WHERE id=?',
+          'SELECT category_id FROM projects WHERE id=? AND deleted_at IS NULL',
           variables: [Variable.withString(projectId)],
         )
         .get();
     if (rows.isEmpty || rows.single.read<String>('category_id') != categoryId) {
       throw ArgumentError('Project must belong to selected category');
     }
+  }
+
+  Future<void> _requireActiveTask(String id) async {
+    final row = await db.customSelect('''
+      SELECT 1 FROM tasks t
+      LEFT JOIN categories c ON c.id=t.category_id
+      LEFT JOIN projects p ON p.id=t.project_id
+      LEFT JOIN recurrence_occurrences o ON o.task_id=t.id
+      LEFT JOIN recurrence_series s ON s.id=o.series_id
+      WHERE t.id=? AND t.deleted_at IS NULL AND t.archived_at IS NULL
+        AND (c.id IS NULL OR c.deleted_at IS NULL)
+        AND (p.id IS NULL OR p.deleted_at IS NULL)
+        AND (s.id IS NULL OR (s.deleted_at IS NULL AND s.archived_at IS NULL))
+    ''', variables: [Variable.withString(id)]).getSingleOrNull();
+    if (row == null) throw StateError('Task is archived or in Trash');
   }
 
   Future<AvailabilityPlan> availability() async {
@@ -1274,6 +1326,7 @@ class LifeRepository {
       final stale = <String>[];
       for (final change in preview.changes) {
         if (change.createsSession) {
+          await _requireActiveTask(change.taskId!);
           final duplicate = await db
               .customSelect(
                 'SELECT id FROM work_sessions WHERE id=?',
@@ -1292,6 +1345,16 @@ class LifeRepository {
               variables: [Variable.withString(change.targetId)],
             )
             .getSingleOrNull();
+        if (row != null) {
+          if (change.targetKind == ScheduleTargetKind.task) {
+            await _requireActiveTask(change.targetId);
+          } else {
+            await _requireActiveTask(row.read<String>('task_id'));
+            if (row.read<String?>('deleted_at') != null) {
+              stale.add(change.targetId);
+            }
+          }
+        }
         if (row == null ||
             DateTime.parse(row.read<String>('updated_at')) !=
                 change.expectedUpdatedAt ||

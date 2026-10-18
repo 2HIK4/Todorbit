@@ -20,7 +20,17 @@ internal sealed class DependencyReviewRequiredException(
 
 internal sealed class LifeManagerWidgetRepository : IDisposable {
   private const int MinimumSchemaVersion = 4;
-  private const int MaximumSchemaVersion = 12;
+  private const int MaximumSchemaVersion = 13;
+  private const string ActiveTaskClause = """
+     AND deleted_at IS NULL AND archived_at IS NULL
+     AND (category_id IS NULL OR EXISTS
+       (SELECT 1 FROM categories c WHERE c.id=tasks.category_id AND c.deleted_at IS NULL))
+     AND (project_id IS NULL OR EXISTS
+       (SELECT 1 FROM projects p WHERE p.id=tasks.project_id AND p.deleted_at IS NULL))
+     AND NOT EXISTS (SELECT 1 FROM recurrence_occurrences o
+       JOIN recurrence_series s ON s.id=o.series_id
+       WHERE o.task_id=tasks.id AND (s.deleted_at IS NOT NULL OR s.archived_at IS NOT NULL))
+    """;
   private readonly SqliteConnection connection;
   private readonly int schemaVersion;
   internal string DatabasePath { get; }
@@ -72,6 +82,7 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
         scheduled_date, deadline_date, updated_at
       FROM tasks
       WHERE status NOT IN ('completed', 'cancelled')
+      """ + (schemaVersion >= 13 ? ActiveTaskClause : "") + """
         AND (($view = 'today' AND scheduled_date = $today) OR
           ($view = 'inbox' AND category_id IS NULL AND project_id IS NULL) OR
           ($view = 'all') OR
@@ -97,17 +108,22 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
       SELECT id, title, notes, status, priority, category_id, project_id,
         scheduled_date, deadline_date, updated_at
       FROM tasks WHERE id=$id
-      """;
+      """ + (schemaVersion >= 13 ? ActiveTaskClause : "");
     command.Parameters.AddWithValue("$id", id);
     using var reader = command.ExecuteReader();
     return reader.Read() ? ReadTask(reader) : null;
   }
 
   internal IReadOnlyList<WidgetChoice> LoadCategories() => LoadChoices(
-    "SELECT id, name, NULL FROM categories ORDER BY name COLLATE NOCASE");
+    "SELECT id, name, NULL FROM categories " +
+    (schemaVersion >= 13 ? "WHERE deleted_at IS NULL " : "") +
+    "ORDER BY name COLLATE NOCASE");
 
   internal IReadOnlyList<WidgetChoice> LoadProjects() => LoadChoices(
-    "SELECT id, name, category_id FROM projects ORDER BY name COLLATE NOCASE");
+    "SELECT id, name, category_id FROM projects " +
+    (schemaVersion >= 13 ? "WHERE deleted_at IS NULL AND EXISTS " +
+      "(SELECT 1 FROM categories c WHERE c.id=projects.category_id AND c.deleted_at IS NULL) " : "") +
+    "ORDER BY name COLLATE NOCASE");
 
   internal string AddTask(string title, DateTime localToday,
       WidgetTaskView view = WidgetTaskView.Today) {
@@ -162,7 +178,8 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
     using (var previousCommand = connection.CreateCommand()) {
       previousCommand.Transaction = transaction;
       previousCommand.CommandText =
-        "SELECT scheduled_date,status,completed_at FROM tasks WHERE id=$id AND updated_at=$expected";
+        "SELECT scheduled_date,status,completed_at FROM tasks WHERE id=$id AND updated_at=$expected" +
+        (schemaVersion >= 13 ? ActiveTaskClause : "");
       previousCommand.Parameters.AddWithValue("$id", id);
       previousCommand.Parameters.AddWithValue("$expected", update.ExpectedUpdatedAt);
       using var reader = previousCommand.ExecuteReader();
@@ -212,7 +229,7 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
         category_id=$category,project_id=$project,scheduled_date=$scheduled,
         deadline_date=$deadline,updated_at=$now,completed_at=$completed
       WHERE id=$id AND updated_at=$expected
-      """;
+      """ + (schemaVersion >= 13 ? ActiveTaskClause : "");
     command.Parameters.AddWithValue("$title", title);
     command.Parameters.AddWithValue("$notes", update.Notes.Trim());
     command.Parameters.AddWithValue("$status", update.Status);
@@ -278,7 +295,7 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
       UPDATE tasks
       SET status='completed', completed_at=$now, updated_at=$now
       WHERE id=$id AND status NOT IN ('completed', 'cancelled')
-      """;
+      """ + (schemaVersion >= 13 ? ActiveTaskClause : "");
     command.Parameters.AddWithValue("$now", now);
     command.Parameters.AddWithValue("$id", id);
     if (command.ExecuteNonQuery() != 1) {

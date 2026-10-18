@@ -240,53 +240,119 @@ void main() {
     );
   });
 
-  test('schema v4 task data migrates through relationships to v7', () async {
-    await database.close();
-    final directory = await Directory.systemTemp.createTemp('life_manager_v4_');
-    final file = File('${directory.path}${Platform.pathSeparator}app.sqlite');
-    try {
-      final first = AppDatabase(NativeDatabase(file));
-      final oldTask = await LifeRepository(first)
-          .addTask(const TaskDraft(title: 'Keep me'));
-      await first.close();
-      final raw = sqlite.sqlite3.open(file.path);
-      raw.execute('DROP TABLE time_entry_history');
-      raw.execute('DROP TABLE time_entries');
-      raw.execute('DROP TABLE timer_runs');
-      raw.execute('DROP TABLE goal_habit_links');
-      raw.execute('DROP TABLE goal_project_links');
-      raw.execute('DROP TABLE goal_task_links');
-      raw.execute('DROP TABLE goal_progress_entries');
-      raw.execute('DROP TABLE goal_milestones');
-      raw.execute('DROP TABLE goals');
-      raw.execute('DROP TABLE habit_entry_history');
-      raw.execute('DROP TABLE habit_rest_days');
-      raw.execute('DROP TABLE habit_entries');
-      raw.execute('DROP TABLE habits');
-      raw.execute('DROP TRIGGER recurrence_task_schedule_updated');
-      raw.execute('DROP TRIGGER recurrence_task_content_updated');
-      raw.execute('DROP TRIGGER recurrence_task_cancelled');
-      raw.execute('DROP TABLE series_edit_history');
-      raw.execute('DROP TABLE recurrence_collision_history');
-      raw.execute('DROP TABLE recurrence_occurrences');
-      raw.execute('DROP TABLE recurrence_series');
-      raw.execute('DROP TABLE task_dependencies');
-      raw.execute('DROP TABLE sequence_tasks');
-      raw.execute('DROP TABLE task_sequences');
-      raw.execute('PRAGMA user_version = 4');
-      raw.close();
-      final migrated = AppDatabase(NativeDatabase(file));
+  test(
+    'disposable v4 projects, tasks, sessions and history migrate to v13',
+    () async {
+      await database.close();
+      final directory = await Directory.systemTemp.createTemp(
+        'life_manager_v4_',
+      );
+      final file = File('${directory.path}${Platform.pathSeparator}app.sqlite');
       try {
-        final repo = LifeRepository(migrated);
-        expect((await repo.tasks()).single.id, oldTask.id);
-        final sequence = await repo.addSequence('After upgrade');
-        await repo.setSequenceTasks(sequence, [oldTask.id]);
-        expect((await repo.sequences()).single.taskIds, [oldTask.id]);
+        final first = AppDatabase(NativeDatabase(file));
+        final firstRepo = LifeRepository(first);
+        final category = await firstRepo.addCategory('Legacy category');
+        final project = await firstRepo.addProject(
+          category.id,
+          'Legacy project',
+        );
+        final oldTask = await firstRepo.addTask(
+          TaskDraft(
+            title: 'Keep me',
+            categoryId: category.id,
+            projectId: project.id,
+            scheduledDate: '2026-10-19',
+          ),
+        );
+        await firstRepo.updateTask(
+          oldTask,
+          TaskDraft(
+            title: 'Keep me',
+            categoryId: category.id,
+            projectId: project.id,
+            scheduledDate: '2026-10-20',
+          ),
+        );
+        final session = await firstRepo.addSession(
+          SessionDraft(
+            taskId: oldTask.id,
+            startsAt: DateTime.utc(2026, 10, 20, 8),
+            endsAt: DateTime.utc(2026, 10, 20, 9),
+          ),
+        );
+        final event = await firstRepo.addEvent(
+          EventDraft(
+            title: 'Legacy event',
+            startsAt: DateTime.utc(2026, 10, 20, 10),
+            endsAt: DateTime.utc(2026, 10, 20, 11),
+          ),
+        );
+        await first.close();
+        final raw = sqlite.sqlite3.open(file.path);
+        raw.execute('DROP TABLE time_entry_history');
+        raw.execute('DROP TABLE time_entries');
+        raw.execute('DROP TABLE timer_runs');
+        raw.execute('DROP TABLE goal_habit_links');
+        raw.execute('DROP TABLE goal_project_links');
+        raw.execute('DROP TABLE goal_task_links');
+        raw.execute('DROP TABLE goal_progress_entries');
+        raw.execute('DROP TABLE goal_milestones');
+        raw.execute('DROP TABLE goals');
+        raw.execute('DROP TABLE habit_entry_history');
+        raw.execute('DROP TABLE habit_rest_days');
+        raw.execute('DROP TABLE habit_entries');
+        raw.execute('DROP TABLE habits');
+        raw.execute('DROP TRIGGER recurrence_task_schedule_updated');
+        raw.execute('DROP TRIGGER recurrence_task_content_updated');
+        raw.execute('DROP TRIGGER recurrence_task_cancelled');
+        raw.execute('DROP TABLE series_edit_history');
+        raw.execute('DROP TABLE recurrence_collision_history');
+        raw.execute('DROP TABLE recurrence_occurrences');
+        raw.execute('DROP TABLE recurrence_series');
+        raw.execute('DROP TABLE task_dependencies');
+        raw.execute('DROP TABLE sequence_tasks');
+        raw.execute('DROP TABLE task_sequences');
+        raw.execute('DROP TABLE templates');
+        raw.execute('DROP TABLE saved_views');
+        raw.execute('DROP TABLE deletion_tombstones');
+        raw.execute('DROP INDEX tasks_deleted_at');
+        raw.execute('DROP INDEX tasks_archived_at');
+        raw.execute('DROP INDEX projects_deleted_at');
+        raw.execute('DROP INDEX categories_deleted_at');
+        raw.execute('DROP INDEX fixed_events_deleted_at');
+        raw.execute('DROP INDEX work_sessions_deleted_at');
+        raw.execute('ALTER TABLE tasks DROP COLUMN deleted_at');
+        raw.execute('ALTER TABLE tasks DROP COLUMN archived_at');
+        raw.execute('ALTER TABLE projects DROP COLUMN deleted_at');
+        raw.execute('ALTER TABLE categories DROP COLUMN deleted_at');
+        raw.execute('ALTER TABLE fixed_events DROP COLUMN deleted_at');
+        raw.execute('ALTER TABLE work_sessions DROP COLUMN deleted_at');
+        raw.execute('PRAGMA user_version = 4');
+        raw.close();
+        final migrated = AppDatabase(NativeDatabase(file));
+        try {
+          final repo = LifeRepository(migrated);
+          expect((await repo.tasks()).single.id, oldTask.id);
+          expect((await repo.tasks()).single.projectId, project.id);
+          expect((await repo.tasks()).single.scheduledDate, '2026-10-20');
+          expect((await repo.projects()).single.id, project.id);
+          expect((await repo.categories()).single.id, category.id);
+          expect((await repo.sessions()).single.id, session.id);
+          expect((await repo.events()).single.id, event.id);
+          expect(await repo.schedulingHistory(), hasLength(1));
+          expect(
+            await migrated.customSelect('PRAGMA foreign_key_check').get(),
+            isEmpty,
+          );
+          final sequence = await repo.addSequence('After upgrade');
+          await repo.setSequenceTasks(sequence, [oldTask.id]);
+          expect((await repo.sequences()).single.taskIds, [oldTask.id]);
+        } finally {
+          await migrated.close();
+        }
       } finally {
-        await migrated.close();
+        await directory.delete(recursive: true);
       }
-    } finally {
-      await directory.delete(recursive: true);
-    }
-  });
+    },
+  );
 }

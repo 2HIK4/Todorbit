@@ -7,7 +7,7 @@ import 'package:path/path.dart' as path;
 class AppDatabase extends GeneratedDatabase {
   AppDatabase(super.executor);
 
-  static const currentSchemaVersion = 12;
+  static const currentSchemaVersion = 13;
 
   static Future<File> defaultFile() async {
     final String basePath;
@@ -49,6 +49,9 @@ class AppDatabase extends GeneratedDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
+    beforeOpen: (_) async {
+      await customStatement('PRAGMA foreign_keys = ON');
+    },
     onCreate: (migrator) async {
       await customStatement('''
         CREATE TABLE categories (
@@ -112,9 +115,10 @@ class AppDatabase extends GeneratedDatabase {
       await _createTimeTracking();
       await _createTemplates();
       await _createSavedViews();
+      await _createTrash();
     },
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 11 || to != 12) {
+      if (from < 1 || from > 12 || to != 13) {
         throw StateError('No migration registered from schema $from to $to');
       }
       if (from == 1) {
@@ -152,8 +156,70 @@ class AppDatabase extends GeneratedDatabase {
       if (from < 10) await _createTimeTracking();
       await _createTemplates();
       await _createSavedViews();
+      await _createTrash();
     },
   );
+
+  Future<void> _createTrash() async {
+    await customStatement('''CREATE TABLE IF NOT EXISTS categories (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL COLLATE NOCASE UNIQUE,
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL)''');
+    await customStatement('''CREATE TABLE IF NOT EXISTS projects (
+      id TEXT PRIMARY KEY,
+      category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
+      name TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      UNIQUE(category_id, name))''');
+    await customStatement('''CREATE TABLE IF NOT EXISTS fixed_events (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL CHECK(length(trim(title)) > 0),
+      notes TEXT NOT NULL DEFAULT '', starts_at TEXT NOT NULL,
+      ends_at TEXT NOT NULL, created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL, CHECK(ends_at > starts_at))''');
+    await customStatement('CREATE INDEX IF NOT EXISTS fixed_events_start ON fixed_events(starts_at)');
+    for (final table in [
+      'tasks',
+      'projects',
+      'categories',
+      'fixed_events',
+      'work_sessions',
+    ]) {
+      await _addColumnIfMissing(table, 'deleted_at', 'TEXT');
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS ${table}_deleted_at ON $table(deleted_at)',
+      );
+    }
+    await _addColumnIfMissing('recurrence_series', 'deleted_at', 'TEXT');
+    await _addColumnIfMissing('recurrence_series', 'archived_at', 'TEXT');
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS recurrence_series_deleted_at ON recurrence_series(deleted_at)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS recurrence_series_archived_at ON recurrence_series(archived_at)',
+    );
+    await _addColumnIfMissing('tasks', 'archived_at', 'TEXT');
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS tasks_archived_at ON tasks(archived_at)',
+    );
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS deletion_tombstones (
+        id TEXT PRIMARY KEY,
+        entity_kind TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        deleted_at TEXT NOT NULL,
+        purged_at TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> _addColumnIfMissing(
+    String table,
+    String column,
+    String type,
+  ) async {
+    final columns = await customSelect('PRAGMA table_info($table)').get();
+    if (columns.any((row) => row.read<String>('name') == column)) return;
+    await customStatement('ALTER TABLE $table ADD COLUMN $column $type');
+  }
 
   Future<void> _upgradeRecurrenceVersions() async {
     await customStatement(

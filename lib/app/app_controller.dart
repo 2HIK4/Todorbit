@@ -17,6 +17,7 @@ import '../domain/templates.dart';
 import '../domain/saved_views.dart';
 import '../domain/appearance.dart';
 import '../domain/scheduling_models.dart';
+import '../domain/trash.dart';
 
 final appControllerProvider = ChangeNotifierProvider<AppController>((ref) {
   throw StateError('AppController must be provided by the application');
@@ -62,6 +63,9 @@ class AppController extends ChangeNotifier {
   List<TimeEntry> timeEntries = [];
   List<LifeTemplate> templates = [];
   List<SavedView> savedViews = [];
+  List<TrashItem> trashItems = [];
+  List<LifeTask> archivedTasks = [];
+  List<ArchivedSeries> archivedSeries = [];
   TimerRun? activeTimer;
   String? timerError;
   Timer? _timerHeartbeat;
@@ -107,6 +111,9 @@ class AppController extends ChangeNotifier {
       repository.activeTimerRun(),
       repository.templates(),
       repository.savedViews(),
+      repository.trash(),
+      repository.archivedTasks(),
+      repository.archivedSeries(),
     ]);
     categories = result[0] as List<Category>;
     projects = result[1] as List<Project>;
@@ -126,6 +133,9 @@ class AppController extends ChangeNotifier {
     activeTimer = result[15] as TimerRun?;
     templates = result[16] as List<LifeTemplate>;
     savedViews = result[17] as List<SavedView>;
+    trashItems = result[18] as List<TrashItem>;
+    archivedTasks = result[19] as List<LifeTask>;
+    archivedSeries = result[20] as List<ArchivedSeries>;
     _syncTimerHeartbeat();
     if (selectedTaskId != null && selectedTask == null) selectedTaskId = null;
     loading = false;
@@ -385,6 +395,41 @@ class AppController extends ChangeNotifier {
 
   Future<void> deleteTask(String id) async {
     await repository.deleteTask(id);
+    await refresh();
+  }
+
+  Future<void> archiveTask(LifeTask task) async {
+    await repository.archiveTask(task);
+    await refresh();
+  }
+
+  Future<void> archiveSeries(LifeTask task) async {
+    await repository.archiveSeries(task);
+    await refresh();
+  }
+
+  Future<void> restoreArchivedSeries(ArchivedSeries series) async {
+    await repository.restoreArchivedSeries(series);
+    await refresh();
+  }
+
+  Future<void> deleteSeries(LifeTask task) async {
+    await repository.deleteSeries(task);
+    await refresh();
+  }
+
+  Future<void> restoreArchivedTask(LifeTask task) async {
+    await repository.restoreArchivedTask(task);
+    await refresh();
+  }
+
+  Future<void> restoreTrashItem(TrashItem item) async {
+    await repository.restoreTrashItem(item);
+    await refresh();
+  }
+
+  Future<void> permanentlyDelete(TrashItem item) async {
+    await repository.permanentlyDelete(item);
     await refresh();
   }
 

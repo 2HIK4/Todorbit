@@ -134,7 +134,7 @@ class _SessionEditorState extends ConsumerState<SessionEditor> {
           builder: (context) => AlertDialog(
             title: const Text('Delete planned session?'),
             content: const Text(
-              'This removes the planned session. The task remains.',
+              'Move this planned session to Trash? The task remains and the session can be restored.',
             ),
             actions: [
               TextButton(

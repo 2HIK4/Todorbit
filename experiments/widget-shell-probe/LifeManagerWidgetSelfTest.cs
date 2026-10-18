@@ -8,7 +8,7 @@ internal static class LifeManagerWidgetSelfTest {
     var databasePath = Path.Combine(directory, "test.sqlite");
     try {
       CreateDatabase(databasePath);
-      string id;
+      string id, inboxId;
       using (var repository =
           LifeManagerWidgetRepository.OpenForTest(databasePath)) {
         var today = new DateTime(2026, 10, 17);
@@ -47,7 +47,7 @@ internal static class LifeManagerWidgetSelfTest {
           throw new InvalidOperationException("A stale edit silently overwrote a task.");
         } catch (InvalidOperationException error)
             when (error.Message.StartsWith("This task changed")) { }
-        var inboxId = repository.AddTask("Inbox task", today, WidgetTaskView.Inbox);
+        inboxId = repository.AddTask("Inbox task", today, WidgetTaskView.Inbox);
         if (repository.LoadTasks(today, WidgetTaskView.Inbox)
             .All(item => item.Id != inboxId)) {
           throw new InvalidOperationException("Inbox Quick Add semantics failed.");
@@ -371,6 +371,48 @@ internal static class LifeManagerWidgetSelfTest {
         if (v12Repository.LoadTask(id)?.Status != "completed") {
           throw new InvalidOperationException(
             "Widget could not read a schema v12 task.");
+        }
+      }
+      using (var upgrade = new SqliteConnection(
+          $"Data Source={databasePath};Pooling=False")) {
+        upgrade.Open();
+        using var command = upgrade.CreateCommand();
+        command.CommandText = """
+          ALTER TABLE tasks ADD COLUMN deleted_at TEXT;
+          ALTER TABLE tasks ADD COLUMN archived_at TEXT;
+          ALTER TABLE projects ADD COLUMN deleted_at TEXT;
+          ALTER TABLE categories ADD COLUMN deleted_at TEXT;
+          ALTER TABLE recurrence_series ADD COLUMN deleted_at TEXT;
+          ALTER TABLE recurrence_series ADD COLUMN archived_at TEXT;
+          PRAGMA user_version = 13;
+          """;
+        command.ExecuteNonQuery();
+      }
+      using (var v13Repository =
+          LifeManagerWidgetRepository.OpenForTest(databasePath)) {
+        var today = new DateTime(2026, 10, 17);
+        if (v13Repository.LoadTask(inboxId) == null) {
+          throw new InvalidOperationException("Widget could not read a schema v13 task.");
+        }
+        using var mutation = new SqliteConnection(
+          $"Data Source={databasePath};Pooling=False");
+        mutation.Open();
+        using var command = mutation.CreateCommand();
+        command.CommandText = "UPDATE tasks SET archived_at='2026-10-18T00:00:00.000Z' WHERE id=$id";
+        command.Parameters.AddWithValue("$id", inboxId);
+        command.ExecuteNonQuery();
+        if (v13Repository.LoadTask(inboxId) != null ||
+            v13Repository.LoadTasks(today, WidgetTaskView.Inbox)
+              .Any(task => task.Id == inboxId)) {
+          throw new InvalidOperationException("Archived task remained in widget.");
+        }
+        command.CommandText = "UPDATE categories SET deleted_at='2026-10-18T00:00:00.000Z'";
+        command.Parameters.Clear();
+        command.ExecuteNonQuery();
+        if (v13Repository.LoadCategories().Count != 0 ||
+            v13Repository.LoadProjects().Count != 0 ||
+            v13Repository.LoadTask(id) != null) {
+          throw new InvalidOperationException("Trashed category remained in widget.");
         }
       }
       VerifySettingsRoundTrip(directory);

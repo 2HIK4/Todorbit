@@ -103,7 +103,18 @@
   forward. A changed snapshot or busy database leaves the restore pending;
   the startup error screen can cancel that request and retry the current
   database.
-  Recoverable Trash remains unfinished.
+  Recoverable Trash is implemented in schema v13.
+- Schema v13 adds recoverable task archiving and Trash for tasks, projects,
+  categories, fixed events, planned sessions, individual recurring occurrences,
+  and whole recurring families. Parent deletion hides descendants without
+  changing their own state. Archive and Trash can restore records, including
+  completed work and linked history, in transactions. Future recurring
+  occurrences stop materializing while their family or parent is hidden. The
+  native widget excludes archived and trashed records on v13. Explicit
+  permanent deletion checks relationships first and records tombstones; it
+  never purges automatically at startup. Unlinked occurrence tasks can be
+  purged while retaining their series slots. A series can be purged only after
+  its occurrence tasks and edit history are resolved.
 - Stale completion now rejects a newer task edit, and task duration input
   rejects invalid text instead of silently clearing the estimate. Prerequisite
   edits compare task revisions, and the narrow task editor keeps unsaved fields
@@ -147,7 +158,7 @@
 
 - Flutter 3.47.7 / Dart 3.13.5; Windows toolchain healthy.
 - `flutter analyze`: clean.
-- `flutter test`: 106 passing tests, including engine, database, migration,
+- `flutter test`: 117 passing tests, including engine, database, migration,
   stale-apply, undo/restoration, split, persistence, and preview/Apply coverage.
 - Native Release build and disposable database/settings self-test: passing.
 - Native dependency audit: no vulnerable packages reported.
@@ -237,6 +248,12 @@
   Flutter tests, Windows Release build, and packaged companion self-test
   pass. The restore dialog and next-launch flow still need manual Windows
   UI acceptance on an isolated profile.
+- Trash validation: disposable v12-to-v13 and realistic v4-to-v13 migrations,
+  parent restoration order, linked-record purge rejection, occurrence identity,
+  family archive/Trash, 30 day retention without automatic purge, event/session
+  restore, foreign key checks, and Archive/Trash widget restore flow pass.
+  `flutter analyze` is clean; all 117 Flutter tests, native Release self-test,
+  and Windows Release build pass. Manual UI acceptance is pending.
 
 ## In progress
 
@@ -250,8 +267,8 @@
 
 ## Not yet implemented
 
-- Trash,
-  notifications, privacy controls, import/export, and installer packaging.
+- Statistics and reports, notifications, privacy controls, import/export,
+  attachments and external links, and installer packaging.
 
 ## Environment and data notes
 
@@ -265,13 +282,20 @@
   The production database was not migrated or modified during this checkpoint.
 - Launch-at-sign-in remains disabled by default and changes only through the
   explicit tray action.
-- Task and event deletion is permanent after confirmation; recoverable Trash is
-  not implemented.
+- The production schema-v4 database has not been opened or migrated during the
+  v13 implementation. Only disposable databases were upgraded in automated
+  tests. Before eventual production upgrade, the startup backup must verify a
+  consistent snapshot.
+- Trash retains records indefinitely unless the user explicitly confirms
+  permanent deletion. The displayed 30 day date is a retention guide, not an
+  automatic purge date. Records with linked history can remain nonpurgeable
+  until those links are safely resolved. Deleted category/project names remain
+  reserved while in Trash.
 
 ## Next action
 
-Implement recoverable Trash and archiving next, then the remaining Windows
-V1.0 roadmap. Manually
+Manually exercise Archive and Trash on an isolated profile, then implement real
+statistics and reports. Manually
 exercise the recurrence editor, Smart Reschedule collision choices, and Habits
 screen on an isolated Windows profile before opening the production schema-v4
 database. Time-of-day recurrence is outside the current date-only task model;

@@ -139,3 +139,20 @@
   database with an exclusive destination connection. Verify integrity/schema
   before opening Drift. Keep the pending request on any failure, so the user
   can retry or cancel. Older snapshots migrate forward after replacement.
+- **Recoverable Archive and Trash (schema v13):** archive task rows without
+  changing completion or work history. A recurring occurrence can be archived
+  or trashed independently; a whole family action marks every series version
+  and stops materializing future occurrences until restored. Trash uses UTC
+  deletion timestamps on tasks, projects, categories, fixed events, work
+  sessions, and recurrence series. Deleting a parent hides its descendants
+  without rewriting their own lifecycle markers, so restoring the parent
+  reveals independently active children and keeps separately trashed children
+  hidden. Restore checks parent availability in a transaction. Deleted names
+  stay reserved until permanent deletion. The 30 day retention period is a
+  default review window; startup never purges records automatically. Explicit
+  permanent deletion is blocked by linked work, goals, dependencies, sessions,
+  scheduling history, and other related records. An unlinked recurring task
+  may be purged while retaining its occurrence slot; a series may be purged
+  only after all occurrence tasks are resolved, with occurrence and series
+  tombstones recorded for future synchronization. Active Flutter and native
+  views exclude hidden items, while the data and history remain stored.

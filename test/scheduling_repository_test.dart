@@ -254,24 +254,35 @@ void main() {
     legacy.close();
     try {
       final migrated = AppDatabase(NativeDatabase(file));
-      final migratedRepository = LifeRepository(migrated);
-      expect((await migratedRepository.tasks()).single.title, 'Preserved');
-      expect((await migratedRepository.sessions()).single.id, 'session');
-      expect(
-        (await migratedRepository.tasks()).single.schedulingLocked,
-        isFalse,
-      );
-      await migratedRepository.saveAvailability(
-        const AvailabilityPlan(
-          weekly: {
-            DateTime.monday: [AvailabilityWindow(540, 600)],
-          },
-        ),
-      );
-      expect((await migratedRepository.availability()).weekly, isNotEmpty);
-      await migrated.close();
+      try {
+        final migratedRepository = LifeRepository(migrated);
+        expect((await migratedRepository.tasks()).single.title, 'Preserved');
+        expect((await migratedRepository.sessions()).single.id, 'session');
+        expect(
+          (await migratedRepository.tasks()).single.schedulingLocked,
+          isFalse,
+        );
+        await migratedRepository.saveAvailability(
+          const AvailabilityPlan(
+            weekly: {
+              DateTime.monday: [AvailabilityWindow(540, 600)],
+            },
+          ),
+        );
+        expect((await migratedRepository.availability()).weekly, isNotEmpty);
+      } finally {
+        await migrated.close();
+      }
     } finally {
-      await directory.delete(recursive: true);
+      for (var attempt = 0; attempt < 10; attempt++) {
+        try {
+          await directory.delete(recursive: true);
+          break;
+        } on FileSystemException {
+          if (attempt == 9) rethrow;
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+        }
+      }
     }
   });
 

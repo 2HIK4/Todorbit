@@ -94,6 +94,15 @@ rows used by built-in views. Saving/editing/deleting a view writes through the
 repository with revision checks. The native widget accepts v12 without view
 access.
 
+Schema v13 marks tasks, projects, categories, fixed events, planned sessions,
+and recurrence families as archived or deleted without removing linked rows.
+Active reads and the native companion filter those markers; the repository
+owns transactional restore and checks related records before permanent purge.
+Permanent purges write tombstones with entity IDs and UTC deletion times.
+Recurring occurrence slots remain after an individual task purge so bounded
+materialization cannot recreate that occurrence. Startup performs no Trash
+purge.
+
 `BackupService` runs SQLite integrity checks and `VACUUM INTO` in a worker
 isolate, producing one self-contained file under the per-user `backups`
 directory. The startup path invokes it before opening Drift, so a schema

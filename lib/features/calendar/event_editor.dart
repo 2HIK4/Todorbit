@@ -137,7 +137,7 @@ class _EventEditorState extends ConsumerState<EventEditor> {
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Delete event?'),
-            content: Text('This permanently deletes “${event.title}”.'),
+            content: Text('Move "${event.title}" to Trash? It can be restored.'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
