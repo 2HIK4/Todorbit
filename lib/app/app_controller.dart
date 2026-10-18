@@ -4,7 +4,9 @@ import 'package:flutter/foundation.dart' hide Category;
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../data/life_repository.dart';
+import '../data/app_database.dart';
 import '../data/appearance_preference_store.dart';
+import '../data/backup_service.dart';
 import '../domain/models.dart';
 import '../domain/recurrence.dart';
 import '../domain/series_edit.dart';
@@ -39,9 +41,11 @@ enum WorkspaceView {
 enum TaskSort { schedule, priority, title, created }
 
 class AppController extends ChangeNotifier {
-  AppController(this.repository, {this.appearanceStore});
+  AppController(this.repository, {this.appearanceStore, this.backupService});
   final LifeRepository repository;
   final AppearancePreferenceStore? appearanceStore;
+  final BackupService? backupService;
+  String? backupError;
 
   List<Category> categories = [];
   List<Project> projects = [];
@@ -186,6 +190,20 @@ class AppController extends ChangeNotifier {
   Future<void> initialize() async {
     if (appearanceStore != null) theme = await appearanceStore!.load();
     await refresh();
+  }
+
+  Future<void> checkAutomaticBackup() async {
+    final service = backupService;
+    if (service == null) return;
+    try {
+      await service.ensureAutomaticBackup(
+        appSchemaVersion: AppDatabase.currentSchemaVersion,
+      );
+      backupError = null;
+    } catch (failure) {
+      backupError = '$failure';
+    }
+    notifyListeners();
   }
 
   Future<void> reloadTheme() async {

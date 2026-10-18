@@ -14,6 +14,7 @@ import '../goals/goals_view.dart';
 import '../time_tracking/time_tracking_dialog.dart';
 import '../templates/templates_dialog.dart';
 import '../search/advanced_search_dialog.dart';
+import '../settings/backup_dialog.dart';
 import '../scheduling/smart_reschedule.dart';
 import '../widget/native_widget_service.dart';
 import 'task_editor.dart';
@@ -622,6 +623,23 @@ class _WorkspaceState extends ConsumerState<Workspace> {
               ),
             ),
           ),
+          if (controller.backupService case final backupService?)
+            ListTile(
+              dense: true,
+              leading: Icon(
+                controller.backupError == null
+                    ? Icons.backup_outlined
+                    : Icons.warning_amber_outlined,
+              ),
+              title: const Text('Backups'),
+              onTap: () => showDialog<void>(
+                context: context,
+                builder: (_) => BackupDialog(
+                  service: backupService,
+                  automaticError: controller.backupError,
+                ),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.all(8),
             child: PopupMenuButton<ThemeModePreference>(

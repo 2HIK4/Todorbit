@@ -7,6 +7,8 @@ import 'package:path/path.dart' as path;
 class AppDatabase extends GeneratedDatabase {
   AppDatabase(super.executor);
 
+  static const currentSchemaVersion = 12;
+
   static Future<File> defaultFile() async {
     final String basePath;
     if (Platform.isWindows) {
@@ -40,7 +42,7 @@ class AppDatabase extends GeneratedDatabase {
   }
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => currentSchemaVersion;
 
   @override
   Iterable<TableInfo> get allTables => const [];

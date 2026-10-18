@@ -94,6 +94,12 @@ rows used by built-in views. Saving/editing/deleting a view writes through the
 repository with revision checks. The native widget accepts v12 without view
 access.
 
+`BackupService` runs SQLite integrity checks and `VACUUM INTO` in a worker
+isolate, producing one self-contained file under the per-user `backups`
+directory. The startup path invokes it before opening Drift, so a schema
+upgrade always has a verified source snapshot. Automatic retention touches
+only backup files with Life Manager's managed automatic name pattern.
+
 The deterministic engine in `lib/domain/` has no database dependency. It keeps
 local date-only task plans separate from UTC work-session intervals and fixed
 events. Local availability is converted at the proposed date, so calendar-day

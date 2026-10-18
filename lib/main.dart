@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/app_controller.dart';
 import 'data/app_database.dart';
 import 'data/appearance_preference_store.dart';
+import 'data/backup_service.dart';
 import 'data/life_repository.dart';
 import 'domain/appearance.dart';
 import 'features/workspace/workspace.dart';
@@ -15,11 +16,36 @@ import 'features/widget/desktop_widget.dart';
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   final databaseFile = await AppDatabase.defaultFile();
+  final backupService = BackupService(databaseFile);
+  try {
+    await backupService.ensureAutomaticBackup(
+      appSchemaVersion: AppDatabase.currentSchemaVersion,
+    );
+  } catch (failure) {
+    runApp(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                'Life Manager could not verify and back up its database. '
+                'The database was not opened or migrated. Check disk space and file access, '
+                'then restart the app.\n\n$failure',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    return;
+  }
   final database = await AppDatabase.openDefault();
   final appearanceStore = await AppearancePreferenceStore.openDefault();
   final controller = AppController(
     LifeRepository(database),
     appearanceStore: appearanceStore,
+    backupService: backupService,
   );
   await controller.initialize();
   final taskArgument = args.indexOf('--task-id');
@@ -61,6 +87,7 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
     with WidgetsBindingObserver {
   StreamSubscription<FileSystemEvent>? _databaseChanges;
   Timer? _refreshDebounce;
+  Timer? _backupTimer;
   bool _databaseRefreshPending = false;
   bool _appearanceRefreshPending = false;
 
@@ -68,6 +95,11 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (ref.read(appControllerProvider).backupService != null) {
+      _backupTimer = Timer.periodic(const Duration(hours: 6), (_) {
+        ref.read(appControllerProvider).checkAutomaticBackup();
+      });
+    }
     final file = widget.databaseFile;
     if (Platform.isWindows && file != null) {
       _databaseChanges = file.parent.watch().listen((event) {
@@ -98,6 +130,7 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       ref.read(appControllerProvider).refresh();
+      ref.read(appControllerProvider).checkAutomaticBackup();
     }
   }
 
@@ -105,6 +138,7 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _refreshDebounce?.cancel();
+    _backupTimer?.cancel();
     _databaseChanges?.cancel();
     super.dispose();
   }

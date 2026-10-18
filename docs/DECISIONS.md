@@ -127,3 +127,9 @@
   category/project navigation; advanced search is task-focused. Compare the
   view revision for edits/deletion, and keep views with deleted category or
   project IDs visible as empty until the user edits them.
+- **Automatic backups:** snapshot SQLite through `VACUUM INTO` instead of
+  copying a live database/WAL pair. Verify source and snapshot integrity and
+  create a snapshot before any migration. Refuse startup if that safety step
+  fails. Keep 14 managed daily backups while retaining manual and pre-upgrade
+  copies. A snapshot can be created while SQLite is open; restoration requires
+  a separate reviewed, offline replacement flow and is not yet exposed.
