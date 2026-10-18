@@ -7,11 +7,13 @@ import '../domain/models.dart';
 import '../domain/recurrence.dart';
 import '../domain/series_edit.dart';
 import '../domain/habits.dart';
+import '../domain/goals.dart';
 import '../domain/scheduling_models.dart';
 import 'app_database.dart';
 
 part 'series_edit_repository.dart';
 part 'habit_repository.dart';
+part 'goal_repository.dart';
 
 class LifeRepository {
   LifeRepository(this.db);

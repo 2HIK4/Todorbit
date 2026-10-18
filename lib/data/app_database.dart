@@ -40,7 +40,7 @@ class AppDatabase extends GeneratedDatabase {
   }
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   Iterable<TableInfo> get allTables => const [];
@@ -106,9 +106,10 @@ class AppDatabase extends GeneratedDatabase {
       await _createSeriesEditHistory();
       await _createRecurrenceCollisionHistory();
       await _createHabits();
+      await _createGoals();
     },
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 7 || to != 8) {
+      if (from < 1 || from > 8 || to != 9) {
         throw StateError('No migration registered from schema $from to $to');
       }
       if (from == 1) {
@@ -141,7 +142,8 @@ class AppDatabase extends GeneratedDatabase {
         await _createSeriesEditHistory();
         await _createRecurrenceCollisionHistory();
       }
-      await _createHabits();
+      if (from < 8) await _createHabits();
+      await _createGoals();
     },
   );
 
@@ -254,6 +256,65 @@ class AppDatabase extends GeneratedDatabase {
         changed_at TEXT NOT NULL
       )
     ''');
+  }
+
+  Future<void> _createGoals() async {
+    await customStatement('''
+      CREATE TABLE goals (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL CHECK(length(trim(title)) > 0),
+        description TEXT NOT NULL DEFAULT '',
+        target REAL NOT NULL CHECK(target > 0),
+        unit TEXT NOT NULL DEFAULT '',
+        start_date TEXT NOT NULL,
+        deadline_date TEXT,
+        completed_at TEXT,
+        archived_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await customStatement('''
+      CREATE TABLE goal_milestones (
+        id TEXT PRIMARY KEY,
+        goal_id TEXT NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+        title TEXT NOT NULL CHECK(length(trim(title)) > 0),
+        threshold REAL NOT NULL CHECK(threshold > 0),
+        deadline_date TEXT,
+        completed_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await customStatement('''
+      CREATE TABLE goal_progress_entries (
+        id TEXT PRIMARY KEY,
+        goal_id TEXT NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+        delta REAL NOT NULL CHECK(delta != 0),
+        notes TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL
+      )
+    ''');
+    await customStatement(
+      'CREATE INDEX goal_progress_entries_goal ON goal_progress_entries(goal_id,created_at)',
+    );
+    await customStatement(
+      'CREATE INDEX goal_milestones_goal ON goal_milestones(goal_id,threshold)',
+    );
+    for (final pair in [
+      ('task', 'tasks'),
+      ('project', 'projects'),
+      ('habit', 'habits'),
+    ]) {
+      await customStatement('''
+        CREATE TABLE goal_${pair.$1}_links (
+          goal_id TEXT NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+          ${pair.$1}_id TEXT NOT NULL REFERENCES ${pair.$2}(id) ON DELETE CASCADE,
+          units REAL NOT NULL CHECK(units > 0),
+          PRIMARY KEY(goal_id,${pair.$1}_id)
+        )
+      ''');
+    }
   }
 
   Future<void> _createRecurrence() async {

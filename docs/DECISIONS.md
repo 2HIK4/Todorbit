@@ -95,3 +95,11 @@
   successes. Retain entry logs when a rule changes, reject stale corrections,
   audit log changes, and keep archive reversible. The native widget continues
   task-only access and accepts the additive schema.
+- **Goals (schema v9):** keep manual adjustments in an immutable signed ledger
+  and derive linked contributions from current completed tasks and binary
+  habit logs. Direct task links take precedence over project links so each
+  task contributes once per goal. Milestones are thresholds and deliberate
+  completion markers, not additive progress sources. Goal completion is an
+  explicit choice independent of its numeric total; archive retains that
+  state. Restrict habit links to Yes/No habits so later numeric target edits
+  cannot silently reinterpret historical contributions.

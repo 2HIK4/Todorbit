@@ -80,6 +80,8 @@ void main() {
         ),
       );
       final add = find.byTooltip('Add category');
+      await tester.ensureVisible(add);
+      await tester.pumpAndSettle();
       for (var i = 0; i < 3; i++) {
         await mouse.moveTo(tester.getCenter(add));
         await tester.pump(const Duration(milliseconds: 600));

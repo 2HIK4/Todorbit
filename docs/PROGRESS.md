@@ -57,6 +57,12 @@
   rates and scheduled-day streaks derive from persisted values; missing days
   create no task backlog. Future outcomes are rejected. Habit reminders and
   native widget habit actions remain future integration work.
+- Goals (schema v9) have targets, start days, deadlines, milestone checkpoints,
+  manual adjustment history, linked task/project/binary-habit progress,
+  explicit completion, and reversible archive. Direct and project links count
+  each completed task once. The Goals screen exposes progress, links,
+  milestones, history, and correction controls. Today links to unfinished goals
+  due within seven days.
 - Stale completion now rejects a newer task edit, and task duration input
   rejects invalid text instead of silently clearing the estimate. Prerequisite
   edits compare task revisions, and the narrow task editor keeps unsaved fields
@@ -100,7 +106,7 @@
 
 - Flutter 3.47.7 / Dart 3.13.5; Windows toolchain healthy.
 - `flutter analyze`: clean.
-- `flutter test`: 77 passing tests, including engine, database, migration,
+- `flutter test`: 82 passing tests, including engine, database, migration,
   stale-apply, undo/restoration, split, persistence, and preview/Apply coverage.
 - Native Release build and disposable database/settings self-test: passing.
 - Native dependency audit: no vulnerable packages reported.
@@ -115,7 +121,7 @@
   was closed without applying changes. Automated widget coverage verifies the
   preview and persisted Apply path.
 - The native companion never creates or migrates the production database; it
-  accepts schema v4-v8, enables foreign keys and a busy timeout, and uses
+  accepts schema v4-v9, enables foreign keys and a busy timeout, and uses
   parameterized transactional writes. Automated tests use an isolated database.
 - Milestone B validation: focused v4→v5 migration, dependency-cycle/rollback,
   stale-editor, sequence persistence, and joint schedule-conflict tests pass.
@@ -155,6 +161,12 @@
   a narrow-screen Habits widget flow pass. `flutter analyze`, all 77 Flutter
   tests, native Release build/self-test, Windows Release build, and packaged
   companion self-test pass. Manual Windows UI acceptance remains pending.
+- Schema v9 validation: disposable v8-to-v9 migration, direct/project
+  double-count prevention, binary-habit links, manual corrections, milestone
+  editing, archive/completion, and Goals UI interactions pass. `flutter
+  analyze` is clean; all 82 Flutter tests pass. Native Release build and
+  self-test, Windows Release packaging, and packaged companion self-test pass.
+  Manual Goals UI acceptance remains pending.
 
 ## In progress
 
@@ -168,7 +180,7 @@
 
 ## Not yet implemented
 
-- Goals, timer, templates, advanced search/saved views, backups, Trash,
+- Timer, templates, advanced search/saved views, backups, Trash,
   notifications, privacy controls, import/export, and installer packaging.
 
 ## Environment and data notes
@@ -188,8 +200,8 @@
 
 ## Next action
 
-Implement goals and milestones with persisted manual and linked progress,
-ensuring linked work cannot double count. Then continue timer/time tracking,
+Implement timer-based and manual actual work tracking, preserving planned
+sessions and their independent outcomes. Then continue templates,
 templates, backups/Trash, and the remaining Windows V1.0 roadmap. Manually
 exercise the recurrence editor, Smart Reschedule collision choices, and Habits
 screen on an isolated Windows profile before opening the production schema-v4

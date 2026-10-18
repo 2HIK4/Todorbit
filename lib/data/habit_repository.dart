@@ -126,6 +126,17 @@ extension HabitRepository on LifeRepository {
 
   Future<void> updateHabit(Habit previous, HabitDraft draft) async {
     _validateHabit(draft);
+    if (previous.kind == HabitKind.binary && draft.kind != HabitKind.binary) {
+      final link = await db
+          .customSelect(
+            'SELECT 1 FROM goal_habit_links WHERE habit_id=? LIMIT 1',
+            variables: [Variable.withString(previous.id)],
+          )
+          .getSingleOrNull();
+      if (link != null) {
+        throw StateError('Remove goal links before changing this Yes/No habit');
+      }
+    }
     final now = DateTime.now().toUtc().toIso8601String();
     final count = await db.customUpdate(
       '''UPDATE habits SET title=?,notes=?,kind=?,target=?,unit=?,

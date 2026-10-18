@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
+import '../../domain/recurrence.dart';
 import '../../domain/appearance.dart';
 import '../calendar/calendar_view.dart';
 import '../habits/habits_view.dart';
+import '../goals/goals_view.dart';
 import '../scheduling/smart_reschedule.dart';
 import '../widget/native_widget_service.dart';
 import 'task_editor.dart';
@@ -252,6 +254,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   WorkspaceView.habits,
                   'Habits',
                   Icons.insights_outlined,
+                ),
+                _nav(
+                  controller,
+                  WorkspaceView.goals,
+                  'Goals',
+                  Icons.flag_outlined,
                 ),
                 _nav(
                   controller,
@@ -553,6 +561,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     if (controller.view == WorkspaceView.habits) {
       return const HabitsView();
     }
+    if (controller.view == WorkspaceView.goals) {
+      return const GoalsView();
+    }
     if (controller.view == WorkspaceView.calendar) {
       return CalendarView(
         onTaskTap: (task) {
@@ -594,6 +605,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       WorkspaceView.completed => 'Completed',
       WorkspaceView.calendar => 'Calendar',
       WorkspaceView.habits => 'Habits',
+      WorkspaceView.goals => 'Goals',
       WorkspaceView.category =>
         controller.categories
                 .where((c) => c.id == controller.scopeId)
@@ -715,6 +727,21 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                       '$overdueCount overdue deadline${overdueCount == 1 ? '' : 's'}',
                     ),
                     onPressed: () => controller.navigate(WorkspaceView.overdue),
+                  ),
+                if (controller.goals.any(
+                  (goal) =>
+                      !goal.archived &&
+                      !goal.completed &&
+                      goal.deadlineDate != null &&
+                      goal.deadlineDate!.compareTo(
+                            RecurrenceRule.shiftDate(today, 7),
+                          ) <=
+                          0,
+                ))
+                  ActionChip(
+                    avatar: const Icon(Icons.flag_outlined, size: 17),
+                    label: const Text('Goals due soon'),
+                    onPressed: () => controller.navigate(WorkspaceView.goals),
                   ),
               ],
             ),

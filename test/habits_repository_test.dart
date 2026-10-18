@@ -216,6 +216,12 @@ void main() {
       await initial.close();
       final raw = sqlite.sqlite3.open(file.path);
       try {
+        raw.execute('DROP TABLE goal_habit_links');
+        raw.execute('DROP TABLE goal_project_links');
+        raw.execute('DROP TABLE goal_task_links');
+        raw.execute('DROP TABLE goal_progress_entries');
+        raw.execute('DROP TABLE goal_milestones');
+        raw.execute('DROP TABLE goals');
         raw.execute('DROP TABLE habit_entry_history');
         raw.execute('DROP TABLE habit_rest_days');
         raw.execute('DROP TABLE habit_entries');

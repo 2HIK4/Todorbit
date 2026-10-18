@@ -67,6 +67,13 @@ apart from tasks. The domain computes rates and streaks from stored values and
 schedule dates; it does not materialize missed habit tasks. The native widget
 accepts v8 without reading or writing the habit tables.
 
+Schema v9 stores goals, milestone checkpoints, an append-only manual adjustment
+ledger, and foreign-keyed links to tasks, projects, and binary habits. Derived
+progress is recalculated from current completed tasks and stored habit logs.
+Direct and project task links use one contribution per task ID, so the same
+completion cannot count twice. Goal completion and archiving are independent
+of the numeric total. The native widget accepts v9 without goal access.
+
 The deterministic engine in `lib/domain/` has no database dependency. It keeps
 local date-only task plans separate from UTC work-session intervals and fixed
 events. Local availability is converted at the proposed date, so calendar-day

@@ -7,6 +7,7 @@ import '../domain/models.dart';
 import '../domain/recurrence.dart';
 import '../domain/series_edit.dart';
 import '../domain/habits.dart';
+import '../domain/goals.dart';
 import '../domain/appearance.dart';
 import '../domain/scheduling_models.dart';
 
@@ -24,6 +25,7 @@ enum WorkspaceView {
   completed,
   calendar,
   habits,
+  goals,
   category,
   project,
 }
@@ -45,6 +47,8 @@ class AppController extends ChangeNotifier {
   List<Habit> habits = [];
   List<HabitEntry> habitEntries = [];
   List<HabitRestDay> habitRestDays = [];
+  List<Goal> goals = [];
+  List<GoalMilestone> goalMilestones = [];
   AvailabilityPlan availability = const AvailabilityPlan(weekly: {});
   List<SchedulingOperation> schedulingHistory = [];
   WorkspaceView view = WorkspaceView.today;
@@ -80,6 +84,8 @@ class AppController extends ChangeNotifier {
       repository.habits(includeArchived: true),
       repository.habitEntries(),
       repository.habitRestDays(),
+      repository.goals(),
+      repository.goalMilestones(),
     ]);
     categories = result[0] as List<Category>;
     projects = result[1] as List<Project>;
@@ -93,6 +99,8 @@ class AppController extends ChangeNotifier {
     habits = result[9] as List<Habit>;
     habitEntries = result[10] as List<HabitEntry>;
     habitRestDays = result[11] as List<HabitRestDay>;
+    goals = result[12] as List<Goal>;
+    goalMilestones = result[13] as List<GoalMilestone>;
     if (selectedTaskId != null && selectedTask == null) selectedTaskId = null;
     loading = false;
     notifyListeners();
@@ -170,6 +178,7 @@ class AppController extends ChangeNotifier {
               task.status == TaskStatus.cancelled;
         case WorkspaceView.calendar:
         case WorkspaceView.habits:
+        case WorkspaceView.goals:
           return false;
         case WorkspaceView.category:
           return task.isOpen && task.categoryId == scopeId;
@@ -379,6 +388,79 @@ class AppController extends ChangeNotifier {
     await repository.removeHabitRestDay(rest);
     await refresh();
   }
+
+  Future<void> addGoal(GoalDraft draft) async {
+    await repository.addGoal(draft);
+    await refresh();
+  }
+
+  Future<void> updateGoal(Goal previous, GoalDraft draft) async {
+    await repository.updateGoal(previous, draft);
+    await refresh();
+  }
+
+  Future<void> setGoalCompleted(Goal previous, bool completed) async {
+    await repository.setGoalCompleted(previous, completed);
+    await refresh();
+  }
+
+  Future<void> setGoalArchived(Goal previous, bool archived) async {
+    await repository.setGoalArchived(previous, archived);
+    await refresh();
+  }
+
+  Future<void> addGoalProgress(Goal goal, double delta, String notes) async {
+    await repository.addGoalProgress(goal, delta, notes);
+    await refresh();
+  }
+
+  Future<void> addGoalMilestone(
+    Goal goal,
+    String title,
+    double threshold,
+    String? deadlineDate,
+  ) async {
+    await repository.addGoalMilestone(goal, title, threshold, deadlineDate);
+    await refresh();
+  }
+
+  Future<void> setGoalMilestoneCompleted(
+    GoalMilestone milestone,
+    bool completed,
+  ) async {
+    await repository.setGoalMilestoneCompleted(milestone, completed);
+    await refresh();
+  }
+
+  Future<void> updateGoalMilestone(
+    Goal goal,
+    GoalMilestone previous,
+    String title,
+    double threshold,
+    String? deadlineDate,
+  ) async {
+    await repository.updateGoalMilestone(
+      goal,
+      previous,
+      title,
+      threshold,
+      deadlineDate,
+    );
+    await refresh();
+  }
+
+  Future<GoalLinks> goalLinks(String goalId) => repository.goalLinks(goalId);
+
+  Future<void> setGoalLinks(Goal goal, GoalLinks links) async {
+    await repository.setGoalLinks(goal, links);
+    await refresh();
+  }
+
+  Future<List<GoalProgressEntry>> goalProgressHistory(String goalId) =>
+      repository.goalProgressHistory(goalId);
+
+  Future<List<GoalLinkedEvent>> goalLinkedEvents(Goal goal) =>
+      repository.goalLinkedEvents(goal);
 
   Future<void> updateSession(WorkSession previous, SessionDraft draft) async {
     await repository.updateSession(previous, draft);

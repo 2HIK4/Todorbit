@@ -50,72 +50,68 @@ class _HabitsViewState extends ConsumerState<HabitsView> {
   }
 
   Future<void> _numericLog(Habit habit, HabitEntry? previous) async {
-    final value = TextEditingController(text: previous?.value.toString() ?? '');
-    final notes = TextEditingController(text: previous?.notes ?? '');
-    try {
-      final result = await showDialog<(double, String)>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('${habit.title} · $day'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: value,
-                autofocus: true,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: InputDecoration(
-                  labelText:
-                      'Actual ${habit.unit.isEmpty ? 'value' : habit.unit}',
-                ),
+    var value = previous?.value.toString() ?? '';
+    var notes = previous?.notes ?? '';
+    final result = await showDialog<(double, String)>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${habit.title} · $day'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              initialValue: value,
+              onChanged: (text) => value = text,
+              key: ValueKey('habit-value:${habit.id}:$day'),
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
               ),
-              TextField(
-                controller: notes,
-                decoration: const InputDecoration(labelText: 'Note (optional)'),
+              decoration: InputDecoration(
+                labelText:
+                    'Actual ${habit.unit.isEmpty ? 'value' : habit.unit}',
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
             ),
-            FilledButton(
-              onPressed: () {
-                final parsed = double.tryParse(value.text.trim());
-                if (parsed == null || !parsed.isFinite || parsed < 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Enter a nonnegative number.'),
-                    ),
-                  );
-                  return;
-                }
-                Navigator.pop(context, (parsed, notes.text));
-              },
-              child: const Text('Save log'),
+            TextFormField(
+              initialValue: notes,
+              onChanged: (text) => notes = text,
+              decoration: const InputDecoration(labelText: 'Note (optional)'),
             ),
           ],
         ),
-      );
-      if (result == null) return;
-      await _run(
-        () => ref
-            .read(appControllerProvider)
-            .recordHabitDay(
-              habit,
-              day,
-              result.$1,
-              notes: result.$2,
-              previous: previous,
-            ),
-      );
-    } finally {
-      value.dispose();
-      notes.dispose();
-    }
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final parsed = double.tryParse(value.trim());
+              if (parsed == null || !parsed.isFinite || parsed < 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Enter a nonnegative number.')),
+                );
+                return;
+              }
+              Navigator.pop(context, (parsed, notes));
+            },
+            child: const Text('Save log'),
+          ),
+        ],
+      ),
+    );
+    if (result == null) return;
+    await _run(
+      () => ref
+          .read(appControllerProvider)
+          .recordHabitDay(
+            habit,
+            day,
+            result.$1,
+            notes: result.$2,
+            previous: previous,
+          ),
+    );
   }
 
   Future<void> _clear(HabitEntry entry) async {
