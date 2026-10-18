@@ -37,6 +37,34 @@ launchable as `life_manager_widget.exe --widget`.
 
 Data integrity: foreign keys on, WAL, indexed common filters, schema versioning, and transactions for related writes. Date-only values use local calendar dates (`YYYY-MM-DD`); instants use UTC ISO 8601.
 
+Schema v16 extends `fixed_events` in place. Its recurrence fields are local
+date rules; `event_occurrence_changes` stores only cancellations and manually
+changed occurrences keyed by the original nominal date. Calendar windows are
+projected on read without bulk materialization. Linked event generations carry
+active date boundaries for future-series edits. The native task widget accepts
+the additive schema but does not edit or notify on calendar events.
+
+Schema v17 uses `entity_icons` for UUID-identified task, series, category, and
+project icon keys; fixed events use their own icon column. Schema v18 uses
+`task_checklist` and `task_parent_links`. Checklist rows do not carry task
+metadata; child tasks remain ordinary task rows. Active views filter children
+when their parent is archived or in Trash. Permanent owner deletion cascades
+checklist and child-link cleanup while linked child tasks restrict parent purge.
+
+Optional UI privacy is owned by `PrivacyManager` and a per-user policy outside
+SQLite. The PIN verifier uses PBKDF2-HMAC-SHA256 and a persisted wrong-attempt
+delay. Flutter renders only the lock shell while locked. The native companion
+independently reads the policy and a five-second session bound to a live main
+app PID; it suppresses task reads, edits, and painting when the session is
+missing or invalid. The companion resolves the process `APPDATA` environment
+variable, matching Flutter's isolated-profile and production data paths.
+This boundary does not encrypt SQLite or protect against filesystem access.
+
+Before backup or opening Drift, startup reads the existing SQLite schema with
+a read-only connection. Older schemas require an explicit upgrade choice;
+approval then enters the existing verified Before upgrade backup and migration
+path. No migration is attempted when the user exits from that choice.
+
 Schema v4 adds task duration/remaining-work estimates and a scheduling lock,
 weekly availability and date exceptions, plus focused scheduling operation and
 change history. Migrations from v1, v2, and v3 preserve existing rows. Smart

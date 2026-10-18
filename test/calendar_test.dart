@@ -1,3 +1,5 @@
+import 'test_privacy.dart';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +11,59 @@ import 'package:life_manager/domain/models.dart';
 import 'package:life_manager/main.dart';
 
 void main() {
-  testWidgets('calendar creates a fixed event and planned session', (tester) async {
+  testWidgets('calendar content filter changes visible day entries', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    final database = AppDatabase(NativeDatabase.memory());
+    final repository = LifeRepository(database);
+    final today = DateTime.now();
+    await repository.addTask(
+      TaskDraft(title: 'Filtered task', scheduledDate: localDate(today)),
+    );
+    await repository.addEvent(
+      EventDraft(
+        title: 'Filtered event',
+        startsAt: DateTime(today.year, today.month, today.day, 9),
+        endsAt: DateTime(today.year, today.month, today.day, 10),
+      ),
+    );
+    final controller = AppController(repository);
+    await controller.refresh();
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appControllerProvider.overrideWith((ref) => controller),
+            privacyOverride,
+          ],
+          child: const LifeManagerApp(),
+        ),
+      );
+      await tester.tap(find.widgetWithText(ListTile, 'Calendar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Day'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Filtered event'), findsOneWidget);
+      expect(find.textContaining('Plan · Filtered task'), findsOneWidget);
+      await tester.tap(find.text('Events only'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Filtered event'), findsOneWidget);
+      expect(find.textContaining('Plan · Filtered task'), findsNothing);
+      await tester.tap(find.text('Tasks only'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Filtered event'), findsNothing);
+      expect(find.textContaining('Plan · Filtered task'), findsOneWidget);
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await database.close();
+      await tester.binding.setSurfaceSize(null);
+    }
+  });
+
+  testWidgets('calendar creates a fixed event and planned session', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
     final database = AppDatabase(NativeDatabase.memory());
     final repository = LifeRepository(database);
@@ -19,7 +73,10 @@ void main() {
     try {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [appControllerProvider.overrideWith((ref) => controller)],
+          overrides: [
+            appControllerProvider.overrideWith((ref) => controller),
+            privacyOverride,
+          ],
           child: const LifeManagerApp(),
         ),
       );
@@ -42,7 +99,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Save session'));
       await tester.pumpAndSettle();
-      expect((await repository.sessions()).single.outcome, SessionOutcome.upcoming);
+      expect(
+        (await repository.sessions()).single.outcome,
+        SessionOutcome.upcoming,
+      );
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
       await database.close();

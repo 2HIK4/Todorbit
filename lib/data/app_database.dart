@@ -7,7 +7,16 @@ import 'package:path/path.dart' as path;
 class AppDatabase extends GeneratedDatabase {
   AppDatabase(super.executor);
 
-  static const currentSchemaVersion = 15;
+  static const currentSchemaVersion = 18;
+
+  /// Resolve the database within a selected per-user data root. This also lets
+  /// disposable profile tests exercise the same path as a packaged build.
+  static File fileInDataRoot(String basePath) {
+    if (!path.isAbsolute(basePath)) {
+      throw ArgumentError.value(basePath, 'basePath', 'Must be absolute');
+    }
+    return File(path.join(basePath, 'Life Manager', 'life_manager.sqlite'));
+  }
 
   static Future<File> defaultFile() async {
     final String basePath;
@@ -23,9 +32,9 @@ class AppDatabase extends GeneratedDatabase {
               ? throw StateError('User data directory is unavailable')
               : path.join(home, '.local', 'share'));
     }
-    final directory = Directory(path.join(basePath, 'Life Manager'));
-    await directory.create(recursive: true);
-    return File(path.join(directory.path, 'life_manager.sqlite'));
+    final file = fileInDataRoot(basePath);
+    await file.parent.create(recursive: true);
+    return file;
   }
 
   static Future<AppDatabase> openDefault() async {
@@ -118,9 +127,12 @@ class AppDatabase extends GeneratedDatabase {
       await _createTrash();
       await _createNotifications();
       await _createTaskResources();
+      await _createEventRecurrence();
+      await _createEntityIcons();
+      await _createTaskComposition();
     },
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 14 || to != 15) {
+      if (from < 1 || from > 17 || to != 18) {
         throw StateError('No migration registered from schema $from to $to');
       }
       if (from == 1) {
@@ -161,6 +173,9 @@ class AppDatabase extends GeneratedDatabase {
       await _createTrash();
       await _createNotifications();
       await _createTaskResources();
+      await _createEventRecurrence();
+      await _createEntityIcons();
+      await _createTaskComposition();
     },
   );
 
@@ -655,6 +670,87 @@ class AppDatabase extends GeneratedDatabase {
     ''');
     await customStatement(
       'CREATE INDEX fixed_events_start ON fixed_events(starts_at)',
+    );
+  }
+
+  Future<void> _createEventRecurrence() async {
+    for (final column in <(String, String)>[
+      ('location', "TEXT NOT NULL DEFAULT ''"),
+      ('all_day', 'INTEGER NOT NULL DEFAULT 0 CHECK(all_day IN (0,1))'),
+      ('category_id', 'TEXT REFERENCES categories(id) ON DELETE RESTRICT'),
+      ('color_value', 'INTEGER'),
+      ('icon_name', 'TEXT'),
+      ('reminder_minutes', 'INTEGER CHECK(reminder_minutes >= 0)'),
+      ('recurrence_kind', 'TEXT'),
+      ('recurrence_interval', 'INTEGER NOT NULL DEFAULT 1'),
+      ('recurrence_weekdays', 'TEXT'),
+      ('recurrence_until', 'TEXT'),
+      ('series_family_id', 'TEXT'),
+      ('active_from_date', 'TEXT'),
+      ('active_through_date', 'TEXT'),
+    ]) {
+      await _addColumnIfMissing('fixed_events', column.$1, column.$2);
+    }
+    await customStatement(
+      '''CREATE TABLE IF NOT EXISTS event_occurrence_changes (
+      event_id TEXT NOT NULL REFERENCES fixed_events(id) ON DELETE CASCADE,
+      nominal_date TEXT NOT NULL,
+      cancelled INTEGER NOT NULL DEFAULT 0 CHECK(cancelled IN (0,1)),
+      payload_json TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY(event_id, nominal_date)
+    )''',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS fixed_events_family '
+      'ON fixed_events(series_family_id)',
+    );
+  }
+
+  Future<void> _createEntityIcons() async {
+    await customStatement('''CREATE TABLE IF NOT EXISTS entity_icons (
+      kind TEXT NOT NULL CHECK(kind IN ('task','category','project','series')),
+      entity_id TEXT NOT NULL,
+      icon_key TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY(kind,entity_id)
+    )''');
+    for (final target in <(String, String)>[
+      ('task', 'tasks'),
+      ('category', 'categories'),
+      ('project', 'projects'),
+      ('series', 'recurrence_series'),
+    ]) {
+      await customStatement('''CREATE TRIGGER IF NOT EXISTS
+        ${target.$2}_icon_cleanup AFTER DELETE ON ${target.$2}
+        BEGIN DELETE FROM entity_icons WHERE kind='${target.$1}'
+          AND entity_id=old.id; END''');
+    }
+  }
+
+  Future<void> _createTaskComposition() async {
+    await customStatement('''CREATE TABLE IF NOT EXISTS task_parent_links (
+      child_id TEXT PRIMARY KEY REFERENCES tasks(id) ON DELETE CASCADE,
+      parent_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE RESTRICT,
+      CHECK(child_id != parent_id)
+    )''');
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS task_parent_lookup '
+      'ON task_parent_links(parent_id)',
+    );
+    await customStatement('''CREATE TABLE IF NOT EXISTS task_checklist (
+      id TEXT PRIMARY KEY,
+      task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      title TEXT NOT NULL CHECK(length(trim(title)) > 0),
+      is_done INTEGER NOT NULL DEFAULT 0 CHECK(is_done IN (0,1)),
+      position INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )''');
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS task_checklist_order '
+      'ON task_checklist(task_id,position)',
     );
   }
 

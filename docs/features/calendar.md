@@ -1,5 +1,17 @@
 # Calendar
 
+Schema v16 adds recurring events to the existing fixed-event table. Daily,
+weekly, selected-weekday, monthly, and yearly rules use local nominal dates;
+selected weekdays and an inclusive last date support semester lectures. The
+repository projects only the requested window and persists cancellations and
+manual changes by original occurrence date. This and future edits split the
+series in one transaction; earlier dates retain their previous details.
+Individual cancellation can be restored, and ending a series leaves earlier
+dates visible. The Day, Week, and Month filter switches between Events, Tasks
+(including planned work sessions), and Both, with a per-user saved preference.
+The current build stores optional reminder metadata but does not deliver event
+notifications; its editor control is disabled and labeled accordingly.
+
 Day, week, and month views currently combine planned task dates, actual deadlines, and fixed events from SQLite. A fixed event has a title, notes, start, and end; create/edit/delete are available in the calendar. Event instants are stored in UTC and shown in local time. Task planned dates and deadlines remain date-only.
 
 Planned work sessions now have separate UTC start/end times and a manually controlled outcome. They appear on the calendar and in task details. A past upcoming session is labeled “Needs confirmation”; a started but unfinished period is labeled “Late start.” Neither label mutates the stored outcome or completes the task.

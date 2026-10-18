@@ -3,16 +3,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
+import '../shared/icon_picker.dart';
 import '../../domain/recurrence.dart';
 import '../calendar/session_editor.dart';
 import '../time_tracking/time_tracking_dialog.dart';
 import '../templates/templates_dialog.dart';
 import 'series_editor.dart';
 import 'task_resources_section.dart';
+import 'task_composition_section.dart';
 
 class TaskEditor extends ConsumerStatefulWidget {
-  const TaskEditor({super.key, this.task, this.onSaved, this.onCancel});
+  const TaskEditor({
+    super.key,
+    this.task,
+    this.parentTaskId,
+    this.onSaved,
+    this.onCancel,
+  });
   final LifeTask? task;
+  final String? parentTaskId;
   final VoidCallback? onSaved;
   final VoidCallback? onCancel;
 
@@ -38,6 +47,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   Set<int> recurrenceWeekdays = {};
   bool saving = false;
   bool schedulingLocked = false;
+  String? iconKey;
   LifeTask? currentTask;
   late Set<String> prerequisiteIds;
   bool savingPrerequisites = false;
@@ -48,6 +58,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     final task = widget.task;
     currentTask = task;
     final workspace = ref.read(appControllerProvider);
+    iconKey = task == null ? null : workspace.iconForTask(task);
     prerequisiteIds = workspace.dependencies
         .where((link) => link.taskId == task?.id)
         .map((link) => link.prerequisiteId)
@@ -67,6 +78,13 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     priority = task?.priority ?? 0;
     categoryId = task?.categoryId;
     projectId = task?.projectId;
+    if (task == null && widget.parentTaskId != null) {
+      final parent = workspace.tasks
+          .where((item) => item.id == widget.parentTaskId)
+          .firstOrNull;
+      categoryId = parent?.categoryId;
+      projectId = parent?.projectId;
+    }
     if (task == null && workspace.view == WorkspaceView.category) {
       categoryId = workspace.scopeId;
     } else if (task == null && workspace.view == WorkspaceView.project) {
@@ -170,7 +188,13 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         }
       }
       if (currentTask == null) {
-        if (recurrenceKind == null) {
+        if (widget.parentTaskId != null) {
+          final parent = controller.tasks
+              .where((task) => task.id == widget.parentTaskId)
+              .firstOrNull;
+          if (parent == null) throw StateError('Parent task is unavailable');
+          await controller.addSubtask(parent, draft);
+        } else if (recurrenceKind == null) {
           await controller.addTask(draft);
         } else {
           if (draft.scheduledDate == null) {
@@ -207,6 +231,18 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
           reviewedPrerequisiteIds: reviewedPrerequisiteIds,
         );
       }
+      final saved = controller.selectedTask;
+      if (saved != null) {
+        final kind = currentTask == null && recurrenceKind != null
+            ? 'series'
+            : 'task';
+        final id = kind == 'series'
+            ? saved.recurrenceSeriesId ?? saved.id
+            : saved.id;
+        if (iconKey != controller.iconKeys['$kind:$id']) {
+          await controller.setIcon(kind, id, iconKey);
+        }
+      }
       if (mounted) widget.onSaved?.call();
     } catch (error) {
       if (mounted) {
@@ -217,6 +253,23 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     } finally {
       if (mounted) setState(() => saving = false);
     }
+  }
+
+  Future<void> _newSubtask(LifeTask parent) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        child: SizedBox(
+          width: 520,
+          height: 620,
+          child: TaskEditor(
+            parentTaskId: parent.id,
+            onSaved: () => Navigator.pop(dialogContext),
+            onCancel: () => Navigator.pop(dialogContext),
+          ),
+        ),
+      ),
+    );
   }
 
   int? _parseMinutes(String input, String label, {bool allowZero = false}) {
@@ -406,10 +459,36 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
           Expanded(
             child: ListView(
               children: [
-                TextField(
-                  controller: title,
-                  autofocus: widget.task == null,
-                  decoration: const InputDecoration(labelText: 'Title *'),
+                if (widget.parentTaskId != null) ...[
+                  Text(
+                    'Subtask of ${ref.watch(appControllerProvider).tasks.where((item) => item.id == widget.parentTaskId).map((item) => item.title).firstOrNull ?? 'task'}',
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: title,
+                        autofocus: widget.task == null,
+                        decoration: const InputDecoration(labelText: 'Title *'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.outlined(
+                      tooltip: 'Choose task icon',
+                      icon: Icon(iconForKey(iconKey, Icons.task_alt_outlined)),
+                      onPressed: () async {
+                        final choice = await chooseBuiltInIcon(
+                          context,
+                          current: iconKey,
+                        );
+                        if (choice.$1 && mounted) {
+                          setState(() => iconKey = choice.$2);
+                        }
+                      },
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -424,6 +503,17 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                     key: ValueKey('resources:${task.id}'),
                     taskId: task.id,
                     repository: controller.repository,
+                  ),
+                  const SizedBox(height: 16),
+                  TaskCompositionSection(
+                    task: task,
+                    onAddSubtask:
+                        ref
+                            .watch(appControllerProvider)
+                            .taskParents
+                            .containsKey(task.id)
+                        ? null
+                        : () => _newSubtask(task),
                   ),
                   const SizedBox(height: 16),
                 ] else ...[
@@ -516,50 +606,51 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                 ),
                 if (widget.task == null) ...[
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<RecurrenceKind?>(
-                    initialValue: recurrenceKind,
-                    decoration: const InputDecoration(labelText: 'Repeat'),
-                    items: const [
-                      DropdownMenuItem<RecurrenceKind?>(
-                        value: null,
-                        child: Text('Does not repeat'),
-                      ),
-                      DropdownMenuItem(
-                        value: RecurrenceKind.daily,
-                        child: Text('Daily'),
-                      ),
-                      DropdownMenuItem(
-                        value: RecurrenceKind.weekly,
-                        child: Text('Weekly'),
-                      ),
-                      DropdownMenuItem(
-                        value: RecurrenceKind.weekdays,
-                        child: Text('Selected weekdays'),
-                      ),
-                      DropdownMenuItem(
-                        value: RecurrenceKind.monthly,
-                        child: Text('Monthly'),
-                      ),
-                      DropdownMenuItem(
-                        value: RecurrenceKind.yearly,
-                        child: Text('Yearly'),
-                      ),
-                      DropdownMenuItem(
-                        value: RecurrenceKind.afterCompletion,
-                        child: Text('After completion'),
-                      ),
-                    ],
-                    onChanged: (value) => setState(() {
-                      recurrenceKind = value;
-                      if (value != null) status = TaskStatus.notStarted;
-                      if (value == RecurrenceKind.weekdays &&
-                          recurrenceWeekdays.isEmpty) {
-                        recurrenceWeekdays = {
-                          scheduled?.weekday ?? DateTime.now().weekday,
-                        };
-                      }
-                    }),
-                  ),
+                  if (widget.parentTaskId == null)
+                    DropdownButtonFormField<RecurrenceKind?>(
+                      initialValue: recurrenceKind,
+                      decoration: const InputDecoration(labelText: 'Repeat'),
+                      items: const [
+                        DropdownMenuItem<RecurrenceKind?>(
+                          value: null,
+                          child: Text('Does not repeat'),
+                        ),
+                        DropdownMenuItem(
+                          value: RecurrenceKind.daily,
+                          child: Text('Daily'),
+                        ),
+                        DropdownMenuItem(
+                          value: RecurrenceKind.weekly,
+                          child: Text('Weekly'),
+                        ),
+                        DropdownMenuItem(
+                          value: RecurrenceKind.weekdays,
+                          child: Text('Selected weekdays'),
+                        ),
+                        DropdownMenuItem(
+                          value: RecurrenceKind.monthly,
+                          child: Text('Monthly'),
+                        ),
+                        DropdownMenuItem(
+                          value: RecurrenceKind.yearly,
+                          child: Text('Yearly'),
+                        ),
+                        DropdownMenuItem(
+                          value: RecurrenceKind.afterCompletion,
+                          child: Text('After completion'),
+                        ),
+                      ],
+                      onChanged: (value) => setState(() {
+                        recurrenceKind = value;
+                        if (value != null) status = TaskStatus.notStarted;
+                        if (value == RecurrenceKind.weekdays &&
+                            recurrenceWeekdays.isEmpty) {
+                          recurrenceWeekdays = {
+                            scheduled?.weekday ?? DateTime.now().weekday,
+                          };
+                        }
+                      }),
+                    ),
                   if (recurrenceKind != null) ...[
                     const SizedBox(height: 8),
                     TextField(

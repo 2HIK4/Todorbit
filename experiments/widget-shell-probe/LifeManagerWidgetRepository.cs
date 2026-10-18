@@ -20,7 +20,7 @@ internal sealed class DependencyReviewRequiredException(
 
 internal sealed class LifeManagerWidgetRepository : IDisposable {
   private const int MinimumSchemaVersion = 4;
-  private const int MaximumSchemaVersion = 15;
+  private const int MaximumSchemaVersion = 18;
   private const string ActiveTaskClause = """
      AND deleted_at IS NULL AND archived_at IS NULL
      AND (category_id IS NULL OR EXISTS
@@ -31,11 +31,19 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
        JOIN recurrence_series s ON s.id=o.series_id
        WHERE o.task_id=tasks.id AND (s.deleted_at IS NOT NULL OR s.archived_at IS NOT NULL))
     """;
+  private const string ActiveParentClause = """
+     AND NOT EXISTS (SELECT 1 FROM task_parent_links l
+       JOIN tasks parent ON parent.id=l.parent_id
+       WHERE l.child_id=tasks.id AND
+         (parent.deleted_at IS NOT NULL OR parent.archived_at IS NOT NULL))
+    """;
   private readonly SqliteConnection connection;
+  private readonly PrivacyState? privacy;
   private int schemaVersion;
   internal string DatabasePath { get; }
 
-  private LifeManagerWidgetRepository(string databasePath) {
+  private LifeManagerWidgetRepository(string databasePath, PrivacyState? privacy = null) {
+    this.privacy = privacy;
     DatabasePath = Path.GetFullPath(databasePath);
     var builder = new SqliteConnectionStringBuilder {
       DataSource = databasePath,
@@ -59,16 +67,14 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
   }
 
   internal static LifeManagerWidgetRepository OpenDefault() {
-    var appData = Environment.GetFolderPath(
-      Environment.SpecialFolder.ApplicationData);
-    var databasePath = Path.Combine(appData, "Life Manager",
+    var databasePath = Path.Combine(AppDataPaths.LifeManagerDirectory,
       "life_manager.sqlite");
     if (!File.Exists(databasePath)) {
       throw new FileNotFoundException(
         "The Life Manager database does not exist. Open the main app first.",
         databasePath);
     }
-    return new LifeManagerWidgetRepository(databasePath);
+    return new LifeManagerWidgetRepository(databasePath, PrivacyState.OpenDefault());
   }
 
   internal static LifeManagerWidgetRepository OpenForTest(string databasePath) =>
@@ -118,7 +124,8 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
     using var command = connection.CreateCommand();
     command.Transaction = transaction;
     command.CommandText = "SELECT COUNT(*) FROM tasks WHERE status NOT IN ('completed','cancelled') AND " +
-      condition + ActiveTaskClause;
+      condition + ActiveTaskClause +
+      (schemaVersion >= 18 ? ActiveParentClause : "");
     command.Parameters.AddWithValue("$day", day);
     return Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
   }
@@ -136,13 +143,15 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
 
   internal IReadOnlyList<WidgetTask> LoadTasks(
       DateTime localToday, WidgetTaskView view = WidgetTaskView.Today) {
+    privacy?.RequireUnlocked();
     using var command = connection.CreateCommand();
     command.CommandText = """
       SELECT id, title, notes, status, priority, category_id, project_id,
         scheduled_date, deadline_date, updated_at
       FROM tasks
       WHERE status NOT IN ('completed', 'cancelled')
-      """ + (schemaVersion >= 13 ? ActiveTaskClause : "") + """
+      """ + (schemaVersion >= 13 ? ActiveTaskClause : "") +
+      (schemaVersion >= 18 ? ActiveParentClause : "") + """
         AND (($view = 'today' AND scheduled_date = $today) OR
           ($view = 'inbox' AND category_id IS NULL AND project_id IS NULL) OR
           ($view = 'all') OR
@@ -163,12 +172,14 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
   }
 
   internal WidgetTask? LoadTask(string id) {
+    privacy?.RequireUnlocked();
     using var command = connection.CreateCommand();
     command.CommandText = """
       SELECT id, title, notes, status, priority, category_id, project_id,
         scheduled_date, deadline_date, updated_at
       FROM tasks WHERE id=$id
-      """ + (schemaVersion >= 13 ? ActiveTaskClause : "");
+      """ + (schemaVersion >= 13 ? ActiveTaskClause : "") +
+      (schemaVersion >= 18 ? ActiveParentClause : "");
     command.Parameters.AddWithValue("$id", id);
     using var reader = command.ExecuteReader();
     return reader.Read() ? ReadTask(reader) : null;
@@ -187,6 +198,7 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
 
   internal string AddTask(string title, DateTime localToday,
       WidgetTaskView view = WidgetTaskView.Today) {
+    privacy?.RequireUnlocked();
     var cleaned = title.Trim();
     if (cleaned.Length == 0) {
       throw new ArgumentException("Task title is required.", nameof(title));
@@ -219,6 +231,7 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
   }
 
   internal void UpdateTask(string id, WidgetTaskUpdate update) {
+    privacy?.RequireUnlocked();
     var title = update.Title.Trim();
     if (title.Length == 0) throw new ArgumentException("Task title is required.");
     if (update.Priority is < 0 or > 3) {
@@ -239,7 +252,8 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
       previousCommand.Transaction = transaction;
       previousCommand.CommandText =
         "SELECT scheduled_date,status,completed_at FROM tasks WHERE id=$id AND updated_at=$expected" +
-        (schemaVersion >= 13 ? ActiveTaskClause : "");
+        (schemaVersion >= 13 ? ActiveTaskClause : "") +
+        (schemaVersion >= 18 ? ActiveParentClause : "");
       previousCommand.Parameters.AddWithValue("$id", id);
       previousCommand.Parameters.AddWithValue("$expected", update.ExpectedUpdatedAt);
       using var reader = previousCommand.ExecuteReader();
@@ -289,7 +303,8 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
         category_id=$category,project_id=$project,scheduled_date=$scheduled,
         deadline_date=$deadline,updated_at=$now,completed_at=$completed
       WHERE id=$id AND updated_at=$expected
-      """ + (schemaVersion >= 13 ? ActiveTaskClause : "");
+      """ + (schemaVersion >= 13 ? ActiveTaskClause : "") +
+      (schemaVersion >= 18 ? ActiveParentClause : "");
     command.Parameters.AddWithValue("$title", title);
     command.Parameters.AddWithValue("$notes", update.Notes.Trim());
     command.Parameters.AddWithValue("$status", update.Status);
@@ -347,6 +362,7 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
   }
 
   internal void CompleteTask(string id) {
+    privacy?.RequireUnlocked();
     var now = UtcNowString();
     using var transaction = connection.BeginTransaction();
     using var command = connection.CreateCommand();
@@ -355,7 +371,8 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
       UPDATE tasks
       SET status='completed', completed_at=$now, updated_at=$now
       WHERE id=$id AND status NOT IN ('completed', 'cancelled')
-      """ + (schemaVersion >= 13 ? ActiveTaskClause : "");
+      """ + (schemaVersion >= 13 ? ActiveTaskClause : "") +
+      (schemaVersion >= 18 ? ActiveParentClause : "");
     command.Parameters.AddWithValue("$now", now);
     command.Parameters.AddWithValue("$id", id);
     if (command.ExecuteNonQuery() != 1) {
@@ -491,6 +508,7 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
   }
 
   private IReadOnlyList<WidgetChoice> LoadChoices(string sql) {
+    privacy?.RequireUnlocked();
     using var command = connection.CreateCommand();
     command.CommandText = sql;
     using var reader = command.ExecuteReader();

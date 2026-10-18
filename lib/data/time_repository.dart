@@ -1,5 +1,17 @@
 part of 'life_repository.dart';
 
+extension FocusTaskRepository on LifeRepository {
+  Future<void> startFocusTask(LifeTask task) async {
+    await db.transaction(() async {
+      if (!task.isOpen) throw StateError('Closed tasks cannot be focused');
+      await startTimer(task.id);
+      if (task.status != TaskStatus.inProgress) {
+        await setTaskWorking(task, true);
+      }
+    });
+  }
+}
+
 extension TimeRepository on LifeRepository {
   TimerRun _runFromRow(QueryRow row) => TimerRun(
     id: row.read<String>('id'),

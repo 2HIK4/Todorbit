@@ -1,5 +1,68 @@
 # Progress
 
+## Feedback Round 1 checkpoint (2026-10-19)
+
+- Profile audit found no startup sample seeding. Runtime SQLite resolves to the
+  current user's `%APPDATA%\Life Manager\life_manager.sqlite`, while the
+  installer targets `%LOCALAPPDATA%\Programs\Life Manager`. The previously
+  recorded personal schema-v4 database can therefore reappear after an install
+  for that Windows user. No personal database was opened, reset, or migrated.
+  Settings now shows the active profile location; installer rules exclude SQLite
+  files and the build script refuses a bundle containing them. Disposable tests
+  verify a clean root starts empty while an existing root retains its task.
+- Schema v16 extends existing fixed events with location, all-day, category,
+  color/icon references, reminder metadata, and date-only recurrence. A bounded
+  calendar projection uses the existing recurrence arithmetic; only changed or
+  cancelled dates use extra rows. Users can set selected weekdays and an end
+  date, edit one date, split from this and future, edit the remaining series,
+  restore a cancelled date, end a series at a selected date, duplicate, or move
+  all series generations to Trash. Historical dates and manual future overrides
+  survive a series split. Day/week/month share an immediate persisted Events /
+  Tasks / Both filter; planned sessions remain distinct from events.
+- Event reminder **delivery is unavailable**. The control is visibly disabled;
+  schema metadata is reserved for a later native reminder implementation.
+  Event icon selection, full conflict indicators, user-managed Trash restoration
+  of a whole event family, and manual Windows GUI acceptance remain open.
+- New event, recurrence, cancellation, split, migration, profile-isolation, and
+  calendar-filter tests pass. `flutter analyze` is clean; all 153 tests passed
+  before the last event-action additions, and targeted calendar/event tests pass
+  after them. Windows Release build and packaged widget self-test pass with
+  schema v16. Re-run the full suite after subsequent source edits.
+- Task rows now offer Start Task (status only), End Work (on hold), and Start
+  Focus Session (one transactional timer plus In Progress status). Focus opens a
+  live HH:MM:SS stopwatch dialog with Pause/Resume/Stop, recorded total, and
+  second-level work-log timestamps. The sidebar mini timer shows the active
+  task, live elapsed time, and Pause/Resume/Stop actions. Stopping a timer never
+  completes its task. Focus and sub-minute repository tests and a row-action
+  widget test pass; manual Windows timer UI acceptance is still needed.
+- The Flutter light/dark surface and foreground colors now pass through a
+  runner MethodChannel to supported DWM caption attributes. The native
+  minimize/maximize/close frame and Snap behavior remain Windows-owned. A
+  widget test observes both color changes, and the Windows Release build passes.
+  Actual maximized/restored, DPI, and keyboard behavior still need manual
+  Windows acceptance.
+- Schema v17 stores built-in icon keys for tasks, recurring task series,
+  categories, and projects; event icons use the v16 event field. A searchable
+  compact picker supports selection and reset. Task rows, category/project
+  sidebar entries, editor, and calendar events render those keys with defaults.
+  SQLite backups and portable exports carry the keys; database triggers remove
+  keys only when the owning record is permanently deleted. Icon persistence
+  tests pass. Native task widget keeps its own established vector icons.
+- Schema v18 adds independent task checklist items and one-level parent links
+  for true subtasks. Checklist add/edit/remove/reorder/toggle and progress are
+  in task details; child tasks keep their own schedule, status, notes, and
+  priority. Parent rows expand/collapse children and show progress. Parent
+  Trash/restore hides and reveals children without deleting their rows; native
+  widget filters children of hidden parents. Repository persistence/restore and
+  task-detail widget tests pass.
+- Latest checkpoint: `flutter analyze` clean, all 163 Flutter tests pass,
+  Windows Release build passes, and packaged native widget self-test passes
+  against schema v18. GUI behavior still requires isolated-profile manual
+  Windows acceptance. No production database was opened or migrated.
+- Next: finish Calendar Events integration and manual acceptance, then task
+  icons/checklists/subtasks, progressive recurring task plans, focus timer UX,
+  title-bar theme integration, and final regression/installer checks.
+
 ## Completed
 
 - Windows-first offline Flutter foundation with Riverpod, Drift/SQLite,
@@ -347,8 +410,8 @@
 
 ## Not yet implemented
 
-- Privacy controls and
-  installer packaging. Habit and session-specific reminders remain future work.
+- Windows Hello and complete settings/preferences coverage. Habit and
+  session-specific reminders remain future work.
 
 ## Environment and data notes
 
@@ -386,9 +449,61 @@
   until those links are safely resolved. Deleted category/project names remain
   reserved while in Trash.
 
-## Next action
+## Windows v1.0 finalization checklist (2026-10-18)
 
-Implement privacy settings and optional application lock next. Manually verify
+- [x] Shared Flutter/native app-lock implementation, PIN lifecycle, locked
+  notification policy, and process-bound widget session. Automated checks pass;
+  real two-process Windows acceptance remains pending.
+- [ ] Persisted Windows settings audit and completion.
+- [x] Per-user installer compiled with Inno Setup 7.1.0. Installed
+  upgrade/uninstall checks remain in the acceptance matrix.
+- [ ] Disposable migration audit: v4-to-v15 fixture preserves task, project,
+  category, event, session, scheduling history, IDs, foreign keys, and resource
+  index. Broader historical data fixtures and corruption cases remain.
+- [ ] Backup, restore, import/export, and attachment portability regression coverage.
+- [ ] Integrated UI, native companion, accessibility, and performance review.
+- [x] Full Flutter analysis/tests and Windows Release/native self-tests at this
+  checkpoint, plus the native package vulnerability audit. Repeat after
+  subsequent source edits.
+- [ ] Isolated Windows manual acceptance. Status matrix in `ACCEPTANCE.md`.
+- [x] Draft release instructions, notes, limitations, and acceptance record in
+  `RELEASE.md` and `ACCEPTANCE.md`; finalize after installer and acceptance.
+
+## Finalization checkpoint
+
+An explicit read-only schema gate now stops automatic v4-to-v15 migration until
+the user approves a verified Before upgrade backup and migration in the app.
+Automated checks did not open the personal schema-v4 database. The rebuilt
+Release app was launched twice with verified isolated APPDATA and LOCALAPPDATA
+directories; the default-disabled Privacy dialog rendered at 1266×713 and
+was closed without changing settings. The latest full suite before the final
+migration/icon edits passed 142 tests; the targeted migration-gate and v4-to-v15
+tests passed separately. Final `flutter analyze` is clean, all 146 Flutter
+tests pass, the Windows Release build and packaged widget self-test pass,
+and the native dependency audit reports no vulnerable packages from the
+configured sources. The final Release app opened on an isolated profile;
+a disposable task was created and shown after a full restart. The native
+companion now honors the explicit APPDATA override (the .NET special folder
+had resolved the real profile), with a self-test guarding this isolation.
+Inno Setup 7.1.0 compiled the existing project successfully. The final
+installer is `release/LifeManager-1.0.0-win-x64-setup.exe` (45,791,473 bytes;
+SHA-256 `51672ABA224E95762C9FBD82C7ED1671E0DE2C195F421348FF55961CF13C5FBC`).
+Both setup version fields report 1.0.0. The 15-file Release bundle contains
+both executables and no database or log file. The installer is unsigned.
+The installer configuration audit found a stable AppId, per-user privileges,
+an installation path outside `%APPDATA%`, no install/uninstall deletion section,
+and no widget auto-start registration. These static checks do not replace an
+installed upgrade/uninstall test.
+After compilation, all 146 Flutter tests passed, `flutter analyze` was clean,
+the packaged widget self-test passed with an isolated profile, and the native
+dependency audit found no vulnerable packages in the configured sources.
+An initial parallel `flutter analyze` attempt hit a Flutter SDK cache race;
+its sequential retry passed. No installer installation was attempted on the
+normal Windows profile, so installed upgrade/uninstall behavior remains
+unverified. No production database was opened or migrated.
+
+Next: verify the installer in a disposable Windows installation or with user
+approval for an installed acceptance test, then manually verify
 task resource selection/opening through native Windows dialogs on an isolated
 profile. Manually verify
 import/export through the native Windows file picker and the reviewed

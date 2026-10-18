@@ -19,6 +19,56 @@ void main() {
   tearDown(() async => database.close());
 
   test(
+    'Start Task changes status without recording time; Focus starts one timer',
+    () async {
+      final first = await repository.addTask(const TaskDraft(title: 'Study'));
+      final second = await repository.addTask(const TaskDraft(title: 'Read'));
+      await repository.setTaskWorking(first, true);
+      expect(
+        (await repository.tasks()).firstWhere((t) => t.id == first.id).status,
+        TaskStatus.inProgress,
+      );
+      expect(await repository.timeEntries(), isEmpty);
+      final refreshed = (await repository.tasks()).firstWhere(
+        (t) => t.id == first.id,
+      );
+      await repository.startFocusTask(refreshed);
+      expect((await repository.activeTimerRun())?.taskId, first.id);
+      await expectLater(repository.startFocusTask(second), throwsStateError);
+      expect(
+        (await repository.tasks()).firstWhere((t) => t.id == second.id).status,
+        TaskStatus.notStarted,
+      );
+      await repository.stopTimer((await repository.activeTimerRun())!);
+      expect(
+        (await repository.tasks()).firstWhere((t) => t.id == first.id).status,
+        TaskStatus.inProgress,
+      );
+      await repository.setTaskWorking(
+        (await repository.tasks()).firstWhere((t) => t.id == first.id),
+        false,
+      );
+      expect(
+        (await repository.tasks()).firstWhere((t) => t.id == first.id).status,
+        TaskStatus.onHold,
+      );
+    },
+  );
+
+  test('sub-minute work and clock formatting retain seconds', () async {
+    final task = await repository.addTask(const TaskDraft(title: 'Short work'));
+    await repository.addManualTime(
+      task.id,
+      DateTime.utc(2020, 10, 19, 9),
+      DateTime.utc(2020, 10, 19, 9, 0, 42),
+      '',
+    );
+    final entry = (await repository.timeEntries()).single;
+    expect(entry.durationAt(DateTime.now()).inSeconds, 42);
+    expect(formatWorkClock(entry.durationAt(DateTime.now())), '00:00:42');
+  });
+
+  test(
     'timer pause, resume, and stop preserve distinct actual intervals',
     () async {
       final task = await repository.addTask(const TaskDraft(title: 'Write'));

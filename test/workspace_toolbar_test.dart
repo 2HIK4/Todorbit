@@ -1,3 +1,5 @@
+import 'test_privacy.dart';
+
 import 'dart:ui' show PointerDeviceKind;
 
 import 'package:drift/native.dart';
@@ -28,6 +30,7 @@ void main() {
             ProviderScope(
               overrides: [
                 appControllerProvider.overrideWith((ref) => controller),
+                privacyOverride,
               ],
               child: const LifeManagerApp(),
             ),

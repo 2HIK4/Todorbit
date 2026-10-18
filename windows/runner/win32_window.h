@@ -5,6 +5,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 
 // A class abstraction for a high DPI-aware Win32 Window. Intended to be
@@ -49,6 +50,9 @@ class Win32Window {
   // window properties. Returns nullptr if the window has been destroyed.
   HWND GetHandle();
 
+  // Apply Flutter's current theme to native Windows window decorations.
+  void SetCaptionTheme(bool dark, COLORREF background, COLORREF foreground);
+
   // If true, closing this window will quit the application.
   void SetQuitOnClose(bool quit_on_close);
 
@@ -72,6 +76,12 @@ class Win32Window {
   virtual void OnDestroy();
 
  private:
+  struct CaptionTheme {
+    bool dark;
+    COLORREF background;
+    COLORREF foreground;
+  };
+  std::optional<CaptionTheme> caption_theme_;
   friend class WindowClassRegistrar;
 
   // OS callback called by message pump. Handles the WM_NCCREATE message which
@@ -87,8 +97,9 @@ class Win32Window {
   // Retrieves a class instance pointer for |window|
   static Win32Window* GetThisFromHandle(HWND const window) noexcept;
 
-  // Update the window frame's theme to match the system theme.
-  static void UpdateTheme(HWND const window);
+  // Update the native frame from the app theme, or the system before Flutter
+  // supplies one.
+  void UpdateTheme(HWND const window);
 
   bool quit_on_close_ = false;
 

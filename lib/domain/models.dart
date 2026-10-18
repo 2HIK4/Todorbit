@@ -7,6 +7,8 @@ enum TaskStatus {
   cancelled,
 }
 
+enum CalendarContent { both, eventsOnly, tasksOnly }
+
 class Category {
   const Category({
     required this.id,
@@ -61,6 +63,18 @@ class FixedEvent {
     required this.endsAt,
     required this.createdAt,
     required this.updatedAt,
+    this.location = '',
+    this.allDay = false,
+    this.categoryId,
+    this.colorValue,
+    this.iconName,
+    this.reminderMinutes,
+    this.repeat,
+    this.nominalDate,
+    this.cancelled = false,
+    this.activeFromDate,
+    this.activeThroughDate,
+    this.seriesFamilyId,
   });
   final String id;
   final String title;
@@ -69,6 +83,35 @@ class FixedEvent {
   final DateTime endsAt;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String location;
+  final bool allDay;
+  final String? categoryId;
+  final int? colorValue;
+  final String? iconName;
+  final int? reminderMinutes;
+  final EventRepeat? repeat;
+
+  /// Original local day of a projected recurring occurrence.
+  final String? nominalDate;
+  final bool cancelled;
+  final String? activeFromDate;
+  final String? activeThroughDate;
+  final String? seriesFamilyId;
+}
+
+enum EventRepeatKind { daily, weekly, weekdays, monthly, yearly }
+
+class EventRepeat {
+  const EventRepeat({
+    required this.kind,
+    this.interval = 1,
+    this.weekdays = const {},
+    this.untilDate,
+  });
+  final EventRepeatKind kind;
+  final int interval;
+  final Set<int> weekdays;
+  final String? untilDate;
 }
 
 class EventDraft {
@@ -77,11 +120,25 @@ class EventDraft {
     required this.startsAt,
     required this.endsAt,
     this.notes = '',
+    this.location = '',
+    this.allDay = false,
+    this.categoryId,
+    this.colorValue,
+    this.iconName,
+    this.reminderMinutes,
+    this.repeat,
   });
   final String title;
   final String notes;
   final DateTime startsAt;
   final DateTime endsAt;
+  final String location;
+  final bool allDay;
+  final String? categoryId;
+  final int? colorValue;
+  final String? iconName;
+  final int? reminderMinutes;
+  final EventRepeat? repeat;
 }
 
 enum SessionOutcome {

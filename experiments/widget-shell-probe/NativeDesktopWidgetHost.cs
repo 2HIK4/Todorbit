@@ -9,6 +9,7 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
   private readonly WidgetSettings settings;
   private readonly AppearanceSettingsStore appearanceStore = new();
   private readonly AppearanceSettings appearance;
+  private readonly PrivacyState privacy = PrivacyState.OpenDefault();
   private readonly WidgetCommandServer commandServer;
   private readonly SynchronizationContext uiContext;
   private readonly NotifyIcon trayIcon;
@@ -18,6 +19,7 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
   private readonly System.Windows.Forms.Timer appearanceDebounce;
   private readonly System.Windows.Forms.Timer explorerRecovery;
   private readonly System.Windows.Forms.Timer notificationTimer;
+  private readonly System.Windows.Forms.Timer privacyTimer;
   private NativeDesktopWidgetHost? host;
   private readonly ExplorerRecoveryPolicy recoveryPolicy = new();
 
@@ -75,12 +77,15 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
     explorerRecovery.Tick += (_, _) => RecoverAfterExplorerRestart();
     notificationTimer = new System.Windows.Forms.Timer { Interval = 30000 };
     notificationTimer.Tick += (_, _) => CheckNotifications();
+    privacyTimer = new System.Windows.Forms.Timer { Interval = 1000 };
+    privacyTimer.Tick += (_, _) => host?.UpdatePrivacy();
     commandServer = new WidgetCommandServer(ExecuteCommand);
     trayIcon = BuildTrayIcon();
     trayIcon.Visible = true;
     if (initialCommand != "background") CreateHost();
     ExecuteCommand(initialCommand);
     notificationTimer.Start();
+    privacyTimer.Start();
     CheckNotifications();
   }
 
@@ -132,9 +137,14 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
 
   private void CheckNotifications() {
     try {
+      if (privacy.IsLocked() && privacy.SuppressLockedNotifications()) return;
       var messages = repository.ClaimDailyNotifications(DateTime.Now);
       if (messages.Count == 0) return;
-      trayIcon.ShowBalloonTip(10000, "Life Manager", string.Join("\n", messages),
+      if (privacy.IsLocked() && privacy.SuppressLockedNotifications()) return;
+      var body = privacy.IsLocked()
+        ? "Reminders are available. Open Life Manager to unlock."
+        : string.Join("\n", messages);
+      trayIcon.ShowBalloonTip(10000, "Life Manager", body,
         ToolTipIcon.Info);
     } catch (Exception error) {
       Debug.WriteLine($"Life Manager notification check failed: {error}");
@@ -287,6 +297,7 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
       appearanceDebounce.Dispose();
       explorerRecovery.Dispose();
       notificationTimer.Dispose();
+      privacyTimer.Dispose();
       host?.Dispose();
       host = null;
     }
@@ -325,6 +336,7 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
   private readonly WidgetSettings settings;
   private readonly WidgetSettingsStore settingsStore;
   private readonly WidgetRenderDiagnostics diagnostics;
+  private readonly PrivacyState privacy = PrivacyState.OpenDefault();
   private readonly Action unexpectedDestroy;
   private readonly Action exit;
   private IReadOnlyList<WidgetTask> tasks = [];
@@ -338,6 +350,8 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
   private bool resizing;
   private WidgetResizeEdge resizeEdge;
   private InlineQuickAddForm? quickAdd;
+  private TaskEditorDialog? taskEditor;
+  private bool wasLocked;
   private Native.Point dragStart;
   private Native.Rect dragBounds;
 
@@ -466,6 +480,17 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
 
     graphics.DrawString("Life Manager", titleFont, foreground,
       new RectangleF(16, 12, Math.Max(80, RefreshRect.Left - 24), 32));
+    if (privacy.IsLocked()) {
+      using var format = CenterFormat();
+      graphics.DrawString("Life Manager is locked.\nOpen the main app to unlock.",
+        bodyFont, muted, new RectangleF(18, 65,
+          logicalWidth - 36, logicalHeight - 155), format);
+      using var button = new SolidBrush(palette.Panel);
+      FillRoundedRectangle(graphics, button, AddRect, 7);
+      graphics.DrawString("Open Life Manager", bodyFont, foreground,
+        AddRect, format);
+      return;
+    }
     DrawIconButton(graphics, RefreshRect, HeaderIcon.Refresh,
       hoverTarget == HitTarget.Refresh);
     DrawIconButton(graphics, OpenRect, HeaderIcon.Open,
@@ -704,6 +729,12 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
 
   private void Click(PointF point) {
     var (target, taskIndex) = HitTest(point);
+    if (privacy.IsLocked()) {
+      if (target == HitTarget.Open || target == HitTarget.Add) OpenMainApp();
+      else if (target == HitTarget.Close) { Dispose(); exit(); }
+      else UpdatePrivacy();
+      return;
+    }
     switch (target) {
       case HitTarget.Refresh:
         RefreshTasks();
@@ -788,6 +819,21 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
 
   internal void RefreshFromDatabase() => RefreshTasks();
 
+  internal void UpdatePrivacy() {
+    var locked = privacy.IsLocked();
+    if (locked == wasLocked) return;
+    wasLocked = locked;
+    if (locked) {
+      tasks = [];
+      quickAdd?.Close();
+      taskEditor?.Close();
+      statusText = "Locked";
+      Present("privacy-locked");
+    } else {
+      RefreshTasks();
+    }
+  }
+
   internal void SetPalette(WidgetPalette value) {
     palette = value;
     Present("theme-changed");
@@ -816,6 +862,13 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
   internal void OpenQuickAddDialog() => OpenQuickAdd();
 
   private void RefreshTasks() {
+    if (privacy.IsLocked()) {
+      tasks = [];
+      wasLocked = true;
+      statusText = "Locked";
+      Present("privacy-locked");
+      return;
+    }
     RunAction(() => {
       tasks = repository.LoadTasks(DateTime.Now, settings.View);
       scrollOffset = Math.Min(scrollOffset,
@@ -826,6 +879,7 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
   }
 
   private void OpenQuickAdd() {
+    if (privacy.IsLocked()) { OpenMainApp(); return; }
     if (quickAdd is { IsDisposed: false }) {
       quickAdd.Activate();
       return;
@@ -849,6 +903,7 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
   }
 
   private void OpenTaskEditor(WidgetTask summary) {
+    if (privacy.IsLocked()) { OpenMainApp(); return; }
     var current = repository.LoadTask(summary.Id);
     if (current == null) {
       statusText = "Task no longer exists";
@@ -856,6 +911,7 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
       return;
     }
     using var dialog = new TaskEditorDialog(repository, current, palette);
+    taskEditor = dialog;
     Native.GetWindowRect(Handle, out var bounds);
     var working = Screen.FromRectangle(new Rectangle(
       bounds.Left, bounds.Top, bounds.Right - bounds.Left,
@@ -864,6 +920,7 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
       Math.Clamp(bounds.Left + 20, working.Left, working.Right - dialog.Width),
       Math.Clamp(bounds.Top + 40, working.Top, working.Bottom - dialog.Height));
     var result = dialog.ShowDialog();
+    taskEditor = null;
     if (dialog.OpenFullDetails) {
       OpenMainApp(current.Id);
       return;

@@ -2,6 +2,14 @@ enum TimerState { running, paused, stopped }
 
 enum TimeEntrySource { manual, timer }
 
+String formatWorkClock(Duration duration) {
+  final seconds = duration.inSeconds < 0 ? 0 : duration.inSeconds;
+  final hours = seconds ~/ 3600;
+  final minutes = (seconds % 3600) ~/ 60;
+  final remainder = seconds % 60;
+  return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${remainder.toString().padLeft(2, '0')}';
+}
+
 class TimerRun {
   const TimerRun({
     required this.id,

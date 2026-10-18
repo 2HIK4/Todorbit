@@ -2,21 +2,73 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/app_controller.dart';
+import 'app/privacy_manager.dart';
 import 'data/app_database.dart';
 import 'data/appearance_preference_store.dart';
+import 'data/calendar_preference_store.dart';
 import 'data/backup_service.dart';
 import 'data/life_repository.dart';
+import 'data/migration_gate.dart';
+import 'data/privacy_store.dart';
 import 'domain/appearance.dart';
 import 'features/workspace/workspace.dart';
+import 'features/settings/privacy_dialog.dart';
 import 'features/widget/desktop_widget.dart';
 import 'features/widget/native_widget_service.dart';
 
-Future<void> main(List<String> args) async {
+Future<void> main(List<String> args) => _startApplication(args);
+
+Future<void> _startApplication(
+  List<String> args, {
+  bool migrationApproved = false,
+}) async {
   WidgetsFlutterBinding.ensureInitialized();
+  final privacyStore = await PrivacyStore.openDefault();
+  late final PrivacySettings privacySettings;
+  try {
+    privacySettings = await privacyStore.load();
+    if (privacySettings.enabled && privacySettings.lockOnLaunch) {
+      await privacyStore.setSession(unlocked: false);
+    }
+  } catch (_) {
+    runApp(
+      const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Text(
+              'Privacy settings could not be read. Restore the settings from a trusted backup before opening Life Manager.',
+            ),
+          ),
+        ),
+      ),
+    );
+    return;
+  }
   final databaseFile = await AppDatabase.defaultFile();
+  try {
+    final olderSchema = await MigrationGate.olderSchema(databaseFile);
+    if (olderSchema != null && !migrationApproved) {
+      runApp(_MigrationApprovalApp(arguments: args, olderSchema: olderSchema));
+      return;
+    }
+  } catch (failure) {
+    runApp(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Text(
+              'Life Manager could not inspect the database safely: $failure',
+            ),
+          ),
+        ),
+      ),
+    );
+    return;
+  }
   final backupService = BackupService(databaseFile);
   try {
     if (await backupService.pendingRestoreName() != null) {
@@ -44,10 +96,14 @@ Future<void> main(List<String> args) async {
     return;
   }
   final database = await AppDatabase.openDefault();
+  final privacy = PrivacyManager(privacyStore, privacySettings);
+  privacy.startInactivityCheck();
   final appearanceStore = await AppearancePreferenceStore.openDefault();
+  final calendarPreferenceStore = await CalendarPreferenceStore.openDefault();
   final controller = AppController(
     LifeRepository(database),
     appearanceStore: appearanceStore,
+    calendarPreferenceStore: calendarPreferenceStore,
     backupService: backupService,
   );
   await controller.initialize();
@@ -70,8 +126,11 @@ Future<void> main(List<String> args) async {
       Platform.isWindows && args.contains('--legacy-flutter-widget');
   runApp(
     ProviderScope(
-      overrides: [appControllerProvider.overrideWith((ref) => controller)],
-      child: legacyWidgetMode
+      overrides: [
+        appControllerProvider.overrideWith((ref) => controller),
+        privacyManagerProvider.overrideWith((ref) => privacy),
+      ],
+      child: legacyWidgetMode && !privacy.enabled
           ? DesktopWidgetApp(
               diagnostics: args.contains('--widget-diagnostics'),
               onExit: () async {
@@ -83,6 +142,66 @@ Future<void> main(List<String> args) async {
               databaseFile: databaseFile,
               appearanceFile: appearanceStore.file,
             ),
+    ),
+  );
+}
+
+class _MigrationApprovalApp extends StatefulWidget {
+  const _MigrationApprovalApp({
+    required this.arguments,
+    required this.olderSchema,
+  });
+  final List<String> arguments;
+  final int olderSchema;
+
+  @override
+  State<_MigrationApprovalApp> createState() => _MigrationApprovalAppState();
+}
+
+class _MigrationApprovalAppState extends State<_MigrationApprovalApp> {
+  bool busy = false;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: Scaffold(
+      body: Center(
+        child: SizedBox(
+          width: 480,
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.storage_outlined, size: 40),
+                const SizedBox(height: 16),
+                const Text('Database upgrade required'),
+                const SizedBox(height: 12),
+                Text(
+                  'This database uses schema ${widget.olderSchema}. Life Manager will create and verify a Before upgrade backup, then migrate it to schema ${AppDatabase.currentSchemaVersion}. If backup or migration fails, the workspace will not open. Your data will not be reset.',
+                ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: busy
+                      ? null
+                      : () async {
+                          setState(() => busy = true);
+                          await _startApplication(
+                            widget.arguments,
+                            migrationApproved: true,
+                          );
+                        },
+                  child: const Text('Back up and upgrade database'),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: busy ? null : () => exit(0),
+                  child: const Text('Exit without changes'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     ),
   );
 }
@@ -176,6 +295,36 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
   Timer? _backupTimer;
   bool _databaseRefreshPending = false;
   bool _appearanceRefreshPending = false;
+  String? _lastCaptionTheme;
+
+  void _syncCaptionTheme(ThemeData theme) {
+    if (!Platform.isWindows) return;
+    String rgb(Color color) => color
+        .toARGB32()
+        .toRadixString(16)
+        .padLeft(8, '0')
+        .substring(2)
+        .toUpperCase();
+    final values = [
+      theme.brightness == Brightness.dark ? 'dark' : 'light',
+      rgb(theme.colorScheme.surface),
+      rgb(theme.colorScheme.onSurface),
+    ];
+    final signature = values.join('/');
+    if (_lastCaptionTheme == signature) return;
+    _lastCaptionTheme = signature;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      try {
+        await const MethodChannel('life_manager/window_theme')
+            .invokeMethod<void>('set', values);
+      } on MissingPluginException {
+        _lastCaptionTheme = null;
+      } on PlatformException {
+        _lastCaptionTheme = null;
+      }
+    });
+  }
 
   @override
   void initState() {
@@ -214,9 +363,15 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    final privacy = ref.read(privacyManagerProvider);
     if (state == AppLifecycleState.resumed) {
+      unawaited(privacy.resumed());
       ref.read(appControllerProvider).refresh();
       ref.read(appControllerProvider).checkAutomaticBackup();
+    } else if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      privacy.becameInactive();
     }
   }
 
@@ -232,6 +387,7 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
   @override
   Widget build(BuildContext context) {
     final preference = ref.watch(appControllerProvider).theme;
+    final privacy = ref.watch(privacyManagerProvider);
     final mode = switch (preference) {
       ThemeModePreference.light => ThemeMode.light,
       ThemeModePreference.dark => ThemeMode.dark,
@@ -243,7 +399,22 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
       themeMode: mode,
       theme: _theme(Brightness.light),
       darkTheme: _theme(Brightness.dark),
-      home: const Workspace(),
+      builder: (context, child) {
+        _syncCaptionTheme(Theme.of(context));
+        return child ?? const SizedBox.shrink();
+      },
+      home: privacy.locked
+          ? const LockScreen()
+          : Listener(
+              onPointerDown: (_) => privacy.activity(),
+              child: Focus(
+                onKeyEvent: (_, _) {
+                  privacy.activity();
+                  return KeyEventResult.ignored;
+                },
+                child: const Workspace(),
+              ),
+            ),
     );
   }
 

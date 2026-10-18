@@ -123,3 +123,15 @@ Record Pass/Fail plus Windows build, monitor topology, and scale:
 
 The initial promotion gate passed. Repeat this checklist when changing Windows
 shell attachment, native input surfaces, rendering, DPI behavior, or packaging.
+
+## Privacy regression (pending manual acceptance)
+
+With an isolated `APPDATA` and `LOCALAPPDATA` profile, enable app lock in the
+main app and check that the widget immediately hides task content, closes open
+Quick Add/task editors, refuses checkbox/edit commands, and opens the main app
+for PIN entry. Repeat with the main app closed, starting, exiting, and after a
+crash; verify the companion locks when the main PID disappears. Check locked
+notification suppression and the optional generic-only message. Then unlock,
+change/remove the PIN, and verify the widget updates within one second. The
+native self-test covers policy/session parsing and disposable APPDATA routing,
+but does not prove these visual interactions or workstation lock behavior.

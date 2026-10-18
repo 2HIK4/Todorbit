@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import 'event_editor.dart';
+import '../shared/icon_picker.dart';
 import 'session_editor.dart';
 
 enum CalendarMode { day, week, month }
@@ -77,6 +78,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
         ),
       ),
     );
+    if (mounted) await _loadSelectedMonth();
   }
 
   Future<void> _editSession([WorkSession? session]) async {
@@ -146,6 +148,38 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                 selected: {mode},
                 onSelectionChanged: (value) =>
                     setState(() => mode = value.first),
+              ),
+              SegmentedButton<CalendarContent>(
+                segments: const [
+                  ButtonSegment(
+                    value: CalendarContent.both,
+                    label: Text('Both'),
+                  ),
+                  ButtonSegment(
+                    value: CalendarContent.eventsOnly,
+                    label: Text('Events only'),
+                  ),
+                  ButtonSegment(
+                    value: CalendarContent.tasksOnly,
+                    label: Text('Tasks only'),
+                  ),
+                ],
+                selected: {controller.calendarContent},
+                onSelectionChanged: (value) async {
+                  try {
+                    await controller.setCalendarContent(value.first);
+                  } catch (error) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Could not save calendar filter: $error',
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                },
               ),
               FilledButton.icon(
                 onPressed: () => _editEvent(),
@@ -340,48 +374,57 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
   List<_CalendarEntry> _entries(AppController controller, DateTime date) {
     final key = localDate(date);
     final list = <_CalendarEntry>[];
-    for (final event in controller.events) {
-      final start = event.startsAt.toLocal();
-      final end = event.endsAt.toLocal();
-      final dayStart = DateTime(date.year, date.month, date.day);
-      final dayEnd = DateTime(date.year, date.month, date.day + 1);
-      if (start.isBefore(dayEnd) && end.isAfter(dayStart)) {
-        final time = localDate(start) == key
-            ? '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}'
-            : 'Continues';
-        list.add(
-          _CalendarEntry('Event · $time · ${event.title}', event: event),
-        );
+    if (controller.calendarContent != CalendarContent.tasksOnly) {
+      for (final event in controller.events) {
+        final start = event.startsAt.toLocal();
+        final end = event.endsAt.toLocal();
+        final dayStart = DateTime(date.year, date.month, date.day);
+        final dayEnd = DateTime(date.year, date.month, date.day + 1);
+        if (start.isBefore(dayEnd) && end.isAfter(dayStart)) {
+          final time = localDate(start) == key
+              ? '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}'
+              : 'Continues';
+          list.add(
+            _CalendarEntry(
+              '${event.cancelled ? 'Cancelled' : 'Event'} · '
+              '${event.allDay ? 'All day' : time} · ${event.title}'
+              '${event.location.isEmpty ? '' : ' · ${event.location}'}',
+              event: event,
+            ),
+          );
+        }
       }
     }
-    for (final task in controller.tasks) {
-      if (task.scheduledDate == key) {
-        list.add(_CalendarEntry('Plan · ${task.title}', task: task));
+    if (controller.calendarContent != CalendarContent.eventsOnly) {
+      for (final task in controller.tasks) {
+        if (task.scheduledDate == key) {
+          list.add(_CalendarEntry('Plan · ${task.title}', task: task));
+        }
+        if (task.deadlineDate == key) {
+          list.add(_CalendarEntry('Deadline · ${task.title}', task: task));
+        }
       }
-      if (task.deadlineDate == key) {
-        list.add(_CalendarEntry('Deadline · ${task.title}', task: task));
-      }
-    }
-    for (final session in controller.sessions) {
-      final start = session.startsAt.toLocal();
-      final end = session.endsAt.toLocal();
-      final dayStart = DateTime(date.year, date.month, date.day);
-      final dayEnd = DateTime(date.year, date.month, date.day + 1);
-      if (start.isBefore(dayEnd) && end.isAfter(dayStart)) {
-        final task = controller.tasks
-            .where((item) => item.id == session.taskId)
-            .firstOrNull;
-        final state = session.needsConfirmation
-            ? 'Needs confirmation'
-            : session.lateStart
-            ? 'Late start'
-            : session.outcome.name;
-        list.add(
-          _CalendarEntry(
-            'Work · ${task?.title ?? 'Task'} · $state',
-            session: session,
-          ),
-        );
+      for (final session in controller.sessions) {
+        final start = session.startsAt.toLocal();
+        final end = session.endsAt.toLocal();
+        final dayStart = DateTime(date.year, date.month, date.day);
+        final dayEnd = DateTime(date.year, date.month, date.day + 1);
+        if (start.isBefore(dayEnd) && end.isAfter(dayStart)) {
+          final task = controller.tasks
+              .where((item) => item.id == session.taskId)
+              .firstOrNull;
+          final state = session.needsConfirmation
+              ? 'Needs confirmation'
+              : session.lateStart
+              ? 'Late start'
+              : session.outcome.name;
+          list.add(
+            _CalendarEntry(
+              'Work · ${task?.title ?? 'Task'} · $state',
+              session: session,
+            ),
+          );
+        }
       }
     }
     return list;
@@ -401,11 +444,34 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
             : () => widget.onTaskTap(entry.task!),
         child: Padding(
           padding: EdgeInsets.all(compact ? 6 : 12),
-          child: Text(
-            entry.label,
-            maxLines: compact ? 3 : null,
-            overflow: compact ? TextOverflow.ellipsis : null,
-            style: TextStyle(fontSize: compact ? 11 : 14),
+          child: Row(
+            children: [
+              Icon(
+                event != null
+                    ? iconForKey(event.iconName, Icons.event_outlined)
+                    : session != null
+                    ? Icons.schedule
+                    : Icons.check_circle_outline,
+                size: compact ? 14 : 18,
+                color: event?.colorValue == null
+                    ? Theme.of(context).colorScheme.primary
+                    : Color(event!.colorValue!),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  entry.label,
+                  maxLines: compact ? 3 : null,
+                  overflow: compact ? TextOverflow.ellipsis : null,
+                  style: TextStyle(
+                    fontSize: compact ? 11 : 14,
+                    decoration: event?.cancelled == true
+                        ? TextDecoration.lineThrough
+                        : null,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

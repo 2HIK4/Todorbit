@@ -37,6 +37,11 @@ if (args.Length >= 1 && args[0] is "--widget" or "--widget-command") {
 }
 if (args.Length >= 1 && args[0] is
     "--widget-standalone" or "--widget-legacy-reparent") {
+  if (PrivacyState.OpenDefault().IsLocked()) {
+    Console.Error.WriteLine("Life Manager is locked. Open the main app to unlock.");
+    Environment.ExitCode = 2;
+    return;
+  }
   var appExe = ArgumentValue(args, "--app-exe");
   var lightTheme = args.Contains("--light", StringComparer.OrdinalIgnoreCase);
   var diagnostics = args.Contains(

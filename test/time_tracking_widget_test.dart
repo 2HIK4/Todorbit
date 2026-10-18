@@ -29,7 +29,8 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Start timer'));
+      expect(find.text('00:00:00'), findsOneWidget);
+      await tester.tap(find.text('Start focus stopwatch'));
       await tester.pumpAndSettle();
       expect((await repository.activeTimerRun())?.state, TimerState.running);
       await tester.tap(find.text('Pause'));

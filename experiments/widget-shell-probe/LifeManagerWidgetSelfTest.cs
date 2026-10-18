@@ -7,6 +7,8 @@ internal static class LifeManagerWidgetSelfTest {
     Directory.CreateDirectory(directory);
     var databasePath = Path.Combine(directory, "test.sqlite");
     try {
+      TestIsolatedAppData(directory);
+      TestPrivacy(directory);
       CreateDatabase(databasePath);
       string id, inboxId;
       using (var repository =
@@ -479,6 +481,41 @@ internal static class LifeManagerWidgetSelfTest {
         if (v15Repository.LoadTask(inboxId) == null)
           throw new InvalidOperationException("Widget could not read a schema v15 task.");
       }
+      using (var upgrade = new SqliteConnection(
+          $"Data Source={databasePath};Pooling=False")) {
+        upgrade.Open();
+        using var command = upgrade.CreateCommand();
+        command.CommandText = """
+          CREATE TABLE event_occurrence_changes(event_id TEXT, nominal_date TEXT);
+          CREATE TABLE entity_icons(kind TEXT, entity_id TEXT, icon_key TEXT);
+          CREATE TABLE task_parent_links(child_id TEXT, parent_id TEXT);
+          CREATE TABLE task_checklist(id TEXT, task_id TEXT);
+          PRAGMA user_version=18;
+          """;
+        command.ExecuteNonQuery();
+      }
+      using (var v18Repository =
+          LifeManagerWidgetRepository.OpenForTest(databasePath)) {
+        var today = new DateTime(2026, 10, 21);
+        var parent = v18Repository.AddTask("Parent", today);
+        var child = v18Repository.AddTask("Child", today);
+        using var mutation = new SqliteConnection(
+          $"Data Source={databasePath};Pooling=False");
+        mutation.Open();
+        using var change = mutation.CreateCommand();
+        change.CommandText = "INSERT INTO task_parent_links VALUES($child,$parent)";
+        change.Parameters.AddWithValue("$child", child);
+        change.Parameters.AddWithValue("$parent", parent);
+        change.ExecuteNonQuery();
+        change.CommandText = "UPDATE tasks SET deleted_at='2026-10-21T10:00:00Z' WHERE id=$parent";
+        change.ExecuteNonQuery();
+        if (v18Repository.LoadTask(child) != null)
+          throw new InvalidOperationException("A trashed parent exposed its subtask.");
+        change.CommandText = "UPDATE tasks SET deleted_at=NULL WHERE id=$parent";
+        change.ExecuteNonQuery();
+        if (v18Repository.LoadTask(child) == null)
+          throw new InvalidOperationException("Restoring a parent did not reveal its subtask.");
+      }
       VerifySettingsRoundTrip(directory);
       VerifyAppearanceRoundTrip(directory);
       VerifySingleInstanceMutex();
@@ -489,6 +526,47 @@ internal static class LifeManagerWidgetSelfTest {
       SqliteConnection.ClearAllPools();
       if (Directory.Exists(directory)) Directory.Delete(directory, true);
     }
+  }
+
+  private static void TestIsolatedAppData(string directory) {
+    var previous = Environment.GetEnvironmentVariable("APPDATA");
+    try {
+      Environment.SetEnvironmentVariable("APPDATA", directory);
+      var expected = Path.Combine(directory, "Life Manager");
+      if (AppDataPaths.LifeManagerDirectory != expected) {
+        throw new InvalidOperationException("Native APPDATA override was ignored.");
+      }
+      var settings = new WidgetSettingsStore();
+      settings.Save(new WidgetSettings { View = WidgetTaskView.Upcoming });
+      if (!File.Exists(Path.Combine(expected, "widget-settings.json"))) {
+        throw new InvalidOperationException("Widget settings escaped isolated APPDATA.");
+      }
+      File.WriteAllText(Path.Combine(expected, "privacy-settings.json"),
+        "{\"enabled\":true}");
+      if (!PrivacyState.OpenDefault().IsLocked()) {
+        throw new InvalidOperationException("Privacy state escaped isolated APPDATA.");
+      }
+    } finally {
+      Environment.SetEnvironmentVariable("APPDATA", previous);
+    }
+  }
+
+  private static void TestPrivacy(string directory) {
+    var state = new PrivacyState(directory, System.Diagnostics.Process.GetCurrentProcess().ProcessName);
+    var policy = Path.Combine(directory, "privacy-settings.json");
+    if (state.IsLocked()) throw new InvalidOperationException("Default privacy should be off.");
+    File.WriteAllText(policy, "{\"enabled\":true}");
+    if (!state.IsLocked()) throw new InvalidOperationException("Missing unlock session exposed tasks.");
+    File.WriteAllText(Path.Combine(directory, "privacy-session.json"),
+      $"{{\"pid\":{Environment.ProcessId},\"expiresUtc\":\"{DateTimeOffset.UtcNow.AddSeconds(4):O}\"}}");
+    if (state.IsLocked()) throw new InvalidOperationException("Valid live session stayed locked.");
+    File.WriteAllText(Path.Combine(directory, "privacy-session.json"),
+      "{\"pid\":1,\"expiresUtc\":\"2000-01-01T00:00:00Z\"}");
+    if (!state.IsLocked()) throw new InvalidOperationException("Expired session exposed tasks.");
+    File.WriteAllText(policy, "{broken");
+    if (!state.IsLocked()) throw new InvalidOperationException("Corrupt privacy policy exposed tasks.");
+    File.WriteAllText(policy, "{\"enabled\":false}");
+    if (state.IsLocked()) throw new InvalidOperationException("Disabled privacy stayed locked.");
   }
 
   private static void VerifyAppearanceRoundTrip(string directory) {

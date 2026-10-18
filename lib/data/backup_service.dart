@@ -449,6 +449,12 @@ void _validateLifeManagerSnapshot(String filePath) {
       required.addAll({'notification_settings', 'notification_deliveries'});
     }
     if (schema >= 15) required.add('task_resources');
+    if (schema >= 16) required.add('event_occurrence_changes');
+    if (schema >= 17) required.add('entity_icons');
+    if (schema >= 18) {
+      required.add('task_parent_links');
+      required.add('task_checklist');
+    }
     if (!names.containsAll(required)) {
       throw StateError('Snapshot is not a Life Manager database');
     }
@@ -456,9 +462,11 @@ void _validateLifeManagerSnapshot(String filePath) {
       throw StateError('Snapshot has broken record relationships');
     }
     if (schema >= 15) {
-      if (connection.select(
-        "SELECT 1 FROM task_resources WHERE kind='managed' AND length(content)>16777216 LIMIT 1",
-      ).isNotEmpty) {
+      if (connection
+          .select(
+            "SELECT 1 FROM task_resources WHERE kind='managed' AND length(content)>16777216 LIMIT 1",
+          )
+          .isNotEmpty) {
         throw StateError('Snapshot has an oversized managed attachment');
       }
       final statement = connection.prepare(

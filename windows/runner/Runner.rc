@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "life_manager" "\0"
+            VALUE "CompanyName", "Life Manager" "\0"
+            VALUE "FileDescription", "Life Manager" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "life_manager" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Life Manager." "\0"
             VALUE "OriginalFilename", "life_manager.exe" "\0"
-            VALUE "ProductName", "life_manager" "\0"
+            VALUE "ProductName", "Life Manager" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

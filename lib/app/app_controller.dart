@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import '../data/life_repository.dart';
 import '../data/app_database.dart';
 import '../data/appearance_preference_store.dart';
+import '../data/calendar_preference_store.dart';
 import '../data/backup_service.dart';
 import '../domain/models.dart';
 import '../domain/recurrence.dart';
@@ -13,6 +14,7 @@ import '../domain/series_edit.dart';
 import '../domain/habits.dart';
 import '../domain/goals.dart';
 import '../domain/time_tracking.dart';
+import '../domain/task_composition.dart';
 import '../domain/templates.dart';
 import '../domain/saved_views.dart';
 import '../domain/appearance.dart';
@@ -44,9 +46,15 @@ enum WorkspaceView {
 enum TaskSort { schedule, priority, title, created }
 
 class AppController extends ChangeNotifier {
-  AppController(this.repository, {this.appearanceStore, this.backupService});
+  AppController(
+    this.repository, {
+    this.appearanceStore,
+    this.calendarPreferenceStore,
+    this.backupService,
+  });
   final LifeRepository repository;
   final AppearancePreferenceStore? appearanceStore;
+  final CalendarPreferenceStore? calendarPreferenceStore;
   final BackupService? backupService;
   String? backupError;
 
@@ -54,6 +62,11 @@ class AppController extends ChangeNotifier {
   List<Project> projects = [];
   List<LifeTask> tasks = [];
   List<FixedEvent> events = [];
+  Map<String, String> iconKeys = {};
+  Map<String, String> taskParents = {};
+  List<TaskChecklistItem> checklistItems = [];
+  String? _eventWindowFrom;
+  String? _eventWindowThrough;
   List<WorkSession> sessions = [];
   List<TaskDependency> dependencies = [];
   List<TaskSequence> sequences = [];
@@ -80,6 +93,7 @@ class AppController extends ChangeNotifier {
   String? scopeId;
   String? selectedTaskId;
   ThemeModePreference theme = ThemeModePreference.system;
+  CalendarContent calendarContent = CalendarContent.both;
   bool loading = true;
 
   LifeTask? get selectedTask {
@@ -99,7 +113,10 @@ class AppController extends ChangeNotifier {
       repository.categories(),
       repository.projects(),
       repository.tasks(),
-      repository.events(),
+      repository.eventOccurrences(
+        _eventWindowFrom ?? RecurrenceRule.shiftDate(today, -30),
+        _eventWindowThrough ?? RecurrenceRule.shiftDate(today, 90),
+      ),
       repository.sessions(),
       repository.availability(),
       repository.schedulingHistory(),
@@ -118,6 +135,9 @@ class AppController extends ChangeNotifier {
       repository.archivedTasks(),
       repository.archivedSeries(),
       repository.reportTasks(),
+      repository.entityIcons(),
+      repository.taskParents(),
+      repository.checklistItems(),
     ]);
     categories = result[0] as List<Category>;
     projects = result[1] as List<Project>;
@@ -141,6 +161,9 @@ class AppController extends ChangeNotifier {
     archivedTasks = result[19] as List<LifeTask>;
     archivedSeries = result[20] as List<ArchivedSeries>;
     reportTasks = result[21] as List<LifeTask>;
+    iconKeys = result[22] as Map<String, String>;
+    taskParents = result[23] as Map<String, String>;
+    checklistItems = result[24] as List<TaskChecklistItem>;
     _syncTimerHeartbeat();
     if (selectedTaskId != null && selectedTask == null) selectedTaskId = null;
     loading = false;
@@ -204,6 +227,63 @@ class AppController extends ChangeNotifier {
 
   Future<void> initialize() async {
     if (appearanceStore != null) theme = await appearanceStore!.load();
+    if (calendarPreferenceStore != null) {
+      calendarContent = await calendarPreferenceStore!.load();
+    }
+    await refresh();
+  }
+
+  Future<void> setCalendarContent(CalendarContent value) async {
+    final previous = calendarContent;
+    calendarContent = value;
+    notifyListeners();
+    try {
+      await calendarPreferenceStore?.save(value);
+    } catch (_) {
+      calendarContent = previous;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  String? iconForTask(LifeTask task) =>
+      iconKeys['task:${task.id}'] ??
+      (task.recurrenceSeriesId == null
+          ? null
+          : iconKeys['series:${task.recurrenceSeriesId}']);
+
+  Future<void> setIcon(String kind, String id, String? key) async {
+    await repository.setEntityIcon(kind, id, key);
+    await refresh();
+  }
+
+  Future<void> addSubtask(LifeTask parent, TaskDraft draft) async {
+    final child = await repository.addSubtask(parent, draft);
+    await refresh();
+    select(child.id);
+  }
+
+  Future<void> addChecklistItem(String taskId, String title) async {
+    await repository.addChecklistItem(taskId, title);
+    await refresh();
+  }
+
+  Future<void> updateChecklistItem(
+    TaskChecklistItem item, {
+    String? title,
+    bool? done,
+  }) async {
+    await repository.updateChecklistItem(item, title: title, done: done);
+    await refresh();
+  }
+
+  Future<void> removeChecklistItem(TaskChecklistItem item) async {
+    await repository.removeChecklistItem(item);
+    await refresh();
+  }
+
+  Future<void> moveChecklistItem(TaskChecklistItem item, int direction) async {
+    await repository.moveChecklistItem(item, direction);
     await refresh();
   }
 
@@ -388,6 +468,8 @@ class AppController extends ChangeNotifier {
 
   Future<void> ensureRecurringMonth(DateTime date) async {
     final first = localDate(DateTime(date.year, date.month, 1));
+    _eventWindowFrom = RecurrenceRule.shiftDate(first, -7);
+    _eventWindowThrough = RecurrenceRule.shiftDate(first, 45);
     await repository.ensureRecurringTasks(
       RecurrenceRule.shiftDate(first, -7),
       RecurrenceRule.shiftDate(first, 45),
@@ -455,6 +537,24 @@ class AppController extends ChangeNotifier {
 
   Future<void> startTimer(String taskId) async {
     await repository.startTimer(taskId);
+    await refresh();
+  }
+
+  Future<void> startTask(LifeTask task) async {
+    await repository.setTaskWorking(task, true);
+    await refresh();
+  }
+
+  Future<void> endTaskWork(LifeTask task) async {
+    if (activeTimer?.taskId == task.id) {
+      await repository.stopTimer(activeTimer!);
+    }
+    await repository.setTaskWorking(task, false);
+    await refresh();
+  }
+
+  Future<void> startFocusTask(LifeTask task) async {
+    await repository.startFocusTask(task);
     await refresh();
   }
 
@@ -622,6 +722,41 @@ class AppController extends ChangeNotifier {
 
   Future<void> updateEvent(FixedEvent previous, EventDraft draft) async {
     await repository.updateEvent(previous, draft);
+    await refresh();
+  }
+
+  Future<void> updateEventOccurrence(
+    FixedEvent occurrence,
+    EventDraft draft,
+  ) async {
+    await repository.updateEventOccurrence(occurrence, draft);
+    await refresh();
+  }
+
+  Future<void> splitEventSeries(
+    FixedEvent occurrence,
+    String boundary,
+    EventDraft draft,
+  ) async {
+    await repository.splitEventSeries(occurrence, boundary, draft);
+    await refresh();
+  }
+
+  Future<void> setEventOccurrenceCancelled(
+    FixedEvent occurrence,
+    bool cancelled,
+  ) async {
+    await repository.setEventOccurrenceCancelled(occurrence, cancelled);
+    await refresh();
+  }
+
+  Future<void> endEventSeries(FixedEvent occurrence) async {
+    await repository.endEventSeries(occurrence);
+    await refresh();
+  }
+
+  Future<void> deleteEventFamily(FixedEvent occurrence) async {
+    await repository.deleteEventFamily(occurrence);
     await refresh();
   }
 

@@ -1,3 +1,5 @@
+import 'test_privacy.dart';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,7 +22,10 @@ void main() {
     try {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [appControllerProvider.overrideWith((ref) => controller)],
+          overrides: [
+            appControllerProvider.overrideWith((ref) => controller),
+            privacyOverride,
+          ],
           child: const LifeManagerApp(),
         ),
       );
@@ -91,7 +96,10 @@ void main() {
     try {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [appControllerProvider.overrideWith((ref) => controller)],
+          overrides: [
+            appControllerProvider.overrideWith((ref) => controller),
+            privacyOverride,
+          ],
           child: const LifeManagerApp(),
         ),
       );

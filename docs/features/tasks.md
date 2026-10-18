@@ -1,5 +1,17 @@
 # Tasks
 
+The task-row Play action offers Start Task (sets In Progress without recording
+time), End Work (sets On Hold), and Start Focus Session (starts the existing
+single active actual-work timer). The focus dialog and sidebar mini timer show
+seconds; pause excludes paused time, and stop leaves task completion unchanged.
+
+Schema v17 stores curated built-in icon keys for tasks and recurring series,
+categories, and projects. Schema v18 stores task checklist items independently
+of true child tasks. Checklists can be edited, checked, removed, and reordered;
+they never complete the parent task. Child tasks have their own metadata and
+completion state. One level of nesting is supported. The parent row shows
+checklist and child-task progress and can expand or collapse its children.
+
 A task requires a nonblank title. Optional category, project, notes, status, priority, scheduled day and deadline are foundation fields. Projects belong to one category; assigning a project also determines its category. Unassigned tasks belong to Inbox. Completion records a UTC timestamp and can be reopened. Tasks can be archived or moved to recoverable Trash. Permanent deletion requires explicit confirmation and is blocked while linked records would be lost.
 
 Schema v15 stores copied attachments (up to 16 MB each), external file/folder

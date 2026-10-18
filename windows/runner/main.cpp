@@ -104,7 +104,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                                ? Win32Window::Size(360, 480)
                                : Win32Window::Size(1280, 720);
   const wchar_t* window_title =
-      legacy_widget_mode ? L"Life Manager Legacy Widget" : L"life_manager";
+      legacy_widget_mode ? L"Life Manager Legacy Widget" : L"Life Manager";
   if (!window.Create(window_title, origin, size)) {
     WidgetDiagnostics::Log(L"window creation failed");
     WidgetDiagnostics::Stop();

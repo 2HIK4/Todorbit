@@ -1,5 +1,24 @@
 # Decisions
 
+- **Windows v1.0 privacy:** keep the optional lock outside SQLite as UI privacy,
+  with a PBKDF2-HMAC-SHA256 PIN verifier in per-user settings and a short-lived
+  process-bound session shared with the native companion. The companion
+  independently blocks task reads/writes and paints no task data when the
+  session is absent, expired, or unreadable. Wrong-attempt delays persist across
+  launches. This does not encrypt user data; Windows Hello is deferred rather
+  than represented as working.
+- **Migration consent:** inspect `PRAGMA user_version` read-only before the
+  startup backup and database open. Require an explicit in-app approval for
+  older schemas, then retain the existing verified Before upgrade backup and
+  migration path. Development and automated QA continue to use disposable
+  databases only.
+- **Windows installation:** use a per-user Inno Setup 7 project with the whole
+  Flutter Release directory, including the self-contained native widget.
+  Application files live separately from `%APPDATA%` data; normal uninstall
+  retains personal data. Inno Setup 7.1.0 compiles the existing project;
+  installed upgrade/uninstall acceptance remains open because no installer
+  installation is authorized on the normal Windows profile.
+
 - **Windows-first offline Flutter:** reuse the working scaffold and leave Android as a future target.
 - **Drift + SQLite:** use a background database isolate, explicit schema migrations, and a per-user support directory. The current `sqlite3` package bundles native SQLite; the end-of-life `sqlite3_flutter_libs` package is not used.
 - **Riverpod:** keep shared UI state in one controller for the first milestone; split by feature as complexity grows.
@@ -18,6 +37,24 @@
 - **Native widget editing surfaces:** preserve the owner-drawn Explorer child. Quick Add uses a temporary borderless activatable top-level surface aligned over the painted field; task editing uses a compact activatable dialog with optimistic concurrency. Do not add persistent child controls, keyboard hooks, focus timers, or synthetic input to the shell child.
 - **Native widget views and geometry:** Today, Inbox, All Tasks, and Upcoming use the same schema-v3 semantics as Flutter. Dragging the empty header moves the child; custom hit testing supports all edges/corners, persisted logical bounds, per-monitor DPI scaling, and working-area clamping.
 - **Fixed events:** store UTC instants, display in local time, and use interval overlap for multi-day calendar placement. Actual task deadlines remain independent date-only values.
+- **Windows frame theme:** send the resolved Flutter surface and foreground
+  colors to the runner and apply DWM caption attributes. Keep the standard
+  non-client frame and system window buttons; the runner falls back to the
+  Windows preference before Flutter's first frame.
+- **Recurring events (schema v16):** extend the existing fixed-event records
+  instead of adding a second calendar system. Keep UTC start/end instants and
+  date-only local recurrence rules; project only the requested calendar window.
+  Persist per-date cancellation or full override under the original nominal
+  local date. Split a series into linked generations for future edits, moving
+  future overrides transactionally while retaining earlier event details.
+  The Calendar filter is a separate per-user preference and never mutates
+  tasks, planned sessions, or event rows.
+- **Task composition (schemas v17-v18):** built-in icon keys are SQLite data,
+  not image files. Recurring task series may supply a default icon to generated
+  occurrences, while an individual task can override it. Keep checklist items
+  separate from task status and true child tasks. A one-level parent link lets
+  children retain independent task metadata; hiding a parent hides its children
+  in active Flutter and native views without deleting their records.
 - **Work sessions:** store planned UTC intervals and a manual outcome independently of tasks. A transition to “In progress” records an actual start; elapsed upcoming sessions remain upcoming until confirmed.
 - **Scheduling engine:** compute immutable previews from local availability windows against UTC event/session intervals. Keep application of changes disabled until availability settings, transactional history, and conflict review are wired together.
 - **Smart Reschedule persistence:** schema v4 stores availability separately from

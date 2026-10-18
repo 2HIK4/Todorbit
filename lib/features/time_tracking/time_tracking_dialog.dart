@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,14 +7,13 @@ import '../../app/app_controller.dart';
 import '../../domain/time_tracking.dart';
 
 String _duration(Duration value) {
-  final minutes = value.inMinutes.clamp(0, 24 * 365 * 60);
-  return '${minutes ~/ 60}h ${minutes % 60}m';
+  return formatWorkClock(value);
 }
 
 String _stamp(DateTime value) {
   final local = value.toLocal();
   return '${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')} '
-      '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+      '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}:${local.second.toString().padLeft(2, '0')}';
 }
 
 class TimeTrackingDialog extends ConsumerStatefulWidget {
@@ -26,6 +27,21 @@ class TimeTrackingDialog extends ConsumerStatefulWidget {
 class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
   bool busy = false;
   String? error;
+  Timer? clock;
+
+  @override
+  void initState() {
+    super.initState();
+    clock = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    clock?.cancel();
+    super.dispose();
+  }
 
   Future<void> _run(Future<void> Function() action) async {
     setState(() {
@@ -105,6 +121,12 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
     final now = DateTime.now();
     final confirmedEnd = recovery ? run!.lastSeenAt : now;
     final total = TimeEntry.distinctDuration(entries, confirmedEnd);
+    final session = thisRun == null
+        ? Duration.zero
+        : TimeEntry.distinctDuration(
+            entries.where((item) => item.timerRunId == thisRun.id),
+            confirmedEnd,
+          );
     return Dialog(
       child: SizedBox(
         width: 550,
@@ -118,7 +140,7 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Actual work: ${task?.title ?? 'Deleted task'}',
+                      'Focus: ${task?.title ?? 'Deleted task'}',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                   ),
@@ -131,11 +153,44 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Recorded time is separate from planned sessions and task completion.',
+                'Stopwatch time is recorded separately from planned sessions and task completion.',
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Recorded total: ${_duration(total)} (overlaps counted once)',
+              const SizedBox(height: 12),
+              Card(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Text(
+                        thisRun == null
+                            ? 'Stopped'
+                            : recovery
+                            ? 'Needs review'
+                            : thisRun.state == TimerState.running
+                            ? 'Running'
+                            : 'Paused',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _duration(session),
+                        style: Theme.of(context).textTheme.displaySmall
+                            ?.copyWith(
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
+                      ),
+                      const Text('Current focus session'),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Total recorded: ${_duration(total)} (overlaps counted once)',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ),
               ),
               if (controller.timerError != null)
                 Text(
@@ -175,11 +230,6 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
                 ),
               ] else if (thisRun != null) ...[
                 const SizedBox(height: 12),
-                Text(
-                  thisRun.state == TimerState.running
-                      ? 'Timer running'
-                      : 'Timer paused',
-                ),
                 Wrap(
                   spacing: 8,
                   children: [
@@ -219,7 +269,7 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
                         : () =>
                               _run(() => controller.startTimer(widget.taskId)),
                     icon: const Icon(Icons.play_arrow),
-                    label: const Text('Start timer'),
+                    label: const Text('Start focus stopwatch'),
                   ),
                 ),
               ] else ...[
@@ -254,7 +304,7 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
                           return ListTile(
                             dense: true,
                             title: Text(
-                              '${_duration(entry.durationAt(confirmedEnd))} · ${entry.source.name}',
+                              '${_duration(entry.durationAt(confirmedEnd))} · ${entry.source == TimeEntrySource.manual ? 'Manual' : 'Timer'}${entry.endsAt == null ? ' · Running' : ''}',
                             ),
                             subtitle: Text(
                               '${_stamp(entry.startsAt)} – ${entry.endsAt == null ? 'running' : _stamp(entry.endsAt!)}${entry.notes.isEmpty ? '' : '\n${entry.notes}'}',

@@ -1,3 +1,5 @@
+import 'test_privacy.dart';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -35,6 +37,7 @@ void main() {
           ProviderScope(
             overrides: [
               appControllerProvider.overrideWith((ref) => controller),
+              privacyOverride,
             ],
             child: MaterialApp(
               home: Scaffold(
@@ -59,15 +62,17 @@ void main() {
         );
         await tester.tap(find.text('Generate preview'));
         await tester.pumpAndSettle();
-      final dialogScroll = find.descendant(
-        of: find.byType(SeriesEditorDialog),
-        matching: find.byType(Scrollable),
-      ).first;
-      await tester.scrollUntilVisible(
-        find.text('Combine compatible'),
-        200,
-        scrollable: dialogScroll,
-      );
+        final dialogScroll = find
+            .descendant(
+              of: find.byType(SeriesEditorDialog),
+              matching: find.byType(Scrollable),
+            )
+            .first;
+        await tester.scrollUntilVisible(
+          find.text('Combine compatible'),
+          200,
+          scrollable: dialogScroll,
+        );
         expect(find.textContaining('collisions'), findsOneWidget);
         expect(
           tester
@@ -112,7 +117,10 @@ void main() {
     try {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [appControllerProvider.overrideWith((ref) => controller)],
+          overrides: [
+            appControllerProvider.overrideWith((ref) => controller),
+            privacyOverride,
+          ],
           child: const LifeManagerApp(),
         ),
       );
@@ -164,7 +172,10 @@ void main() {
     try {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [appControllerProvider.overrideWith((ref) => controller)],
+          overrides: [
+            appControllerProvider.overrideWith((ref) => controller),
+            privacyOverride,
+          ],
           child: const LifeManagerApp(),
         ),
       );
@@ -200,7 +211,10 @@ void main() {
     try {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [appControllerProvider.overrideWith((ref) => controller)],
+          overrides: [
+            appControllerProvider.overrideWith((ref) => controller),
+            privacyOverride,
+          ],
           child: const LifeManagerApp(),
         ),
       );
@@ -246,7 +260,10 @@ void main() {
     try {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [appControllerProvider.overrideWith((ref) => controller)],
+          overrides: [
+            appControllerProvider.overrideWith((ref) => controller),
+            privacyOverride,
+          ],
           child: const LifeManagerApp(),
         ),
       );
@@ -315,7 +332,10 @@ void main() {
     try {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [appControllerProvider.overrideWith((ref) => controller)],
+          overrides: [
+            appControllerProvider.overrideWith((ref) => controller),
+            privacyOverride,
+          ],
           child: const LifeManagerApp(),
         ),
       );

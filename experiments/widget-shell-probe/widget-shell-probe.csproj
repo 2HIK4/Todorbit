@@ -8,6 +8,10 @@
     <AssemblyName>life_manager_widget</AssemblyName>
     <RootNamespace>LifeManager.Widget</RootNamespace>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Product>Life Manager Widget</Product>
+    <ApplicationIcon>../../windows/runner/resources/app_icon.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.5" />

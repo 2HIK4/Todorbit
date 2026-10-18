@@ -1,8 +1,12 @@
+import 'dart:io';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
+import '../../data/app_database.dart';
 import '../../domain/models.dart';
 import '../../domain/recurrence.dart';
 import '../../domain/time_tracking.dart';
@@ -17,7 +21,9 @@ import '../templates/templates_dialog.dart';
 import '../search/advanced_search_dialog.dart';
 import '../settings/backup_dialog.dart';
 import '../settings/notification_dialog.dart';
+import '../settings/privacy_dialog.dart';
 import '../scheduling/smart_reschedule.dart';
+import '../shared/icon_picker.dart';
 import '../widget/native_widget_service.dart';
 import 'task_editor.dart';
 import 'sequence_dialog.dart';
@@ -34,6 +40,49 @@ class Workspace extends ConsumerStatefulWidget {
 class _WorkspaceState extends ConsumerState<Workspace> {
   bool creating = false;
   final nativeWidget = NativeWidgetService();
+  Timer? _clock;
+  final Set<String> _expandedTaskIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && ref.read(appControllerProvider).activeTimer != null) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _clock?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _showDataProfile() async {
+    final file = await AppDatabase.defaultFile();
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Data profile'),
+        content: SelectableText(
+          'Life Manager stores this Windows user’s tasks and settings in the '
+          'per-user data folder. Updating or reinstalling the app keeps this '
+          'profile. A different Windows user starts with an empty profile.\n\n'
+          'Database: ${file.path}\n\n'
+          'To move data to another computer, use Backups and Export. '
+          'This screen does not change any records.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _newTask() {
     ref.read(appControllerProvider).select(null);
@@ -188,6 +237,64 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     builder: (_) => TimeTrackingDialog(taskId: taskId),
   );
 
+  Future<void> _changeIcon(String kind, String id) async {
+    final controller = ref.read(appControllerProvider);
+    final current = controller.iconKeys['$kind:$id'];
+    final selected = await chooseBuiltInIcon(context, current: current);
+    if (selected.$1 && mounted) {
+      await _run(() => controller.setIcon(kind, id, selected.$2));
+    }
+  }
+
+  Future<void> _quickStart(LifeTask task) async {
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          task.status == TaskStatus.inProgress
+              ? 'Work on ${task.title}'
+              : 'Start ${task.title}',
+        ),
+        content: const Text(
+          'Start Task changes its status only. '
+          'Focus Session starts the stopwatch and records actual work.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          if (task.status == TaskStatus.inProgress)
+            OutlinedButton(
+              onPressed: () => Navigator.pop(context, 'end'),
+              child: const Text('End work'),
+            )
+          else
+            OutlinedButton(
+              onPressed: () => Navigator.pop(context, 'start'),
+              child: const Text('Start Task'),
+            ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, 'focus'),
+            child: const Text('Start Focus Session'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || choice == null) return;
+    final controller = ref.read(appControllerProvider);
+    if (choice == 'start') {
+      await _run(() => controller.startTask(task));
+    } else if (choice == 'end') {
+      await _run(() => controller.endTaskWork(task));
+    } else {
+      await _run(() => controller.startFocusTask(task));
+      if (mounted && controller.activeTimer?.taskId == task.id) {
+        _showActiveTimer(task.id);
+      }
+    }
+  }
+
   String _scheduleScope(AppController controller) => switch (controller.view) {
     WorkspaceView.category => 'category:${controller.scopeId}',
     WorkspaceView.project => 'project:${controller.scopeId}',
@@ -249,7 +356,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   Widget _sidebar(AppController controller) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
+    final privacy = ref.watch(privacyManagerProvider);
+    return Material(
       color: scheme.surfaceContainerLow,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -263,11 +371,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     : Icons.timer_outlined,
               ),
               title: Text(
-                run.needsReview(DateTime.now())
-                    ? 'Review timer'
+                '${formatWorkClock(TimeEntry.distinctDuration(controller.timeEntries.where((entry) => entry.timerRunId == run.id), run.needsReview(DateTime.now()) ? run.lastSeenAt : DateTime.now()))} · ${run.needsReview(DateTime.now())
+                    ? 'Review'
                     : run.state == TimerState.running
-                    ? 'Timer running'
-                    : 'Timer paused',
+                    ? 'Running'
+                    : 'Paused'}',
               ),
               subtitle: Text(
                 controller.tasks
@@ -279,6 +387,29 @@ class _WorkspaceState extends ConsumerState<Workspace> {
               onTap: run.taskId == null
                   ? null
                   : () => _showActiveTimer(run.taskId!),
+              trailing: run.needsReview(DateTime.now())
+                  ? null
+                  : PopupMenuButton<String>(
+                      tooltip: 'Timer controls',
+                      onSelected: (value) => _run(
+                        () => value == 'stop'
+                            ? controller.stopTimer()
+                            : run.state == TimerState.running
+                            ? controller.pauseTimer()
+                            : controller.resumeTimer(),
+                      ),
+                      itemBuilder: (_) => [
+                        PopupMenuItem(
+                          value: 'toggle',
+                          child: Text(
+                            run.state == TimerState.running
+                                ? 'Pause'
+                                : 'Resume',
+                          ),
+                        ),
+                        const PopupMenuItem(value: 'stop', child: Text('Stop')),
+                      ],
+                    ),
             ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 20, 8, 14),
@@ -413,7 +544,10 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     controller,
                     WorkspaceView.category,
                     category.name,
-                    Icons.folder_outlined,
+                    iconForKey(
+                      controller.iconKeys['category:${category.id}'],
+                      Icons.folder_outlined,
+                    ),
                     id: category.id,
                     trailing: PopupMenuButton<String>(
                       tooltip: 'Category actions',
@@ -423,6 +557,10 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                           child: Text('Add project'),
                         ),
                         PopupMenuItem(value: 'rename', child: Text('Rename')),
+                        PopupMenuItem(
+                          value: 'icon',
+                          child: Text('Change icon'),
+                        ),
                         PopupMenuItem(value: 'delete', child: Text('Delete')),
                       ],
                       onSelected: (action) async {
@@ -433,6 +571,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                               () => controller.addProject(category.id, name),
                             );
                           }
+                        } else if (action == 'icon') {
+                          await _changeIcon('category', category.id);
                         } else if (action == 'rename') {
                           final name = await _nameDialog(
                             'Rename category',
@@ -462,7 +602,10 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                         controller,
                         WorkspaceView.project,
                         project.name,
-                        Icons.segment_outlined,
+                        iconForKey(
+                          controller.iconKeys['project:${project.id}'],
+                          Icons.segment_outlined,
+                        ),
                         id: project.id,
                         trailing: PopupMenuButton<String>(
                           tooltip: 'Project actions',
@@ -474,6 +617,10 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                             PopupMenuItem(
                               value: 'rename',
                               child: Text('Rename'),
+                            ),
+                            PopupMenuItem(
+                              value: 'icon',
+                              child: Text('Change icon'),
                             ),
                             PopupMenuItem(
                               value: 'delete',
@@ -490,6 +637,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                                   name,
                                 ),
                               );
+                            } else if (action == 'icon') {
+                              await _changeIcon('project', project.id);
                             } else if (action == 'rename') {
                               final name = await _nameDialog(
                                 'Rename project',
@@ -673,29 +822,49 @@ class _WorkspaceState extends ConsumerState<Workspace> {
             ),
           Padding(
             padding: const EdgeInsets.all(8),
-            child: PopupMenuButton<ThemeModePreference>(
-              tooltip: 'Appearance',
-              onSelected: (theme) {
-                _run(() => controller.setTheme(theme));
+            child: PopupMenuButton<String>(
+              tooltip: 'Settings',
+              onSelected: (value) {
+                if (value == 'privacy') {
+                  showDialog<void>(
+                    context: context,
+                    builder: (_) => const PrivacyDialog(),
+                  );
+                } else if (value == 'lock') {
+                  privacy.lock();
+                } else if (value == 'profile') {
+                  _showDataProfile();
+                } else {
+                  final theme = ThemeModePreference.values.firstWhere(
+                    (item) => item.name == value,
+                  );
+                  _run(() => controller.setTheme(theme));
+                }
               },
-              itemBuilder: (_) => const [
-                PopupMenuItem(
-                  value: ThemeModePreference.system,
+              itemBuilder: (_) => [
+                const PopupMenuItem(
+                  value: 'system',
                   child: Text('System theme'),
                 ),
-                PopupMenuItem(
-                  value: ThemeModePreference.light,
-                  child: Text('Light theme'),
+                const PopupMenuItem(value: 'light', child: Text('Light theme')),
+                const PopupMenuItem(value: 'dark', child: Text('Dark theme')),
+                const PopupMenuDivider(),
+                const PopupMenuItem(
+                  value: 'privacy',
+                  child: Text('Privacy and app lock'),
                 ),
-                PopupMenuItem(
-                  value: ThemeModePreference.dark,
-                  child: Text('Dark theme'),
-                ),
+                if (Platform.isWindows)
+                  const PopupMenuItem(
+                    value: 'profile',
+                    child: Text('Data profile and location'),
+                  ),
+                if (privacy.enabled)
+                  const PopupMenuItem(value: 'lock', child: Text('Lock now')),
               ],
               child: const ListTile(
                 dense: true,
-                leading: Icon(Icons.palette_outlined),
-                title: Text('Appearance'),
+                leading: Icon(Icons.settings_outlined),
+                title: Text('Settings'),
                 trailing: Icon(Icons.expand_more),
               ),
             ),
@@ -768,7 +937,15 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         },
       );
     }
-    final items = controller.visibleTasks;
+    final activeIds = controller.tasks.map((task) => task.id).toSet();
+    final items = controller.visibleTasks.where((task) {
+      final parentId = controller.taskParents[task.id];
+      return parentId == null || activeIds.contains(parentId);
+    }).toList();
+    final itemIds = items.map((task) => task.id).toSet();
+    final roots = items
+        .where((task) => !itemIds.contains(controller.taskParents[task.id]))
+        .toList();
     final today = localDate(DateTime.now());
     final overdueCount = controller.tasks
         .where(
@@ -961,18 +1138,50 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 )
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                  itemCount: items.length,
-                  itemBuilder: (context, index) =>
-                      _taskRow(controller, items[index], wide),
+                  itemCount: roots.length,
+                  itemBuilder: (context, index) {
+                    final task = roots[index];
+                    final children = controller.tasks
+                        .where(
+                          (child) =>
+                              controller.taskParents[child.id] == task.id,
+                        )
+                        .toList();
+                    final expanded = _expandedTaskIds.contains(task.id);
+                    return Column(
+                      children: [
+                        _taskRow(
+                          controller,
+                          task,
+                          wide,
+                          childCount: children.length,
+                          expanded: expanded,
+                        ),
+                        if (expanded)
+                          for (final child in children)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 26),
+                              child: _taskRow(controller, child, wide),
+                            ),
+                      ],
+                    );
+                  },
                 ),
         ),
       ],
     );
   }
 
-  Widget _taskRow(AppController controller, LifeTask task, bool wide) {
+  Widget _taskRow(
+    AppController controller,
+    LifeTask task,
+    bool wide, {
+    int childCount = 0,
+    bool expanded = false,
+  }) {
     final scheme = Theme.of(context).colorScheme;
     final done = task.status == TaskStatus.completed;
+    final focusActive = controller.activeTimer?.taskId == task.id;
     final unmetPrerequisites = controller.unmetPrerequisites(task.id);
     final overdue =
         task.isOpen &&
@@ -980,7 +1189,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         task.deadlineDate!.compareTo(localDate(DateTime.now())) < 0;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      color: controller.selectedTaskId == task.id
+      color: focusActive
+          ? scheme.primaryContainer.withValues(alpha: 0.7)
+          : controller.selectedTaskId == task.id
           ? scheme.secondaryContainer.withValues(alpha: 0.55)
           : null,
       child: InkWell(
@@ -994,6 +1205,20 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Row(
             children: [
+              if (childCount > 0)
+                IconButton(
+                  tooltip: expanded ? 'Collapse subtasks' : 'Expand subtasks',
+                  onPressed: () => setState(() {
+                    if (expanded) {
+                      _expandedTaskIds.remove(task.id);
+                    } else {
+                      _expandedTaskIds.add(task.id);
+                    }
+                  }),
+                  icon: Icon(
+                    expanded ? Icons.expand_more : Icons.chevron_right,
+                  ),
+                ),
               Tooltip(
                 message: done ? 'Reopen task' : 'Complete task',
                 child: Checkbox(
@@ -1002,6 +1227,15 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                       _run(() => controller.setComplete(task, value ?? false)),
                 ),
               ),
+              Icon(
+                iconForKey(
+                  controller.iconForTask(task),
+                  Icons.task_alt_outlined,
+                ),
+                size: 19,
+                color: scheme.primary,
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1017,6 +1251,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     ),
                     if (task.scheduledDate != null ||
                         task.deadlineDate != null ||
+                        task.status == TaskStatus.inProgress ||
+                        childCount > 0 ||
+                        controller.checklistItems.any(
+                          (item) => item.taskId == task.id,
+                        ) ||
                         task.status == TaskStatus.waiting ||
                         task.status == TaskStatus.onHold ||
                         unmetPrerequisites.isNotEmpty)
@@ -1026,6 +1265,35 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                           spacing: 12,
                           runSpacing: 4,
                           children: [
+                            if (childCount > 0)
+                              Text(
+                                'Subtasks ${controller.tasks.where((child) => controller.taskParents[child.id] == task.id && child.status == TaskStatus.completed).length}/$childCount',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            if (controller.checklistItems.any(
+                              (item) => item.taskId == task.id,
+                            ))
+                              Text(
+                                'Checklist ${controller.checklistItems.where((item) => item.taskId == task.id && item.done).length}/'
+                                '${controller.checklistItems.where((item) => item.taskId == task.id).length}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            if (focusActive ||
+                                task.status == TaskStatus.inProgress)
+                              Text(
+                                focusActive ? 'Focus running' : 'In progress',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: scheme.primary,
+                                ),
+                              ),
                             if (task.scheduledDate != null)
                               Text(
                                 'Plan ${task.scheduledDate}',
@@ -1078,6 +1346,16 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   Icons.flag_outlined,
                   size: 18,
                   color: task.priority == 3 ? scheme.error : scheme.primary,
+                ),
+              if (task.isOpen)
+                IconButton(
+                  tooltip: task.status == TaskStatus.inProgress
+                      ? 'Work or focus actions'
+                      : 'Start task or focus',
+                  onPressed: () => _quickStart(task),
+                  icon: Icon(
+                    focusActive ? Icons.timer : Icons.play_circle_outline,
+                  ),
                 ),
               PopupMenuButton<String>(
                 tooltip: 'Task actions',

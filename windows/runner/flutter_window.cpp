@@ -78,6 +78,19 @@ std::wstring Utf16FromUtf8(const std::string& input) {
   return output;
 }
 
+bool DecodeColor(const std::string& text, COLORREF* color) {
+  if (text.size() != 6) return false;
+  try {
+    size_t consumed = 0;
+    const auto value = std::stoul(text, &consumed, 16);
+    if (consumed != 6 || value > 0xFFFFFF) return false;
+    *color = RGB((value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF);
+    return true;
+  } catch (...) {
+    return false;
+  }
+}
+
 }  // namespace
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
@@ -139,6 +152,38 @@ bool FlutterWindow::OnCreate() {
           result->NotImplemented();
         }
       });
+  window_theme_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(),
+          "life_manager/window_theme", &flutter::StandardMethodCodec::GetInstance());
+  window_theme_channel_->SetMethodCallHandler(
+      [this](const flutter::MethodCall<flutter::EncodableValue>& call,
+             std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+        if (call.method_name() != "set") {
+          result->NotImplemented();
+          return;
+        }
+        const auto* values = std::get_if<flutter::EncodableList>(call.arguments());
+        if (values == nullptr || values->size() != 3) {
+          result->Error("invalid_theme", "Expected brightness and two RGB colors");
+          return;
+        }
+        const auto* brightness = std::get_if<std::string>(&(*values)[0]);
+        const auto* background = std::get_if<std::string>(&(*values)[1]);
+        const auto* foreground = std::get_if<std::string>(&(*values)[2]);
+        COLORREF background_color, foreground_color;
+        if (brightness == nullptr || background == nullptr ||
+            foreground == nullptr ||
+            (*brightness != "dark" && *brightness != "light") ||
+            !DecodeColor(*background, &background_color) ||
+            !DecodeColor(*foreground, &foreground_color)) {
+          result->Error("invalid_theme", "Invalid caption theme value");
+          return;
+        }
+        SetCaptionTheme(*brightness == "dark", background_color,
+                        foreground_color);
+        result->Success();
+      });
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
@@ -156,6 +201,7 @@ bool FlutterWindow::OnCreate() {
 void FlutterWindow::OnDestroy() {
   if (flutter_controller_) {
     file_dialog_channel_.reset();
+    window_theme_channel_.reset();
     flutter_controller_ = nullptr;
   }
 

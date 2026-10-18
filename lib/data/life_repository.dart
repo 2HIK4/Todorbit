@@ -17,6 +17,7 @@ import '../domain/saved_views.dart';
 import '../domain/trash.dart';
 import '../domain/notifications.dart';
 import '../domain/task_resources.dart';
+import '../domain/task_composition.dart';
 import '../domain/scheduling_models.dart';
 import 'app_database.dart';
 
@@ -30,6 +31,9 @@ part 'trash_repository.dart';
 part 'reports_repository.dart';
 part 'notification_repository.dart';
 part 'task_resource_repository.dart';
+part 'event_repository.dart';
+part 'entity_icon_repository.dart';
+part 'task_composition_repository.dart';
 
 class LifeRepository {
   LifeRepository(this.db);
@@ -82,10 +86,14 @@ class LifeRepository {
             LEFT JOIN recurrence_series s ON s.id=o.series_id
             LEFT JOIN categories c ON c.id=t.category_id
             LEFT JOIN projects p ON p.id=t.project_id
+            LEFT JOIN task_parent_links link ON link.child_id=t.id
+            LEFT JOIN tasks parent ON parent.id=link.parent_id
             WHERE t.deleted_at IS NULL AND t.archived_at IS NULL
               AND (s.id IS NULL OR (s.deleted_at IS NULL AND s.archived_at IS NULL))
               AND (c.id IS NULL OR c.deleted_at IS NULL)
               AND (p.id IS NULL OR p.deleted_at IS NULL)
+              AND (link.parent_id IS NULL OR
+                (parent.deleted_at IS NULL AND parent.archived_at IS NULL))
             ORDER BY t.priority DESC, t.scheduled_date ASC, t.created_at DESC''',
     ).get();
     return rows.map(_taskFromRow).toList();
@@ -315,19 +323,7 @@ class LifeRepository {
           'SELECT * FROM fixed_events WHERE deleted_at IS NULL ORDER BY starts_at',
         )
         .get();
-    return rows
-        .map(
-          (r) => FixedEvent(
-            id: r.read<String>('id'),
-            title: r.read<String>('title'),
-            notes: r.read<String>('notes'),
-            startsAt: DateTime.parse(r.read<String>('starts_at')),
-            endsAt: DateTime.parse(r.read<String>('ends_at')),
-            createdAt: DateTime.parse(r.read<String>('created_at')),
-            updatedAt: DateTime.parse(r.read<String>('updated_at')),
-          ),
-        )
-        .toList();
+    return rows.map(_eventFromRow).toList();
   }
 
   Future<FixedEvent> addEvent(EventDraft draft) async {
@@ -336,8 +332,12 @@ class LifeRepository {
     final now = DateTime.now().toUtc().toIso8601String();
     await db.customInsert(
       '''
-      INSERT INTO fixed_events(id,title,notes,starts_at,ends_at,created_at,updated_at)
-      VALUES(?,?,?,?,?,?,?)
+      INSERT INTO fixed_events(
+        id,title,notes,starts_at,ends_at,created_at,updated_at,
+        location,all_day,category_id,color_value,icon_name,reminder_minutes,
+        recurrence_kind,recurrence_interval,recurrence_weekdays,recurrence_until,
+        series_family_id,active_from_date)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ''',
       variables: [
         Variable.withString(id),
@@ -347,6 +347,9 @@ class LifeRepository {
         Variable.withString(draft.endsAt.toUtc().toIso8601String()),
         Variable.withString(now),
         Variable.withString(now),
+        ..._eventExtraVariables(draft),
+        Variable.withString(id),
+        Variable.withString(localDate(draft.startsAt.toLocal())),
       ],
     );
     return (await events()).firstWhere((event) => event.id == id);
@@ -356,7 +359,10 @@ class LifeRepository {
     _validateEvent(draft);
     final changed = await db.customUpdate(
       '''
-      UPDATE fixed_events SET title=?,notes=?,starts_at=?,ends_at=?,updated_at=?
+      UPDATE fixed_events SET title=?,notes=?,starts_at=?,ends_at=?,updated_at=?,
+        location=?,all_day=?,category_id=?,color_value=?,icon_name=?,
+        reminder_minutes=?,recurrence_kind=?,recurrence_interval=?,
+        recurrence_weekdays=?,recurrence_until=?
       WHERE id=? AND updated_at=? AND deleted_at IS NULL
     ''',
       variables: [
@@ -365,6 +371,7 @@ class LifeRepository {
         Variable.withString(draft.startsAt.toUtc().toIso8601String()),
         Variable.withString(draft.endsAt.toUtc().toIso8601String()),
         Variable.withString(DateTime.now().toUtc().toIso8601String()),
+        ..._eventExtraVariables(draft),
         Variable.withString(previous.id),
         Variable.withString(previous.updatedAt.toUtc().toIso8601String()),
       ],
@@ -517,6 +524,19 @@ class LifeRepository {
     if (!draft.endsAt.isAfter(draft.startsAt)) {
       throw ArgumentError('Event end must be after its start');
     }
+    if (draft.reminderMinutes != null && draft.reminderMinutes! < 0) {
+      throw ArgumentError('Reminder must be nonnegative');
+    }
+    final repeat = draft.repeat;
+    if (repeat != null) {
+      RecurrenceRule(
+        kind: RecurrenceKind.values.byName(repeat.kind.name),
+        startDate: localDate(draft.startsAt.toLocal()),
+        interval: repeat.interval,
+        weekdays: repeat.weekdays,
+        endDate: repeat.untilDate,
+      );
+    }
   }
 
   LifeTask _taskFromRow(QueryRow r) => LifeTask(
@@ -634,6 +654,24 @@ class LifeRepository {
       );
     });
     return (await tasks()).firstWhere((task) => task.id == id);
+  }
+
+  /// Starting ordinary work changes task status only. Focus work uses the
+  /// separate timer path, so ordinary Start Task never invents actual time.
+  Future<void> setTaskWorking(LifeTask task, bool working) async {
+    if (!task.isOpen) throw StateError('Closed tasks cannot be started');
+    final status = working ? TaskStatus.inProgress : TaskStatus.onHold;
+    final changed = await db.customUpdate(
+      '''UPDATE tasks SET status=?,updated_at=?
+      WHERE id=? AND updated_at=? AND deleted_at IS NULL AND archived_at IS NULL''',
+      variables: [
+        Variable.withString(status.name),
+        Variable.withString(DateTime.now().toUtc().toIso8601String()),
+        Variable.withString(task.id),
+        Variable.withString(task.updatedAt.toUtc().toIso8601String()),
+      ],
+    );
+    if (changed != 1) throw StateError('Task changed; reload it');
   }
 
   /// Creates a series and its first task in one transaction. Later fixed-date

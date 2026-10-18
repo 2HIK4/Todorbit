@@ -241,7 +241,7 @@ void main() {
   });
 
   test(
-    'disposable v4 projects, tasks, sessions and history migrate to v13',
+    'disposable v4 projects, tasks, sessions and history migrate to v15',
     () async {
       await database.close();
       final directory = await Directory.systemTemp.createTemp(
@@ -289,6 +289,9 @@ void main() {
         );
         await first.close();
         final raw = sqlite.sqlite3.open(file.path);
+        raw.execute('DROP TABLE task_resources');
+        raw.execute('DROP TABLE notification_deliveries');
+        raw.execute('DROP TABLE notification_settings');
         raw.execute('DROP TABLE time_entry_history');
         raw.execute('DROP TABLE time_entries');
         raw.execute('DROP TABLE timer_runs');
@@ -340,6 +343,19 @@ void main() {
           expect((await repo.sessions()).single.id, session.id);
           expect((await repo.events()).single.id, event.id);
           expect(await repo.schedulingHistory(), hasLength(1));
+          expect(
+            (await migrated.customSelect('PRAGMA user_version').getSingle())
+                .read<int>('user_version'),
+            AppDatabase.currentSchemaVersion,
+          );
+          expect(
+            (await migrated
+                .customSelect(
+                  "SELECT name FROM sqlite_master WHERE type='index' AND name='task_resources_task'",
+                )
+                .get()),
+            hasLength(1),
+          );
           expect(
             await migrated.customSelect('PRAGMA foreign_key_check').get(),
             isEmpty,
