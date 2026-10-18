@@ -65,7 +65,7 @@ class _QuickSearchDialogState extends ConsumerState<QuickSearchDialog> {
         _SearchMatch(
           title: task.title,
           subtitle: [
-          task.isOpen ? 'Task' : 'Closed task',
+            task.isOpen ? 'Task' : 'Closed task',
             if (project.isNotEmpty)
               project
             else if (category.isNotEmpty)

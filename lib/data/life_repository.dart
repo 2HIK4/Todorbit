@@ -10,6 +10,7 @@ import '../domain/habits.dart';
 import '../domain/goals.dart';
 import '../domain/time_tracking.dart';
 import '../domain/templates.dart';
+import '../domain/saved_views.dart';
 import '../domain/scheduling_models.dart';
 import 'app_database.dart';
 
@@ -18,6 +19,7 @@ part 'habit_repository.dart';
 part 'goal_repository.dart';
 part 'time_repository.dart';
 part 'template_repository.dart';
+part 'saved_view_repository.dart';
 
 class LifeRepository {
   LifeRepository(this.db);

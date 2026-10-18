@@ -51,7 +51,7 @@ Sequences persist explicit positions; dependencies persist directed prerequisite
 edges. Repository transactions validate cycles and keep sequence reorders
 atomic. Smart Reschedule's reviewed dependency warnings are checked again at
 Apply, so a newly conflicting prerequisite cannot silently bypass the preview.
-The native widget accepts v4 through v11 and never migrates the database.
+The native widget accepts v4 through v12 and never migrates the database.
 
 Schema v6 separates recurring rule templates from independent task occurrences.
 Schema v7 links rule generations with a family ID and active date boundaries.
@@ -86,6 +86,13 @@ as JSON snapshots with a format version. Instantiation checks the template
 revision and writes new project/task/recurrence identities in a transaction.
 Project prerequisite edges are remapped through the new task IDs. The native
 widget accepts v11 without template access.
+
+Schema v12 stores named, versioned task-filter JSON definitions. The
+controller evaluates filters against its loaded task/category/project and
+dependency snapshot using local relative dates, then renders the same task
+rows used by built-in views. Saving/editing/deleting a view writes through the
+repository with revision checks. The native widget accepts v12 without view
+access.
 
 The deterministic engine in `lib/domain/` has no database dependency. It keeps
 local date-only task plans separate from UTC work-session intervals and fixed

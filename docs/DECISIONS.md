@@ -120,3 +120,10 @@
   recurring tasks must save those as separate routine templates so its
   recurrence links are not silently lost. Compare the template revision at
   Apply and delete.
+- **Saved views (schema v12):** store named, versioned filter definitions
+  independently of tasks. Search reads the controller's current persisted task
+  snapshot and matches relative dates when viewed, so a Today filter rolls
+  forward. An empty status selection means any status. Keep Quick Search for
+  category/project navigation; advanced search is task-focused. Compare the
+  view revision for edits/deletion, and keep views with deleted category or
+  project IDs visible as empty until the user edits them.

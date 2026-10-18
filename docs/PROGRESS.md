@@ -80,6 +80,15 @@
   while undated tasks stay undated. Project creation rolls back fully on a
   conflict; stale/deleted template revisions are rejected. The Templates
   manager previews the destination and generated task dates before Apply.
+- Advanced task search and saved views (schema v12) filter persisted tasks by
+  text, status, category, project, priority, relative planned/deadline dates,
+  recurrence, and unfinished prerequisites. Matching tasks preview before a
+  view is saved. Named views have no count limit, appear in the sidebar,
+  recalculate from current records, and support editing and deletion with
+  stale-revision rejection. Quick Search still locates categories and
+  projects. Saved views below Categories retain the category creation
+  control's reachability in compact windows; closed-only selections cannot
+  launch Smart Reschedule.
 - Stale completion now rejects a newer task edit, and task duration input
   rejects invalid text instead of silently clearing the estimate. Prerequisite
   edits compare task revisions, and the narrow task editor keeps unsaved fields
@@ -123,7 +132,7 @@
 
 - Flutter 3.47.7 / Dart 3.13.5; Windows toolchain healthy.
 - `flutter analyze`: clean.
-- `flutter test`: 94 passing tests, including engine, database, migration,
+- `flutter test`: 98 passing tests, including engine, database, migration,
   stale-apply, undo/restoration, split, persistence, and preview/Apply coverage.
 - Native Release build and disposable database/settings self-test: passing.
 - Native dependency audit: no vulnerable packages reported.
@@ -196,6 +205,12 @@
   pass. `flutter analyze` is clean; all 94 Flutter tests and native Release
   build/self-test, Windows Release build, and packaged companion self-test
   pass. Manual Windows UI acceptance remains pending.
+- Schema v12 validation: disposable v11-to-v12 migration and restart,
+  combined relative-date/project/blocker filtering, unlimited persisted views,
+  stale edits, and search/save UI pass. `flutter analyze` is clean and all 98
+  Flutter tests, native Release build/self-test, Windows Release build, and
+  packaged companion self-test pass. Manual Windows UI acceptance remains
+  pending.
 
 ## In progress
 
@@ -209,7 +224,7 @@
 
 ## Not yet implemented
 
-- Advanced search/saved views, backups, Trash,
+- Backups, Trash,
   notifications, privacy controls, import/export, and installer packaging.
 
 ## Environment and data notes
@@ -229,8 +244,8 @@
 
 ## Next action
 
-Implement advanced search and saved views next, then backups/Trash and the
-remaining Windows V1.0 roadmap. Manually
+Implement automatic backups, restoration, retention, and recoverable Trash
+next, then the remaining Windows V1.0 roadmap. Manually
 exercise the recurrence editor, Smart Reschedule collision choices, and Habits
 screen on an isolated Windows profile before opening the production schema-v4
 database. Time-of-day recurrence is outside the current date-only task model;

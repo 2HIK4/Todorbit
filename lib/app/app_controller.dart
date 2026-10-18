@@ -12,6 +12,7 @@ import '../domain/habits.dart';
 import '../domain/goals.dart';
 import '../domain/time_tracking.dart';
 import '../domain/templates.dart';
+import '../domain/saved_views.dart';
 import '../domain/appearance.dart';
 import '../domain/scheduling_models.dart';
 
@@ -30,6 +31,7 @@ enum WorkspaceView {
   calendar,
   habits,
   goals,
+  saved,
   category,
   project,
 }
@@ -55,6 +57,7 @@ class AppController extends ChangeNotifier {
   List<GoalMilestone> goalMilestones = [];
   List<TimeEntry> timeEntries = [];
   List<LifeTemplate> templates = [];
+  List<SavedView> savedViews = [];
   TimerRun? activeTimer;
   String? timerError;
   Timer? _timerHeartbeat;
@@ -99,6 +102,7 @@ class AppController extends ChangeNotifier {
       repository.timeEntries(),
       repository.activeTimerRun(),
       repository.templates(),
+      repository.savedViews(),
     ]);
     categories = result[0] as List<Category>;
     projects = result[1] as List<Project>;
@@ -117,6 +121,7 @@ class AppController extends ChangeNotifier {
     timeEntries = result[14] as List<TimeEntry>;
     activeTimer = result[15] as TimerRun?;
     templates = result[16] as List<LifeTemplate>;
+    savedViews = result[17] as List<SavedView>;
     _syncTimerHeartbeat();
     if (selectedTaskId != null && selectedTask == null) selectedTaskId = null;
     loading = false;
@@ -207,6 +212,12 @@ class AppController extends ChangeNotifier {
 
   List<LifeTask> get visibleTasks {
     final today = localDate(DateTime.now());
+    final selectedView = savedViews
+        .where((item) => item.id == scopeId)
+        .firstOrNull;
+    final savedIds = view == WorkspaceView.saved && selectedView != null
+        ? searchTasks(selectedView.filter).map((task) => task.id).toSet()
+        : <String>{};
     final items = tasks.where((task) {
       switch (view) {
         case WorkspaceView.today:
@@ -235,6 +246,8 @@ class AppController extends ChangeNotifier {
         case WorkspaceView.habits:
         case WorkspaceView.goals:
           return false;
+        case WorkspaceView.saved:
+          return savedIds.contains(task.id);
         case WorkspaceView.category:
           return task.isOpen && task.categoryId == scopeId;
         case WorkspaceView.project:
@@ -256,6 +269,55 @@ class AppController extends ChangeNotifier {
       }
     });
     return items;
+  }
+
+  List<LifeTask> searchTasks(TaskFilter filter) {
+    final byId = {for (final task in tasks) task.id: task};
+    final blocked = <String>{};
+    for (final link in dependencies) {
+      final prerequisite = byId[link.prerequisiteId];
+      if (prerequisite != null && prerequisite.status != TaskStatus.completed) {
+        blocked.add(link.taskId);
+      }
+    }
+    final categoryMap = {for (final item in categories) item.id: item};
+    final projectMap = {for (final item in projects) item.id: item};
+    final now = DateTime.now();
+    return tasks
+        .where(
+          (task) => filter.matches(
+            task,
+            now,
+            categories: categoryMap,
+            projects: projectMap,
+            blockedTaskIds: blocked,
+          ),
+        )
+        .toList();
+  }
+
+  Future<SavedView> addSavedView(String name, TaskFilter filter) async {
+    final view = await repository.addSavedView(name, filter);
+    await refresh();
+    navigate(WorkspaceView.saved, id: view.id);
+    return view;
+  }
+
+  Future<void> updateSavedView(
+    SavedView previous,
+    String name,
+    TaskFilter filter,
+  ) async {
+    await repository.updateSavedView(previous, name, filter);
+    await refresh();
+  }
+
+  Future<void> deleteSavedView(SavedView previous) async {
+    await repository.deleteSavedView(previous);
+    if (view == WorkspaceView.saved && scopeId == previous.id) {
+      navigate(WorkspaceView.today);
+    }
+    await refresh();
   }
 
   int _compareNullable(String? a, String? b) {

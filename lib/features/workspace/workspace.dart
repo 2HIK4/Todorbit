@@ -6,12 +6,14 @@ import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../../domain/recurrence.dart';
 import '../../domain/time_tracking.dart';
+import '../../domain/saved_views.dart';
 import '../../domain/appearance.dart';
 import '../calendar/calendar_view.dart';
 import '../habits/habits_view.dart';
 import '../goals/goals_view.dart';
 import '../time_tracking/time_tracking_dialog.dart';
 import '../templates/templates_dialog.dart';
+import '../search/advanced_search_dialog.dart';
 import '../scheduling/smart_reschedule.dart';
 import '../widget/native_widget_service.dart';
 import 'task_editor.dart';
@@ -127,7 +129,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       builder: (_) => SmartRescheduleDialog(
         scope: scope ?? _scheduleScope(controller),
         taskIds:
-            taskIds ?? controller.visibleTasks.map((task) => task.id).toList(),
+            taskIds ??
+            controller.visibleTasks
+                .where((task) => task.isOpen)
+                .map((task) => task.id)
+                .toList(),
         sessionIds: sessionIds ?? const [],
       ),
     );
@@ -147,6 +153,22 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     context: context,
     builder: (_) => const TemplatesDialog(),
   );
+
+  Future<void> _showAdvancedSearch([SavedView? savedView]) => showDialog<void>(
+    context: context,
+    builder: (_) => AdvancedSearchDialog(savedView: savedView),
+  );
+
+  Future<void> _deleteSavedView(SavedView savedView) async {
+    if (await _confirm(
+      'Delete saved view?',
+      'Delete “${savedView.name}”? Tasks will remain unchanged.',
+    )) {
+      await _run(
+        () => ref.read(appControllerProvider).deleteSavedView(savedView),
+      );
+    }
+  }
 
   Future<void> _showActiveTimer(String taskId) => showDialog<void>(
     context: context,
@@ -466,6 +488,53 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                       ),
                     ),
                 ],
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(left: 12),
+                        child: Text(
+                          'SAVED VIEWS',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Advanced search and new saved view',
+                      onPressed: () => _showAdvancedSearch(),
+                      icon: const Icon(Icons.add, size: 19),
+                    ),
+                  ],
+                ),
+                for (final savedView in controller.savedViews)
+                  _nav(
+                    controller,
+                    WorkspaceView.saved,
+                    savedView.name,
+                    Icons.bookmark_outline,
+                    id: savedView.id,
+                    trailing: PopupMenuButton<String>(
+                      tooltip: 'Saved view actions',
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(
+                          value: 'edit',
+                          child: Text('Edit filters'),
+                        ),
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Text('Delete view'),
+                        ),
+                      ],
+                      onSelected: (action) => action == 'edit'
+                          ? _showAdvancedSearch(savedView)
+                          : _deleteSavedView(savedView),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -476,6 +545,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 tooltip: 'Quick Search (Ctrl+K)',
                 onPressed: _showSearch,
                 icon: const Icon(Icons.search_outlined),
+              ),
+              IconButton(
+                tooltip: 'Advanced search',
+                onPressed: () => _showAdvancedSearch(),
+                icon: const Icon(Icons.manage_search_outlined),
               ),
               IconButton(
                 tooltip: 'Task sequences',
@@ -663,6 +737,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       WorkspaceView.calendar => 'Calendar',
       WorkspaceView.habits => 'Habits',
       WorkspaceView.goals => 'Goals',
+      WorkspaceView.saved =>
+        controller.savedViews
+                .where((item) => item.id == controller.scopeId)
+                .firstOrNull
+                ?.name ??
+            'Saved view',
       WorkspaceView.category =>
         controller.categories
                 .where((c) => c.id == controller.scopeId)
@@ -753,7 +833,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 ),
               ),
               OutlinedButton.icon(
-                onPressed: items.isEmpty ? null : () => _showSmart(),
+                onPressed: items.any((task) => task.isOpen)
+                    ? () => _showSmart()
+                    : null,
                 icon: const Icon(Icons.auto_fix_high),
                 label: const Text('Reschedule'),
               ),
@@ -952,10 +1034,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     value: 'complete',
                     child: Text(done ? 'Reopen' : 'Complete'),
                   ),
-                  const PopupMenuItem(
-                    value: 'reschedule',
-                    child: Text('Smart Reschedule'),
-                  ),
+                  if (task.isOpen)
+                    const PopupMenuItem(
+                      value: 'reschedule',
+                      child: Text('Smart Reschedule'),
+                    ),
                   const PopupMenuItem(value: 'delete', child: Text('Delete')),
                 ],
                 onSelected: (action) async {

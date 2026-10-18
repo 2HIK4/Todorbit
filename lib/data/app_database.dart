@@ -40,7 +40,7 @@ class AppDatabase extends GeneratedDatabase {
   }
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   Iterable<TableInfo> get allTables => const [];
@@ -109,9 +109,10 @@ class AppDatabase extends GeneratedDatabase {
       await _createGoals();
       await _createTimeTracking();
       await _createTemplates();
+      await _createSavedViews();
     },
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 10 || to != 11) {
+      if (from < 1 || from > 11 || to != 12) {
         throw StateError('No migration registered from schema $from to $to');
       }
       if (from == 1) {
@@ -148,6 +149,7 @@ class AppDatabase extends GeneratedDatabase {
       if (from < 9) await _createGoals();
       if (from < 10) await _createTimeTracking();
       await _createTemplates();
+      await _createSavedViews();
     },
   );
 
@@ -380,6 +382,18 @@ class AppDatabase extends GeneratedDatabase {
         name TEXT NOT NULL COLLATE NOCASE UNIQUE,
         kind TEXT NOT NULL CHECK(kind IN ('task','project','routine')),
         payload_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> _createSavedViews() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS saved_views (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL COLLATE NOCASE UNIQUE,
+        filter_json TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
