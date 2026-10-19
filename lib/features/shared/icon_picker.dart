@@ -75,16 +75,30 @@ Future<(bool, String?)> chooseBuiltInIcon(
                     itemCount: matches.length,
                     itemBuilder: (context, index) {
                       final entry = matches[index];
+                      final selected = current == entry.key;
                       return Tooltip(
                         message: entry.key,
-                        child: IconButton.filledTonal(
-                          tooltip: entry.key,
-                          onPressed: () => Navigator.pop(context, entry.key),
-                          icon: Icon(
-                            entry.value,
-                            color: current == entry.key
-                                ? Theme.of(context).colorScheme.primary
-                                : null,
+                        child: Semantics(
+                          selected: selected,
+                          label: '${entry.key} icon',
+                          child: IconButton(
+                            tooltip: entry.key,
+                            style: IconButton.styleFrom(
+                              backgroundColor: selected
+                                  ? Theme.of(context)
+                                        .colorScheme
+                                        .primaryContainer
+                                  : Theme.of(context)
+                                        .colorScheme
+                                        .surfaceContainerHigh,
+                              foregroundColor: selected
+                                  ? Theme.of(context)
+                                        .colorScheme
+                                        .onPrimaryContainer
+                                  : Theme.of(context).colorScheme.onSurface,
+                            ),
+                            onPressed: () => Navigator.pop(context, entry.key),
+                            icon: Icon(entry.value),
                           ),
                         ),
                       );

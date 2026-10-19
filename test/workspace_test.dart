@@ -131,6 +131,10 @@ void main() {
         find.widgetWithText(TextField, 'Title *'),
         'Daily reading',
       );
+      await tester.tap(find.text('Scheduled day: None'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
       final editorScroll = find
           .descendant(
             of: find.byType(TaskEditor),

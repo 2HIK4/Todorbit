@@ -5,6 +5,8 @@ enum ScheduledFilter { any, today, nextSevenDays, future, unscheduled }
 
 enum DeadlineFilter { any, overdue, nextSevenDays, noDeadline }
 
+enum SavedViewSort { scheduled, priority, title, created }
+
 class TaskFilter {
   const TaskFilter({
     this.text = '',
@@ -16,6 +18,7 @@ class TaskFilter {
     this.deadline = DeadlineFilter.any,
     this.recurringOnly = false,
     this.blockedOnly = false,
+    this.sort = SavedViewSort.scheduled,
   });
   final String text;
   final Set<TaskStatus> statuses;
@@ -26,6 +29,7 @@ class TaskFilter {
   final DeadlineFilter deadline;
   final bool recurringOnly;
   final bool blockedOnly;
+  final SavedViewSort sort;
 
   bool matches(
     LifeTask task,
@@ -104,6 +108,7 @@ class TaskFilter {
     'deadline': deadline.name,
     'recurring_only': recurringOnly,
     'blocked_only': blockedOnly,
+    'sort': sort.name,
   };
 
   factory TaskFilter.fromJson(Map<String, dynamic> json) {
@@ -120,6 +125,9 @@ class TaskFilter {
       deadline: DeadlineFilter.values.byName(json['deadline'] as String),
       recurringOnly: json['recurring_only'] as bool,
       blockedOnly: json['blocked_only'] as bool,
+      sort: SavedViewSort.values.byName(
+        json['sort'] as String? ?? SavedViewSort.scheduled.name,
+      ),
     );
   }
 }

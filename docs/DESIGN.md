@@ -1,5 +1,32 @@
 # Design
 
+## Feedback round 3 (2026-10-19)
+
+The Windows title bar, lavender identity, and light/dark themes stay native to
+the app. Calendar entries now use compact tinted blocks, a restrained accent
+edge, and text for type and status. Cancelled titles are struck through; a
+secondary status and accessible tooltip remain. A scheduled subtask shows its
+parent as the primary line and its own title underneath.
+
+Month cells use measured height and text scale to decide how many complete
+entries fit. The remaining count opens a day preview, as does clicking empty
+day space in Month or Week. The preview keeps the current calendar layout,
+offers details and quick creation, and has an explicit Day View action. Empty
+calendar areas use a Windows-style right-click creation menu; event and task
+entries keep their own click target.
+
+Task creation begins without a date. Anytime collects tasks with neither a
+planned date nor a deadline. The task panel leads with title, notes, and
+scheduling; organization, checklists, subtasks, and resources follow; rare
+settings live in labeled advanced groups. The scrollable form clears the fixed
+save action. Category and project selectors provide creation in context while
+keeping the unsaved task draft.
+
+Saved View creation labels the name, filters, sort, and save action directly
+in Advanced Search. Zero matches are valid. The event color menu is anchored
+to its field and offers eight distinct named colors. All surfaces retain
+keyboard focus, Escape dismissal, and semantic text/icon cues where applicable.
+
 Use a compact Windows 11 inspired workspace: a 230 px navigation rail, a flexible content area, and a 360 px task details panel when space permits. Narrow windows switch details to a dialog.
 
 ## Feedback round 2 visual audit and rules (2026-10-19)

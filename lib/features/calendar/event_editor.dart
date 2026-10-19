@@ -64,7 +64,8 @@ class _EventEditorState extends ConsumerState<EventEditor> {
           widget.initialDay.year,
           widget.initialDay.month,
           widget.initialDay.day,
-          9,
+          widget.initialDay.hour == 0 ? 9 : widget.initialDay.hour,
+          widget.initialDay.minute,
         );
     end = widget.event?.endsAt.toLocal() ?? start.add(const Duration(hours: 1));
   }
@@ -471,17 +472,59 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                 onChanged: (value) => setState(() => categoryId = value),
               ),
               const SizedBox(height: 12),
-              DropdownButtonFormField<int?>(
-                initialValue: colorValue,
-                decoration: const InputDecoration(labelText: 'Color'),
-                items: const [
-                  DropdownMenuItem(value: null, child: Text('Default')),
-                  DropdownMenuItem(value: 0xFF5365B5, child: Text('Indigo')),
-                  DropdownMenuItem(value: 0xFF7E57C2, child: Text('Purple')),
-                  DropdownMenuItem(value: 0xFF00897B, child: Text('Teal')),
-                  DropdownMenuItem(value: 0xFFD17A22, child: Text('Amber')),
-                ],
-                onChanged: (value) => setState(() => colorValue = value),
+              LayoutBuilder(
+                builder: (context, bounds) => DropdownMenu<int>(
+                  key: ValueKey('event-color:${colorValue ?? 0}'),
+                  label: const Text('Color'),
+                  width: bounds.maxWidth,
+                  menuHeight: 250,
+                  initialSelection: colorValue ?? 0,
+                  dropdownMenuEntries: const [
+                    DropdownMenuEntry(value: 0, label: 'Default'),
+                    DropdownMenuEntry(
+                      value: 0xFF5365B5,
+                      label: 'Indigo',
+                      leadingIcon: Icon(Icons.circle, color: Color(0xFF5365B5)),
+                    ),
+                    DropdownMenuEntry(
+                      value: 0xFF7E57C2,
+                      label: 'Purple',
+                      leadingIcon: Icon(Icons.circle, color: Color(0xFF7E57C2)),
+                    ),
+                    DropdownMenuEntry(
+                      value: 0xFF00897B,
+                      label: 'Teal',
+                      leadingIcon: Icon(Icons.circle, color: Color(0xFF00897B)),
+                    ),
+                    DropdownMenuEntry(
+                      value: 0xFFD17A22,
+                      label: 'Amber',
+                      leadingIcon: Icon(Icons.circle, color: Color(0xFFD17A22)),
+                    ),
+                    DropdownMenuEntry(
+                      value: 0xFFB65372,
+                      label: 'Rose',
+                      leadingIcon: Icon(Icons.circle, color: Color(0xFFB65372)),
+                    ),
+                    DropdownMenuEntry(
+                      value: 0xFF3376A3,
+                      label: 'Ocean',
+                      leadingIcon: Icon(Icons.circle, color: Color(0xFF3376A3)),
+                    ),
+                    DropdownMenuEntry(
+                      value: 0xFF6A8A43,
+                      label: 'Olive',
+                      leadingIcon: Icon(Icons.circle, color: Color(0xFF6A8A43)),
+                    ),
+                    DropdownMenuEntry(
+                      value: 0xFFB45A44,
+                      label: 'Coral',
+                      leadingIcon: Icon(Icons.circle, color: Color(0xFFB45A44)),
+                    ),
+                  ],
+                  onSelected: (value) =>
+                      setState(() => colorValue = value == 0 ? null : value),
+                ),
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(

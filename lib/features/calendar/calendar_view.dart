@@ -9,14 +9,21 @@ import 'session_editor.dart';
 
 enum CalendarMode { day, week, month }
 
+int monthEntryCapacity(double cellHeight, double textScale) {
+  final rowHeight = 32.0 * textScale.clamp(1.0, 2.0);
+  return ((cellHeight - 34) / rowHeight).floor().clamp(0, 30);
+}
+
 class CalendarView extends ConsumerStatefulWidget {
   const CalendarView({
     super.key,
     required this.onTaskTap,
     required this.onSmartReschedule,
+    required this.onAddTask,
   });
   final void Function(LifeTask task) onTaskTap;
   final VoidCallback onSmartReschedule;
+  final void Function(DateTime date) onAddTask;
 
   @override
   ConsumerState<CalendarView> createState() => _CalendarViewState();
@@ -25,6 +32,7 @@ class CalendarView extends ConsumerStatefulWidget {
 class _CalendarViewState extends ConsumerState<CalendarView> {
   DateTime selected = DateTime.now();
   CalendarMode mode = CalendarMode.week;
+  Offset _lastTapPosition = Offset.zero;
 
   DateTime get day => DateTime(selected.year, selected.month, selected.day);
   DateTime get weekStart =>
@@ -63,7 +71,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
     return DateTime(first.year, first.month, day.day.clamp(1, lastDay));
   }
 
-  Future<void> _editEvent([FixedEvent? event]) async {
+  Future<void> _editEvent([FixedEvent? event, DateTime? initialDate]) async {
     await showDialog<void>(
       context: context,
       builder: (context) => Dialog(
@@ -72,13 +80,152 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
           height: 550,
           child: EventEditor(
             event: event,
-            initialDay: day,
+            initialDay: initialDate ?? day,
             onClose: () => Navigator.pop(context),
           ),
         ),
       ),
     );
     if (mounted) await _loadSelectedMonth();
+  }
+
+  Future<void> _showCreateMenu(DateTime date, Offset position) async {
+    final action = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx,
+        position.dy,
+      ),
+      items: [
+        PopupMenuItem(
+          value: 'event',
+          child: Text(date.hour == 0 ? 'Add Event' : 'Add Event at this time'),
+        ),
+        const PopupMenuItem(value: 'task', child: Text('Add Task')),
+      ],
+    );
+    if (!mounted) return;
+    if (action == 'event') await _editEvent(null, date);
+    if (action == 'task') widget.onAddTask(date);
+  }
+
+  Future<void> _showDayPreview(DateTime date, Offset position) async {
+    final size = MediaQuery.sizeOf(context);
+    final entries = _entries(ref.read(appControllerProvider), date);
+    final previewHeight = (132.0 + entries.length * 58.0)
+        .clamp(160.0, 440.0)
+        .clamp(0.0, size.height - 16);
+    final left = position.dx.clamp(
+      8.0,
+      (size.width - 370).clamp(8.0, double.infinity),
+    );
+    final top = position.dy.clamp(
+      8.0,
+      (size.height - previewHeight - 8).clamp(8.0, double.infinity),
+    );
+    await showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Close day preview',
+      pageBuilder: (popupContext, _, _) => Stack(
+        children: [
+          Positioned(
+            left: left,
+            top: top,
+            child: Material(
+              elevation: 12,
+              borderRadius: BorderRadius.circular(12),
+              clipBehavior: Clip.antiAlias,
+              child: SizedBox(
+                width: (size.width - 16).clamp(0.0, 350.0),
+                height: previewHeight,
+                child: Column(
+                  children: [
+                    ListTile(
+                      title: Text(localDate(date)),
+                      trailing: IconButton(
+                        tooltip: 'Close preview',
+                        onPressed: () => Navigator.pop(popupContext),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView(
+                        children: [
+                          for (final entry in entries)
+                            ListTile(
+                              dense: true,
+                              leading: Icon(
+                                entry.event != null
+                                    ? Icons.event_outlined
+                                    : entry.session != null
+                                    ? Icons.schedule
+                                    : Icons.task_alt_outlined,
+                              ),
+                              title: Text(
+                                entry.label,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: entry.event?.cancelled == true
+                                  ? const Text('Cancelled')
+                                  : entry.task == null
+                                  ? null
+                                  : Text(entry.task!.status.name),
+                              onTap: () {
+                                Navigator.pop(popupContext);
+                                if (entry.event != null) {
+                                  _editEvent(entry.event);
+                                } else if (entry.session != null) {
+                                  _editSession(entry.session);
+                                } else {
+                                  widget.onTaskTap(entry.task!);
+                                }
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Wrap(
+                      alignment: WrapAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(popupContext);
+                            _editEvent(null, date);
+                          },
+                          child: const Text('Add Event'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(popupContext);
+                            widget.onAddTask(date);
+                          },
+                          child: const Text('Add Task'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(popupContext);
+                            setState(() {
+                              selected = date;
+                              mode = CalendarMode.day;
+                            });
+                          },
+                          child: const Text('Open Day View'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _editSession([WorkSession? session]) async {
@@ -225,14 +372,40 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
 
   Widget _dayList(AppController controller, DateTime date) {
     final entries = _entries(controller, date);
-    if (entries.isEmpty) {
-      return const Center(
-        child: Text('No planned tasks, deadlines, or events on this day.'),
-      );
-    }
     return ListView(
       padding: const EdgeInsets.all(20),
-      children: entries.map((entry) => _entryTile(entry)).toList(),
+      children: [
+        if (entries.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(12),
+            child: Text('No planned tasks, deadlines, or events on this day.'),
+          ),
+        ...entries.map((entry) => _entryTile(entry)),
+        const SizedBox(height: 12),
+        Text('Time slots', style: Theme.of(context).textTheme.titleSmall),
+        for (var hour = 7; hour <= 22; hour++)
+          GestureDetector(
+            onSecondaryTapDown: (details) => _showCreateMenu(
+              DateTime(date.year, date.month, date.day, hour),
+              details.globalPosition,
+            ),
+            child: Container(
+              height: 42,
+              alignment: Alignment.centerLeft,
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                ),
+              ),
+              child: Text(
+                '${hour.toString().padLeft(2, '0')}:00',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -249,11 +422,20 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
-                  child: Text(
-                    '${_weekdays[index]} ${localDate(date)}',
-                    style: Theme.of(context).textTheme.titleSmall,
+                GestureDetector(
+                  onSecondaryTapDown: (details) =>
+                      _showCreateMenu(date, details.globalPosition),
+                  onTapDown: (details) =>
+                      _lastTapPosition = details.globalPosition,
+                  child: InkWell(
+                    onTap: () => _showDayPreview(date, _lastTapPosition),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
+                      child: Text(
+                        '${_weekdays[index]} ${localDate(date)}',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    ),
                   ),
                 ),
                 ..._entries(controller, date).map(_entryTile),
@@ -272,42 +454,55 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
           );
           final entries = _entries(controller, date);
           return Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  right: BorderSide(
-                    color: Theme.of(context).colorScheme.outlineVariant,
+            child: GestureDetector(
+              onSecondaryTapDown: (details) =>
+                  _showCreateMenu(date, details.globalPosition),
+              onTapDown: (details) => _lastTapPosition = details.globalPosition,
+              onTap: () => _showDayPreview(date, _lastTapPosition),
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border(
+                    right: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
                   ),
                 ),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(8),
-                    color: localDate(date) == localDate(DateTime.now())
-                        ? Theme.of(context).colorScheme.primaryContainer
-                              .withValues(alpha: 0.55)
-                        : null,
-                    child: Text(
-                      '${_weekdays[index]} ${date.day}',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
+                child: Column(
+                  children: [
+                    InkWell(
+                      onTapDown: (details) =>
+                          _lastTapPosition = details.globalPosition,
+                      onTap: () => _showDayPreview(date, _lastTapPosition),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(8),
                         color: localDate(date) == localDate(DateTime.now())
-                            ? Theme.of(context).colorScheme.onPrimaryContainer
+                            ? Theme.of(context).colorScheme.primaryContainer
+                                  .withValues(alpha: 0.55)
                             : null,
+                        child: Text(
+                          '${_weekdays[index]} ${date.day}',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: localDate(date) == localDate(DateTime.now())
+                                ? Theme.of(context)
+                                      .colorScheme
+                                      .onPrimaryContainer
+                                : null,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: ListView(
-                      children: entries
-                          .map((entry) => _entryTile(entry, compact: true))
-                          .toList(),
+                    Expanded(
+                      child: ListView(
+                        children: entries
+                            .map((entry) => _entryTile(entry, compact: true))
+                            .toList(),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
@@ -323,12 +518,17 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
     final cellCount = ((offset + days + 6) ~/ 7) * 7;
     return LayoutBuilder(
       builder: (context, bounds) {
-        final previewCount = bounds.maxWidth < 850 ? 1 : 2;
+        final rows = cellCount ~/ 7;
+        final cellHeight = (bounds.maxHeight - 24) / rows;
+        final previewCount = monthEntryCapacity(
+          cellHeight,
+          MediaQuery.textScalerOf(context).scale(1),
+        );
         return GridView.builder(
           padding: const EdgeInsets.all(12),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 7,
-            childAspectRatio: 0.95,
+            mainAxisExtent: cellHeight.clamp(90.0, double.infinity),
           ),
           itemCount: cellCount,
           itemBuilder: (context, index) {
@@ -340,71 +540,61 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
             final inMonth = date.month == day.month;
             final entries = _entries(controller, date);
             final scheme = Theme.of(context).colorScheme;
-            return InkWell(
-              onTap: () => setState(() {
-                selected = date;
-                mode = CalendarMode.day;
-              }),
-              child: Container(
-                margin: const EdgeInsets.all(2),
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: localDate(date) == localDate(DateTime.now())
-                      ? scheme.primaryContainer
-                      : scheme.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(8),
-                  border:
-                      date.year == selected.year &&
-                          date.month == selected.month &&
-                          date.day == selected.day
-                      ? Border.all(color: scheme.primary, width: 1.5)
-                      : null,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${date.day}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: inMonth ? null : scheme.outline,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    for (final entry in entries.take(previewCount))
-                      Tooltip(
-                        message: entry.label,
-                        child: Row(
-                          children: [
-                            Icon(
-                              entry.event != null
-                                  ? Icons.event_outlined
-                                  : entry.session != null
-                                  ? Icons.schedule_outlined
-                                  : Icons.task_alt_outlined,
-                              size: 11,
-                              color: entry.event?.colorValue == null
-                                  ? scheme.onSurfaceVariant
-                                  : Color(entry.event!.colorValue!),
-                            ),
-                            const SizedBox(width: 3),
-                            Expanded(
-                              child: Text(
-                                entry.label.replaceAll('\n', ' · '),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 11),
-                              ),
-                            ),
-                          ],
+            return GestureDetector(
+              onSecondaryTapDown: (details) =>
+                  _showCreateMenu(date, details.globalPosition),
+              child: InkWell(
+                onTapDown: (details) =>
+                    _lastTapPosition = details.globalPosition,
+                onTap: () => _showDayPreview(date, _lastTapPosition),
+                child: Container(
+                  margin: const EdgeInsets.all(2),
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: localDate(date) == localDate(DateTime.now())
+                        ? scheme.primaryContainer
+                        : scheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(8),
+                    border:
+                        date.year == selected.year &&
+                            date.month == selected.month &&
+                            date.day == selected.day
+                        ? Border.all(color: scheme.primary, width: 1.5)
+                        : null,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${date.day}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: inMonth ? null : scheme.outline,
                         ),
                       ),
-                    if (entries.length > previewCount)
-                      Text(
-                        '+${entries.length - previewCount} more',
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                  ],
+                      const SizedBox(height: 3),
+                      for (final entry in entries.take(
+                        entries.length > previewCount
+                            ? (previewCount - 1).clamp(0, 30)
+                            : previewCount,
+                      ))
+                        _monthEntry(entry),
+                      if (entries.length > previewCount)
+                        TextButton(
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(0, 22),
+                            alignment: Alignment.centerLeft,
+                          ),
+                          onPressed: () =>
+                              _showDayPreview(date, _lastTapPosition),
+                          child: Text(
+                            '+${entries.length - (previewCount - 1).clamp(0, 30)} more',
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -429,7 +619,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
               : 'Continues';
           list.add(
             _CalendarEntry(
-              '${event.cancelled ? 'Cancelled' : 'Event'} · '
+              'Event · '
               '${event.allDay ? 'All day' : time} · ${event.title}'
               '${event.location.isEmpty ? '' : ' · ${event.location}'}',
               event: event,
@@ -440,17 +630,29 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
     }
     if (controller.calendarContent != CalendarContent.eventsOnly) {
       for (final task in controller.tasks) {
+        final parentId = controller.taskParents[task.id];
+        final parent = controller.tasks
+            .where((item) => item.id == parentId)
+            .firstOrNull;
+        final parentTitle = parent?.title;
         if (task.scheduledDate == key) {
           final activity = controller.progressiveAssignments[task.id]?.title;
           list.add(
             _CalendarEntry(
-              'Plan · ${task.title}${activity == null ? '' : '\nCurrent step: $activity'}',
+              'Plan · ${parentTitle == null ? task.title : '$parentTitle\n${task.title}'}${activity == null ? '' : '\nCurrent step: $activity'}',
               task: task,
+              parentTitle: parentTitle,
             ),
           );
         }
-        if (task.deadlineDate == key) {
-          list.add(_CalendarEntry('Deadline · ${task.title}', task: task));
+        if (task.deadlineDate == key && task.scheduledDate != key) {
+          list.add(
+            _CalendarEntry(
+              'Deadline · ${parentTitle == null ? task.title : '$parentTitle\n${task.title}'}',
+              task: task,
+              parentTitle: parentTitle,
+            ),
+          );
         }
       }
       for (final session in controller.sessions) {
@@ -479,61 +681,236 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
     return list;
   }
 
+  Widget _monthEntry(_CalendarEntry entry) {
+    final scheme = Theme.of(context).colorScheme;
+    final event = entry.event;
+    final accent = event?.colorValue == null
+        ? scheme.primary
+        : Color(event!.colorValue!);
+    final text = event == null
+        ? entry.label.replaceAll('\n', ' · ')
+        : event.title;
+    return Tooltip(
+      message: event?.cancelled == true
+          ? 'Cancelled event: ${entry.label}'
+          : entry.label,
+      child: GestureDetector(
+        onSecondaryTapDown: (_) {},
+        child: InkWell(
+          onTap: () {
+            if (event != null) {
+              _editEvent(event);
+            } else if (entry.session != null) {
+              _editSession(entry.session);
+            } else {
+              widget.onTaskTap(entry.task!);
+            }
+          },
+          child: Container(
+            height: 29 * MediaQuery.textScalerOf(context).scale(1),
+            margin: const EdgeInsets.only(bottom: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: event != null
+                  ? Color.lerp(
+                      scheme.surface,
+                      accent,
+                      event.cancelled ? 0.07 : 0.17,
+                    )
+                  : entry.session != null
+                  ? scheme.tertiaryContainer.withValues(alpha: 0.55)
+                  : scheme.surfaceContainerHigh,
+              border: Border(
+                left: BorderSide(
+                  color: event != null
+                      ? accent
+                      : entry.session != null
+                      ? scheme.tertiary
+                      : scheme.outline,
+                  width: 2,
+                ),
+              ),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  event != null
+                      ? Icons.event_outlined
+                      : entry.session != null
+                      ? Icons.schedule_outlined
+                      : Icons.task_alt_outlined,
+                  size: 12,
+                  color: scheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 3),
+                Expanded(
+                  child: entry.parentTitle == null
+                      ? Text(
+                          text,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: event?.cancelled == true
+                                ? scheme.onSurfaceVariant
+                                : scheme.onSurface,
+                            decoration: event?.cancelled == true
+                                ? TextDecoration.lineThrough
+                                : null,
+                          ),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              entry.parentTitle!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              entry.task!.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _entryTile(_CalendarEntry entry, {bool compact = false}) {
     final event = entry.event;
     final session = entry.session;
     final conflicts = event == null || event.cancelled
         ? 0
         : _eventConflictCount(event);
+    final scheme = Theme.of(context).colorScheme;
+    final accent = event?.colorValue == null
+        ? scheme.primary
+        : Color(event!.colorValue!);
     return Card(
+      color: event == null
+          ? null
+          : Color.lerp(scheme.surface, accent, event.cancelled ? 0.07 : 0.17),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: event == null
+            ? BorderSide.none
+            : BorderSide(color: accent.withValues(alpha: 0.55)),
+      ),
       margin: EdgeInsets.symmetric(horizontal: compact ? 3 : 10, vertical: 3),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: event != null
-            ? () => _editEvent(event)
-            : session != null
-            ? () => _editSession(session)
-            : () => widget.onTaskTap(entry.task!),
-        child: Padding(
-          padding: EdgeInsets.all(compact ? 6 : 12),
-          child: Row(
-            children: [
-              Icon(
-                event != null
-                    ? iconForKey(event.iconName, Icons.event_outlined)
-                    : session != null
-                    ? Icons.schedule
-                    : Icons.check_circle_outline,
-                size: compact ? 14 : 18,
-                color: event?.colorValue == null
-                    ? Theme.of(context).colorScheme.primary
-                    : Color(event!.colorValue!),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  entry.label,
-                  maxLines: compact ? 3 : null,
-                  overflow: compact ? TextOverflow.ellipsis : null,
-                  style: TextStyle(
-                    fontSize: compact ? 11 : 14,
-                    decoration: event?.cancelled == true
-                        ? TextDecoration.lineThrough
-                        : null,
-                  ),
+      child: GestureDetector(
+        onSecondaryTapDown: (_) {},
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: event != null
+              ? () => _editEvent(event)
+              : session != null
+              ? () => _editSession(session)
+              : () => widget.onTaskTap(entry.task!),
+          child: Padding(
+            padding: EdgeInsets.all(compact ? 6 : 12),
+            child: Row(
+              children: [
+                Icon(
+                  event != null
+                      ? iconForKey(event.iconName, Icons.event_outlined)
+                      : session != null
+                      ? Icons.schedule
+                      : Icons.check_circle_outline,
+                  size: compact ? 14 : 18,
+                  color: event?.colorValue == null
+                      ? Theme.of(context).colorScheme.primary
+                      : Color(event!.colorValue!),
                 ),
-              ),
-              if (conflicts > 0)
-                Tooltip(
-                  message:
-                      'Overlaps $conflicts other event${conflicts == 1 ? '' : 's'} or work session${conflicts == 1 ? '' : 's'}',
-                  child: Icon(
-                    Icons.warning_amber_rounded,
-                    size: compact ? 14 : 18,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: event != null
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              event.title,
+                              maxLines: compact ? 2 : null,
+                              overflow: compact ? TextOverflow.ellipsis : null,
+                              style: TextStyle(
+                                fontSize: compact ? 11 : 14,
+                                fontWeight: FontWeight.w600,
+                                color: event.cancelled
+                                    ? scheme.onSurfaceVariant
+                                    : scheme.onSurface,
+                                decoration: event.cancelled
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
+                            ),
+                            Text(
+                              '${event.allDay ? 'All day' : '${event.startsAt.toLocal().hour.toString().padLeft(2, '0')}:${event.startsAt.toLocal().minute.toString().padLeft(2, '0')}'}${event.cancelled ? ' · Cancelled' : ''}',
+                              style: TextStyle(
+                                fontSize: compact ? 10 : 12,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        )
+                      : entry.parentTitle != null
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              entry.parentTitle!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: compact ? 11 : 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              entry.task!.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: compact ? 10 : 12,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Text(
+                          entry.label,
+                          maxLines: compact ? 3 : null,
+                          overflow: compact ? TextOverflow.ellipsis : null,
+                          style: TextStyle(fontSize: compact ? 11 : 14),
+                        ),
                 ),
-            ],
+                if (conflicts > 0)
+                  Tooltip(
+                    message:
+                        'Overlaps $conflicts other event${conflicts == 1 ? '' : 's'} or work session${conflicts == 1 ? '' : 's'}',
+                    child: Icon(
+                      Icons.warning_amber_rounded,
+                      size: compact ? 14 : 18,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -565,11 +942,18 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
 }
 
 class _CalendarEntry {
-  const _CalendarEntry(this.label, {this.event, this.task, this.session});
+  const _CalendarEntry(
+    this.label, {
+    this.event,
+    this.task,
+    this.session,
+    this.parentTitle,
+  });
   final String label;
   final FixedEvent? event;
   final LifeTask? task;
   final WorkSession? session;
+  final String? parentTitle;
 }
 
 const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];

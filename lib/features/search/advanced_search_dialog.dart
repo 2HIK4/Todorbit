@@ -8,8 +8,13 @@ import '../../domain/models.dart';
 import '../../domain/saved_views.dart';
 
 class AdvancedSearchDialog extends ConsumerStatefulWidget {
-  const AdvancedSearchDialog({super.key, this.savedView});
+  const AdvancedSearchDialog({
+    super.key,
+    this.savedView,
+    this.creatingSavedView = false,
+  });
   final SavedView? savedView;
+  final bool creatingSavedView;
 
   @override
   ConsumerState<AdvancedSearchDialog> createState() =>
@@ -20,6 +25,11 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
   late final TextEditingController text = TextEditingController(
     text: widget.savedView?.filter.text ?? '',
   );
+  late final TextEditingController name = TextEditingController(
+    text: widget.savedView?.name ?? '',
+  );
+  late SavedViewSort sort =
+      widget.savedView?.filter.sort ?? SavedViewSort.scheduled;
   late Set<TaskStatus> statuses = {...?widget.savedView?.filter.statuses};
   late String? categoryId = widget.savedView?.filter.categoryId;
   late String? projectId = widget.savedView?.filter.projectId;
@@ -36,6 +46,7 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
   @override
   void dispose() {
     text.dispose();
+    name.dispose();
     super.dispose();
   }
 
@@ -49,35 +60,43 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
     deadline: deadline,
     recurringOnly: recurringOnly,
     blockedOnly: blockedOnly,
+    sort: sort,
   );
 
   Future<void> _save() async {
-    var name = widget.savedView?.name ?? '';
-    final chosen = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(
-          widget.savedView == null ? 'Save view' : 'Update saved view',
-        ),
-        content: TextFormField(
-          initialValue: name,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'View name'),
-          onChanged: (value) => name = value,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+    var chosen = name.text.trim();
+    if (!widget.creatingSavedView && widget.savedView == null) {
+      final dialogName = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(
+            widget.savedView == null ? 'Save view' : 'Update saved view',
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, name),
-            child: const Text('Save view'),
+          content: TextFormField(
+            initialValue: chosen,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'View name'),
+            onChanged: (value) => chosen = value,
           ),
-        ],
-      ),
-    );
-    if (chosen == null || !mounted) return;
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, chosen),
+              child: const Text('Save view'),
+            ),
+          ],
+        ),
+      );
+      if (dialogName == null || !mounted) return;
+      chosen = dialogName.trim();
+    }
+    if (chosen.isEmpty) {
+      setState(() => error = 'Enter a view name.');
+      return;
+    }
     setState(() {
       busy = true;
       error = null;
@@ -123,13 +142,15 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                   Expanded(
                     child: Text(
                       widget.savedView == null
-                          ? 'Advanced search'
+                          ? widget.creatingSavedView
+                                ? 'Create saved view'
+                                : 'Advanced search'
                           : 'Edit ${widget.savedView!.name}',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Close advanced search',
+                    tooltip: 'Close',
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close),
                   ),
@@ -138,9 +159,22 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
               Expanded(
                 child: ListView(
                   children: [
+                    if (widget.creatingSavedView ||
+                        widget.savedView != null) ...[
+                      TextField(
+                        controller: name,
+                        autofocus: widget.creatingSavedView,
+                        maxLength: 80,
+                        decoration: const InputDecoration(
+                          labelText: 'View name *',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     TextField(
                       controller: text,
-                      autofocus: true,
+                      autofocus:
+                          !widget.creatingSavedView && widget.savedView == null,
                       decoration: const InputDecoration(
                         prefixIcon: Icon(Icons.search),
                         labelText:
@@ -272,6 +306,31 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                       value: blockedOnly,
                       onChanged: (value) => setState(() => blockedOnly = value),
                     ),
+                    DropdownButtonFormField<SavedViewSort>(
+                      initialValue: sort,
+                      decoration: const InputDecoration(
+                        labelText: 'Sort results by',
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: SavedViewSort.scheduled,
+                          child: Text('Scheduled day'),
+                        ),
+                        DropdownMenuItem(
+                          value: SavedViewSort.priority,
+                          child: Text('Priority'),
+                        ),
+                        DropdownMenuItem(
+                          value: SavedViewSort.title,
+                          child: Text('Title'),
+                        ),
+                        DropdownMenuItem(
+                          value: SavedViewSort.created,
+                          child: Text('Created'),
+                        ),
+                      ],
+                      onChanged: (value) => setState(() => sort = value!),
+                    ),
                     const Divider(),
                     for (final task in matches.take(50))
                       ListTile(
@@ -309,15 +368,26 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                   error!,
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton.icon(
-                  onPressed: busy ? null : _save,
-                  icon: const Icon(Icons.bookmark_add_outlined),
-                  label: Text(
-                    widget.savedView == null ? 'Save as view' : 'Update view',
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    onPressed: busy ? null : _save,
+                    icon: const Icon(Icons.bookmark_add_outlined),
+                    label: Text(
+                      widget.creatingSavedView
+                          ? 'Create view'
+                          : widget.savedView == null
+                          ? 'Save as view'
+                          : 'Update view',
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

@@ -29,6 +29,7 @@ final appControllerProvider = ChangeNotifierProvider<AppController>((ref) {
 
 enum WorkspaceView {
   today,
+  anytime,
   all,
   inbox,
   upcoming,
@@ -339,6 +340,10 @@ class AppController extends ChangeNotifier {
       switch (view) {
         case WorkspaceView.today:
           return task.isOpen && task.scheduledDate == today;
+        case WorkspaceView.anytime:
+          return task.isOpen &&
+              task.scheduledDate == null &&
+              task.deadlineDate == null;
         case WorkspaceView.all:
           return task.isOpen;
         case WorkspaceView.inbox:
@@ -373,7 +378,10 @@ class AppController extends ChangeNotifier {
       }
     }).toList();
     items.sort((a, b) {
-      switch (sort) {
+      final effectiveSort = view == WorkspaceView.saved && selectedView != null
+          ? TaskSort.values.byName(selectedView.filter.sort.name)
+          : sort;
+      switch (effectiveSort) {
         case TaskSort.schedule:
           return _compareNullable(a.scheduledDate, b.scheduledDate) != 0
               ? _compareNullable(a.scheduledDate, b.scheduledDate)

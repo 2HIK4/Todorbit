@@ -88,7 +88,11 @@ void main() {
         ),
       );
       final add = find.byTooltip('Add category');
-      await tester.ensureVisible(add);
+      await tester.scrollUntilVisible(
+        add,
+        100,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.pumpAndSettle();
       for (var i = 0; i < 3; i++) {
         await mouse.moveTo(tester.getCenter(add));

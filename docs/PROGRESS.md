@@ -1,5 +1,34 @@
 # Progress
 
+## Feedback Round 3 implementation checkpoint (2026-10-19)
+
+- Implemented the icon registry and Release font verification, explicit Saved
+  View creation/editing with sorting and zero-result saves, anchored named
+  event colors, calendar right-click creation and day preview, tinted event
+  blocks, cancelled title strikethrough, adaptive Month entry counts, Anytime,
+  in-editor category/project creation, task-panel hierarchy and scrolling, and
+  parent/subtask calendar presentation. No schema migration or native-widget
+  source change was needed; schema remains v20.
+- The supplied `docs/feedback/round-3/` markdown and eight named screenshots
+  were absent, so the written requirements and isolated Release UI provided
+  the visual reference. The prior packaged Material font lacked 25 of 30
+  picker glyphs. The rebuilt Release font contains all 30. The Saved Views `+`
+  previously opened generic Advanced Search and required a second hidden
+  naming dialog, which made the creation path unclear. It now opens a labeled
+  form with its name and Create action visible.
+- `flutter analyze` found no issues; all 184 Flutter tests pass. The Windows
+  Release build, packaged widget persistence self-test, and Release icon-font
+  coverage check pass. Inno Setup 7.1.0 compiled
+  `release/LifeManager-1.0.0-win-x64-setup.exe`, SHA-256
+  `B14D64048D83C0070C1468DDDB9FF414AB2B63E7B4B2F1DA382415B7E4AB9976`.
+- Disposable-profile Release UI inspection at 1266x713 covered dark and light
+  themes, icon choices, task title placement and persistence, Saved View
+  creation with zero matches, Month/Week calendar blocks and right-click menu,
+  event color menu, and the final compact Month day preview. Narrow restored
+  window, DPI scaling, populated busy-day overflow, and installed upgrade and
+  native widget behavior still require manual acceptance. No installation or
+  production database access occurred.
+
 ## Feedback Round 2 installer checkpoint (2026-10-19)
 
 - The verified Windows Release bundle for commit `8fd380f` was packaged with

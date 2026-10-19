@@ -1,5 +1,15 @@
 # Decisions
 
+- **Feedback round 3:** keep nullable task planned/deadline dates in the
+  existing schema; an undated task belongs in Anytime and remains visible in
+  All Tasks. Persist Saved View sorting as an optional filter JSON value, so
+  old views retain their current order without a migration. Use compile-time
+  Material icon constants and verify the Release font cmap against the full
+  registry. Keep calendar navigation in place for a day preview and reserve
+  Day View for its explicit action. Apply Apple Design guidance on hierarchy,
+  forms, popovers, typography, icons, and accessibility through Flutter while
+  retaining Windows caption and context-menu behavior.
+
 - **Feedback round 2 UI hierarchy:** preserve the existing Windows frame and
   indigo/lavender identity. Set shared Material typography, field focus,
   button, card, and dialog rules in the app theme. Keep task title, notes, and

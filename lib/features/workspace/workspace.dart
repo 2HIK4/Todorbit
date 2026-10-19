@@ -40,6 +40,7 @@ class Workspace extends ConsumerStatefulWidget {
 
 class _WorkspaceState extends ConsumerState<Workspace> {
   bool creating = false;
+  DateTime? newTaskInitialDate;
   final nativeWidget = NativeWidgetService();
   Timer? _clock;
   final Set<String> _expandedTaskIds = {};
@@ -87,6 +88,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   void _newTask() {
     ref.read(appControllerProvider).select(null);
+    newTaskInitialDate = null;
     if (MediaQuery.sizeOf(context).width < 1050) {
       showDialog<void>(
         context: context,
@@ -104,6 +106,31 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       return;
     }
     setState(() => creating = true);
+  }
+
+  void _newTaskOn(DateTime date) {
+    ref.read(appControllerProvider).select(null);
+    if (MediaQuery.sizeOf(context).width < 1050) {
+      showDialog<void>(
+        context: context,
+        builder: (dialogContext) => Dialog(
+          child: SizedBox(
+            width: math.min(520, MediaQuery.sizeOf(dialogContext).width - 48),
+            height: math.min(620, MediaQuery.sizeOf(dialogContext).height - 64),
+            child: TaskEditor(
+              initialScheduled: date,
+              onSaved: () => Navigator.pop(dialogContext),
+              onCancel: () => Navigator.pop(dialogContext),
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+    setState(() {
+      newTaskInitialDate = date;
+      creating = true;
+    });
   }
 
   void _closeEditor() {
@@ -341,6 +368,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                           creating ? 'new' : controller.selectedTask!.id,
                         ),
                         task: creating ? null : controller.selectedTask,
+                        initialScheduled: creating ? newTaskInitialDate : null,
                         onSaved: _closeEditor,
                         onCancel: _closeEditor,
                       ),
@@ -473,6 +501,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   WorkspaceView.inbox,
                   'Inbox',
                   Icons.inbox_outlined,
+                ),
+                _nav(
+                  controller,
+                  WorkspaceView.anytime,
+                  'Anytime',
+                  Icons.all_inclusive,
                 ),
                 _nav(
                   controller,
@@ -693,8 +727,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                       ),
                     ),
                     IconButton(
-                      tooltip: 'Advanced search and new saved view',
-                      onPressed: () => _showAdvancedSearch(),
+                      tooltip: 'Create saved view',
+                      onPressed: () => showDialog<void>(
+                        context: context,
+                        builder: (_) =>
+                            const AdvancedSearchDialog(creatingSavedView: true),
+                      ),
                       icon: const Icon(Icons.add, size: 19),
                     ),
                   ],
@@ -931,6 +969,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     }
     if (controller.view == WorkspaceView.calendar) {
       return CalendarView(
+        onAddTask: _newTaskOn,
         onTaskTap: (task) {
           controller.select(task.id);
           if (!wide) _showNarrowEditor(task);
@@ -990,6 +1029,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         .length;
     final title = switch (controller.view) {
       WorkspaceView.today => 'Today',
+      WorkspaceView.anytime => 'Anytime',
       WorkspaceView.all => 'All tasks',
       WorkspaceView.inbox => 'Inbox',
       WorkspaceView.upcoming => 'Upcoming',
