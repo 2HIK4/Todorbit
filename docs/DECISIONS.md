@@ -1,5 +1,13 @@
 # Decisions
 
+- **Feedback round 2 UI hierarchy:** preserve the existing Windows frame and
+  indigo/lavender identity. Set shared Material typography, field focus,
+  button, card, and dialog rules in the app theme. Keep task title, notes, and
+  planned dates visible; make status/priority and effort protection discoverable
+  expandable groups. Preserve the fixed Save action and allow extra scroll
+  beyond lower controls. Do not change persistence or the native widget for a
+  visual-only revision. Use actual event/session counts on Today and separate
+  them from date-only tasks.
 - **Event reminders (schema v20):** use the existing native tray companion
   for offline delivery. Project recurring event dates and exception payloads
   in the companion, then claim `(event, nominal date, start instant)` in SQLite

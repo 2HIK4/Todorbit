@@ -193,7 +193,7 @@ class _HabitsViewState extends ConsumerState<HabitsView> {
               Text(
                 'Habits',
                 style: Theme.of(context).textTheme.headlineMedium
-                    ?.copyWith(fontWeight: FontWeight.w700),
+                    ?.copyWith(fontWeight: FontWeight.w600),
               ),
               FilledButton.icon(
                 onPressed: () => _edit(null),

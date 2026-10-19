@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -130,8 +131,8 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
           );
     return Dialog(
       child: SizedBox(
-        width: 550,
-        height: 630,
+        width: math.min(550, MediaQuery.sizeOf(context).width - 48),
+        height: math.min(630, MediaQuery.sizeOf(context).height - 64),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -153,27 +154,52 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
                 ],
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Stopwatch time is recorded separately from planned sessions and task completion.',
+              Text(
+                'Actual work is recorded independently of the task schedule.',
+                style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 12),
               Card(
-                color: Theme.of(context).colorScheme.primaryContainer,
+                color: Theme.of(context).colorScheme.surfaceContainer,
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 18,
+                  ),
                   child: Column(
                     children: [
-                      Text(
-                        thisRun == null
-                            ? 'Stopped'
-                            : recovery
-                            ? 'Needs review'
-                            : thisRun.state == TimerState.running
-                            ? 'Running'
-                            : 'Paused',
-                        style: Theme.of(context).textTheme.titleMedium,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            recovery
+                                ? Icons.warning_amber_rounded
+                                : thisRun?.state == TimerState.running
+                                ? Icons.circle
+                                : Icons.pause_circle_outline,
+                            size: 15,
+                            color: recovery
+                                ? Theme.of(context).colorScheme.error
+                                : thisRun?.state == TimerState.running
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 7),
+                          Text(
+                            thisRun == null
+                                ? 'Stopped'
+                                : recovery
+                                ? 'Needs review'
+                                : thisRun.state == TimerState.running
+                                ? 'Running'
+                                : 'Paused',
+                            style: Theme.of(context).textTheme.labelLarge,
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                       Text(
                         _duration(session),
                         style: Theme.of(context).textTheme.displaySmall
@@ -183,14 +209,20 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
                               ],
                             ),
                       ),
-                      const Text('Current focus session'),
-                      const SizedBox(height: 6),
                       Text(
-                        'Total recorded: ${_duration(total)} (overlaps counted once)',
-                        style: Theme.of(context).textTheme.bodyMedium,
+                        'Current focus session',
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
                   ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Text(
+                  'Total recorded: ${_duration(total)} · overlaps counted once',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
               if (controller.timerError != null)
@@ -282,10 +314,10 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Work log',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: Theme.of(context).textTheme.titleSmall,
                     ),
                   ),
                   TextButton.icon(
@@ -308,7 +340,7 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
                               '${_duration(entry.durationAt(confirmedEnd))} · ${entry.source == TimeEntrySource.manual ? 'Manual' : 'Timer'}${entry.endsAt == null ? ' · Running' : ''}',
                             ),
                             subtitle: Text(
-                              '${_stamp(entry.startsAt)} – ${entry.endsAt == null ? 'running' : _stamp(entry.endsAt!)}${entry.notes.isEmpty ? '' : '\n${entry.notes}'}',
+                              '${_stamp(entry.startsAt)} – ${entry.endsAt == null ? 'now' : _stamp(entry.endsAt!)}${entry.notes.isEmpty ? '' : '\n${entry.notes}'}',
                             ),
                             isThreeLine: entry.notes.isNotEmpty,
                             trailing: entry.source == TimeEntrySource.manual

@@ -62,6 +62,8 @@ void main() {
           250,
           scrollable: editorScroll,
         );
+        await tester.drag(editorScroll, const Offset(0, -120));
+        await tester.pumpAndSettle();
         expect(find.text('Current step: Watch lessons'), findsOneWidget);
         await tester.tap(find.text('Edit recurring task plan'));
         await tester.pumpAndSettle();

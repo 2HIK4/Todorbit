@@ -113,7 +113,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
               Text(
                 'Calendar',
                 style: Theme.of(context).textTheme.headlineMedium
-                    ?.copyWith(fontWeight: FontWeight.w700),
+                    ?.copyWith(fontWeight: FontWeight.w600),
               ),
               OutlinedButton(
                 onPressed: () {
@@ -282,11 +282,22 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
               ),
               child: Column(
                 children: [
-                  Padding(
+                  Container(
+                    width: double.infinity,
                     padding: const EdgeInsets.all(8),
+                    color: localDate(date) == localDate(DateTime.now())
+                        ? Theme.of(context).colorScheme.primaryContainer
+                              .withValues(alpha: 0.55)
+                        : null,
                     child: Text(
                       '${_weekdays[index]} ${date.day}',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: localDate(date) == localDate(DateTime.now())
+                            ? Theme.of(context).colorScheme.onPrimaryContainer
+                            : null,
+                      ),
                     ),
                   ),
                   Expanded(
@@ -310,62 +321,94 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
     final offset = first.weekday - 1;
     final days = DateUtils.getDaysInMonth(day.year, day.month);
     final cellCount = ((offset + days + 6) ~/ 7) * 7;
-    return GridView.builder(
-      padding: const EdgeInsets.all(12),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 7,
-        childAspectRatio: 0.95,
-      ),
-      itemCount: cellCount,
-      itemBuilder: (context, index) {
-        final date = DateTime(
-          first.year,
-          first.month,
-          first.day + index - offset,
-        );
-        final inMonth = date.month == day.month;
-        final entries = _entries(controller, date);
-        final scheme = Theme.of(context).colorScheme;
-        return InkWell(
-          onTap: () => setState(() {
-            selected = date;
-            mode = CalendarMode.day;
-          }),
-          child: Container(
-            margin: const EdgeInsets.all(2),
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: localDate(date) == localDate(DateTime.now())
-                  ? scheme.primaryContainer
-                  : scheme.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${date.day}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: inMonth ? null : scheme.outline,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                for (final entry in entries.take(2))
-                  Text(
-                    entry.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 11),
-                  ),
-                if (entries.length > 2)
-                  Text(
-                    '+${entries.length - 2} more',
-                    style: const TextStyle(fontSize: 11),
-                  ),
-              ],
-            ),
+    return LayoutBuilder(
+      builder: (context, bounds) {
+        final previewCount = bounds.maxWidth < 850 ? 1 : 2;
+        return GridView.builder(
+          padding: const EdgeInsets.all(12),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 7,
+            childAspectRatio: 0.95,
           ),
+          itemCount: cellCount,
+          itemBuilder: (context, index) {
+            final date = DateTime(
+              first.year,
+              first.month,
+              first.day + index - offset,
+            );
+            final inMonth = date.month == day.month;
+            final entries = _entries(controller, date);
+            final scheme = Theme.of(context).colorScheme;
+            return InkWell(
+              onTap: () => setState(() {
+                selected = date;
+                mode = CalendarMode.day;
+              }),
+              child: Container(
+                margin: const EdgeInsets.all(2),
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: localDate(date) == localDate(DateTime.now())
+                      ? scheme.primaryContainer
+                      : scheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(8),
+                  border:
+                      date.year == selected.year &&
+                          date.month == selected.month &&
+                          date.day == selected.day
+                      ? Border.all(color: scheme.primary, width: 1.5)
+                      : null,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${date.day}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: inMonth ? null : scheme.outline,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    for (final entry in entries.take(previewCount))
+                      Tooltip(
+                        message: entry.label,
+                        child: Row(
+                          children: [
+                            Icon(
+                              entry.event != null
+                                  ? Icons.event_outlined
+                                  : entry.session != null
+                                  ? Icons.schedule_outlined
+                                  : Icons.task_alt_outlined,
+                              size: 11,
+                              color: entry.event?.colorValue == null
+                                  ? scheme.onSurfaceVariant
+                                  : Color(entry.event!.colorValue!),
+                            ),
+                            const SizedBox(width: 3),
+                            Expanded(
+                              child: Text(
+                                entry.label.replaceAll('\n', ' · '),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (entries.length > previewCount)
+                      Text(
+                        '+${entries.length - previewCount} more',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );

@@ -223,6 +223,13 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(find.widgetWithText(TextField, 'Title *'), 'Read');
       await tester.scrollUntilVisible(
+        find.text('Estimates and schedule protection'),
+        220,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.tap(find.text('Estimates and schedule protection'));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
         find.widgetWithText(TextField, 'Planned minutes'),
         220,
         scrollable: find.byType(Scrollable).last,

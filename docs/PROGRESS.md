@@ -1,5 +1,47 @@
 # Progress
 
+## Feedback Round 2 UI refinement checkpoint (2026-10-19)
+
+- A Windows Release baseline was inspected at 1266×713 with a verified
+  disposable APPDATA/LOCALAPPDATA profile. The personal database was not
+  opened. The dark-theme Today, new-task, Calendar, task-row, running focus,
+  stopped focus, live mini-timer, and work-log states were inspected in the
+  rebuilt app. Light-theme Today and its task row were also inspected with
+  readable contrast and synchronized native caption colors. Populated secondary
+  screens, DPI scaling, and the native desktop widget remain manual visual
+  acceptance work.
+- Shared Material styling now defines restrained typography, 40 px button
+  targets, consistent 10 px field/button corners, semantic field outlines and
+  focus treatment, quiet dialog surfaces, and common divider/card treatment.
+  Page headings use weight 600. The existing indigo/lavender accent, Windows
+  frame, dark/light color schemes, and native caption synchronization remain.
+- The task editor now keeps title, notes, scheduled day, deadline, category,
+  and project in the primary path. Status/priority and estimates/schedule
+  protection are labeled expandable groups which open when editing nondefault
+  values. New-task resource guidance was removed, notes are more compact, and
+  lower controls can scroll clear of the fixed Create/Save action. Task,
+  subtask, and planned-session dialogs clamp to the available viewport.
+- Today shows persisted counts for planned tasks, fixed events, and work
+  sessions with direct Calendar actions and a more specific empty state. The
+  sidebar timer has a distinct compact surface with truncation protection.
+  The focus dialog clamps to the viewport, makes HH:MM:SS the visual center,
+  uses explicit running/paused/stopped/review states, and separates recorded
+  total from readable source/timestamp log rows. A disposable Release session
+  visibly advanced from `00:00:00` to `00:00:06`, then stopped at `00:00:14`;
+  the mini timer updated at the same time.
+- Calendar week highlights today; month distinguishes event/session/task rows
+  with icons, marks the selected date, adjusts preview density at narrower
+  widths, and retains full labels in tooltips. Advanced Search keeps its result
+  count visible outside the scrolling filter list. Advanced Search and Smart
+  Reschedule clamp their large dialogs to the viewport.
+- No domain model, schema, repository, personal settings, installer rules, or
+  native-widget source changed. The first full test run found three test-flow
+  regressions after editor grouping and one hidden Advanced Search result
+  count; those were corrected without suppressing errors. Final validation is
+  clean: `flutter analyze`, all 172 Flutter tests, the Windows Release build,
+  the native Release build with zero warnings/errors, and both the packaged
+  and native widget persistence self-tests pass.
+
 ## Feedback Round 1 checkpoint (2026-10-19)
 
 - Profile audit found no startup sample seeding. Runtime SQLite resolves to the

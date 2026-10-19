@@ -43,10 +43,19 @@ a manual pass.
 | 34 | Task/category/project icon selection | Manual verification required | Persistence tests pass; visual size and reset behavior need Release GUI check. |
 | 35 | Checklist and one-level subtask | Manual verification required | Persistence and widget tests pass; full Release GUI flow untested. |
 | 36 | Progressive recurring study plan | Manual verification required | Assignment, skip, edit, restart, split, migration, and Calendar/editor tests pass; full Release GUI flow untested. |
-| 37 | Focus stopwatch and sidebar mini timer | Manual verification required | Repository and widget tests pass; visually inspect live HH:MM:SS, pause/resume/stop, short logs, and navigation in Release. |
+| 37 | Focus stopwatch and sidebar mini timer | Passed | In the isolated Feedback Round 2 Release profile, focus visibly advanced from 00:00:00 to 00:00:06, the sidebar mini timer updated, Stop produced a 00:00:14 timer log and stopped state, and the task stayed In progress. Pause/resume still has automated coverage and needs a direct Release visual pass. |
 | 38 | Windows title bar and application icon | Manual verification required | MethodChannel test and bundle/installer assets pass; maximize/restore, DPI, taskbar, shortcut, and installer visuals need GUI check. |
 
 The privacy dialog opened in the rebuilt Release app with the default disabled
 state and no visible layout overflow at 1266×713. It was closed without
 changing settings. A final Release UI run created a disposable Today task and
 verified it after restart. No personal database was opened or migrated.
+
+Feedback Round 2 also inspected the rebuilt dark-theme Release at 1266×713 in
+a disposable profile. Today, the reorganized new-task editor, empty Calendar,
+task row, live focus dialog, stopped work log, and mini timer rendered without
+visible overflow. Light-theme Today and its task row also rendered with readable
+contrast and matching native caption colors. A disposable task and a short timer
+log were created only in that isolated profile. Narrow restored windows,
+125%/150% DPI, populated secondary views, and the native widget remain manual
+visual checks.

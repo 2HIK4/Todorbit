@@ -117,7 +117,7 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
             Text(
               'Statistics and reports',
               style: Theme.of(context).textTheme.headlineMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
+                  ?.copyWith(fontWeight: FontWeight.w600),
             ),
             DropdownButton<_Period>(
               value: period,

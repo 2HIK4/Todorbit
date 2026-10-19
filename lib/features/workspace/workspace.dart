@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -91,8 +92,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         context: context,
         builder: (dialogContext) => Dialog(
           child: SizedBox(
-            width: 520,
-            height: 620,
+            width: math.min(520, MediaQuery.sizeOf(dialogContext).width - 48),
+            height: math.min(620, MediaQuery.sizeOf(dialogContext).height - 64),
             child: TaskEditor(
               onSaved: () => Navigator.pop(dialogContext),
               onCancel: () => Navigator.pop(dialogContext),
@@ -363,53 +364,65 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (controller.activeTimer case final run?)
-            ListTile(
-              dense: true,
-              leading: Icon(
-                run.needsReview(DateTime.now())
-                    ? Icons.warning_amber_rounded
-                    : Icons.timer_outlined,
-              ),
-              title: Text(
-                '${formatWorkClock(TimeEntry.distinctDuration(controller.timeEntries.where((entry) => entry.timerRunId == run.id), run.needsReview(DateTime.now()) ? run.lastSeenAt : DateTime.now()))} · ${run.needsReview(DateTime.now())
-                    ? 'Review'
-                    : run.state == TimerState.running
-                    ? 'Running'
-                    : 'Paused'}',
-              ),
-              subtitle: Text(
-                controller.tasks
-                        .where((task) => task.id == run.taskId)
-                        .map((task) => task.title)
-                        .firstOrNull ??
-                    'Deleted task',
-              ),
-              onTap: run.taskId == null
-                  ? null
-                  : () => _showActiveTimer(run.taskId!),
-              trailing: run.needsReview(DateTime.now())
-                  ? null
-                  : PopupMenuButton<String>(
-                      tooltip: 'Timer controls',
-                      onSelected: (value) => _run(
-                        () => value == 'stop'
-                            ? controller.stopTimer()
-                            : run.state == TimerState.running
-                            ? controller.pauseTimer()
-                            : controller.resumeTimer(),
-                      ),
-                      itemBuilder: (_) => [
-                        PopupMenuItem(
-                          value: 'toggle',
-                          child: Text(
-                            run.state == TimerState.running
-                                ? 'Pause'
-                                : 'Resume',
-                          ),
+            Card(
+              margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+              color: scheme.surfaceContainer,
+              child: ListTile(
+                dense: true,
+                leading: Icon(
+                  run.needsReview(DateTime.now())
+                      ? Icons.warning_amber_rounded
+                      : Icons.timer_outlined,
+                ),
+                title: Text(
+                  '${formatWorkClock(TimeEntry.distinctDuration(controller.timeEntries.where((entry) => entry.timerRunId == run.id), run.needsReview(DateTime.now()) ? run.lastSeenAt : DateTime.now()))} · ${run.needsReview(DateTime.now())
+                      ? 'Review'
+                      : run.state == TimerState.running
+                      ? 'Running'
+                      : 'Paused'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  controller.tasks
+                          .where((task) => task.id == run.taskId)
+                          .map((task) => task.title)
+                          .firstOrNull ??
+                      'Deleted task',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                onTap: run.taskId == null
+                    ? null
+                    : () => _showActiveTimer(run.taskId!),
+                trailing: run.needsReview(DateTime.now())
+                    ? null
+                    : PopupMenuButton<String>(
+                        tooltip: 'Timer controls',
+                        onSelected: (value) => _run(
+                          () => value == 'stop'
+                              ? controller.stopTimer()
+                              : run.state == TimerState.running
+                              ? controller.pauseTimer()
+                              : controller.resumeTimer(),
                         ),
-                        const PopupMenuItem(value: 'stop', child: Text('Stop')),
-                      ],
-                    ),
+                        itemBuilder: (_) => [
+                          PopupMenuItem(
+                            value: 'toggle',
+                            child: Text(
+                              run.state == TimerState.running
+                                  ? 'Pause'
+                                  : 'Resume',
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'stop',
+                            child: Text('Stop'),
+                          ),
+                        ],
+                      ),
+              ),
             ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 20, 8, 14),
@@ -947,6 +960,26 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         .where((task) => !itemIds.contains(controller.taskParents[task.id]))
         .toList();
     final today = localDate(DateTime.now());
+    final todayStart = DateTime.now();
+    final dayStart = DateTime(
+      todayStart.year,
+      todayStart.month,
+      todayStart.day,
+    );
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    final todayEvents = controller.events.where((event) {
+      final start = event.startsAt.toLocal();
+      final end = event.endsAt.toLocal();
+      return !event.cancelled &&
+          start.isBefore(dayEnd) &&
+          end.isAfter(dayStart);
+    }).length;
+    final todaySessions = controller.sessions.where((session) {
+      final start = session.startsAt.toLocal();
+      return start.isBefore(dayEnd) &&
+          session.endsAt.toLocal().isAfter(dayStart) &&
+          session.outcome != SessionOutcome.skipped;
+    }).length;
     final overdueCount = controller.tasks
         .where(
           (t) =>
@@ -1000,7 +1033,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     Text(
                       title,
                       style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                          ?.copyWith(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 3),
                     Text(
@@ -1087,7 +1120,17 @@ class _WorkspaceState extends ConsumerState<Workspace> {
               children: [
                 Chip(
                   avatar: const Icon(Icons.today, size: 17),
-                  label: Text('$today · ${items.length} planned'),
+                  label: Text('$today · ${items.length} planned tasks'),
+                ),
+                ActionChip(
+                  avatar: const Icon(Icons.event_outlined, size: 17),
+                  label: Text('$todayEvents events'),
+                  onPressed: () => controller.navigate(WorkspaceView.calendar),
+                ),
+                ActionChip(
+                  avatar: const Icon(Icons.schedule_outlined, size: 17),
+                  label: Text('$todaySessions work sessions'),
+                  onPressed: () => controller.navigate(WorkspaceView.calendar),
                 ),
                 if (overdueCount > 0)
                   ActionChip(
@@ -1128,11 +1171,17 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'Nothing here yet',
+                        controller.view == WorkspaceView.today
+                            ? 'No tasks planned for today'
+                            : 'Nothing here yet',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 5),
-                      const Text('Create a task or choose another view.'),
+                      Text(
+                        controller.view == WorkspaceView.today
+                            ? 'Add a task or review today’s calendar.'
+                            : 'Create a task or choose another view.',
+                      ),
                     ],
                   ),
                 )
@@ -1443,8 +1492,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       context: context,
       builder: (context) => Dialog(
         child: SizedBox(
-          width: 520,
-          height: 620,
+          width: math.min(520, MediaQuery.sizeOf(context).width - 48),
+          height: math.min(620, MediaQuery.sizeOf(context).height - 64),
           child: TaskEditor(
             task: task,
             onSaved: () => Navigator.pop(context),

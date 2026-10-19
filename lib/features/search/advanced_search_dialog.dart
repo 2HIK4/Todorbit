@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -109,8 +111,8 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
         projectId != null && !projects.any((item) => item.id == projectId);
     return Dialog(
       child: SizedBox(
-        width: 680,
-        height: 700,
+        width: math.min(680, MediaQuery.sizeOf(context).width - 48),
+        height: math.min(700, MediaQuery.sizeOf(context).height - 64),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -271,10 +273,6 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                       onChanged: (value) => setState(() => blockedOnly = value),
                     ),
                     const Divider(),
-                    Text(
-                      '${matches.length} matching tasks',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
                     for (final task in matches.take(50))
                       ListTile(
                         dense: true,
@@ -297,6 +295,13 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                         'Showing first 50 of ${matches.length}. Save the view to see all matches.',
                       ),
                   ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  '${matches.length} matching tasks',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
               if (error != null)

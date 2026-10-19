@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -273,8 +275,8 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
       context: context,
       builder: (dialogContext) => Dialog(
         child: SizedBox(
-          width: 520,
-          height: 620,
+          width: math.min(520, MediaQuery.sizeOf(dialogContext).width - 48),
+          height: math.min(620, MediaQuery.sizeOf(dialogContext).height - 64),
           child: TaskEditor(
             parentTaskId: parent.id,
             onSaved: () => Navigator.pop(dialogContext),
@@ -433,8 +435,8 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
       context: context,
       builder: (context) => Dialog(
         child: SizedBox(
-          width: 460,
-          height: 550,
+          width: math.min(460, MediaQuery.sizeOf(context).width - 48),
+          height: math.min(550, MediaQuery.sizeOf(context).height - 64),
           child: SessionEditor(
             session: session,
             initialTaskId: task.id,
@@ -477,7 +479,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         .where((project) => project.categoryId == categoryId)
         .toList();
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -496,9 +498,10 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Expanded(
             child: ListView(
+              padding: const EdgeInsets.only(bottom: 64),
               children: [
                 if (widget.parentTaskId != null) ...[
                   Text(
@@ -541,15 +544,28 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text('Details', style: Theme.of(context).textTheme.titleSmall),
-                const SizedBox(height: 6),
                 TextField(
                   controller: notes,
-                  minLines: 3,
-                  maxLines: 6,
+                  minLines: 2,
+                  maxLines: 4,
                   decoration: const InputDecoration(labelText: 'Notes'),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
+                Text('Schedule', style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 8),
+                _dateRow(
+                  'Scheduled day',
+                  scheduled,
+                  () => _pickDate(false),
+                  () => setState(() => scheduled = null),
+                ),
+                _dateRow(
+                  'Deadline',
+                  deadline,
+                  () => _pickDate(true),
+                  () => setState(() => deadline = null),
+                ),
+                const SizedBox(height: 16),
                 if (currentTask case final task?) ...[
                   TaskResourcesSection(
                     key: ValueKey('resources:${task.id}'),
@@ -568,44 +584,12 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                         : () => _newSubtask(task),
                   ),
                   const SizedBox(height: 16),
-                ] else ...[
-                  const Text('Save the task before adding resources.'),
-                  const SizedBox(height: 12),
                 ],
                 Text(
                   'Organization',
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: 8),
-                DropdownButtonFormField<TaskStatus>(
-                  key: ValueKey('status:$status:$recurrenceKind'),
-                  initialValue: status,
-                  decoration: const InputDecoration(labelText: 'Status'),
-                  items: TaskStatus.values
-                      .map(
-                        (value) => DropdownMenuItem(
-                          value: value,
-                          child: Text(_statusName(value)),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: widget.task == null && recurrenceKind != null
-                      ? null
-                      : (value) => setState(() => status = value!),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<int>(
-                  initialValue: priority,
-                  decoration: const InputDecoration(labelText: 'Priority'),
-                  items: const [
-                    DropdownMenuItem(value: 0, child: Text('None')),
-                    DropdownMenuItem(value: 1, child: Text('Low')),
-                    DropdownMenuItem(value: 2, child: Text('Medium')),
-                    DropdownMenuItem(value: 3, child: Text('High')),
-                  ],
-                  onChanged: (value) => setState(() => priority = value!),
-                ),
-                const SizedBox(height: 12),
                 DropdownButtonFormField<String?>(
                   key: ValueKey('category:$categoryId'),
                   initialValue: categoryId,
@@ -648,21 +632,45 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                       ? null
                       : (value) => setState(() => projectId = value),
                 ),
-                const SizedBox(height: 16),
-                Text('Schedule', style: Theme.of(context).textTheme.titleSmall),
-                const SizedBox(height: 8),
-                _dateRow(
-                  'Scheduled day',
-                  scheduled,
-                  () => _pickDate(false),
-                  () => setState(() => scheduled = null),
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: const EdgeInsets.only(bottom: 12),
+                  initiallyExpanded:
+                      status != TaskStatus.notStarted || priority != 0,
+                  title: const Text('Status and priority'),
+                  subtitle: const Text('Optional for a new task'),
+                  children: [
+                    DropdownButtonFormField<TaskStatus>(
+                      key: ValueKey('status:$status:$recurrenceKind'),
+                      initialValue: status,
+                      decoration: const InputDecoration(labelText: 'Status'),
+                      items: TaskStatus.values
+                          .map(
+                            (value) => DropdownMenuItem(
+                              value: value,
+                              child: Text(_statusName(value)),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: widget.task == null && recurrenceKind != null
+                          ? null
+                          : (value) => setState(() => status = value!),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      initialValue: priority,
+                      decoration: const InputDecoration(labelText: 'Priority'),
+                      items: const [
+                        DropdownMenuItem(value: 0, child: Text('None')),
+                        DropdownMenuItem(value: 1, child: Text('Low')),
+                        DropdownMenuItem(value: 2, child: Text('Medium')),
+                        DropdownMenuItem(value: 3, child: Text('High')),
+                      ],
+                      onChanged: (value) => setState(() => priority = value!),
+                    ),
+                  ],
                 ),
-                _dateRow(
-                  'Deadline',
-                  deadline,
-                  () => _pickDate(true),
-                  () => setState(() => deadline = null),
-                ),
+                const SizedBox(height: 12),
                 if (widget.task == null) ...[
                   const SizedBox(height: 12),
                   if (widget.parentTaskId == null)
@@ -840,44 +848,51 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                       ),
                     ),
                 ],
-                const SizedBox(height: 12),
-                Text(
-                  'Effort and scheduling options',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
                 const SizedBox(height: 8),
-                Row(
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: const EdgeInsets.only(bottom: 8),
+                  initiallyExpanded:
+                      plannedDuration.text.isNotEmpty ||
+                      remainingWork.text.isNotEmpty ||
+                      schedulingLocked,
+                  title: const Text('Estimates and schedule protection'),
+                  subtitle: const Text('Optional planning details'),
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: plannedDuration,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Planned minutes',
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: plannedDuration,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Planned minutes',
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: remainingWork,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Remaining minutes',
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        controller: remainingWork,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Remaining minutes',
-                        ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Protect schedule'),
+                      subtitle: const Text(
+                        'Smart Reschedule will not move this task or its sessions.',
                       ),
+                      value: schedulingLocked,
+                      onChanged: (value) =>
+                          setState(() => schedulingLocked = value),
                     ),
                   ],
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Protect schedule'),
-                  subtitle: const Text(
-                    'Smart Reschedule will not move this task or its sessions.',
-                  ),
-                  value: schedulingLocked,
-                  onChanged: (value) =>
-                      setState(() => schedulingLocked = value),
                 ),
                 if (widget.task != null) ...[
                   const SizedBox(height: 16),

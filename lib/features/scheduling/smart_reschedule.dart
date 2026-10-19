@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -362,8 +364,8 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
     );
     return Dialog(
       child: SizedBox(
-        width: 880,
-        height: 720,
+        width: math.min(880, MediaQuery.sizeOf(context).width - 48),
+        height: math.min(720, MediaQuery.sizeOf(context).height - 64),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(

@@ -424,13 +424,38 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
       seedColor: const Color(0xFF5365B5),
       brightness: brightness,
     );
+    final base = ThemeData(useMaterial3: true, colorScheme: scheme);
+    final text = base.textTheme;
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: scheme.surface,
-      inputDecorationTheme: const InputDecorationTheme(
-        border: OutlineInputBorder(),
-        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+      textTheme: text.copyWith(
+        headlineMedium: text.headlineMedium?.copyWith(
+          fontSize: 26,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.4,
+        ),
+        titleLarge: text.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+        titleMedium: text.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+        titleSmall: text.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+        bodySmall: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: scheme.outlineVariant),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: scheme.primary, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 11,
+        ),
+        helperStyle: TextStyle(color: scheme.onSurfaceVariant),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
@@ -438,6 +463,33 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(color: scheme.outlineVariant),
         ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: scheme.surfaceContainerLow,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(0, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(0, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          side: BorderSide(color: scheme.outlineVariant),
+        ),
+      ),
+      dividerTheme: DividerThemeData(
+        color: scheme.outlineVariant,
+        thickness: 1,
       ),
     );
   }

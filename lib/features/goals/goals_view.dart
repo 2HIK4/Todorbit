@@ -327,7 +327,7 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
               Text(
                 'Goals',
                 style: Theme.of(context).textTheme.headlineMedium
-                    ?.copyWith(fontWeight: FontWeight.w700),
+                    ?.copyWith(fontWeight: FontWeight.w600),
               ),
               FilledButton.icon(
                 onPressed: () => _edit(null),
