@@ -29,7 +29,8 @@ if (args.Length >= 1 && args[0] is "--widget" or "--widget-command") {
       repository, appExe, diagnostics,
       initialCommand == "toggle" ? "show" : initialCommand));
   } catch (Exception error) {
-    MessageBox.Show(error.Message, "Life Manager widget",
+    Console.Error.WriteLine(error);
+    MessageBox.Show(error.Message, "TodoPilot widget",
       MessageBoxButtons.OK, MessageBoxIcon.Error);
     Environment.ExitCode = 1;
   }
@@ -38,7 +39,7 @@ if (args.Length >= 1 && args[0] is "--widget" or "--widget-command") {
 if (args.Length >= 1 && args[0] is
     "--widget-standalone" or "--widget-legacy-reparent") {
   if (PrivacyState.OpenDefault().IsLocked()) {
-    Console.Error.WriteLine("Life Manager is locked. Open the main app to unlock.");
+    Console.Error.WriteLine("TodoPilot is locked. Open the main app to unlock.");
     Environment.ExitCode = 2;
     return;
   }
@@ -180,6 +181,20 @@ internal static class Native {
   }
 
   [StructLayout(LayoutKind.Sequential)]
+  internal struct Size {
+    internal int Width;
+    internal int Height;
+  }
+
+  [StructLayout(LayoutKind.Sequential, Pack = 1)]
+  internal struct BlendFunction {
+    internal byte BlendOp;
+    internal byte BlendFlags;
+    internal byte SourceConstantAlpha;
+    internal byte AlphaFormat;
+  }
+
+  [StructLayout(LayoutKind.Sequential)]
   internal struct PaintStruct {
     internal nint DeviceContext;
     [MarshalAs(UnmanagedType.Bool)] internal bool Erase;
@@ -260,6 +275,30 @@ internal static class Native {
   [return: MarshalAs(UnmanagedType.Bool)]
   internal static extern bool EndPaint(
     nint window, ref PaintStruct paint);
+
+  [DllImport("user32.dll")]
+  internal static extern nint GetDC(nint window);
+
+  [DllImport("user32.dll")]
+  internal static extern int ReleaseDC(nint window, nint dc);
+
+  [DllImport("gdi32.dll")]
+  internal static extern nint CreateCompatibleDC(nint dc);
+
+  [DllImport("gdi32.dll")]
+  internal static extern bool DeleteDC(nint dc);
+
+  [DllImport("gdi32.dll")]
+  internal static extern nint SelectObject(nint dc, nint item);
+
+  [DllImport("gdi32.dll")]
+  internal static extern bool DeleteObject(nint item);
+
+  [DllImport("user32.dll", SetLastError = true)]
+  internal static extern bool UpdateLayeredWindow(
+    nint window, nint destinationDc, ref Point destination,
+    ref Size size, nint sourceDc, ref Point source,
+    uint colorKey, ref BlendFunction blend, uint flags);
 
   [DllImport("user32.dll")]
   [return: MarshalAs(UnmanagedType.Bool)]

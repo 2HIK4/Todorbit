@@ -34,6 +34,14 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
   CalendarMode mode = CalendarMode.week;
   Offset _lastTapPosition = Offset.zero;
 
+  @override
+  void initState() {
+    super.initState();
+    mode = CalendarMode.values.byName(
+      ref.read(appControllerProvider).customization.calendarDefaultView,
+    );
+  }
+
   DateTime get day => DateTime(selected.year, selected.month, selected.day);
   DateTime get weekStart =>
       DateTime(day.year, day.month, day.day - day.weekday + 1);

@@ -68,7 +68,7 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
     schemaVersion = version;
     if (version < MinimumSchemaVersion || version > MaximumSchemaVersion) {
       throw new InvalidOperationException(
-        $"The Life Manager database schema is {version}; widget support requires schema {MinimumSchemaVersion}–{MaximumSchemaVersion}. Open the main app to migrate it first.");
+        $"The TodoPilot database schema is {version}; widget support requires schema {MinimumSchemaVersion}–{MaximumSchemaVersion}. Open the main app to migrate it first.");
     }
   }
 
@@ -77,7 +77,7 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
       "life_manager.sqlite");
     if (!File.Exists(databasePath)) {
       throw new FileNotFoundException(
-        "The Life Manager database does not exist. Open the main app first.",
+        "The TodoPilot database does not exist. Open the main app first.",
         databasePath);
     }
     return new LifeManagerWidgetRepository(databasePath, PrivacyState.OpenDefault());

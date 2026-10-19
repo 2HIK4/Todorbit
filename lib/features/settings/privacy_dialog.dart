@@ -67,7 +67,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
             const Icon(Icons.lock_outline, size: 42),
             const SizedBox(height: 16),
             Text(
-              'Life Manager is locked',
+              'TodoPilot is locked',
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 16),
@@ -92,7 +92,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Forgot your PIN? Close Life Manager, then rename privacy-settings.json in %APPDATA%\\Life Manager. This resets only app lock; your database remains intact. App lock protects the UI, not files accessible through your Windows account.',
+              'Forgot your PIN? Close TodoPilot, then rename privacy-settings.json in %APPDATA%\\Life Manager. This resets only app lock; your database remains intact. App lock protects the UI, not files accessible through your Windows account.',
             ),
           ],
         ),
@@ -155,7 +155,7 @@ class _PrivacyDialogState extends ConsumerState<PrivacyDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'App lock hides Life Manager content in the app and native widget. It does not encrypt the SQLite database or protect files from someone with access to your Windows account.',
+                'App lock hides TodoPilot content in the app and native widget. It does not encrypt the SQLite database or protect files from someone with access to your Windows account.',
               ),
               const SizedBox(height: 12),
               Text(settings.enabled ? 'App lock enabled' : 'App lock disabled'),

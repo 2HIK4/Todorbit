@@ -50,6 +50,6 @@ internal sealed class PrivacyState {
 
   internal void RequireUnlocked() {
     if (IsLocked()) throw new InvalidOperationException(
-      "Life Manager is locked. Open the main app and enter your PIN.");
+      "TodoPilot is locked. Open the main app and enter your PIN.");
   }
 }

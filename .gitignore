@@ -33,6 +33,20 @@ migrate_working_dir/
 /build/
 /release/
 /coverage/
+/.vscode/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.db-wal
+*.db-shm
+*.pfx
+*.p12
+*.pem
+*.key
+.env
+.env.*
+**/backups/
 
 # Symbolication related
 app.*.symbols
@@ -47,3 +61,5 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+/tools/isolated-launcher/bin/
+/tools/isolated-launcher/obj/

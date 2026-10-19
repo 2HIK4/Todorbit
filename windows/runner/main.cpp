@@ -26,7 +26,7 @@ bool LaunchNativeWidgetCompanion() {
     return false;
   }
   const std::wstring directory = app_path.substr(0, separator);
-  const std::wstring widget_path = directory + L"\\life_manager_widget.exe";
+  const std::wstring widget_path = directory + L"\\TodoPilotWidget.exe";
   const DWORD widget_attributes = ::GetFileAttributesW(widget_path.c_str());
   if (widget_attributes == INVALID_FILE_ATTRIBUTES ||
       (widget_attributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
@@ -76,9 +76,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     if (!launched) {
       ::MessageBoxW(nullptr,
                     L"The packaged native widget could not be started. "
-                    L"Rebuild or reinstall Life Manager so "
-                    L"life_manager_widget.exe is beside life_manager.exe.",
-                    L"Life Manager widget", MB_OK | MB_ICONERROR);
+                    L"Rebuild or reinstall TodoPilot so "
+                    L"TodoPilotWidget.exe is beside TodoPilot.exe.",
+                    L"TodoPilot widget", MB_OK | MB_ICONERROR);
     }
     ::CoUninitialize();
     return launched ? EXIT_SUCCESS : EXIT_FAILURE;
@@ -104,7 +104,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                                ? Win32Window::Size(360, 480)
                                : Win32Window::Size(1280, 720);
   const wchar_t* window_title =
-      legacy_widget_mode ? L"Life Manager Legacy Widget" : L"Life Manager";
+      legacy_widget_mode ? L"TodoPilot Legacy Widget" : L"TodoPilot";
   if (!window.Create(window_title, origin, size)) {
     WidgetDiagnostics::Log(L"window creation failed");
     WidgetDiagnostics::Stop();

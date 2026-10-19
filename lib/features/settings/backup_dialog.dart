@@ -130,7 +130,7 @@ class _BackupDialogState extends State<BackupDialog> {
           '${importedFrom == null ? 'Stored snapshot' : 'Imported from: $importedFrom'}\n'
           'Snapshot: ${record.file.uri.pathSegments.last}\n'
           'Schema: ${record.schemaVersion} · Size: ${_size(record.bytes)}\n\n'
-          'Life Manager will replace its current database with this snapshot '
+          'TodoPilot will replace its current database with this snapshot '
           'when it next starts. '
           'Current data will first be saved in a separate Before restore backup. '
           'Changes made after this snapshot will no longer appear in the active database.',
@@ -210,7 +210,7 @@ class _BackupDialogState extends State<BackupDialog> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Export a standalone SQLite copy or import one from another Life Manager installation. Import stages a verified copy, then asks before replacing this database on the next launch.',
+              'Export a standalone SQLite copy or import one from another TodoPilot installation. Import stages a verified copy, then asks before replacing this database on the next launch.',
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -260,7 +260,7 @@ class _BackupDialogState extends State<BackupDialog> {
                     children: [
                       Text('Restore scheduled: $pendingName'),
                       const Text(
-                        'Close and reopen Life Manager to apply it. The current database will be backed up first.',
+                        'Close and reopen TodoPilot to apply it. The current database will be backed up first.',
                       ),
                       TextButton(
                         onPressed: busy ? null : _cancelRestore,

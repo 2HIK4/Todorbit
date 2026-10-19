@@ -40,6 +40,7 @@ dependencies:
   uuid: ^4.6.0
   sqlite3: ^3.7.1
   crypto: ^3.0.7
+  flex_color_picker: ^4.0.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -56,6 +57,9 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  assets:
+    - assets/contributors.json
+    - assets/app_icon.png
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

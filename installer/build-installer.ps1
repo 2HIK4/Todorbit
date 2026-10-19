@@ -5,8 +5,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $bundle = Join-Path $repo 'build\windows\x64\runner\Release'
-$mainExe = Join-Path $bundle 'life_manager.exe'
-$widgetExe = Join-Path $bundle 'life_manager_widget.exe'
+$mainExe = Join-Path $bundle 'TodoPilot.exe'
+$widgetExe = Join-Path $bundle 'TodoPilotWidget.exe'
 if (-not (Test-Path -LiteralPath $mainExe) -or -not (Test-Path -LiteralPath $widgetExe)) {
   throw 'Release bundle is missing. Run flutter build windows --release first.'
 }
@@ -46,6 +46,6 @@ if ($compilerVersion -notmatch '^7\.') {
 
 & $Compiler (Join-Path $PSScriptRoot 'life_manager.iss')
 if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
-$artifact = Join-Path $repo 'release\LifeManager-1.0.0-win-x64-setup.exe'
+$artifact = Join-Path $repo 'release\TodoPilot-1.0.0-win-x64-setup.exe'
 if (-not (Test-Path -LiteralPath $artifact)) { throw 'Installer compiler did not create expected artifact.' }
 Get-FileHash -Algorithm SHA256 -LiteralPath $artifact

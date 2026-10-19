@@ -259,7 +259,7 @@ class BackupService {
                 .normalize(path.join(backupDirectory.absolute.path, filename))
                 .toLowerCase()) {
       throw ArgumentError(
-        'Select a managed backup in the Life Manager backup folder',
+        'Select a managed backup in the TodoPilot backup folder',
       );
     }
     final selectedPath = selected.file.path;
@@ -381,7 +381,7 @@ void _validateLifeManagerSnapshot(String filePath) {
     final schema =
         connection.select('PRAGMA user_version').single.values.single as int;
     if (schema < 1) {
-      throw StateError('Snapshot is not a Life Manager database');
+      throw StateError('Snapshot is not a TodoPilot database');
     }
     final names = connection
         .select("SELECT name FROM sqlite_master WHERE type='table'")
@@ -463,7 +463,7 @@ void _validateLifeManagerSnapshot(String filePath) {
       });
     }
     if (!names.containsAll(required)) {
-      throw StateError('Snapshot is not a Life Manager database');
+      throw StateError('Snapshot is not a TodoPilot database');
     }
     if (connection.select('PRAGMA foreign_key_check').isNotEmpty) {
       throw StateError('Snapshot has broken record relationships');

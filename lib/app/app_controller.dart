@@ -40,6 +40,7 @@ enum WorkspaceView {
   habits,
   goals,
   reports,
+  contributors,
   saved,
   category,
   project,
@@ -96,6 +97,7 @@ class AppController extends ChangeNotifier {
   String? scopeId;
   String? selectedTaskId;
   ThemeModePreference theme = ThemeModePreference.system;
+  ThemeCustomization customization = const ThemeCustomization();
   CalendarContent calendarContent = CalendarContent.both;
   bool loading = true;
 
@@ -231,7 +233,14 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> initialize() async {
-    if (appearanceStore != null) theme = await appearanceStore!.load();
+    if (appearanceStore != null) {
+      theme = await appearanceStore!.load();
+      customization = await appearanceStore!.loadCustomization();
+      view = WorkspaceView.values.firstWhere(
+        (candidate) => candidate.name == customization.openingScreen,
+        orElse: () => WorkspaceView.today,
+      );
+    }
     if (calendarPreferenceStore != null) {
       calendarContent = await calendarPreferenceStore!.load();
     }
@@ -310,8 +319,15 @@ class AppController extends ChangeNotifier {
     final store = appearanceStore;
     if (store == null) return;
     final value = await store.load();
-    if (theme == value) return;
+    final palette = await store.loadCustomization();
+    customization = palette;
     theme = value;
+    notifyListeners();
+  }
+
+  Future<void> saveCustomization(ThemeCustomization value) async {
+    await appearanceStore?.saveCustomization(value);
+    customization = value;
     notifyListeners();
   }
 
@@ -368,6 +384,7 @@ class AppController extends ChangeNotifier {
         case WorkspaceView.habits:
         case WorkspaceView.goals:
         case WorkspaceView.reports:
+        case WorkspaceView.contributors:
           return false;
         case WorkspaceView.saved:
           return savedIds.contains(task.id);

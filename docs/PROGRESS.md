@@ -625,3 +625,76 @@ planned work sessions retain their own UTC times. Re-run the native widget
 regression checklist in
 `docs/windows-widget.md` whenever shell attachment, native input, rendering,
 DPI behavior, process lifecycle, or packaging changes.
+
+## TodoPilot continuation checkpoint (2026-10-19)
+
+Branch: `feature/windows-v1-completion`; latest committed baseline was
+`d7fd802` before this work. The public rename, theme architecture, widget
+redesign, Contributors, open-source files, and packaging are implemented in
+the working tree. Preserve these changes rather than restarting the mission.
+
+- The preferred orbit screenshot was identified as Lucide's `orbit` glyph.
+  `assets/todopilot_icon.svg` is the editable source, and
+  `tools/generate-icon.ps1` generated a black/white 16, 24, 32, 48, 64, 128,
+  and 256 px ICO plus 256 px README/app asset. The main and widget executable
+  resources both extracted as black/white icons with zero purple pixels at
+  32 px in the first Release build. The widget tray loads its executable icon.
+  Lucide ISC attribution is in `THIRD_PARTY_NOTICES.md` and packaging config.
+- Settings → Appearance → Customize Theme has independent light/dark palettes,
+  presets, validated JSON import/export, contrast warning, layout controls,
+  and an interactive hue wheel with saturation/value square and synchronized
+  HEX input. Calendar default view and reduced-motion preference were added.
+  The shared settings store persists across restarts and native widget watches
+  it for palette/opacity updates.
+- Native widget source now supports background opacity, flexible resize,
+  context menu, and layout lock. Its Release build and packaged self-test pass.
+  A Windows-aware manifest enabled the layered Explorer child window, and
+  parent-client coordinate conversion placed it correctly across two monitors.
+  Read-only inspection confirmed `WS_CHILD` and `WS_EX_LAYERED` on Explorer's
+  `SHELLDLL_DefView` at the intended screen position. Per-pixel alpha, Win+D,
+  wallpaper contrast, multiple DPI/monitors, and task hit testing still need
+  actual GUI acceptance.
+- The TodoPilot README, contributor registry/page, contribution/security
+  policies, MIT license proposal, developer/customization docs, portable
+  builder, Inno Setup project, and release notes are prepared. There is no Git
+  remote. Do not publish, merge into master, install on the normal account, or
+  open the production database without user approval.
+- Final `flutter analyze` is clean, all 189 Flutter tests pass, the native
+  Release build has zero warnings/errors, the Windows Release build succeeds,
+  native widget self-test passes, and the native package audit reports no
+  vulnerable packages from configured sources.
+- In an isolated Release UI at 1266×713, the revised color picker fit without
+  overflow. Wheel changes synchronized the preview and HEX field. Keyboard HEX
+  edits synchronized the preview and wheel. A saved light accent `#BD561A`
+  survived a full app restart while the dark accent stayed `#B9A4F4`.
+  The README screenshot is a real isolated-profile Today view with one generic
+  sample task. The extracted portable app also opened from a directory with
+  spaces, and its widget self-test passed.
+- Both main/widget Release executable icons and the Inno Setup executable
+  extracted as the orbit icon at 32 px (white strokes, zero purple pixels).
+  The ICO includes seven sizes from 16 to 256 px. Actual taskbar, Start menu,
+  File Explorer, shortcut, and installer wizard visual checks remain pending.
+- `release/TodoPilot-1.0.0-win-x64-portable.zip` has 25 checked entries,
+  including both executables, Flutter license notices, the icon asset, and
+  Lucide attribution; no database/log/key entries were found. The extracted
+  widget self-test passed, and the extracted main app opened from a path with
+  spaces in a fresh isolated profile. Size: 61,308,791 bytes; SHA-256:
+  `00E1F63A03169C57985B9EC21D05486FCCC909A45FA1759D102E8833DD7A9F20`.
+  `release/TodoPilot-1.0.0-win-x64-setup.exe` compiled with Inno Setup 7.1.0
+  after a transient resource-update failure and successful retry. Size:
+  46,431,717 bytes; SHA-256:
+  `4E5ED977E05418B311DAA5D61BA1116E2DDFF6CC09A50ED15F43CF006C8A2967`.
+  Both are unsigned. Older candidate artifacts were moved into
+  `release/previous-checkpoint/` and are excluded from the new packages.
+- `git remote -v` is empty. Tracked filenames and 44 revisions of Git history
+  were scanned for likely secrets, databases, logs, and signing keys; no
+  matching committed file or secret signature was found. This scan does not
+  guarantee that arbitrary personal content is absent. No repository was
+  published, no license was activated, no normal-account installer test was
+  run, and no production database was opened or migrated.
+
+Next: perform the manual acceptance in `docs/ACCEPTANCE.md` and
+`docs/windows-widget.md`, especially real widget alpha, Win+D, wallpaper/DPI,
+task interactions under layout lock, installed upgrade/uninstall, and shell
+icons. Review `LICENSE.proposed` and the GitHub account/repository before any
+public publication. Do not merge into master without explicit approval.

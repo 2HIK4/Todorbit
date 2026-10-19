@@ -4,7 +4,7 @@ project(life_manager LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
-set(BINARY_NAME "life_manager")
+set(BINARY_NAME "TodoPilot")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
@@ -68,8 +68,8 @@ add_custom_target(life_manager_widget ALL
     -p:IncludeNativeLibrariesForSelfExtract=true
     -p:DebugType=None
     --output "${WIDGET_PUBLISH_DIR}"
-  BYPRODUCTS "${WIDGET_PUBLISH_DIR}/life_manager_widget.exe"
-  COMMENT "Publishing native Life Manager widget companion"
+  BYPRODUCTS "${WIDGET_PUBLISH_DIR}/TodoPilotWidget.exe"
+  COMMENT "Publishing native TodoPilot widget companion"
   VERBATIM)
 add_dependencies(${BINARY_NAME} life_manager_widget)
 
@@ -86,7 +86,8 @@ include(flutter/generated_plugins.cmake)
 set(BUILD_BUNDLE_DIR "$<TARGET_FILE_DIR:${BINARY_NAME}>")
 # Make the "install" step default, as it's required to run.
 set(CMAKE_VS_INCLUDE_INSTALL_TO_DEFAULT_BUILD 1)
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT OR
+   CMAKE_INSTALL_PREFIX STREQUAL "$<TARGET_FILE_DIR:life_manager>")
   set(CMAKE_INSTALL_PREFIX "${BUILD_BUNDLE_DIR}" CACHE PATH "..." FORCE)
 endif()
 
@@ -96,7 +97,7 @@ set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}")
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
 
-install(FILES "${WIDGET_PUBLISH_DIR}/life_manager_widget.exe"
+install(FILES "${WIDGET_PUBLISH_DIR}/TodoPilotWidget.exe"
   DESTINATION "${CMAKE_INSTALL_PREFIX}" COMPONENT Runtime)
 
 install(FILES "${FLUTTER_ICU_DATA_FILE}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"

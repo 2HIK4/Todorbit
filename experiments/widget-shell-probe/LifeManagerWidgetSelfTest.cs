@@ -665,8 +665,20 @@ internal static class LifeManagerWidgetSelfTest {
       throw new InvalidOperationException("Legacy appearance was not migrated.");
     }
     settings.Theme = WidgetThemePreference.Light;
+    settings.WidgetOpacity = 35;
+    settings.Customization = new WidgetCustomization {
+      Version = 1,
+      Light = new Dictionary<string, string> {
+        ["background"] = "#F8F7FC", ["surface"] = "#FFFFFF",
+        ["accent"] = "#123456", ["primaryText"] = "#211B35",
+        ["secondaryText"] = "#665F78", ["border"] = "#DCD7E9",
+      },
+    };
     store.Save(settings);
-    if (store.Load().Theme != WidgetThemePreference.Light) {
+    if (store.Load().Theme != WidgetThemePreference.Light ||
+        store.Load().WidgetOpacity != 35 ||
+        WidgetPalette.FromCustom(store.Load().Customization?.Light,
+          WidgetPalette.Light).Accent != Color.FromArgb(0x12, 0x34, 0x56)) {
       throw new InvalidOperationException("Shared appearance did not round-trip.");
     }
   }
@@ -682,12 +694,15 @@ internal static class LifeManagerWidgetSelfTest {
       MonitorDeviceName = @"\\.\DISPLAY2",
       Theme = WidgetThemePreference.Light,
       View = WidgetTaskView.Inbox,
+      LayoutLocked = true,
+      BackgroundOpacity = 30,
     };
     store.Save(expected);
     var actual = store.Load();
     if (actual.X != expected.X || actual.Width != expected.Width ||
         actual.Theme != expected.Theme || actual.View != expected.View ||
-        actual.MonitorDeviceName != expected.MonitorDeviceName) {
+        actual.MonitorDeviceName != expected.MonitorDeviceName ||
+        !actual.LayoutLocked || actual.BackgroundOpacity != 30) {
       throw new InvalidOperationException("Widget settings did not round-trip.");
     }
   }
@@ -745,7 +760,7 @@ internal static class LifeManagerWidgetSelfTest {
         (WidgetResizeEdge.Right | WidgetResizeEdge.Bottom)) {
       throw new InvalidOperationException("Resize edge hit testing failed.");
     }
-    if (WidgetGeometry.LogicalSize(100, 1200) != new Size(340, 900) ||
+    if (WidgetGeometry.LogicalSize(100, 1200) != new Size(260, 1200) ||
         WidgetGeometry.Scale(new Size(400, 500), 1.5f) != new Size(600, 750)) {
       throw new InvalidOperationException("Resize or DPI sizing bounds failed.");
     }

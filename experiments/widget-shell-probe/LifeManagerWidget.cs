@@ -46,7 +46,7 @@ internal sealed class LifeManagerWidget : Form {
     if (hostMode == WidgetHostMode.LegacyReparent) {
       (shellParent, shellPosition) = ResolveDesktopIconHost();
     }
-    Text = "Life Manager Desktop Widget";
+    Text = "TodoPilot Desktop Widget";
     FormBorderStyle = hostMode == WidgetHostMode.Standalone
       ? FormBorderStyle.FixedSingle
       : FormBorderStyle.None;
@@ -64,7 +64,7 @@ internal sealed class LifeManagerWidget : Form {
       ControlStyles.ResizeRedraw, true);
 
     var header = new Label {
-      Text = "Life Manager",
+      Text = "TodoPilot",
       Font = new Font("Segoe UI Semibold", 15, FontStyle.Bold),
       ForeColor = palette.Foreground,
       Location = new Point(16, 14),
@@ -119,7 +119,7 @@ internal sealed class LifeManagerWidget : Form {
         !AttachToDesktopIconHostLegacy()) {
       MessageBox.Show(
         "Explorer's desktop icon host was not available. The widget was not attached.",
-        "Life Manager widget", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        "TodoPilot widget", MessageBoxButtons.OK, MessageBoxIcon.Error);
       Close();
       return;
     }
@@ -275,7 +275,7 @@ internal sealed class LifeManagerWidget : Form {
     if (!string.IsNullOrWhiteSpace(appExe) && File.Exists(appExe)) {
       return Path.GetFullPath(appExe);
     }
-    var sibling = Path.Combine(AppContext.BaseDirectory, "life_manager.exe");
+    var sibling = Path.Combine(AppContext.BaseDirectory, "TodoPilot.exe");
     if (File.Exists(sibling)) return sibling;
     throw new FileNotFoundException(
       "Pass --app-exe PATH when the main executable is not beside the widget.");
@@ -310,7 +310,7 @@ internal sealed class LifeManagerWidget : Form {
 
   private void ShowError(string message) {
     status.Text = "Action failed";
-    MessageBox.Show(message, "Life Manager widget",
+    MessageBox.Show(message, "TodoPilot widget",
       MessageBoxButtons.OK, MessageBoxIcon.Error);
   }
 
@@ -347,7 +347,7 @@ internal sealed class QuickAddDialog : Form {
   internal string TaskTitle => editor.Text.Trim();
 
   internal QuickAddDialog(WidgetPalette palette) {
-    Text = "Quick Add - Life Manager";
+    Text = "Quick Add - TodoPilot";
     FormBorderStyle = FormBorderStyle.FixedDialog;
     StartPosition = FormStartPosition.Manual;
     ClientSize = new Size(376, 142);
@@ -417,15 +417,37 @@ internal sealed record WidgetPalette(
   Color AccentBorder,
   Color Border
 ) {
+  internal static WidgetPalette FromCustom(
+      Dictionary<string, string>? colors, WidgetPalette fallback) {
+    if (colors == null) return fallback;
+    try {
+      Color Read(string key) {
+        if (!colors.TryGetValue(key, out var text) ||
+            !System.Text.RegularExpressions.Regex.IsMatch(text, "^#[0-9A-Fa-f]{6}$"))
+          throw new FormatException();
+        return ColorTranslator.FromHtml(text);
+      }
+      var background = Read("background");
+      var surface = Read("surface");
+      var accent = Read("accent");
+      var foreground = Read("primaryText");
+      var muted = Read("secondaryText");
+      var border = Read("border");
+      return new WidgetPalette(background, foreground, muted, surface,
+        surface, accent, accent, border);
+    } catch (FormatException) {
+      return fallback;
+    }
+  }
   internal static WidgetPalette Dark { get; } = new(
-    Color.FromArgb(24, 27, 39), Color.FromArgb(239, 240, 246),
-    Color.FromArgb(169, 174, 195), Color.FromArgb(31, 35, 50),
-    Color.FromArgb(38, 43, 61), Color.FromArgb(70, 82, 157),
-    Color.FromArgb(111, 124, 219), Color.FromArgb(58, 63, 84));
+    Color.FromArgb(23, 20, 32), Color.FromArgb(244, 240, 252),
+    Color.FromArgb(200, 192, 213), Color.FromArgb(37, 33, 49),
+    Color.FromArgb(37, 33, 49), Color.FromArgb(185, 164, 244),
+    Color.FromArgb(185, 164, 244), Color.FromArgb(76, 67, 92));
 
   internal static WidgetPalette Light { get; } = new(
-    Color.FromArgb(247, 248, 252), Color.FromArgb(31, 34, 48),
-    Color.FromArgb(94, 99, 120), Color.White,
-    Color.FromArgb(238, 240, 248), Color.FromArgb(83, 101, 181),
-    Color.FromArgb(83, 101, 181), Color.FromArgb(214, 217, 229));
+    Color.FromArgb(248, 247, 252), Color.FromArgb(33, 27, 53),
+    Color.FromArgb(102, 95, 120), Color.White,
+    Color.White, Color.FromArgb(109, 86, 189),
+    Color.FromArgb(109, 86, 189), Color.FromArgb(220, 215, 233));
 }

@@ -40,7 +40,7 @@ Future<void> _startApplication(
         home: Scaffold(
           body: Center(
             child: Text(
-              'Privacy settings could not be read. Restore the settings from a trusted backup before opening Life Manager.',
+              'Privacy settings could not be read. Restore the settings from a trusted backup before opening TodoPilot.',
             ),
           ),
         ),
@@ -61,7 +61,7 @@ Future<void> _startApplication(
         home: Scaffold(
           body: Center(
             child: Text(
-              'Life Manager could not inspect the database safely: $failure',
+              'TodoPilot could not inspect the database safely: $failure',
             ),
           ),
         ),
@@ -142,6 +142,7 @@ Future<void> _startApplication(
           : LifeManagerApp(
               databaseFile: databaseFile,
               appearanceFile: appearanceStore.file,
+              openAppearance: args.contains('--appearance'),
             ),
     ),
   );
@@ -178,7 +179,7 @@ class _MigrationApprovalAppState extends State<_MigrationApprovalApp> {
                 const Text('Database upgrade required'),
                 const SizedBox(height: 12),
                 Text(
-                  'This database uses schema ${widget.olderSchema}. Life Manager will create and verify a Before upgrade backup, then migrate it to schema ${AppDatabase.currentSchemaVersion}. If backup or migration fails, the workspace will not open. Your data will not be reset.',
+                  'This database uses schema ${widget.olderSchema}. TodoPilot will create and verify a Before upgrade backup, then migrate it to schema ${AppDatabase.currentSchemaVersion}. If backup or migration fails, the workspace will not open. Your data will not be reset.',
                 ),
                 const SizedBox(height: 16),
                 FilledButton(
@@ -255,7 +256,7 @@ class _StartupFailureAppState extends State<_StartupFailureApp> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'Life Manager could not prepare its database. The main app was not started and no migration was run.',
+                'TodoPilot could not prepare its database. The main app was not started and no migration was run.',
               ),
               const SizedBox(height: 12),
               SelectableText(widget.failure),
@@ -280,10 +281,16 @@ class _StartupFailureAppState extends State<_StartupFailureApp> {
 }
 
 class LifeManagerApp extends ConsumerStatefulWidget {
-  const LifeManagerApp({super.key, this.databaseFile, this.appearanceFile});
+  const LifeManagerApp({
+    super.key,
+    this.databaseFile,
+    this.appearanceFile,
+    this.openAppearance = false,
+  });
 
   final File? databaseFile;
   final File? appearanceFile;
+  final bool openAppearance;
 
   @override
   ConsumerState<LifeManagerApp> createState() => _LifeManagerAppState();
@@ -395,14 +402,34 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
       ThemeModePreference.system => ThemeMode.system,
     };
     return MaterialApp(
-      title: 'Life Manager',
+      title: 'TodoPilot',
       debugShowCheckedModeBanner: false,
       themeMode: mode,
-      theme: _theme(Brightness.light),
-      darkTheme: _theme(Brightness.dark),
+      theme: _theme(
+        Brightness.light,
+        ref.watch(appControllerProvider).customization.light,
+      ),
+      darkTheme: _theme(
+        Brightness.dark,
+        ref.watch(appControllerProvider).customization.dark,
+      ),
       builder: (context, child) {
         _syncCaptionTheme(Theme.of(context));
-        return child ?? const SizedBox.shrink();
+        final existing = MediaQuery.of(context);
+        final systemScale = existing.textScaler.scale(16) / 16;
+        final preferenceScale = ref
+            .read(appControllerProvider)
+            .customization
+            .textScale;
+        return MediaQuery(
+          data: existing.copyWith(
+            textScaler: TextScaler.linear(systemScale * preferenceScale),
+            disableAnimations:
+                ref.read(appControllerProvider).customization.reducedMotion ||
+                existing.disableAnimations,
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
       },
       home: privacy.locked
           ? const LockScreen()
@@ -413,23 +440,35 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
                   privacy.activity();
                   return KeyEventResult.ignored;
                 },
-                child: const Workspace(),
+                child: Workspace(openAppearance: widget.openAppearance),
               ),
             ),
     );
   }
 
-  ThemeData _theme(Brightness brightness) {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF5365B5),
-      brightness: brightness,
-    );
+  ThemeData _theme(Brightness brightness, ThemePalette palette) {
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: palette['accent'],
+          brightness: brightness,
+        ).copyWith(
+          surface: palette['surface'],
+          onSurface: palette['primaryText'],
+          onSurfaceVariant: palette['secondaryText'],
+          primary: palette['accent'],
+          outline: palette['border'],
+          outlineVariant: palette['border'],
+          error: palette['error'],
+        );
     final base = ThemeData(useMaterial3: true, colorScheme: scheme);
     final text = base.textTheme;
     return ThemeData(
       useMaterial3: true,
+      visualDensity: ref.read(appControllerProvider).customization.compact
+          ? VisualDensity.compact
+          : VisualDensity.standard,
       colorScheme: scheme,
-      scaffoldBackgroundColor: scheme.surface,
+      scaffoldBackgroundColor: palette['background'],
       textTheme: text.copyWith(
         headlineMedium: text.headlineMedium?.copyWith(
           fontSize: 26,

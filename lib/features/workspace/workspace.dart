@@ -17,12 +17,14 @@ import '../calendar/calendar_view.dart';
 import '../habits/habits_view.dart';
 import '../goals/goals_view.dart';
 import '../reports/reports_view.dart';
+import '../contributors/contributors_view.dart';
 import '../time_tracking/time_tracking_dialog.dart';
 import '../templates/templates_dialog.dart';
 import '../search/advanced_search_dialog.dart';
 import '../settings/backup_dialog.dart';
 import '../settings/notification_dialog.dart';
 import '../settings/privacy_dialog.dart';
+import '../settings/theme_dialog.dart';
 import '../scheduling/smart_reschedule.dart';
 import '../shared/icon_picker.dart';
 import '../widget/native_widget_service.dart';
@@ -32,7 +34,9 @@ import 'quick_search.dart';
 import 'trash_dialog.dart';
 
 class Workspace extends ConsumerStatefulWidget {
-  const Workspace({super.key});
+  const Workspace({super.key, this.openAppearance = false});
+
+  final bool openAppearance;
 
   @override
   ConsumerState<Workspace> createState() => _WorkspaceState();
@@ -48,6 +52,16 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   @override
   void initState() {
     super.initState();
+    if (widget.openAppearance) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          showDialog<void>(
+            context: context,
+            builder: (_) => const ThemeDialog(),
+          );
+        }
+      });
+    }
     _clock = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && ref.read(appControllerProvider).activeTimer != null) {
         setState(() {});
@@ -69,7 +83,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       builder: (context) => AlertDialog(
         title: const Text('Data profile'),
         content: SelectableText(
-          'Life Manager stores this Windows user’s tasks and settings in the '
+          'TodoPilot stores this Windows user’s tasks and settings in the '
           'per-user data folder. Updating or reinstalling the app keeps this '
           'profile. A different Windows user starts with an empty profile.\n\n'
           'Database: ${file.path}\n\n'
@@ -348,7 +362,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
               return Row(
                 children: [
                   SizedBox(
-                    width: constraints.maxWidth < 760 ? 190 : 238,
+                    width: constraints.maxWidth < 760
+                        ? 190
+                        : controller.customization.sidebarWidth.toDouble(),
                     child: _sidebar(controller),
                   ),
                   VerticalDivider(
@@ -456,11 +472,18 @@ class _WorkspaceState extends ConsumerState<Workspace> {
             padding: const EdgeInsets.fromLTRB(16, 20, 8, 14),
             child: Row(
               children: [
-                Icon(Icons.dashboard_customize_rounded, color: scheme.primary),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(5),
+                  child: Image.asset(
+                    'assets/app_icon.png',
+                    width: 24,
+                    height: 24,
+                  ),
+                ),
                 const SizedBox(width: 10),
                 const Expanded(
                   child: Text(
-                    'Life Manager',
+                    'TodoPilot',
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
                   ),
                 ),
@@ -767,6 +790,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   'Reports',
                   Icons.bar_chart_outlined,
                 ),
+                _nav(
+                  controller,
+                  WorkspaceView.contributors,
+                  'Contributors',
+                  Icons.groups_outlined,
+                ),
               ],
             ),
           ),
@@ -881,6 +910,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     context: context,
                     builder: (_) => const PrivacyDialog(),
                   );
+                } else if (value == 'appearance') {
+                  showDialog<void>(
+                    context: context,
+                    builder: (_) => const ThemeDialog(),
+                  );
                 } else if (value == 'lock') {
                   privacy.lock();
                 } else if (value == 'profile') {
@@ -900,6 +934,10 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 const PopupMenuItem(value: 'light', child: Text('Light theme')),
                 const PopupMenuItem(value: 'dark', child: Text('Dark theme')),
                 const PopupMenuDivider(),
+                const PopupMenuItem(
+                  value: 'appearance',
+                  child: Text('Appearance · Customize Theme'),
+                ),
                 const PopupMenuItem(
                   value: 'privacy',
                   child: Text('Privacy and app lock'),
@@ -966,6 +1004,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     }
     if (controller.view == WorkspaceView.reports) {
       return const ReportsView();
+    }
+    if (controller.view == WorkspaceView.contributors) {
+      return const ContributorsView();
     }
     if (controller.view == WorkspaceView.calendar) {
       return CalendarView(
@@ -1040,6 +1081,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       WorkspaceView.habits => 'Habits',
       WorkspaceView.goals => 'Goals',
       WorkspaceView.reports => 'Reports',
+      WorkspaceView.contributors => 'Contributors',
       WorkspaceView.saved =>
         controller.savedViews
                 .where((item) => item.id == controller.scopeId)

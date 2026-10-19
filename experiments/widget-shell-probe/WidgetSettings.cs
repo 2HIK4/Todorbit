@@ -14,6 +14,8 @@ internal sealed class WidgetSettings {
   public WidgetThemePreference? Theme { get; set; }
   public WidgetTaskView View { get; set; } = WidgetTaskView.Today;
   public bool LaunchAtSignIn { get; set; }
+  public bool LayoutLocked { get; set; }
+  public int BackgroundOpacity { get; set; } = 100;
 }
 
 internal sealed class WidgetSettingsStore {
@@ -52,6 +54,19 @@ internal sealed class WidgetSettingsStore {
 
 internal sealed class AppearanceSettings {
   public WidgetThemePreference Theme { get; set; } = WidgetThemePreference.System;
+  public WidgetCustomization? Customization { get; set; }
+  public int? WidgetOpacity { get; set; }
+  [JsonExtensionData]
+  public Dictionary<string, JsonElement>? Additional { get; set; }
+}
+
+internal sealed class WidgetCustomization {
+  public int Version { get; set; }
+  public Dictionary<string, string>? Light { get; set; }
+  public Dictionary<string, string>? Dark { get; set; }
+  public int? WidgetOpacity { get; set; }
+  [JsonExtensionData]
+  public Dictionary<string, JsonElement>? Additional { get; set; }
 }
 
 internal sealed class AppearanceSettingsStore {
@@ -129,7 +144,7 @@ internal static class WidgetGeometry {
   }
 
   internal static Size LogicalSize(int width, int height) => new(
-    Math.Clamp(width, 340, 720), Math.Clamp(height, 420, 900));
+    Math.Max(width, 260), Math.Max(height, 230));
 
   internal static Rectangle ClampToWorkingArea(
       Rectangle bounds, Rectangle workingArea) {

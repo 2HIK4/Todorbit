@@ -11,26 +11,26 @@ dependency, so the regression checklist remains part of release verification.
 From the repository root:
 
 ```powershell
-flutter build windows
-build\windows\x64\runner\Release\life_manager.exe
-build\windows\x64\runner\Release\life_manager_widget.exe --widget --app-exe build\windows\x64\runner\Release\life_manager.exe
+flutter build windows --release
+build\windows\x64\runner\Release\TodoPilot.exe
+build\windows\x64\runner\Release\TodoPilotWidget.exe --widget --app-exe build\windows\x64\runner\Release\TodoPilot.exe
 ```
 
 For compatibility, this also launches the native companion and exits without
 starting the old Flutter widget:
 
 ```powershell
-build\windows\x64\runner\Release\life_manager.exe --widget
+build\windows\x64\runner\Release\TodoPilot.exe --widget
 ```
 
 The app sidebar can show/hide the widget. Direct commands include:
 
 ```powershell
-build\windows\x64\runner\Release\life_manager_widget.exe --widget-command show
-build\windows\x64\runner\Release\life_manager_widget.exe --widget-command quick-add
-build\windows\x64\runner\Release\life_manager_widget.exe --widget-command view-upcoming
-build\windows\x64\runner\Release\life_manager_widget.exe --widget-command theme-system
-build\windows\x64\runner\Release\life_manager_widget.exe --widget-command exit
+build\windows\x64\runner\Release\TodoPilotWidget.exe --widget-command show
+build\windows\x64\runner\Release\TodoPilotWidget.exe --widget-command quick-add
+build\windows\x64\runner\Release\TodoPilotWidget.exe --widget-command view-upcoming
+build\windows\x64\runner\Release\TodoPilotWidget.exe --widget-command theme-system
+build\windows\x64\runner\Release\TodoPilotWidget.exe --widget-command exit
 ```
 
 ## Current behavior
@@ -39,7 +39,7 @@ build\windows\x64\runner\Release\life_manager_widget.exe --widget-command exit
   existing `SHELLDLL_DefView`. It contains no persistent WinForms controls and
   is not topmost.
 - Quick Add looks inline, but keyboard input is handled by a temporary
-  borderless, activatable Life Manager top-level window placed exactly over the
+  borderless, activatable TodoPilot top-level window placed exactly over the
   painted field. Enter validates and saves, Escape dismisses, and ordinary
   TextBox editing supplies selection, paste, Backspace, and Delete. The surface
   is destroyed after submit or dismissal.
@@ -53,12 +53,20 @@ build\windows\x64\runner\Release\life_manager_widget.exe --widget-command exit
   starts Flutter with `--task-id <uuid>`.
 - Today, Inbox, All Tasks, and Upcoming are selectable in the widget and tray.
   The selection is persisted in `%APPDATA%\Life Manager\widget-settings.json`.
-- Header actions use owner-drawn refresh, open, and close icons with separate
-  hit boxes and hover descriptions. Empty states and Quick Add destinations
-  follow the selected view.
+- The header has one visible Open TodoPilot action. Refresh, Close Widget,
+  opacity, and layout lock are in the right-click context menu. Empty states
+  and Quick Add destinations follow the selected view.
 - Drag the empty title area to move. All four edges and four corners resize with
-  matching cursors. Logical size is limited to 340x420 through 720x900, then
-  scaled per monitor and clamped to the working area. Geometry persists.
+  matching cursors. The minimum is 260x230 logical pixels and the maximum is
+  the current monitor's working area. Geometry and lock state persist. Locking
+  disables movement and resizing while keeping task controls active.
+- Background opacity can be 0–100%, including fully transparent. The native
+  layered window keeps text and controls opaque. Transparency, desktop behavior,
+  DPI, and wallpaper contrast require manual checks on the target system.
+  The companion manifest declares Windows 8+ compatibility, which Windows
+  requires for a layered child window. An isolated startup confirmed a layered
+  Explorer child at the intended monitor coordinates; pixel appearance remains
+  unverified.
 - The app and widget share one authoritative
   `%APPDATA%\Life Manager\appearance-settings.json`. Both watch it using file
   notifications, so System/Light/Dark changes propagate without polling. A
@@ -68,16 +76,16 @@ build\windows\x64\runner\Release\life_manager_widget.exe --widget-command exit
   transactional, use stable UUIDs and UTC timestamps, and the native repository
   refuses to create or migrate a production database.
 - A mutex prevents duplicate companions. Closing Flutter leaves the widget
-  running. Explorer recovery only recreates Life Manager's HWND with bounded
+  running. Explorer recovery only recreates TodoPilot's HWND with bounded
   retries and never changes or restarts Explorer.
 
 The failed Flutter desktop-child prototype is retained only for explicit
-diagnostic work through `life_manager.exe --legacy-flutter-widget`. It is not
+diagnostic work through `TodoPilot.exe --legacy-flutter-widget`. It is not
 used by the app, `--widget`, the tray, or optional sign-in registration.
 
 ## Automated checks
 
-`life_manager_widget.exe --self-test` uses only a disposable database and
+`TodoPilotWidget.exe --self-test` uses only a disposable database and
 temporary settings. It covers create/edit/complete persistence, stale-edit
 rejection, view filters and Quick Add destinations, settings/theme round trips,
 resize/DPI/monitor geometry, mutex exclusion, pipe delivery, and bounded
@@ -110,15 +118,21 @@ Record Pass/Fail plus Windows build, monitor topology, and scale:
    minimum layout, and button hit boxes remain correct.
 10. Move and resize on each monitor, restart the widget, and confirm geometry
     persists within accessible bounds at each available DPI scale.
-11. Exercise the refresh, open, and close icons; confirm their hover descriptions
-    and that header dragging does not steal their clicks.
+11. Exercise Open TodoPilot and every right-click menu item. Check Refresh,
+    Close Widget, opacity presets and slider, lock/unlock, and that header
+    dragging does not steal menu or task clicks.
 12. Switch Today, Inbox, All Tasks, and Upcoming in the widget; restart and
     confirm selection, filtering, ordering, counts/ranges, and empty states.
 13. Select System, Light, and Dark from both processes, including with the other
     process closed; reopen both and confirm synchronized persistence and contrast.
-14. Open and close Flutter three times. Confirm one widget process remains and
+    Edit separate light/dark colors with the wheel; confirm immediate native
+    widget updates and persistence after restarting both processes.
+14. Test 0, 30, 70, and 100% opacity over dark and light wallpapers. Confirm
+    background transparency, opaque text/controls, and clickable tasks. Resize
+    down to 260x230 and up to the working area; verify layout and hit targets.
+15. Open and close Flutter three times. Confirm one widget process remains and
     task/database synchronization continues.
-15. If user-approved, restart Explorer once and confirm bounded widget recovery
+16. If user-approved, restart Explorer once and confirm bounded widget recovery
     without Explorer modification or a duplicate companion.
 
 The initial promotion gate passed. Repeat this checklist when changing Windows

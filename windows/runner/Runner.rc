@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "Life Manager" "\0"
-            VALUE "FileDescription", "Life Manager" "\0"
+            VALUE "CompanyName", "TodoPilot" "\0"
+            VALUE "FileDescription", "TodoPilot" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "life_manager" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 Life Manager." "\0"
-            VALUE "OriginalFilename", "life_manager.exe" "\0"
-            VALUE "ProductName", "Life Manager" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 TodoPilot." "\0"
+            VALUE "OriginalFilename", "TodoPilot.exe" "\0"
+            VALUE "ProductName", "TodoPilot" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

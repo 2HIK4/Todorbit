@@ -258,3 +258,37 @@
   Habit rates use scheduled days and stored outcomes, including rest days.
   Goal counts are labeled as current state because historical goal snapshots
   are not stored. Reports never infer completion from missed plans.
+- **TodoPilot public identity and upgrade compatibility (2026-10-19):** use
+  TodoPilot for the visible name, executables, widget, tray, shortcuts, and
+  installer, while preserving the existing `%APPDATA%\Life Manager` profile,
+  SQLite filename, IPC identity, startup registration key, installer AppId, and
+  installation directory. A rename must not create an empty second profile or
+  strand an installed version. Production data is not migrated in development.
+- **Orbit app icon (2026-10-19):** follow the user's white orbit-on-black
+  screenshot. The shape matches Lucide's `orbit` pictogram, so retain its arc,
+  center ring, and two satellites. Keep the scalable SVG, generate 16–256 px
+  PNG-backed ICO sizes, and reproduce the source's ISC notice in
+  `THIRD_PARTY_NOTICES.md` and both packages. Keep lavender as the default UI
+  theme independently of the black app icon.
+- **Theme picker and shared appearance (2026-10-19):** use the maintained
+  `flex_color_picker` wheel and saturation/value square, plus TodoPilot's
+  synchronized HEX field, live preview, and explicit picker confirmation.
+  Save versioned, validated light/dark palettes and layout preferences to the
+  existing appearance settings file. The native widget watches that file and
+  uses its colors and opacity while the main app is closed. Theme imports are
+  declarative JSON only; official Contributors remain a separate registry.
+- **Widget opacity and geometry (2026-10-19):** retain Explorer child hosting
+  and use per-pixel alpha for a configurable background while drawing content
+  opaque. Minimum logical size is 260x230; the current monitor working area
+  limits the maximum. Keep right-click actions and the layout lock in native
+  settings. Actual alpha, hit testing, DPI, and Win+D behavior require target
+  Windows GUI acceptance.
+- **Layered child compatibility (2026-10-19):** declare Windows 8/8.1/10
+  compatibility in the native companion manifest. Without it, Windows rejected
+  `WS_EX_LAYERED` child-window creation in an isolated GUI launch even though
+  the native self-test passed. Convert the desired screen position to Explorer
+  parent-client coordinates for `UpdateLayeredWindow`; otherwise a two-monitor
+  setup shifted the widget by one virtual-screen origin. A subsequent isolated
+  launch created the Explorer child with `WS_EX_LAYERED` at the intended
+  `(1520,24)` screen position. Pixel appearance and hit testing still need
+  direct visual inspection.

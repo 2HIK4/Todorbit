@@ -2,10 +2,11 @@
 
 ## Current status
 
-The Windows Release bundle contains `life_manager.exe`,
-`life_manager_widget.exe`, Flutter assets, `flutter_windows.dll`, and
-`sqlite3.dll`. Inno Setup 7.1.0 compiled the installer at
-`release/LifeManager-1.0.0-win-x64-setup.exe`. This is **not yet an approved
+The Windows Release bundle contains `TodoPilot.exe`,
+`TodoPilotWidget.exe`, Flutter assets, `flutter_windows.dll`, and
+`sqlite3.dll`. Inno Setup 7.1.0 compiles the installer at
+`release/TodoPilot-1.0.0-win-x64-setup.exe`. A portable ZIP is built at
+`release/TodoPilot-1.0.0-win-x64-portable.zip`. This is **not yet an approved
 release candidate**: installed upgrade/uninstall and full manual acceptance
 remain unverified. The manual acceptance matrix is in `ACCEPTANCE.md`.
 
@@ -16,10 +17,9 @@ Run `flutter build windows --release`. The bundle is under
 compile the per-user installer with Inno Setup 7, run
 `./installer/build-installer.ps1` (or pass `-Compiler` with an `ISCC.exe` path).
 The script verifies the Release executables and prints the installer SHA-256.
-The Feedback Round 2 artifact was rebuilt from commit `8fd380f` with Inno
-Setup 7.1.0. Its SHA-256 is
-`7DBB6DD5EF1A2E09F59C45381401D7BA6131DA82F67CE9ABC8737CE5AB0C7195`.
-It is unsigned; a signing certificate and distribution decision remain open.
+Run `./tools/build-portable.ps1` for the portable ZIP. Both packages are
+unsigned; a signing certificate and distribution decision remain open. Use
+`release/SHA256SUMS.txt` for the current artifact checksums.
 
 The installer is configured to use `%LOCALAPPDATA%\Programs\Life Manager`, adds a
 Start menu shortcut, and offers an optional desktop shortcut. It does not
@@ -79,9 +79,7 @@ acceptance on an isolated profile.
 
 ## Release notes
 
-This checkpoint adds recurring calendar events and reminders, calendar filters,
-task icons, checklists, one-level subtasks, progressive recurring task plans,
-quick task and focus actions, a live timer and mini timer, and theme-matched
-Windows caption colors. It also includes the optional app lock, migration
-approval gate, updated application icon, and Inno Setup project. The database
-schema is v20. Native GUI and installed upgrade acceptance remain pending.
+TodoPilot retains the schema-v20 planner and adds the orbit app icon, light and
+dark theme editor with color wheel and JSON presets, native widget opacity,
+resizing, context menu, layout lock, Contributors page, and portable package.
+Native GUI and installed upgrade acceptance remain pending.
