@@ -170,12 +170,18 @@ extension SeriesEditRepository on LifeRepository {
              WHERE d.task_id=t.id OR d.prerequisite_id=t.id) OR
            EXISTS(SELECT 1 FROM sequence_tasks q WHERE q.task_id=t.id) OR
            EXISTS(SELECT 1 FROM scheduling_changes c
-             WHERE c.target_kind='task' AND c.target_id=t.id)) AS has_links
+             WHERE c.target_kind='task' AND c.target_id=t.id) OR
+           EXISTS(SELECT 1 FROM progressive_plan_assignments a
+             WHERE a.occurrence_id=o.id AND (a.manual=1 OR
+               a.carry_forward=1 OR o.nominal_date < ?))) AS has_links
         FROM recurrence_occurrences o
         JOIN recurrence_series s ON s.id=o.series_id
         LEFT JOIN tasks t ON t.id=o.task_id
         WHERE s.family_id=? ORDER BY o.nominal_date,o.id''',
-          variables: [Variable.withString(familyId)],
+          variables: [
+            Variable.withString(localDate(DateTime.now())),
+            Variable.withString(familyId),
+          ],
         )
         .get();
     final occurrences = rows.map(_SeriesOccurrence.new).toList();
@@ -201,6 +207,8 @@ extension SeriesEditRepository on LifeRepository {
       JOIN recurrence_occurrences o ON o.task_id=c.target_id
       JOIN recurrence_series s ON s.id=o.series_id
       WHERE c.target_kind='task' AND s.family_id=?''',
+      '''SELECT 'plan|' || family_id || '|' || updated_at AS stamp
+      FROM progressive_plans WHERE family_id=?''',
     ]) {
       final stamps = await db
           .customSelect(query, variables: [Variable.withString(familyId)])
@@ -540,6 +548,7 @@ extension SeriesEditRepository on LifeRepository {
           });
         }
       }
+      await _refreshProgressiveAssignments(preview.familyId);
       await db.customInsert(
         '''INSERT INTO series_edit_history(id,family_id,source_task_id,
           new_series_id,scope,effective_date,details_json,created_at)

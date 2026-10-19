@@ -18,6 +18,7 @@ import '../domain/trash.dart';
 import '../domain/notifications.dart';
 import '../domain/task_resources.dart';
 import '../domain/task_composition.dart';
+import '../domain/progressive_plan.dart';
 import '../domain/scheduling_models.dart';
 import 'app_database.dart';
 
@@ -34,6 +35,7 @@ part 'task_resource_repository.dart';
 part 'event_repository.dart';
 part 'entity_icon_repository.dart';
 part 'task_composition_repository.dart';
+part 'progressive_plan_repository.dart';
 
 class LifeRepository {
   LifeRepository(this.db);
@@ -678,8 +680,10 @@ class LifeRepository {
   /// occurrences are created only when a caller requests their date window.
   Future<LifeTask> addRecurringTask(
     TaskDraft draft,
-    RecurrenceRule rule,
-  ) async {
+    RecurrenceRule rule, {
+    List<String> progressiveSteps = const [],
+    bool repeatPlanAtEnd = false,
+  }) async {
     _validate(draft);
     if (draft.status != TaskStatus.notStarted ||
         draft.scheduledDate != rule.startDate) {
@@ -695,6 +699,13 @@ class LifeRepository {
               .firstOrNull;
     if (first == null) {
       throw ArgumentError('The recurrence has no first occurrence');
+    }
+    if (progressiveSteps.isNotEmpty &&
+        (rule.kind == RecurrenceKind.afterCompletion ||
+            progressiveSteps.any((step) => step.trim().isEmpty))) {
+      throw ArgumentError(
+        'A study plan needs scheduled recurrence and nonempty steps',
+      );
     }
     final seriesId = _uuid.v4();
     final now = DateTime.now().toUtc().toIso8601String();
@@ -739,6 +750,15 @@ class LifeRepository {
           )
           .getSingle();
       await _insertOccurrence(series, first);
+      if (progressiveSteps.isNotEmpty) {
+        await _writeProgressivePlan(
+          seriesId,
+          progressiveSteps.map((step) => step.trim()).toList(),
+          repeatPlanAtEnd,
+          now,
+        );
+        await _refreshProgressiveAssignments(seriesId);
+      }
     });
     return (await tasks()).firstWhere(
       (task) => task.recurrenceSeriesId == seriesId,
@@ -852,6 +872,7 @@ class LifeRepository {
         Variable.withString(now.toIso8601String()),
       ],
     );
+    await _syncProgressiveAssignment(occurrenceId, forceFuture: false);
   }
 
   Future<void> updateTask(
@@ -1032,7 +1053,7 @@ class LifeRepository {
     await moveToTrash(TrashKind.task, id);
   }
 
-  Future<void> skipRecurringOccurrence(LifeTask task) async {
+  Future<void> skipRecurringOccurrence(LifeTask task, {bool? carryPlan}) async {
     if (task.recurrenceSeriesId == null) {
       throw ArgumentError('This task is not a recurring occurrence');
     }
@@ -1060,6 +1081,31 @@ class LifeRepository {
       );
       if (marked != 1) {
         throw StateError('The recurrence link is missing');
+      }
+      if (carryPlan != null) {
+        final family = await _progressiveFamily(task.id);
+        if (family != null && await progressivePlan(task.id) != null) {
+          final occurrence = await db
+              .customSelect(
+                'SELECT id FROM recurrence_occurrences WHERE task_id=?',
+                variables: [Variable.withString(task.id)],
+              )
+              .getSingle();
+          await _syncProgressiveAssignment(
+            occurrence.read<String>('id'),
+            forceFuture: false,
+          );
+          await db.customUpdate(
+            '''UPDATE progressive_plan_assignments
+            SET carry_forward=?,updated_at=? WHERE occurrence_id=?''',
+            variables: [
+              Variable.withInt(carryPlan ? 1 : 0),
+              Variable.withString(now),
+              Variable.withString(occurrence.read<String>('id')),
+            ],
+          );
+          await _refreshProgressiveAssignments(family);
+        }
       }
     });
   }

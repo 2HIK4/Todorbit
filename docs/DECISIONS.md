@@ -1,5 +1,21 @@
 # Decisions
 
+- **Event reminders (schema v20):** use the existing native tray companion
+  for offline delivery. Project recurring event dates and exception payloads
+  in the companion, then claim `(event, nominal date, start instant)` in SQLite
+  before showing a balloon. Check only a five-minute recent window to avoid
+  stale backlogs after sleep or a long shutdown. The companion must be running
+  and Windows must permit tray notifications; the UI disables this control
+  when the packaged companion is absent.
+- **Progressive recurring plans (schema v19):** keep ordered study activities
+  separate from static checklists and project sequences. A plan belongs to the
+  recurrence family; each materialized occurrence stores a text snapshot and
+  calculated step index. The default advances on scheduled dates. A skipped or
+  unfinished occurrence can explicitly carry its activity forward; the user
+  can manually assign a different step. Future untouched assignments are
+  recalculated after plan or rule edits, while past, completed, and manual
+  assignments retain their snapshots. Finishing the plan leaves later tasks
+  without a study activity unless the user chooses repeat or adds steps.
 - **Windows v1.0 privacy:** keep the optional lock outside SQLite as UI privacy,
   with a PBKDF2-HMAC-SHA256 PIN verifier in per-user settings and a short-lived
   process-bound session shared with the native companion. The companion

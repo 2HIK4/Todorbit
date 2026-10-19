@@ -10,6 +10,57 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {
   test(
+    'saved event and occurrence reminders activate companion detection',
+    () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      final repo = LifeRepository(database);
+      try {
+        expect(await repo.hasEventReminders(), false);
+        await repo.addEvent(
+          EventDraft(
+            title: 'Exam',
+            startsAt: DateTime(2026, 10, 20, 9),
+            endsAt: DateTime(2026, 10, 20, 10),
+            reminderMinutes: 15,
+          ),
+        );
+        expect(await repo.hasEventReminders(), true);
+        final recurring = await repo.addEvent(
+          EventDraft(
+            title: 'Lecture',
+            startsAt: DateTime(2026, 10, 21, 9),
+            endsAt: DateTime(2026, 10, 21, 10),
+            repeat: const EventRepeat(kind: EventRepeatKind.weekly),
+          ),
+        );
+        final occurrence = (await repo.eventOccurrences(
+          '2026-10-21',
+          '2026-10-21',
+        )).singleWhere((event) => event.id == recurring.id);
+        await repo.updateEventOccurrence(
+          occurrence,
+          EventDraft(
+            title: 'Lecture',
+            startsAt: occurrence.startsAt,
+            endsAt: occurrence.endsAt,
+            reminderMinutes: 5,
+          ),
+        );
+        expect(
+          (await repo.eventOccurrences(
+            '2026-10-21',
+            '2026-10-21',
+          )).singleWhere((event) => event.id == recurring.id).reminderMinutes,
+          5,
+        );
+        expect(await repo.hasEventReminders(), true);
+      } finally {
+        await database.close();
+      }
+    },
+  );
+
+  test(
     'selected weekdays stop at the semester end without materialized rows',
     () async {
       final database = AppDatabase(NativeDatabase.memory());

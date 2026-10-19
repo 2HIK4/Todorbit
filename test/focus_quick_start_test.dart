@@ -8,6 +8,7 @@ import 'package:life_manager/app/app_controller.dart';
 import 'package:life_manager/data/app_database.dart';
 import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/domain/models.dart';
+import 'package:life_manager/domain/time_tracking.dart';
 import 'package:life_manager/main.dart';
 
 void main() {
@@ -45,7 +46,26 @@ void main() {
       await tester.pumpAndSettle();
       expect((await repository.activeTimerRun())?.taskId, task.id);
       expect(find.text('Current focus session'), findsOneWidget);
-      await tester.tap(find.text('Stop'));
+      await tester.tap(find.byTooltip('Close actual work'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Timer controls'), findsOneWidget);
+      await tester.tap(find.widgetWithText(ListTile, 'Calendar'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Timer controls'), findsOneWidget);
+      await tester.tap(find.byTooltip('Timer controls'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Pause').last);
+      await tester.pumpAndSettle();
+      expect((await repository.activeTimerRun())?.state, TimerState.paused);
+      expect(find.textContaining('Paused'), findsWidgets);
+      await tester.tap(find.byTooltip('Timer controls'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Resume').last);
+      await tester.pumpAndSettle();
+      expect((await repository.activeTimerRun())?.state, TimerState.running);
+      await tester.tap(find.byTooltip('Timer controls'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Stop').last);
       await tester.pumpAndSettle();
       expect(await repository.activeTimerRun(), isNull);
       expect((await repository.tasks()).single.status, TaskStatus.inProgress);

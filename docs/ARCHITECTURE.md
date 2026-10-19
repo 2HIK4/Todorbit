@@ -51,6 +51,22 @@ metadata; child tasks remain ordinary task rows. Active views filter children
 when their parent is archived or in Trash. Permanent owner deletion cascades
 checklist and child-link cleanup while linked child tasks restrict parent purge.
 
+Schema v19 adds `progressive_plans`, ordered `progressive_plan_steps`, and
+`progressive_plan_assignments` keyed by stable recurrence occurrence IDs.
+Assignment snapshots preserve historical activity text. The repository derives
+the occurrence position across recurrence generations from date-only rules,
+applies explicit carry markers, and updates future untouched assignments in
+transactions. The native widget accepts the additive schema but does not edit
+study plans.
+
+Schema v20 adds `event_reminder_deliveries`. The native tray companion reads
+event recurrence rules and per-date exceptions, checks a short due window,
+and atomically claims each event occurrence before showing a notification.
+It honors cancellations and moved occurrences, and does not require bulk
+materialization of a semester's events. The main app starts the companion when
+saved reminders exist; the event editor requires the packaged companion before
+enabling a new reminder.
+
 Optional UI privacy is owned by `PrivacyManager` and a per-user policy outside
 SQLite. The PIN verifier uses PBKDF2-HMAC-SHA256 and a persisted wrong-attempt
 delay. Flutter renders only the lock shell while locked. The native companion

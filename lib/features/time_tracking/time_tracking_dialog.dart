@@ -17,8 +17,9 @@ String _stamp(DateTime value) {
 }
 
 class TimeTrackingDialog extends ConsumerStatefulWidget {
-  const TimeTrackingDialog({super.key, required this.taskId});
+  const TimeTrackingDialog({super.key, required this.taskId, this.now});
   final String taskId;
+  final DateTime Function()? now;
 
   @override
   ConsumerState<TimeTrackingDialog> createState() => _TimeTrackingDialogState();
@@ -114,11 +115,11 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
         .firstOrNull;
     final run = controller.activeTimer;
     final thisRun = run?.taskId == widget.taskId ? run : null;
-    final recovery = run?.needsReview(DateTime.now()) ?? false;
+    final now = widget.now?.call() ?? DateTime.now();
+    final recovery = run?.needsReview(now) ?? false;
     final entries = controller.timeEntries
         .where((item) => item.taskId == widget.taskId)
         .toList();
-    final now = DateTime.now();
     final confirmedEnd = recovery ? run!.lastSeenAt : now;
     final total = TimeEntry.distinctDuration(entries, confirmedEnd);
     final session = thisRun == null

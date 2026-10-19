@@ -11,6 +11,7 @@ import '../templates/templates_dialog.dart';
 import 'series_editor.dart';
 import 'task_resources_section.dart';
 import 'task_composition_section.dart';
+import 'progressive_plan_dialog.dart';
 
 class TaskEditor extends ConsumerStatefulWidget {
   const TaskEditor({
@@ -36,6 +37,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   late final TextEditingController remainingWork;
   late final TextEditingController recurrenceInterval;
   late final TextEditingController recurrenceCount;
+  late final TextEditingController progressiveSteps;
   late TaskStatus status;
   late int priority;
   String? categoryId;
@@ -45,6 +47,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   DateTime? recurrenceEnd;
   RecurrenceKind? recurrenceKind;
   Set<int> recurrenceWeekdays = {};
+  bool repeatPlanAtEnd = false;
   bool saving = false;
   bool schedulingLocked = false;
   String? iconKey;
@@ -58,7 +61,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     final task = widget.task;
     currentTask = task;
     final workspace = ref.read(appControllerProvider);
-    iconKey = task == null ? null : workspace.iconForTask(task);
+    iconKey = task == null ? null : workspace.iconKeys['task:${task.id}'];
     prerequisiteIds = workspace.dependencies
         .where((link) => link.taskId == task?.id)
         .map((link) => link.prerequisiteId)
@@ -73,6 +76,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     );
     recurrenceInterval = TextEditingController(text: '1');
     recurrenceCount = TextEditingController();
+    progressiveSteps = TextEditingController();
     schedulingLocked = task?.schedulingLocked ?? false;
     status = task?.status ?? TaskStatus.notStarted;
     priority = task?.priority ?? 0;
@@ -111,6 +115,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     remainingWork.dispose();
     recurrenceInterval.dispose();
     recurrenceCount.dispose();
+    progressiveSteps.dispose();
     super.dispose();
   }
 
@@ -222,6 +227,14 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
               endDate: recurrenceEnd == null ? null : localDate(recurrenceEnd!),
               maxOccurrences: count,
             ),
+            progressiveSteps: progressiveSteps.text.trim().isEmpty
+                ? const []
+                : progressiveSteps.text
+                      .split('\n')
+                      .map((s) => s.trim())
+                      .where((s) => s.isNotEmpty)
+                      .toList(),
+            repeatPlanAtEnd: repeatPlanAtEnd,
           );
         }
       } else {
@@ -313,33 +326,61 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     if (picked != null) setState(() => recurrenceEnd = picked);
   }
 
+  Widget _planStep(LifeTask task) {
+    final assignment = ref
+        .watch(appControllerProvider)
+        .progressiveAssignments[task.id];
+    if (assignment == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Text(
+        assignment.title == null
+            ? 'Recurring plan finished. Add more activities or choose repeat.'
+            : 'Current step: ${assignment.title}',
+      ),
+    );
+  }
+
   Future<void> _skipOccurrence() async {
     final task = currentTask;
     if (task == null) return;
-    final confirmed = await showDialog<bool>(
+    final hasPlan = ref
+        .read(appControllerProvider)
+        .progressiveAssignments
+        .containsKey(task.id);
+    final carry = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Skip this occurrence?'),
-        content: const Text(
-          'This occurrence will be kept in history as skipped. '
-          'For after-completion recurrence, no next day is calculated '
-          'without an actual completion.',
+        content: Text(
+          hasPlan
+              ? 'This occurrence stays in history. Should the next scheduled occurrence repeat this activity?'
+              : 'This occurrence will be kept in history as skipped. '
+                    'For after-completion recurrence, no next day is calculated '
+                    'without an actual completion.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(context),
             child: const Text('Keep task'),
           ),
+          if (hasPlan)
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Skip and continue plan'),
+            ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Skip occurrence'),
+            child: Text(hasPlan ? 'Skip and carry step' : 'Skip occurrence'),
           ),
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (carry == null) return;
     try {
-      await ref.read(appControllerProvider).skipRecurringOccurrence(task);
+      await ref
+          .read(appControllerProvider)
+          .skipRecurringOccurrence(task, carryPlan: hasPlan ? carry : null);
       if (mounted) widget.onSaved?.call();
     } catch (error) {
       if (mounted) {
@@ -477,7 +518,16 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                     const SizedBox(width: 8),
                     IconButton.outlined(
                       tooltip: 'Choose task icon',
-                      icon: Icon(iconForKey(iconKey, Icons.task_alt_outlined)),
+                      icon: Icon(
+                        iconForKey(
+                          iconKey ??
+                              (widget.task?.recurrenceSeriesId == null
+                                  ? null
+                                  : controller
+                                        .iconKeys['series:${widget.task!.recurrenceSeriesId}']),
+                          Icons.task_alt_outlined,
+                        ),
+                      ),
                       onPressed: () async {
                         final choice = await chooseBuiltInIcon(
                           context,
@@ -491,6 +541,8 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                   ],
                 ),
                 const SizedBox(height: 12),
+                Text('Details', style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 6),
                 TextField(
                   controller: notes,
                   minLines: 3,
@@ -520,6 +572,11 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                   const Text('Save the task before adding resources.'),
                   const SizedBox(height: 12),
                 ],
+                Text(
+                  'Organization',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
                 DropdownButtonFormField<TaskStatus>(
                   key: ValueKey('status:$status:$recurrenceKind'),
                   initialValue: status,
@@ -592,6 +649,8 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                       : (value) => setState(() => projectId = value),
                 ),
                 const SizedBox(height: 16),
+                Text('Schedule', style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 8),
                 _dateRow(
                   'Scheduled day',
                   scheduled,
@@ -706,6 +765,27 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                             'Stop after this many occurrences (optional)',
                       ),
                     ),
+                    if (recurrenceKind != RecurrenceKind.afterCompletion) ...[
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: progressiveSteps,
+                        minLines: 2,
+                        maxLines: 6,
+                        decoration: const InputDecoration(
+                          labelText: 'Recurring task plan (optional)',
+                          hintText:
+                              'One activity per line, in occurrence order',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Repeat plan after final step'),
+                        value: repeatPlanAtEnd,
+                        onChanged: (value) =>
+                            setState(() => repeatPlanAtEnd = value),
+                      ),
+                    ],
                   ],
                 ] else if (widget.task!.recurrenceSeriesId != null) ...[
                   const SizedBox(height: 12),
@@ -720,6 +800,22 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                       label: const Text('Edit recurring series'),
                     ),
                   ),
+                  if (widget.task!.recurrenceKindName !=
+                      RecurrenceKind.afterCompletion.name) ...[
+                    _planStep(widget.task!),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton.icon(
+                        onPressed: () => showDialog<void>(
+                          context: context,
+                          builder: (context) =>
+                              ProgressivePlanDialog(task: widget.task!),
+                        ),
+                        icon: const Icon(Icons.library_books_outlined),
+                        label: const Text('Edit recurring task plan'),
+                      ),
+                    ),
+                  ],
                   if (widget.task!.recurrenceDisposition == 'skipped')
                     const Text('Skipped'),
                   if (widget.task!.recurrenceDisposition == 'skipped' &&
@@ -744,7 +840,12 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                       ),
                     ),
                 ],
-                const SizedBox(height: 4),
+                const SizedBox(height: 12),
+                Text(
+                  'Effort and scheduling options',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(

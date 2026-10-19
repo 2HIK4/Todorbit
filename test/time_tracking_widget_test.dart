@@ -19,12 +19,18 @@ void main() {
     final task = await repository.addTask(const TaskDraft(title: 'Write'));
     final controller = AppController(repository);
     await controller.refresh();
+    DateTime? displayNow;
     try {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [appControllerProvider.overrideWith((ref) => controller)],
           child: MaterialApp(
-            home: Scaffold(body: TimeTrackingDialog(taskId: task.id)),
+            home: Scaffold(
+              body: TimeTrackingDialog(
+                taskId: task.id,
+                now: () => displayNow ?? DateTime.now(),
+              ),
+            ),
           ),
         ),
       );
@@ -33,6 +39,13 @@ void main() {
       await tester.tap(find.text('Start focus stopwatch'));
       await tester.pumpAndSettle();
       expect((await repository.activeTimerRun())?.state, TimerState.running);
+      expect(find.text('Running'), findsOneWidget);
+      displayNow = (await repository.timeEntries(taskId: task.id))
+          .single
+          .startsAt
+          .add(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('00:00:02'), findsOneWidget);
       await tester.tap(find.text('Pause'));
       await tester.pumpAndSettle();
       expect((await repository.activeTimerRun())?.state, TimerState.paused);

@@ -16,8 +16,8 @@ Run `flutter build windows --release`. The bundle is under
 compile the per-user installer with Inno Setup 7, run
 `./installer/build-installer.ps1` (or pass `-Compiler` with an `ISCC.exe` path).
 The script verifies the Release executables and prints the installer SHA-256.
-The current artifact's SHA-256 is
-`51672ABA224E95762C9FBD82C7ED1671E0DE2C195F421348FF55961CF13C5FBC`.
+The current feedback-checkpoint artifact's SHA-256 is
+`AA9A58221B74AEAC842805B25BF7DC1A67FDF360FCF5E32CD92BAF71F389301E`.
 It is unsigned; a signing certificate and distribution decision remain open.
 
 The installer is configured to use `%LOCALAPPDATA%\Programs\Life Manager`, adds a
@@ -30,7 +30,7 @@ These behaviors still require an actual installer acceptance test.
 ## Upgrade and personal data
 
 The database and settings are under `%APPDATA%\Life Manager`, outside the
-installation directory. A database below schema v15 prompts for approval
+installation directory. A database below schema v20 prompts for approval
 before backup or migration. Approval creates and checks a `Before upgrade`
 SQLite backup before opening the newer schema. If preparation fails, the
 workspace remains closed. Do not use the personal database for development or
@@ -78,7 +78,9 @@ acceptance on an isolated profile.
 
 ## Release notes
 
-This checkpoint adds a shared optional app lock, a PIN management screen,
-locked native widget behavior, a migration approval gate, corrected sidebar
-Material behavior, Windows version metadata, and an Inno Setup project. All
-other established productivity features remain on schema v15.
+This checkpoint adds recurring calendar events and reminders, calendar filters,
+task icons, checklists, one-level subtasks, progressive recurring task plans,
+quick task and focus actions, a live timer and mini timer, and theme-matched
+Windows caption colors. It also includes the optional app lock, migration
+approval gate, updated application icon, and Inno Setup project. The database
+schema is v20. Native GUI and installed upgrade acceptance remain pending.

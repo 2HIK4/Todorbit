@@ -455,6 +455,13 @@ void _validateLifeManagerSnapshot(String filePath) {
       required.add('task_parent_links');
       required.add('task_checklist');
     }
+    if (schema >= 19) {
+      required.addAll({
+        'progressive_plans',
+        'progressive_plan_steps',
+        'progressive_plan_assignments',
+      });
+    }
     if (!names.containsAll(required)) {
       throw StateError('Snapshot is not a Life Manager database');
     }
@@ -469,6 +476,7 @@ void _validateLifeManagerSnapshot(String filePath) {
           .isNotEmpty) {
         throw StateError('Snapshot has an oversized managed attachment');
       }
+      if (schema >= 20) required.add('event_reminder_deliveries');
       final statement = connection.prepare(
         "SELECT id, byte_size, sha256, original_name, content FROM task_resources WHERE kind='managed'",
       );

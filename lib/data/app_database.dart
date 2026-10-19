@@ -7,7 +7,7 @@ import 'package:path/path.dart' as path;
 class AppDatabase extends GeneratedDatabase {
   AppDatabase(super.executor);
 
-  static const currentSchemaVersion = 18;
+  static const currentSchemaVersion = 20;
 
   /// Resolve the database within a selected per-user data root. This also lets
   /// disposable profile tests exercise the same path as a packaged build.
@@ -130,9 +130,11 @@ class AppDatabase extends GeneratedDatabase {
       await _createEventRecurrence();
       await _createEntityIcons();
       await _createTaskComposition();
+      await _createProgressivePlans();
+      await _createEventReminderDeliveries();
     },
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 17 || to != 18) {
+      if (from < 1 || from > 19 || to != 20) {
         throw StateError('No migration registered from schema $from to $to');
       }
       if (from == 1) {
@@ -176,6 +178,8 @@ class AppDatabase extends GeneratedDatabase {
       await _createEventRecurrence();
       await _createEntityIcons();
       await _createTaskComposition();
+      await _createProgressivePlans();
+      await _createEventReminderDeliveries();
     },
   );
 
@@ -528,6 +532,48 @@ class AppDatabase extends GeneratedDatabase {
         updated_at TEXT NOT NULL
       )
     ''');
+  }
+
+  Future<void> _createProgressivePlans() async {
+    await customStatement('''CREATE TABLE IF NOT EXISTS progressive_plans (
+      family_id TEXT PRIMARY KEY,
+      end_action TEXT NOT NULL DEFAULT 'finish'
+        CHECK(end_action IN ('finish','repeat')),
+      updated_at TEXT NOT NULL
+    )''');
+    await customStatement('''CREATE TABLE IF NOT EXISTS progressive_plan_steps (
+      id TEXT PRIMARY KEY,
+      family_id TEXT NOT NULL REFERENCES progressive_plans(family_id)
+        ON DELETE CASCADE,
+      position INTEGER NOT NULL CHECK(position >= 0),
+      title TEXT NOT NULL CHECK(length(trim(title)) > 0),
+      UNIQUE(family_id, position)
+    )''');
+    await customStatement(
+      '''CREATE TABLE IF NOT EXISTS progressive_plan_assignments (
+      occurrence_id TEXT PRIMARY KEY REFERENCES recurrence_occurrences(id)
+        ON DELETE CASCADE,
+      step_index INTEGER,
+      title TEXT,
+      carry_forward INTEGER NOT NULL DEFAULT 0
+        CHECK(carry_forward IN (0,1)),
+      manual INTEGER NOT NULL DEFAULT 0 CHECK(manual IN (0,1)),
+      updated_at TEXT NOT NULL
+    )''',
+    );
+  }
+
+  Future<void> _createEventReminderDeliveries() async {
+    await customStatement(
+      '''CREATE TABLE IF NOT EXISTS event_reminder_deliveries (
+      id TEXT PRIMARY KEY,
+      event_id TEXT NOT NULL REFERENCES fixed_events(id) ON DELETE CASCADE,
+      nominal_date TEXT NOT NULL,
+      starts_at TEXT NOT NULL,
+      delivered_at TEXT NOT NULL,
+      UNIQUE(event_id, nominal_date, starts_at)
+    )''',
+    );
   }
 
   Future<void> _createRecurrence() async {

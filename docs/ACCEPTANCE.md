@@ -1,6 +1,6 @@
 # Windows v1.0 final acceptance record
 
-Status recorded 2026-10-18. Tests use disposable profiles. `Passed` means this
+Status updated 2026-10-19. Tests use disposable profiles. `Passed` means this
 checkpoint's actual Windows Release UI was observed. Automated tests are
 reported separately in `PROGRESS.md` and do not turn an unobserved GUI flow into
 a manual pass.
@@ -37,6 +37,14 @@ a manual pass.
 | 28 | Theme synchronization | Manual verification required | Previously accepted widget build; final package requires retest. |
 | 29 | Widget after Win+D | Manual verification required | Computer-use rules bar Windows-key automation; user must perform. |
 | 30 | Packaged or installed application | Manual verification required | Unpacked Release opened and Inno Setup 7 installer compiled; installed flow untested. |
+| 31 | New profile versus existing profile | Manual verification required | Disposable database tests pass; newly installed profile and existing personal profile need GUI comparison. |
+| 32 | Recurring lecture and single-date cancellation/restoration | Manual verification required | Repository and widget tests pass; isolated Release GUI flow untested. |
+| 33 | Event reminder balloon | Manual verification required | Native self-test covers one-off, selected weekday, cancellation, and duplicate claim; actual Windows tray delivery untested. |
+| 34 | Task/category/project icon selection | Manual verification required | Persistence tests pass; visual size and reset behavior need Release GUI check. |
+| 35 | Checklist and one-level subtask | Manual verification required | Persistence and widget tests pass; full Release GUI flow untested. |
+| 36 | Progressive recurring study plan | Manual verification required | Assignment, skip, edit, restart, split, migration, and Calendar/editor tests pass; full Release GUI flow untested. |
+| 37 | Focus stopwatch and sidebar mini timer | Manual verification required | Repository and widget tests pass; visually inspect live HH:MM:SS, pause/resume/stop, short logs, and navigation in Release. |
+| 38 | Windows title bar and application icon | Manual verification required | MethodChannel test and bundle/installer assets pass; maximize/restore, DPI, taskbar, shortcut, and installer visuals need GUI check. |
 
 The privacy dialog opened in the rebuilt Release app with the default disabled
 state and no visible layout overflow at 1266×713. It was closed without

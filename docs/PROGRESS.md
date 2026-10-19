@@ -19,15 +19,16 @@
   all series generations to Trash. Historical dates and manual future overrides
   survive a series split. Day/week/month share an immediate persisted Events /
   Tasks / Both filter; planned sessions remain distinct from events.
-- Event reminder **delivery is unavailable**. The control is visibly disabled;
-  schema metadata is reserved for a later native reminder implementation.
-  Event icon selection, full conflict indicators, user-managed Trash restoration
-  of a whole event family, and manual Windows GUI acceptance remain open.
-- New event, recurrence, cancellation, split, migration, profile-isolation, and
-  calendar-filter tests pass. `flutter analyze` is clean; all 153 tests passed
-  before the last event-action additions, and targeted calendar/event tests pass
-  after them. Windows Release build and packaged widget self-test pass with
-  schema v16. Re-run the full suite after subsequent source edits.
+- Schema v20 enables event reminder choices in the packaged Windows app. The
+  existing tray companion checks one-off and recurring events, cancellation
+  exceptions, and moved occurrences, and uses an atomic per-occurrence claim
+  to avoid repeat balloons. It checks a five-minute recent window to prevent
+  stale backlogs; Windows notification delivery still needs manual acceptance.
+  The control is disabled if the native companion is missing. Event icons and
+  calendar overlap indicators are available. Whole-family Trash restoration
+  and manual Windows GUI acceptance remain open.
+- New event, recurrence, cancellation, split, migration, profile-isolation,
+  calendar-filter, and conflict-indicator tests pass.
 - Task rows now offer Start Task (status only), End Work (on hold), and Start
   Focus Session (one transactional timer plus In Progress status). Focus opens a
   live HH:MM:SS stopwatch dialog with Pause/Resume/Stop, recorded total, and
@@ -55,13 +56,27 @@
   Trash/restore hides and reveals children without deleting their rows; native
   widget filters children of hidden parents. Repository persistence/restore and
   task-detail widget tests pass.
-- Latest checkpoint: `flutter analyze` clean, all 163 Flutter tests pass,
-  Windows Release build passes, and packaged native widget self-test passes
-  against schema v18. GUI behavior still requires isolated-profile manual
-  Windows acceptance. No production database was opened or migrated.
-- Next: finish Calendar Events integration and manual acceptance, then task
-  icons/checklists/subtasks, progressive recurring task plans, focus timer UX,
-  title-bar theme integration, and final regression/installer checks.
+- Schema v19 adds progressive recurring task plans separate from static
+  checklists. New recurring tasks can define ordered activities in the editor;
+  existing scheduled series can edit a plan in task details. Assignments are
+  stored per occurrence and shown in Calendar. Users can carry an unfinished
+  or skipped step, choose a step manually, add/remove/reorder future steps, or
+  explicitly repeat after the last step. Past, completed, and manual snapshots
+  survive future plan and recurrence-rule edits. Repository tests cover skips,
+  plan changes, rule splits, persistence, and v18 migration; a widget test
+  covers Calendar and editor access.
+- Final automated checkpoint: `flutter analyze` clean; all 172 Flutter tests
+  pass, including a visible two-second stopwatch update and mini timer
+  navigation/controls. The Windows Release build passes on schema v20. The
+  native Release build has zero warnings/errors; its source and packaged
+  persistence/reminder self-tests pass. Inno Setup 7.1.0 compiled the installer
+  from that bundle, with no SQLite file included. Disposable v18→v20 and
+  v19→v20 migrations preserve records and pass `PRAGMA integrity_check`.
+  Manual Windows GUI and tray notification acceptance remain pending. No
+  production database was opened or migrated.
+- Next: use the isolated-profile manual acceptance checklist in
+  `docs/ACCEPTANCE.md`. Whole-family event Trash restoration remains a
+  possible follow-up; individual cancellation and restoration work now.
 
 ## Completed
 

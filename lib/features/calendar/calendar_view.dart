@@ -398,7 +398,13 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
     if (controller.calendarContent != CalendarContent.eventsOnly) {
       for (final task in controller.tasks) {
         if (task.scheduledDate == key) {
-          list.add(_CalendarEntry('Plan · ${task.title}', task: task));
+          final activity = controller.progressiveAssignments[task.id]?.title;
+          list.add(
+            _CalendarEntry(
+              'Plan · ${task.title}${activity == null ? '' : '\nCurrent step: $activity'}',
+              task: task,
+            ),
+          );
         }
         if (task.deadlineDate == key) {
           list.add(_CalendarEntry('Deadline · ${task.title}', task: task));
@@ -433,6 +439,9 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
   Widget _entryTile(_CalendarEntry entry, {bool compact = false}) {
     final event = entry.event;
     final session = entry.session;
+    final conflicts = event == null || event.cancelled
+        ? 0
+        : _eventConflictCount(event);
     return Card(
       margin: EdgeInsets.symmetric(horizontal: compact ? 3 : 10, vertical: 3),
       child: InkWell(
@@ -471,11 +480,44 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                   ),
                 ),
               ),
+              if (conflicts > 0)
+                Tooltip(
+                  message:
+                      'Overlaps $conflicts other event${conflicts == 1 ? '' : 's'} or work session${conflicts == 1 ? '' : 's'}',
+                  child: Icon(
+                    Icons.warning_amber_rounded,
+                    size: compact ? 14 : 18,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  int _eventConflictCount(FixedEvent event) {
+    final controller = ref.read(appControllerProvider);
+    final otherEvents = controller.events
+        .where(
+          (other) =>
+              !other.cancelled &&
+              !(other.id == event.id &&
+                  other.nominalDate == event.nominalDate) &&
+              other.startsAt.isBefore(event.endsAt) &&
+              other.endsAt.isAfter(event.startsAt),
+        )
+        .length;
+    final sessions = controller.sessions
+        .where(
+          (session) =>
+              session.outcome != SessionOutcome.skipped &&
+              session.startsAt.isBefore(event.endsAt) &&
+              session.endsAt.isAfter(event.startsAt),
+        )
+        .length;
+    return otherEvents + sessions;
   }
 }
 

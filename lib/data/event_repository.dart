@@ -53,6 +53,20 @@ List<Variable> _eventExtraVariables(EventDraft draft) => [
 ];
 
 extension EventRepository on LifeRepository {
+  Future<bool> hasEventReminders() async {
+    final row = await db.customSelect(
+      '''SELECT 1 FROM fixed_events
+      WHERE deleted_at IS NULL AND reminder_minutes IS NOT NULL LIMIT 1''',
+    ).getSingleOrNull();
+    if (row != null) return true;
+    final changed = await db.customSelect(r'''SELECT 1
+      FROM event_occurrence_changes c JOIN fixed_events e ON e.id=c.event_id
+      WHERE e.deleted_at IS NULL AND c.cancelled=0 AND
+        json_extract(c.payload_json,'$.reminderMinutes') IS NOT NULL
+      LIMIT 1''').getSingleOrNull();
+    return changed != null;
+  }
+
   Future<void> endEventSeries(FixedEvent occurrence) async {
     final boundary = occurrence.nominalDate;
     if (boundary == null) throw ArgumentError('Choose a recurring date');

@@ -138,7 +138,9 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
   private void CheckNotifications() {
     try {
       if (privacy.IsLocked() && privacy.SuppressLockedNotifications()) return;
-      var messages = repository.ClaimDailyNotifications(DateTime.Now);
+      var now = DateTime.Now;
+      var messages = repository.ClaimDailyNotifications(now)
+        .Concat(repository.ClaimEventReminders(now)).ToList();
       if (messages.Count == 0) return;
       if (privacy.IsLocked() && privacy.SuppressLockedNotifications()) return;
       var body = privacy.IsLocked()

@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../shared/icon_picker.dart';
+import '../widget/native_widget_service.dart';
 
 enum _EventEditScope { occurrence, future, series }
 
@@ -151,6 +154,15 @@ class _EventEditorState extends ConsumerState<EventEditor> {
               ),
       );
       final controller = ref.read(appControllerProvider);
+      if (reminderMinutes != null) {
+        final companion = NativeWidgetService();
+        if (!Platform.isWindows || !companion.isAvailable) {
+          throw StateError(
+            'Event reminders require the packaged Windows tray companion',
+          );
+        }
+        await companion.ensureRemindersRunning();
+      }
       if (widget.event == null) {
         await controller.addEvent(draft);
       } else if (widget.event!.nominalDate != null &&
@@ -506,9 +518,12 @@ class _EventEditorState extends ConsumerState<EventEditor> {
               const SizedBox(height: 14),
               DropdownButtonFormField<int?>(
                 initialValue: reminderMinutes,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Reminder notifications',
-                  helperText: 'Delivery is unavailable in this build.',
+                  helperText:
+                      Platform.isWindows && NativeWidgetService().isAvailable
+                      ? 'Delivered by the Life Manager tray companion while it runs.'
+                      : 'Requires the packaged Windows tray companion.',
                 ),
                 items: const [
                   DropdownMenuItem(value: null, child: Text('None')),
@@ -518,7 +533,10 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                   DropdownMenuItem(value: 30, child: Text('30 minutes before')),
                   DropdownMenuItem(value: 60, child: Text('1 hour before')),
                 ],
-                onChanged: null,
+                onChanged:
+                    Platform.isWindows && NativeWidgetService().isAvailable
+                    ? (value) => setState(() => reminderMinutes = value)
+                    : null,
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<EventRepeatKind?>(

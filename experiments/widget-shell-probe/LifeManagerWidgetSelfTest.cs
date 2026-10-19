@@ -516,6 +516,94 @@ internal static class LifeManagerWidgetSelfTest {
         if (v18Repository.LoadTask(child) == null)
           throw new InvalidOperationException("Restoring a parent did not reveal its subtask.");
       }
+      using (var upgrade = new SqliteConnection(
+          $"Data Source={databasePath};Pooling=False")) {
+        upgrade.Open();
+        using var command = upgrade.CreateCommand();
+        command.CommandText = """
+          CREATE TABLE progressive_plans(family_id TEXT PRIMARY KEY, end_action TEXT, updated_at TEXT);
+          CREATE TABLE progressive_plan_steps(id TEXT PRIMARY KEY, family_id TEXT, position INTEGER, title TEXT);
+          CREATE TABLE progressive_plan_assignments(occurrence_id TEXT PRIMARY KEY, step_index INTEGER, title TEXT);
+          PRAGMA user_version=19;
+          """;
+        command.ExecuteNonQuery();
+      }
+      using (var v19Repository =
+          LifeManagerWidgetRepository.OpenForTest(databasePath)) {
+        if (v19Repository.LoadTask(inboxId) == null)
+          throw new InvalidOperationException("Widget could not read a schema v19 task.");
+      }
+      using (var upgrade = new SqliteConnection(
+          $"Data Source={databasePath};Pooling=False")) {
+        upgrade.Open();
+        using var command = upgrade.CreateCommand();
+        command.CommandText = """
+          CREATE TABLE fixed_events(id TEXT PRIMARY KEY, title TEXT NOT NULL,
+            starts_at TEXT NOT NULL, reminder_minutes INTEGER,
+            recurrence_kind TEXT, recurrence_interval INTEGER NOT NULL DEFAULT 1,
+            recurrence_weekdays TEXT, recurrence_until TEXT,
+            active_from_date TEXT, active_through_date TEXT, deleted_at TEXT);
+          CREATE TABLE event_reminder_deliveries(id TEXT PRIMARY KEY,
+            event_id TEXT, nominal_date TEXT, starts_at TEXT,
+            delivered_at TEXT, UNIQUE(event_id,nominal_date,starts_at));
+          ALTER TABLE event_occurrence_changes ADD COLUMN cancelled INTEGER NOT NULL DEFAULT 0;
+          ALTER TABLE event_occurrence_changes ADD COLUMN payload_json TEXT;
+          PRAGMA user_version=20;
+          """;
+        command.ExecuteNonQuery();
+        command.CommandText = """
+          INSERT INTO fixed_events(id,title,starts_at,reminder_minutes)
+          VALUES($id,'Lecture',$start,15)
+          """;
+        command.Parameters.AddWithValue("$id", Guid.NewGuid().ToString());
+        command.Parameters.AddWithValue("$start",
+          DateTimeOffset.Now.AddMinutes(14).ToUniversalTime().ToString("O"));
+        command.ExecuteNonQuery();
+        var lectureStart = DateTime.Now.AddMinutes(14);
+        var lectureDay = lectureStart.ToString("yyyy-MM-dd");
+        var weekday = ((int)lectureStart.DayOfWeek + 6) % 7 + 1;
+        command.CommandText = """
+          INSERT INTO fixed_events(id,title,starts_at,reminder_minutes,
+            recurrence_kind,recurrence_weekdays,recurrence_until)
+          VALUES($weekly,'Weekly lecture',$start,15,'weekdays',$days,$until)
+          """;
+        command.Parameters.Clear();
+        command.Parameters.AddWithValue("$weekly", Guid.NewGuid().ToString());
+        command.Parameters.AddWithValue("$start",
+          lectureStart.ToUniversalTime().ToString("O"));
+        command.Parameters.AddWithValue("$days", $"[{weekday}]");
+        command.Parameters.AddWithValue("$until", lectureDay);
+        command.ExecuteNonQuery();
+        var cancelledId = Guid.NewGuid().ToString();
+        command.Parameters.Clear();
+        command.CommandText = """
+          INSERT INTO fixed_events(id,title,starts_at,reminder_minutes,
+            recurrence_kind,recurrence_weekdays,recurrence_until)
+          VALUES($cancelled,'Cancelled lecture',$start,15,'weekdays',$days,$until)
+          """;
+        command.Parameters.AddWithValue("$cancelled", cancelledId);
+        command.Parameters.AddWithValue("$start",
+          lectureStart.ToUniversalTime().ToString("O"));
+        command.Parameters.AddWithValue("$days", $"[{weekday}]");
+        command.Parameters.AddWithValue("$until", lectureDay);
+        command.ExecuteNonQuery();
+        command.Parameters.Clear();
+        command.CommandText = """
+          INSERT INTO event_occurrence_changes(event_id,nominal_date,cancelled)
+          VALUES($event,$day,1)
+          """;
+        command.Parameters.AddWithValue("$event", cancelledId);
+        command.Parameters.AddWithValue("$day", lectureDay);
+        command.ExecuteNonQuery();
+      }
+      using (var v20Repository =
+          LifeManagerWidgetRepository.OpenForTest(databasePath)) {
+        var now = DateTime.Now;
+        if (v20Repository.ClaimEventReminders(now).Count != 2)
+          throw new InvalidOperationException("One-off/weekly reminder or cancellation failed.");
+        if (v20Repository.ClaimEventReminders(now).Count != 0)
+          throw new InvalidOperationException("Event reminder fired twice.");
+      }
       VerifySettingsRoundTrip(directory);
       VerifyAppearanceRoundTrip(directory);
       VerifySingleInstanceMutex();

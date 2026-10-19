@@ -15,6 +15,7 @@ import '../domain/habits.dart';
 import '../domain/goals.dart';
 import '../domain/time_tracking.dart';
 import '../domain/task_composition.dart';
+import '../domain/progressive_plan.dart';
 import '../domain/templates.dart';
 import '../domain/saved_views.dart';
 import '../domain/appearance.dart';
@@ -65,6 +66,7 @@ class AppController extends ChangeNotifier {
   Map<String, String> iconKeys = {};
   Map<String, String> taskParents = {};
   List<TaskChecklistItem> checklistItems = [];
+  Map<String, ProgressiveAssignment> progressiveAssignments = {};
   String? _eventWindowFrom;
   String? _eventWindowThrough;
   List<WorkSession> sessions = [];
@@ -138,6 +140,7 @@ class AppController extends ChangeNotifier {
       repository.entityIcons(),
       repository.taskParents(),
       repository.checklistItems(),
+      repository.progressiveAssignments(),
     ]);
     categories = result[0] as List<Category>;
     projects = result[1] as List<Project>;
@@ -164,6 +167,7 @@ class AppController extends ChangeNotifier {
     iconKeys = result[22] as Map<String, String>;
     taskParents = result[23] as Map<String, String>;
     checklistItems = result[24] as List<TaskChecklistItem>;
+    progressiveAssignments = result[25] as Map<String, ProgressiveAssignment>;
     _syncTimerHeartbeat();
     if (selectedTaskId != null && selectedTask == null) selectedTaskId = null;
     loading = false;
@@ -460,8 +464,18 @@ class AppController extends ChangeNotifier {
     select(task.id);
   }
 
-  Future<void> addRecurringTask(TaskDraft draft, RecurrenceRule rule) async {
-    final task = await repository.addRecurringTask(draft, rule);
+  Future<void> addRecurringTask(
+    TaskDraft draft,
+    RecurrenceRule rule, {
+    List<String> progressiveSteps = const [],
+    bool repeatPlanAtEnd = false,
+  }) async {
+    final task = await repository.addRecurringTask(
+      draft,
+      rule,
+      progressiveSteps: progressiveSteps,
+      repeatPlanAtEnd: repeatPlanAtEnd,
+    );
     await refresh();
     select(task.id);
   }
@@ -646,8 +660,34 @@ class AppController extends ChangeNotifier {
     await refresh();
   }
 
-  Future<void> skipRecurringOccurrence(LifeTask task) async {
-    await repository.skipRecurringOccurrence(task);
+  Future<void> skipRecurringOccurrence(LifeTask task, {bool? carryPlan}) async {
+    await repository.skipRecurringOccurrence(task, carryPlan: carryPlan);
+    await refresh();
+  }
+
+  Future<ProgressivePlan?> progressivePlan(String taskId) =>
+      repository.progressivePlan(taskId);
+
+  Future<void> configureProgressivePlan(
+    String taskId,
+    List<String> steps, {
+    required bool repeatAtEnd,
+  }) async {
+    await repository.configureProgressivePlan(
+      taskId,
+      steps,
+      repeatAtEnd: repeatAtEnd,
+    );
+    await refresh();
+  }
+
+  Future<void> reassignProgressiveStep(String taskId, int index) async {
+    await repository.reassignProgressiveStep(taskId, index);
+    await refresh();
+  }
+
+  Future<void> setProgressiveCarry(String taskId, bool carry) async {
+    await repository.setProgressiveCarry(taskId, carry);
     await refresh();
   }
 

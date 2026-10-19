@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using Microsoft.Data.Sqlite;
 
 internal sealed record WidgetTask(
@@ -6,6 +7,11 @@ internal sealed record WidgetTask(
   string? CategoryId, string? ProjectId, string? ScheduledDate,
   string? DeadlineDate, string UpdatedAt);
 internal sealed record WidgetChoice(string Id, string Name, string? ParentId = null);
+internal sealed record EventReminderTemplate(string Id, string Title,
+  DateTime StartLocal, int? ReminderMinutes, string? Kind, int Interval,
+  string Weekdays, string? Until, string? ActiveFrom, string? ActiveThrough);
+internal sealed record EventReminderChange(string EventId, string NominalDate,
+  bool Cancelled, string? Payload);
 internal sealed record WidgetTaskUpdate(
   string Title, string Notes, string Status, int Priority,
   string? CategoryId, string? ProjectId, string? ScheduledDate,
@@ -20,7 +26,7 @@ internal sealed class DependencyReviewRequiredException(
 
 internal sealed class LifeManagerWidgetRepository : IDisposable {
   private const int MinimumSchemaVersion = 4;
-  private const int MaximumSchemaVersion = 18;
+  private const int MaximumSchemaVersion = 20;
   private const string ActiveTaskClause = """
      AND deleted_at IS NULL AND archived_at IS NULL
      AND (category_id IS NULL OR EXISTS
@@ -109,6 +115,160 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
     }
     transaction.Commit();
     return results;
+  }
+
+  internal IReadOnlyList<string> ClaimEventReminders(DateTime localNow) {
+    RefreshSchemaVersion();
+    if (schemaVersion < 20) return [];
+    var lower = localNow.AddMinutes(-5).ToUniversalTime();
+    var upper = localNow.ToUniversalTime();
+    var templates = new List<EventReminderTemplate>();
+    using (var command = connection.CreateCommand()) {
+      command.CommandText = """
+        SELECT id,title,starts_at,reminder_minutes,recurrence_kind,
+          recurrence_interval,COALESCE(recurrence_weekdays,''),recurrence_until,
+          active_from_date,active_through_date FROM fixed_events
+        WHERE deleted_at IS NULL
+        """;
+      using var reader = command.ExecuteReader();
+      while (reader.Read()) {
+        templates.Add(new EventReminderTemplate(reader.GetString(0),
+          reader.GetString(1), DateTimeOffset.Parse(reader.GetString(2),
+            CultureInfo.InvariantCulture).LocalDateTime,
+          reader.IsDBNull(3) ? null : reader.GetInt32(3),
+          reader.IsDBNull(4) ? null : reader.GetString(4),
+          reader.GetInt32(5), reader.GetString(6),
+          reader.IsDBNull(7) ? null : reader.GetString(7),
+          reader.IsDBNull(8) ? null : reader.GetString(8),
+          reader.IsDBNull(9) ? null : reader.GetString(9)));
+      }
+    }
+    var changes = new Dictionary<(string, string), EventReminderChange>();
+    using (var command = connection.CreateCommand()) {
+      command.CommandText = """
+        SELECT event_id,nominal_date,cancelled,payload_json
+        FROM event_occurrence_changes
+        """;
+      using var reader = command.ExecuteReader();
+      while (reader.Read()) {
+        var change = new EventReminderChange(reader.GetString(0),
+          reader.GetString(1), reader.GetInt32(2) == 1,
+          reader.IsDBNull(3) ? null : reader.GetString(3));
+        changes[(change.EventId, change.NominalDate)] = change;
+      }
+    }
+    var results = new List<string>();
+    using var transaction = connection.BeginTransaction();
+    foreach (var item in templates) {
+      if (item.ReminderMinutes is int minutes && minutes >= 0 &&
+          minutes <= 10080) {
+        var target = localNow.AddMinutes(minutes).Date;
+        for (var offset = -1; offset <= 1; offset++) {
+          var day = target.AddDays(offset);
+          var nominal = day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+          if (!MatchesEventDate(item, day)) continue;
+          if (changes.ContainsKey((item.Id, nominal))) continue;
+          var start = new DateTime(day.Year, day.Month, day.Day,
+            item.StartLocal.Hour, item.StartLocal.Minute,
+            item.StartLocal.Second, DateTimeKind.Local);
+          if (!ReminderDue(start, minutes, lower, upper)) continue;
+          if (ClaimEventReminder(item.Id, nominal, start, transaction))
+            results.Add($"{item.Title} at {start:t}.");
+        }
+      }
+      foreach (var change in changes.Values.Where(c => c.EventId == item.Id &&
+          !c.Cancelled && c.Payload != null)) {
+        if (item.ActiveFrom != null &&
+            string.CompareOrdinal(change.NominalDate, item.ActiveFrom) < 0) continue;
+        if (item.ActiveThrough != null &&
+            string.CompareOrdinal(change.NominalDate, item.ActiveThrough) > 0) continue;
+        using var payload = JsonDocument.Parse(change.Payload!);
+        var data = payload.RootElement;
+        if (!data.TryGetProperty("startsAt", out var startValue)) continue;
+        var start = DateTimeOffset.Parse(startValue.GetString()!,
+          CultureInfo.InvariantCulture).LocalDateTime;
+        var reminder = item.ReminderMinutes;
+        if (data.TryGetProperty("reminderMinutes", out var reminderValue) &&
+            reminderValue.ValueKind == JsonValueKind.Number)
+          reminder = reminderValue.GetInt32();
+        if (reminder is not int overrideMinutes || overrideMinutes < 0 ||
+            overrideMinutes > 10080 ||
+            !ReminderDue(start, overrideMinutes, lower, upper)) continue;
+        var title = data.TryGetProperty("title", out var titleValue)
+          ? titleValue.GetString() ?? item.Title : item.Title;
+        if (ClaimEventReminder(item.Id, change.NominalDate, start,
+            transaction)) results.Add($"{title} at {start:t}.");
+      }
+    }
+    transaction.Commit();
+    return results;
+  }
+
+  private static bool ReminderDue(DateTime startLocal, int minutes,
+      DateTime lowerUtc, DateTime upperUtc) {
+    var due = startLocal.AddMinutes(-minutes).ToUniversalTime();
+    return due > lowerUtc && due <= upperUtc;
+  }
+
+  private bool ClaimEventReminder(string eventId, string nominal,
+      DateTime startLocal, SqliteTransaction transaction) {
+    using var command = connection.CreateCommand();
+    command.Transaction = transaction;
+    command.CommandText = """
+      INSERT OR IGNORE INTO event_reminder_deliveries
+      (id,event_id,nominal_date,starts_at,delivered_at)
+      VALUES($id,$event,$day,$start,$at)
+      """;
+    command.Parameters.AddWithValue("$id", Guid.NewGuid().ToString());
+    command.Parameters.AddWithValue("$event", eventId);
+    command.Parameters.AddWithValue("$day", nominal);
+    command.Parameters.AddWithValue("$start", startLocal.ToUniversalTime()
+      .ToString("O", CultureInfo.InvariantCulture));
+    command.Parameters.AddWithValue("$at", UtcNowString());
+    return command.ExecuteNonQuery() == 1;
+  }
+
+  private static bool MatchesEventDate(EventReminderTemplate item,
+      DateTime day) {
+    var date = day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    var original = item.StartLocal.Date;
+    if (day < original || (item.Until != null &&
+        string.CompareOrdinal(date, item.Until) > 0) ||
+        (item.ActiveFrom != null &&
+        string.CompareOrdinal(date, item.ActiveFrom) < 0) ||
+        (item.ActiveThrough != null &&
+        string.CompareOrdinal(date, item.ActiveThrough) > 0)) return false;
+    if (item.Kind == null) return day == original;
+    if (item.Interval < 1) return false;
+    var days = (day - original).Days;
+    return item.Kind switch {
+      "daily" => days % item.Interval == 0,
+      "weekly" => days % (item.Interval * 7) == 0,
+      "weekdays" => ((day - original.AddDays(-(((int)original.DayOfWeek + 6) % 7))).Days / 7)
+          % item.Interval == 0 && WeekdaySelected(item.Weekdays,
+            ((int)day.DayOfWeek + 6) % 7 + 1),
+      "monthly" => MatchesMonth(item, day),
+      "yearly" => (day.Year - original.Year) % item.Interval == 0 &&
+        day.Month == original.Month &&
+        day.Day == Math.Min(original.Day,
+          DateTime.DaysInMonth(day.Year, original.Month)),
+      _ => false,
+    };
+  }
+
+  private static bool MatchesMonth(EventReminderTemplate item, DateTime day) {
+    var original = item.StartLocal.Date;
+    var months = (day.Year - original.Year) * 12 + day.Month - original.Month;
+    return months >= 0 && months % item.Interval == 0 &&
+      day.Day == Math.Min(original.Day, DateTime.DaysInMonth(day.Year, day.Month));
+  }
+
+  private static bool WeekdaySelected(string encoded, int weekday) {
+    try {
+      return (JsonSerializer.Deserialize<int[]>(encoded) ?? []).Contains(weekday);
+    } catch (JsonException) {
+      return false;
+    }
   }
 
   private void RefreshSchemaVersion() {

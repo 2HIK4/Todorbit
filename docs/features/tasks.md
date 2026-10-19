@@ -12,12 +12,24 @@ they never complete the parent task. Child tasks have their own metadata and
 completion state. One level of nesting is supported. The parent row shows
 checklist and child-task progress and can expand or collapse its children.
 
+Schema v19 adds a recurring task plan for ordered activities across scheduled
+occurrences. Enter one activity per line while creating a recurring task, or
+open a recurring occurrence and choose **Edit recurring task plan**. The
+Calendar shows the assigned activity below the task title. The task details
+show the current step. The plan advances on each scheduled occurrence by
+default, even if that occurrence is incomplete. On a skip, choose whether to
+carry the activity or continue. The plan dialog also lets you carry an
+unfinished step or assign a different step to one occurrence. Editing the
+ordered lines updates future untouched occurrences while historical and manual
+assignments keep their recorded text. After the final step, later occurrences
+show that the plan has finished unless **Repeat after final activity** is on.
+
 A task requires a nonblank title. Optional category, project, notes, status, priority, scheduled day and deadline are foundation fields. Projects belong to one category; assigning a project also determines its category. Unassigned tasks belong to Inbox. Completion records a UTC timestamp and can be reopened. Tasks can be archived or moved to recoverable Trash. Permanent deletion requires explicit confirmation and is blocked while linked records would be lost.
 
 Schema v15 stores copied attachments (up to 16 MB each), external file/folder
 references, and URL links per task. Copied bytes travel with SQLite backups;
 external content does not. Missing external paths remain visible as unavailable.
-Tags, subtasks, and richer task history remain future work. Validate
+Tags and richer task history remain future work. Validate
 project/category consistency, preserve timestamps, and test
 create/edit/complete/reopen/persistence.
 

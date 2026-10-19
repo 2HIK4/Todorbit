@@ -110,7 +110,8 @@ Future<void> _startApplication(
   if (Platform.isWindows) {
     final companion = NativeWidgetService();
     if (companion.isAvailable &&
-        (await controller.repository.notificationSettings()).enabled) {
+        ((await controller.repository.notificationSettings()).enabled ||
+            await controller.repository.hasEventReminders())) {
       try {
         await companion.ensureRemindersRunning();
       } catch (failure) {

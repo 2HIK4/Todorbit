@@ -9,8 +9,18 @@ series in one transaction; earlier dates retain their previous details.
 Individual cancellation can be restored, and ending a series leaves earlier
 dates visible. The Day, Week, and Month filter switches between Events, Tasks
 (including planned work sessions), and Both, with a per-user saved preference.
-The current build stores optional reminder metadata but does not deliver event
-notifications; its editor control is disabled and labeled accordingly.
+Schema v20 delivers optional event reminders through the packaged Windows tray
+companion. The editor offers at-start, 5, 15, 30, or 60 minutes before; it
+starts the companion when saving a reminder. Startup also starts the companion
+when saved event reminders exist. A per-occurrence SQLite claim prevents repeat
+delivery, including after restart. Cancelled occurrences do not alert, and
+manual occurrence changes use their changed time and reminder. The control is
+disabled when the native companion is unavailable. Windows notification
+visibility and delivery still require manual acceptance.
+
+Event cards mark overlaps with other active events or planned work sessions.
+Recurring task plan activities appear as a second calendar line on the
+scheduled day.
 
 Day, week, and month views currently combine planned task dates, actual deadlines, and fixed events from SQLite. A fixed event has a title, notes, start, and end; create/edit/delete are available in the calendar. Event instants are stored in UTC and shown in local time. Task planned dates and deadlines remain date-only.
 

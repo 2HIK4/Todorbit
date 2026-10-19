@@ -11,6 +11,55 @@ import 'package:life_manager/domain/models.dart';
 import 'package:life_manager/main.dart';
 
 void main() {
+  testWidgets('overlapping calendar events show a conflict indicator', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    final database = AppDatabase(NativeDatabase.memory());
+    final repository = LifeRepository(database);
+    final today = DateTime.now();
+    final start = DateTime(today.year, today.month, today.day, 9);
+    await repository.addEvent(
+      EventDraft(
+        title: 'Lecture',
+        startsAt: start,
+        endsAt: start.add(const Duration(hours: 1)),
+      ),
+    );
+    await repository.addEvent(
+      EventDraft(
+        title: 'Seminar',
+        startsAt: start.add(const Duration(minutes: 30)),
+        endsAt: start.add(const Duration(hours: 2)),
+      ),
+    );
+    final controller = AppController(repository);
+    await controller.refresh();
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appControllerProvider.overrideWith((ref) => controller),
+            privacyOverride,
+          ],
+          child: const LifeManagerApp(),
+        ),
+      );
+      await tester.tap(find.widgetWithText(ListTile, 'Calendar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Day'));
+      await tester.pumpAndSettle();
+      expect(
+        find.byTooltip('Overlaps 1 other event or work session'),
+        findsNWidgets(2),
+      );
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await database.close();
+      await tester.binding.setSurfaceSize(null);
+    }
+  });
+
   testWidgets('calendar content filter changes visible day entries', (
     tester,
   ) async {
