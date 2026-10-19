@@ -2,7 +2,8 @@ using System.IO.Pipes;
 using System.Text;
 
 internal sealed class WidgetCommandServer : IDisposable {
-  internal const string PipeName = "LifeManager.NativeWidget.Commands.v1";
+  internal static string PipeName =>
+    "LifeManager.NativeWidget.Commands.v2." + AppDataPaths.ChannelSuffix;
   private readonly CancellationTokenSource cancellation = new();
   private readonly SynchronizationContext uiContext;
   private readonly Action<string> dispatch;

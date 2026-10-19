@@ -52,7 +52,7 @@ build\windows\x64\runner\Release\TodoPilotWidget.exe --widget-command exit
   deleted records instead of silently overwriting them. **Open full details**
   starts Flutter with `--task-id <uuid>`.
 - Today, Inbox, All Tasks, and Upcoming are selectable in the widget and tray.
-  The selection is persisted in `%APPDATA%\Life Manager\widget-settings.json`.
+  The selection is persisted in the active profile's `widget-settings.json`.
 - The header has one visible Open TodoPilot action. Refresh, Close Widget,
   opacity, and layout lock are in the right-click context menu. Empty states
   and Quick Add destinations follow the selected view.
@@ -68,7 +68,9 @@ build\windows\x64\runner\Release\TodoPilotWidget.exe --widget-command exit
   Explorer child at the intended monitor coordinates; pixel appearance remains
   unverified.
 - The app and widget share one authoritative
-  `%APPDATA%\Life Manager\appearance-settings.json`. Both watch it using file
+  active profile's `appearance-settings.json`. Fresh installer profiles use
+  `%APPDATA%\TodoPilot`; portable copies use separate location-keyed folders;
+  marked upgrades retain `%APPDATA%\Life Manager`. Both watch the file using
   notifications, so System/Light/Dark changes propagate without polling. A
   legacy widget-only theme is migrated once. Follow System also responds to
   Windows preference changes.

@@ -98,4 +98,37 @@ void main() {
       await root.delete(recursive: true);
     }
   });
+
+  test('separate portable locations select independent per-user profiles', () async {
+    final root = await Directory.systemTemp.createTemp('todopilot-portable-');
+    try {
+      final first = Directory('${root.path}${Platform.pathSeparator}copy one');
+      final second = Directory('${root.path}${Platform.pathSeparator}copy two');
+      await first.create();
+      await second.create();
+      for (final directory in [first, second]) {
+        await File(
+          '${directory.path}${Platform.pathSeparator}${ProfilePaths.portableMarkerName}',
+        ).writeAsString('TodoPilot portable profile');
+      }
+      final firstProfile = ProfilePaths.activeDirectoryIn(
+        root.path,
+        executablePath: '${first.path}${Platform.pathSeparator}TodoPilot.exe',
+      );
+      final secondProfile = ProfilePaths.activeDirectoryIn(
+        root.path,
+        executablePath: '${second.path}${Platform.pathSeparator}TodoPilot.exe',
+      );
+      expect(firstProfile.path, isNot(secondProfile.path));
+      expect(
+        ProfilePaths.activeDirectoryIn(
+          root.path,
+          executablePath: '${first.path}${Platform.pathSeparator}TodoPilot.exe',
+        ).path,
+        firstProfile.path,
+      );
+    } finally {
+      await root.delete(recursive: true);
+    }
+  });
 }

@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Security.Cryptography;
+using System.Text;
 
 internal static class AppDataPaths {
   // Flutter resolves APPDATA from the process environment. The native
@@ -15,8 +17,20 @@ internal static class AppDataPaths {
 
   internal static string TodoPilotDirectory => Path.Combine(RoamingRoot, "TodoPilot");
   internal static string LegacyDirectory => Path.Combine(RoamingRoot, "Life Manager");
+  internal static string? PortableDirectoryIn(string root, string executableDirectory) {
+    executableDirectory = Path.GetFullPath(executableDirectory).TrimEnd(
+      Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+    if (!File.Exists(Path.Combine(executableDirectory, "PORTABLE-MODE"))) return null;
+    var normalized = executableDirectory.ToLowerInvariant();
+    var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized)))
+      [..16].ToLowerInvariant();
+    return Path.Combine(root, "TodoPilot", "portable-" + digest);
+  }
+
   internal static string ActiveDirectory {
     get {
+      var portable = PortableDirectoryIn(RoamingRoot, AppContext.BaseDirectory);
+      if (portable != null) return portable;
       var marker = Path.Combine(TodoPilotDirectory, "legacy-profile.json");
       if (!File.Exists(marker) ||
           !File.Exists(Path.Combine(LegacyDirectory, "life_manager.sqlite"))) {
@@ -33,4 +47,12 @@ internal static class AppDataPaths {
       }
     }
   }
+
+  internal static string ChannelSuffixFor(string directory) {
+    var normalized = Path.GetFullPath(directory).ToLowerInvariant();
+    return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized)))
+      [..16].ToLowerInvariant();
+  }
+
+  internal static string ChannelSuffix => ChannelSuffixFor(ActiveDirectory);
 }

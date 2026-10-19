@@ -698,3 +698,54 @@ Next: perform the manual acceptance in `docs/ACCEPTANCE.md` and
 task interactions under layout lock, installed upgrade/uninstall, and shell
 icons. Review `LICENSE.proposed` and the GitHub account/repository before any
 public publication. Do not merge into master without explicit approval.
+
+## TodoPilot 1.0.1 icon and clean-install checkpoint (2026-10-19)
+
+This checkpoint supersedes the older 1.0.0 artifact paths and legacy-profile
+assumptions above. Baseline was commit `ba2da50` on
+`feature/windows-v1-completion`; no production database or installed app was
+opened, modified, or uninstalled.
+
+- The original black-tile `IDI_APP_ICON` ICO is byte-identical to the baseline.
+  `IDI_WINDOW_ICON` adds a transparent black-edged white orbit at 16, 20, 24,
+  32, 48, and 64 px. The runner assigns both `WM_SETICON` sizes and refreshes
+  them on DPI change. The final extracted ZIP visibly showed the outlined
+  orbit in the title bar; the sidebar and executable still show the black-tile
+  icon. Windows taskbar and pinned-shortcut selection remain visually untested.
+- Fresh installer-style launches use `%APPDATA%\TodoPilot`; an unrelated
+  `%APPDATA%\Life Manager` database is not opened automatically. The first-run
+  UI offered a reviewed import when a disposable legacy database with one task
+  was present; the new database contained zero tasks while the old one retained
+  one. A valid marker in a separate disposable upgrade profile selected the
+  old one-task database. The installer now requires a matching registered
+  TodoPilot AppId, display name, install location, and executable before it
+  writes that marker. Actual setup upgrade was not run.
+- Portable ZIPs carry `PORTABLE-MODE` and use separate application-data
+  folders keyed by extraction location. In an extracted package, the first
+  copy started with zero tasks, fixed events, goals, habits, work sessions,
+  timer runs, and time entries. One UI-created task remained after reopening
+  the same copy. A second copy in the same disposable APPDATA started with
+  zero tasks in a different profile. The final rebuilt ZIP again created two
+  separate empty profiles. Both native widgets ran simultaneously and wrote
+  appearance settings to their respective profiles; exiting the first widget
+  left the second running. A marked upgrade widget wrote to the marked legacy
+  profile. Widget mutexes and command pipes now use profile-specific names.
+- `flutter analyze` passed; focused profile tests passed; all 191 Flutter
+  tests passed with serial execution. A parallel full-suite run had one
+  timing-sensitive privacy-test failure; the focused test passed on retry and
+  the serial full suite passed. Native Release build had zero warnings and
+  errors, widget self-test passed, and `flutter build windows --release`
+  succeeded. The final 26-entry ZIP contains both Release executables,
+  Flutter notices, and Lucide attribution, with no database, backup, log,
+  settings file, or key. The installer compiled with Inno Setup 7.1.0 from
+  the scanned Release bundle. Both packages are unsigned.
+- Final portable ZIP: `release/TodoPilot-1.0.1-win-x64-portable.zip`,
+  61,320,933 bytes, SHA-256
+  `52BC9C32BCFE4297DDCDF15809F4F922C76614CD150B374748A488ED6F061635`.
+  Final installer: `release/TodoPilot-1.0.1-win-x64-setup.exe`,
+  46,448,813 bytes, SHA-256
+  `91B0816DA076F0B65C4A1964F8C184BACA85EB6B5CAF780951E3DD9E6B075109`.
+- No actual installer install, registered upgrade, uninstall, or reinstall was
+  performed because those operations would change the normal Windows account.
+  They require a disposable Windows user or VM. Visual taskbar, Explorer,
+  shortcut, DPI, and installer-wizard icon checks remain manual acceptance.

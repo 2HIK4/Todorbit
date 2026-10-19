@@ -42,6 +42,22 @@ Filename: "{app}\TodoPilot.exe"; Description: "Launch TodoPilot"; Flags: nowait 
 // fresh install never opts into it merely because the old database exists.
 var WasTodoPilotUpgrade: Boolean;
 
+function IsInstalledTodoPilotUpgrade: Boolean;
+var
+  InstallDir: String;
+  DisplayName: String;
+  UninstallKey: String;
+begin
+  UninstallKey := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\' +
+    '{8C3E7B4A-17A4-42D7-8C45-EBB4C79B6941}_is1';
+  Result := RegQueryStringValue(HKCU, UninstallKey, 'InstallLocation', InstallDir) and
+    RegQueryStringValue(HKCU, UninstallKey, 'DisplayName', DisplayName) and
+    (Pos('TodoPilot', DisplayName) = 1) and
+    (CompareText(AddBackslash(InstallDir),
+      AddBackslash(ExpandConstant('{app}'))) = 0) and
+    FileExists(ExpandConstant('{app}\TodoPilot.exe'));
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ProfileDir: String;
@@ -51,7 +67,7 @@ begin
   begin
     ProfileDir := ExpandConstant('{%APPDATA}\TodoPilot');
     Marker := ProfileDir + '\legacy-profile.json';
-    WasTodoPilotUpgrade := FileExists(ExpandConstant('{app}\TodoPilot.exe')) and
+    WasTodoPilotUpgrade := IsInstalledTodoPilotUpgrade and
       FileExists(ExpandConstant('{%APPDATA}\Life Manager\life_manager.sqlite')) and
       not FileExists(ProfileDir + '\life_manager.sqlite') and
       not FileExists(Marker);

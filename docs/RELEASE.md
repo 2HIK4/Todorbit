@@ -30,14 +30,17 @@ These behaviors still require an actual installer acceptance test.
 
 ## Upgrade and personal data
 
-Fresh-install database and settings are under `%APPDATA%\TodoPilot`, outside the
-installation directory. A database below schema v20 prompts for approval
+Fresh installer database and settings are under `%APPDATA%\TodoPilot`, outside the
+installation directory. Portable copies use separate location-keyed folders
+under that directory; moving a portable copy selects a new profile, so use
+Export/Import to move data. A database below schema v20 prompts for approval
 before backup or migration. Approval creates and checks a `Before upgrade`
 SQLite backup before opening the newer schema. If preparation fails, the
 workspace remains closed. Do not use the personal database for development or
 acceptance testing; use an isolated `APPDATA` and `LOCALAPPDATA` profile.
 
-Fresh-install backups are under `%APPDATA%\TodoPilot\backups`. Managed attachments are
+Fresh installer backups are under `%APPDATA%\TodoPilot\backups`; portable
+backups are under their location-keyed profile. Managed attachments are
 stored in SQLite and travel with its verified snapshots. External resource
 paths and URLs remain references. The Backups dialog offers reviewed restore;
 replacement occurs on the next launch after a `Before restore` snapshot.

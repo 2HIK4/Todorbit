@@ -151,6 +151,7 @@ bool Win32Window::Create(const std::wstring& title,
     return false;
   }
 
+  UpdateWindowIcons(window);
   UpdateTheme(window);
 
   return OnCreate();
@@ -197,6 +198,7 @@ Win32Window::MessageHandler(HWND hwnd,
       return 0;
 
     case WM_DPICHANGED: {
+      UpdateWindowIcons(hwnd, HIWORD(wparam));
       auto newRectSize = reinterpret_cast<RECT*>(lparam);
       LONG newWidth = newRectSize->right - newRectSize->left;
       LONG newHeight = newRectSize->bottom - newRectSize->top;
@@ -238,8 +240,41 @@ void Win32Window::Destroy() {
     DestroyWindow(window_handle_);
     window_handle_ = nullptr;
   }
+  if (small_window_icon_) {
+    DestroyIcon(small_window_icon_);
+    small_window_icon_ = nullptr;
+  }
+  if (large_window_icon_) {
+    DestroyIcon(large_window_icon_);
+    large_window_icon_ = nullptr;
+  }
   if (g_active_window_count == 0) {
     WindowClassRegistrar::GetInstance()->UnregisterWindowClass();
+  }
+}
+
+void Win32Window::UpdateWindowIcons(HWND const window, UINT dpi) {
+  const auto instance = GetModuleHandle(nullptr);
+  if (dpi == 0) dpi = GetDpiForWindow(window);
+  const int small_size = MulDiv(16, dpi, 96);
+  const int large_size = MulDiv(32, dpi, 96);
+  auto small_icon = static_cast<HICON>(LoadImage(
+      instance, MAKEINTRESOURCE(IDI_WINDOW_ICON), IMAGE_ICON,
+      small_size, small_size, 0));
+  auto large_icon = static_cast<HICON>(LoadImage(
+      instance, MAKEINTRESOURCE(IDI_WINDOW_ICON), IMAGE_ICON,
+      large_size, large_size, 0));
+  if (small_icon) {
+    SendMessage(window, WM_SETICON, ICON_SMALL,
+                reinterpret_cast<LPARAM>(small_icon));
+    if (small_window_icon_) DestroyIcon(small_window_icon_);
+    small_window_icon_ = small_icon;
+  }
+  if (large_icon) {
+    SendMessage(window, WM_SETICON, ICON_BIG,
+                reinterpret_cast<LPARAM>(large_icon));
+    if (large_window_icon_) DestroyIcon(large_window_icon_);
+    large_window_icon_ = large_icon;
   }
 }
 

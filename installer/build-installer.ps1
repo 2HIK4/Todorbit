@@ -11,10 +11,11 @@ if (-not (Test-Path -LiteralPath $mainExe) -or -not (Test-Path -LiteralPath $wid
   throw 'Release bundle is missing. Run flutter build windows --release first.'
 }
 $privateData = Get-ChildItem -LiteralPath $bundle -Recurse -File | Where-Object {
-  $_.Name -match '(?i)\.(sqlite|db)(-(wal|shm))?$'
+  $_.Name -match '(?i)\.(sqlite|db)(-(wal|shm))?$|\.log$|\.(pfx|p12|pem|key)$|(-settings|privacy-session|pending-restore)\.json$' -or
+  $_.FullName -match '(?i)[\\/]backups[\\/]'
 }
 if ($privateData) {
-  throw 'Release bundle contains a database. Remove it from the build output before packaging.'
+  throw 'Release bundle contains private data or secrets. Remove it before packaging.'
 }
 
 if (-not $Compiler) {

@@ -10,7 +10,7 @@ if (args.Length >= 1 && args[0] is "--widget" or "--widget-command") {
     : args.Contains("--background", StringComparer.OrdinalIgnoreCase)
       ? "background" : "show";
   using var instance = new Mutex(initiallyOwned: true,
-    name: "Local\\LifeManagerDesktopWidget-Native",
+    name: "Local\\LifeManagerDesktopWidget-Native-" + AppDataPaths.ChannelSuffix,
     out var ownsMutex);
   if (!ownsMutex) {
     if (!WidgetCommandServer.TrySend(initialCommand)) {

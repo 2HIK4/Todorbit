@@ -649,6 +649,22 @@ internal static class LifeManagerWidgetSelfTest {
       if (AppDataPaths.ActiveDirectory != expected) {
         throw new InvalidOperationException("Invalid upgrade marker selected legacy data.");
       }
+      var portableOne = Path.Combine(directory, "portable one");
+      var portableTwo = Path.Combine(directory, "portable two");
+      Directory.CreateDirectory(portableOne);
+      Directory.CreateDirectory(portableTwo);
+      File.WriteAllText(Path.Combine(portableOne, "PORTABLE-MODE"), "TodoPilot portable profile");
+      File.WriteAllText(Path.Combine(portableTwo, "PORTABLE-MODE"), "TodoPilot portable profile");
+      var firstProfile = AppDataPaths.PortableDirectoryIn(directory, portableOne);
+      var secondProfile = AppDataPaths.PortableDirectoryIn(directory, portableTwo);
+      if (firstProfile == null || secondProfile == null || firstProfile == secondProfile ||
+          firstProfile != AppDataPaths.PortableDirectoryIn(directory, portableOne)) {
+        throw new InvalidOperationException("Portable widget profiles are not location-specific.");
+      }
+      if (AppDataPaths.ChannelSuffixFor(firstProfile) ==
+          AppDataPaths.ChannelSuffixFor(secondProfile)) {
+        throw new InvalidOperationException("Portable widget command channels are shared.");
+      }
     } finally {
       Environment.SetEnvironmentVariable("APPDATA", previous);
     }

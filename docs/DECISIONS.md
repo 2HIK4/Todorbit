@@ -292,3 +292,19 @@
   launch created the Explorer child with `WS_EX_LAYERED` at the intended
   `(1520,24)` screen position. Pixel appearance and hit testing still need
   direct visual inspection.
+- **TodoPilot 1.0.1 profile isolation (2026-10-19):** supersedes the earlier
+  automatic legacy-profile selection. A fresh installer uses
+  `%APPDATA%\TodoPilot`; each portable extraction selects a separate
+  location-keyed subfolder there. The older `%APPDATA%\Life Manager` profile
+  remains untouched and is offered through the reviewed import flow. Only an
+  installer upgrade with the existing TodoPilot AppId, matching registration,
+  installation directory, and no new database creates `legacy-profile.json`.
+  The main app and native widget honor the same marker. Widget mutex and pipe
+  names are scoped to the selected profile so simultaneous portable copies do
+  not control each other. Uninstall leaves profile directories intact.
+- **Windows icon surfaces (2026-10-19):** keep `IDI_APP_ICON` first and its ICO
+  unchanged for executable, File Explorer, shortcuts, and installer. Add a
+  transparent black-edged white orbit as `IDI_WINDOW_ICON` and assign both
+  `ICON_SMALL` and `ICON_BIG` to the window, refreshing at DPI changes. Taskbar
+  and pinned-shortcut choices vary by Windows shell state and need visual
+  acceptance; the title bar was verified in an isolated Release UI.

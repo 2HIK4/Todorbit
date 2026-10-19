@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as path;
 
 /// A fresh TodoPilot profile never selects Life Manager data by its presence.
@@ -8,6 +9,7 @@ import 'package:path/path.dart' as path;
 class ProfilePaths {
   static const markerName = 'legacy-profile.json';
   static const markerValue = 'todopilot-upgrade-v1';
+  static const portableMarkerName = 'PORTABLE-MODE';
 
   static String dataRoot() {
     if (Platform.isWindows) {
@@ -27,6 +29,20 @@ class ProfilePaths {
   static Directory legacyDirectoryIn(String root) =>
       Directory(path.join(root, 'Life Manager'));
 
+  static Directory? portableDirectoryIn(String root, String executablePath) {
+    final executableDirectory = path.dirname(path.absolute(executablePath));
+    if (!File(path.join(executableDirectory, portableMarkerName))
+        .existsSync()) {
+      return null;
+    }
+    final normalized = path.normalize(executableDirectory).toLowerCase();
+    final digest = sha256
+        .convert(utf8.encode(normalized))
+        .toString()
+        .substring(0, 16);
+    return Directory(path.join(root, 'TodoPilot', 'portable-$digest'));
+  }
+
   static bool usesLegacyProfileIn(String root) {
     final marker = File(path.join(todoPilotDirectoryIn(root).path, markerName));
     if (!marker.existsSync()) return false;
@@ -41,9 +57,16 @@ class ProfilePaths {
     }
   }
 
-  static Directory activeDirectoryIn(String root) => usesLegacyProfileIn(root)
-      ? legacyDirectoryIn(root)
-      : todoPilotDirectoryIn(root);
+  static Directory activeDirectoryIn(String root, {String? executablePath}) {
+    final portable = portableDirectoryIn(
+      root,
+      executablePath ?? Platform.resolvedExecutable,
+    );
+    if (portable != null) return portable;
+    return usesLegacyProfileIn(root)
+        ? legacyDirectoryIn(root)
+        : todoPilotDirectoryIn(root);
+  }
 
   static Directory activeDirectory() => activeDirectoryIn(dataRoot());
 

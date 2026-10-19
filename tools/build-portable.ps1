@@ -16,7 +16,8 @@ if (-not (Test-Path -LiteralPath (Join-Path $bundle 'data\flutter_assets\NOTICES
   throw 'Release bundle lacks Flutter license notices.'
 }
 $privateData = Get-ChildItem -LiteralPath $bundle -Recurse -File | Where-Object {
-  $_.Name -match '(?i)\.(sqlite|db)(-(wal|shm))?$|\.log$|\.pfx$|\.pem$|\.key$'
+  $_.Name -match '(?i)\.(sqlite|db)(-(wal|shm))?$|\.log$|\.(pfx|p12|pem|key)$|(-settings|privacy-session|pending-restore)\.json$' -or
+  $_.FullName -match '(?i)[\\/]backups[\\/]'
 }
 if ($privateData) { throw 'Release bundle contains private data or secrets.' }
 New-Item -ItemType Directory -Force -Path $releaseRoot | Out-Null
@@ -33,12 +34,15 @@ try {
     $_.Name -notin @('life_manager.exe', 'life_manager_widget.exe')
   } | Copy-Item -Destination $appFolder -Recurse -Force
   Copy-Item -LiteralPath (Join-Path $repo 'THIRD_PARTY_NOTICES.md') -Destination $appFolder
+  Set-Content -LiteralPath (Join-Path $appFolder 'PORTABLE-MODE') -Value 'TodoPilot portable profile' -Encoding ascii
   @'
 TodoPilot portable package
 
 Extract the whole ZIP, then run TodoPilot.exe. Keep TodoPilotWidget.exe,
 DLLs, and the data folder beside it. This package does not store user data
-beside the executable. Fresh installs store data in %APPDATA%\TodoPilot.
+beside the executable. Each extracted location stores data in its own
+%APPDATA%\TodoPilot\portable-<location-id> folder. Moving the folder changes
+the selected profile; export/import your data to transfer it.
 Older Life Manager data is never loaded automatically. On first launch,
 choose Review import if prompted, or use Settings > Backups > Import SQLite.
 An installed TodoPilot 1.0.0 upgrade retains its existing profile.

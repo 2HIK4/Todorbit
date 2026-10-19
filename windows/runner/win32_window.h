@@ -101,10 +101,15 @@ class Win32Window {
   // supplies one.
   void UpdateTheme(HWND const window);
 
+  // Separate window glyph; the executable's primary Explorer icon is unchanged.
+  void UpdateWindowIcons(HWND const window, UINT dpi = 0);
+
   bool quit_on_close_ = false;
 
   // window handle for top level window.
   HWND window_handle_ = nullptr;
+  HICON small_window_icon_ = nullptr;
+  HICON large_window_icon_ = nullptr;
 
   // window handle for hosted content.
   HWND child_content_ = nullptr;
