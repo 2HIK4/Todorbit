@@ -36,7 +36,7 @@ a manual pass.
 | 27 | Main app/widget independent lifecycle | Manual verification required | Previously accepted widget build; privacy changes require retest. |
 | 28 | Theme synchronization | Manual verification required | Previously accepted widget build; final package requires retest. |
 | 29 | Widget after Win+D | Manual verification required | Computer-use rules bar Windows-key automation; user must perform. |
-| 30 | Packaged or installed application | Manual verification required | Unpacked Release opened and Inno Setup 7 installer compiled; installed flow untested. |
+| 30 | Packaged or installed application | Manual verification required | Feedback Round 2 Release bundle opened and its 15 files were rebuilt into the Inno Setup 7.1.0 installer; bundle audit found no database or personal files, and the packaged widget self-test passes. Installed flow remains untested. |
 | 31 | New profile versus existing profile | Manual verification required | Disposable database tests pass; newly installed profile and existing personal profile need GUI comparison. |
 | 32 | Recurring lecture and single-date cancellation/restoration | Manual verification required | Repository and widget tests pass; isolated Release GUI flow untested. |
 | 33 | Event reminder balloon | Manual verification required | Native self-test covers one-off, selected weekday, cancellation, and duplicate claim; actual Windows tray delivery untested. |

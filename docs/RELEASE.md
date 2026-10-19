@@ -16,8 +16,9 @@ Run `flutter build windows --release`. The bundle is under
 compile the per-user installer with Inno Setup 7, run
 `./installer/build-installer.ps1` (or pass `-Compiler` with an `ISCC.exe` path).
 The script verifies the Release executables and prints the installer SHA-256.
-The current feedback-checkpoint artifact's SHA-256 is
-`AA9A58221B74AEAC842805B25BF7DC1A67FDF360FCF5E32CD92BAF71F389301E`.
+The Feedback Round 2 artifact was rebuilt from commit `8fd380f` with Inno
+Setup 7.1.0. Its SHA-256 is
+`7DBB6DD5EF1A2E09F59C45381401D7BA6131DA82F67CE9ABC8737CE5AB0C7195`.
 It is unsigned; a signing certificate and distribution decision remain open.
 
 The installer is configured to use `%LOCALAPPDATA%\Programs\Life Manager`, adds a

@@ -1,5 +1,26 @@
 # Progress
 
+## Feedback Round 2 installer checkpoint (2026-10-19)
+
+- The verified Windows Release bundle for commit `8fd380f` was packaged with
+  `D:\vs code\Inno Setup 7\ISCC.exe` (Inno Setup 7.1.0). The compiled Dart
+  payload contains the Feedback Round 2 task-editor, Today, focus, and work-log
+  text, tying the Release bundle to the current UI checkpoint.
+- Inno Setup compressed all 15 files in the Release bundle, including
+  `life_manager.exe`, `life_manager_widget.exe`, `flutter_windows.dll`,
+  `sqlite3.dll`, `data/app.so`, ICU data, Flutter assets, fonts, manifests,
+  notices, and shaders. The packaged widget persistence self-test and targeted
+  profile-isolation, native-widget-service, and Windows-theme tests pass.
+- The source bundle contains no SQLite database, WAL/SHM file, personal
+  settings file, log, or backup. The installer source also excludes those
+  file types and packages only the Release directory; no personal profile was
+  opened or modified during this checkpoint.
+- The rebuilt artifact is
+  `release/LifeManager-1.0.0-win-x64-setup.exe` (45,845,619 bytes), SHA-256
+  `7DBB6DD5EF1A2E09F59C45381401D7BA6131DA82F67CE9ABC8737CE5AB0C7195`.
+  Its file and product versions are 1.0.0. Installation, upgrade, and uninstall
+  were not run and remain final manual acceptance work.
+
 ## Feedback Round 2 UI refinement checkpoint (2026-10-19)
 
 - A Windows Release baseline was inspected at 1266×713 with a verified
