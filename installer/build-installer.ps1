@@ -46,6 +46,6 @@ if ($compilerVersion -notmatch '^7\.') {
 
 & $Compiler (Join-Path $PSScriptRoot 'life_manager.iss')
 if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
-$artifact = Join-Path $repo 'release\TodoPilot-1.0.0-win-x64-setup.exe'
+$artifact = Join-Path $repo 'release\TodoPilot-1.0.1-win-x64-setup.exe'
 if (-not (Test-Path -LiteralPath $artifact)) { throw 'Installer compiler did not create expected artifact.' }
 Get-FileHash -Algorithm SHA256 -LiteralPath $artifact

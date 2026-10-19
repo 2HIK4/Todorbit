@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 
 import '../domain/appearance.dart';
+import 'profile_paths.dart';
 
 class AppearancePreferenceStore {
   AppearancePreferenceStore(this.file);
@@ -11,20 +12,7 @@ class AppearancePreferenceStore {
   final File file;
 
   static Future<AppearancePreferenceStore> openDefault() async {
-    final basePath = Platform.isWindows
-        ? Platform.environment['APPDATA']
-        : Platform.environment['XDG_DATA_HOME'] ??
-              (Platform.environment['HOME'] == null
-                  ? null
-                  : path.join(
-                      Platform.environment['HOME']!,
-                      '.local',
-                      'share',
-                    ));
-    if (basePath == null) {
-      throw StateError('User data directory is unavailable');
-    }
-    final directory = Directory(path.join(basePath, 'Life Manager'));
+    final directory = ProfilePaths.activeDirectory();
     await directory.create(recursive: true);
     return AppearancePreferenceStore(
       File(path.join(directory.path, 'appearance-settings.json')),

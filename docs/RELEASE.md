@@ -5,8 +5,8 @@
 The Windows Release bundle contains `TodoPilot.exe`,
 `TodoPilotWidget.exe`, Flutter assets, `flutter_windows.dll`, and
 `sqlite3.dll`. Inno Setup 7.1.0 compiles the installer at
-`release/TodoPilot-1.0.0-win-x64-setup.exe`. A portable ZIP is built at
-`release/TodoPilot-1.0.0-win-x64-portable.zip`. This is **not yet an approved
+`release/TodoPilot-1.0.1-win-x64-setup.exe`. A portable ZIP is built at
+`release/TodoPilot-1.0.1-win-x64-portable.zip`. This is **not yet an approved
 release candidate**: installed upgrade/uninstall and full manual acceptance
 remain unverified. The manual acceptance matrix is in `ACCEPTANCE.md`.
 
@@ -30,14 +30,14 @@ These behaviors still require an actual installer acceptance test.
 
 ## Upgrade and personal data
 
-The database and settings are under `%APPDATA%\Life Manager`, outside the
+Fresh-install database and settings are under `%APPDATA%\TodoPilot`, outside the
 installation directory. A database below schema v20 prompts for approval
 before backup or migration. Approval creates and checks a `Before upgrade`
 SQLite backup before opening the newer schema. If preparation fails, the
 workspace remains closed. Do not use the personal database for development or
 acceptance testing; use an isolated `APPDATA` and `LOCALAPPDATA` profile.
 
-Backups are under `%APPDATA%\Life Manager\backups`. Managed attachments are
+Fresh-install backups are under `%APPDATA%\TodoPilot\backups`. Managed attachments are
 stored in SQLite and travel with its verified snapshots. External resource
 paths and URLs remain references. The Backups dialog offers reviewed restore;
 replacement occurs on the next launch after a `Before restore` snapshot.
@@ -54,7 +54,7 @@ can choose a generic message without task details.
 
 App lock is **UI privacy**, not SQLite encryption or protection against someone
 who can access the Windows account's files. If the PIN is forgotten, close the
-app and rename `%APPDATA%\Life Manager\privacy-settings.json`; this explicitly
+app and rename `privacy-settings.json` in the active profile shown by Settings > Data profile; this explicitly
 resets only app lock and leaves the database intact. Windows Hello is not
 implemented. Workstation lock behavior has not been verified as a distinct
 signal; the optional focus/lifecycle setting locks on return when Flutter

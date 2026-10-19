@@ -23,7 +23,7 @@ internal sealed class WidgetSettingsStore {
 
   internal WidgetSettingsStore(string? overridePath = null) {
     path = overridePath ?? Path.Combine(
-      AppDataPaths.LifeManagerDirectory, "widget-settings.json");
+      AppDataPaths.ActiveDirectory, "widget-settings.json");
   }
 
   internal WidgetSettings Load() {
@@ -74,7 +74,7 @@ internal sealed class AppearanceSettingsStore {
 
   internal AppearanceSettingsStore(string? overridePath = null) {
     Path = overridePath ?? System.IO.Path.Combine(
-      AppDataPaths.LifeManagerDirectory, "appearance-settings.json");
+      AppDataPaths.ActiveDirectory, "appearance-settings.json");
   }
 
   internal AppearanceSettings Load(WidgetThemePreference? legacyTheme = null) {

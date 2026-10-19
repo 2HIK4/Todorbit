@@ -4,6 +4,8 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path/path.dart' as path;
 
+import 'profile_paths.dart';
+
 class AppDatabase extends GeneratedDatabase {
   AppDatabase(super.executor);
 
@@ -15,24 +17,16 @@ class AppDatabase extends GeneratedDatabase {
     if (!path.isAbsolute(basePath)) {
       throw ArgumentError.value(basePath, 'basePath', 'Must be absolute');
     }
-    return File(path.join(basePath, 'Life Manager', 'life_manager.sqlite'));
+    return File(
+      path.join(
+        ProfilePaths.activeDirectoryIn(basePath).path,
+        'life_manager.sqlite',
+      ),
+    );
   }
 
   static Future<File> defaultFile() async {
-    final String basePath;
-    if (Platform.isWindows) {
-      basePath =
-          Platform.environment['APPDATA'] ??
-          (throw StateError('Windows APPDATA directory is unavailable'));
-    } else {
-      final home = Platform.environment['HOME'];
-      basePath =
-          Platform.environment['XDG_DATA_HOME'] ??
-          (home == null
-              ? throw StateError('User data directory is unavailable')
-              : path.join(home, '.local', 'share'));
-    }
-    final file = fileInDataRoot(basePath);
+    final file = fileInDataRoot(ProfilePaths.dataRoot());
     await file.parent.create(recursive: true);
     return file;
   }

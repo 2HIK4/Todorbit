@@ -92,7 +92,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Forgot your PIN? Close TodoPilot, then rename privacy-settings.json in %APPDATA%\\Life Manager. This resets only app lock; your database remains intact. App lock protects the UI, not files accessible through your Windows account.',
+              'Forgot your PIN? Close TodoPilot, then use Settings > Data profile to locate privacy-settings.json and rename that file. This resets only app lock; your database remains intact. App lock protects the UI, not files accessible through your Windows account.',
             ),
           ],
         ),

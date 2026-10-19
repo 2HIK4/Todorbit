@@ -20,7 +20,7 @@ TodoPilot is an offline Windows productivity app for tasks, calendar events, hab
 
 The current target is Windows x64. Windows 11 is the tested development environment; Windows 10 and other configurations need acceptance testing. Use the installer or extract the portable ZIP and run `TodoPilot.exe`. Keep the full extracted folder together, including `TodoPilotWidget.exe`, DLLs, and the `data` folder. Neither package requires Flutter or Visual Studio on the user's computer.
 
-The portable ZIP does **not** store data beside the executable. TodoPilot continues to use `%APPDATA%\Life Manager\life_manager.sqlite` so existing Life Manager data and backups remain available after the rename. A database below the current schema requires explicit approval and a verified Before upgrade backup. Back up data before upgrading; do not move or delete that folder to rename the app.
+The portable ZIP does **not** store data beside the executable. A fresh TodoPilot profile uses `%APPDATA%\TodoPilot\life_manager.sqlite` and starts empty. An older `%APPDATA%\Life Manager` database is never selected just because it exists; on first launch TodoPilot offers a reviewed, explicit import through Backups. Upgrading an installed TodoPilot 1.0.0 retains its existing profile and settings. Back up data before upgrading; do not move or delete either profile folder.
 
 The native widget can be shown from the app sidebar. Right-click it for Refresh, appearance, layout lock, and Close Widget. The widget can run while the main window is closed. The optional PIN locks the UI; it does not encrypt the SQLite database.
 

@@ -1,4 +1,4 @@
-#define AppVersion "1.0.0"
+#define AppVersion "1.0.1"
 #define BundleDir "..\build\windows\x64\runner\Release"
 
 [Setup]
@@ -12,7 +12,7 @@ DefaultGroupName=TodoPilot
 PrivilegesRequired=lowest
 DisableProgramGroupPage=yes
 OutputDir=..\release
-OutputBaseFilename=TodoPilot-1.0.0-win-x64-setup
+OutputBaseFilename=TodoPilot-1.0.1-win-x64-setup
 SetupIconFile=..\windows\runner\resources\app_icon.ico
 UninstallDisplayIcon={app}\TodoPilot.exe
 Compression=lzma2
@@ -38,7 +38,36 @@ Name: desktopicon; Description: "Create a desktop shortcut"; Flags: unchecked
 Filename: "{app}\TodoPilot.exe"; Description: "Launch TodoPilot"; Flags: nowait postinstall skipifsilent
 
 [Code]
-// User data under %APPDATA%\Life Manager is never part of the installer.
+// A previous installed TodoPilot used the legacy Life Manager profile. A
+// fresh install never opts into it merely because the old database exists.
+var WasTodoPilotUpgrade: Boolean;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ProfileDir: String;
+  Marker: String;
+begin
+  if CurStep = ssInstall then
+  begin
+    ProfileDir := ExpandConstant('{%APPDATA}\TodoPilot');
+    Marker := ProfileDir + '\legacy-profile.json';
+    WasTodoPilotUpgrade := FileExists(ExpandConstant('{app}\TodoPilot.exe')) and
+      FileExists(ExpandConstant('{%APPDATA}\Life Manager\life_manager.sqlite')) and
+      not FileExists(ProfileDir + '\life_manager.sqlite') and
+      not FileExists(Marker);
+  end;
+  if (CurStep = ssPostInstall) and WasTodoPilotUpgrade then
+  begin
+    if not ForceDirectories(ProfileDir) or
+      not SaveStringToFile(Marker,
+        '{"profile":"todopilot-upgrade-v1"}', False) then
+      MsgBox('TodoPilot could not select the previous TodoPilot profile. ' +
+        'Your data is unchanged. Open Backups and import the old database ' +
+        'explicitly before adding new data.', mbError, MB_OK);
+  end;
+end;
+
+// User data is never part of the installer or removed on uninstall.
 // Remove only a sign-in entry owned by the executable being uninstalled.
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var

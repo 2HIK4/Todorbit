@@ -6,6 +6,8 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as path;
 
+import 'profile_paths.dart';
+
 /// UI privacy only. The SQLite database is not encrypted.
 class PrivacySettings {
   const PrivacySettings({
@@ -113,19 +115,10 @@ class PrivacyStore {
       });
 
   static Future<PrivacyStore> openDefault() async {
-    final base = Platform.isWindows
-        ? Platform.environment['APPDATA']
-        : Platform.environment['XDG_DATA_HOME'] ??
-              (Platform.environment['HOME'] == null
-                  ? null
-                  : path.join(
-                      Platform.environment['HOME']!,
-                      '.local',
-                      'share',
-                    ));
-    if (base == null) throw StateError('User data directory is unavailable');
     return PrivacyStore(
-      File(path.join(base, 'Life Manager', 'privacy-settings.json')),
+      File(
+        path.join(ProfilePaths.activeDirectory().path, 'privacy-settings.json'),
+      ),
     );
   }
 

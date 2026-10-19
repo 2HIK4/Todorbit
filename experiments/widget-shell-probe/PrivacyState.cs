@@ -14,7 +14,7 @@ internal sealed class PrivacyState {
     this.expectedProcessName = expectedProcessName;
   }
 
-  internal static PrivacyState OpenDefault() => new(AppDataPaths.LifeManagerDirectory);
+  internal static PrivacyState OpenDefault() => new(AppDataPaths.ActiveDirectory);
 
   internal bool IsLocked() {
     if (!File.Exists(settingsPath)) return false;

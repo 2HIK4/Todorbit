@@ -38,8 +38,10 @@ TodoPilot portable package
 
 Extract the whole ZIP, then run TodoPilot.exe. Keep TodoPilotWidget.exe,
 DLLs, and the data folder beside it. This package does not store user data
-beside the executable. Your database and settings remain in
-%APPDATA%\Life Manager. Back up that folder before changing computers.
+beside the executable. Fresh installs store data in %APPDATA%\TodoPilot.
+Older Life Manager data is never loaded automatically. On first launch,
+choose Review import if prompted, or use Settings > Backups > Import SQLite.
+An installed TodoPilot 1.0.0 upgrade retains its existing profile.
 
 The app and installer are unsigned pending release acceptance.
 Third-party Flutter notices are in data\flutter_assets\NOTICES.Z.

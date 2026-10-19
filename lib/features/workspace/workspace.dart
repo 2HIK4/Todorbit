@@ -34,9 +34,14 @@ import 'quick_search.dart';
 import 'trash_dialog.dart';
 
 class Workspace extends ConsumerStatefulWidget {
-  const Workspace({super.key, this.openAppearance = false});
+  const Workspace({
+    super.key,
+    this.openAppearance = false,
+    this.legacyImportFile,
+  });
 
   final bool openAppearance;
+  final File? legacyImportFile;
 
   @override
   ConsumerState<Workspace> createState() => _WorkspaceState();
@@ -59,6 +64,42 @@ class _WorkspaceState extends ConsumerState<Workspace> {
             context: context,
             builder: (_) => const ThemeDialog(),
           );
+        }
+      });
+    }
+    if (widget.legacyImportFile case final legacyFile?) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        final review = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Older Life Manager data found'),
+            content: const Text(
+              'TodoPilot has started with an empty profile. Your older Life Manager data has not been opened or changed. You can review a verified import before choosing whether to replace this empty profile.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Keep empty profile'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Review import'),
+              ),
+            ],
+          ),
+        );
+        if (review == true && mounted) {
+          final service = ref.read(appControllerProvider).backupService;
+          if (service != null) {
+            await showDialog<void>(
+              context: context,
+              builder: (_) => BackupDialog(
+                service: service,
+                chooseImport: () async => legacyFile,
+              ),
+            );
+          }
         }
       });
     }

@@ -17,7 +17,7 @@ internal sealed class WidgetRenderDiagnostics : IDisposable {
   internal WidgetRenderDiagnostics(bool enabled) {
     if (!enabled) return;
     try {
-      var directory = Path.Combine(AppDataPaths.LifeManagerDirectory, "logs");
+      var directory = Path.Combine(AppDataPaths.ActiveDirectory, "logs");
       Directory.CreateDirectory(directory);
       var path = Path.Combine(directory,
         $"native-widget-render-{Environment.ProcessId}.log");

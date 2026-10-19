@@ -14,6 +14,7 @@ import 'data/backup_service.dart';
 import 'data/life_repository.dart';
 import 'data/migration_gate.dart';
 import 'data/privacy_store.dart';
+import 'data/profile_paths.dart';
 import 'domain/appearance.dart';
 import 'features/workspace/workspace.dart';
 import 'features/settings/privacy_dialog.dart';
@@ -48,6 +49,13 @@ Future<void> _startApplication(
     );
     return;
   }
+  final root = ProfilePaths.dataRoot();
+  final freshDatabase = AppDatabase.fileInDataRoot(root);
+  final legacyDatabase = ProfilePaths.legacyDatabaseIn(root);
+  final offerLegacyImport =
+      !ProfilePaths.usesLegacyProfileIn(root) &&
+      !await freshDatabase.exists() &&
+      await legacyDatabase.exists();
   final databaseFile = await AppDatabase.defaultFile();
   try {
     final olderSchema = await MigrationGate.olderSchema(databaseFile);
@@ -143,6 +151,7 @@ Future<void> _startApplication(
               databaseFile: databaseFile,
               appearanceFile: appearanceStore.file,
               openAppearance: args.contains('--appearance'),
+              legacyImportFile: offerLegacyImport ? legacyDatabase : null,
             ),
     ),
   );
@@ -286,11 +295,13 @@ class LifeManagerApp extends ConsumerStatefulWidget {
     this.databaseFile,
     this.appearanceFile,
     this.openAppearance = false,
+    this.legacyImportFile,
   });
 
   final File? databaseFile;
   final File? appearanceFile;
   final bool openAppearance;
+  final File? legacyImportFile;
 
   @override
   ConsumerState<LifeManagerApp> createState() => _LifeManagerAppState();
@@ -440,7 +451,10 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
                   privacy.activity();
                   return KeyEventResult.ignored;
                 },
-                child: Workspace(openAppearance: widget.openAppearance),
+                child: Workspace(
+                  openAppearance: widget.openAppearance,
+                  legacyImportFile: widget.legacyImportFile,
+                ),
               ),
             ),
     );

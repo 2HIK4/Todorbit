@@ -73,7 +73,7 @@ internal sealed class LifeManagerWidgetRepository : IDisposable {
   }
 
   internal static LifeManagerWidgetRepository OpenDefault() {
-    var databasePath = Path.Combine(AppDataPaths.LifeManagerDirectory,
+    var databasePath = Path.Combine(AppDataPaths.ActiveDirectory,
       "life_manager.sqlite");
     if (!File.Exists(databasePath)) {
       throw new FileNotFoundException(

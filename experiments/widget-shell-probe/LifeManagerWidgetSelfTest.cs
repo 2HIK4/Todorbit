@@ -620,8 +620,8 @@ internal static class LifeManagerWidgetSelfTest {
     var previous = Environment.GetEnvironmentVariable("APPDATA");
     try {
       Environment.SetEnvironmentVariable("APPDATA", directory);
-      var expected = Path.Combine(directory, "Life Manager");
-      if (AppDataPaths.LifeManagerDirectory != expected) {
+      var expected = Path.Combine(directory, "TodoPilot");
+      if (AppDataPaths.ActiveDirectory != expected) {
         throw new InvalidOperationException("Native APPDATA override was ignored.");
       }
       var settings = new WidgetSettingsStore();
@@ -633,6 +633,21 @@ internal static class LifeManagerWidgetSelfTest {
         "{\"enabled\":true}");
       if (!PrivacyState.OpenDefault().IsLocked()) {
         throw new InvalidOperationException("Privacy state escaped isolated APPDATA.");
+      }
+      var legacy = Path.Combine(directory, "Life Manager");
+      Directory.CreateDirectory(legacy);
+      File.WriteAllText(Path.Combine(legacy, "life_manager.sqlite"), "test marker only");
+      if (AppDataPaths.ActiveDirectory != expected) {
+        throw new InvalidOperationException("Legacy database was selected automatically.");
+      }
+      var marker = Path.Combine(expected, "legacy-profile.json");
+      File.WriteAllText(marker, "{\"profile\":\"todopilot-upgrade-v1\"}");
+      if (AppDataPaths.ActiveDirectory != legacy) {
+        throw new InvalidOperationException("Upgrade marker was ignored.");
+      }
+      File.WriteAllText(marker, "{\"profile\":\"unrelated\"}");
+      if (AppDataPaths.ActiveDirectory != expected) {
+        throw new InvalidOperationException("Invalid upgrade marker selected legacy data.");
       }
     } finally {
       Environment.SetEnvironmentVariable("APPDATA", previous);

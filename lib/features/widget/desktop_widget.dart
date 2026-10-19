@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
+import '../../data/profile_paths.dart';
 import '../../domain/models.dart';
 
 /// Small second-process UI used only for desktop attachment feasibility.
@@ -257,7 +258,7 @@ class _WidgetFocusLog {
       if (directory == null) {
         final appData = Platform.environment['APPDATA'];
         if (appData == null) return null;
-        directory = Directory('$appData\\Life Manager\\logs');
+        directory = Directory('${ProfilePaths.activeDirectory().path}\\logs');
       }
       directory.createSync(recursive: true);
       final log = _WidgetFocusLog(
