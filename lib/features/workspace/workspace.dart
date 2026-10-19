@@ -13,6 +13,7 @@ import '../../domain/recurrence.dart';
 import '../../domain/time_tracking.dart';
 import '../../domain/saved_views.dart';
 import '../../domain/appearance.dart';
+import '../branding/brand_mark.dart';
 import '../calendar/calendar_view.dart';
 import '../habits/habits_view.dart';
 import '../goals/goals_view.dart';
@@ -513,14 +514,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
             padding: const EdgeInsets.fromLTRB(16, 20, 8, 14),
             child: Row(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(5),
-                  child: Image.asset(
-                    'assets/app_icon.png',
-                    width: 24,
-                    height: 24,
-                  ),
-                ),
+                const BrandMark(),
                 const SizedBox(width: 10),
                 const Expanded(
                   child: Text(

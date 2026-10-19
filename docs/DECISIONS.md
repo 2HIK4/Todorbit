@@ -308,3 +308,11 @@
   `ICON_SMALL` and `ICON_BIG` to the window, refreshing at DPI changes. Taskbar
   and pinned-shortcut choices vary by Windows shell state and need visual
   acceptance; the title bar was verified in an isolated Release UI.
+- **In-app brand mark and 1.0.2 packaging (2026-10-19):** generate a 128 px
+  transparent Flutter PNG from the outlined window-icon geometry and reference
+  it through one `BrandMark` widget. Keep the black-tile executable and installer
+  icon. Packaging rejects leftover `life_manager` executables; the installer
+  version comes from `pubspec.yaml`. Disposable portable staging uses the OS
+  temporary directory, and `release/` holds only the current candidate and its
+  notices. The proposed license and public-name clearance remain creator
+  decisions; no publication follows from building a candidate.

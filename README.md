@@ -47,4 +47,6 @@ Creator: **Hussam Alkhatib**, Creator & Project Founder. Original concept, produ
 
 The source and packages are being prepared for an open-source release. Native widget alpha blending, Win+D, different wallpapers and monitor layouts, installer upgrade/uninstall, and complete Windows GUI flows still require manual acceptance. The installer is unsigned. See [release preparation](docs/RELEASE.md) and [acceptance matrix](docs/ACCEPTANCE.md).
 
+The 1.0.2 candidate is **not ready for public release**. The [release audit](docs/RELEASE_AUDIT.md) records the remaining tests and name-clearance decision; other productivity products use TodoPilot or ToDoPilot.
+
 **License:** MIT is proposed in [LICENSE.proposed](LICENSE.proposed) for creator review. No public publication or license grant is implied until it is approved. Flutter and package notices are bundled in the generated `data\flutter_assets\NOTICES.Z`.

@@ -20,12 +20,16 @@ $privateData = Get-ChildItem -LiteralPath $bundle -Recurse -File | Where-Object 
   $_.FullName -match '(?i)[\\/]backups[\\/]'
 }
 if ($privateData) { throw 'Release bundle contains private data or secrets.' }
+$obsoleteBinaries = Get-ChildItem -LiteralPath $bundle -Recurse -File | Where-Object {
+  $_.Name -in @('life_manager.exe', 'life_manager_widget.exe')
+}
+if ($obsoleteBinaries) { throw 'Release bundle contains obsolete Life Manager executables.' }
 New-Item -ItemType Directory -Force -Path $releaseRoot | Out-Null
-$stage = Join-Path $releaseRoot ('portable-stage-' + [guid]::NewGuid().ToString('N'))
-$safeRelease = [System.IO.Path]::GetFullPath($releaseRoot).TrimEnd('\') + '\'
+$stage = Join-Path ([System.IO.Path]::GetTempPath()) ('todopilot-portable-stage-' + [guid]::NewGuid().ToString('N'))
+$safeTemp = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath()).TrimEnd('\') + '\'
 $safeStage = [System.IO.Path]::GetFullPath($stage)
-if (-not $safeStage.StartsWith($safeRelease, [System.StringComparison]::OrdinalIgnoreCase)) {
-  throw 'Staging path escaped release directory.'
+if (-not $safeStage.StartsWith($safeTemp, [System.StringComparison]::OrdinalIgnoreCase)) {
+  throw 'Staging path escaped temporary directory.'
 }
 $appFolder = Join-Path $stage 'TodoPilot'
 try {

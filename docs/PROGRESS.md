@@ -1,5 +1,41 @@
 # Progress
 
+## TodoPilot 1.0.2 release-readiness checkpoint (2026-10-19)
+
+- Baseline `b9a75ce` on `feature/windows-v1-completion` had a clean working
+  tree. The sidebar's sole Flutter logo reference used the black-tile app PNG.
+  It now uses a shared `BrandMark` widget and a transparent, black-outlined
+  128 px orbit PNG generated from the existing window-icon geometry. The
+  executable/installer black-tile ICO stayed byte-identical. There are no
+  separate About, splash, or onboarding logo surfaces in the Flutter UI.
+- `flutter analyze` found no issues and all 191 serial Flutter tests passed.
+  The Windows Release build succeeded. The packaged widget self-test passed.
+  The extracted portable widget self-test first found a test-only assumption
+  that expected an installed profile even with `PORTABLE-MODE`; after correcting
+  the assertion and rebuilding, packaged and extracted self-tests passed.
+- Final ZIP has 27 entries, including `TodoPilot.exe`, `TodoPilotWidget.exe`,
+  the new Flutter mark, notices, and attribution. No legacy executable,
+  database, backup, log, key, or settings entry was found. Inno Setup 7.1.0
+  compiled the version-1.0.2 installer. Both packages are unsigned. The .NET
+  package vulnerability audit found no vulnerable packages from the configured
+  NuGet and local SDK sources.
+- Removed two stale generated `life_manager` executables from the Release
+  bundle; removed old 1.0.0/1.0.1 installers and ZIPs, 10 previous-checkpoint
+  binaries, and two test logs from `release/`. Only the current ZIP, installer,
+  release notes, checksums, and third-party notice remain. Packaging rejects
+  legacy executables and reads installer version from `pubspec.yaml`.
+- Final `release/TodoPilot-1.0.2-win-x64-portable.zip`: 61,326,680 bytes,
+  SHA-256 `7DEF1199062A8C76CF9A7B58B132DB413FAB0259D47A2204E65ACDBAFF450C46`.
+  Final `release/TodoPilot-1.0.2-win-x64-setup.exe`: 46,449,025 bytes,
+  SHA-256 `09A6B0462EAC2C8BF00C2CC401511AB1454F939BA538E9B3C84400673BA463DF`.
+- The isolated 1.0.2 Release GUI process started but the Windows inspection
+  tool did not enumerate its window. Direct visual confirmation of the new
+  sidebar mark in dark/light themes remains open. Installed upgrade/uninstall,
+  full native widget UI, Windows 10, and other manual GUI flows remain open.
+  Production data and the installed TodoPilot were not touched. Public name
+  clearance found other TodoPilot/ToDoPilot task products; MIT is still only
+  `LICENSE.proposed`. Verdict: **NOT READY**. See `RELEASE_AUDIT.md`.
+
 ## Feedback Round 3 implementation checkpoint (2026-10-19)
 
 - Implemented the icon registry and Release font verification, explicit Saved

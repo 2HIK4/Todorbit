@@ -1,4 +1,6 @@
-#define AppVersion "1.0.1"
+#ifndef AppVersion
+  #error AppVersion must be passed by build-installer.ps1
+#endif
 #define BundleDir "..\build\windows\x64\runner\Release"
 
 [Setup]
@@ -12,7 +14,7 @@ DefaultGroupName=TodoPilot
 PrivilegesRequired=lowest
 DisableProgramGroupPage=yes
 OutputDir=..\release
-OutputBaseFilename=TodoPilot-1.0.1-win-x64-setup
+OutputBaseFilename=TodoPilot-{#AppVersion}-win-x64-setup
 SetupIconFile=..\windows\runner\resources\app_icon.ico
 UninstallDisplayIcon={app}\TodoPilot.exe
 Compression=lzma2

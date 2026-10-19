@@ -1,5 +1,16 @@
 # Windows v1.0 final acceptance record
 
+## TodoPilot 1.0.2 update (2026-10-19)
+
+The 1.0.2 Release build and packaged widget self-test pass. The final portable
+ZIP's extracted widget self-test also passes. The isolated 1.0.2 GUI process
+started, but the Windows inspection tool did not enumerate its window. The
+transparent in-app sidebar mark is therefore present in source and package but
+still needs direct dark/light visual acceptance at 24 px. Rows 2–25 and 27–29
+below retain their prior manual status; the 1.0.2 installer, registered upgrade,
+uninstall, taskbar/shortcut icons, widget composition/input/DPI, and Windows 10
+remain untested. Do not treat the older 1.0.1 GUI observations as a 1.0.2 pass.
+
 Status updated 2026-10-19. Tests use disposable profiles. `Passed` means this
 checkpoint's actual Windows Release UI was observed. Automated tests are
 reported separately in `PROGRESS.md` and do not turn an unobserved GUI flow into

@@ -4,6 +4,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$versionText = Get-Content -Raw (Join-Path $repo 'pubspec.yaml')
+if ($versionText -notmatch '(?m)^version:\s*(\d+\.\d+\.\d+)') {
+  throw 'Could not read application version.'
+}
+$version = $Matches[1]
 $bundle = Join-Path $repo 'build\windows\x64\runner\Release'
 $mainExe = Join-Path $bundle 'TodoPilot.exe'
 $widgetExe = Join-Path $bundle 'TodoPilotWidget.exe'
@@ -17,6 +22,10 @@ $privateData = Get-ChildItem -LiteralPath $bundle -Recurse -File | Where-Object 
 if ($privateData) {
   throw 'Release bundle contains private data or secrets. Remove it before packaging.'
 }
+$obsoleteBinaries = Get-ChildItem -LiteralPath $bundle -Recurse -File | Where-Object {
+  $_.Name -in @('life_manager.exe', 'life_manager_widget.exe')
+}
+if ($obsoleteBinaries) { throw 'Release bundle contains obsolete Life Manager executables.' }
 
 if (-not $Compiler) {
   $candidates = @(
@@ -45,8 +54,8 @@ if ($compilerVersion -notmatch '^7\.') {
   throw "Inno Setup 7 is required; compiler reported '$compilerVersion'."
 }
 
-& $Compiler (Join-Path $PSScriptRoot 'life_manager.iss')
+& $Compiler "/DAppVersion=$version" (Join-Path $PSScriptRoot 'life_manager.iss')
 if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
-$artifact = Join-Path $repo 'release\TodoPilot-1.0.1-win-x64-setup.exe'
+$artifact = Join-Path $repo "release\TodoPilot-$version-win-x64-setup.exe"
 if (-not (Test-Path -LiteralPath $artifact)) { throw 'Installer compiler did not create expected artifact.' }
 Get-FileHash -Algorithm SHA256 -LiteralPath $artifact

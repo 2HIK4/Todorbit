@@ -620,7 +620,8 @@ internal static class LifeManagerWidgetSelfTest {
     var previous = Environment.GetEnvironmentVariable("APPDATA");
     try {
       Environment.SetEnvironmentVariable("APPDATA", directory);
-      var expected = Path.Combine(directory, "TodoPilot");
+      var portable = AppDataPaths.PortableDirectoryIn(directory, AppContext.BaseDirectory);
+      var expected = portable ?? Path.Combine(directory, "TodoPilot");
       if (AppDataPaths.ActiveDirectory != expected) {
         throw new InvalidOperationException("Native APPDATA override was ignored.");
       }
@@ -640,10 +641,13 @@ internal static class LifeManagerWidgetSelfTest {
       if (AppDataPaths.ActiveDirectory != expected) {
         throw new InvalidOperationException("Legacy database was selected automatically.");
       }
-      var marker = Path.Combine(expected, "legacy-profile.json");
+      var marker = Path.Combine(directory, "TodoPilot", "legacy-profile.json");
+      Directory.CreateDirectory(Path.GetDirectoryName(marker)!);
       File.WriteAllText(marker, "{\"profile\":\"todopilot-upgrade-v1\"}");
-      if (AppDataPaths.ActiveDirectory != legacy) {
-        throw new InvalidOperationException("Upgrade marker was ignored.");
+      if (AppDataPaths.ActiveDirectory != (portable == null ? legacy : expected)) {
+        throw new InvalidOperationException(portable == null
+          ? "Upgrade marker was ignored."
+          : "Portable widget selected the installed upgrade profile.");
       }
       File.WriteAllText(marker, "{\"profile\":\"unrelated\"}");
       if (AppDataPaths.ActiveDirectory != expected) {

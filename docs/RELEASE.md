@@ -5,10 +5,11 @@
 The Windows Release bundle contains `TodoPilot.exe`,
 `TodoPilotWidget.exe`, Flutter assets, `flutter_windows.dll`, and
 `sqlite3.dll`. Inno Setup 7.1.0 compiles the installer at
-`release/TodoPilot-1.0.1-win-x64-setup.exe`. A portable ZIP is built at
-`release/TodoPilot-1.0.1-win-x64-portable.zip`. This is **not yet an approved
+`release/TodoPilot-1.0.2-win-x64-setup.exe`. A portable ZIP is built at
+`release/TodoPilot-1.0.2-win-x64-portable.zip`. This is **not yet an approved
 release candidate**: installed upgrade/uninstall and full manual acceptance
-remain unverified. The manual acceptance matrix is in `ACCEPTANCE.md`.
+remain unverified. License approval and TodoPilot name clearance also remain
+open. The manual acceptance matrix is in `ACCEPTANCE.md`.
 
 ## Build and install
 

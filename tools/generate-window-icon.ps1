@@ -30,6 +30,30 @@ foreach ($size in $sizes) {
   $images.Add($stream.ToArray())
   $stream.Dispose(); $graphics.Dispose(); $bitmap.Dispose()
 }
+# Flutter uses the same outlined mark at a larger source resolution.
+$size = 128
+$bitmap = [System.Drawing.Bitmap]::new($size, $size)
+$graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+$graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+$graphics.Clear([System.Drawing.Color]::Transparent)
+$graphics.ScaleTransform($size / 24.0, $size / 24.0)
+foreach ($layer in @(@('#050505', 3.5), @('#FFFFFF', 2.0))) {
+  $pen = [System.Drawing.Pen]::new(
+    [System.Drawing.ColorTranslator]::FromHtml($layer[0]), [float]$layer[1])
+  $pen.StartCap = $pen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+  $pen.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
+  $graphics.DrawArc($pen, 2, 2, 20, 20, -33.5, 133.5)
+  $graphics.DrawArc($pen, 2, 2, 20, 20, 146.5, 134.2)
+  foreach ($circle in @(@(12,12,3), @(19,5,2), @(5,19,2))) {
+    $cx, $cy, $radius = $circle
+    $graphics.DrawEllipse($pen, [float]($cx - $radius),
+      [float]($cy - $radius), [float](2 * $radius), [float](2 * $radius))
+  }
+  $pen.Dispose()
+}
+$bitmap.Save((Join-Path $Root 'assets/todopilot_brand_mark.png'),
+  [System.Drawing.Imaging.ImageFormat]::Png)
+$graphics.Dispose(); $bitmap.Dispose()
 $icoPath = Join-Path $Root 'windows/runner/resources/window_icon.ico'
 $stream = [System.IO.File]::Create($icoPath)
 $writer = [System.IO.BinaryWriter]::new($stream)
