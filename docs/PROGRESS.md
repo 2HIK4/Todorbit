@@ -20,6 +20,12 @@
 - A scoped scan of 51 Git revisions found no private data paths or common token
   signatures. Formal name clearance, disposable-user installer acceptance,
   native widget GUI checks, broader app flows, and Windows 10 remain open.
+- `main` was created as a linear descendant of the development branch at
+  `25abaab`, pushed to the private repository, and selected as its default.
+  Existing `master`, the development branch, tag, and prerelease were retained.
+  The verified local `flutter analyze` and all 191 serial Flutter tests passed;
+  the final Windows Release build and fresh GitHub runs were still in progress
+  when this note was written.
 
 
 ## Todorbit 1.0.3 public-release preparation (2026-10-20)
@@ -29,7 +35,8 @@
   shortcut, and documentation names now use Todorbit. The installer AppId,
   `%LOCALAPPDATA%\Programs\Life Manager`, `%APPDATA%\TodoPilot`, legacy
   `%APPDATA%\Life Manager`, upgrade marker, and native IPC identifiers remain
-  stable. Formal trademark clearance and GitHub destination are still open.
+  stable. Formal trademark clearance remains open. The GitHub destination is
+  confirmed in the final private review above.
 - Fixed two rename regressions before packaging: the native widget privacy
   session's expected main-process name and its Exit Completely process lookup
   now use Todorbit. CMake recognizes the old TodoPilot install-prefix cache and
