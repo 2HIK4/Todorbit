@@ -7,6 +7,7 @@ import 'package:life_manager/data/app_database.dart';
 import 'package:life_manager/data/appearance_preference_store.dart';
 import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/domain/appearance.dart';
+import 'package:life_manager/domain/task_view_preferences.dart';
 
 void main() {
   test('appearance persists and synchronizes between process stores', () async {
@@ -34,6 +35,20 @@ void main() {
         await AppearancePreferenceStore(file).load(),
         ThemeModePreference.light,
       );
+      expect(
+        first.taskViewPreferences.newTaskPlannedDay,
+        NewTaskPlannedDay.today,
+      );
+      await first.setTaskViewPreferences(
+        const TaskViewPreferences(
+          newTaskPlannedDay: NewTaskPlannedDay.noDate,
+          keepCompletedVisible: true,
+        ),
+      );
+      final persisted = await secondProcessStore.loadTaskViewPreferences();
+      expect(persisted.newTaskPlannedDay, NewTaskPlannedDay.noDate);
+      expect(persisted.keepCompletedVisible, isTrue);
+      expect(await secondProcessStore.load(), ThemeModePreference.light);
     } finally {
       await firstDatabase.close();
       await directory.delete(recursive: true);

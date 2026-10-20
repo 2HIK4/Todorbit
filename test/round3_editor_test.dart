@@ -117,7 +117,7 @@ void main() {
           controller.tasks.single.projectId,
           controller.projects.single.id,
         );
-        expect(controller.tasks.single.scheduledDate, isNull);
+        expect(controller.tasks.single.scheduledDate, localDate(DateTime.now()));
       } finally {
         await tester.pumpWidget(const SizedBox.shrink());
         await db.close();

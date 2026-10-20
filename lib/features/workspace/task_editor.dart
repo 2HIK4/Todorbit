@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
+import '../../domain/task_view_preferences.dart';
 import '../shared/icon_picker.dart';
+import '../shared/spelling_review_button.dart';
 import '../../domain/recurrence.dart';
 import '../calendar/session_editor.dart';
 import '../time_tracking/time_tracking_dialog.dart';
@@ -14,6 +16,13 @@ import 'series_editor.dart';
 import 'task_resources_section.dart';
 import 'task_composition_section.dart';
 import 'progressive_plan_dialog.dart';
+
+class _DraftSubtask {
+  _DraftSubtask(this.title, {this.plannedDay, this.deadline});
+  String title;
+  DateTime? plannedDay;
+  DateTime? deadline;
+}
 
 class TaskEditor extends ConsumerStatefulWidget {
   const TaskEditor({
@@ -42,6 +51,9 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   late final TextEditingController recurrenceInterval;
   late final TextEditingController recurrenceCount;
   late final TextEditingController progressiveSteps;
+  late final TextEditingController checklistEntry;
+  final List<String> draftChecklist = [];
+  final List<_DraftSubtask> draftSubtasks = [];
   final ScrollController editorScroll = ScrollController();
   late TaskStatus status;
   late int priority;
@@ -83,6 +95,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     recurrenceInterval = TextEditingController(text: '1');
     recurrenceCount = TextEditingController();
     progressiveSteps = TextEditingController();
+    checklistEntry = TextEditingController();
     schedulingLocked = task?.schedulingLocked ?? false;
     status = task?.status ?? TaskStatus.notStarted;
     priority = task?.priority ?? 0;
@@ -103,9 +116,16 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         if (project.id == projectId) categoryId = project.categoryId;
       }
     }
-    scheduled = task?.scheduledDate == null
-        ? widget.initialScheduled
-        : DateTime.parse(task!.scheduledDate!);
+    scheduled = task != null
+        ? (task.scheduledDate == null
+              ? null
+              : DateTime.parse(task.scheduledDate!))
+        : widget.initialScheduled ??
+              (workspace.view != WorkspaceView.anytime &&
+                      workspace.taskViewPreferences.newTaskPlannedDay ==
+                          NewTaskPlannedDay.today
+                  ? DateTime.now()
+                  : null);
     deadline = task?.deadlineDate == null
         ? null
         : DateTime.parse(task!.deadlineDate!);
@@ -120,6 +140,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     recurrenceInterval.dispose();
     recurrenceCount.dispose();
     progressiveSteps.dispose();
+    checklistEntry.dispose();
     editorScroll.dispose();
     super.dispose();
   }
@@ -216,6 +237,275 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     }
   }
 
+  void _addDraftChecklist() {
+    final value = checklistEntry.text.trim();
+    if (value.isEmpty) return;
+    setState(() {
+      draftChecklist.add(value);
+      checklistEntry.clear();
+    });
+  }
+
+  Future<void> _editDraftChecklist(int index) async {
+    final field = TextEditingController(text: draftChecklist[index]);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Edit checklist item'),
+        content: SizedBox(
+          width: 420,
+          child: TextField(
+            controller: field,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: 'Activity',
+              suffixIcon: SpellingReviewButton(
+                controller: field,
+                enabled: ref
+                    .read(appControllerProvider)
+                    .taskViewPreferences
+                    .spellCheckEnabled,
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, field.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    field.dispose();
+    if (result != null && result.isNotEmpty && mounted) {
+      setState(() => draftChecklist[index] = result);
+    }
+  }
+
+  Future<void> _editDraftSubtask([int? index]) async {
+    final previous = index == null ? null : draftSubtasks[index];
+    final field = TextEditingController(text: previous?.title ?? '');
+    DateTime? plannedDay = previous?.plannedDay;
+    DateTime? childDeadline = previous?.deadline;
+    final result = await showDialog<_DraftSubtask>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, update) => AlertDialog(
+          title: Text(index == null ? 'Add subtask' : 'Edit subtask'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: field,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'Title',
+                    suffixIcon: SpellingReviewButton(
+                      controller: field,
+                      enabled: ref
+                          .read(appControllerProvider)
+                          .taskViewPreferences
+                          .spellCheckEnabled,
+                    ),
+                  ),
+                ),
+                for (final isDeadline in [false, true])
+                  ListTile(
+                    title: Text(isDeadline ? 'Deadline' : 'Planned day'),
+                    subtitle: Text(
+                      (isDeadline ? childDeadline : plannedDay) == null
+                          ? 'No date'
+                          : localDate(
+                              (isDeadline ? childDeadline : plannedDay)!,
+                            ),
+                    ),
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: dialogContext,
+                        initialDate:
+                            (isDeadline ? childDeadline : plannedDay) ??
+                            DateTime.now(),
+                        firstDate: DateTime(1900),
+                        lastDate: DateTime(2100),
+                      );
+                      if (picked != null) {
+                        update(() {
+                          if (isDeadline) {
+                            childDeadline = picked;
+                          } else {
+                            plannedDay = picked;
+                          }
+                        });
+                      }
+                    },
+                    trailing: (isDeadline ? childDeadline : plannedDay) == null
+                        ? null
+                        : IconButton(
+                            tooltip:
+                                'Clear ${isDeadline ? 'deadline' : 'planned day'}',
+                            icon: const Icon(Icons.close),
+                            onPressed: () => update(() {
+                              if (isDeadline) {
+                                childDeadline = null;
+                              } else {
+                                plannedDay = null;
+                              }
+                            }),
+                          ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final cleaned = field.text.trim();
+                if (cleaned.isNotEmpty) {
+                  Navigator.pop(
+                    dialogContext,
+                    _DraftSubtask(
+                      cleaned,
+                      plannedDay: plannedDay,
+                      deadline: childDeadline,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+    field.dispose();
+    if (result != null && mounted) {
+      setState(() {
+        if (index == null) {
+          draftSubtasks.add(result);
+        } else {
+          draftSubtasks[index] = result;
+        }
+      });
+    }
+  }
+
+  Widget _draftCompositionSection() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('Checklist', style: Theme.of(context).textTheme.titleSmall),
+      for (var index = 0; index < draftChecklist.length; index++)
+        ListTile(
+          dense: true,
+          title: Text(draftChecklist[index]),
+          trailing: PopupMenuButton<String>(
+            tooltip: 'Draft checklist actions',
+            onSelected: (action) {
+              if (action == 'edit') {
+                _editDraftChecklist(index);
+              } else if (action == 'remove') {
+                setState(() => draftChecklist.removeAt(index));
+              } else if (action == 'up' || action == 'down') {
+                setState(() {
+                  final item = draftChecklist.removeAt(index);
+                  draftChecklist.insert(
+                    index + (action == 'up' ? -1 : 1),
+                    item,
+                  );
+                });
+              }
+            },
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 'edit', child: Text('Edit')),
+              if (index > 0)
+                const PopupMenuItem(value: 'up', child: Text('Move up')),
+              if (index < draftChecklist.length - 1)
+                const PopupMenuItem(value: 'down', child: Text('Move down')),
+              const PopupMenuItem(value: 'remove', child: Text('Remove')),
+            ],
+          ),
+        ),
+      Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: checklistEntry,
+              decoration: InputDecoration(
+                labelText: 'New checklist item',
+                suffixIcon: SpellingReviewButton(
+                  controller: checklistEntry,
+                  enabled: ref
+                      .watch(appControllerProvider)
+                      .taskViewPreferences
+                      .spellCheckEnabled,
+                ),
+              ),
+              onSubmitted: (_) => _addDraftChecklist(),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Add draft checklist item',
+            onPressed: _addDraftChecklist,
+            icon: const Icon(Icons.add),
+          ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Subtasks',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+          ),
+          TextButton.icon(
+            onPressed: () => _editDraftSubtask(),
+            icon: const Icon(Icons.add),
+            label: const Text('Add subtask'),
+          ),
+        ],
+      ),
+      for (var index = 0; index < draftSubtasks.length; index++)
+        ListTile(
+          dense: true,
+          title: Text(draftSubtasks[index].title),
+          subtitle: Text(
+            [
+              if (draftSubtasks[index].plannedDay != null)
+                'Planned ${localDate(draftSubtasks[index].plannedDay!)}',
+              if (draftSubtasks[index].deadline != null)
+                'Deadline ${localDate(draftSubtasks[index].deadline!)}',
+            ].join(' · '),
+          ),
+          trailing: Wrap(
+            children: [
+              IconButton(
+                tooltip: 'Edit draft subtask',
+                onPressed: () => _editDraftSubtask(index),
+                icon: const Icon(Icons.edit_outlined),
+              ),
+              IconButton(
+                tooltip: 'Remove draft subtask',
+                onPressed: () => setState(() => draftSubtasks.removeAt(index)),
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+        ),
+    ],
+  );
+
   Future<void> _save() async {
     if (title.text.trim().isEmpty) {
       ScaffoldMessenger.of(context)
@@ -297,8 +587,36 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
           if (parent == null) throw StateError('Parent task is unavailable');
           await controller.addSubtask(parent, draft);
         } else if (recurrenceKind == null) {
-          await controller.addTask(draft);
+          await controller.addTaskWithComposition(
+            draft,
+            [
+              ...draftChecklist,
+              if (checklistEntry.text.trim().isNotEmpty)
+                checklistEntry.text.trim(),
+            ],
+            [
+              for (final child in draftSubtasks)
+                TaskDraft(
+                  title: child.title,
+                  categoryId: categoryId,
+                  projectId: projectId,
+                  scheduledDate: child.plannedDay == null
+                      ? null
+                      : localDate(child.plannedDay!),
+                  deadlineDate: child.deadline == null
+                      ? null
+                      : localDate(child.deadline!),
+                ),
+            ],
+          );
         } else {
+          if (draftChecklist.isNotEmpty ||
+              checklistEntry.text.trim().isNotEmpty ||
+              draftSubtasks.isNotEmpty) {
+            throw const FormatException(
+              'Draft checklist items and subtasks cannot be added to a recurring task yet',
+            );
+          }
           if (draft.scheduledDate == null) {
             throw const FormatException(
               'Select a scheduled day for recurrence',
@@ -617,8 +935,14 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                         child: TextField(
                           controller: title,
                           autofocus: widget.task == null,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Title *',
+                            suffixIcon: SpellingReviewButton(
+                              controller: title,
+                              enabled: controller
+                                  .taskViewPreferences
+                                  .spellCheckEnabled,
+                            ),
                           ),
                         ),
                       ),
@@ -652,7 +976,14 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                     controller: notes,
                     minLines: 2,
                     maxLines: 4,
-                    decoration: const InputDecoration(labelText: 'Notes'),
+                    decoration: InputDecoration(
+                      labelText: 'Notes',
+                      suffixIcon: SpellingReviewButton(
+                        controller: notes,
+                        enabled:
+                            controller.taskViewPreferences.spellCheckEnabled,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -1027,6 +1358,10 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                       ),
                     ],
                   ),
+                  if (currentTask == null && widget.parentTaskId == null) ...[
+                    const SizedBox(height: 16),
+                    _draftCompositionSection(),
+                  ],
                   if (widget.task != null) ...[
                     const SizedBox(height: 16),
                     OutlinedButton.icon(

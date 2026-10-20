@@ -1,5 +1,43 @@
 # Windows v1.0 final acceptance record
 
+## Feedback round 4, part 1 (2026-10-20)
+
+Automated checks run on disposable data. An isolated Release window displayed
+Todorbit branding and a Today default in New Task. Ten secondary launches for
+the same isolated APPDATA profile left one build process. A second independent
+APPDATA profile ran beside it with its own SQLite file. `--appearance` opened
+Customize Theme in the existing window; repeating the command left one visible
+dialog. The native widget self-test passed, and read-only shell diagnostics
+found a visible layered `WS_CHILD` under `SHELLDLL_DefView`. Computer Use did
+not expose that Explorer child as a targetable window, so its pixels, mouse
+dragging, resizing, lock, DPI, and Win+D behavior remain unverified.
+
+Part 2 manual checks on isolated profiles:
+
+1. Drag the unlocked widget across monitors at 100% and mixed DPI; resize from
+   each edge and corner; release, restart, and confirm the exact geometry.
+   Repeat with Layout Lock, Win+D, normal-window overlap, task checkbox, and
+   the native editor. Confirm repaint has no snap-back or flicker.
+2. Repeatedly click Open Todorbit and Customize Theme in the widget with the
+   app open and minimized. Check focus, one process/dialog, and Open full
+   details routing. Repeat with two independent portable extractions.
+3. Use every default hotkey, record a custom combination, test duplicate and
+   reserved keys, save/rename/delete/switch presets, restart, and type in
+   editors and modal dialogs without unintended actions.
+4. Review misspellings in title, notes, checklist, and subtask fields with an
+   installed English (United States) Windows dictionary. Check suggestions,
+   keep-as-written, technical terms/URLs, and the disabled preference.
+5. Drag one and multiple Explorer files into task Resources; confirm target
+   highlight, attach/link choice, duplicate path handling, missing/oversized
+   file errors, resource labels, and portable-copy versus local-link behavior.
+6. Create, edit, reorder, and cancel draft checklist items and subtasks;
+   verify independent child dates, no orphan records, and Today/No Date/Anytime
+   defaults. Switch completed-task display and reopen a completed task.
+
+Spell checking is an explicit on-demand review, not inline misspelling marks.
+The file-drop receiver accepts local Explorer files only. Actual native drop
+input and the Windows COM dictionary result still require GUI observation.
+
 ## Todorbit 1.0.3 rebrand checkpoint (2026-10-20)
 
 The 1.0.2 Release GUI was later enumerated in an isolated Windows profile. Its

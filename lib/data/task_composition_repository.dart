@@ -1,6 +1,40 @@
 part of 'life_repository.dart';
 
 extension TaskCompositionRepository on LifeRepository {
+  Future<LifeTask> addTaskWithComposition(
+    TaskDraft parent,
+    List<String> checklist,
+    List<TaskDraft> subtasks,
+  ) async {
+    _validate(parent);
+    for (final title in checklist) {
+      if (title.trim().isEmpty) {
+        throw ArgumentError('Checklist title is required');
+      }
+    }
+    for (final child in subtasks) {
+      _validate(child);
+    }
+    late LifeTask created;
+    await db.transaction(() async {
+      created = await addTask(parent);
+      for (final title in checklist) {
+        await addChecklistItem(created.id, title);
+      }
+      for (final child in subtasks) {
+        final saved = await addTask(child);
+        await db.customInsert(
+          'INSERT INTO task_parent_links(child_id,parent_id) VALUES(?,?)',
+          variables: [
+            Variable.withString(saved.id),
+            Variable.withString(created.id),
+          ],
+        );
+      }
+    });
+    return created;
+  }
+
   Future<Map<String, String>> taskParents() async {
     final rows = await db
         .customSelect('SELECT child_id,parent_id FROM task_parent_links')

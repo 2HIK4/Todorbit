@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../../domain/task_composition.dart';
+import '../shared/spelling_review_button.dart';
 
 class TaskCompositionSection extends ConsumerStatefulWidget {
   const TaskCompositionSection({
@@ -45,10 +46,22 @@ class _TaskCompositionSectionState
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Edit checklist item'),
-        content: TextField(
-          controller: field,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Activity'),
+        content: SizedBox(
+          width: 420,
+          child: TextField(
+            controller: field,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: 'Activity',
+              suffixIcon: SpellingReviewButton(
+                controller: field,
+                enabled: ref
+                    .read(appControllerProvider)
+                    .taskViewPreferences
+                    .spellCheckEnabled,
+              ),
+            ),
+          ),
         ),
         actions: [
           TextButton(
@@ -107,7 +120,7 @@ class _TaskCompositionSectionState
                 ),
               ),
               Expanded(
-                child: Text(
+                child: SelectableText(
                   items[index].title,
                   style: TextStyle(
                     decoration: items[index].done
@@ -152,8 +165,12 @@ class _TaskCompositionSectionState
             Expanded(
               child: TextField(
                 controller: entry,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'New checklist item',
+                  suffixIcon: SpellingReviewButton(
+                    controller: entry,
+                    enabled: controller.taskViewPreferences.spellCheckEnabled,
+                  ),
                 ),
                 onSubmitted: (_) => _add(),
               ),

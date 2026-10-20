@@ -275,7 +275,7 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
 
   private void OpenMainApp() {
     try {
-      Process.Start(new ProcessStartInfo(ResolveMainApp()) { UseShellExecute = true });
+      Process.Start(new ProcessStartInfo(ResolveMainApp()) { UseShellExecute = false });
     } catch (Exception error) {
       MessageBox.Show(error.Message, "Todorbit widget",
         MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -346,6 +346,7 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
   private const int WmDisplayChange = 0x007E;
   private const int WmSize = 0x0005;
   private const int WmDpiChanged = 0x02E0;
+  private const int WmCaptureChanged = 0x0215;
   private const int WsChild = 0x40000000;
   private const int WsVisible = 0x10000000;
   private const int WsClipChildren = 0x02000000;
@@ -448,22 +449,25 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
         else Click(LogicalPoint(message.LParam));
         message.Result = 0;
         return;
+      case WmCaptureChanged:
+        if (dragging || resizing) EndMoveOrResize();
+        break;
       case WmMouseWheel:
         var delta = unchecked((short)((message.WParam.ToInt64() >> 16) & 0xFFFF));
         Scroll(delta > 0 ? -1 : 1);
         message.Result = 0;
         return;
       case WmDisplayChange:
-        Reposition();
+        if (!dragging && !resizing) Reposition();
         Present("display-change");
         break;
       case WmDpiChanged:
-        Reposition();
+        if (!dragging && !resizing) Reposition();
         Present("dpi-changed");
         break;
       case WmSize:
         PositionQuickAdd();
-        Present("size-changed", updateNow: false);
+        if (!dragging && !resizing) Present("size-changed", updateNow: false);
         break;
       case WmDestroy:
         if (!disposed) {
@@ -509,7 +513,10 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     var image = bitmap.GetHbitmap(Color.FromArgb(0));
     var previous = Native.SelectObject(memory, image);
     try {
-      var destination = new Native.Point { X = settings.X, Y = settings.Y };
+      // SetWindowPos owns live geometry while dragging. Settings are only the
+      // last committed position; using them here moves the layered child back
+      // on every paint/WM_SIZE until mouse-up.
+      var destination = new Native.Point { X = bounds.Left, Y = bounds.Top };
       // For a layered Explorer child, UpdateLayeredWindow uses parent-client
       // coordinates on this host even though top-level windows use screen space.
       if (!Native.ScreenToClient(Native.GetParent(Handle), ref destination)) return;
@@ -767,33 +774,15 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     if (!Native.GetCursorPos(out var cursor)) return;
     var dx = cursor.X - dragStart.X;
     var dy = cursor.Y - dragStart.Y;
-    var left = dragBounds.Left;
-    var top = dragBounds.Top;
-    var right = dragBounds.Right;
-    var bottom = dragBounds.Bottom;
-    if (dragging) {
-      left += dx; right += dx; top += dy; bottom += dy;
-    } else {
-      if (resizeEdge.HasFlag(WidgetResizeEdge.Left)) left += dx;
-      if (resizeEdge.HasFlag(WidgetResizeEdge.Right)) right += dx;
-      if (resizeEdge.HasFlag(WidgetResizeEdge.Top)) top += dy;
-      if (resizeEdge.HasFlag(WidgetResizeEdge.Bottom)) bottom += dy;
-      var minWidth = Pixel(260);
-      var minHeight = Pixel(230);
-      if (right - left < minWidth) {
-        if (resizeEdge.HasFlag(WidgetResizeEdge.Left)) left = right - minWidth;
-        else right = left + minWidth;
-      }
-      if (bottom - top < minHeight) {
-        if (resizeEdge.HasFlag(WidgetResizeEdge.Top)) top = bottom - minHeight;
-        else bottom = top + minHeight;
-      }
-    }
-    var width = right - left;
-    var height = bottom - top;
+    var proposed = WidgetGeometry.MoveOrResize(
+      Rectangle.FromLTRB(dragBounds.Left, dragBounds.Top,
+        dragBounds.Right, dragBounds.Bottom),
+      dx, dy, dragging, resizeEdge, Pixel(260), Pixel(230));
+    var width = proposed.Width;
+    var height = proposed.Height;
     var screenPoint = new Native.Point {
-      X = left,
-      Y = top,
+      X = proposed.Left,
+      Y = proposed.Top,
     };
     var screen = Screen.FromPoint(new Point(screenPoint.X, screenPoint.Y));
     var clamped = WidgetGeometry.ClampToWorkingArea(
@@ -1049,7 +1038,7 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
   private void OpenMainApp(string? taskId = null, bool appearanceSettings = false) {
     RunAction(() => {
       var path = ResolveMainApp();
-      var start = new ProcessStartInfo(path) { UseShellExecute = true };
+      var start = new ProcessStartInfo(path) { UseShellExecute = false };
       if (!string.IsNullOrWhiteSpace(taskId)) {
         start.ArgumentList.Add("--task-id");
         start.ArgumentList.Add(taskId);

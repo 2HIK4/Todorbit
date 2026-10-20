@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_manager/data/app_database.dart';
 import 'package:life_manager/data/life_repository.dart';
@@ -19,6 +20,51 @@ class _FileDialog extends WindowsResourceDialog {
 }
 
 void main() {
+  testWidgets('Explorer drop links one file and ignores duplicate paths', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    const channel = MethodChannel('life_manager/file_drop');
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      channel, (call) async => call.method == 'available',
+    );
+    final directory = Directory.systemTemp.createTempSync('resource-drop-');
+    final file = File('${directory.path}/paper.txt')..writeAsStringSync('text');
+    final database = AppDatabase(NativeDatabase.memory());
+    final repository = LifeRepository(database);
+    try {
+      final task = await repository.addTask(const TaskDraft(title: 'Task'));
+      await tester.pumpWidget(MaterialApp(home: Scaffold(
+        body: TaskResourcesSection(taskId: task.id, repository: repository),
+      )));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Drop files here'), findsOneWidget);
+      final center = tester.getCenter(find.byType(TaskResourcesSection));
+      final arguments = {'x': center.dx, 'y': center.dy,
+        'files': [file.path, file.path]};
+      final message = const StandardMethodCodec().encodeMethodCall(
+        MethodCall('drop', arguments),
+      );
+      tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+        'life_manager/file_drop', message, (_) {},
+      );
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Add 1 file?'), findsOneWidget);
+      await tester.tap(find.text('Link originals'));
+      await tester.pumpAndSettle();
+      expect(await repository.taskResources(task.id), hasLength(1));
+      expect((await repository.taskResources(task.id)).single.kind,
+          TaskResourceKind.externalFile);
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
+      await database.close();
+      directory.deleteSync(recursive: true);
+      await tester.binding.setSurfaceSize(null);
+    }
+  });
+
   testWidgets('missing external file stays visible as unavailable', (
     tester,
   ) async {

@@ -13,6 +13,7 @@ import '../../domain/recurrence.dart';
 import '../../domain/time_tracking.dart';
 import '../../domain/saved_views.dart';
 import '../../domain/appearance.dart';
+import '../../domain/hotkeys.dart';
 import '../branding/brand_mark.dart';
 import '../calendar/calendar_view.dart';
 import '../habits/habits_view.dart';
@@ -26,6 +27,8 @@ import '../settings/backup_dialog.dart';
 import '../settings/notification_dialog.dart';
 import '../settings/privacy_dialog.dart';
 import '../settings/theme_dialog.dart';
+import '../settings/task_view_settings_dialog.dart';
+import '../settings/hotkeys_dialog.dart';
 import '../scheduling/smart_reschedule.dart';
 import '../shared/icon_picker.dart';
 import '../widget/native_widget_service.dart';
@@ -49,6 +52,8 @@ class Workspace extends ConsumerStatefulWidget {
 }
 
 class _WorkspaceState extends ConsumerState<Workspace> {
+  static const _activationChannel = MethodChannel('life_manager/activation');
+  bool _appearanceDialogOpen = false;
   bool creating = false;
   DateTime? newTaskInitialDate;
   final nativeWidget = NativeWidgetService();
@@ -58,14 +63,23 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   @override
   void initState() {
     super.initState();
+    if (Platform.isWindows) {
+      _activationChannel.setMethodCallHandler((call) async {
+        if (call.method != 'activate' || !mounted) return;
+        final command = call.arguments;
+        if (command == 'appearance') {
+          _openAppearanceDialog();
+        } else if (command is String && command.startsWith('task:')) {
+          ref.read(appControllerProvider).select(command.substring(5));
+        }
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _activationChannel.invokeMethod<void>('ready');
+      });
+    }
     if (widget.openAppearance) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          showDialog<void>(
-            context: context,
-            builder: (_) => const ThemeDialog(),
-          );
-        }
+        if (mounted) _openAppearanceDialog();
       });
     }
     if (widget.legacyImportFile case final legacyFile?) {
@@ -111,9 +125,23 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     });
   }
 
+  Future<void> _openAppearanceDialog() async {
+    if (!mounted || _appearanceDialogOpen) return;
+    _appearanceDialogOpen = true;
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (_) => const ThemeDialog(),
+      );
+    } finally {
+      _appearanceDialogOpen = false;
+    }
+  }
+
   @override
   void dispose() {
     _clock?.cancel();
+    if (Platform.isWindows) _activationChannel.setMethodCallHandler(null);
     super.dispose();
   }
 
@@ -385,14 +413,46 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     _ => 'view:${controller.view.name}',
   };
 
+  void _runHotkey(HotkeyAction action, AppController controller) {
+    if (ModalRoute.of(context)?.isCurrent != true) return;
+    switch (action) {
+      case HotkeyAction.newTask:
+        _newTask();
+      case HotkeyAction.quickSearch:
+        _showSearch();
+      case HotkeyAction.advancedSearch:
+        _showAdvancedSearch();
+      case HotkeyAction.today:
+        controller.navigate(WorkspaceView.today);
+      case HotkeyAction.allTasks:
+        controller.navigate(WorkspaceView.all);
+      case HotkeyAction.calendar:
+        controller.navigate(WorkspaceView.calendar);
+      case HotkeyAction.anytime:
+        controller.navigate(WorkspaceView.anytime);
+      case HotkeyAction.settings:
+        showDialog<void>(
+          context: context,
+          builder: (_) => const TaskViewSettingsDialog(),
+        );
+      case HotkeyAction.focus:
+        if (controller.activeTimer != null) {
+          _run(() => controller.stopTimer());
+        } else if (controller.selectedTask case final selected?) {
+          if (selected.isOpen) _run(() => controller.startFocusTask(selected));
+        }
+      case HotkeyAction.refresh:
+        _run(() => controller.refresh());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(appControllerProvider);
     return CallbackShortcuts(
       bindings: {
-        const SingleActivator(LogicalKeyboardKey.keyN, control: true): _newTask,
-        const SingleActivator(LogicalKeyboardKey.keyK, control: true):
-            _showSearch,
+        for (final entry in controller.hotkeys.bindings.entries)
+          entry.value.activator: () => _runHotkey(entry.key, controller),
       },
       child: Focus(
         autofocus: true,
@@ -838,7 +898,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               IconButton(
-                tooltip: 'Quick Search (Ctrl+K)',
+                tooltip:
+                    'Quick Search (${controller.hotkeys.bindings[HotkeyAction.quickSearch]!.display})',
                 onPressed: _showSearch,
                 icon: const Icon(Icons.search_outlined),
               ),
@@ -946,9 +1007,16 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     builder: (_) => const PrivacyDialog(),
                   );
                 } else if (value == 'appearance') {
+                  _openAppearanceDialog();
+                } else if (value == 'task_preferences') {
                   showDialog<void>(
                     context: context,
-                    builder: (_) => const ThemeDialog(),
+                    builder: (_) => const TaskViewSettingsDialog(),
+                  );
+                } else if (value == 'hotkeys') {
+                  showDialog<void>(
+                    context: context,
+                    builder: (_) => const HotkeysDialog(),
                   );
                 } else if (value == 'lock') {
                   privacy.lock();
@@ -977,6 +1045,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   value: 'privacy',
                   child: Text('Privacy and app lock'),
                 ),
+                const PopupMenuItem(
+                  value: 'task_preferences',
+                  child: Text('Task display and defaults'),
+                ),
+                const PopupMenuItem(value: 'hotkeys', child: Text('Hotkeys')),
                 if (Platform.isWindows)
                   const PopupMenuItem(
                     value: 'profile',
@@ -1413,6 +1486,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         decoration: done ? TextDecoration.lineThrough : null,
+                        color: done
+                            ? scheme.onSurface.withValues(alpha: 0.55)
+                            : null,
                       ),
                     ),
                     if (task.scheduledDate != null ||

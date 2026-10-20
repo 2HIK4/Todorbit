@@ -1,5 +1,51 @@
 # Progress
 
+## Feedback round 4, part 1 implementation (2026-10-20)
+
+- Created `feature/todorbit-feedback-round4` from fetched `origin/main` with a
+  clean initial working tree. The public v1.0.3 tag, release, assets, and
+  published branch remain untouched. Read the private screenshot references
+  from `D:\AI_Projects\Todorbit_Feedback_Round4_Screenshots`; current source
+  and an isolated Release GUI show Todorbit branding, so the TodoPilot image
+  appears to be from an older executable.
+- Fixed widget movement snap-back: `RenderLayer` reused saved settings X/Y
+  while `SetWindowPos` was applying live drag coordinates. Painting now uses
+  the HWND rectangle; resize repaint is coalesced, capture loss saves current
+  geometry, and DPI/display repositioning waits until drag ends. Geometry
+  calculations have self-test coverage. Real mouse movement remains pending
+  because the Explorer child is not targetable by Computer Use.
+- Added a per-profile native main-app mutex and same-window activation with
+  queued task/appearance commands. Ten secondary launches on one disposable
+  profile left one process; an independent profile ran simultaneously with
+  its own database. `--appearance` routed to one existing Customize Theme
+  dialog in isolated GUI observation. Native widget launch now inherits its
+  explicit APPDATA override rather than delegating to the shell. Widget menu
+  click and minimized restore still need direct GUI checks.
+- Added a functional per-profile Hotkeys editor with capture, conflict and
+  reserved-key rejection, search, reset, and named preset operations. Added
+  task display/default settings: Today by default, No Date option, Anytime
+  exception, and completed tasks optionally faded at the bottom of eligible
+  active lists. Completed view remains independent.
+- New Task now holds draft checklist items and one-level subtasks with child
+  planned dates/deadlines until Save. Repository creation is transactional;
+  cancellation writes no children. Checklist text is selectable without
+  editing. Existing task checklist edit dialog has stable width.
+- Added an on-demand local Windows spelling review for task titles, notes,
+  checklist items, and subtask titles, with explicit suggestion choice and an
+  enable/disable setting. It currently uses the installed `en-US` dictionary;
+  Windows COM GUI behavior still needs observation. Added native Explorer file
+  drop handling in task Resources, with target feedback, path deduplication,
+  validation, and attach-copy/link-original choice. The Windows drop path still
+  needs real Explorer drag testing.
+- No SQLite schema change. New preferences extend the existing per-profile
+  appearance settings JSON. All 198 Flutter tests pass with serial execution,
+  and `flutter analyze` reports no issues. The final native Release build has
+  zero warnings/errors and its widget self-test passes on a disposable profile.
+  The final Windows Release build passes; its packaged widget self-test and
+  the disposable-profile single-instance regression script also pass. Actual
+  widget dragging, native Explorer drop, and Windows spell-checker GUI behavior
+  still need direct observation. The manual matrix is in `docs/ACCEPTANCE.md`.
+
 ## Final private GitHub review (2026-10-20)
 
 - Authenticated GitHub account `2HIK4` and private repository `2HIK4/Todorbit`

@@ -264,7 +264,7 @@ internal sealed class LifeManagerWidget : Form {
   private void OpenMainApp() {
     try {
       var path = ResolveMainApp();
-      Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+      Process.Start(new ProcessStartInfo(path) { UseShellExecute = false });
       status.Text = "Main app opened";
     } catch (Exception error) {
       ShowError(error.Message);

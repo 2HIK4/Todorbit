@@ -9,6 +9,7 @@ import 'package:life_manager/data/app_database.dart';
 import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/domain/models.dart';
 import 'package:life_manager/main.dart';
+import 'package:life_manager/features/workspace/task_editor.dart';
 
 void main() {
   testWidgets('task details add a checklist item and a real subtask', (
@@ -35,7 +36,10 @@ void main() {
       await tester.tap(find.text('Course'));
       await tester.pumpAndSettle();
       final checklist = find.widgetWithText(TextField, 'New checklist item');
-      await tester.ensureVisible(checklist);
+      final editorScroll = find.descendant(
+        of: find.byType(TaskEditor), matching: find.byType(Scrollable),
+      ).first;
+      await tester.scrollUntilVisible(checklist, 180, scrollable: editorScroll);
       await tester.enterText(checklist, 'Watch lesson 1');
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
@@ -44,7 +48,7 @@ void main() {
         'Watch lesson 1',
       );
       final addSubtask = find.text('Add subtask');
-      await tester.ensureVisible(addSubtask);
+      await tester.scrollUntilVisible(addSubtask, 180, scrollable: editorScroll);
       await tester.tap(addSubtask);
       await tester.pumpAndSettle();
       await tester.enterText(

@@ -131,7 +131,7 @@ void main() {
         find.widgetWithText(TextField, 'Title *'),
         'Daily reading',
       );
-      await tester.tap(find.text('Scheduled day: None'));
+      await tester.tap(find.textContaining('Scheduled day:').first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('OK'));
       await tester.pumpAndSettle();

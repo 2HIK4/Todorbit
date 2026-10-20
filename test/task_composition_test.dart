@@ -8,6 +8,49 @@ import 'package:life_manager/domain/models.dart';
 import 'package:life_manager/domain/trash.dart';
 
 void main() {
+  test(
+    'new task composition saves atomically and rejects invalid drafts',
+    () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      final repo = LifeRepository(database);
+      try {
+        await expectLater(
+          repo.addTaskWithComposition(
+            const TaskDraft(title: 'Parent'),
+            ['Valid', '  '],
+            [const TaskDraft(title: 'Child')],
+          ),
+          throwsArgumentError,
+        );
+        expect(await repo.tasks(), isEmpty);
+        final parent = await repo.addTaskWithComposition(
+          const TaskDraft(title: 'Parent', notes: 'Notes'),
+          ['First', 'Second'],
+          [
+            const TaskDraft(
+              title: 'Child',
+              scheduledDate: '2026-10-21',
+              deadlineDate: '2026-10-23',
+            ),
+          ],
+        );
+        final children = await repo.taskParents();
+        expect(children.values, [parent.id]);
+        final child = (await repo.tasks()).singleWhere(
+          (item) => item.id != parent.id,
+        );
+        expect(child.scheduledDate, '2026-10-21');
+        expect(child.deadlineDate, '2026-10-23');
+        expect((await repo.checklistItems()).map((item) => item.title), [
+          'First',
+          'Second',
+        ]);
+      } finally {
+        await database.close();
+      }
+    },
+  );
+
   test('checklist edits, order, and progress survive restart', () async {
     final root = await Directory.systemTemp.createTemp('life-checklist-');
     final file = File('${root.path}${Platform.pathSeparator}tasks.sqlite');

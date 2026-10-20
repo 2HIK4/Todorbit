@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 
 import '../domain/appearance.dart';
+import '../domain/task_view_preferences.dart';
+import '../domain/hotkeys.dart';
 import 'profile_paths.dart';
 
 class AppearancePreferenceStore {
@@ -53,6 +55,33 @@ class AppearancePreferenceStore {
       'customization': value.toJson(),
       'widgetOpacity': value.widgetOpacity,
     });
+  }
+
+  Future<TaskViewPreferences> loadTaskViewPreferences() async {
+    final data = await _read();
+    return TaskViewPreferences(
+      newTaskPlannedDay: data['newTaskPlannedDay'] == 'noDate'
+          ? NewTaskPlannedDay.noDate
+          : NewTaskPlannedDay.today,
+      keepCompletedVisible: data['keepCompletedVisible'] == true,
+      spellCheckEnabled: data['spellCheckEnabled'] != false,
+    );
+  }
+
+  Future<void> saveTaskViewPreferences(TaskViewPreferences value) async {
+    await _write({
+      ...await _read(),
+      'newTaskPlannedDay': value.newTaskPlannedDay.name,
+      'keepCompletedVisible': value.keepCompletedVisible,
+      'spellCheckEnabled': value.spellCheckEnabled,
+    });
+  }
+
+  Future<HotkeyPreferences> loadHotkeys() async =>
+      HotkeyPreferences.fromJson((await _read())['hotkeys']);
+
+  Future<void> saveHotkeys(HotkeyPreferences value) async {
+    await _write({...await _read(), 'hotkeys': value.toJson()});
   }
 
   Future<Map<String, dynamic>> _read() async {

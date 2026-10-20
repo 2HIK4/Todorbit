@@ -1,5 +1,23 @@
 # Decisions
 
+- **Feedback round 4, part 1 (2026-10-20):** keep the Explorer-hosted layered
+  widget. Paint at the current HWND screen rectangle during drag/resize and
+  persist geometry only when capture ends. Coordinate the main Windows app
+  before Flutter and SQLite startup with a profile-scoped named mutex and
+  `WM_COPYDATA`; queue navigation until the Flutter workspace is ready. Keep
+  portable profiles separate by data root and extraction directory.
+- Store task display/default, spelling-review, and shortcut preferences as
+  typed values in the existing per-profile appearance settings file. No SQLite
+  schema migration is needed. Draft checklists and one-level subtasks are
+  committed through one repository transaction when the parent task is saved.
+- Flutter's default spell-check service is unavailable on Windows. Provide an
+  explicit review action backed by the local Windows `ISpellChecker` COM API,
+  currently using `en-US`; suggestions change text only after selection. Do
+  not imply inline underlines. Receive Explorer `CF_HDROP` through the Windows
+  runner and let the user choose a managed copy or a machine-local link. The
+  desktop_drop plugin was evaluated but its generated symlinks could not be
+  built in this Windows environment without changing system settings.
+
 - **Public branch and existing tag (2026-10-20):** prepare `main` as a linear
   descendant of the reviewed development branch, preserving `master`, the
   development branch, and all history. Keep `v1.0.3` and its uploaded assets

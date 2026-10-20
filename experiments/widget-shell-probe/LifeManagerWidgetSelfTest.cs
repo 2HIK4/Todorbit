@@ -799,6 +799,18 @@ internal static class LifeManagerWidgetSelfTest {
         WidgetGeometry.Scale(new Size(400, 500), 1.5f) != new Size(600, 750)) {
       throw new InvalidOperationException("Resize or DPI sizing bounds failed.");
     }
+    var start = new Rectangle(120, 90, 400, 300);
+    if (WidgetGeometry.MoveOrResize(start, 75, -20, true,
+        WidgetResizeEdge.None, 260, 230) !=
+        new Rectangle(195, 70, 400, 300) ||
+        WidgetGeometry.MoveOrResize(start, 60, 40, false,
+          WidgetResizeEdge.Left | WidgetResizeEdge.Top, 260, 230) !=
+        new Rectangle(180, 130, 340, 260) ||
+        WidgetGeometry.MoveOrResize(start, 500, 500, false,
+          WidgetResizeEdge.Left | WidgetResizeEdge.Top, 260, 230) !=
+        new Rectangle(260, 160, 260, 230)) {
+      throw new InvalidOperationException("Drag or corner resize geometry failed.");
+    }
     var clamped = WidgetGeometry.ClampToWorkingArea(
       new Rectangle(-800, 900, 400, 500), new Rectangle(0, 0, 1920, 1040));
     if (clamped != new Rectangle(0, 540, 400, 500)) {
