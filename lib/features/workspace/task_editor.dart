@@ -15,6 +15,7 @@ import '../templates/templates_dialog.dart';
 import 'series_editor.dart';
 import 'task_resources_section.dart';
 import 'task_composition_section.dart';
+import 'checklist_item_dialog.dart';
 import 'progressive_plan_dialog.dart';
 
 class _DraftSubtask {
@@ -247,41 +248,15 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   }
 
   Future<void> _editDraftChecklist(int index) async {
-    final field = TextEditingController(text: draftChecklist[index]);
-    final result = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Edit checklist item'),
-        content: SizedBox(
-          width: 420,
-          child: TextField(
-            controller: field,
-            autofocus: true,
-            decoration: InputDecoration(
-              labelText: 'Activity',
-              suffixIcon: SpellingReviewButton(
-                controller: field,
-                enabled: ref
-                    .read(appControllerProvider)
-                    .taskViewPreferences
-                    .spellCheckEnabled,
-              ),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, field.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+    final result = await editChecklistItem(
+      context,
+      title: 'Edit checklist item',
+      initialValue: draftChecklist[index],
+      spellCheckEnabled: ref
+          .read(appControllerProvider)
+          .taskViewPreferences
+          .spellCheckEnabled,
     );
-    field.dispose();
     if (result != null && result.isNotEmpty && mounted) {
       setState(() => draftChecklist[index] = result);
     }
@@ -476,7 +451,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
           ),
         ],
       ),
-      for (var index = 0; index < draftSubtasks.length; index++)
+      for (var index = 0; index < draftSubtasks.length; index++) ...[
         ListTile(
           dense: true,
           title: Text(draftSubtasks[index].title),
@@ -488,21 +463,26 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                 'Deadline ${localDate(draftSubtasks[index].deadline!)}',
             ].join(' · '),
           ),
-          trailing: Wrap(
-            children: [
-              IconButton(
-                tooltip: 'Edit draft subtask',
-                onPressed: () => _editDraftSubtask(index),
-                icon: const Icon(Icons.edit_outlined),
-              ),
-              IconButton(
-                tooltip: 'Remove draft subtask',
-                onPressed: () => setState(() => draftSubtasks.removeAt(index)),
-                icon: const Icon(Icons.close),
-              ),
+          trailing: PopupMenuButton<String>(
+            tooltip: 'Draft subtask actions',
+            onSelected: (action) {
+              if (action == 'edit') _editDraftSubtask(index);
+              if (action == 'remove') {
+                setState(() => draftSubtasks.removeAt(index));
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'edit', child: Text('Edit')),
+              PopupMenuItem(value: 'remove', child: Text('Remove')),
             ],
           ),
         ),
+        if (index < draftSubtasks.length - 1)
+          Divider(
+            height: 1,
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+      ],
     ],
   );
 
@@ -991,17 +971,32 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const SizedBox(height: 8),
-                  _dateRow(
-                    'Scheduled day',
-                    scheduled,
-                    () => _pickDate(false),
-                    () => setState(() => scheduled = null),
-                  ),
-                  _dateRow(
-                    'Deadline',
-                    deadline,
-                    () => _pickDate(true),
-                    () => setState(() => deadline = null),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final planned = _dateRow(
+                        'Scheduled day',
+                        scheduled,
+                        () => _pickDate(false),
+                        () => setState(() => scheduled = null),
+                      );
+                      final due = _dateRow(
+                        'Deadline',
+                        deadline,
+                        () => _pickDate(true),
+                        () => setState(() => deadline = null),
+                      );
+                      if (constraints.maxWidth < 470) {
+                        return Column(children: [planned, due]);
+                      }
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: planned),
+                          const SizedBox(width: 12),
+                          Expanded(child: due),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
                   if (currentTask case final task?) ...[
@@ -1495,21 +1490,31 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     VoidCallback clear,
   ) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
-    child: Row(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: pick,
-            icon: const Icon(Icons.calendar_today_outlined, size: 18),
-            label: Text('$label: ${date == null ? 'None' : localDate(date)}'),
-          ),
+        Text(label, style: Theme.of(context).textTheme.labelMedium),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: pick,
+                icon: const Icon(Icons.calendar_today_outlined, size: 18),
+                label: Text(
+                  date == null ? 'No date' : localDate(date),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            if (date != null)
+              IconButton(
+                tooltip: 'Clear $label',
+                onPressed: clear,
+                icon: const Icon(Icons.close, size: 18),
+              ),
+          ],
         ),
-        if (date != null)
-          IconButton(
-            tooltip: 'Clear $label',
-            onPressed: clear,
-            icon: const Icon(Icons.close, size: 18),
-          ),
       ],
     ),
   );

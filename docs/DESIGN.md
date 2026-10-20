@@ -1,5 +1,41 @@
 # Design
 
+## Feedback round 4, part 2 (2026-10-20)
+
+The checklist row gives its text the flexible column. A separate checkbox
+retains a consistent position, while a single overflow menu holds edit,
+reorder, and removal. Long text starts at two selectable lines and has an
+explicit Show more/Show less control. Thin separators distinguish dense lists
+without surrounding each item with a card. The same checklist dialog is used
+for saved and draft edits; its width follows the viewport and typing wraps
+within a multiline field.
+
+Task scheduling keeps planned day distinct from deadline. The two controls
+share a row when the editor is wide enough and stack below 470 px; each has a
+visible label and its own clear action. Resource actions use familiar attach,
+file, folder, and link icons with short labels. An empty Resources section
+shows the actions directly, while a file drag supplies transient target
+feedback. Draft subtasks have one overflow menu and light separators.
+
+The task-list Info action describes the actual filter, including the difference
+between planned dates and deadlines. Settings uses six sections and keeps the
+existing controls in their established dialogs. A compact window uses a
+section picker instead of a permanent category rail. Theme mode lives in
+Appearance & Themes; widget opacity, layout lock, and startup can also be
+changed in Settings while the context menu retains direct access.
+
+The native widget keeps its Explorer child host. Its context menu uses the
+current semantic palette through a Windows ToolStrip renderer, with native
+menu dismissal and keyboard behavior. The update-time footer is removed and
+the task area grows into the freed space. The native task editor is shorter,
+resizable, DPI aware, and uses matching palette colors for its controls.
+
+These choices apply Apple Design Skill guidance from `layout.md` (Visual
+hierarchy), `typography.md` (Ensuring legibility), `accessibility.md`
+(Mobility), `lists-and-tables.md` (Best practices), `icons.md` (Best practices),
+`popovers.md` (Best practices), and `settings.md` (Desktop). Windows controls
+and shortcuts remain native to this app.
+
 ## Feedback round 3 (2026-10-19)
 
 The Windows title bar, lavender identity, and light/dark themes stay native to
@@ -15,7 +51,8 @@ offers details and quick creation, and has an explicit Day View action. Empty
 calendar areas use a Windows-style right-click creation menu; event and task
 entries keep their own click target.
 
-Task creation begins without a date. Anytime collects tasks with neither a
+At the Round 3 checkpoint, task creation began without a date. Round 4 Part 1
+changed the default planned day to Today. Anytime collects tasks with neither a
 planned date nor a deadline. The task panel leads with title, notes, and
 scheduling; organization, checklists, subtasks, and resources follow; rare
 settings live in labeled advanced groups. The scrollable form clears the fixed

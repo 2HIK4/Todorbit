@@ -1,5 +1,45 @@
 # Progress
 
+## Feedback round 4, part 2 implementation (2026-10-20)
+
+- Continued on `feature/todorbit-feedback-round4` from Part 1 commit `5fdc737`.
+  Read all eight private screenshot references. The screenshots show older
+  TodoPilot branding, while current source and the isolated Part 1 Release GUI
+  show Todorbit. No compatible data path or installer identifier was renamed.
+- Replaced the narrow checklist action strip with one overflow menu; rows now
+  reserve width for selectable two-line text, expand and collapse when needed,
+  and have subtle dividers. Saved and draft checklist edits share a responsive
+  dialog whose width stays fixed while typing. Draft and saved subtasks have
+  separators and draft actions use an overflow menu.
+- The task editor now places scheduled day and deadline together where wide,
+  stacks them when narrow, and labels their independent clear actions. Resource
+  actions have compact icons and short labels; the redundant empty-state line
+  is removed. List views have filter-accurate Info actions. Settings is grouped
+  into Appearance & Themes, Hotkeys, Task Preferences, Notifications, Widget,
+  and Privacy & Data, with a compact section picker on narrow windows.
+- The native Explorer-hosted widget menu uses a semantic-palette ToolStrip
+  renderer. The update-time footer is no longer painted, freeing vertical task
+  space. Its Open Todorbit control uses a small window/orbit icon and a native
+  tooltip. The native task editor is shorter and resizable, with matching
+  palette colors and controls anchored to available width and height. Native
+  menu and task editor pixels still require direct GUI acceptance.
+- Version advanced locally to 1.0.4 in Flutter and the native widget for an
+  unpublished release candidate. All 203 serial Flutter tests passed, then the
+  final Info-popover contrast fix passed its focused test; `flutter analyze`,
+  native Release build, widget self-test, and Windows Release build passed.
+  The isolated GUI showed light and dark Settings, the task schedule and
+  checklist draft areas, and the final readable Info popover at 1266 x 713.
+  Native widget menu/editor pixels and long saved checklist interactions remain
+  on the manual checklist. No production profile was opened.
+- The final local portable ZIP has 33 entries and passed a full ZIP read.
+  `release/Todorbit-1.0.4-win-x64-portable.zip` SHA-256:
+  `B3AE11E5E7F00CCB428FFE8827377275BC18C84089CA037F5693E7DC53340ABF`.
+  `release/Todorbit-1.0.4-win-x64-setup.exe` compiled with Inno Setup 7.1.0;
+  SHA-256: `065D01F0A04E33441E7F54CBB6413446EFF2E3FF7C35B00A6B7DBDF9D85B3B05`.
+  Both artifacts are unsigned and have not been installed or published.
+  The final single-instance and separate-profile script passed; one disposable
+  process required a forced close after its cleanup warning.
+
 ## Feedback round 4, part 1 implementation (2026-10-20)
 
 - Created `feature/todorbit-feedback-round4` from fetched `origin/main` with a

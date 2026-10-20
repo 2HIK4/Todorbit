@@ -1,5 +1,46 @@
 # Windows v1.0 final acceptance record
 
+## Feedback round 4, part 2 (2026-10-20)
+
+Automated widget tests cover two-line checklist expansion at narrow and wide
+widths with larger text, stable checklist dialog width, scheduled date layout
+and clearing, Settings/Hotkeys navigation, Info dismissal, and resource actions.
+The native widget menu palette is checked by its self-test. These checks do not
+substitute for observing the layered widget and Windows control painting.
+
+In the isolated 1.0.4 Release GUI at 1266 x 713, light and dark Settings,
+the Widget settings pane, the narrow task schedule/checklist draft layout,
+and the Today Info popover were inspected. The Info popover initially had
+faint text; the final rebuilt window showed readable text after the fix.
+Typing a full draft task through Computer Use was unreliable, so a saved long
+checklist row was not visually verified. No production profile was used.
+
+Manual acceptance for the local 1.0.4 candidate on disposable profiles:
+
+1. Inspect long checklist rows in dark and light themes at a 360 px task panel
+   and a wider window. Select/copy text, expand/collapse, use every overflow
+   action and keyboard navigation, then edit while entering long text.
+2. Create a task with Today planned, clear it, set a deadline separately,
+   create draft checklist/subtasks, and confirm cancel/save behavior. Review
+   completed visible/hidden preferences and each list Info description.
+3. Resize Settings to a narrow window. Open every category, change theme,
+   hotkeys, task preferences, notifications, widget and privacy controls;
+   restart to check persisted choices.
+4. Inspect native widget light/dark context menus at normal and mixed DPI,
+   including keyboard selection, screen edges, opacity, lock, refresh, and
+   dismissal. Open its native task editor, resize it, edit each field, and
+   inspect the date pickers and validation messages.
+5. Drag/resize and lock the Explorer-hosted widget, restart to verify geometry,
+   check Win+D/normal-window layering, and click Open Todorbit ten times with
+   the app open and minimized. Check the tooltip, focus, and one process.
+6. Drag Explorer files into Resources and review spelling suggestions from the
+   installed Windows dictionary. These native input paths still require direct
+   GUI observation.
+
+The referenced TodoPilot screenshots are from an older executable: current
+source and the isolated Part 1 Release GUI displayed Todorbit. Internal legacy
+profile names remain for data compatibility.
+
 ## Feedback round 4, part 1 (2026-10-20)
 
 Automated checks run on disposable data. An isolated Release window displayed

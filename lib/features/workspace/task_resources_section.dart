@@ -375,21 +375,17 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Resources', style: Theme.of(context).textTheme.titleMedium),
-        const Text(
-          'Attachments are stored in the database and included in backups. External files and folders stay in their original location.',
-        ),
         const SizedBox(height: 8),
-        if (dropAvailable)
+        if (dropAvailable && dropHover)
           Text(
-            dropHover
-                ? 'Release to add files'
-                : 'Drop files here to attach or link them.',
+            'Release to add files',
+            style: TextStyle(color: Theme.of(context).colorScheme.primary),
           ),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            OutlinedButton(
+            OutlinedButton.icon(
               onPressed: busy
                   ? null
                   : () => _run(() async {
@@ -401,9 +397,10 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
                         );
                       }
                     }),
-              child: const Text('Attach file'),
+              icon: const Icon(Icons.attach_file, size: 18),
+              label: const Text('Attach'),
             ),
-            OutlinedButton(
+            OutlinedButton.icon(
               onPressed: busy
                   ? null
                   : () => _run(() async {
@@ -416,9 +413,10 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
                         );
                       }
                     }),
-              child: const Text('Link file'),
+              icon: const Icon(Icons.insert_drive_file_outlined, size: 18),
+              label: const Text('Link file'),
             ),
-            OutlinedButton(
+            OutlinedButton.icon(
               onPressed: busy
                   ? null
                   : () => _run(() async {
@@ -431,11 +429,13 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
                         );
                       }
                     }),
-              child: const Text('Link folder'),
+              icon: const Icon(Icons.folder_outlined, size: 18),
+              label: const Text('Link folder'),
             ),
-            OutlinedButton(
+            OutlinedButton.icon(
               onPressed: busy ? null : _addUrl,
-              child: const Text('Add URL'),
+              icon: const Icon(Icons.link, size: 18),
+              label: const Text('URL'),
             ),
           ],
         ),
@@ -445,8 +445,6 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
         if (resources == null) const LinearProgressIndicator(),
-        if (resources != null && resources!.isEmpty)
-          const Text('No resources attached.'),
         for (final resource in resources ?? <TaskResource>[])
           ListTile(
             contentPadding: EdgeInsets.zero,

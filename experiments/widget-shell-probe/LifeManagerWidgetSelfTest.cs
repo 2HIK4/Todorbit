@@ -7,6 +7,15 @@ internal static class LifeManagerWidgetSelfTest {
     Directory.CreateDirectory(directory);
     var databasePath = Path.Combine(directory, "test.sqlite");
     try {
+      using (var menu = new ContextMenuStrip()) {
+        menu.Items.Add("Open Todorbit");
+        WidgetMenuStyle.Apply(menu, WidgetPalette.Dark);
+        if (menu.BackColor != WidgetPalette.Dark.Panel ||
+            menu.ForeColor != WidgetPalette.Dark.Foreground ||
+            menu.Items[0].ForeColor != WidgetPalette.Dark.Foreground) {
+          throw new InvalidOperationException("Widget menu palette was not applied.");
+        }
+      }
       TestIsolatedAppData(directory);
       TestPrivacy(directory);
       CreateDatabase(databasePath);

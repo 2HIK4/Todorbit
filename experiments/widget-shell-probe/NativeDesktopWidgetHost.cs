@@ -128,6 +128,7 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
           MessageBoxButtons.OK, MessageBoxIcon.Error);
       }
     };
+    menu.Opening += (_, _) => launch.Checked = StartupRegistration.IsEnabled();
     menu.Items.Add(launch);
     menu.Items.Add("Exit widget", null, (_, _) => ExitThread());
     menu.Items.Add("Exit Todorbit completely", null, (_, _) => ExitCompletely());
@@ -193,6 +194,16 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
   }
 
   private void ExecuteCommand(string command) {
+    if (command.StartsWith("opacity-", StringComparison.OrdinalIgnoreCase) &&
+        int.TryParse(command.AsSpan(8), out var opacity) &&
+        opacity is >= 0 and <= 100) {
+      settings.BackgroundOpacity = opacity;
+      settingsStore.Save(settings);
+      appearance.WidgetOpacity = opacity;
+      appearanceStore.Save(appearance);
+      host?.SetBackgroundOpacity(opacity);
+      return;
+    }
     switch (command.ToLowerInvariant()) {
       case "show": EnsureHost(); host?.Show(); break;
       case "hide": host?.Hide(); break;
@@ -203,12 +214,28 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
       case "theme-system": SetTheme(WidgetThemePreference.System); break;
       case "theme-light": SetTheme(WidgetThemePreference.Light); break;
       case "theme-dark": SetTheme(WidgetThemePreference.Dark); break;
+      case "layout-lock": SetLayoutLocked(true); break;
+      case "layout-unlock": SetLayoutLocked(false); break;
+      case "startup-on": SetStartup(true); break;
+      case "startup-off": SetStartup(false); break;
       case "view-today": SetView(WidgetTaskView.Today); break;
       case "view-inbox": SetView(WidgetTaskView.Inbox); break;
       case "view-all": SetView(WidgetTaskView.All); break;
       case "view-upcoming": SetView(WidgetTaskView.Upcoming); break;
       case "exit": ExitThread(); break;
     }
+  }
+
+  private void SetLayoutLocked(bool locked) {
+    settings.LayoutLocked = locked;
+    settingsStore.Save(settings);
+    host?.SetLayoutLocked(locked);
+  }
+
+  private void SetStartup(bool enabled) {
+    StartupRegistration.SetEnabled(enabled);
+    settings.LaunchAtSignIn = enabled;
+    settingsStore.Save(settings);
   }
 
   private void SetTheme(WidgetThemePreference value) {
@@ -379,6 +406,7 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
   private InlineQuickAddForm? quickAdd;
   private TaskEditorDialog? taskEditor;
   private ContextMenuStrip? contextMenu;
+  private readonly ToolTip openTooltip = new();
   private bool wasLocked;
   private Native.Point dragStart;
   private Native.Rect dragBounds;
@@ -619,9 +647,6 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     graphics.DrawString(ViewLabel(settings.View), smallFont, muted,
       new RectangleF(AddRect.Right - 88, AddRect.Y, 76, AddRect.Height),
       destinationFormat);
-    using var statusFormat = CenterFormat();
-    graphics.DrawString(statusText, smallFont, muted,
-      new RectangleF(16, logicalHeight - 21, logicalWidth - 32, 18), statusFormat);
   }
 
   private void DrawTask(Graphics graphics, WidgetTask task,
@@ -667,10 +692,12 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
       graphics.DrawLine(pen, centerX - 5, centerY - 5, centerX + 5, centerY + 5);
       graphics.DrawLine(pen, centerX + 5, centerY - 5, centerX - 5, centerY + 5);
     } else if (icon == HeaderIcon.Open) {
-      graphics.DrawRectangle(pen, centerX - 7, centerY - 4, 10, 10);
-      graphics.DrawLine(pen, centerX - 1, centerY - 7, centerX + 7, centerY - 7);
-      graphics.DrawLine(pen, centerX + 7, centerY - 7, centerX + 7, centerY + 1);
-      graphics.DrawLine(pen, centerX, centerY, centerX + 7, centerY - 7);
+      graphics.DrawRectangle(pen, centerX - 8, centerY - 7, 16, 14);
+      graphics.DrawLine(pen, centerX - 8, centerY - 3, centerX + 8, centerY - 3);
+      graphics.DrawEllipse(pen, centerX - 3, centerY - 1, 6, 6);
+      using var dot = new SolidBrush(palette.Accent);
+      graphics.FillEllipse(dot,
+        centerX + 3, centerY - 1, 2.5f, 2.5f);
     } else {
       graphics.DrawArc(pen, centerX - 7, centerY - 7, 14, 14, 35, 285);
       graphics.DrawLine(pen, centerX + 5, centerY - 7, centerX + 8, centerY - 2);
@@ -730,16 +757,6 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
       };
       appearance.DropDownItems.Add(choice);
     }
-    var slider = new TrackBar {
-      Minimum = 0, Maximum = 100, TickFrequency = 10,
-      Value = Math.Clamp(settings.BackgroundOpacity, 0, 100),
-      Width = 180, AutoSize = false, Height = 32,
-    };
-    slider.Scroll += (_, _) => {
-      SetBackgroundOpacity(slider.Value);
-      SaveSharedOpacity(slider.Value);
-    };
-    appearance.DropDownItems.Add(new ToolStripControlHost(slider));
     appearance.DropDownItems.Add(new ToolStripSeparator());
     appearance.DropDownItems.Add("Customize theme in Todorbit", null,
       (_, _) => OpenMainApp(appearanceSettings: true));
@@ -747,13 +764,10 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     menu.Items.Add(new ToolStripSeparator());
     var layoutLock = new ToolStripMenuItem(settings.LayoutLocked
       ? "Unlock Layout" : "Lock Layout") { Checked = settings.LayoutLocked };
-    layoutLock.Click += (_, _) => {
-      settings.LayoutLocked = !settings.LayoutLocked;
-      settingsStore.Save(settings);
-      Present("layout-lock-changed");
-    };
+    layoutLock.Click += (_, _) => SetLayoutLocked(!settings.LayoutLocked);
     menu.Items.Add(layoutLock);
     menu.Items.Add("Close Widget", null, (_, _) => { Dispose(); exit(); });
+    WidgetMenuStyle.Apply(menu, palette);
     Native.GetCursorPos(out var point);
     menu.Show(new Point(point.X, point.Y));
   }
@@ -886,8 +900,13 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
 
   private void SetHover(HitTarget target, int task) {
     if (hoverTarget == target && hoverTask == task) return;
+    openTooltip.Hide(this);
     hoverTarget = target;
     hoverTask = task;
+    if (target == HitTarget.Open) {
+      openTooltip.Show("Open Todorbit", this,
+        new Point(Pixel((int)OpenRect.X), Pixel((int)OpenRect.Bottom + 8)), 3000);
+    }
     statusText = target switch {
       HitTarget.Refresh => "Refresh tasks",
       HitTarget.Open => "Open Todorbit",
@@ -934,6 +953,12 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     settings.BackgroundOpacity = Math.Clamp(value, 0, 100);
     settingsStore.Save(settings);
     Present("opacity-changed");
+  }
+
+  internal void SetLayoutLocked(bool locked) {
+    settings.LayoutLocked = locked;
+    settingsStore.Save(settings);
+    Present("layout-lock-changed");
   }
 
   private static void SaveSharedOpacity(int value) {
@@ -1186,8 +1211,8 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     return new RectangleF(16f + index * (width + 6f), 50, width, 26);
   }
   private RectangleF TaskArea => new(16, 82, LogicalClientWidth - 32,
-    LogicalClientHeight - 158);
-  private RectangleF AddRect => new(16, LogicalClientHeight - 63,
+    LogicalClientHeight - 145);
+  private RectangleF AddRect => new(16, LogicalClientHeight - 50,
     LogicalClientWidth - 32, 40);
   private int VisibleTaskRows => Math.Max(1,
     (int)Math.Floor((TaskArea.Height - 12) / 51));
@@ -1281,6 +1306,7 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     quickAdd?.Close();
     quickAdd?.Dispose();
     contextMenu?.Dispose();
+    openTooltip.Dispose();
     quickAdd = null;
     diagnostics.Snapshot(Handle, "native-host-disposing");
     diagnostics.Dispose();

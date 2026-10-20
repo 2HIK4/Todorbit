@@ -131,10 +131,6 @@ void main() {
         find.widgetWithText(TextField, 'Title *'),
         'Daily reading',
       );
-      await tester.tap(find.textContaining('Scheduled day:').first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('OK'));
-      await tester.pumpAndSettle();
       final editorScroll = find
           .descendant(
             of: find.byType(TaskEditor),
@@ -146,6 +142,8 @@ void main() {
         200,
         scrollable: editorScroll,
       );
+      await tester.drag(editorScroll, const Offset(0, -140));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Does not repeat'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Daily').last);

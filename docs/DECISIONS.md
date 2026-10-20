@@ -1,5 +1,18 @@
 # Decisions
 
+## Feedback round 4, part 2 (2026-10-20)
+
+- Keep the native widget Explorer-hosted. Style its existing Windows
+  `ContextMenuStrip` through a palette renderer; retain native menu focus,
+  screen-edge handling, and dismissal rather than adding a layered popup.
+- Put the widget's layout lock, startup, and opacity controls in the grouped
+  Flutter Settings page through existing profile-aware widget commands. When
+  the widget is closed, those commands update its settings without launching
+  a new desktop widget. The historical registry value name remains stable.
+- Keep the current per-profile database and appearance/settings formats. The
+  local 1.0.4 candidate changes Flutter/native binary versions only and does
+  not alter the public 1.0.3 assets or stable installer AppId.
+
 - **Feedback round 4, part 1 (2026-10-20):** keep the Explorer-hosted layered
   widget. Paint at the current HWND screen rectangle during drag/resize and
   persist geometry only when capture ends. Coordinate the main Windows app

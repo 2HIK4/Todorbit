@@ -1,4 +1,18 @@
+import 'dart:convert';
 import 'dart:io';
+
+import '../../data/app_database.dart';
+
+class WidgetControlState {
+  const WidgetControlState({
+    this.layoutLocked = false,
+    this.launchAtSignIn = false,
+    this.backgroundOpacity = 100,
+  });
+  final bool layoutLocked;
+  final bool launchAtSignIn;
+  final int backgroundOpacity;
+}
 
 typedef WidgetProcessLauncher = Future<int> Function(
   String executable,
@@ -37,6 +51,36 @@ class NativeWidgetService {
   Future<void> close() => _command('exit');
   Future<void> setTheme(String theme) => _command('theme-$theme');
   Future<void> setView(String view) => _command('view-$view');
+  Future<void> setLayoutLocked(bool locked) =>
+      _command(locked ? 'layout-lock' : 'layout-unlock');
+  Future<void> setLaunchAtSignIn(bool enabled) =>
+      _command(enabled ? 'startup-on' : 'startup-off');
+  Future<void> setOpacity(int value) {
+    if (value < 0 || value > 100) throw RangeError.range(value, 0, 100);
+    return _command('opacity-$value');
+  }
+
+  Future<WidgetControlState> readSettings() async {
+    final database = await AppDatabase.defaultFile();
+    final file = File(
+      '${database.parent.path}${Platform.pathSeparator}widget-settings.json',
+    );
+    if (!await file.exists()) return const WidgetControlState();
+    try {
+      final data = jsonDecode(await file.readAsString());
+      if (data is! Map<String, dynamic>) return const WidgetControlState();
+      final opacity = data['backgroundOpacity'];
+      return WidgetControlState(
+        layoutLocked: data['layoutLocked'] == true,
+        launchAtSignIn: data['launchAtSignIn'] == true,
+        backgroundOpacity: opacity is int && opacity >= 0 && opacity <= 100
+            ? opacity
+            : 100,
+      );
+    } on FormatException {
+      return const WidgetControlState();
+    }
+  }
 
   Future<void> _command(String command) =>
       _run(['--widget-command', command, '--app-exe', appExecutablePath]);

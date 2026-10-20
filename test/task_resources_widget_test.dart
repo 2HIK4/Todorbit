@@ -20,11 +20,14 @@ class _FileDialog extends WindowsResourceDialog {
 }
 
 void main() {
-  testWidgets('Explorer drop links one file and ignores duplicate paths', (tester) async {
+  testWidgets('Explorer drop links one file and ignores duplicate paths', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     const channel = MethodChannel('life_manager/file_drop');
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-      channel, (call) async => call.method == 'available',
+      channel,
+      (call) async => call.method == 'available',
     );
     final directory = Directory.systemTemp.createTempSync('resource-drop-');
     final file = File('${directory.path}/paper.txt')..writeAsStringSync('text');
@@ -32,19 +35,28 @@ void main() {
     final repository = LifeRepository(database);
     try {
       final task = await repository.addTask(const TaskDraft(title: 'Task'));
-      await tester.pumpWidget(MaterialApp(home: Scaffold(
-        body: TaskResourcesSection(taskId: task.id, repository: repository),
-      )));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: TaskResourcesSection(taskId: task.id, repository: repository),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
-      expect(find.textContaining('Drop files here'), findsOneWidget);
+      expect(find.textContaining('No resources attached'), findsNothing);
       final center = tester.getCenter(find.byType(TaskResourcesSection));
-      final arguments = {'x': center.dx, 'y': center.dy,
-        'files': [file.path, file.path]};
+      final arguments = {
+        'x': center.dx,
+        'y': center.dy,
+        'files': [file.path, file.path],
+      };
       final message = const StandardMethodCodec().encodeMethodCall(
         MethodCall('drop', arguments),
       );
       tester.binding.defaultBinaryMessenger.handlePlatformMessage(
-        'life_manager/file_drop', message, (_) {},
+        'life_manager/file_drop',
+        message,
+        (_) {},
       );
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 100)),
@@ -54,11 +66,16 @@ void main() {
       await tester.tap(find.text('Link originals'));
       await tester.pumpAndSettle();
       expect(await repository.taskResources(task.id), hasLength(1));
-      expect((await repository.taskResources(task.id)).single.kind,
-          TaskResourceKind.externalFile);
+      expect(
+        (await repository.taskResources(task.id)).single.kind,
+        TaskResourceKind.externalFile,
+      );
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
-      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        channel,
+        null,
+      );
       await database.close();
       directory.deleteSync(recursive: true);
       await tester.binding.setSurfaceSize(null);
@@ -132,13 +149,13 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Attach file'), findsOneWidget);
-      await tester.tap(find.text('Attach file'));
+      expect(find.text('Attach'), findsOneWidget);
+      await tester.tap(find.text('Attach'));
       await tester.pump();
       expect(
         tester
             .widget<OutlinedButton>(
-              find.widgetWithText(OutlinedButton, 'Attach file'),
+              find.widgetWithText(OutlinedButton, 'Attach'),
             )
             .onPressed,
         isNull,

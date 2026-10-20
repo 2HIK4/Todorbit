@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.InteropServices;
 
 // The desktop-attached HWND cannot own keyboard focus reliably. This short-lived,
 // activatable top-level surface is aligned over the painted Quick Add field so the
@@ -124,15 +125,18 @@ internal sealed class TaskEditorDialog : Form {
     original = task;
     projects = repository.LoadProjects();
     Text = "Edit task - Todorbit";
-    FormBorderStyle = FormBorderStyle.FixedDialog;
+    FormBorderStyle = FormBorderStyle.Sizable;
     StartPosition = FormStartPosition.Manual;
-    ClientSize = new Size(480, 570);
+    ClientSize = new Size(480, 455);
+    MinimumSize = new Size(390, 470);
+    AutoScaleMode = AutoScaleMode.Dpi;
     MaximizeBox = false;
     MinimizeBox = false;
     ShowInTaskbar = true;
     BackColor = palette.Background;
     ForeColor = palette.Foreground;
     Font = new Font("Segoe UI", 9.5f);
+    Padding = new Padding(18);
 
     var heading = LabelFor("Task details", 18, 15, 440, 28);
     heading.Font = new Font("Segoe UI Semibold", 15, FontStyle.Bold);
@@ -140,6 +144,7 @@ internal sealed class TaskEditorDialog : Form {
     title.Text = task.Title;
     AddLabeledControl("Notes", notes, 18, 112, 444, 78);
     notes.Multiline = true;
+    notes.AcceptsReturn = true;
     notes.ScrollBars = ScrollBars.Vertical;
     notes.Text = task.Notes;
 
@@ -153,7 +158,8 @@ internal sealed class TaskEditorDialog : Form {
       new Choice("Cancelled", "cancelled"),
     ]);
     SelectValue(status, task.Status);
-    Controls.Add(LabelFor("Status", 18, 195, 214, 20));
+    var statusLabel = LabelFor("Status", 18, 195, 214, 20);
+    Controls.Add(statusLabel);
     Controls.Add(status);
 
     ConfigureDropDown(priority, 248, 214, 214);
@@ -162,7 +168,8 @@ internal sealed class TaskEditorDialog : Form {
       new Choice("Medium", "2"), new Choice("High", "3"),
     ]);
     SelectValue(priority, task.Priority.ToString(CultureInfo.InvariantCulture));
-    Controls.Add(LabelFor("Priority", 248, 195, 214, 20));
+    var priorityLabel = LabelFor("Priority", 248, 195, 214, 20);
+    Controls.Add(priorityLabel);
     Controls.Add(priority);
 
     ConfigureDropDown(category, 18, 272, 214);
@@ -172,28 +179,33 @@ internal sealed class TaskEditorDialog : Form {
     }
     SelectValue(category, task.CategoryId ?? "");
     category.SelectedIndexChanged += (_, _) => PopulateProjects(null);
-    Controls.Add(LabelFor("Category", 18, 253, 214, 20));
+    var categoryLabel = LabelFor("Category", 18, 253, 214, 20);
+    Controls.Add(categoryLabel);
     Controls.Add(category);
 
     ConfigureDropDown(project, 248, 272, 214);
-    Controls.Add(LabelFor("Project", 248, 253, 214, 20));
+    var projectLabel = LabelFor("Project", 248, 253, 214, 20);
+    Controls.Add(projectLabel);
     Controls.Add(project);
     PopulateProjects(task.ProjectId);
 
     ConfigureDate(scheduled, task.ScheduledDate, 18, 330, 214);
-    Controls.Add(LabelFor("Scheduled day", 18, 311, 214, 20));
+    var scheduledLabel = LabelFor("Scheduled day", 18, 311, 214, 20);
+    Controls.Add(scheduledLabel);
     Controls.Add(scheduled);
     ConfigureDate(deadline, task.DeadlineDate, 248, 330, 214);
-    Controls.Add(LabelFor("Deadline", 248, 311, 214, 20));
+    var deadlineLabel = LabelFor("Deadline", 248, 311, 214, 20);
+    Controls.Add(deadlineLabel);
     Controls.Add(deadline);
 
-    feedback.Location = new Point(18, 374);
-    feedback.Size = new Size(444, 43);
-    feedback.ForeColor = Color.FromArgb(205, 72, 72);
+    feedback.Location = new Point(18, 361);
+    feedback.Size = new Size(444, 35);
+    feedback.ForeColor = palette == WidgetPalette.Dark
+      ? Color.FromArgb(255, 154, 154) : Color.FromArgb(165, 35, 35);
 
     var full = new Button {
       Text = "Open full details",
-      Location = new Point(18, 497), Size = new Size(145, 38),
+      Location = new Point(18, 399), Size = new Size(145, 38),
       FlatStyle = FlatStyle.Flat, ForeColor = palette.Foreground,
     };
     full.Click += (_, _) => {
@@ -203,16 +215,72 @@ internal sealed class TaskEditorDialog : Form {
     };
     var cancel = new Button {
       Text = "Cancel", DialogResult = DialogResult.Cancel,
-      Location = new Point(262, 497), Size = new Size(92, 38),
+      Location = new Point(262, 399), Size = new Size(92, 38),
       FlatStyle = FlatStyle.Flat, ForeColor = palette.Foreground,
     };
     var save = new Button {
-      Text = "Save", Location = new Point(362, 497), Size = new Size(100, 38),
-      FlatStyle = FlatStyle.Flat, BackColor = palette.Accent, ForeColor = Color.White,
+      Text = "Save", Location = new Point(362, 399), Size = new Size(100, 38),
+      FlatStyle = FlatStyle.Flat, BackColor = palette.Accent,
+      ForeColor = palette == WidgetPalette.Dark ? palette.Background : Color.White,
     };
     save.Click += (_, _) => SaveTask();
     CancelButton = cancel;
+    AcceptButton = save;
+    title.AccessibleName = "Task title";
+    notes.AccessibleName = "Task notes";
+    status.AccessibleName = "Task status";
+    priority.AccessibleName = "Task priority";
+    category.AccessibleName = "Task category";
+    project.AccessibleName = "Task project";
+    scheduled.AccessibleName = "Scheduled day";
+    deadline.AccessibleName = "Deadline";
     Controls.AddRange([heading, feedback, full, cancel, save]);
+    Shown += (_, _) => {
+      var dark = palette == WidgetPalette.Dark ? 1 : 0;
+      DwmSetWindowAttribute(Handle, 20, ref dark, sizeof(int));
+      var caption = ColorRef(palette.Background);
+      var captionText = ColorRef(palette.Foreground);
+      DwmSetWindowAttribute(Handle, 35, ref caption, sizeof(int));
+      DwmSetWindowAttribute(Handle, 36, ref captionText, sizeof(int));
+      title.Focus();
+      title.SelectAll();
+    };
+    foreach (Control input in new Control[] { title, notes, status, priority,
+        category, project, scheduled, deadline }) {
+      input.BackColor = palette.Panel;
+      input.ForeColor = palette.Foreground;
+      if (input is TextBox box) {
+        box.BorderStyle = BorderStyle.FixedSingle;
+      } else if (input is DateTimePicker picker) {
+        picker.CalendarMonthBackground = palette.Panel;
+        picker.CalendarForeColor = palette.Foreground;
+        picker.CalendarTitleBackColor = palette.Background;
+        picker.CalendarTitleForeColor = palette.Foreground;
+      }
+    }
+    Resize += (_, _) => {
+      var fullWidth = Math.Max(300, ClientSize.Width - 36);
+      var column = Math.Max(135, (fullWidth - 16) / 2);
+      var secondX = 18 + column + 16;
+      heading.Width = fullWidth;
+      title.Width = notes.Width = feedback.Width = fullWidth;
+      foreach (var input in new Control[] { status, category, scheduled })
+        input.Width = column;
+      foreach (var input in new Control[] { priority, project, deadline }) {
+        input.Left = secondX;
+        input.Width = column;
+      }
+      foreach (var label in new Control[] { statusLabel, categoryLabel, scheduledLabel })
+        label.Width = column;
+      foreach (var label in new Control[] { priorityLabel, projectLabel, deadlineLabel }) {
+        label.Left = secondX;
+        label.Width = column;
+      }
+      var bottom = ClientSize.Height - 56;
+      full.Top = cancel.Top = save.Top = bottom;
+      save.Left = ClientSize.Width - 118;
+      cancel.Left = save.Left - 100;
+    };
   }
 
   private void SaveTask() {
@@ -243,6 +311,13 @@ internal sealed class TaskEditorDialog : Form {
       feedback.Text = error.Message;
     }
   }
+
+  private static int ColorRef(Color color) =>
+    color.R | (color.G << 8) | (color.B << 16);
+
+  [DllImport("dwmapi.dll")]
+  private static extern int DwmSetWindowAttribute(
+    IntPtr window, int attribute, ref int value, int size);
 
   private void PopulateProjects(string? selected) {
     var categoryId = SelectedValue(category);
