@@ -1,10 +1,10 @@
-# TodoPilot
+# Todorbit
 
-![TodoPilot icon](assets/app_icon.png)
+![Todorbit icon](assets/app_icon.png)
 
-![TodoPilot Today view with a sample task in an isolated test profile](docs/screenshots/todopilot-today.jpg)
+![Todorbit Today view with a sample task in an isolated test profile](docs/screenshots/todorbit-today.png)
 
-TodoPilot is an offline Windows productivity app for tasks, calendar events, habits, goals, focus sessions, and a native desktop widget. It is built with Flutter and SQLite. Creator: [Hussam Alkhatib](https://2hik4.github.io/).
+Todorbit is an offline Windows productivity app for tasks, calendar events, habits, goals, focus sessions, and a native desktop widget. It is built with Flutter and SQLite. Creator: [Hussam Alkhatib](https://2hik4.github.io/).
 
 ## What it does
 
@@ -18,11 +18,11 @@ TodoPilot is an offline Windows productivity app for tasks, calendar events, hab
 
 ## Windows installation
 
-The current target is Windows x64. Windows 11 is the tested development environment; Windows 10 and other configurations need acceptance testing. Use the installer or extract the portable ZIP and run `TodoPilot.exe`. Keep the full extracted folder together, including `TodoPilotWidget.exe`, DLLs, and the `data` folder. Neither package requires Flutter or Visual Studio on the user's computer.
+The current target is Windows x64. Windows 11 is the tested development environment; Windows 10 and other configurations need acceptance testing. After public release approval, download the installer or portable ZIP from this project's GitHub Releases page and compare it with the published SHA-256 checksum. No public download is available yet. Use the installer or extract the portable ZIP and run `Todorbit.exe`. Keep the full extracted folder together, including `TodorbitWidget.exe`, DLLs, and the `data` folder. Neither package requires Flutter or Visual Studio on the user's computer.
 
-The portable ZIP does **not** store data beside the executable. Each extracted portable location uses its own `%APPDATA%\TodoPilot\portable-<location-id>` profile; copying or moving the extracted folder selects a new empty profile. An installer fresh profile uses `%APPDATA%\TodoPilot\life_manager.sqlite`. An older `%APPDATA%\Life Manager` database is never selected just because it exists; on first launch TodoPilot offers a reviewed, explicit import through Backups. Upgrading an installed TodoPilot 1.0.0 retains its existing profile and settings. Export/import data before moving a portable folder, and do not delete either profile folder.
+The portable ZIP does **not** store data beside the executable. Each extracted portable location uses its own `%APPDATA%\TodoPilot\portable-<location-id>` profile; copying or moving the extracted folder selects a new empty profile. An installer fresh profile uses `%APPDATA%\TodoPilot\life_manager.sqlite`. This legacy path remains stable through the rename. An older `%APPDATA%\Life Manager` database is never selected just because it exists; on first launch Todorbit offers a reviewed, explicit import through Backups. Upgrading an installed TodoPilot retains its existing profile and settings. Export/import data before moving a portable folder, and do not delete either profile folder.
 
-The native widget can be shown from the app sidebar. Right-click it for Refresh, appearance, layout lock, and Close Widget. The widget can run while the main window is closed. The optional PIN locks the UI; it does not encrypt the SQLite database.
+The native widget can be shown from the app sidebar. Right-click it for Refresh, appearance, layout lock, and Close Widget. The widget can run while the main window is closed. The optional PIN locks the UI; it does not encrypt the SQLite database. See [installation and portable upgrade instructions](docs/INSTALLATION.md).
 
 ## Source build
 
@@ -37,16 +37,18 @@ flutter build windows --release
 
 The Release bundle is `build\windows\x64\runner\Release`. Build instructions and architecture are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
+If a moved portable copy looks empty, check Settings > Data profile and reopen the original extracted path or import its verified backup. Keep the full application bundle together. See [installation troubleshooting](docs/INSTALLATION.md) for recovery steps.
+
 ## Customization and contributions
 
 See [theming](docs/THEMING.md), [customization extension points](docs/CUSTOMIZATION.md), and [contribution guidance](CONTRIBUTING.md). Official community entries come from `assets/contributors.json` through reviewed pull requests; imported themes do not add someone to that list.
 
-Creator: **Hussam Alkhatib**, Creator & Project Founder. Original concept, product direction, and development of TodoPilot. [Email](mailto:hussamalkhatib24@gmail.com) · [Portfolio](https://2hik4.github.io/) · [LinkedIn](https://www.linkedin.com/in/hussam-alkhatib-dev).
+Creator: **Hussam Alkhatib**, Creator & Project Founder. Original concept, product direction, and development of Todorbit. [Email](mailto:hussamalkhatib24@gmail.com) · [Portfolio](https://2hik4.github.io/) · [LinkedIn](https://www.linkedin.com/in/hussam-alkhatib-dev).
 
 ## Current release status
 
 The source and packages are being prepared for an open-source release. Native widget alpha blending, Win+D, different wallpapers and monitor layouts, installer upgrade/uninstall, and complete Windows GUI flows still require manual acceptance. The installer is unsigned. See [release preparation](docs/RELEASE.md) and [acceptance matrix](docs/ACCEPTANCE.md).
 
-The 1.0.2 candidate is **not ready for public release**. The [release audit](docs/RELEASE_AUDIT.md) records the remaining tests and name-clearance decision; other productivity products use TodoPilot or ToDoPilot.
+The 1.0.3 candidate is **not ready for public release**. The [release audit](docs/RELEASE_AUDIT.md) records the remaining installer, widget, and name-clearance checks. The creator selected Todorbit after a [preliminary naming review](docs/NAMING_REVIEW.md); formal trademark clearance remains open.
 
-**License:** MIT is proposed in [LICENSE.proposed](LICENSE.proposed) for creator review. No public publication or license grant is implied until it is approved. Flutter and package notices are bundled in the generated `data\flutter_assets\NOTICES.Z`.
+**License:** [MIT](LICENSE), approved by the creator for this project. Third-party terms remain separate in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the distributed Flutter and native notices.

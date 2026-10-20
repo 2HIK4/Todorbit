@@ -12,7 +12,7 @@ internal sealed class InlineQuickAddForm : Form {
       WidgetPalette palette, Rectangle bounds, string destination,
       Action<string> submit) {
     this.submit = submit;
-    Text = "Quick Add - TodoPilot";
+    Text = "Quick Add - Todorbit";
     FormBorderStyle = FormBorderStyle.None;
     StartPosition = FormStartPosition.Manual;
     ShowInTaskbar = false;
@@ -123,7 +123,7 @@ internal sealed class TaskEditorDialog : Form {
     this.repository = repository;
     original = task;
     projects = repository.LoadProjects();
-    Text = "Edit task - TodoPilot";
+    Text = "Edit task - Todorbit";
     FormBorderStyle = FormBorderStyle.FixedDialog;
     StartPosition = FormStartPosition.Manual;
     ClientSize = new Size(480, 570);

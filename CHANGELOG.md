@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.3 — Todorbit release candidate
+
+- Adopted the creator-approved MIT license and changed the public name from TodoPilot to Todorbit while preserving installer and data identities.
+- Synchronized native widget versioning with the app and added version checks to both package builders.
+- Added native third-party license files, Windows CI, and portable upgrade guidance. Installed rename/upgrade and full desktop widget acceptance remain open.
+
 ## 1.0.2 — release candidate preparation
 
 - Replaced the in-app sidebar's black-tile mark with the transparent outlined orbit used in the Windows title bar. The executable and installer retain the black-tile icon.

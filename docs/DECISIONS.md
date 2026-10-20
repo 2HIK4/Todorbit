@@ -1,5 +1,15 @@
 # Decisions
 
+- **Public name and license (2026-10-20):** the creator selected Todorbit and
+  explicitly approved the proposed MIT text with copyright to Hussam Alkhatib.
+  Preserve the orbit artwork, stable installer AppId, legacy TodoPilot and Life
+  Manager profile paths, and native IPC identity. The name choice is not formal
+  trademark clearance, and installed rebrand acceptance remains open.
+- **Release package integrity:** derive the native widget's published version
+  from Flutter's build version, and reject a bundled widget whose file version
+  disagrees with `pubspec.yaml`. Bundle the applicable .NET runtime and
+  SQLitePCLRaw license and third-party notices alongside Flutter's NOTICES.Z.
+
 - **Feedback round 3:** keep nullable task planned/deadline dates in the
   existing schema; an undated task belongs in Anytime and remains visible in
   All Tasks. Persist Saved View sorting as an optional filter JSON value, so

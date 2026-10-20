@@ -46,7 +46,7 @@ internal sealed class LifeManagerWidget : Form {
     if (hostMode == WidgetHostMode.LegacyReparent) {
       (shellParent, shellPosition) = ResolveDesktopIconHost();
     }
-    Text = "TodoPilot Desktop Widget";
+    Text = "Todorbit Desktop Widget";
     FormBorderStyle = hostMode == WidgetHostMode.Standalone
       ? FormBorderStyle.FixedSingle
       : FormBorderStyle.None;
@@ -64,7 +64,7 @@ internal sealed class LifeManagerWidget : Form {
       ControlStyles.ResizeRedraw, true);
 
     var header = new Label {
-      Text = "TodoPilot",
+      Text = "Todorbit",
       Font = new Font("Segoe UI Semibold", 15, FontStyle.Bold),
       ForeColor = palette.Foreground,
       Location = new Point(16, 14),
@@ -119,7 +119,7 @@ internal sealed class LifeManagerWidget : Form {
         !AttachToDesktopIconHostLegacy()) {
       MessageBox.Show(
         "Explorer's desktop icon host was not available. The widget was not attached.",
-        "TodoPilot widget", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        "Todorbit widget", MessageBoxButtons.OK, MessageBoxIcon.Error);
       Close();
       return;
     }
@@ -275,7 +275,7 @@ internal sealed class LifeManagerWidget : Form {
     if (!string.IsNullOrWhiteSpace(appExe) && File.Exists(appExe)) {
       return Path.GetFullPath(appExe);
     }
-    var sibling = Path.Combine(AppContext.BaseDirectory, "TodoPilot.exe");
+    var sibling = Path.Combine(AppContext.BaseDirectory, "Todorbit.exe");
     if (File.Exists(sibling)) return sibling;
     throw new FileNotFoundException(
       "Pass --app-exe PATH when the main executable is not beside the widget.");
@@ -310,7 +310,7 @@ internal sealed class LifeManagerWidget : Form {
 
   private void ShowError(string message) {
     status.Text = "Action failed";
-    MessageBox.Show(message, "TodoPilot widget",
+    MessageBox.Show(message, "Todorbit widget",
       MessageBoxButtons.OK, MessageBoxIcon.Error);
   }
 
@@ -347,7 +347,7 @@ internal sealed class QuickAddDialog : Form {
   internal string TaskTitle => editor.Text.Trim();
 
   internal QuickAddDialog(WidgetPalette palette) {
-    Text = "Quick Add - TodoPilot";
+    Text = "Quick Add - Todorbit";
     FormBorderStyle = FormBorderStyle.FixedDialog;
     StartPosition = FormStartPosition.Manual;
     ClientSize = new Size(376, 142);

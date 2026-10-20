@@ -9,8 +9,8 @@ The historical Flutter prototype is now available only with
 a child of the desktop HWND using documented `SetParent`. The process exits if
 parenting fails, rather than falling back to an ordinary window.
 
-Run `build\windows\x64\runner\Debug\life_manager.exe --legacy-flutter-widget`
-only for explicit diagnostics. Normal `life_manager.exe --widget` now delegates
+Run `build\windows\x64\runner\Debug\Todorbit.exe --legacy-flutter-widget`
+only for explicit diagnostics. Normal `Todorbit.exe --widget` now delegates
 to the integrated native companion and never creates this Flutter child.
 
 Native parenting succeeds, but the user confirmed that `Win + D` hides the widget. Diagnostics show the parent is the system desktop HWND (`#32769`, owned by `csrss`), not an Explorer `WorkerW`/`Progman` shell layer. This implementation uses public `SetParent`, but that API does not guarantee the required Show Desktop layering or keyboard activation. No undocumented Explorer messages are currently used. Do not expose this as a completed widget feature.
@@ -25,7 +25,7 @@ The same trace reports the widget visible, not minimized, and not DWM-cloaked wh
 
 ## Opt-in diagnostic build
 
-Build with `flutter build windows --debug`, then launch `build\windows\x64\runner\Debug\life_manager.exe --legacy-flutter-widget --widget-diagnostics`. The flag is effective only in a Debug native build and only in legacy diagnostic mode. Logs are written to `%APPDATA%\Life Manager\logs\widget-diagnostics-<widget PID>.log` (Win32 messages/window state) and `widget-flutter-diagnostics-<widget PID>.log` (Flutter focus/lifecycle). Each file is capped at 2 MiB; the native log rotates once to `.old`. Ordinary launches and production builds do not enable diagnostics.
+Build with `flutter build windows --debug`, then launch `build\windows\x64\runner\Debug\Todorbit.exe --legacy-flutter-widget --widget-diagnostics`. The flag is effective only in a Debug native build and only in legacy diagnostic mode. Logs are written to `%APPDATA%\Life Manager\logs\widget-diagnostics-<widget PID>.log` (Win32 messages/window state) and `widget-flutter-diagnostics-<widget PID>.log` (Flutter focus/lifecycle). Each file is capped at 2 MiB; the native log rotates once to `.old`. Ordinary launches and production builds do not enable diagnostics.
 
 The logs contain timestamps, process/window IDs, classes, style flags, focus/visibility state, and event names. They do **not** contain key codes, typed characters, task titles, clipboard contents, or text-field values. Review them before sharing because process/window metadata and local timestamps may still be sensitive.
 
@@ -53,7 +53,7 @@ The approved first attachment did put only the experiment's window above the ico
 ## Integrated native widget
 
 The .NET companion is launched directly with `--widget`, and
-`life_manager.exe --widget` delegates to it for compatibility.
+`Todorbit.exe --widget` delegates to it for compatibility.
 
 - The persistent display is a single double-buffered, owner-drawn native HWND
   created directly as a child of Explorer's existing `SHELLDLL_DefView`,
@@ -83,11 +83,11 @@ Build and run from the repository root:
 
 ```powershell
 dotnet build experiments\widget-shell-probe\widget-shell-probe.csproj -c Release
-experiments\widget-shell-probe\bin\Release\net10.0-windows\life_manager_widget.exe --widget --app-exe build\windows\x64\runner\Debug\life_manager.exe
+experiments\widget-shell-probe\bin\Release\net10.0-windows\TodorbitWidget.exe --widget --app-exe build\windows\x64\runner\Debug\Todorbit.exe
 ```
 
 Run the isolated persistence check with
-`life_manager_widget.exe --self-test`; it uses a temporary database and deletes
+`TodorbitWidget.exe --self-test`; it uses a temporary database and deletes
 only that temporary test directory.
 
 For controlled rendering comparison, `--widget-standalone` opens the former

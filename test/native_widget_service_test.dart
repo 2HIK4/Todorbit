@@ -12,13 +12,13 @@ void main() {
         'life-manager-native-widget-test-',
       );
       final widget = File(
-        '${directory.path}${Platform.pathSeparator}life_manager_widget.exe',
+        '${directory.path}${Platform.pathSeparator}TodorbitWidget.exe',
       );
       await widget.writeAsBytes(const []);
       final calls = <(String, List<String>)>[];
       final service = NativeWidgetService(
         widgetExecutable: widget.path,
-        appExecutable: r'C:\package\life_manager.exe',
+        appExecutable: r'C:\package\Todorbit.exe',
         launcher: (executable, arguments) async {
           calls.add((executable, arguments));
           return 0;
@@ -36,13 +36,13 @@ void main() {
         expect(calls.first.$2, [
           '--widget',
           '--app-exe',
-          r'C:\package\life_manager.exe',
+          r'C:\package\Todorbit.exe',
         ]);
         expect(calls[1].$2, [
           '--widget',
           '--background',
           '--app-exe',
-          r'C:\package\life_manager.exe',
+          r'C:\package\Todorbit.exe',
         ]);
         expect(calls[2].$2.take(2), ['--widget-command', 'quick-add']);
         expect(calls[3].$2.take(2), ['--widget-command', 'view-all']);

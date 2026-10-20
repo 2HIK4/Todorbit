@@ -2,14 +2,14 @@
 
 ## Current status
 
-The Windows Release bundle contains `TodoPilot.exe`,
-`TodoPilotWidget.exe`, Flutter assets, `flutter_windows.dll`, and
+The Windows Release bundle contains `Todorbit.exe`,
+`TodorbitWidget.exe`, Flutter assets, `flutter_windows.dll`, and
 `sqlite3.dll`. Inno Setup 7.1.0 compiles the installer at
-`release/TodoPilot-1.0.2-win-x64-setup.exe`. A portable ZIP is built at
-`release/TodoPilot-1.0.2-win-x64-portable.zip`. This is **not yet an approved
+`release/Todorbit-1.0.3-win-x64-setup.exe`. A portable ZIP is built at
+`release/Todorbit-1.0.3-win-x64-portable.zip`. This is **not yet an approved
 release candidate**: installed upgrade/uninstall and full manual acceptance
-remain unverified. License approval and TodoPilot name clearance also remain
-open. The manual acceptance matrix is in `ACCEPTANCE.md`.
+remain unverified. The creator approved Todorbit and the MIT license; formal
+name clearance remains open. The manual acceptance matrix is in `ACCEPTANCE.md`.
 
 ## Build and install
 
@@ -24,8 +24,9 @@ unsigned; a signing certificate and distribution decision remain open. Use
 
 The installer is configured to use `%LOCALAPPDATA%\Programs\Life Manager`, adds a
 Start menu shortcut, and offers an optional desktop shortcut. It does not
-touch the app's data directory, change sign-in preferences, or run a data
-migration. Normal uninstall leaves personal data intact; it removes a widget
+touch the app's data directory or run a data migration. On an upgrade it updates
+an existing, exact-match widget sign-in entry to the renamed executable;
+it does not opt users in. Normal uninstall leaves personal data intact; it removes a widget
 sign-in entry only when that entry points exactly to the uninstalled widget.
 These behaviors still require an actual installer acceptance test.
 
@@ -83,7 +84,9 @@ acceptance on an isolated profile.
 
 ## Release notes
 
-TodoPilot retains the schema-v20 planner and adds the orbit app icon, light and
-dark theme editor with color wheel and JSON presets, native widget opacity,
-resizing, context menu, layout lock, Contributors page, and portable package.
-Native GUI and installed upgrade acceptance remain pending.
+Todorbit 1.0.3 retains the schema-v20 planner and the TodoPilot data profile.
+It adopts the creator-approved public name and MIT license, synchronized native
+widget versioning, and complete packaged third-party notices. The orbit icon,
+light/dark theme editor, widget opacity and layout controls, Contributors page,
+and portable package remain available. Native GUI and installed rebrand/upgrade
+acceptance remain pending.

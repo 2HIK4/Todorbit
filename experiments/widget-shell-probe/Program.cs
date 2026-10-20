@@ -30,7 +30,7 @@ if (args.Length >= 1 && args[0] is "--widget" or "--widget-command") {
       initialCommand == "toggle" ? "show" : initialCommand));
   } catch (Exception error) {
     Console.Error.WriteLine(error);
-    MessageBox.Show(error.Message, "TodoPilot widget",
+    MessageBox.Show(error.Message, "Todorbit widget",
       MessageBoxButtons.OK, MessageBoxIcon.Error);
     Environment.ExitCode = 1;
   }
@@ -39,7 +39,7 @@ if (args.Length >= 1 && args[0] is "--widget" or "--widget-command") {
 if (args.Length >= 1 && args[0] is
     "--widget-standalone" or "--widget-legacy-reparent") {
   if (PrivacyState.OpenDefault().IsLocked()) {
-    Console.Error.WriteLine("TodoPilot is locked. Open the main app to unlock.");
+    Console.Error.WriteLine("Todorbit is locked. Open the main app to unlock.");
     Environment.ExitCode = 2;
     return;
   }
@@ -99,7 +99,7 @@ if (args is ["--inspect-pid", var delayedPidText, "--delay-seconds", var delayTe
   return;
 }
 if (args.Length != 0) {
-  Console.Error.WriteLine("Usage: life_manager_widget [--widget [--render-diagnostics] [--app-exe PATH] | --widget-command show|hide|toggle|quick-add|refresh|exit | --self-test | diagnostic options]");
+  Console.Error.WriteLine("Usage: TodorbitWidget [--widget [--render-diagnostics] [--app-exe PATH] | --widget-command show|hide|toggle|quick-add|refresh|exit | --self-test | diagnostic options]");
   return;
 }
 

@@ -109,21 +109,21 @@ void main() {
       for (final directory in [first, second]) {
         await File(
           '${directory.path}${Platform.pathSeparator}${ProfilePaths.portableMarkerName}',
-        ).writeAsString('TodoPilot portable profile');
+        ).writeAsString('Todorbit portable profile');
       }
       final firstProfile = ProfilePaths.activeDirectoryIn(
         root.path,
-        executablePath: '${first.path}${Platform.pathSeparator}TodoPilot.exe',
+        executablePath: '${first.path}${Platform.pathSeparator}Todorbit.exe',
       );
       final secondProfile = ProfilePaths.activeDirectoryIn(
         root.path,
-        executablePath: '${second.path}${Platform.pathSeparator}TodoPilot.exe',
+        executablePath: '${second.path}${Platform.pathSeparator}Todorbit.exe',
       );
       expect(firstProfile.path, isNot(secondProfile.path));
       expect(
         ProfilePaths.activeDirectoryIn(
           root.path,
-          executablePath: '${first.path}${Platform.pathSeparator}TodoPilot.exe',
+          executablePath: '${first.path}${Platform.pathSeparator}Todorbit.exe',
         ).path,
         firstProfile.path,
       );

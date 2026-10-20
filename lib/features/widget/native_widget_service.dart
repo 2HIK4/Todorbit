@@ -22,7 +22,7 @@ class NativeWidgetService {
 
   String get executablePath =>
       widgetExecutable ??
-      '${File(Platform.resolvedExecutable).parent.path}${Platform.pathSeparator}TodoPilotWidget.exe';
+      '${File(Platform.resolvedExecutable).parent.path}${Platform.pathSeparator}TodorbitWidget.exe';
 
   String get appExecutablePath => appExecutable ?? Platform.resolvedExecutable;
 
@@ -47,7 +47,7 @@ class NativeWidgetService {
     }
     if (!File(executablePath).existsSync()) {
       throw StateError(
-        'Native widget companion was not found beside TodoPilot: $executablePath',
+        'Native widget companion was not found beside Todorbit: $executablePath',
       );
     }
     final exitCode = await _launcher(executablePath, arguments);

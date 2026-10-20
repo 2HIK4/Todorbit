@@ -5,18 +5,18 @@
 
 [Setup]
 AppId={{8C3E7B4A-17A4-42D7-8C45-EBB4C79B6941}
-AppName=TodoPilot
+AppName=Todorbit
 AppVersion={#AppVersion}
 VersionInfoVersion={#AppVersion}
 AppPublisher=Hussam Alkhatib
 DefaultDirName={localappdata}\Programs\Life Manager
-DefaultGroupName=TodoPilot
+DefaultGroupName=Todorbit
 PrivilegesRequired=lowest
 DisableProgramGroupPage=yes
 OutputDir=..\release
-OutputBaseFilename=TodoPilot-{#AppVersion}-win-x64-setup
+OutputBaseFilename=Todorbit-{#AppVersion}-win-x64-setup
 SetupIconFile=..\windows\runner\resources\app_icon.ico
-UninstallDisplayIcon={app}\TodoPilot.exe
+UninstallDisplayIcon={app}\Todorbit.exe
 Compression=lzma2
 SolidCompression=yes
 CloseApplications=yes
@@ -26,18 +26,26 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 
 [Files]
-Source: "{#BundleDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion; Excludes: "life_manager.exe,life_manager_widget.exe,*.pdb,*.ilk,*.sqlite,*.sqlite-wal,*.sqlite-shm,*.db,*.db-wal,*.db-shm"
+Source: "{#BundleDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion; Excludes: "life_manager.exe,life_manager_widget.exe,TodoPilot.exe,TodoPilotWidget.exe,*.pdb,*.ilk,*.sqlite,*.sqlite-wal,*.sqlite-shm,*.db,*.db-wal,*.db-shm"
 Source: "..\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\third_party\*"; DestDir: "{app}\third_party"; Flags: recursesubdirs createallsubdirs ignoreversion
+
+[InstallDelete]
+Type: files; Name: "{app}\TodoPilot.exe"
+Type: files; Name: "{app}\TodoPilotWidget.exe"
+Type: files; Name: "{group}\TodoPilot.lnk"
+Type: files; Name: "{autodesktop}\TodoPilot.lnk"
 
 [Icons]
-Name: "{group}\TodoPilot"; Filename: "{app}\TodoPilot.exe"
-Name: "{autodesktop}\TodoPilot"; Filename: "{app}\TodoPilot.exe"; Tasks: desktopicon
+Name: "{group}\Todorbit"; Filename: "{app}\Todorbit.exe"
+Name: "{autodesktop}\Todorbit"; Filename: "{app}\Todorbit.exe"; Tasks: desktopicon
 
 [Tasks]
 Name: desktopicon; Description: "Create a desktop shortcut"; Flags: unchecked
 
 [Run]
-Filename: "{app}\TodoPilot.exe"; Description: "Launch TodoPilot"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\Todorbit.exe"; Description: "Launch Todorbit"; Flags: nowait postinstall skipifsilent
 
 [Code]
 // A previous installed TodoPilot used the legacy Life Manager profile. A
@@ -64,6 +72,7 @@ procedure CurStepChanged(CurStep: TSetupStep);
 var
   ProfileDir: String;
   Marker: String;
+  RunValue: String;
 begin
   if CurStep = ssInstall then
   begin
@@ -79,9 +88,21 @@ begin
     if not ForceDirectories(ProfileDir) or
       not SaveStringToFile(Marker,
         '{"profile":"todopilot-upgrade-v1"}', False) then
-      MsgBox('TodoPilot could not select the previous TodoPilot profile. ' +
+      MsgBox('Todorbit could not select the previous TodoPilot profile. ' +
         'Your data is unchanged. Open Backups and import the old database ' +
         'explicitly before adding new data.', mbError, MB_OK);
+  end;
+  if CurStep = ssPostInstall then
+  begin
+    if RegQueryStringValue(HKCU,
+      'Software\Microsoft\Windows\CurrentVersion\Run',
+      'Life Manager Widget', RunValue) and
+      (CompareText(RunValue,
+        '"' + ExpandConstant('{app}\TodoPilotWidget.exe') + '" --widget') = 0) then
+      RegWriteStringValue(HKCU,
+        'Software\Microsoft\Windows\CurrentVersion\Run',
+        'Life Manager Widget',
+        '"' + ExpandConstant('{app}\TodorbitWidget.exe') + '" --widget');
   end;
 end;
 
@@ -93,7 +114,7 @@ var
   Expected: String;
 begin
   if CurUninstallStep <> usUninstall then exit;
-  Expected := '"' + ExpandConstant('{app}\TodoPilotWidget.exe') + '" --widget';
+  Expected := '"' + ExpandConstant('{app}\TodorbitWidget.exe') + '" --widget';
   if RegQueryStringValue(HKCU,
     'Software\Microsoft\Windows\CurrentVersion\Run',
     'Life Manager Widget', Value) and (CompareText(Value, Expected) = 0) then

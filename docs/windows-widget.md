@@ -12,25 +12,25 @@ From the repository root:
 
 ```powershell
 flutter build windows --release
-build\windows\x64\runner\Release\TodoPilot.exe
-build\windows\x64\runner\Release\TodoPilotWidget.exe --widget --app-exe build\windows\x64\runner\Release\TodoPilot.exe
+build\windows\x64\runner\Release\Todorbit.exe
+build\windows\x64\runner\Release\TodorbitWidget.exe --widget --app-exe build\windows\x64\runner\Release\Todorbit.exe
 ```
 
 For compatibility, this also launches the native companion and exits without
 starting the old Flutter widget:
 
 ```powershell
-build\windows\x64\runner\Release\TodoPilot.exe --widget
+build\windows\x64\runner\Release\Todorbit.exe --widget
 ```
 
 The app sidebar can show/hide the widget. Direct commands include:
 
 ```powershell
-build\windows\x64\runner\Release\TodoPilotWidget.exe --widget-command show
-build\windows\x64\runner\Release\TodoPilotWidget.exe --widget-command quick-add
-build\windows\x64\runner\Release\TodoPilotWidget.exe --widget-command view-upcoming
-build\windows\x64\runner\Release\TodoPilotWidget.exe --widget-command theme-system
-build\windows\x64\runner\Release\TodoPilotWidget.exe --widget-command exit
+build\windows\x64\runner\Release\TodorbitWidget.exe --widget-command show
+build\windows\x64\runner\Release\TodorbitWidget.exe --widget-command quick-add
+build\windows\x64\runner\Release\TodorbitWidget.exe --widget-command view-upcoming
+build\windows\x64\runner\Release\TodorbitWidget.exe --widget-command theme-system
+build\windows\x64\runner\Release\TodorbitWidget.exe --widget-command exit
 ```
 
 ## Current behavior
@@ -39,7 +39,7 @@ build\windows\x64\runner\Release\TodoPilotWidget.exe --widget-command exit
   existing `SHELLDLL_DefView`. It contains no persistent WinForms controls and
   is not topmost.
 - Quick Add looks inline, but keyboard input is handled by a temporary
-  borderless, activatable TodoPilot top-level window placed exactly over the
+  borderless, activatable Todorbit top-level window placed exactly over the
   painted field. Enter validates and saves, Escape dismisses, and ordinary
   TextBox editing supplies selection, paste, Backspace, and Delete. The surface
   is destroyed after submit or dismissal.
@@ -53,7 +53,7 @@ build\windows\x64\runner\Release\TodoPilotWidget.exe --widget-command exit
   starts Flutter with `--task-id <uuid>`.
 - Today, Inbox, All Tasks, and Upcoming are selectable in the widget and tray.
   The selection is persisted in the active profile's `widget-settings.json`.
-- The header has one visible Open TodoPilot action. Refresh, Close Widget,
+- The header has one visible Open Todorbit action. Refresh, Close Widget,
   opacity, and layout lock are in the right-click context menu. Empty states
   and Quick Add destinations follow the selected view.
 - Drag the empty title area to move. All four edges and four corners resize with
@@ -78,16 +78,16 @@ build\windows\x64\runner\Release\TodoPilotWidget.exe --widget-command exit
   transactional, use stable UUIDs and UTC timestamps, and the native repository
   refuses to create or migrate a production database.
 - A mutex prevents duplicate companions. Closing Flutter leaves the widget
-  running. Explorer recovery only recreates TodoPilot's HWND with bounded
+  running. Explorer recovery only recreates Todorbit's HWND with bounded
   retries and never changes or restarts Explorer.
 
 The failed Flutter desktop-child prototype is retained only for explicit
-diagnostic work through `TodoPilot.exe --legacy-flutter-widget`. It is not
+diagnostic work through `Todorbit.exe --legacy-flutter-widget`. It is not
 used by the app, `--widget`, the tray, or optional sign-in registration.
 
 ## Automated checks
 
-`TodoPilotWidget.exe --self-test` uses only a disposable database and
+`TodorbitWidget.exe --self-test` uses only a disposable database and
 temporary settings. It covers create/edit/complete persistence, stale-edit
 rejection, view filters and Quick Add destinations, settings/theme round trips,
 resize/DPI/monitor geometry, mutex exclusion, pipe delivery, and bounded
@@ -120,7 +120,7 @@ Record Pass/Fail plus Windows build, monitor topology, and scale:
    minimum layout, and button hit boxes remain correct.
 10. Move and resize on each monitor, restart the widget, and confirm geometry
     persists within accessible bounds at each available DPI scale.
-11. Exercise Open TodoPilot and every right-click menu item. Check Refresh,
+11. Exercise Open Todorbit and every right-click menu item. Check Refresh,
     Close Widget, opacity presets and slider, lock/unlock, and that header
     dragging does not steal menu or task clicks.
 12. Switch Today, Inbox, All Tasks, and Upcoming in the widget; restart and

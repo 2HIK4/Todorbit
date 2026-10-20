@@ -26,7 +26,7 @@ class DesktopWidgetApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
-    title: 'TodoPilot Widget',
+    title: 'Todorbit Widget',
     theme: ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5365B5)),
@@ -151,7 +151,7 @@ class _DesktopWidgetHomeState extends ConsumerState<_DesktopWidgetHome>
                 children: [
                   const Expanded(
                     child: Text(
-                      'TodoPilot',
+                      'Todorbit',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,

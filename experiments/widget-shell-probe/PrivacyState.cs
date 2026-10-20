@@ -8,7 +8,7 @@ internal sealed class PrivacyState {
   private readonly string sessionPath;
   private readonly string expectedProcessName;
 
-  internal PrivacyState(string directory, string expectedProcessName = "life_manager") {
+  internal PrivacyState(string directory, string expectedProcessName = "Todorbit") {
     settingsPath = Path.Combine(directory, "privacy-settings.json");
     sessionPath = Path.Combine(directory, "privacy-session.json");
     this.expectedProcessName = expectedProcessName;
@@ -50,6 +50,6 @@ internal sealed class PrivacyState {
 
   internal void RequireUnlocked() {
     if (IsLocked()) throw new InvalidOperationException(
-      "TodoPilot is locked. Open the main app and enter your PIN.");
+      "Todorbit is locked. Open the main app and enter your PIN.");
   }
 }

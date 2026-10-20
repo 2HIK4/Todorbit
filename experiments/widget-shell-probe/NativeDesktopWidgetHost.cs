@@ -97,7 +97,7 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
 
   private NotifyIcon BuildTrayIcon() {
     var menu = new ContextMenuStrip();
-    menu.Items.Add("Open TodoPilot", null, (_, _) => OpenMainApp());
+    menu.Items.Add("Open Todorbit", null, (_, _) => OpenMainApp());
     menu.Items.Add("Show / hide widget", null, (_, _) => ExecuteCommand("toggle"));
     menu.Items.Add("Quick Add", null, (_, _) => ExecuteCommand("quick-add"));
     var view = new ToolStripMenuItem("Task view");
@@ -124,16 +124,16 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
         settingsStore.Save(settings);
       } catch (Exception error) {
         launch.Checked = StartupRegistration.IsEnabled();
-        MessageBox.Show(error.Message, "TodoPilot widget",
+        MessageBox.Show(error.Message, "Todorbit widget",
           MessageBoxButtons.OK, MessageBoxIcon.Error);
       }
     };
     menu.Items.Add(launch);
     menu.Items.Add("Exit widget", null, (_, _) => ExitThread());
-    menu.Items.Add("Exit TodoPilot completely", null, (_, _) => ExitCompletely());
+    menu.Items.Add("Exit Todorbit completely", null, (_, _) => ExitCompletely());
     var icon = new NotifyIcon {
       Icon = ownedTrayIcon ?? SystemIcons.Application,
-      Text = "TodoPilot",
+      Text = "Todorbit",
       ContextMenuStrip = menu,
     };
     icon.DoubleClick += (_, _) => ExecuteCommand("toggle");
@@ -159,12 +159,12 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
       if (messages.Count == 0) return;
       if (privacy.IsLocked() && privacy.SuppressLockedNotifications()) return;
       var body = privacy.IsLocked()
-        ? "Reminders are available. Open TodoPilot to unlock."
+        ? "Reminders are available. Open Todorbit to unlock."
         : string.Join("\n", messages);
-      trayIcon.ShowBalloonTip(10000, "TodoPilot", body,
+      trayIcon.ShowBalloonTip(10000, "Todorbit", body,
         ToolTipIcon.Info);
     } catch (Exception error) {
-      Debug.WriteLine($"TodoPilot notification check failed: {error}");
+      Debug.WriteLine($"Todorbit notification check failed: {error}");
     }
   }
 
@@ -277,7 +277,7 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
     try {
       Process.Start(new ProcessStartInfo(ResolveMainApp()) { UseShellExecute = true });
     } catch (Exception error) {
-      MessageBox.Show(error.Message, "TodoPilot widget",
+      MessageBox.Show(error.Message, "Todorbit widget",
         MessageBoxButtons.OK, MessageBoxIcon.Error);
     }
   }
@@ -286,18 +286,18 @@ internal sealed class NativeWidgetApplicationContext : ApplicationContext {
     if (!string.IsNullOrWhiteSpace(appExe) && File.Exists(appExe)) {
       return Path.GetFullPath(appExe);
     }
-    var sibling = Path.Combine(AppContext.BaseDirectory, "TodoPilot.exe");
+    var sibling = Path.Combine(AppContext.BaseDirectory, "Todorbit.exe");
     if (File.Exists(sibling)) return sibling;
-    throw new FileNotFoundException("TodoPilot is not beside the widget executable.");
+    throw new FileNotFoundException("Todorbit is not beside the widget executable.");
   }
 
   private void ExitCompletely() {
-    if (MessageBox.Show("Close the widget and all running TodoPilot windows?",
-        "Exit TodoPilot", MessageBoxButtons.YesNo,
+    if (MessageBox.Show("Close the widget and all running Todorbit windows?",
+        "Exit Todorbit", MessageBoxButtons.YesNo,
         MessageBoxIcon.Question) != DialogResult.Yes) return;
     try {
       var expected = Path.GetFullPath(ResolveMainApp());
-      foreach (var process in Process.GetProcessesByName("life_manager")) {
+      foreach (var process in Process.GetProcessesByName("Todorbit")) {
         try {
           if (string.Equals(process.MainModule?.FileName, expected,
               StringComparison.OrdinalIgnoreCase)) process.CloseMainWindow();
@@ -401,7 +401,7 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     scale = ScaleForScreen(screen);
     var logicalSize = WidgetGeometry.LogicalSize(settings.Width, settings.Height);
     var parameters = new CreateParams {
-      Caption = "TodoPilot Desktop Widget",
+      Caption = "Todorbit Desktop Widget",
       Parent = parent,
       X = position.X,
       Y = position.Y,
@@ -543,16 +543,16 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     using var foreground = new SolidBrush(palette.Foreground);
     using var muted = new SolidBrush(palette.Muted);
 
-    graphics.DrawString("TodoPilot", titleFont, foreground,
+    graphics.DrawString("Todorbit", titleFont, foreground,
       new RectangleF(16, 12, Math.Max(80, OpenRect.Left - 24), 32));
     if (privacy.IsLocked()) {
       using var format = CenterFormat();
-      graphics.DrawString("TodoPilot is locked.\nOpen the main app to unlock.",
+      graphics.DrawString("Todorbit is locked.\nOpen the main app to unlock.",
         bodyFont, muted, new RectangleF(18, 65,
           logicalWidth - 36, logicalHeight - 155), format);
       using var button = new SolidBrush(palette.Panel);
       FillRoundedRectangle(graphics, button, AddRect, 7);
-      graphics.DrawString("Open TodoPilot", bodyFont, foreground,
+      graphics.DrawString("Open Todorbit", bodyFont, foreground,
         AddRect, format);
       return;
     }
@@ -710,7 +710,7 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     contextMenu?.Dispose();
     var menu = new ContextMenuStrip();
     contextMenu = menu;
-    menu.Items.Add("Open TodoPilot", null, (_, _) => OpenMainApp());
+    menu.Items.Add("Open Todorbit", null, (_, _) => OpenMainApp());
     menu.Items.Add("Refresh", null, (_, _) => RefreshTasks());
     var appearance = new ToolStripMenuItem("Appearance / Widget Settings");
     foreach (var opacity in new[] { 100, 70, 30, 0 }) {
@@ -734,7 +734,7 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     };
     appearance.DropDownItems.Add(new ToolStripControlHost(slider));
     appearance.DropDownItems.Add(new ToolStripSeparator());
-    appearance.DropDownItems.Add("Customize theme in TodoPilot", null,
+    appearance.DropDownItems.Add("Customize theme in Todorbit", null,
       (_, _) => OpenMainApp(appearanceSettings: true));
     menu.Items.Add(appearance);
     menu.Items.Add(new ToolStripSeparator());
@@ -901,7 +901,7 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     hoverTask = task;
     statusText = target switch {
       HitTarget.Refresh => "Refresh tasks",
-      HitTarget.Open => "Open TodoPilot",
+      HitTarget.Open => "Open Todorbit",
       HitTarget.Close => "Close widget",
       HitTarget.TaskCheckbox => "Complete task",
       HitTarget.TaskRow => "Edit task",
@@ -1065,7 +1065,7 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     if (!string.IsNullOrWhiteSpace(appExe) && File.Exists(appExe)) {
       return Path.GetFullPath(appExe);
     }
-    var sibling = Path.Combine(AppContext.BaseDirectory, "TodoPilot.exe");
+    var sibling = Path.Combine(AppContext.BaseDirectory, "Todorbit.exe");
     if (File.Exists(sibling)) return sibling;
     throw new FileNotFoundException(
       "Pass --app-exe PATH when the main executable is not beside the widget.");
@@ -1076,7 +1076,7 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
       action();
     } catch (Exception error) {
       statusText = "Action failed";
-      MessageBox.Show(error.Message, "TodoPilot widget",
+      MessageBox.Show(error.Message, "Todorbit widget",
         MessageBoxButtons.OK, MessageBoxIcon.Error);
     }
   }

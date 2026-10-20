@@ -17,7 +17,7 @@ void main() {
     final directory = Directory.systemTemp.createTempSync(
       'life-notification-ui-',
     );
-    final widgetFile = File('${directory.path}/life_manager_widget.exe');
+    final widgetFile = File('${directory.path}/TodorbitWidget.exe');
     widgetFile.writeAsBytesSync(const []);
     final launched = <List<String>>[];
     final service = NativeWidgetService(

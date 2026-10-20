@@ -565,7 +565,7 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                   labelText: 'Reminder notifications',
                   helperText:
                       Platform.isWindows && NativeWidgetService().isAvailable
-                      ? 'Delivered by the TodoPilot tray companion while it runs.'
+                      ? 'Delivered by the Todorbit tray companion while it runs.'
                       : 'Requires the packaged Windows tray companion.',
                 ),
                 items: const [

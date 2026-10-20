@@ -69,7 +69,7 @@ class ContributorsView extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     const Text(
-                      'Original concept, product direction, and development of TodoPilot.',
+                      'Original concept, product direction, and development of Todorbit.',
                     ),
                     const SizedBox(height: 12),
                     Wrap(
@@ -125,7 +125,7 @@ class ContributorsView extends StatelessWidget {
                 builder: (context) => AlertDialog(
                   title: const Text('How to contribute'),
                   content: const Text(
-                    'See CONTRIBUTING.md in the TodoPilot source repository for pull request and contributor registry instructions.',
+                    'See CONTRIBUTING.md in the Todorbit source repository for pull request and contributor registry instructions.',
                   ),
                   actions: [
                     TextButton(

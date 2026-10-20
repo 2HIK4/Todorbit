@@ -3,6 +3,6 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>TodoPilotIsolatedLauncher</AssemblyName>
+    <AssemblyName>TodorbitIsolatedLauncher</AssemblyName>
   </PropertyGroup>
 </Project>

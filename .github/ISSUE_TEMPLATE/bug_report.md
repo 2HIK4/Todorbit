@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a reproducible TodoPilot problem
+about: Report a reproducible Todorbit problem
 ---
 
 **Version and Windows version**

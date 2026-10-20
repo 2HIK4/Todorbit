@@ -1,5 +1,53 @@
 # Progress
 
+## Todorbit 1.0.3 public-release preparation (2026-10-20)
+
+- The creator selected **Todorbit** and approved the exact proposed MIT license
+  text with 2026 Hussam Alkhatib copyright. Public UI, package, executable,
+  shortcut, and documentation names now use Todorbit. The installer AppId,
+  `%LOCALAPPDATA%\Programs\Life Manager`, `%APPDATA%\TodoPilot`, legacy
+  `%APPDATA%\Life Manager`, upgrade marker, and native IPC identifiers remain
+  stable. Formal trademark clearance and GitHub destination are still open.
+- Fixed two rename regressions before packaging: the native widget privacy
+  session's expected main-process name and its Exit Completely process lookup
+  now use Todorbit. CMake recognizes the old TodoPilot install-prefix cache and
+  regenerates it for the new target. The first post-rename Windows build failed
+  on the stale cache; the corrected build succeeded.
+- `flutter analyze` passed. All 191 serial Flutter tests passed; two focused
+  native-widget-service/notification fixture tests passed after executable-name
+  updates. The native .NET Release build succeeded with zero warnings/errors.
+  `flutter build windows --release` succeeded. The packaged widget and an
+  extracted portable widget both passed `--self-test`. Main executable version
+  is 1.0.3+4, widget file version 1.0.3.0.
+- The extracted 1.0.3 portable GUI launched from a path with spaces in a
+  disposable APPDATA/LOCALAPPDATA root. It opened empty, showed the Todorbit
+  mark and title, created a task planned for today, and displayed that task
+  after restart. A second extraction opened empty in a separate profile.
+  `docs/screenshots/todorbit-today.png` is captured from this sample profile.
+  The normal installed app and personal data were not used.
+- The 29-file portable ZIP includes the approved MIT LICENSE, Flutter
+  `NOTICES.Z`, Lucide attribution, .NET and SQLitePCLRaw licenses/notices, both
+  executables, and the Todorbit mark. Its entry scan found no database,
+  backup, log, key, old executable, or old mark. Inno Setup 7.1.0 compiled the
+  installer with matching version; no installation was performed. Both
+  artifacts are unsigned. The package scripts now reject version mismatch,
+  obsolete executables, and private data.
+- `release/Todorbit-1.0.3-win-x64-portable.zip`: 61,348,174 bytes, SHA-256
+  `93C220087F91FCA5D34B556FCFB05526F7BB2B1DAA72A3E8ADF9BCB5C77ECB34`.
+  `release/Todorbit-1.0.3-win-x64-setup.exe`: 46,461,244 bytes, SHA-256
+  `D6D5419C5427819CDB8BFCDA130DD7A8FDADD22FAE221C2ED387599361452A04`.
+  `release/` contains only these packages, LICENSE, notices, notes, and checksums.
+- A targeted tracked-path and 48-revision Git-history scan found no obvious
+  committed database, backup, key, or credential signatures. The .NET package
+  vulnerability query found no vulnerable packages from configured sources.
+  These are scoped checks. A Windows 2022 CI workflow is prepared but has not
+  run on GitHub.
+- **NOT READY:** actual disposable-user/VM installation, registered upgrade,
+  uninstall/reinstall, native widget shell/opacity/Win+D/DPI/menu checks,
+  broader 1.0.3 GUI flows, Windows 10, and formal name clearance remain open.
+  The GitHub account/repository and publication approval are also pending.
+  See `RELEASE_AUDIT.md` and `ACCEPTANCE.md`.
+
 ## TodoPilot 1.0.2 release-readiness checkpoint (2026-10-19)
 
 - Baseline `b9a75ce` on `feature/windows-v1-completion` had a clean working

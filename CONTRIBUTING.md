@@ -1,4 +1,4 @@
-# Contributing to TodoPilot
+# Contributing to Todorbit
 
 Open an issue to discuss larger behavior changes, then make a focused pull request. Keep Windows desktop behavior and existing data compatibility intact. Do not add cloud services, accounts, telemetry, executable theme plugins, or production data to tests.
 

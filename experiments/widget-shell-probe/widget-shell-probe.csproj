@@ -5,12 +5,12 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>TodoPilotWidget</AssemblyName>
+    <AssemblyName>TodorbitWidget</AssemblyName>
     <RootNamespace>LifeManager.Widget</RootNamespace>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
-    <Version>1.0.0</Version>
-    <FileVersion>1.0.0.0</FileVersion>
-    <Product>TodoPilot Widget</Product>
+    <Version>1.0.3</Version>
+    <FileVersion>1.0.3.0</FileVersion>
+    <Product>Todorbit Widget</Product>
     <ApplicationIcon>../../windows/runner/resources/app_icon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>

@@ -1,4 +1,4 @@
-# Windows shell-host experiment (not the Life Manager widget)
+# Todorbit native widget and shell-host diagnostics
 
 This project contains the integrated native widget plus retained shell
 diagnostics. Its no-argument mode only enumerates the current desktop,
@@ -39,10 +39,10 @@ desktop attachment; it does not prove shell-child composition.
 
 `--widget` launches the integrated native widget. The Windows build publishes
 it beside the main app as
-`life_manager_widget.exe`. Its persistent display is one double-buffered, owner-drawn native
+`TodorbitWidget.exe`. Its persistent display is one double-buffered, owner-drawn native
 HWND created directly under Explorer's existing `SHELLDLL_DefView`; its Quick
 Add editor is a temporary activatable top-level surface aligned over the
-painted field. The widget reads real schema-v4 task data, supports
+painted field. The widget reads supported schema-v4 through schema-v20 task data, supports
 Today/Inbox/All Tasks/Upcoming, creates tasks with view-specific scheduling,
 completes tasks, and opens a compact optimistic-concurrency task editor. It
 prevents duplicate instances, shares the app's persisted system/light/dark
@@ -51,7 +51,7 @@ lightweight tray workflow. Position, size, and selected view persist per user;
 all edges and corners resize and bounds are clamped to connected working areas.
 
 The repository boundary is intentionally narrow. It refuses to create or
-migrate the production database, checks `PRAGMA user_version = 4`, uses
+migrate the production database, checks `PRAGMA user_version` is supported, uses
 parameterized SQL, transactions, stable UUIDs, UTC timestamps, foreign keys,
 and a five-second busy timeout. `--self-test` validates creation and completion
 against a disposable temporary database; it never opens the production file.
@@ -61,7 +61,7 @@ Build and launch from the repository root:
 ```powershell
 dotnet build experiments\widget-shell-probe\widget-shell-probe.csproj -c Release
 dotnet run --project experiments\widget-shell-probe\widget-shell-probe.csproj -c Release -- --self-test
-dotnet run --project experiments\widget-shell-probe\widget-shell-probe.csproj -c Release -- --widget --app-exe build\windows\x64\runner\Debug\life_manager.exe
+dotnet run --project experiments\widget-shell-probe\widget-shell-probe.csproj -c Release -- --widget --app-exe build\windows\x64\runner\Debug\Todorbit.exe
 ```
 
 Use the tray Appearance submenu or a `--widget-command theme-light` command to

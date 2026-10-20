@@ -1,0 +1,7 @@
+# Todorbit 1.0.3 candidate notes
+
+Todorbit is the creator-approved public name for the Windows planner previously called TodoPilot. It keeps the orbit logo, tasks, calendar, habits, goals, focus work, native desktop widget, light/dark theme editor, and validated JSON customization.
+
+The rename changes displayed branding, executable and package names, shortcuts, and window metadata. It preserves the installer AppId, `%LOCALAPPDATA%\Programs\Life Manager` installation path, `%APPDATA%\TodoPilot` and legacy `%APPDATA%\Life Manager` data paths, profile marker, and native IPC names so existing users can keep their data. The installer removes the exact old executable and shortcut names during an upgrade and migrates an opted-in widget sign-in entry to the renamed executable. Those installed behaviors still require direct acceptance in a disposable Windows user or VM.
+
+The creator approved the project MIT license. Packages include its `LICENSE`, Flutter's `NOTICES.Z`, Lucide attribution, and .NET/SQLitePCLRaw license and notice files. Both packages remain unsigned. Windows 10, installed upgrade/uninstall, widget visibility after Win+D, opacity against wallpapers, DPI, multiple monitors, privacy integration, and complete GUI flows remain manual release checks. Formal trademark clearance of Todorbit and confirmation of the GitHub destination remain open. No public release is authorized yet.

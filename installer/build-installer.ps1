@@ -10,10 +10,14 @@ if ($versionText -notmatch '(?m)^version:\s*(\d+\.\d+\.\d+)') {
 }
 $version = $Matches[1]
 $bundle = Join-Path $repo 'build\windows\x64\runner\Release'
-$mainExe = Join-Path $bundle 'TodoPilot.exe'
-$widgetExe = Join-Path $bundle 'TodoPilotWidget.exe'
+$mainExe = Join-Path $bundle 'Todorbit.exe'
+$widgetExe = Join-Path $bundle 'TodorbitWidget.exe'
 if (-not (Test-Path -LiteralPath $mainExe) -or -not (Test-Path -LiteralPath $widgetExe)) {
   throw 'Release bundle is missing. Run flutter build windows --release first.'
+}
+$widgetVersion = (Get-Item -LiteralPath $widgetExe).VersionInfo.FileVersion
+if ($widgetVersion -notmatch ('^' + [regex]::Escape($version) + '(?:\.|$)')) {
+  throw "Widget version $widgetVersion does not match application version $version. Rebuild Windows Release."
 }
 $privateData = Get-ChildItem -LiteralPath $bundle -Recurse -File | Where-Object {
   $_.Name -match '(?i)\.(sqlite|db)(-(wal|shm))?$|\.log$|\.(pfx|p12|pem|key)$|(-settings|privacy-session|pending-restore)\.json$' -or
@@ -23,9 +27,9 @@ if ($privateData) {
   throw 'Release bundle contains private data or secrets. Remove it before packaging.'
 }
 $obsoleteBinaries = Get-ChildItem -LiteralPath $bundle -Recurse -File | Where-Object {
-  $_.Name -in @('life_manager.exe', 'life_manager_widget.exe')
+  $_.Name -in @('life_manager.exe', 'life_manager_widget.exe', 'TodoPilot.exe', 'TodoPilotWidget.exe')
 }
-if ($obsoleteBinaries) { throw 'Release bundle contains obsolete Life Manager executables.' }
+if ($obsoleteBinaries) { throw 'Release bundle contains obsolete executable names.' }
 
 if (-not $Compiler) {
   $candidates = @(
@@ -56,6 +60,6 @@ if ($compilerVersion -notmatch '^7\.') {
 
 & $Compiler "/DAppVersion=$version" (Join-Path $PSScriptRoot 'life_manager.iss')
 if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
-$artifact = Join-Path $repo "release\TodoPilot-$version-win-x64-setup.exe"
+$artifact = Join-Path $repo "release\Todorbit-$version-win-x64-setup.exe"
 if (-not (Test-Path -LiteralPath $artifact)) { throw 'Installer compiler did not create expected artifact.' }
 Get-FileHash -Algorithm SHA256 -LiteralPath $artifact

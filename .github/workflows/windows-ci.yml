@@ -1,0 +1,39 @@
+name: Windows checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Analyze Dart
+        run: flutter analyze
+      - name: Run Flutter tests
+        run: flutter test --concurrency=1
+      - name: Build Windows Release
+        run: flutter build windows --release
+      - name: Native widget self-test in disposable profile
+        shell: pwsh
+        run: |
+          $env:APPDATA = Join-Path $env:RUNNER_TEMP 'TodorbitCI\Roaming'
+          $env:LOCALAPPDATA = Join-Path $env:RUNNER_TEMP 'TodorbitCI\Local'
+          New-Item -ItemType Directory -Force -Path $env:APPDATA,$env:LOCALAPPDATA | Out-Null
+          & 'build\windows\x64\runner\Release\TodorbitWidget.exe' --self-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

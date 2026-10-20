@@ -1,5 +1,23 @@
 # Windows v1.0 final acceptance record
 
+## Todorbit 1.0.3 rebrand checkpoint (2026-10-20)
+
+The 1.0.2 Release GUI was later enumerated in an isolated Windows profile. Its
+dark and light Today views showed the outlined orbit mark and readable text.
+An undated task was created, found in Anytime, and completed. The Settings
+data-profile dialog showed the disposable SQLite path.
+
+The extracted 1.0.3 portable GUI opened from a path containing spaces in a
+separate temporary APPDATA/LOCALAPPDATA root. It showed the Todorbit title and
+mark, began with zero tasks, created a task planned for today, displayed it on
+Today, and retained it after a full restart. A second extraction in the same
+temporary root opened with zero tasks and created a different location-keyed
+profile. The extracted widget self-test passed. An actual installed 1.0.3
+fresh start, registered upgrade, uninstall/reinstall, Windows 10, and native
+widget shell interactions remain unverified. Older rows below describe their
+recorded version-specific GUI evidence; do not treat them as a complete 1.0.3
+pass.
+
 ## TodoPilot 1.0.2 update (2026-10-19)
 
 The 1.0.2 Release build and packaged widget self-test pass. The final portable

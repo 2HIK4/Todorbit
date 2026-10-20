@@ -1,10 +1,10 @@
 import 'package:flutter/widgets.dart';
 
-/// The outlined orbit used for in-app TodoPilot branding.
+/// The outlined orbit used for in-app Todorbit branding.
 class BrandMark extends StatelessWidget {
   const BrandMark({super.key, this.size = 24});
 
-  static const asset = 'assets/todopilot_brand_mark.png';
+  static const asset = 'assets/todorbit_brand_mark.png';
 
   final double size;
 
@@ -14,6 +14,6 @@ class BrandMark extends StatelessWidget {
     width: size,
     height: size,
     filterQuality: FilterQuality.medium,
-    semanticLabel: 'TodoPilot orbit logo',
+    semanticLabel: 'Todorbit orbit logo',
   );
 }

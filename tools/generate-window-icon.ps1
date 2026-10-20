@@ -51,7 +51,7 @@ foreach ($layer in @(@('#050505', 3.5), @('#FFFFFF', 2.0))) {
   }
   $pen.Dispose()
 }
-$bitmap.Save((Join-Path $Root 'assets/todopilot_brand_mark.png'),
+$bitmap.Save((Join-Path $Root 'assets/todorbit_brand_mark.png'),
   [System.Drawing.Imaging.ImageFormat]::Png)
 $graphics.Dispose(); $bitmap.Dispose()
 $icoPath = Join-Path $Root 'windows/runner/resources/window_icon.ico'

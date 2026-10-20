@@ -76,7 +76,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           builder: (dialogContext) => AlertDialog(
             title: const Text('Older Life Manager data found'),
             content: const Text(
-              'TodoPilot has started with an empty profile. Your older Life Manager data has not been opened or changed. You can review a verified import before choosing whether to replace this empty profile.',
+              'Todorbit has started with an empty profile. Your older Life Manager data has not been opened or changed. You can review a verified import before choosing whether to replace this empty profile.',
             ),
             actions: [
               TextButton(
@@ -125,7 +125,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       builder: (context) => AlertDialog(
         title: const Text('Data profile'),
         content: SelectableText(
-          'TodoPilot stores this Windows user’s tasks and settings in the '
+          'Todorbit stores this Windows user’s tasks and settings in the '
           'per-user data folder. Updating or reinstalling the app keeps this '
           'profile. A different Windows user starts with an empty profile.\n\n'
           'Database: ${file.path}\n\n'
@@ -518,7 +518,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 const SizedBox(width: 10),
                 const Expanded(
                   child: Text(
-                    'TodoPilot',
+                    'Todorbit',
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
                   ),
                 ),

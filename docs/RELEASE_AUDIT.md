@@ -1,71 +1,38 @@
-# TodoPilot 1.0.2 public-release audit
+# Todorbit 1.0.3 public-release audit
 
-Updated 2026-10-19. This is a candidate assessment, not permission to publish.
-The working build and automated tests use disposable data. The production
-database, installed TodoPilot, and normal Windows profile were not used for
-release acceptance.
+Updated 2026-10-20. This is a candidate assessment, not permission to publish.
+The normal installed application and personal data were not used for acceptance.
 
 ## Verdict: NOT READY
 
-### Publication blockers
+| Open gate | Evidence and required check |
+| --- | --- |
+| Formal name clearance | The creator selected Todorbit after the [preliminary review](NAMING_REVIEW.md). Public web and exact GitHub-name searches found no direct exact match at the time, but trademark register results were not verified. A jurisdiction-specific review of similar marks remains necessary. |
+| Installed upgrade and uninstall | Inno Setup compiles, but a fresh install, registered TodoPilot upgrade, uninstall, and reinstall have not been run in a disposable Windows user or VM. Confirm profile selection, data retention, shortcuts, and widget sign-in migration with [the acceptance matrix](ACCEPTANCE.md). |
+| Native desktop behavior | A packaged widget self-test and earlier read-only Explorer attachment inspection do not prove Win+D visibility, wallpaper opacity, input, DPI, multiple monitors, or Explorer recovery. Complete the [manual widget checklist](windows-widget.md). |
+| Broad GUI acceptance | The extracted 1.0.3 portable app opened from a path with spaces and showed the renamed dark Today UI. A disposable task dated today appeared and persisted after restart; a second extraction was empty. The earlier isolated 1.0.2 app showed the outlined mark in both light and dark themes and completed an Anytime task. Other end-to-end flows in [the acceptance matrix](ACCEPTANCE.md) remain open. |
+| Distribution | The packages are unsigned, Windows 10 has not been tested, and the GitHub account and destination repository have not been confirmed. No public release is authorized. |
 
-| Finding | Evidence | Required decision or check |
-| --- | --- | --- |
-| Open-source license is unapproved | `LICENSE.proposed` is the only project license file. README calls MIT a proposal. | Creator reviews and approves a license, then the approved text and contribution terms are checked before publication. |
-| Product-name clearance is unresolved | Existing productivity products use [TodoPilot](https://www.todopilot.app/), [ToDoPilot for Windows](https://www.todopilot.com/), and [TodoPilot on the App Store](https://apps.apple.com/jp/app/todopilot/id6804931706). A search result is not a trademark determination. | Creator obtains jurisdiction-appropriate name review, including the [USPTO search process](https://www.uspto.gov/trademarks/search), and decides whether to retain the brand. |
-| Installed release behavior lacks direct acceptance | Inno Setup compiles, but no install, registered upgrade, uninstall, or reinstall was performed in a disposable Windows user or VM. | Run the `ACCEPTANCE.md` install and data-retention cases without the normal user profile. |
-| Native desktop behavior remains partly unobserved | Self-tests and isolated shell attachment checks do not prove visible opacity, Win+D, input, or DPI behavior on target desktops. | Complete the manual checklist in `windows-widget.md`, including wallpaper contrast, resize, context menu, lock, and recovery. |
+## Resolved decisions and release work
 
-## Automated functional coverage
+- The creator approved the exact MIT text in `LICENSE`, with Copyright (c) 2026 Hussam Alkhatib. `LICENSE.proposed` was retired. This is the project's license; bundled third-party terms remain separate.
+- Public UI, executable, widget, shortcut, package, and documentation names use Todorbit. The installer AppId, `%LOCALAPPDATA%\Programs\Life Manager` installation directory, `%APPDATA%\TodoPilot` profile, older `%APPDATA%\Life Manager` profile, marker, and native IPC identifiers remain stable.
+- Upgrade packaging removes only exact old executable and shortcut names. It changes an existing widget sign-in entry only when it exactly matches the old installed executable; this still needs installed verification.
+- The bundle includes Flutter `NOTICES.Z`, the project `LICENSE`, Lucide attribution, .NET runtime and Windows Desktop licenses and notices, and SQLitePCLRaw license and notice. See [third-party notices](../THIRD_PARTY_NOTICES.md).
+- A Windows 2022 GitHub Actions workflow runs analysis, serial Flutter tests, Release build, and the packaged widget self-test. It has not run on GitHub yet.
 
-`flutter analyze` and 191 serial Flutter tests pass at this checkpoint. Tests
-cover task CRUD and stale edits; category/project relationships; checklists and
-subtasks; Anytime; calendar filters and event recurrence; Smart Reschedule;
-habits, goals, templates, focus work, saved views, search, notifications,
-Archive/Trash, backup/restore, import/export, attachments, PIN behavior,
-appearance persistence, theme JSON validation, and contributors. These are
-repository and Flutter widget checks; `ACCEPTANCE.md` tracks actual Windows GUI
-flows separately. The Windows Release build and packaged native self-test pass.
-The extracted portable widget self-test initially exposed a test-harness
-assumption that ignored `PORTABLE-MODE`; that assertion was corrected, rebuilt,
-and both packaged and extracted self-tests then passed. The final 27-entry ZIP
-has the two executables, Flutter notices, outlined in-app mark, and Lucide
-attribution, with no database, backup, log, key, or legacy executable entry.
-Inno Setup 7.1.0 compiled the 1.0.2 installer; both packages are unsigned.
+## Validation scope
 
-## Security and data review
+`flutter analyze`, all 191 serial Flutter tests, and the final Windows Release
+build passed. Two focused Flutter tests passed after their fixture paths were
+renamed. The native .NET Release build had no warnings, and the packaged and
+extracted portable widget self-tests passed. Inno Setup 7.1.0 compiled the
+installer. The 29-file ZIP contains both executables, MIT and third-party
+notices, Flutter notices, and the Todorbit brand asset; its entry scan found no
+database, backup, log, key, or old executable. The installed behavior is still
+unverified. Current package paths and hashes are in [PROGRESS.md](PROGRESS.md)
+and `release/SHA256SUMS.txt`.
 
-- Fresh and portable profile isolation, explicit legacy import, backup before
-  migration, and archive/restore are covered by disposable tests and prior
-  isolated Release UI checks. An actual installer upgrade is still untested.
-- App lock protects the UI, not SQLite files against someone with access to the
-  Windows account. The README and release guide state this limitation.
-- Theme import is validated data and does not modify the contributor registry.
-  Native widget commands use profile-scoped IPC, with self-tests for mutex and
-  command routing. Real two-process privacy behavior needs GUI acceptance.
-- Targeted source and previously recorded Git-history scans found no obvious
-  committed database, key, or credential. This is a scoped scan, not proof that
-  arbitrary sensitive text is absent. Package entry and byte checks are a
-  separate release gate.
-- Flutter license notices and Lucide ISC attribution are required in both
-  distributions. The .NET package vulnerability audit found no vulnerable
-  packages in the current NuGet and local SDK sources; it is scoped to those
-  sources and the native widget project.
+A targeted review of tracked paths and 48 Git revisions found no private key, database, credential, or obvious token signature. This scan does not prove the absence of all sensitive data. The .NET vulnerability query reported no vulnerable packages from the configured NuGet and local SDK sources. App lock protects the UI and does not encrypt SQLite files. Theme JSON is validated data and does not alter the official contributor registry.
 
-## Public documentation and release quality
-
-README, contribution and security guidance, code of conduct, changelog,
-developer/theming documents, issue and pull-request templates, and a real
-isolated-profile screenshot are present. The approved license, name clearance,
-and GitHub destination are pending. The packages are unsigned; Windows
-SmartScreen or antivirus reputation has not been verified. Windows 10 support
-and installer shortcut/uninstall behavior are not claimed as tested.
-
-No confirmed security, data-loss, or critical-function defect was found in the
-automated gate. The unresolved publication decisions and manual release gates
-above prevent a READY verdict.
-
-The outlined orbit's transparent PNG and packaged Flutter asset were inspected.
-The isolated Release process started, but the Windows inspection tool did not
-enumerate its window. Thus the new sidebar mark has **not** passed the requested
-actual-build visual check in either theme; this remains a manual gate.
+No confirmed data-loss, security, or essential-function defect was found in the tested scope. The open gates above prevent a READY verdict.

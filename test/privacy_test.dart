@@ -123,7 +123,7 @@ void main() {
       );
       await tester.pump();
       expect(find.text('Private task title'), findsNothing);
-      expect(find.text('TodoPilot is locked'), findsOneWidget);
+      expect(find.text('Todorbit is locked'), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
     } finally {
       await database.close();

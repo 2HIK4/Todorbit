@@ -41,7 +41,7 @@ Future<void> _startApplication(
         home: Scaffold(
           body: Center(
             child: Text(
-              'Privacy settings could not be read. Restore the settings from a trusted backup before opening TodoPilot.',
+              'Privacy settings could not be read. Restore the settings from a trusted backup before opening Todorbit.',
             ),
           ),
         ),
@@ -69,7 +69,7 @@ Future<void> _startApplication(
         home: Scaffold(
           body: Center(
             child: Text(
-              'TodoPilot could not inspect the database safely: $failure',
+              'Todorbit could not inspect the database safely: $failure',
             ),
           ),
         ),
@@ -188,7 +188,7 @@ class _MigrationApprovalAppState extends State<_MigrationApprovalApp> {
                 const Text('Database upgrade required'),
                 const SizedBox(height: 12),
                 Text(
-                  'This database uses schema ${widget.olderSchema}. TodoPilot will create and verify a Before upgrade backup, then migrate it to schema ${AppDatabase.currentSchemaVersion}. If backup or migration fails, the workspace will not open. Your data will not be reset.',
+                  'This database uses schema ${widget.olderSchema}. Todorbit will create and verify a Before upgrade backup, then migrate it to schema ${AppDatabase.currentSchemaVersion}. If backup or migration fails, the workspace will not open. Your data will not be reset.',
                 ),
                 const SizedBox(height: 16),
                 FilledButton(
@@ -265,7 +265,7 @@ class _StartupFailureAppState extends State<_StartupFailureApp> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'TodoPilot could not prepare its database. The main app was not started and no migration was run.',
+                'Todorbit could not prepare its database. The main app was not started and no migration was run.',
               ),
               const SizedBox(height: 12),
               SelectableText(widget.failure),
@@ -413,7 +413,7 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
       ThemeModePreference.system => ThemeMode.system,
     };
     return MaterialApp(
-      title: 'TodoPilot',
+      title: 'Todorbit',
       debugShowCheckedModeBanner: false,
       themeMode: mode,
       theme: _theme(

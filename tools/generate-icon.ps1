@@ -1,6 +1,6 @@
 param([string]$Root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path)
 
-# Rasterize the Lucide-derived orbit geometry in assets/todopilot_icon.svg.
+# Rasterize the Lucide-derived orbit geometry in assets/todorbit_icon.svg.
 # Draw each ICO resolution independently to keep small Windows icons legible.
 Add-Type -AssemblyName System.Drawing
 $sizes = @(16, 24, 32, 48, 64, 128, 256)
