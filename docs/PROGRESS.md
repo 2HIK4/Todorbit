@@ -1,5 +1,27 @@
 # Progress
 
+## Final private GitHub review (2026-10-20)
+
+- Authenticated GitHub account `2HIK4` and private repository `2HIK4/Todorbit`
+  were confirmed. The four observed Windows CI runs passed, including tag
+  `v1.0.3` at `919c618`. GitHub vulnerability alerts were enabled. Branch
+  protection was unavailable on the current private repository plan.
+- The existing installer, portable ZIP, and checksum file hashes match their
+  uploaded GitHub asset digests. ZIP integrity passed. The ZIP has 29 files and
+  four directory entries with no personal data files found in its entry list.
+  The tag's application source matches the original package checkpoint; later
+  commits only changed the README screenshot.
+- Visual inspection exposed a screenshot regression at the tag: the file named
+  `todorbit-today.png` showed old TodoPilot branding and an empty Today page.
+  Restored the original 1.0.3 Todorbit sample screenshot on the development
+  branch. The existing tag still points at the bad screenshot and was not moved.
+  The prerelease body also contains malformed Portfolio and LinkedIn links;
+  corrections are described in `docs/RELEASE_AUDIT.md`.
+- A scoped scan of 51 Git revisions found no private data paths or common token
+  signatures. Formal name clearance, disposable-user installer acceptance,
+  native widget GUI checks, broader app flows, and Windows 10 remain open.
+
+
 ## Todorbit 1.0.3 public-release preparation (2026-10-20)
 
 - The creator selected **Todorbit** and approved the exact proposed MIT license

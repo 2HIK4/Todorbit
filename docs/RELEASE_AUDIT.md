@@ -11,7 +11,7 @@ The normal installed application and personal data were not used for acceptance.
 | Installed upgrade and uninstall | Inno Setup compiles, but a fresh install, registered TodoPilot upgrade, uninstall, and reinstall have not been run in a disposable Windows user or VM. Confirm profile selection, data retention, shortcuts, and widget sign-in migration with [the acceptance matrix](ACCEPTANCE.md). |
 | Native desktop behavior | A packaged widget self-test and earlier read-only Explorer attachment inspection do not prove Win+D visibility, wallpaper opacity, input, DPI, multiple monitors, or Explorer recovery. Complete the [manual widget checklist](windows-widget.md). |
 | Broad GUI acceptance | The extracted 1.0.3 portable app opened from a path with spaces and showed the renamed dark Today UI. A disposable task dated today appeared and persisted after restart; a second extraction was empty. The earlier isolated 1.0.2 app showed the outlined mark in both light and dark themes and completed an Anytime task. Other end-to-end flows in [the acceptance matrix](ACCEPTANCE.md) remain open. |
-| Distribution | The packages are unsigned, Windows 10 has not been tested, and the GitHub account and destination repository have not been confirmed. No public release is authorized. |
+| Distribution | The packages are unsigned and Windows 10 has not been tested. The authenticated `2HIK4` account and private `2HIK4/Todorbit` repository are confirmed. No public release is authorized. |
 
 ## Resolved decisions and release work
 
@@ -19,7 +19,15 @@ The normal installed application and personal data were not used for acceptance.
 - Public UI, executable, widget, shortcut, package, and documentation names use Todorbit. The installer AppId, `%LOCALAPPDATA%\Programs\Life Manager` installation directory, `%APPDATA%\TodoPilot` profile, older `%APPDATA%\Life Manager` profile, marker, and native IPC identifiers remain stable.
 - Upgrade packaging removes only exact old executable and shortcut names. It changes an existing widget sign-in entry only when it exactly matches the old installed executable; this still needs installed verification.
 - The bundle includes Flutter `NOTICES.Z`, the project `LICENSE`, Lucide attribution, .NET runtime and Windows Desktop licenses and notices, and SQLitePCLRaw license and notice. See [third-party notices](../THIRD_PARTY_NOTICES.md).
-- A Windows 2022 GitHub Actions workflow runs analysis, serial Flutter tests, Release build, and the packaged widget self-test. It has not run on GitHub yet.
+- The Windows 2022 GitHub Actions workflow passed analysis, serial Flutter tests, Release build, and the packaged widget self-test at tag `v1.0.3` (`919c618`).
+
+## GitHub and package verification on 2026-10-20
+
+- `v1.0.3` resolves to `919c618`; the existing private prerelease targets the development branch at that commit. All four observed Windows workflow runs passed, including the tag run. The only change after the original `67619fe` package checkpoint is the README screenshot; application source is unchanged. No binary or tag was replaced.
+- Local installer and portable hashes match `release/SHA256SUMS.txt` and the GitHub asset digests. The uploaded checksum file's digest also matches the local file. The ZIP CRC check passed; its 33 entries include four directory entries and 29 files. No database, backup, log, key, or obsolete executable appears in its entries. The installer remains unsigned; its installed behavior has not been tested.
+- The README, MIT license, contributor and security guidance, third-party notices, issue template, PR template, and source build commands are present. Visual inspection found that the screenshot committed at `919c618` displayed old TodoPilot branding and an empty Today view. The original `67619fe` sample-profile image shows Todorbit and a task and has been restored on the development branch. The immutable prerelease tag still contains the incorrect screenshot; resolving that tag snapshot requires a reviewed release strategy. A scoped scan of 51 Git revisions found no tracked private data paths or common token/private-key signatures; this does not prove the entire history contains no personal information.
+- GitHub vulnerability alerts were enabled. Branch protection returned HTTP 403 because this private repository's current plan does not provide that feature; Dependabot alert listing was unavailable. Review those settings after publication.
+- The existing prerelease notes have two malformed Portfolio/LinkedIn Markdown links and describe portable data only generally. A safe metadata-only correction would replace those links with standard `[Portfolio](...)` and `[LinkedIn](...)` links and point users to `docs/INSTALLATION.md` for the location-keyed `%APPDATA%\\TodoPilot` profile. The prerelease metadata was left unchanged pending the release review; no assets need replacement for this correction.
 
 ## Validation scope
 

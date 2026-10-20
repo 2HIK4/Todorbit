@@ -1,5 +1,13 @@
 # Decisions
 
+- **Public branch and existing tag (2026-10-20):** prepare `main` as a linear
+  descendant of the reviewed development branch, preserving `master`, the
+  development branch, and all history. Keep `v1.0.3` and its uploaded assets
+  unchanged. The tag snapshot contains an incorrect README screenshot even
+  though the application source and binary digests match; do not silently
+  retag or replace packages to repair documentation.
+
+
 - **Public name and license (2026-10-20):** the creator selected Todorbit and
   explicitly approved the proposed MIT text with copyright to Hussam Alkhatib.
   Preserve the orbit artwork, stable installer AppId, legacy TodoPilot and Life
