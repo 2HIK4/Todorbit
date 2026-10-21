@@ -111,10 +111,10 @@ if (args is ["--preview-editor"] or ["--preview-editor", "--light"]) {
   return;
 }
 if (args.Length >= 2 && args[0] == "--capture-editor" &&
-    args.Skip(2).All(value => value is "--light" or "--narrow")) {
+    args.Skip(2).All(value => value is "--light" or "--narrow" or "--custom")) {
   ApplicationConfiguration.Initialize();
   LifeManagerWidgetSelfTest.PreviewEditor(args.Contains("--light"),
-    args[1], args.Contains("--narrow"));
+    args[1], args.Contains("--narrow"), args.Contains("--custom"));
   return;
 }
 if (args.Length is 2 or 3 && args[0] == "--capture-calendar" &&
@@ -122,6 +122,12 @@ if (args.Length is 2 or 3 && args[0] == "--capture-calendar" &&
   ApplicationConfiguration.Initialize();
   LifeManagerWidgetSelfTest.CaptureCalendar(args[1],
     args.Contains("--light"));
+  return;
+}
+if (args.Length is 2 or 3 && args[0] == "--capture-quick-add" &&
+    (args.Length == 2 || args[2] == "--light")) {
+  ApplicationConfiguration.Initialize();
+  LifeManagerWidgetSelfTest.CaptureQuickAdd(args[1], args.Contains("--light"));
   return;
 }
 if (args is ["--attach-prototype"]) {

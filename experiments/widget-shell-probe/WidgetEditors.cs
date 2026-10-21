@@ -5,10 +5,12 @@ internal sealed class InlineQuickAddForm : Form {
   private readonly TextBox editor = new();
   private readonly Label feedback = new();
   private readonly Action<string> submit;
+  private readonly WidgetPalette palette;
 
   internal InlineQuickAddForm(
       WidgetPalette palette, Rectangle bounds, string destination,
       Action<string> submit) {
+    this.palette = palette;
     this.submit = submit;
     Text = "Quick Add - Todorbit";
     FormBorderStyle = FormBorderStyle.None;
@@ -20,6 +22,8 @@ internal sealed class InlineQuickAddForm : Form {
     ForeColor = palette.Foreground;
     Font = new Font("Segoe UI", 9.5f);
     Padding = new Padding(1);
+    SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
+      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
     KeyPreview = true;
 
     var plus = new Label {
@@ -55,14 +59,27 @@ internal sealed class InlineQuickAddForm : Form {
     editor.GotFocus += (_, _) => Invalidate();
     editor.LostFocus += (_, _) => Invalidate();
     Controls.AddRange([plus, editor, destinationLabel, feedback]);
-    Paint += (_, eventArgs) => {
-      using var pen = new Pen(ContainsFocus ? palette.Accent : palette.Border, 2);
-      eventArgs.Graphics.DrawRectangle(pen, 1, 1, Width - 3, Height - 3);
-    };
     Activated += (_, _) => Invalidate();
     Deactivate += (_, _) => {
       if (!IsDisposed) Close();
     };
+  }
+
+  protected override void OnResize(EventArgs e) {
+    base.OnResize(e);
+    if (Width < 2 || Height < 2) return;
+    using var path = WidgetEditorStyle.RoundedPath(
+      new Rectangle(0, 0, Width, Height), WidgetEditorStyle.Corner);
+    var old = Region;
+    Region = new Region(path);
+    old?.Dispose();
+  }
+
+  protected override void OnPaint(PaintEventArgs e) {
+    base.OnPaint(e);
+    WidgetEditorStyle.PaintSurface(e.Graphics,
+      new Rectangle(1, 1, Math.Max(1, Width - 3), Math.Max(1, Height - 3)),
+      palette, ContainsFocus);
   }
 
   private void EditorKeyDown(object? sender, KeyEventArgs eventArgs) {

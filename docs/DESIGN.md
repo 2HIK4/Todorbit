@@ -1,5 +1,32 @@
 # Design
 
+## Native widget control polish (2026-10-21)
+
+The Edit Task date field is one painted surface containing a native borderless
+text box and two 32 px icon actions. The actions keep native button focus and
+keyboard activation, but paint no competing outlines. The field owns its
+rounded border and focus ring. Typed ISO dates, calendar selection, and clear
+remain independent for Scheduled day and Deadline.
+
+Choice controls remain themed WinForms buttons and ToolStrip menus. Their arrow
+is now painted at a fixed trailing inset; the label has its own ellipsis width.
+Clearing the button's parent color behind its rounded shape removes square
+corner artifacts. Quick Add uses the same rounded border and a matching form
+region. The editor has 16 px after its last field; its fixed footer no longer
+draws an unnecessary divider. Default client height is 570 px.
+
+Shared native tokens in `WidgetEditorStyle` define the corner, field height,
+date action width, palette blend, and surface border. Date action width and
+glyph geometry scale with control DPI; physical DPI rendering still needs
+manual acceptance. The selective refactor
+keeps native text editing, popup keyboard behavior, the painted Explorer host,
+IPC, and repository writes. It avoids a broader widget rewrite because the
+defects were in the transient editor controls and their parent painting.
+
+This applies desktop principles from `apple-design` `accessibility.md` (input
+methods), `text-fields.md` (labels and spacing), `buttons.md` (press state),
+and `entering-data.md` (clear choices), translated to Windows conventions.
+
 ## Native widget redesign (2026-10-21)
 
 The Explorer-attached surface remains a compact task companion. Its header now
@@ -11,7 +38,7 @@ choose readable text from the active accent, including custom palettes.
 The native Edit Task form uses the same background, surface, accent, text,
 border, and error roles as the Flutter theme JSON. It groups Task details,
 Schedule, Organization, and Status and priority. Related fields share columns
-at regular widths and stack at compact widths. The form has a natural 550 px
+at regular widths and stack at compact widths. The form has a natural 570 px
 client height, a scrollable content area for small screens, and fixed actions.
 Native text editing remains available for selection and paste. Choice menus,
 date entry, a themed calendar, focus rings, and buttons use the same surface

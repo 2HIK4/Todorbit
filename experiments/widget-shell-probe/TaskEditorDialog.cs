@@ -46,7 +46,7 @@ internal sealed class TaskEditorDialog : Form {
     Text = "Edit task - Todorbit";
     FormBorderStyle = FormBorderStyle.Sizable;
     StartPosition = FormStartPosition.Manual;
-    ClientSize = new Size(550, 550);
+    ClientSize = new Size(550, 570);
     MinimumSize = new Size(360, 340);
     AutoScaleMode = AutoScaleMode.Dpi;
     MaximizeBox = false;
@@ -101,10 +101,6 @@ internal sealed class TaskEditorDialog : Form {
 
     footer.Height = 64;
     footer.BackColor = palette.Background;
-    footer.Paint += (_, e) => {
-      using var pen = new Pen(palette.Border);
-      e.Graphics.DrawLine(pen, 0, 0, footer.Width, 0);
-    };
     feedback = new Label {
       ForeColor = WidgetEditorStyle.Error(palette),
       AutoEllipsis = true,
@@ -208,7 +204,7 @@ internal sealed class TaskEditorDialog : Form {
       y += 61;
       PlaceField(priorityLabel, priority, left, y - scroll, width, 36);
     } else PlaceField(priorityLabel, priority, right, y - scroll, columnWidth, 36);
-    y += 57;
+    y += 73;
     var previousScrollable = content.Scrollable;
     content.SetContentHeight(y);
     content.ResumeLayout();

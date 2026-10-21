@@ -1,5 +1,40 @@
 # Windows v1.0 final acceptance record
 
+## Native widget final control pass (2026-10-21)
+
+| Surface / check | Result | Evidence and limit |
+| --- | --- | --- |
+| Edit Task date fields and four choices | PARTIAL | Two offscreen render passes in dark/light plus a custom palette show a single clean date outline, separate 32 px calendar/clear actions, stable trailing arrows, and rounded choice corners. Source self-test checks geometry and clearing. Actual popup input is unverified. |
+| Footer and compact layout | PARTIAL | Second wide render shows breathing room after Priority and no divider; 380 px narrow render shows an independent fixed footer and scroll cue. Scrolling by real input remains unverified. |
+| Calendar | PARTIAL | Offscreen dark calendar render shows themed cells and month controls. Open/close, keyboard navigation, and screen-edge placement need live checks. |
+| Quick Add and main Explorer widget | PARTIAL / UNVERIFIED (GUI) | Offscreen Quick Add capture shows the rounded focus outline; its native placeholder was absent in `DrawToBitmap`, so text rendering and input remain unverified. Main paint/menu code was reviewed, but no Explorer window was available to Computer Use. Old round-four screenshot is historical. |
+| Functional and packaging gates | PASS (automated) | Native Release build: zero warnings/errors. Source and packaged self-test passed. Four focused Flutter tests passed. Windows Release build passed. No Flutter source changed, so analysis was not required for this pass. |
+
+The five screenshot references at `D:\AI_Projects\Todorbit_Widget_UI_Review`
+were absent. No claim is made about their exact pixels. Current offscreen
+captures are diagnostic only; `DrawToBitmap` does not prove live DWM, Explorer,
+popup, DPI, hover, pressed, or keyboard appearance. No production profile,
+installed application, or public v1.0.3 assets were changed.
+
+Before treating this as final visual acceptance, use a disposable APPDATA and
+LOCALAPPDATA profile and perform these checks on the target Windows desktop:
+
+1. Inspect the widget in dark, light, and a saved custom theme with empty and
+   populated views. Resize from 260x230 through wide/tall sizes; review header,
+   tabs, long task titles, checkbox, Quick Add, scrolling, opacity, and corners.
+2. Open Edit Task at wide and 380 px widths. Tab through every field, scroll to
+   Priority, hover/press the footer, open each choice list, use arrows/Enter/
+   Escape, and check disabled Project after Category is cleared.
+3. Type, choose, clear, and save Scheduled day and Deadline independently.
+   Open the calendar near every screen edge, switch months, and verify date
+   text, focus, clear hit areas, validation, and saved values after reopening.
+4. Repeat the editor at 100%, 125%, 150%, and the highest available DPI on
+   each available monitor. Check narrow clipping, popup placement, corner
+   pixels, buttons, text scale, focus rings, and footer scroll separation.
+5. Exercise Quick Add, row editing, completion, menu, lock, drag/resize, Open
+   Todorbit single instance, Win+D, app privacy lock, and 0/30/70/100% opacity.
+   Record screenshots and pass/fail with the checklist in `docs/windows-widget.md`.
+
 ## Native widget redesign acceptance (2026-10-21)
 
 | Check | Status | Evidence / limit |

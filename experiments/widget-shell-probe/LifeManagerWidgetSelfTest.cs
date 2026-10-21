@@ -1,6 +1,19 @@
 using Microsoft.Data.Sqlite;
 
 internal static class LifeManagerWidgetSelfTest {
+  internal static void CaptureQuickAdd(string path, bool light) {
+    using var quickAdd = new InlineQuickAddForm(
+      light ? WidgetPalette.Light : WidgetPalette.Dark,
+      new Rectangle(100, 100, 344, 40), "Today", _ => { });
+    quickAdd.Shown += (_, _) => {
+      using var bitmap = new Bitmap(quickAdd.Width, quickAdd.Height);
+      quickAdd.DrawToBitmap(bitmap, new Rectangle(Point.Empty, bitmap.Size));
+      bitmap.Save(path);
+      quickAdd.BeginInvoke(quickAdd.Close);
+    };
+    Application.Run(quickAdd);
+  }
+
   internal static void CaptureCalendar(string path, bool light) {
     using var calendar = new WidgetCalendarDialog(
       light ? WidgetPalette.Light : WidgetPalette.Dark, DateTime.Today);
@@ -14,7 +27,7 @@ internal static class LifeManagerWidgetSelfTest {
   }
 
   internal static void PreviewEditor(bool light, string? capturePath = null,
-      bool narrow = false) {
+      bool narrow = false, bool custom = false) {
     var directory = Path.Combine(Path.GetTempPath(),
       $"todorbit-editor-preview-{Guid.NewGuid()}");
     Directory.CreateDirectory(directory);
@@ -24,8 +37,14 @@ internal static class LifeManagerWidgetSelfTest {
       using var repository = LifeManagerWidgetRepository.OpenForTest(path);
       var id = repository.AddTask("Plan the next week", DateTime.Today);
       var task = repository.LoadTask(id)!;
-      using var dialog = new TaskEditorDialog(repository, task,
-        light ? WidgetPalette.Light : WidgetPalette.Dark);
+      var palette = light ? WidgetPalette.Light : WidgetPalette.Dark;
+      if (custom) palette = WidgetPalette.FromCustom(new() {
+        ["background"] = "#0D2630", ["surface"] = "#173640",
+        ["accent"] = "#6DDBC8", ["primaryText"] = "#F2FBF9",
+        ["secondaryText"] = "#BDDBD7", ["border"] = "#50737A",
+        ["error"] = "#FFACB6",
+      }, palette);
+      using var dialog = new TaskEditorDialog(repository, task, palette);
       dialog.StartPosition = FormStartPosition.CenterScreen;
       if (narrow) dialog.ClientSize = new Size(380, 360);
       if (capturePath != null) {
@@ -50,6 +69,7 @@ internal static class LifeManagerWidgetSelfTest {
     Directory.CreateDirectory(directory);
     var databasePath = Path.Combine(directory, "test.sqlite");
     try {
+      TestEditorControlGeometry();
       using (var menu = new ContextMenuStrip()) {
         menu.Items.Add("Open Todorbit");
         WidgetMenuStyle.Apply(menu, WidgetPalette.Dark);
@@ -694,6 +714,40 @@ internal static class LifeManagerWidgetSelfTest {
     } finally {
       SqliteConnection.ClearAllPools();
       if (Directory.Exists(directory)) Directory.Delete(directory, true);
+    }
+  }
+
+  private static void TestEditorControlGeometry() {
+    foreach (var palette in new[] { WidgetPalette.Dark, WidgetPalette.Light }) {
+      foreach (var width in new[] { 170, 245, 340 }) {
+        using var date = new WidgetDateInput(palette, "Scheduled day", "2026-10-21") {
+          Size = new Size(width, WidgetEditorStyle.FieldHeight),
+        };
+        date.PerformLayout();
+        var editor = date.Controls.OfType<TextBox>().Single();
+        var actions = date.Controls.OfType<WidgetDateAction>()
+          .OrderBy(action => action.Left).ToArray();
+        if (date.DateValue != "2026-10-21" || actions.Length != 2 ||
+            editor.Right > actions[0].Left ||
+            actions[0].Right > actions[1].Left ||
+            actions[1].Right > date.Width - 1 ||
+            actions.Any(action => action.Height < 28)) {
+          throw new InvalidOperationException(
+            $"Date field children overlap or clip at width {width}.");
+        }
+        actions[1].PerformClick();
+        if (date.DateValue != null) {
+          throw new InvalidOperationException("Date clear did not reset the value.");
+        }
+      }
+      using var choice = new WidgetChoiceBox(palette, "Task category") {
+        Size = new Size(170, WidgetEditorStyle.FieldHeight),
+      };
+      choice.SetChoices([("None / Inbox", ""), ("Long category name", "id")], "id");
+      if (choice.Value != "id" || choice.Controls.OfType<WidgetStyledButton>()
+          .Single() is not { ShowChoiceArrow: true, Text: "Long category name" }) {
+        throw new InvalidOperationException("Choice arrow or selection regressed.");
+      }
     }
   }
 

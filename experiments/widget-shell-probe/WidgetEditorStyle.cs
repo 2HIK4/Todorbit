@@ -10,6 +10,10 @@ internal static class WidgetEditorStyle {
   internal const int FieldHeight = 36;
   internal const int ButtonHeight = 36;
   internal const int Corner = 7;
+  internal const int DateActionWidth = 32;
+
+  internal static int Scale(int logical, float dpi) =>
+    Math.Max(1, (int)Math.Round(logical * dpi / 96f));
 
   internal static Color Error(WidgetPalette palette) => palette.Error;
 
@@ -68,6 +72,18 @@ internal static class WidgetEditorStyle {
     return path;
   }
 
+  internal static void PaintSurface(Graphics graphics, Rectangle bounds,
+      WidgetPalette palette, bool focused, bool enabled = true) {
+    graphics.SmoothingMode = SmoothingMode.AntiAlias;
+    using var path = RoundedPath(bounds, Scale(Corner, graphics.DpiX));
+    using var fill = new SolidBrush(enabled ? palette.Panel :
+      Blend(palette.Panel, palette.Background, 0.48f));
+    using var border = new Pen(focused ? palette.Accent : palette.Border,
+      focused ? 2 : 1) { Alignment = PenAlignment.Inset };
+    graphics.FillPath(fill, path);
+    graphics.DrawPath(border, path);
+  }
+
   internal static void ApplyCaption(Form form, WidgetPalette palette) {
     var dark = IsDark(palette) ? 1 : 0;
     DwmSetWindowAttribute(form.Handle, 20, ref dark, sizeof(int));
@@ -89,6 +105,8 @@ internal sealed class WidgetStyledButton : Button {
   private readonly bool primary;
   private bool hovered;
   private bool pressed;
+  [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+  internal bool ShowChoiceArrow { get; set; }
 
   internal WidgetStyledButton(WidgetPalette palette, bool primary) {
     this.palette = palette;
@@ -139,7 +157,8 @@ internal sealed class WidgetStyledButton : Button {
     var outline = Focused ? palette.Accent :
       primary ? palette.Accent : palette.Border;
     var bounds = new Rectangle(1, 1, Math.Max(1, Width - 3), Math.Max(1, Height - 3));
-    using var path = WidgetEditorStyle.RoundedPath(bounds, WidgetEditorStyle.Corner);
+    using var path = WidgetEditorStyle.RoundedPath(bounds,
+      WidgetEditorStyle.Scale(WidgetEditorStyle.Corner, e.Graphics.DpiX));
     using var brush = new SolidBrush(fill);
     using var pen = new Pen(outline, Focused ? 2 : 1);
     e.Graphics.FillPath(brush, path);
@@ -151,10 +170,25 @@ internal sealed class WidgetStyledButton : Button {
     flags |= TextAlign == ContentAlignment.MiddleLeft
       ? TextFormatFlags.Left : TextFormatFlags.HorizontalCenter;
     var inset = Width > 70 ? 8 + Padding.Left : 1;
+    var trailing = ShowChoiceArrow ? WidgetEditorStyle.Scale(30, e.Graphics.DpiX) : 0;
     TextRenderer.DrawText(e.Graphics, Text, Font,
       new Rectangle(inset, 2,
-        Math.Max(1, Width - inset * 2 - (Width > 70 ? Padding.Right : 0)),
+        Math.Max(1, Width - inset * 2 - (Width > 70 ? Padding.Right : 0) - trailing),
         Height - 4), foreground, flags);
+    if (ShowChoiceArrow) {
+      using var arrow = new Pen(Enabled ? palette.Foreground : palette.Muted, 1.7f) {
+        StartCap = LineCap.Round, EndCap = LineCap.Round,
+      };
+      var unit = WidgetEditorStyle.Scale(4, e.Graphics.DpiX);
+      var x = Width - WidgetEditorStyle.Scale(18, e.Graphics.DpiX);
+      var y = Height / 2 - unit / 2;
+      e.Graphics.DrawLines(arrow, [new Point(x - unit, y),
+        new Point(x, y + unit), new Point(x + unit, y)]);
+    }
+  }
+
+  protected override void OnPaintBackground(PaintEventArgs e) {
+    e.Graphics.Clear(Parent?.BackColor ?? palette.Background);
   }
 
 }
@@ -301,12 +335,13 @@ internal sealed class WidgetChoiceBox : UserControl {
   internal WidgetChoiceBox(WidgetPalette palette, string accessibleName) {
     this.palette = palette;
     Height = WidgetEditorStyle.FieldHeight;
-    BackColor = palette.Panel;
+    BackColor = palette.Background;
     display = WidgetEditorStyle.Button("", palette);
     display.Dock = DockStyle.Fill;
     display.Font = new Font("Segoe UI", 9.5f);
     display.TextAlign = ContentAlignment.MiddleLeft;
     display.Padding = new Padding(9, 0, 6, 0);
+    ((WidgetStyledButton)display).ShowChoiceArrow = true;
     display.AccessibleName = accessibleName;
     display.Click += (_, _) => ShowChoices();
     display.MouseWheel += (_, e) => OnMouseWheel(e);
@@ -331,7 +366,7 @@ internal sealed class WidgetChoiceBox : UserControl {
     if (!choices.Contains(choice)) choice = choices.FirstOrDefault();
     var previous = value;
     value = choice.Value.Length == 0 ? null : choice.Value;
-    display.Text = $"{choice.Label}  ▾";
+    display.Text = choice.Label;
     if (notify && previous != value) ValueChanged?.Invoke(this, EventArgs.Empty);
   }
 
@@ -361,8 +396,8 @@ internal sealed class WidgetChoiceBox : UserControl {
 internal sealed class WidgetDateInput : UserControl {
   private readonly WidgetPalette palette;
   private readonly TextBox text = new();
-  private readonly Button calendar;
-  private readonly Button clear;
+  private readonly WidgetDateAction calendar;
+  private readonly WidgetDateAction clear;
   internal string? DateValue {
     get {
       if (String.IsNullOrWhiteSpace(text.Text)) return null;
@@ -378,6 +413,8 @@ internal sealed class WidgetDateInput : UserControl {
     AccessibleName = name;
     Height = WidgetEditorStyle.FieldHeight;
     BackColor = palette.Panel;
+    SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
+      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
     text.BorderStyle = BorderStyle.None;
     text.BackColor = palette.Panel;
     text.ForeColor = palette.Foreground;
@@ -386,11 +423,11 @@ internal sealed class WidgetDateInput : UserControl {
     text.AccessibleName = name;
     text.Text = value ?? "";
     text.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-    calendar = WidgetEditorStyle.Button("▦", palette);
+    calendar = new WidgetDateAction(palette, DateActionKind.Calendar);
     calendar.AccessibleName = $"Choose {name.ToLowerInvariant()}";
     calendar.Click += (_, _) => ShowCalendar();
     calendar.MouseWheel += (_, e) => OnMouseWheel(e);
-    clear = WidgetEditorStyle.Button("×", palette);
+    clear = new WidgetDateAction(palette, DateActionKind.Clear);
     clear.AccessibleName = $"Clear {name.ToLowerInvariant()}";
     clear.Click += (_, _) => { text.Clear(); text.Focus(); };
     clear.MouseWheel += (_, e) => OnMouseWheel(e);
@@ -398,23 +435,27 @@ internal sealed class WidgetDateInput : UserControl {
     Controls.AddRange([text, calendar, clear]);
     text.GotFocus += (_, _) => Invalidate();
     text.LostFocus += (_, _) => Invalidate();
-    Paint += (_, e) => {
-      e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-      using var path = WidgetEditorStyle.RoundedPath(
-        new Rectangle(1, 1, Width - 3, Height - 3), WidgetEditorStyle.Corner);
-      using var pen = new Pen(text.Focused ? palette.Accent : palette.Border,
-        text.Focused ? 2 : 1);
-      e.Graphics.DrawPath(pen, path);
-    };
+    calendar.GotFocus += (_, _) => Invalidate();
+    calendar.LostFocus += (_, _) => Invalidate();
+    clear.GotFocus += (_, _) => Invalidate();
+    clear.LostFocus += (_, _) => Invalidate();
     Resize += (_, _) => LayoutChildren();
     LayoutChildren();
   }
 
   private void LayoutChildren() {
     var w = Width;
-    text.SetBounds(10, 9, Math.Max(40, w - 88), 20);
-    calendar.SetBounds(Math.Max(50, w - 72), 2, 34, 32);
-    clear.SetBounds(Math.Max(86, w - 36), 2, 34, 32);
+    var inset = WidgetEditorStyle.Scale(11, DeviceDpi);
+    var gap = WidgetEditorStyle.Scale(5, DeviceDpi);
+    var edge = WidgetEditorStyle.Scale(2, DeviceDpi);
+    var action = WidgetEditorStyle.Scale(WidgetEditorStyle.DateActionWidth, DeviceDpi);
+    var textHeight = Math.Min(Height - edge * 2, text.PreferredHeight);
+    text.SetBounds(inset, (Height - textHeight) / 2,
+      Math.Max(1, w - inset - gap - action * 2 - edge), textHeight);
+    calendar.SetBounds(Math.Max(0, w - action * 2 - edge), edge,
+      action, Math.Max(1, Height - edge * 2));
+    clear.SetBounds(Math.Max(0, w - action - edge), edge,
+      action, Math.Max(1, Height - edge * 2));
   }
 
   private void ShowCalendar() {
@@ -437,11 +478,68 @@ internal sealed class WidgetDateInput : UserControl {
 
   protected override void OnPaintBackground(PaintEventArgs e) {
     e.Graphics.Clear(Parent?.BackColor ?? palette.Background);
+    WidgetEditorStyle.PaintSurface(e.Graphics,
+      new Rectangle(1, 1, Math.Max(1, Width - 3), Math.Max(1, Height - 3)),
+      palette, ContainsFocus, Enabled);
+  }
+}
+
+internal enum DateActionKind { Calendar, Clear }
+
+// The date field owns the only outline. Actions paint inside its surface.
+internal sealed class WidgetDateAction : Button {
+  private readonly WidgetPalette palette;
+  private readonly DateActionKind kind;
+  private bool hovered;
+  private bool pressed;
+
+  internal WidgetDateAction(WidgetPalette palette, DateActionKind kind) {
+    this.palette = palette;
+    this.kind = kind;
+    SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
+      ControlStyles.OptimizedDoubleBuffer, true);
+    FlatStyle = FlatStyle.Flat;
+    TabStop = true;
+    Cursor = Cursors.Hand;
+    BackColor = palette.Panel;
+  }
+
+  protected override void OnMouseEnter(EventArgs e) { hovered = true; Invalidate(); base.OnMouseEnter(e); }
+  protected override void OnMouseLeave(EventArgs e) { hovered = false; pressed = false; Invalidate(); base.OnMouseLeave(e); }
+  protected override void OnMouseDown(MouseEventArgs e) { pressed = true; Invalidate(); base.OnMouseDown(e); }
+  protected override void OnMouseUp(MouseEventArgs e) { pressed = false; Invalidate(); base.OnMouseUp(e); }
+  protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
+  protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
+  protected override void OnEnabledChanged(EventArgs e) { Invalidate(); base.OnEnabledChanged(e); }
+
+  protected override void OnPaint(PaintEventArgs e) {
     e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-    using var path = WidgetEditorStyle.RoundedPath(
-      new Rectangle(0, 0, Width - 1, Height - 1), WidgetEditorStyle.Corner);
-    using var brush = new SolidBrush(palette.Panel);
-    e.Graphics.FillPath(brush, path);
+    var fill = pressed ? WidgetEditorStyle.Blend(palette.Panel, palette.Accent, 0.24f) :
+      hovered || Focused ? WidgetEditorStyle.Blend(palette.Panel, palette.Accent, 0.13f) :
+      palette.Panel;
+    using var brush = new SolidBrush(fill);
+    using var area = WidgetEditorStyle.RoundedPath(
+      new Rectangle(1, 1, Math.Max(1, Width - 3), Math.Max(1, Height - 3)),
+      WidgetEditorStyle.Scale(5, e.Graphics.DpiX));
+    e.Graphics.FillPath(brush, area);
+    var ink = Enabled ? palette.Foreground : palette.Muted;
+    using var pen = new Pen(ink, 1.6f) {
+      StartCap = LineCap.Round, EndCap = LineCap.Round,
+    };
+    var x = Width / 2;
+    var y = Height / 2;
+    var unit = WidgetEditorStyle.Scale(4, e.Graphics.DpiX);
+    if (kind == DateActionKind.Clear) {
+      e.Graphics.DrawLine(pen, x - unit, y - unit, x + unit, y + unit);
+      e.Graphics.DrawLine(pen, x + unit, y - unit, x - unit, y + unit);
+    } else {
+      var half = WidgetEditorStyle.Scale(7, e.Graphics.DpiX);
+      var top = WidgetEditorStyle.Scale(6, e.Graphics.DpiX);
+      e.Graphics.DrawRectangle(pen, x - half, y - top, half * 2, top * 2 + 1);
+      e.Graphics.DrawLine(pen, x - half, y - unit / 2, x + half, y - unit / 2);
+      e.Graphics.DrawLine(pen, x - unit, y - top - 2, x - unit, y - top + 2);
+      e.Graphics.DrawLine(pen, x + unit, y - top - 2, x + unit, y - top + 2);
+    }
   }
 }
 

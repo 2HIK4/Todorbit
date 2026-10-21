@@ -1,5 +1,26 @@
 # Progress
 
+## Native widget final control polish (2026-10-21)
+
+- Replaced the separate bordered date buttons with internal 32 px actions on
+  one rounded date field; drew dropdown arrows at a stable trailing position
+  and removed square parent corners. Rounded Quick Add to match the painted
+  field. Added bottom scroll space, removed the editor footer divider, and
+  raised the default editor client height to 570 px.
+- A first dark/light offscreen render exposed square choice corners and the
+  last field crowding the footer; a second dark/light/custom render showed
+  corrected corners, spacing, date actions, and arrow alignment. The calendar
+  and rounded Quick Add outline were also rendered; its placeholder did not
+  appear in `DrawToBitmap`. These are WinForms observations, not live
+  Explorer pixels. The five requested images were not at the supplied path;
+  the older round-four editor image was reviewed for context.
+- Native Release build (zero warnings), source and packaged self-tests, four
+  focused Flutter tests, and Windows Release build passed. Geometry tests cover
+  date action separation at 170/245/340 px, clearing, and choice arrow state.
+  Computer Use reported no native windows, so physical mouse, dropdown open,
+  Explorer composition, Win+D, DPI, and monitor-edge checks remain unverified.
+  See `docs/ACCEPTANCE.md` and `docs/windows-widget.md` before release.
+
 ## Native widget UI redesign (2026-10-21)
 
 - Rebuilt the native Edit Task form into themed, responsive sections with
