@@ -30,14 +30,18 @@ internal static class WidgetMenuStyle {
     public override Color ToolStripDropDownBackground => palette.Panel;
     public override Color MenuBorder => palette.Border;
     public override Color MenuItemBorder => palette.AccentBorder;
-    public override Color MenuItemSelected => Color.FromArgb(40, palette.Accent);
+    public override Color MenuItemSelected =>
+      WidgetEditorStyle.Blend(palette.Panel, palette.Accent, 0.15f);
     public override Color MenuItemSelectedGradientBegin => MenuItemSelected;
     public override Color MenuItemSelectedGradientEnd => MenuItemSelected;
     public override Color MenuItemPressedGradientBegin => MenuItemSelected;
     public override Color MenuItemPressedGradientEnd => MenuItemSelected;
-    public override Color CheckBackground => Color.FromArgb(42, palette.Accent);
-    public override Color CheckSelectedBackground => Color.FromArgb(66, palette.Accent);
-    public override Color CheckPressedBackground => Color.FromArgb(80, palette.Accent);
+    public override Color CheckBackground =>
+      WidgetEditorStyle.Blend(palette.Panel, palette.Accent, 0.18f);
+    public override Color CheckSelectedBackground =>
+      WidgetEditorStyle.Blend(palette.Panel, palette.Accent, 0.26f);
+    public override Color CheckPressedBackground =>
+      WidgetEditorStyle.Blend(palette.Panel, palette.Accent, 0.32f);
     public override Color ImageMarginGradientBegin => palette.Panel;
     public override Color ImageMarginGradientMiddle => palette.Panel;
     public override Color ImageMarginGradientEnd => palette.Panel;

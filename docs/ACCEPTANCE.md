@@ -1,5 +1,32 @@
 # Windows v1.0 final acceptance record
 
+## Native widget redesign acceptance (2026-10-21)
+
+| Check | Status | Evidence / limit |
+| --- | --- | --- |
+| Editor dark, light, and 380 px narrow appearance | PARTIAL | Disposable WinForms `DrawToBitmap` renders show themed text, choice/date fields, fixed actions, and a narrow scroll cue. This is offscreen control painting, not an Explorer or DWM screenshot. |
+| Date chooser dark and light appearance | PARTIAL | Offscreen native calendar renders show themed day cells, month actions, and selected day. Physical keyboard and popup focus remain unverified. |
+| Form layout, keyboard actions, persistence, theme mapping | PASS (automated) | Native self-test covers wide/stacked content height, Save/Cancel bindings, accent contrast, and create/edit persistence. Existing IPC/profile/geometry tests remain passing. |
+| Header icon, tabs, rows, empty copy, quick add, opacity, context menu | UNVERIFIED (GUI) | Code and native build inspected. The available computer-use surface returned no native apps; no Explorer-attached widget pixels or pointer interactions were observed. |
+| Main-app activation, Win+D, dragging, resizing, layout lock, DPI, monitor edges | UNVERIFIED (GUI) | No physical Windows interaction this round. Existing self-tests cover geometry and IPC only. |
+
+Automated gates: native `dotnet build -c Release` passed with zero warnings/errors;
+source and packaged `TodorbitWidget.exe --self-test` passed; focused
+`native_widget_service_test.dart` and `desktop_widget_test.dart` passed (3
+tests); `flutter analyze` found no issues; `flutter build windows --release`
+passed. The current release v1.0.3 was not modified, and no production profile
+was opened.
+
+Manual checks on a disposable profile: open the widget in dark, light, and a
+custom theme; inspect the menu, Open Todorbit icon/tooltip, all four tabs,
+populated and empty lists, long titles, quick add, hover, 0/30/70/100% opacity,
+and 260x230, narrow, wide, and tall sizes. Open Edit Task at normal and limited
+screen heights; test every field, date picker, clear action, choice popup,
+scrolling, Tab/Shift+Tab, Enter/Escape, text selection, validation, and stale
+save. Repeat Open Todorbit to confirm one main app window, then move/resize,
+lock, change DPI/monitor, and press Win+D. Record actual screenshots and
+pass/fail against `docs/windows-widget.md` before a release.
+
 ## Feedback round 5 acceptance audit (2026-10-21)
 
 Status here distinguishes functional/automated evidence from actual Windows pixels. `PASS` means the stated requirement has direct interaction evidence; `UNVERIFIED` means implementation exists but the required physical UI path was unavailable. The audit was repeated after the draft-subtask disposal fix and divider cleanup.

@@ -1,5 +1,34 @@
 # Design
 
+## Native widget redesign (2026-10-21)
+
+The Explorer-attached surface remains a compact task companion. Its header now
+uses a simple app-window and outward-arrow symbol for Open Todorbit. A slim
+task-list scroll cue replaces the text range that crowded the last row at the
+minimum widget height. Empty copy describes the selected view. Selected tabs
+choose readable text from the active accent, including custom palettes.
+
+The native Edit Task form uses the same background, surface, accent, text,
+border, and error roles as the Flutter theme JSON. It groups Task details,
+Schedule, Organization, and Status and priority. Related fields share columns
+at regular widths and stack at compact widths. The form has a natural 550 px
+client height, a scrollable content area for small screens, and fixed actions.
+Native text editing remains available for selection and paste. Choice menus,
+date entry, a themed calendar, focus rings, and buttons use the same surface
+and border treatments. Save remains primary; Cancel and Open full details are
+secondary. The date inputs retain separate planned-day and deadline values.
+
+The contextual menu keeps Windows ToolStrip keyboard and popup behavior. Its
+selection and check colors blend opaque palette tokens, and the close action
+has its own separator. These choices follow `apple-design` guidance on
+hierarchy (`layout.md`), legible text (`typography.md`), grouped forms
+(`entering-data.md`), accessible input (`accessibility.md`), and short contextual
+menus (`context-menus.md`), translated to Windows controls and conventions.
+
+Offscreen WinForms renders cover dark, light, narrow, and date-calendar states.
+They do not establish Explorer composition, real DWM caption colors, physical
+input, menu placement, or DPI behavior; those remain manual acceptance checks.
+
 ## Feedback round 4, part 2 (2026-10-20)
 
 The checklist row gives its text the flexible column. A separate checkbox

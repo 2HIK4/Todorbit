@@ -95,6 +95,7 @@ if (args.Length >= 1 && args[0] is
   return;
 }
 if (args is ["--self-test"]) {
+  ApplicationConfiguration.Initialize();
   try {
     LifeManagerWidgetSelfTest.Run();
     Console.WriteLine("Widget persistence self-test passed.");
@@ -102,6 +103,25 @@ if (args is ["--self-test"]) {
     Console.Error.WriteLine(error);
     Environment.ExitCode = 1;
   }
+  return;
+}
+if (args is ["--preview-editor"] or ["--preview-editor", "--light"]) {
+  ApplicationConfiguration.Initialize();
+  LifeManagerWidgetSelfTest.PreviewEditor(args.Contains("--light"));
+  return;
+}
+if (args.Length >= 2 && args[0] == "--capture-editor" &&
+    args.Skip(2).All(value => value is "--light" or "--narrow")) {
+  ApplicationConfiguration.Initialize();
+  LifeManagerWidgetSelfTest.PreviewEditor(args.Contains("--light"),
+    args[1], args.Contains("--narrow"));
+  return;
+}
+if (args.Length is 2 or 3 && args[0] == "--capture-calendar" &&
+    (args.Length == 2 || args[2] == "--light")) {
+  ApplicationConfiguration.Initialize();
+  LifeManagerWidgetSelfTest.CaptureCalendar(args[1],
+    args.Contains("--light"));
   return;
 }
 if (args is ["--attach-prototype"]) {

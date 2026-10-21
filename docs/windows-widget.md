@@ -108,6 +108,14 @@ Explorer composition, or `Win + D`.
 
 ## Manual regression checklist
 
+For the native editor redesign, include dark, light, and a custom palette. At
+regular and narrow widths, verify field stacking and scroll-to-focused-field
+with Tab/Shift+Tab. Check the themed choice popups and calendar at screen edges,
+date typing and independent clear buttons, Enter/Escape, validation text,
+selection/paste, hover/pressed/disabled/focus colors, and a short monitor work
+area. The offscreen render checks in `docs/ACCEPTANCE.md` do not replace these
+physical Windows checks.
+
 Record Pass/Fail plus Windows build, monitor topology, and scale:
 
 1. Leave the widget visible for five minutes; confirm no black surface or

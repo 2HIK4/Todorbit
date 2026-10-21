@@ -1,5 +1,22 @@
 # Progress
 
+## Native widget UI redesign (2026-10-21)
+
+- Rebuilt the native Edit Task form into themed, responsive sections with
+  consistent fields and buttons, custom choice and date controls, and a fixed
+  action area above compact themed scrolling. Every existing value still saves
+  through the widget repository with stale-edit and dependency review handling.
+- Replaced the widget's header action glyph with an app-window/open arrow,
+  corrected view-specific empty copy, added a slim list scroll cue, and made
+  selected tabs and menu hover/check colors follow the active palette. The
+  custom theme error color now reaches native validation feedback.
+- Release native build, source and packaged self-tests, focused Flutter widget
+  tests, `flutter analyze`, and Windows Release build passed. Offscreen editor
+  and calendar renders were inspected in dark/light and narrow layouts. Native
+  computer-use inventory exposed no windows, so Explorer pixels, mouse input,
+  task-editor activation, context-menu placement, DPI, and Win+D are still
+  **UNVERIFIED**. See `docs/ACCEPTANCE.md` and `docs/windows-widget.md`.
+
 ## Feedback round 5 implementation and audit (2026-10-21)
 
 - Continued on `feature/todorbit-feedback-round4`. Added inline local spell underlines, shared New/Edit schedule columns, a persistent full/compact checklist and subtask text setting, selectable checklist text, icon-only resource actions, a subtle dismissible Info menu, and working workspace hotkey dispatch. Reordered optional task planning below composition and cleaned major section separators. The native widget received balanced bottom padding and a reorganized task editor. No database schema or production profile changed.

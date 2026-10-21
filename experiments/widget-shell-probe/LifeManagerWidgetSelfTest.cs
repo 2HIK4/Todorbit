@@ -1,6 +1,49 @@
 using Microsoft.Data.Sqlite;
 
 internal static class LifeManagerWidgetSelfTest {
+  internal static void CaptureCalendar(string path, bool light) {
+    using var calendar = new WidgetCalendarDialog(
+      light ? WidgetPalette.Light : WidgetPalette.Dark, DateTime.Today);
+    calendar.Shown += (_, _) => {
+      using var bitmap = new Bitmap(calendar.Width, calendar.Height);
+      calendar.DrawToBitmap(bitmap, new Rectangle(Point.Empty, bitmap.Size));
+      bitmap.Save(path);
+      calendar.BeginInvoke(calendar.Close);
+    };
+    Application.Run(calendar);
+  }
+
+  internal static void PreviewEditor(bool light, string? capturePath = null,
+      bool narrow = false) {
+    var directory = Path.Combine(Path.GetTempPath(),
+      $"todorbit-editor-preview-{Guid.NewGuid()}");
+    Directory.CreateDirectory(directory);
+    try {
+      var path = Path.Combine(directory, "preview.sqlite");
+      CreateDatabase(path);
+      using var repository = LifeManagerWidgetRepository.OpenForTest(path);
+      var id = repository.AddTask("Plan the next week", DateTime.Today);
+      var task = repository.LoadTask(id)!;
+      using var dialog = new TaskEditorDialog(repository, task,
+        light ? WidgetPalette.Light : WidgetPalette.Dark);
+      dialog.StartPosition = FormStartPosition.CenterScreen;
+      if (narrow) dialog.ClientSize = new Size(380, 360);
+      if (capturePath != null) {
+        dialog.Shown += (_, _) => {
+          using var bitmap = new Bitmap(dialog.Width, dialog.Height);
+          dialog.DrawToBitmap(bitmap,
+            new Rectangle(Point.Empty, bitmap.Size));
+          bitmap.Save(capturePath);
+          dialog.BeginInvoke(dialog.Close);
+        };
+      }
+      Application.Run(dialog);
+    } finally {
+      SqliteConnection.ClearAllPools();
+      Directory.Delete(directory, true);
+    }
+  }
+
   internal static void Run() {
     var directory = Path.Combine(Path.GetTempPath(),
       $"life-manager-widget-test-{Guid.NewGuid()}");
@@ -50,6 +93,35 @@ internal static class LifeManagerWidgetSelfTest {
             edited.CategoryId != categories[0].Id ||
             edited.ProjectId != projects[0].Id) {
           throw new InvalidOperationException("Task editing was not persisted.");
+        }
+        using (var editor = new TaskEditorDialog(repository, edited,
+            WidgetPalette.Dark)) {
+          editor.ClientSize = new Size(550, 580);
+          editor.PerformLayout();
+          if (editor.IsStacked || editor.ContentHeight > editor.ClientSize.Height ||
+              editor.AcceptButton is not Button { Text: "Save" } ||
+              editor.CancelButton is not Button { Text: "Cancel" }) {
+            throw new InvalidOperationException("Wide task editor layout is not compact.");
+          }
+          editor.ClientSize = new Size(380, 360);
+          editor.PerformLayout();
+          if (!editor.IsStacked || editor.ContentHeight <= editor.ClientSize.Height) {
+            throw new InvalidOperationException("Narrow task editor did not scroll.");
+          }
+        }
+        using (var editor = new TaskEditorDialog(repository, edited,
+            WidgetPalette.Light)) {
+          if (editor.BackColor != WidgetPalette.Light.Background) {
+            throw new InvalidOperationException("Light editor palette was not applied.");
+          }
+        }
+        if (WidgetEditorStyle.Contrast(
+            WidgetEditorStyle.OnAccent(WidgetPalette.Dark),
+            WidgetPalette.Dark.Accent) < 4.5 ||
+            WidgetEditorStyle.Contrast(
+              WidgetEditorStyle.OnAccent(WidgetPalette.Light),
+              WidgetPalette.Light.Accent) < 4.5) {
+          throw new InvalidOperationException("Primary action contrast regressed.");
         }
         try {
           repository.UpdateTask(id, new WidgetTaskUpdate(
@@ -716,13 +788,16 @@ internal static class LifeManagerWidgetSelfTest {
         ["background"] = "#F8F7FC", ["surface"] = "#FFFFFF",
         ["accent"] = "#123456", ["primaryText"] = "#211B35",
         ["secondaryText"] = "#665F78", ["border"] = "#DCD7E9",
+        ["error"] = "#B63B53",
       },
     };
     store.Save(settings);
     if (store.Load().Theme != WidgetThemePreference.Light ||
         store.Load().WidgetOpacity != 35 ||
         WidgetPalette.FromCustom(store.Load().Customization?.Light,
-          WidgetPalette.Light).Accent != Color.FromArgb(0x12, 0x34, 0x56)) {
+          WidgetPalette.Light).Accent != Color.FromArgb(0x12, 0x34, 0x56) ||
+        WidgetPalette.FromCustom(store.Load().Customization?.Light,
+          WidgetPalette.Light).Error != Color.FromArgb(0xB6, 0x3B, 0x53)) {
       throw new InvalidOperationException("Shared appearance did not round-trip.");
     }
   }

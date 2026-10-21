@@ -600,8 +600,13 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     }
     if (tasks.Count == 0) {
       using var emptyFormat = CenterFormat();
-      var emptyText = settings.View == WidgetTaskView.Today
-        ? "Nothing planned for today." : "Your Inbox is clear.";
+      var emptyText = settings.View switch {
+        WidgetTaskView.Today => "Nothing planned for today.",
+        WidgetTaskView.Inbox => "Your Inbox is clear.",
+        WidgetTaskView.All => "No tasks yet. Add one below.",
+        WidgetTaskView.Upcoming => "Nothing coming up.",
+        _ => "No tasks to show.",
+      };
       graphics.DrawString(emptyText,
         bodyFont, muted, TaskArea, emptyFormat);
     } else {
@@ -610,16 +615,7 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
         DrawTask(graphics, tasks[index], index,
           index - scrollOffset, taskFont);
       }
-      if (tasks.Count > VisibleTaskRows) {
-        var range = $"{scrollOffset + 1}-{end} of {tasks.Count} - scroll";
-        using var rangeFormat = new StringFormat {
-          Alignment = StringAlignment.Far,
-          LineAlignment = StringAlignment.Far,
-        };
-        graphics.DrawString(range, smallFont, muted,
-          new RectangleF(24, TaskArea.Bottom - 30,
-            logicalWidth - 50, 23), rangeFormat);
-      }
+      if (tasks.Count > VisibleTaskRows) DrawScrollIndicator(graphics);
     }
 
     using (var field = new SolidBrush(palette.Panel)) {
@@ -657,7 +653,7 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     if ((hoverTarget == HitTarget.TaskRow || hoverTarget == HitTarget.TaskCheckbox) &&
         hoverTask == taskIndex) {
       using var hover = new SolidBrush(Color.FromArgb(
-        palette == WidgetPalette.Dark ? 22 : 12, palette.Foreground));
+        WidgetEditorStyle.IsDark(palette) ? 22 : 12, palette.Foreground));
       FillRoundedRectangle(graphics, hover, row, 6);
     }
     var box = CheckboxRect(visibleIndex);
@@ -678,9 +674,23 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
       format);
   }
 
+  private void DrawScrollIndicator(Graphics graphics) {
+    var track = new RectangleF(TaskArea.Right - 6, TaskArea.Top + 8,
+      3, Math.Max(20, TaskArea.Height - 16));
+    using var background = new SolidBrush(palette.Border);
+    FillRoundedRectangle(graphics, background, track, 2);
+    var thumbHeight = Math.Max(14,
+      track.Height * VisibleTaskRows / tasks.Count);
+    var maxOffset = Math.Max(1, tasks.Count - VisibleTaskRows);
+    var top = track.Top + (track.Height - thumbHeight) * scrollOffset / maxOffset;
+    using var thumb = new SolidBrush(palette.Accent);
+    FillRoundedRectangle(graphics, thumb,
+      new RectangleF(track.X, top, track.Width, thumbHeight), 2);
+  }
+
   private void DrawIconButton(Graphics graphics, RectangleF bounds,
       HeaderIcon icon, bool hovered) {
-    var color = hovered ? Blend(palette.Row, palette.Accent, 0.24f) : palette.Row;
+    var color = hovered ? Blend(palette.Row, palette.Accent, 0.24f) : palette.Panel;
     using var brush = new SolidBrush(color);
     FillRoundedRectangle(graphics, brush, bounds, 6);
     using var pen = new Pen(palette.Foreground, 1.7f) {
@@ -692,12 +702,15 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
       graphics.DrawLine(pen, centerX - 5, centerY - 5, centerX + 5, centerY + 5);
       graphics.DrawLine(pen, centerX + 5, centerY - 5, centerX - 5, centerY + 5);
     } else if (icon == HeaderIcon.Open) {
-      graphics.DrawRectangle(pen, centerX - 8, centerY - 7, 16, 14);
-      graphics.DrawLine(pen, centerX - 8, centerY - 3, centerX + 8, centerY - 3);
-      graphics.DrawEllipse(pen, centerX - 3, centerY - 1, 6, 6);
-      using var dot = new SolidBrush(palette.Accent);
-      graphics.FillEllipse(dot,
-        centerX + 3, centerY - 1, 2.5f, 2.5f);
+      // A familiar app window and outward arrow, sized for the 30 px target.
+      graphics.DrawRectangle(pen, centerX - 8, centerY - 7, 13, 14);
+      graphics.DrawLine(pen, centerX - 8, centerY - 3, centerX + 4, centerY - 3);
+      using var arrow = new Pen(palette.Accent, 1.8f) {
+        StartCap = LineCap.Round, EndCap = LineCap.Round,
+      };
+      graphics.DrawLine(arrow, centerX, centerY + 4, centerX + 8, centerY - 4);
+      graphics.DrawLine(arrow, centerX + 3, centerY - 4, centerX + 8, centerY - 4);
+      graphics.DrawLine(arrow, centerX + 8, centerY - 4, centerX + 8, centerY + 1);
     } else {
       graphics.DrawArc(pen, centerX - 7, centerY - 7, 14, 14, 35, 285);
       graphics.DrawLine(pen, centerX + 5, centerY - 7, centerX + 8, centerY - 2);
@@ -711,7 +724,8 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
       var selected = settings.View == view;
       using var brush = new SolidBrush(selected ? palette.Accent : palette.Panel);
       FillRoundedRectangle(graphics, brush, bounds, 6);
-      using var text = new SolidBrush(selected ? Color.White : palette.Muted);
+      using var text = new SolidBrush(selected
+        ? WidgetEditorStyle.OnAccent(palette) : palette.Muted);
       using var format = CenterFormat();
       format.Trimming = StringTrimming.EllipsisCharacter;
       format.FormatFlags = StringFormatFlags.NoWrap;
@@ -766,6 +780,7 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
       ? "Unlock Layout" : "Lock Layout") { Checked = settings.LayoutLocked };
     layoutLock.Click += (_, _) => SetLayoutLocked(!settings.LayoutLocked);
     menu.Items.Add(layoutLock);
+    menu.Items.Add(new ToolStripSeparator());
     menu.Items.Add("Close Widget", null, (_, _) => { Dispose(); exit(); });
     WidgetMenuStyle.Apply(menu, palette);
     Native.GetCursorPos(out var point);
@@ -1045,9 +1060,14 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     var working = Screen.FromRectangle(new Rectangle(
       bounds.Left, bounds.Top, bounds.Right - bounds.Left,
       bounds.Bottom - bounds.Top)).WorkingArea;
+    dialog.Size = new Size(
+      Math.Min(dialog.Width, Math.Max(dialog.MinimumSize.Width, working.Width - 24)),
+      Math.Min(dialog.Height, Math.Max(dialog.MinimumSize.Height, working.Height - 24)));
     dialog.Location = new Point(
-      Math.Clamp(bounds.Left + 20, working.Left, working.Right - dialog.Width),
-      Math.Clamp(bounds.Top + 40, working.Top, working.Bottom - dialog.Height));
+      Math.Clamp(bounds.Left + 20, working.Left,
+        Math.Max(working.Left, working.Right - dialog.Width)),
+      Math.Clamp(bounds.Top + 40, working.Top,
+        Math.Max(working.Top, working.Bottom - dialog.Height)));
     var result = dialog.ShowDialog();
     taskEditor = null;
     if (dialog.OpenFullDetails) {
