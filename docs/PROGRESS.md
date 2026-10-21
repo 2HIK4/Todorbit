@@ -1,5 +1,13 @@
 # Progress
 
+## v1.0.5 pre-release preparation (2026-10-21)
+
+- Fetched GitHub: `feature/todorbit-feedback-round4` at `9c12bd0` is six commits ahead of `origin/main`; the worktree was clean. The public repository has v1.0.3 and no v1.0.5 release or tag.
+- Advanced Flutter and standalone native widget versions to 1.0.5 and updated current release documentation. The Windows build derives main executable resources and packaged widget version from Flutter; packaging reads the same version. The v1.0.3 public release and historical audit remain untouched.
+- Physical native widget and installer acceptance limits remain listed in `ACCEPTANCE.md`.
+- `flutter analyze --no-pub` passed with no issues; all 208 serial Flutter tests passed. One existing nonfatal scroll hit-test warning appeared in `workspace_test.dart`. Native .NET Release built with zero warnings/errors and its source self-test passed. The Windows Release build, packaged widget self-test, and disposable-profile single-instance/profile-isolation script passed. The .NET vulnerability query found no vulnerable packages in configured sources.
+- An isolated Release app opened with Todorbit branding and an empty Today view on a disposable profile. The widget process started with that profile, but Computer Use did not expose its Explorer-hosted child as a targetable window. New Task interaction was not completed; live widget painting/input and installer lifecycle remain unverified.
+
 ## Native widget final control polish (2026-10-21)
 
 - Replaced the separate bordered date buttons with internal 32 px actions on

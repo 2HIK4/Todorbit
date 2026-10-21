@@ -1,5 +1,10 @@
 # Decisions
 
+## v1.0.5 public pre-release (2026-10-21)
+
+- Publish the verified Feedback Round 4 and 5 work as v1.0.5 Windows x64 pre-release, with unsigned packages and explicit limits for Windows 10, native Explorer widget input/painting, DPI/Win+D, and installer lifecycle checks. Keep v1.0.3 and all legacy data and installer identities unchanged.
+- Set Flutter to `1.0.5+6` and the standalone native widget project to `1.0.5`; the packaged Windows build continues to pass Flutter's version into the widget publish step.
+
 ## Feedback round 5 (2026-10-21)
 
 - Keep spell checking local to Windows through the existing spelling channel. A debounced text controller paints red wavy spans in editable fields without rewriting input; the old review button is removed. The installed `en-US` dictionary determines suggestions and coverage.

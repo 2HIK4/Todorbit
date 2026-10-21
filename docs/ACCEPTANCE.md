@@ -1,5 +1,26 @@
 # Windows v1.0 final acceptance record
 
+## v1.0.5 publication scope (2026-10-21)
+
+This Windows x64 pre-release uses the completed Feedback Round 4 Part 1 and 2,
+Feedback Round 5, native widget redesign, and final offscreen control audit.
+The detailed evidence below is retained. Windows 11 is the main development and
+test platform. Windows 10, live Explorer-hosted widget painting and input,
+Win+D, mixed DPI and monitor edges, and actual installed upgrade/uninstall
+remain unverified. The installer is unsigned. Do not infer full manual
+acceptance from automated self-tests or offscreen renders.
+
+Final candidate gates: `flutter analyze --no-pub` found no issues; all 208
+serial Flutter tests passed (one nonfatal existing scroll hit-test warning);
+native .NET Release built with zero warnings/errors and its source self-test
+passed; Windows Release built, its packaged widget self-test passed, and the
+disposable-profile single-instance/profile-isolation script passed. The native
+dependency vulnerability query found none in configured sources. An isolated
+Release app displayed Todorbit branding and an empty Today view. The native
+widget process started but was not targetable through Computer Use, so actual
+widget pixels and input remain unverified. No installed app or personal profile
+was touched.
+
 ## Native widget final control pass (2026-10-21)
 
 | Surface / check | Result | Evidence and limit |

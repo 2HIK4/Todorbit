@@ -5,11 +5,12 @@
 The Windows Release bundle contains `Todorbit.exe`,
 `TodorbitWidget.exe`, Flutter assets, `flutter_windows.dll`, and
 `sqlite3.dll`. Inno Setup 7.1.0 compiles the installer at
-`release/Todorbit-1.0.3-win-x64-setup.exe`. A portable ZIP is built at
-`release/Todorbit-1.0.3-win-x64-portable.zip`. This is **not yet an approved
-release candidate**: installed upgrade/uninstall and full manual acceptance
-remain unverified. The creator approved Todorbit and the MIT license; formal
-name clearance remains open. The manual acceptance matrix is in `ACCEPTANCE.md`.
+`release/Todorbit-1.0.5-win-x64-setup.exe`. A portable ZIP is built at
+`release/Todorbit-1.0.5-win-x64-portable.zip`. This is a Windows x64
+**pre-release** with limited installed upgrade/uninstall and native widget
+manual acceptance. Windows 11 is the main development/test platform; Windows
+10 acceptance is limited. The creator approved Todorbit and the MIT license;
+formal name clearance remains open. See `ACCEPTANCE.md`.
 
 ## Build and install
 
@@ -84,9 +85,9 @@ acceptance on an isolated profile.
 
 ## Release notes
 
-Todorbit 1.0.3 retains the schema-v20 planner and the TodoPilot data profile.
-It adopts the creator-approved public name and MIT license, synchronized native
-widget versioning, and complete packaged third-party notices. The orbit icon,
-light/dark theme editor, widget opacity and layout controls, Contributors page,
-and portable package remain available. Native GUI and installed rebrand/upgrade
-acceptance remain pending.
+Todorbit v1.0.5 retains the schema-v20 planner and TodoPilot data profile.
+It adds task composition, inline spelling, configurable hotkeys, scheduling
+preferences, resource drop, and main app UI refinements. The native widget
+editor and controls are redesigned; single-instance and profile handling are
+improved. Packages include MIT and third-party notices. Native GUI and installed
+upgrade/uninstall acceptance remain limited; see `ACCEPTANCE.md`.
