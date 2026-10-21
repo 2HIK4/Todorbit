@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../../domain/task_composition.dart';
-import '../shared/spelling_review_button.dart';
+import '../../domain/task_view_preferences.dart';
+import '../shared/inline_spelling_controller.dart';
 import 'checklist_item_dialog.dart';
+import 'composition_text.dart';
 
 class TaskCompositionSection extends ConsumerStatefulWidget {
   const TaskCompositionSection({
@@ -23,7 +25,12 @@ class TaskCompositionSection extends ConsumerStatefulWidget {
 
 class _TaskCompositionSectionState
     extends ConsumerState<TaskCompositionSection> {
-  final entry = TextEditingController();
+  late final entry = InlineSpellingController(
+    enabled: ref
+        .read(appControllerProvider)
+        .taskViewPreferences
+        .spellCheckEnabled,
+  );
   String? error;
 
   @override
@@ -63,6 +70,11 @@ class _TaskCompositionSectionState
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(appControllerProvider);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        entry.enabled = controller.taskViewPreferences.spellCheckEnabled;
+      }
+    });
     final items = controller.checklistItems
         .where((item) => item.taskId == widget.task.id)
         .toList();
@@ -76,7 +88,6 @@ class _TaskCompositionSectionState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Divider(),
         Text(
           'Checklist${items.isEmpty ? '' : ' · $done/${items.length}'}',
           style: Theme.of(context).textTheme.titleSmall,
@@ -86,6 +97,7 @@ class _TaskCompositionSectionState
           ChecklistItemRow(
             key: ValueKey(items[index].id),
             title: items[index].title,
+            display: controller.taskViewPreferences.compositionTextDisplay,
             done: items[index].done,
             onChanged: (value) => _run(
               () => controller.updateChecklistItem(items[index], done: value),
@@ -107,13 +119,10 @@ class _TaskCompositionSectionState
           children: [
             Expanded(
               child: TextField(
+                key: const ValueKey('saved-checklist-entry'),
                 controller: entry,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'New checklist item',
-                  suffixIcon: SpellingReviewButton(
-                    controller: entry,
-                    enabled: controller.taskViewPreferences.spellCheckEnabled,
-                  ),
                 ),
                 onSubmitted: (_) => _add(),
               ),
@@ -126,6 +135,7 @@ class _TaskCompositionSectionState
           ],
         ),
         const SizedBox(height: 12),
+        const Divider(),
         Row(
           children: [
             Expanded(
@@ -142,7 +152,7 @@ class _TaskCompositionSectionState
               ),
           ],
         ),
-        for (var index = 0; index < children.length; index++) ...[
+        for (var index = 0; index < children.length; index++)
           ListTile(
             dense: true,
             leading: Icon(
@@ -150,16 +160,13 @@ class _TaskCompositionSectionState
                   ? Icons.check_circle
                   : Icons.radio_button_unchecked,
             ),
-            title: Text(children[index].title),
-            subtitle: Text(children[index].status.name),
+            title: CompositionText(
+              text: children[index].title,
+              display: controller.taskViewPreferences.compositionTextDisplay,
+            ),
+            subtitle: Text(_statusLabel(children[index].status)),
             onTap: () => controller.select(children[index].id),
           ),
-          if (index < children.length - 1)
-            Divider(
-              height: 1,
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
-        ],
         if (error != null)
           Text(
             error!,
@@ -181,10 +188,20 @@ class _TaskCompositionSectionState
   }
 }
 
+String _statusLabel(TaskStatus status) => switch (status) {
+  TaskStatus.notStarted => 'Not started',
+  TaskStatus.inProgress => 'In progress',
+  TaskStatus.waiting => 'Waiting',
+  TaskStatus.onHold => 'On hold',
+  TaskStatus.completed => 'Completed',
+  TaskStatus.cancelled => 'Cancelled',
+};
+
 class ChecklistItemRow extends StatefulWidget {
   const ChecklistItemRow({
     super.key,
     required this.title,
+    this.display = CompositionTextDisplay.compact,
     required this.done,
     required this.onChanged,
     required this.onEdit,
@@ -194,6 +211,7 @@ class ChecklistItemRow extends StatefulWidget {
   });
 
   final String title;
+  final CompositionTextDisplay display;
   final bool done;
   final ValueChanged<bool> onChanged;
   final VoidCallback onEdit;
@@ -206,8 +224,6 @@ class ChecklistItemRow extends StatefulWidget {
 }
 
 class _ChecklistItemRowState extends State<ChecklistItemRow> {
-  bool expanded = false;
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -230,33 +246,10 @@ class _ChecklistItemRowState extends State<ChecklistItemRow> {
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.only(top: 10),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final painter = TextPainter(
-                        text: TextSpan(text: widget.title, style: style),
-                        textDirection: Directionality.of(context),
-                        textScaler: MediaQuery.textScalerOf(context),
-                        maxLines: 2,
-                      )..layout(maxWidth: constraints.maxWidth);
-                      final hasMore = painter.didExceedMaxLines;
-                      painter.dispose();
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SelectableText(
-                            widget.title,
-                            maxLines: expanded ? null : 2,
-                            style: style,
-                          ),
-                          if (hasMore || expanded)
-                            TextButton(
-                              onPressed: () =>
-                                  setState(() => expanded = !expanded),
-                              child: Text(expanded ? 'Show less' : 'Show more'),
-                            ),
-                        ],
-                      );
-                    },
+                  child: CompositionText(
+                    text: widget.title,
+                    display: widget.display,
+                    style: style,
                   ),
                 ),
               ),
@@ -290,7 +283,6 @@ class _ChecklistItemRowState extends State<ChecklistItemRow> {
             ],
           ),
         ),
-        Divider(height: 1, color: theme.colorScheme.outlineVariant),
       ],
     );
   }

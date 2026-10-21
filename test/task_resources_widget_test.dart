@@ -149,13 +149,16 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Attach'), findsOneWidget);
-      await tester.tap(find.text('Attach'));
+      expect(find.byTooltip('Attach a copy of a file'), findsOneWidget);
+      await tester.tap(find.byTooltip('Attach a copy of a file'));
       await tester.pump();
       expect(
         tester
-            .widget<OutlinedButton>(
-              find.widgetWithText(OutlinedButton, 'Attach'),
+            .widget<IconButton>(
+              find.ancestor(
+                of: find.byIcon(Icons.attach_file),
+                matching: find.byType(IconButton),
+              ),
             )
             .onPressed,
         isNull,

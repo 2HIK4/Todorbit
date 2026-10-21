@@ -385,7 +385,8 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            OutlinedButton.icon(
+            IconButton.outlined(
+              tooltip: 'Attach a copy of a file',
               onPressed: busy
                   ? null
                   : () => _run(() async {
@@ -398,9 +399,9 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
                       }
                     }),
               icon: const Icon(Icons.attach_file, size: 18),
-              label: const Text('Attach'),
             ),
-            OutlinedButton.icon(
+            IconButton.outlined(
+              tooltip: 'Link an existing file',
               onPressed: busy
                   ? null
                   : () => _run(() async {
@@ -414,9 +415,9 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
                       }
                     }),
               icon: const Icon(Icons.insert_drive_file_outlined, size: 18),
-              label: const Text('Link file'),
             ),
-            OutlinedButton.icon(
+            IconButton.outlined(
+              tooltip: 'Link an existing folder',
               onPressed: busy
                   ? null
                   : () => _run(() async {
@@ -430,12 +431,11 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
                       }
                     }),
               icon: const Icon(Icons.folder_outlined, size: 18),
-              label: const Text('Link folder'),
             ),
-            OutlinedButton.icon(
+            IconButton.outlined(
+              tooltip: 'Add a URL',
               onPressed: busy ? null : _addUrl,
               icon: const Icon(Icons.link, size: 18),
-              label: const Text('URL'),
             ),
           ],
         ),

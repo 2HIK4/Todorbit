@@ -1,5 +1,18 @@
 # Progress
 
+## Feedback round 5 implementation and audit (2026-10-21)
+
+- Continued on `feature/todorbit-feedback-round4`. Added inline local spell underlines, shared New/Edit schedule columns, a persistent full/compact checklist and subtask text setting, selectable checklist text, icon-only resource actions, a subtle dismissible Info menu, and working workspace hotkey dispatch. Reordered optional task planning below composition and cleaned major section separators. The native widget received balanced bottom padding and a reorganized task editor. No database schema or production profile changed.
+- An isolated debug Flutter Driver session was visually inspected in light and dark at a 1265 x 681 desktop window. New and Edit Task, schedule columns, long checklist/subtask text, compact and full modes, Settings persistence, Info popover, and the red underline on misspelled title text were observed. A real dialog disposal error found while saving a draft subtask was fixed, then repeated without runtime errors. A second pass also removed row-level subtask dividers. The Windows Release application started with a disposable profile and created its own database, but the available computer-control surface did not expose the Release window for visual interaction.
+- Acceptance evidence and remaining physical Windows checks are in `docs/ACCEPTANCE.md`. Native widget self-test and Flutter widget tests do not establish mouse, Win+D, DPI, or painted native editor behavior.
+
+## Codex environment setup (2026-10-21)
+
+- Installed the official Dart/Flutter Codex plugin and its bundled skills and Dart MCP registration; installed UI/UX Pro Max globally after source inspection. Existing Apple Design and built-in OpenAI skills were retained.
+- Made project guidance task-scoped and added `docs/CODEX_WORKFLOW.md` for reasoning, search, verification, UI review, and handoff conventions. This setup made no application behavior or data changes.
+- Dart MCP initialized, listed 14 tools, accepted the project root, and `analyze_files` returned no errors in a direct protocol probe. A focused Flutter preference test passed. UI/UX Pro Max search returned a relevant result; its optional upstream validation script could not run because PyYAML is not installed. The current chat's tool catalog predates plugin installation, so normal in-chat MCP discovery remains for a new session.
+- The temporary inspection clone `.codex-audit-ui-ux-pro-max/` remains untracked: automatic command review rejected its recursive deletion. Do not commit it.
+
 ## Feedback round 4, part 2 implementation (2026-10-20)
 
 - Continued on `feature/todorbit-feedback-round4` from Part 1 commit `5fdc737`.

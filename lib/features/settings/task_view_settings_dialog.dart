@@ -22,6 +22,7 @@ class TaskViewSettingsDialog extends ConsumerWidget {
         }
       }
     }
+
     return AlertDialog(
       title: const Text('Task display and defaults'),
       content: SizedBox(
@@ -47,9 +48,7 @@ class TaskViewSettingsDialog extends ConsumerWidget {
               ],
               onChanged: (value) {
                 if (value != null) {
-                  save(
-                    preferences.copyWith(newTaskPlannedDay: value),
-                  );
+                  save(preferences.copyWith(newTaskPlannedDay: value));
                 }
               },
             ),
@@ -60,19 +59,40 @@ class TaskViewSettingsDialog extends ConsumerWidget {
                 'Show them faded at the bottom of eligible lists.',
               ),
               value: preferences.keepCompletedVisible,
-              onChanged: (value) => save(
-                preferences.copyWith(keepCompletedVisible: value),
-              ),
+              onChanged: (value) =>
+                  save(preferences.copyWith(keepCompletedVisible: value)),
             ),
             SwitchListTile(
-              title: const Text('Spelling review'),
+              title: const Text('Inline spelling'),
               subtitle: const Text(
-                'Use the local Windows English dictionary when requested.',
+                'Underline likely misspellings using the local Windows English dictionary.',
               ),
               value: preferences.spellCheckEnabled,
-              onChanged: (value) => save(
-                preferences.copyWith(spellCheckEnabled: value),
+              onChanged: (value) =>
+                  save(preferences.copyWith(spellCheckEnabled: value)),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<CompositionTextDisplay>(
+              key: ValueKey(preferences.compositionTextDisplay),
+              initialValue: preferences.compositionTextDisplay,
+              decoration: const InputDecoration(
+                labelText: 'Checklist and subtask text',
               ),
+              items: const [
+                DropdownMenuItem(
+                  value: CompositionTextDisplay.full,
+                  child: Text('Show full text'),
+                ),
+                DropdownMenuItem(
+                  value: CompositionTextDisplay.compact,
+                  child: Text('Compact (two lines, expandable)'),
+                ),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  save(preferences.copyWith(compositionTextDisplay: value));
+                }
+              },
             ),
           ],
         ),

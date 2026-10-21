@@ -12,6 +12,44 @@ import 'package:life_manager/main.dart';
 import 'package:life_manager/features/workspace/task_editor.dart';
 
 void main() {
+  testWidgets('draft subtask dialog closes without a disposed spelling field', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1200));
+    final database = AppDatabase(NativeDatabase.memory());
+    final controller = AppController(LifeRepository(database));
+    await controller.refresh();
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appControllerProvider.overrideWith((ref) => controller)],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: SizedBox(width: 500, height: 1100, child: TaskEditor()),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Add subtask'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Title').last,
+        'Research and write the project summary',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(
+        find.text('Research and write the project summary'),
+        findsOneWidget,
+      );
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await database.close();
+      await tester.binding.setSurfaceSize(null);
+    }
+  });
+
   testWidgets('task details add a checklist item and a real subtask', (
     tester,
   ) async {
@@ -36,9 +74,12 @@ void main() {
       await tester.tap(find.text('Course'));
       await tester.pumpAndSettle();
       final checklist = find.widgetWithText(TextField, 'New checklist item');
-      final editorScroll = find.descendant(
-        of: find.byType(TaskEditor), matching: find.byType(Scrollable),
-      ).first;
+      final editorScroll = find
+          .descendant(
+            of: find.byType(TaskEditor),
+            matching: find.byType(Scrollable),
+          )
+          .first;
       await tester.scrollUntilVisible(checklist, 180, scrollable: editorScroll);
       await tester.enterText(checklist, 'Watch lesson 1');
       await tester.testTextInput.receiveAction(TextInputAction.done);
@@ -48,7 +89,11 @@ void main() {
         'Watch lesson 1',
       );
       final addSubtask = find.text('Add subtask');
-      await tester.scrollUntilVisible(addSubtask, 180, scrollable: editorScroll);
+      await tester.scrollUntilVisible(
+        addSubtask,
+        180,
+        scrollable: editorScroll,
+      );
       await tester.tap(addSubtask);
       await tester.pumpAndSettle();
       await tester.enterText(

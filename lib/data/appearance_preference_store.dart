@@ -65,6 +65,9 @@ class AppearancePreferenceStore {
           : NewTaskPlannedDay.today,
       keepCompletedVisible: data['keepCompletedVisible'] == true,
       spellCheckEnabled: data['spellCheckEnabled'] != false,
+      compositionTextDisplay: data['compositionTextDisplay'] == 'full'
+          ? CompositionTextDisplay.full
+          : CompositionTextDisplay.compact,
     );
   }
 
@@ -74,6 +77,7 @@ class AppearancePreferenceStore {
       'newTaskPlannedDay': value.newTaskPlannedDay.name,
       'keepCompletedVisible': value.keepCompletedVisible,
       'spellCheckEnabled': value.spellCheckEnabled,
+      'compositionTextDisplay': value.compositionTextDisplay.name,
     });
   }
 

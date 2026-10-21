@@ -1,5 +1,16 @@
 # Decisions
 
+## Feedback round 5 (2026-10-21)
+
+- Keep spell checking local to Windows through the existing spelling channel. A debounced text controller paints red wavy spans in editable fields without rewriting input; the old review button is removed. The installed `en-US` dictionary determines suggestions and coverage.
+- Store the checklist/subtask text mode in the existing per-profile appearance JSON, with full text or two-line compact text and an explicit expand control. No SQLite schema change is needed.
+- Keep the Flutter task editor shared between creation and editing. Use one major divider before composition and one before optional planning; keep row groups free of separator lines. The native Win32 editor retains native controls while matching the same section order and palette.
+
+## Codex environment (2026-10-21)
+
+- Use the official Dart/Flutter Codex plugin for its skills and MCP server; avoid duplicate standalone Dart/Flutter skill installs. Keep general UI guidance global and Todorbit constraints in project instructions and docs. No new project skill is needed while existing references cover the workflows.
+- Default new Codex work to low reasoning and raise effort by task complexity. Keep tests targeted during edits, with broad verification at integration or release milestones. Microsoft Fluent is the Windows design reference; Apple Design remains available for independent review.
+
 ## Feedback round 4, part 2 (2026-10-20)
 
 - Keep the native widget Explorer-hosted. Style its existing Windows

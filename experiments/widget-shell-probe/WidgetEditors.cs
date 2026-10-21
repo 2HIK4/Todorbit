@@ -127,8 +127,8 @@ internal sealed class TaskEditorDialog : Form {
     Text = "Edit task - Todorbit";
     FormBorderStyle = FormBorderStyle.Sizable;
     StartPosition = FormStartPosition.Manual;
-    ClientSize = new Size(480, 455);
-    MinimumSize = new Size(390, 470);
+    ClientSize = new Size(480, 554);
+    MinimumSize = new Size(390, 593);
     AutoScaleMode = AutoScaleMode.Dpi;
     MaximizeBox = false;
     MinimizeBox = false;
@@ -148,7 +148,39 @@ internal sealed class TaskEditorDialog : Form {
     notes.ScrollBars = ScrollBars.Vertical;
     notes.Text = task.Notes;
 
-    ConfigureDropDown(status, 18, 214, 214);
+    var scheduleHeading = LabelFor("Schedule", 18, 196, 440, 22);
+    scheduleHeading.Font = new Font("Segoe UI Semibold", 10, FontStyle.Bold);
+    ConfigureDate(scheduled, task.ScheduledDate, 18, 242, 214);
+    var scheduledLabel = LabelFor("Scheduled day", 18, 222, 214, 20);
+    Controls.Add(scheduledLabel);
+    Controls.Add(scheduled);
+    ConfigureDate(deadline, task.DeadlineDate, 248, 242, 214);
+    var deadlineLabel = LabelFor("Deadline", 248, 222, 214, 20);
+    Controls.Add(deadlineLabel);
+    Controls.Add(deadline);
+
+    var organizationHeading = LabelFor("Organization", 18, 286, 440, 22);
+    organizationHeading.Font = new Font("Segoe UI Semibold", 10, FontStyle.Bold);
+    ConfigureDropDown(category, 18, 332, 214);
+    category.Items.Add(new Choice("None / Inbox", ""));
+    foreach (var item in repository.LoadCategories()) {
+      category.Items.Add(new Choice(item.Name, item.Id));
+    }
+    SelectValue(category, task.CategoryId ?? "");
+    category.SelectedIndexChanged += (_, _) => PopulateProjects(null);
+    var categoryLabel = LabelFor("Category", 18, 312, 214, 20);
+    Controls.Add(categoryLabel);
+    Controls.Add(category);
+
+    ConfigureDropDown(project, 248, 332, 214);
+    var projectLabel = LabelFor("Project", 248, 312, 214, 20);
+    Controls.Add(projectLabel);
+    Controls.Add(project);
+    PopulateProjects(task.ProjectId);
+
+    var optionalHeading = LabelFor("Status and priority", 18, 376, 440, 22);
+    optionalHeading.Font = new Font("Segoe UI Semibold", 10, FontStyle.Bold);
+    ConfigureDropDown(status, 18, 422, 214);
     status.Items.AddRange([
       new Choice("Not started", "notStarted"),
       new Choice("In progress", "inProgress"),
@@ -158,54 +190,28 @@ internal sealed class TaskEditorDialog : Form {
       new Choice("Cancelled", "cancelled"),
     ]);
     SelectValue(status, task.Status);
-    var statusLabel = LabelFor("Status", 18, 195, 214, 20);
+    var statusLabel = LabelFor("Status", 18, 402, 214, 20);
     Controls.Add(statusLabel);
     Controls.Add(status);
 
-    ConfigureDropDown(priority, 248, 214, 214);
+    ConfigureDropDown(priority, 248, 422, 214);
     priority.Items.AddRange([
       new Choice("None", "0"), new Choice("Low", "1"),
       new Choice("Medium", "2"), new Choice("High", "3"),
     ]);
     SelectValue(priority, task.Priority.ToString(CultureInfo.InvariantCulture));
-    var priorityLabel = LabelFor("Priority", 248, 195, 214, 20);
+    var priorityLabel = LabelFor("Priority", 248, 402, 214, 20);
     Controls.Add(priorityLabel);
     Controls.Add(priority);
 
-    ConfigureDropDown(category, 18, 272, 214);
-    category.Items.Add(new Choice("None / Inbox", ""));
-    foreach (var item in repository.LoadCategories()) {
-      category.Items.Add(new Choice(item.Name, item.Id));
-    }
-    SelectValue(category, task.CategoryId ?? "");
-    category.SelectedIndexChanged += (_, _) => PopulateProjects(null);
-    var categoryLabel = LabelFor("Category", 18, 253, 214, 20);
-    Controls.Add(categoryLabel);
-    Controls.Add(category);
-
-    ConfigureDropDown(project, 248, 272, 214);
-    var projectLabel = LabelFor("Project", 248, 253, 214, 20);
-    Controls.Add(projectLabel);
-    Controls.Add(project);
-    PopulateProjects(task.ProjectId);
-
-    ConfigureDate(scheduled, task.ScheduledDate, 18, 330, 214);
-    var scheduledLabel = LabelFor("Scheduled day", 18, 311, 214, 20);
-    Controls.Add(scheduledLabel);
-    Controls.Add(scheduled);
-    ConfigureDate(deadline, task.DeadlineDate, 248, 330, 214);
-    var deadlineLabel = LabelFor("Deadline", 248, 311, 214, 20);
-    Controls.Add(deadlineLabel);
-    Controls.Add(deadline);
-
-    feedback.Location = new Point(18, 361);
+    feedback.Location = new Point(18, 456);
     feedback.Size = new Size(444, 35);
     feedback.ForeColor = palette == WidgetPalette.Dark
       ? Color.FromArgb(255, 154, 154) : Color.FromArgb(165, 35, 35);
 
     var full = new Button {
       Text = "Open full details",
-      Location = new Point(18, 399), Size = new Size(145, 38),
+      Location = new Point(18, 498), Size = new Size(145, 38),
       FlatStyle = FlatStyle.Flat, ForeColor = palette.Foreground,
     };
     full.Click += (_, _) => {
@@ -215,11 +221,11 @@ internal sealed class TaskEditorDialog : Form {
     };
     var cancel = new Button {
       Text = "Cancel", DialogResult = DialogResult.Cancel,
-      Location = new Point(262, 399), Size = new Size(92, 38),
+      Location = new Point(262, 498), Size = new Size(92, 38),
       FlatStyle = FlatStyle.Flat, ForeColor = palette.Foreground,
     };
     var save = new Button {
-      Text = "Save", Location = new Point(362, 399), Size = new Size(100, 38),
+      Text = "Save", Location = new Point(362, 498), Size = new Size(100, 38),
       FlatStyle = FlatStyle.Flat, BackColor = palette.Accent,
       ForeColor = palette == WidgetPalette.Dark ? palette.Background : Color.White,
     };
@@ -234,7 +240,8 @@ internal sealed class TaskEditorDialog : Form {
     project.AccessibleName = "Task project";
     scheduled.AccessibleName = "Scheduled day";
     deadline.AccessibleName = "Deadline";
-    Controls.AddRange([heading, feedback, full, cancel, save]);
+    Controls.AddRange([heading, scheduleHeading, organizationHeading,
+      optionalHeading, feedback, full, cancel, save]);
     Shown += (_, _) => {
       var dark = palette == WidgetPalette.Dark ? 1 : 0;
       DwmSetWindowAttribute(Handle, 20, ref dark, sizeof(int));
@@ -262,7 +269,8 @@ internal sealed class TaskEditorDialog : Form {
       var fullWidth = Math.Max(300, ClientSize.Width - 36);
       var column = Math.Max(135, (fullWidth - 16) / 2);
       var secondX = 18 + column + 16;
-      heading.Width = fullWidth;
+      heading.Width = scheduleHeading.Width = organizationHeading.Width =
+        optionalHeading.Width = fullWidth;
       title.Width = notes.Width = feedback.Width = fullWidth;
       foreach (var input in new Control[] { status, category, scheduled })
         input.Width = column;

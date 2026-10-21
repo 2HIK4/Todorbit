@@ -43,11 +43,13 @@ void main() {
         const TaskViewPreferences(
           newTaskPlannedDay: NewTaskPlannedDay.noDate,
           keepCompletedVisible: true,
+          compositionTextDisplay: CompositionTextDisplay.full,
         ),
       );
       final persisted = await secondProcessStore.loadTaskViewPreferences();
       expect(persisted.newTaskPlannedDay, NewTaskPlannedDay.noDate);
       expect(persisted.keepCompletedVisible, isTrue);
+      expect(persisted.compositionTextDisplay, CompositionTextDisplay.full);
       expect(await secondProcessStore.load(), ThemeModePreference.light);
     } finally {
       await firstDatabase.close();

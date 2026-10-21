@@ -236,7 +236,7 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
         ),
         _SettingsPage.tasks => _action(
           'Task display and defaults',
-          'Default planned day, completed tasks, and spelling review',
+          'Default date, completed tasks, inline spelling, and checklist text',
           Icons.task_alt_outlined,
           () => _open(const TaskViewSettingsDialog()),
         ),

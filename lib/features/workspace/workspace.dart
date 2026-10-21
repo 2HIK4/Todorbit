@@ -78,6 +78,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   @override
   void initState() {
     super.initState();
+    HardwareKeyboard.instance.addHandler(_handleHotkey);
     if (Platform.isWindows) {
       _activationChannel.setMethodCallHandler((call) async {
         if (call.method != 'activate' || !mounted) return;
@@ -155,6 +156,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleHotkey);
     _clock?.cancel();
     if (Platform.isWindows) _activationChannel.setMethodCallHandler(null);
     super.dispose();
@@ -464,6 +466,20 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     }
   }
 
+  bool _handleHotkey(KeyEvent event) {
+    if (!mounted || ModalRoute.of(context)?.isCurrent != true) return false;
+    final binding = HotkeyBinding.fromKeyEvent(event);
+    if (binding == null) return false;
+    final controller = ref.read(appControllerProvider);
+    for (final entry in controller.hotkeys.bindings.entries) {
+      if (entry.value == binding) {
+        _runHotkey(entry.key, controller);
+        return true;
+      }
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(appControllerProvider);
@@ -498,7 +514,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                       color: Theme.of(context).colorScheme.outlineVariant,
                     ),
                     SizedBox(
-                      width: 370,
+                      width: constraints.maxWidth >= 1200 ? 440 : 370,
                       child: TaskEditor(
                         key: ValueKey(
                           creating ? 'new' : controller.selectedTask!.id,
@@ -1223,18 +1239,31 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     ],
                   ),
                 ),
-                PopupMenuButton<void>(
-                  key: const ValueKey('view-info-button'),
-                  tooltip: 'About this view',
-                  icon: const Icon(Icons.info_outline),
-                  itemBuilder: (_) => [
-                    PopupMenuItem<void>(
+                MenuAnchor(
+                  style: MenuStyle(
+                    backgroundColor: WidgetStatePropertyAll(
+                      Theme.of(context).colorScheme.surfaceContainerHigh,
+                    ),
+                  ),
+                  menuChildren: [
+                    Padding(
+                      padding: const EdgeInsets.all(14),
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 280),
                         child: Text(_viewDescription(controller.view)),
                       ),
                     ),
                   ],
+                  builder: (context, menu, child) => IconButton(
+                    key: const ValueKey('view-info-button'),
+                    tooltip: 'About this view',
+                    style: IconButton.styleFrom(
+                      overlayColor: Theme.of(context).colorScheme.primary
+                          .withValues(alpha: 0.08),
+                    ),
+                    onPressed: () => menu.isOpen ? menu.close() : menu.open(),
+                    icon: const Icon(Icons.info_outline),
+                  ),
                 ),
                 PopupMenuButton<TaskSort>(
                   tooltip: 'Sort tasks',

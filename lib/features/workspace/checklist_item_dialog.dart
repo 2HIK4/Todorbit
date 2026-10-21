@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../shared/spelling_review_button.dart';
+import '../shared/inline_spelling_controller.dart';
 
 Future<String?> editChecklistItem(
   BuildContext context, {
@@ -35,8 +35,9 @@ class _ChecklistItemEditorDialog extends StatefulWidget {
 
 class _ChecklistItemEditorDialogState
     extends State<_ChecklistItemEditorDialog> {
-  late final TextEditingController field = TextEditingController(
+  late final TextEditingController field = InlineSpellingController(
     text: widget.initialValue,
+    enabled: widget.spellCheckEnabled,
   );
 
   @override
@@ -68,13 +69,7 @@ class _ChecklistItemEditorDialogState
                 maxLines: 4,
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => Navigator.pop(context, field.text.trim()),
-                decoration: InputDecoration(
-                  labelText: 'Activity',
-                  suffixIcon: SpellingReviewButton(
-                    controller: field,
-                    enabled: widget.spellCheckEnabled,
-                  ),
-                ),
+                decoration: const InputDecoration(labelText: 'Activity'),
               ),
               const SizedBox(height: 20),
               Row(

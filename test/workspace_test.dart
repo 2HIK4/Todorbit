@@ -15,6 +15,42 @@ import 'package:life_manager/features/workspace/task_editor.dart';
 import 'package:life_manager/main.dart';
 
 void main() {
+  testWidgets('view information opens and closes from its icon', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    final database = AppDatabase(NativeDatabase.memory());
+    final controller = AppController(LifeRepository(database));
+    await controller.refresh();
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appControllerProvider.overrideWith((ref) => controller),
+            privacyOverride,
+          ],
+          child: const LifeManagerApp(),
+        ),
+      );
+      final info = find.byKey(const ValueKey('view-info-button'));
+      await tester.tap(info);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Tasks planned for today'), findsOneWidget);
+      await tester.tap(info);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Tasks planned for today'), findsNothing);
+      await tester.tap(info);
+      await tester.pumpAndSettle();
+      await tester.tapAt(const Offset(700, 350));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Tasks planned for today'), findsNothing);
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await database.close();
+      await tester.binding.setSurfaceSize(null);
+    }
+  });
+
   testWidgets(
     'series editor previews collisions before changing shared fields',
     (tester) async {
@@ -142,8 +178,6 @@ void main() {
         200,
         scrollable: editorScroll,
       );
-      await tester.drag(editorScroll, const Offset(0, -140));
-      await tester.pumpAndSettle();
       await tester.tap(find.text('Does not repeat'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Daily').last);

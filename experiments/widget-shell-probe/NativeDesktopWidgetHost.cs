@@ -1211,8 +1211,8 @@ internal sealed class NativeDesktopWidgetHost : NativeWindow, IDisposable {
     return new RectangleF(16f + index * (width + 6f), 50, width, 26);
   }
   private RectangleF TaskArea => new(16, 82, LogicalClientWidth - 32,
-    LogicalClientHeight - 145);
-  private RectangleF AddRect => new(16, LogicalClientHeight - 50,
+    LogicalClientHeight - 151);
+  private RectangleF AddRect => new(16, LogicalClientHeight - 56,
     LogicalClientWidth - 32, 40);
   private int VisibleTaskRows => Math.Max(1,
     (int)Math.Floor((TaskArea.Height - 12) / 51));

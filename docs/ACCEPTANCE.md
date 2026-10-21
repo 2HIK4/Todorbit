@@ -1,5 +1,37 @@
 # Windows v1.0 final acceptance record
 
+## Feedback round 5 acceptance audit (2026-10-21)
+
+Status here distinguishes functional/automated evidence from actual Windows pixels. `PASS` means the stated requirement has direct interaction evidence; `UNVERIFIED` means implementation exists but the required physical UI path was unavailable. The audit was repeated after the draft-subtask disposal fix and divider cleanup.
+
+| Requirement | Status | Evidence and remaining limit |
+| --- | --- | --- |
+| Inline red-underlined spelling while typing; no forced corrections or review icon | PASS | Isolated debug GUI showed a red wavy underline on `Writting teh`; controller/channel widget tests verify spans and unchanged input. Title, notes, checklist entry/edit, and subtask entry use the same controller. Physical typing in every field remains a manual check. |
+| Scheduled day and Deadline side by side when wide, stacked when narrow | PASS | Both New and Edit use `TaskEditor`; debug GUI showed the two columns at 1265 px. Widget layout test covers 380/740 px and date clearing. Narrow Release pixels remain unverified. |
+| Full or compact checklist/subtask text, expansion, Settings persistence | PASS | Debug GUI showed long saved checklist/subtask in both modes and Settings changed the per-profile JSON. Widget tests cover two-line ellipsis, expand/collapse, full text, narrow width, and 1.5x text. |
+| Subtle Info popover opens and dismisses by icon or outside | PASS | Debug GUI showed themed popup/quiet icon state; widget test tapped the icon twice and outside. |
+| Configured hotkeys trigger actions; conflict/preset/reset/persistence | PASS | Key-event widget test opened New Task and a custom Settings shortcut; binding and preset persistence tests pass. Physical keyboard use in a Release window remains unverified. |
+| Major section dividers and optional planning below Subtasks | PASS | Shared task editor tree and debug New/Edit inspection show composition before Status/Priority and Estimates. Second pass removed inner subtask row dividers; focused tests reran. |
+| Checklist text selects and copies without edit mode | PASS | Widget test long-pressed a real checklist row, sent Ctrl+C, and captured nonempty clipboard text. Physical mouse selection remains unverified. |
+| Resources icons in one row with accessible descriptions | PASS | Debug Edit Task showed the single row; resource widget tests confirm action tooltips and behavior. |
+| New Task / Edit Task visual consistency | PASS | Both use the same editor and were inspected in the isolated debug GUI, including schedule and composition. |
+| Native widget padding and editor appearance | UNVERIFIED | Code changed and native Release/self-test pass; the Explorer-hosted window was not targetable for visual inspection. |
+| Native widget movement, resize, lock, menu, task edit/completion, theme sync, Open Todorbit, repeated clicks, Win+D | UNVERIFIED | Round 4 math/IPC tests and native self-test pass. The packaged widget started and accepted an `exit` IPC command on the same isolated profile as the Release main app. Physical mouse, Explorer shell, and window behavior were not observed this round. |
+| Release GUI in both themes and narrow/text-scale/DPI variants | UNVERIFIED | The isolated Release process started and created a disposable database, but computer control exposed no app window. Debug GUI was inspected in both themes at normal desktop width; narrow and DPI are covered by layout tests only. |
+| Round 4 regression: recurrence, Smart Reschedule, calendar, focus, views, backup/restore, privacy, profile isolation, IPC | PASS | Full serial Flutter suite covers these repository and widget paths; native self-test and isolated Release startup cover executable startup. Physical native IPC/widget clicks remain unverified. |
+
+Automated final gates: `flutter analyze --no-pub` passed; all 208 serial Flutter tests passed; 14 focused second-pass tests passed; native `dotnet build -c Release` passed with zero warnings/errors; source and packaged `TodorbitWidget.exe --self-test` passed; `flutter build windows --release --no-pub` passed; the single-instance/profile-isolation script passed with ten secondary launches; packaged native widget launch/exit IPC passed with the main app's disposable profile. A first direct widget launch without a database showed the documented "Open the main app first" error; retrying in the correct startup order passed. The full Flutter suite emitted one existing nonfatal scroll hit-test warning in `workspace_test.dart`.
+
+Real GUI evidence: isolated debug Flutter Driver screenshots and actions covered light/dark desktop UI, New/Edit, long text, expansion, Settings, spelling, and Info. The isolated Release executable started and created its database, but the computer-control service returned no desktop app surface. No Release visual, narrow live window, native painted widget/editor, physical hover/focus, DPI, Win+D, or mouse-drag claim is made.
+
+Manual checks on a disposable `APPDATA`/`LOCALAPPDATA` profile:
+
+1. Launch the current `build\windows\x64\runner\Release\Todorbit.exe`. In dark and light, open New Task and an existing Edit Task. Resize to about 1265 px and 760 px, then use Windows 100%, 150%, and any mixed-monitor DPI. Check schedule columns/stacking, section order, dividers, Resources tooltips, Info open/second-click/outside dismissal, text clipping, keyboard focus, and hover/pressed colors.
+2. Type `Writting teh report` in task title, notes, checklist entry/edit, and subtask title. Confirm red underlines after a short pause and no text replacement. Use a Windows account with an installed `en-US` spelling dictionary. Check disabled spelling in Settings and restart.
+3. Create long checklist and subtask titles. In Task Preferences, switch Full/Compact, expand/collapse, select text directly with the mouse, Ctrl+C, and paste into another app. Restart and verify the mode persists. Repeat with larger Windows text scale.
+4. Exercise each displayed hotkey on the physical keyboard: default Ctrl+N, custom Settings, conflicts, reserved keys, preset switch/reset, and persistence after restart. Confirm editors and modal dialogs do not trigger unintended workspace actions.
+5. Start the main app first on the disposable profile, then `TodorbitWidget.exe --widget --app-exe <absolute path to Todorbit.exe>`. Follow `docs/windows-widget.md` steps 1–16: drag/resize/lock, right-click menu, editor form, all-edge padding, task input/edit/completion, theme/opacity, repeated Open Todorbit clicks with one app process, and Win+D. Repeat on each available DPI and monitor. Check the privacy steps there with app lock enabled.
+
 ## Feedback round 4, part 2 (2026-10-20)
 
 Automated widget tests cover two-line checklist expansion at narrow and wide
