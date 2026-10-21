@@ -1,8 +1,13 @@
 #include "flutter_window.h"
 
+#include <algorithm>
+#include <cwctype>
+#include <functional>
 #include <optional>
+#include <stdexcept>
 #include <shobjidl.h>
 #include <shellapi.h>
+#include <spellcheck.h>
 #include <wrl/client.h>
 
 #include <flutter/standard_method_codec.h>
@@ -12,6 +17,85 @@
 #include "widget_diagnostics.h"
 
 namespace {
+
+class ExplorerFileDropTarget final : public IDropTarget {
+ public:
+  using Callback = std::function<void(const char*, POINT,
+                                      const std::vector<std::string>&)>;
+  explicit ExplorerFileDropTarget(Callback callback)
+      : callback_(std::move(callback)) {}
+
+  HRESULT STDMETHODCALLTYPE QueryInterface(REFIID id, void** value) override {
+    if (value == nullptr) return E_POINTER;
+    if (id != IID_IUnknown && id != IID_IDropTarget) {
+      *value = nullptr;
+      return E_NOINTERFACE;
+    }
+    *value = static_cast<IDropTarget*>(this);
+    AddRef();
+    return S_OK;
+  }
+  ULONG STDMETHODCALLTYPE AddRef() override {
+    return static_cast<ULONG>(::InterlockedIncrement(&refs_));
+  }
+  ULONG STDMETHODCALLTYPE Release() override {
+    const ULONG remaining = static_cast<ULONG>(::InterlockedDecrement(&refs_));
+    if (remaining == 0) delete this;
+    return remaining;
+  }
+  HRESULT STDMETHODCALLTYPE DragEnter(IDataObject* data, DWORD,
+      POINTL position, DWORD* effect) override {
+    FORMATETC format{CF_HDROP, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
+    accepts_ = data != nullptr && SUCCEEDED(data->QueryGetData(&format));
+    *effect = accepts_ ? DROPEFFECT_COPY : DROPEFFECT_NONE;
+    if (accepts_) callback_("hover", POINT{position.x, position.y}, {});
+    return S_OK;
+  }
+  HRESULT STDMETHODCALLTYPE DragOver(DWORD, POINTL position,
+      DWORD* effect) override {
+    *effect = accepts_ ? DROPEFFECT_COPY : DROPEFFECT_NONE;
+    if (accepts_) callback_("hover", POINT{position.x, position.y}, {});
+    return S_OK;
+  }
+  HRESULT STDMETHODCALLTYPE DragLeave() override {
+    callback_("leave", POINT{}, {});
+    accepts_ = false;
+    return S_OK;
+  }
+  HRESULT STDMETHODCALLTYPE Drop(IDataObject* data, DWORD,
+      POINTL position, DWORD* effect) override {
+    *effect = DROPEFFECT_NONE;
+    callback_("leave", POINT{}, {});
+    if (!accepts_ || data == nullptr) return S_OK;
+    accepts_ = false;
+    FORMATETC format{CF_HDROP, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
+    STGMEDIUM medium{};
+    if (FAILED(data->GetData(&format, &medium))) return S_OK;
+    std::vector<std::string> paths;
+    const HDROP files = static_cast<HDROP>(medium.hGlobal);
+    const UINT count = ::DragQueryFileW(files, 0xFFFFFFFF, nullptr, 0);
+    for (UINT index = 0; index < count && index < 100; ++index) {
+      const UINT size = ::DragQueryFileW(files, index, nullptr, 0);
+      if (size == 0 || size > 32767) continue;
+      std::wstring path(size + 1, L'\0');
+      ::DragQueryFileW(files, index, path.data(), size + 1);
+      path.resize(size);
+      paths.push_back(Utf8FromUtf16(path.c_str()));
+    }
+    ::ReleaseStgMedium(&medium);
+    if (!paths.empty()) {
+      callback_("drop", POINT{position.x, position.y}, paths);
+      *effect = DROPEFFECT_COPY;
+    }
+    return S_OK;
+  }
+
+ private:
+  ~ExplorerFileDropTarget() = default;
+  LONG refs_ = 1;
+  Callback callback_;
+  bool accepts_ = false;
+};
 
 void ShowFileDialog(
     HWND owner, bool save, bool any_file, bool folder,
@@ -78,6 +162,73 @@ std::wstring Utf16FromUtf8(const std::string& input) {
   return output;
 }
 
+flutter::EncodableList CheckSpelling(const std::string& input) {
+  const std::wstring original = Utf16FromUtf8(input);
+  if (original.empty()) return {};
+  if (original.size() > 20000) throw std::runtime_error("Text is too long for spelling review");
+  std::wstring checked = original;
+  size_t cursor = 0;
+  while (cursor < checked.size()) {
+    while (cursor < checked.size() && std::iswspace(checked[cursor])) ++cursor;
+    const size_t start = cursor;
+    while (cursor < checked.size() && !std::iswspace(checked[cursor])) ++cursor;
+    if (start == cursor) break;
+    const std::wstring token = checked.substr(start, cursor - start);
+    bool technical = token.find(L"://") != std::wstring::npos ||
+        token.find(L'\\') != std::wstring::npos ||
+        token.find(L'/') != std::wstring::npos ||
+        token.find(L'_') != std::wstring::npos ||
+        token.find(L'@') != std::wstring::npos;
+    for (size_t index = 0; index < token.size(); ++index) {
+      technical |= std::iswdigit(token[index]) != 0;
+      if (index > 0 && std::iswlower(token[index - 1]) &&
+          std::iswupper(token[index])) technical = true;
+    }
+    if (technical) std::fill(checked.begin() + start, checked.begin() + cursor, L' ');
+  }
+  Microsoft::WRL::ComPtr<ISpellCheckerFactory> factory;
+  HRESULT status = ::CoCreateInstance(__uuidof(SpellCheckerFactory), nullptr,
+      CLSCTX_INPROC_SERVER, IID_PPV_ARGS(factory.GetAddressOf()));
+  if (FAILED(status)) throw std::runtime_error("Windows spell checking is unavailable");
+  BOOL supported = FALSE;
+  status = factory->IsSupported(L"en-US", &supported);
+  if (FAILED(status) || !supported) throw std::runtime_error("English (United States) spelling is unavailable in Windows");
+  Microsoft::WRL::ComPtr<ISpellChecker> checker;
+  status = factory->CreateSpellChecker(L"en-US", checker.GetAddressOf());
+  if (FAILED(status)) throw std::runtime_error("Windows spell checking is unavailable");
+  Microsoft::WRL::ComPtr<IEnumSpellingError> errors;
+  status = checker->Check(checked.c_str(), errors.GetAddressOf());
+  if (FAILED(status)) throw std::runtime_error("Windows spell checking failed");
+  flutter::EncodableList found;
+  for (int count = 0; count < 100; ++count) {
+    Microsoft::WRL::ComPtr<ISpellingError> error;
+    if (errors->Next(error.GetAddressOf()) != S_OK || !error) break;
+    ULONG start = 0, length = 0;
+    if (FAILED(error->get_StartIndex(&start)) ||
+        FAILED(error->get_Length(&length)) || length == 0 ||
+        start + length > original.size()) continue;
+    const std::wstring word = original.substr(start, length);
+    Microsoft::WRL::ComPtr<IEnumString> suggestions;
+    flutter::EncodableList options;
+    if (SUCCEEDED(checker->Suggest(word.c_str(), suggestions.GetAddressOf()))) {
+      for (int i = 0; i < 5; ++i) {
+        LPOLESTR suggestion = nullptr;
+        ULONG fetched = 0;
+        if (suggestions->Next(1, &suggestion, &fetched) != S_OK ||
+            fetched == 0) break;
+        options.emplace_back(Utf8FromUtf16(suggestion));
+        ::CoTaskMemFree(suggestion);
+      }
+    }
+    found.emplace_back(flutter::EncodableMap{
+        {flutter::EncodableValue("start"), flutter::EncodableValue(static_cast<int>(start))},
+        {flutter::EncodableValue("length"), flutter::EncodableValue(static_cast<int>(length))},
+        {flutter::EncodableValue("word"), flutter::EncodableValue(Utf8FromUtf16(word.c_str()))},
+        {flutter::EncodableValue("suggestions"), flutter::EncodableValue(options)}});
+  }
+  return found;
+}
+
 bool DecodeColor(const std::string& text, COLORREF* color) {
   if (text.size() != 6) return false;
   try {
@@ -98,6 +249,14 @@ FlutterWindow::FlutterWindow(const flutter::DartProject& project)
 
 FlutterWindow::~FlutterWindow() {}
 
+void FlutterWindow::DeliverActivation() {
+  if (!activation_ready_ || pending_activation_.empty() ||
+      !activation_channel_) return;
+  activation_channel_->InvokeMethod(
+      "activate", std::make_unique<flutter::EncodableValue>(pending_activation_));
+  pending_activation_.clear();
+}
+
 bool FlutterWindow::OnCreate() {
   if (!Win32Window::OnCreate()) {
     return false;
@@ -114,6 +273,56 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  activation_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(),
+          "life_manager/activation", &flutter::StandardMethodCodec::GetInstance());
+  activation_channel_->SetMethodCallHandler(
+      [this](const flutter::MethodCall<flutter::EncodableValue>& call,
+             std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+        if (call.method_name() != "ready") {
+          result->NotImplemented();
+          return;
+        }
+        activation_ready_ = true;
+        result->Success();
+        DeliverActivation();
+      });
+  spell_check_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(),
+          "life_manager/spell_check", &flutter::StandardMethodCodec::GetInstance());
+  spell_check_channel_->SetMethodCallHandler(
+      [](const flutter::MethodCall<flutter::EncodableValue>& call,
+         std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+        if (call.method_name() != "check") {
+          result->NotImplemented();
+          return;
+        }
+        const auto* input = std::get_if<std::string>(call.arguments());
+        if (!input || input->size() > 80000) {
+          result->Error("invalid_text", "Text is unavailable or too long");
+          return;
+        }
+        try {
+          result->Success(flutter::EncodableValue(CheckSpelling(*input)));
+        } catch (const std::exception& error) {
+          result->Error("spell_check_unavailable", error.what());
+        }
+      });
+  file_drop_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(),
+          "life_manager/file_drop", &flutter::StandardMethodCodec::GetInstance());
+  file_drop_channel_->SetMethodCallHandler(
+      [this](const flutter::MethodCall<flutter::EncodableValue>& call,
+             std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+        if (call.method_name() == "available") {
+          result->Success(flutter::EncodableValue(file_drop_available_));
+        } else {
+          result->NotImplemented();
+        }
+      });
   file_dialog_channel_ =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
           flutter_controller_->engine()->messenger(),
@@ -185,6 +394,29 @@ bool FlutterWindow::OnCreate() {
         result->Success();
       });
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
+  file_drop_window_ = flutter_controller_->view()->GetNativeWindow();
+  file_drop_target_ = new ExplorerFileDropTarget(
+      [this](const char* event, POINT position,
+             const std::vector<std::string>& paths) {
+        if (!file_drop_channel_) return;
+        flutter::EncodableMap details;
+        if (std::string(event) != "leave") {
+          ::ScreenToClient(file_drop_window_, &position);
+          const UINT dpi = ::GetDpiForWindow(file_drop_window_);
+          const double scale = dpi == 0 ? 1.0 : static_cast<double>(dpi) / 96.0;
+          details[flutter::EncodableValue("x")] =
+              flutter::EncodableValue(position.x / scale);
+          details[flutter::EncodableValue("y")] =
+              flutter::EncodableValue(position.y / scale);
+        }
+        flutter::EncodableList files;
+        for (const auto& path : paths) files.emplace_back(path);
+        details[flutter::EncodableValue("files")] = flutter::EncodableValue(files);
+        file_drop_channel_->InvokeMethod(event,
+            std::make_unique<flutter::EncodableValue>(details));
+      });
+  file_drop_available_ = SUCCEEDED(
+      ::RegisterDragDrop(file_drop_window_, file_drop_target_));
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
@@ -199,9 +431,18 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  if (file_drop_available_) ::RevokeDragDrop(file_drop_window_);
+  if (file_drop_target_) {
+    file_drop_target_->Release();
+    file_drop_target_ = nullptr;
+  }
+  file_drop_available_ = false;
   if (flutter_controller_) {
     file_dialog_channel_.reset();
     window_theme_channel_.reset();
+    activation_channel_.reset();
+    spell_check_channel_.reset();
+    file_drop_channel_.reset();
     flutter_controller_ = nullptr;
   }
 
@@ -212,6 +453,19 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  if (message == WM_COPYDATA) {
+    const auto* packet = reinterpret_cast<const COPYDATASTRUCT*>(lparam);
+    if (packet == nullptr || packet->dwData != 0x54444F52 ||
+        packet->cbData == 0 || packet->cbData > 4096 ||
+        packet->lpData == nullptr) return FALSE;
+    const auto* bytes = static_cast<const char*>(packet->lpData);
+    pending_activation_.assign(bytes, bytes + packet->cbData);
+    if (::IsIconic(hwnd)) ::ShowWindow(hwnd, SW_RESTORE);
+    else ::ShowWindow(hwnd, SW_SHOW);
+    ::SetForegroundWindow(hwnd);
+    DeliverActivation();
+    return TRUE;
+  }
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {
     std::optional<LRESULT> result =

@@ -1,5 +1,104 @@
 # Design
 
+## Native widget control polish (2026-10-21)
+
+The five user-provided baseline screenshots in
+`D:\AI_Projects\Todorbit_Widget_UI_Review_References` show colliding date
+outlines, arrows attached to selection text, square/cropped rounded corners,
+and the status row against the footer. Source inspection traced the first
+three to separate child-button painting, text-based arrows, and parent
+backgrounds showing through rounded WinForms buttons.
+
+The Edit Task date field is one painted surface containing a native borderless
+text box and two 32 px icon actions. The actions keep native button focus and
+keyboard activation, but paint no competing outlines. The field owns its
+rounded border and focus ring. Typed ISO dates, calendar selection, and clear
+remain independent for Scheduled day and Deadline.
+
+Choice controls remain themed WinForms buttons and ToolStrip menus. Their arrow
+is now painted at a fixed trailing inset; the label has its own ellipsis width.
+Clearing the button's parent color behind its rounded shape removes square
+corner artifacts. Quick Add uses the same rounded border and a matching form
+region. The editor has 16 px after its last field; its fixed footer no longer
+draws an unnecessary divider. Default client height is 570 px.
+
+Shared native tokens in `WidgetEditorStyle` define the corner, field height,
+date action width, palette blend, and surface border. Date action width and
+glyph geometry scale with control DPI; physical DPI rendering still needs
+manual acceptance. The selective refactor
+keeps native text editing, popup keyboard behavior, the painted Explorer host,
+IPC, and repository writes. It avoids a broader widget rewrite because the
+defects were in the transient editor controls and their parent painting.
+
+This applies desktop principles from `apple-design` `accessibility.md` (input
+methods), `text-fields.md` (labels and spacing), `buttons.md` (press state),
+and `entering-data.md` (clear choices), translated to Windows conventions.
+
+## Native widget redesign (2026-10-21)
+
+The Explorer-attached surface remains a compact task companion. Its header now
+uses a simple app-window and outward-arrow symbol for Open Todorbit. A slim
+task-list scroll cue replaces the text range that crowded the last row at the
+minimum widget height. Empty copy describes the selected view. Selected tabs
+choose readable text from the active accent, including custom palettes.
+
+The native Edit Task form uses the same background, surface, accent, text,
+border, and error roles as the Flutter theme JSON. It groups Task details,
+Schedule, Organization, and Status and priority. Related fields share columns
+at regular widths and stack at compact widths. The form has a natural 570 px
+client height, a scrollable content area for small screens, and fixed actions.
+Native text editing remains available for selection and paste. Choice menus,
+date entry, a themed calendar, focus rings, and buttons use the same surface
+and border treatments. Save remains primary; Cancel and Open full details are
+secondary. The date inputs retain separate planned-day and deadline values.
+
+The contextual menu keeps Windows ToolStrip keyboard and popup behavior. Its
+selection and check colors blend opaque palette tokens, and the close action
+has its own separator. These choices follow `apple-design` guidance on
+hierarchy (`layout.md`), legible text (`typography.md`), grouped forms
+(`entering-data.md`), accessible input (`accessibility.md`), and short contextual
+menus (`context-menus.md`), translated to Windows controls and conventions.
+
+Offscreen WinForms renders cover dark, light, narrow, and date-calendar states.
+They do not establish Explorer composition, real DWM caption colors, physical
+input, menu placement, or DPI behavior; those remain manual acceptance checks.
+
+## Feedback round 4, part 2 (2026-10-20)
+
+The checklist row gives its text the flexible column. A separate checkbox
+retains a consistent position, while a single overflow menu holds edit,
+reorder, and removal. Long text starts at two selectable lines and has an
+explicit Show more/Show less control. Thin separators distinguish dense lists
+without surrounding each item with a card. The same checklist dialog is used
+for saved and draft edits; its width follows the viewport and typing wraps
+within a multiline field.
+
+Task scheduling keeps planned day distinct from deadline. The two controls
+share a row when the editor is wide enough and stack below 470 px; each has a
+visible label and its own clear action. Resource actions use familiar attach,
+file, folder, and link icons with short labels. An empty Resources section
+shows the actions directly, while a file drag supplies transient target
+feedback. Draft subtasks have one overflow menu and light separators.
+
+The task-list Info action describes the actual filter, including the difference
+between planned dates and deadlines. Settings uses six sections and keeps the
+existing controls in their established dialogs. A compact window uses a
+section picker instead of a permanent category rail. Theme mode lives in
+Appearance & Themes; widget opacity, layout lock, and startup can also be
+changed in Settings while the context menu retains direct access.
+
+The native widget keeps its Explorer child host. Its context menu uses the
+current semantic palette through a Windows ToolStrip renderer, with native
+menu dismissal and keyboard behavior. The update-time footer is removed and
+the task area grows into the freed space. The native task editor is shorter,
+resizable, DPI aware, and uses matching palette colors for its controls.
+
+These choices apply Apple Design Skill guidance from `layout.md` (Visual
+hierarchy), `typography.md` (Ensuring legibility), `accessibility.md`
+(Mobility), `lists-and-tables.md` (Best practices), `icons.md` (Best practices),
+`popovers.md` (Best practices), and `settings.md` (Desktop). Windows controls
+and shortcuts remain native to this app.
+
 ## Feedback round 3 (2026-10-19)
 
 The Windows title bar, lavender identity, and light/dark themes stay native to
@@ -15,7 +114,8 @@ offers details and quick creation, and has an explicit Day View action. Empty
 calendar areas use a Windows-style right-click creation menu; event and task
 entries keep their own click target.
 
-Task creation begins without a date. Anytime collects tasks with neither a
+At the Round 3 checkpoint, task creation began without a date. Round 4 Part 1
+changed the default planned day to Today. Anytime collects tasks with neither a
 planned date nor a deadline. The task panel leads with title, notes, and
 scheduling; organization, checklists, subtasks, and resources follow; rare
 settings live in labeled advanced groups. The scrollable form clears the fixed

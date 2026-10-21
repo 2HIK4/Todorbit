@@ -12,7 +12,7 @@ import '../../domain/models.dart';
 import '../../domain/recurrence.dart';
 import '../../domain/time_tracking.dart';
 import '../../domain/saved_views.dart';
-import '../../domain/appearance.dart';
+import '../../domain/hotkeys.dart';
 import '../branding/brand_mark.dart';
 import '../calendar/calendar_view.dart';
 import '../habits/habits_view.dart';
@@ -24,8 +24,8 @@ import '../templates/templates_dialog.dart';
 import '../search/advanced_search_dialog.dart';
 import '../settings/backup_dialog.dart';
 import '../settings/notification_dialog.dart';
-import '../settings/privacy_dialog.dart';
 import '../settings/theme_dialog.dart';
+import '../settings/settings_hub_dialog.dart';
 import '../scheduling/smart_reschedule.dart';
 import '../shared/icon_picker.dart';
 import '../widget/native_widget_service.dart';
@@ -48,7 +48,27 @@ class Workspace extends ConsumerStatefulWidget {
   ConsumerState<Workspace> createState() => _WorkspaceState();
 }
 
+String _viewDescription(WorkspaceView view) => switch (view) {
+  WorkspaceView.today => 'Tasks planned for today. Deadlines and scheduled work are tracked separately.',
+  WorkspaceView.all => 'Tasks across your categories and projects. Completed tasks may remain visible if enabled in Task Preferences.',
+  WorkspaceView.inbox => 'Tasks without a category or project.',
+  WorkspaceView.anytime => 'Tasks without a planned day or deadline, ready to schedule whenever you choose.',
+  WorkspaceView.upcoming =>
+    'Tasks planned for a future day, regardless of deadline.',
+  WorkspaceView.overdue =>
+    'Tasks with a deadline before today, regardless of planned day.',
+  WorkspaceView.waiting => 'Tasks marked Waiting or On hold.',
+  WorkspaceView.completed =>
+    'Completed and cancelled tasks remain here with their history.',
+  WorkspaceView.category => 'Tasks assigned to this category.',
+  WorkspaceView.project => 'Tasks assigned to this project.',
+  WorkspaceView.saved => 'Tasks matching this saved search and its filters.',
+  _ => 'Tasks in the current view.',
+};
+
 class _WorkspaceState extends ConsumerState<Workspace> {
+  static const _activationChannel = MethodChannel('life_manager/activation');
+  bool _appearanceDialogOpen = false;
   bool creating = false;
   DateTime? newTaskInitialDate;
   final nativeWidget = NativeWidgetService();
@@ -58,14 +78,24 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   @override
   void initState() {
     super.initState();
+    HardwareKeyboard.instance.addHandler(_handleHotkey);
+    if (Platform.isWindows) {
+      _activationChannel.setMethodCallHandler((call) async {
+        if (call.method != 'activate' || !mounted) return;
+        final command = call.arguments;
+        if (command == 'appearance') {
+          _openAppearanceDialog();
+        } else if (command is String && command.startsWith('task:')) {
+          ref.read(appControllerProvider).select(command.substring(5));
+        }
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _activationChannel.invokeMethod<void>('ready');
+      });
+    }
     if (widget.openAppearance) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          showDialog<void>(
-            context: context,
-            builder: (_) => const ThemeDialog(),
-          );
-        }
+        if (mounted) _openAppearanceDialog();
       });
     }
     if (widget.legacyImportFile case final legacyFile?) {
@@ -111,9 +141,24 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     });
   }
 
+  Future<void> _openAppearanceDialog() async {
+    if (!mounted || _appearanceDialogOpen) return;
+    _appearanceDialogOpen = true;
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (_) => const ThemeDialog(),
+      );
+    } finally {
+      _appearanceDialogOpen = false;
+    }
+  }
+
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleHotkey);
     _clock?.cancel();
+    if (Platform.isWindows) _activationChannel.setMethodCallHandler(null);
     super.dispose();
   }
 
@@ -385,14 +430,63 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     _ => 'view:${controller.view.name}',
   };
 
+  void _runHotkey(HotkeyAction action, AppController controller) {
+    if (ModalRoute.of(context)?.isCurrent != true) return;
+    switch (action) {
+      case HotkeyAction.newTask:
+        _newTask();
+      case HotkeyAction.quickSearch:
+        _showSearch();
+      case HotkeyAction.advancedSearch:
+        _showAdvancedSearch();
+      case HotkeyAction.today:
+        controller.navigate(WorkspaceView.today);
+      case HotkeyAction.allTasks:
+        controller.navigate(WorkspaceView.all);
+      case HotkeyAction.calendar:
+        controller.navigate(WorkspaceView.calendar);
+      case HotkeyAction.anytime:
+        controller.navigate(WorkspaceView.anytime);
+      case HotkeyAction.settings:
+        showDialog<void>(
+          context: context,
+          builder: (_) => SettingsHubDialog(
+            nativeWidget: nativeWidget,
+            showDataProfile: _showDataProfile,
+          ),
+        );
+      case HotkeyAction.focus:
+        if (controller.activeTimer != null) {
+          _run(() => controller.stopTimer());
+        } else if (controller.selectedTask case final selected?) {
+          if (selected.isOpen) _run(() => controller.startFocusTask(selected));
+        }
+      case HotkeyAction.refresh:
+        _run(() => controller.refresh());
+    }
+  }
+
+  bool _handleHotkey(KeyEvent event) {
+    if (!mounted || ModalRoute.of(context)?.isCurrent != true) return false;
+    final binding = HotkeyBinding.fromKeyEvent(event);
+    if (binding == null) return false;
+    final controller = ref.read(appControllerProvider);
+    for (final entry in controller.hotkeys.bindings.entries) {
+      if (entry.value == binding) {
+        _runHotkey(entry.key, controller);
+        return true;
+      }
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(appControllerProvider);
     return CallbackShortcuts(
       bindings: {
-        const SingleActivator(LogicalKeyboardKey.keyN, control: true): _newTask,
-        const SingleActivator(LogicalKeyboardKey.keyK, control: true):
-            _showSearch,
+        for (final entry in controller.hotkeys.bindings.entries)
+          entry.value.activator: () => _runHotkey(entry.key, controller),
       },
       child: Focus(
         autofocus: true,
@@ -420,7 +514,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                       color: Theme.of(context).colorScheme.outlineVariant,
                     ),
                     SizedBox(
-                      width: 370,
+                      width: constraints.maxWidth >= 1200 ? 440 : 370,
                       child: TaskEditor(
                         key: ValueKey(
                           creating ? 'new' : controller.selectedTask!.id,
@@ -443,7 +537,6 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   Widget _sidebar(AppController controller) {
     final scheme = Theme.of(context).colorScheme;
-    final privacy = ref.watch(privacyManagerProvider);
     return Material(
       color: scheme.surfaceContainerLow,
       child: Column(
@@ -834,33 +927,53 @@ class _WorkspaceState extends ConsumerState<Workspace> {
               ],
             ),
           ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              IconButton(
-                tooltip: 'Quick Search (Ctrl+K)',
-                onPressed: _showSearch,
-                icon: const Icon(Icons.search_outlined),
-              ),
-              IconButton(
-                tooltip: 'Advanced search',
-                onPressed: () => _showAdvancedSearch(),
-                icon: const Icon(Icons.manage_search_outlined),
-              ),
-              IconButton(
-                tooltip: 'Task sequences',
-                onPressed: () => showDialog<void>(
-                  context: context,
-                  builder: (_) => const SequenceDialog(),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  constraints: const BoxConstraints.tightFor(
+                    width: 40,
+                    height: 40,
+                  ),
+                  tooltip:
+                      'Quick Search (${controller.hotkeys.bindings[HotkeyAction.quickSearch]!.display})',
+                  onPressed: _showSearch,
+                  icon: const Icon(Icons.search_outlined),
                 ),
-                icon: const Icon(Icons.format_list_numbered),
-              ),
-              IconButton(
-                tooltip: 'Templates',
-                onPressed: _showTemplates,
-                icon: const Icon(Icons.copy_all_outlined),
-              ),
-            ],
+                IconButton(
+                  constraints: const BoxConstraints.tightFor(
+                    width: 40,
+                    height: 40,
+                  ),
+                  tooltip: 'Advanced search',
+                  onPressed: () => _showAdvancedSearch(),
+                  icon: const Icon(Icons.manage_search_outlined),
+                ),
+                IconButton(
+                  constraints: const BoxConstraints.tightFor(
+                    width: 40,
+                    height: 40,
+                  ),
+                  tooltip: 'Task sequences',
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    builder: (_) => const SequenceDialog(),
+                  ),
+                  icon: const Icon(Icons.format_list_numbered),
+                ),
+                IconButton(
+                  constraints: const BoxConstraints.tightFor(
+                    width: 40,
+                    height: 40,
+                  ),
+                  tooltip: 'Templates',
+                  onPressed: _showTemplates,
+                  icon: const Icon(Icons.copy_all_outlined),
+                ),
+              ],
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
@@ -937,59 +1050,17 @@ class _WorkspaceState extends ConsumerState<Workspace> {
             ),
           Padding(
             padding: const EdgeInsets.all(8),
-            child: PopupMenuButton<String>(
-              tooltip: 'Settings',
-              onSelected: (value) {
-                if (value == 'privacy') {
-                  showDialog<void>(
-                    context: context,
-                    builder: (_) => const PrivacyDialog(),
-                  );
-                } else if (value == 'appearance') {
-                  showDialog<void>(
-                    context: context,
-                    builder: (_) => const ThemeDialog(),
-                  );
-                } else if (value == 'lock') {
-                  privacy.lock();
-                } else if (value == 'profile') {
-                  _showDataProfile();
-                } else {
-                  final theme = ThemeModePreference.values.firstWhere(
-                    (item) => item.name == value,
-                  );
-                  _run(() => controller.setTheme(theme));
-                }
-              },
-              itemBuilder: (_) => [
-                const PopupMenuItem(
-                  value: 'system',
-                  child: Text('System theme'),
+            child: ListTile(
+              dense: true,
+              leading: const Icon(Icons.settings_outlined),
+              title: const Text('Settings'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showDialog<void>(
+                context: context,
+                builder: (_) => SettingsHubDialog(
+                  nativeWidget: nativeWidget,
+                  showDataProfile: _showDataProfile,
                 ),
-                const PopupMenuItem(value: 'light', child: Text('Light theme')),
-                const PopupMenuItem(value: 'dark', child: Text('Dark theme')),
-                const PopupMenuDivider(),
-                const PopupMenuItem(
-                  value: 'appearance',
-                  child: Text('Appearance · Customize Theme'),
-                ),
-                const PopupMenuItem(
-                  value: 'privacy',
-                  child: Text('Privacy and app lock'),
-                ),
-                if (Platform.isWindows)
-                  const PopupMenuItem(
-                    value: 'profile',
-                    child: Text('Data profile and location'),
-                  ),
-                if (privacy.enabled)
-                  const PopupMenuItem(value: 'lock', child: Text('Lock now')),
-              ],
-              child: const ListTile(
-                dense: true,
-                leading: Icon(Icons.settings_outlined),
-                title: Text('Settings'),
-                trailing: Icon(Icons.expand_more),
               ),
             ),
           ),
@@ -1141,91 +1212,124 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(28, 26, 24, 16),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
+          child: LayoutBuilder(
+            builder: (context, constraints) => Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              runSpacing: 6,
+              children: [
+                SizedBox(
+                  width: constraints.maxWidth < 700
+                      ? constraints.maxWidth
+                      : math.max(180, constraints.maxWidth - 430),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '${items.length} ${items.length == 1 ? 'task' : 'tasks'}',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                MenuAnchor(
+                  style: MenuStyle(
+                    backgroundColor: WidgetStatePropertyAll(
+                      Theme.of(context).colorScheme.surfaceContainerHigh,
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      '${items.length} ${items.length == 1 ? 'task' : 'tasks'}',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  menuChildren: [
+                    Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 280),
+                        child: Text(_viewDescription(controller.view)),
                       ),
                     ),
                   ],
-                ),
-              ),
-              PopupMenuButton<TaskSort>(
-                tooltip: 'Sort tasks',
-                onSelected: controller.setSort,
-                itemBuilder: (_) => const [
-                  PopupMenuItem(
-                    value: TaskSort.schedule,
-                    child: Text('Scheduled date'),
+                  builder: (context, menu, child) => IconButton(
+                    key: const ValueKey('view-info-button'),
+                    tooltip: 'About this view',
+                    style: IconButton.styleFrom(
+                      overlayColor: Theme.of(context).colorScheme.primary
+                          .withValues(alpha: 0.08),
+                    ),
+                    onPressed: () => menu.isOpen ? menu.close() : menu.open(),
+                    icon: const Icon(Icons.info_outline),
                   ),
-                  PopupMenuItem(
-                    value: TaskSort.priority,
-                    child: Text('Priority'),
-                  ),
-                  PopupMenuItem(value: TaskSort.title, child: Text('Title')),
-                  PopupMenuItem(
-                    value: TaskSort.created,
-                    child: Text('Newest first'),
-                  ),
-                ],
-                icon: const Icon(Icons.sort),
-              ),
-              IconButton(
-                key: const ValueKey('schedule-history-button'),
-                tooltip: 'Schedule History',
-                onPressed: _showHistory,
-                style: ButtonStyle(
-                  foregroundColor: WidgetStateProperty.resolveWith((states) {
-                    if (states.contains(WidgetState.disabled)) {
-                      return Theme.of(context).colorScheme.onSurface
-                          .withValues(alpha: 0.38);
-                    }
-                    return Theme.of(context).colorScheme.onSurfaceVariant;
-                  }),
-                  overlayColor: WidgetStateProperty.resolveWith((states) {
-                    if (states.contains(WidgetState.hovered)) {
-                      return Theme.of(context).colorScheme.onSurface
-                          .withValues(alpha: 0.08);
-                    }
-                    if (states.contains(WidgetState.focused) ||
-                        states.contains(WidgetState.pressed)) {
-                      return Theme.of(context).colorScheme.onSurface
-                          .withValues(alpha: 0.12);
-                    }
-                    return null;
-                  }),
                 ),
-                icon: const Icon(
-                  Icons.restore_rounded,
-                  semanticLabel: 'Schedule History',
+                PopupMenuButton<TaskSort>(
+                  tooltip: 'Sort tasks',
+                  onSelected: controller.setSort,
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(
+                      value: TaskSort.schedule,
+                      child: Text('Scheduled date'),
+                    ),
+                    PopupMenuItem(
+                      value: TaskSort.priority,
+                      child: Text('Priority'),
+                    ),
+                    PopupMenuItem(value: TaskSort.title, child: Text('Title')),
+                    PopupMenuItem(
+                      value: TaskSort.created,
+                      child: Text('Newest first'),
+                    ),
+                  ],
+                  icon: const Icon(Icons.sort),
                 ),
-              ),
-              OutlinedButton.icon(
-                onPressed: items.any((task) => task.isOpen)
-                    ? () => _showSmart()
-                    : null,
-                icon: const Icon(Icons.auto_fix_high),
-                label: const Text('Reschedule'),
-              ),
-              const SizedBox(width: 8),
-              FilledButton.icon(
-                onPressed: _newTask,
-                icon: const Icon(Icons.add),
-                label: const Text('New task'),
-              ),
-            ],
+                IconButton(
+                  key: const ValueKey('schedule-history-button'),
+                  tooltip: 'Schedule History',
+                  onPressed: _showHistory,
+                  style: ButtonStyle(
+                    foregroundColor: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.disabled)) {
+                        return Theme.of(context).colorScheme.onSurface
+                            .withValues(alpha: 0.38);
+                      }
+                      return Theme.of(context).colorScheme.onSurfaceVariant;
+                    }),
+                    overlayColor: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.hovered)) {
+                        return Theme.of(context).colorScheme.onSurface
+                            .withValues(alpha: 0.08);
+                      }
+                      if (states.contains(WidgetState.focused) ||
+                          states.contains(WidgetState.pressed)) {
+                        return Theme.of(context).colorScheme.onSurface
+                            .withValues(alpha: 0.12);
+                      }
+                      return null;
+                    }),
+                  ),
+                  icon: const Icon(
+                    Icons.restore_rounded,
+                    semanticLabel: 'Schedule History',
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: items.any((task) => task.isOpen)
+                      ? () => _showSmart()
+                      : null,
+                  icon: const Icon(Icons.auto_fix_high),
+                  label: const Text('Reschedule'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  onPressed: _newTask,
+                  icon: const Icon(Icons.add),
+                  label: const Text('New task'),
+                ),
+              ],
+            ),
           ),
         ),
         if (controller.view == WorkspaceView.today)
@@ -1413,6 +1517,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         decoration: done ? TextDecoration.lineThrough : null,
+                        color: done
+                            ? scheme.onSurface.withValues(alpha: 0.55)
+                            : null,
                       ),
                     ),
                     if (task.scheduledDate != null ||

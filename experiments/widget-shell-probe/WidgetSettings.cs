@@ -146,6 +146,32 @@ internal static class WidgetGeometry {
   internal static Size LogicalSize(int width, int height) => new(
     Math.Max(width, 260), Math.Max(height, 230));
 
+  internal static Rectangle MoveOrResize(
+      Rectangle start, int dx, int dy, bool dragging,
+      WidgetResizeEdge edge, int minimumWidth, int minimumHeight) {
+    var left = start.Left;
+    var top = start.Top;
+    var right = start.Right;
+    var bottom = start.Bottom;
+    if (dragging) {
+      left += dx; right += dx; top += dy; bottom += dy;
+    } else {
+      if (edge.HasFlag(WidgetResizeEdge.Left)) left += dx;
+      if (edge.HasFlag(WidgetResizeEdge.Right)) right += dx;
+      if (edge.HasFlag(WidgetResizeEdge.Top)) top += dy;
+      if (edge.HasFlag(WidgetResizeEdge.Bottom)) bottom += dy;
+      if (right - left < minimumWidth) {
+        if (edge.HasFlag(WidgetResizeEdge.Left)) left = right - minimumWidth;
+        else right = left + minimumWidth;
+      }
+      if (bottom - top < minimumHeight) {
+        if (edge.HasFlag(WidgetResizeEdge.Top)) top = bottom - minimumHeight;
+        else bottom = top + minimumHeight;
+      }
+    }
+    return Rectangle.FromLTRB(left, top, right, bottom);
+  }
+
   internal static Rectangle ClampToWorkingArea(
       Rectangle bounds, Rectangle workingArea) {
     var width = Math.Min(bounds.Width, workingArea.Width);

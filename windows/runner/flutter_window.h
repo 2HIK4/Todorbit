@@ -5,8 +5,10 @@
 #include <flutter/flutter_view_controller.h>
 #include <flutter/method_channel.h>
 #include <flutter/encodable_value.h>
+#include <oleidl.h>
 
 #include <memory>
+#include <string>
 
 #include "win32_window.h"
 
@@ -34,6 +36,18 @@ class FlutterWindow : public Win32Window {
       file_dialog_channel_;
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       window_theme_channel_;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+      activation_channel_;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+      spell_check_channel_;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+      file_drop_channel_;
+  IDropTarget* file_drop_target_ = nullptr;
+  HWND file_drop_window_ = nullptr;
+  bool file_drop_available_ = false;
+  std::string pending_activation_;
+  bool activation_ready_ = false;
+  void DeliverActivation();
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

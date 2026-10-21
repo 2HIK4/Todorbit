@@ -30,8 +30,11 @@ void main() {
         await service.quickAdd();
         await service.setView('all');
         await service.setView('upcoming');
+        await service.setLayoutLocked(true);
+        await service.setOpacity(70);
+        await service.setLaunchAtSignIn(false);
         await service.close();
-        expect(calls, hasLength(6));
+        expect(calls, hasLength(9));
         expect(calls.first.$1, widget.path);
         expect(calls.first.$2, [
           '--widget',
@@ -47,7 +50,11 @@ void main() {
         expect(calls[2].$2.take(2), ['--widget-command', 'quick-add']);
         expect(calls[3].$2.take(2), ['--widget-command', 'view-all']);
         expect(calls[4].$2.take(2), ['--widget-command', 'view-upcoming']);
+        expect(calls[5].$2.take(2), ['--widget-command', 'layout-lock']);
+        expect(calls[6].$2.take(2), ['--widget-command', 'opacity-70']);
+        expect(calls[7].$2.take(2), ['--widget-command', 'startup-off']);
         expect(calls.last.$2.take(2), ['--widget-command', 'exit']);
+        expect(() => service.setOpacity(101), throwsRangeError);
       } finally {
         await directory.delete(recursive: true);
       }

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.5 — Windows x64 pre-release
+
+- Improved task creation and editing with draft checklist items and subtasks, independent scheduling fields, Today defaults, Anytime behavior, and completed-task display preferences.
+- Added inline local spelling underlines, editable keyboard shortcuts and presets, selectable and expandable checklist text, and Explorer file drop for resources.
+- Refined Settings, themes, task editor layout, and view information popovers.
+- Redesigned the native Windows widget editor, date and choice controls, menu, and Quick Add styling; improved movement, sizing, profile isolation, and single-instance activation.
+- Kept the existing database schema and legacy data paths. Physical widget, Windows 10, and installed upgrade/uninstall acceptance remain limited; see [acceptance status](docs/ACCEPTANCE.md).
+
 ## 1.0.3 — Todorbit release candidate
 
 - Adopted the creator-approved MIT license and changed the public name from TodoPilot to Todorbit while preserving installer and data identities.

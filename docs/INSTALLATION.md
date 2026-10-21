@@ -1,6 +1,6 @@
 # Install Todorbit on Windows
 
-Todorbit 1.0.3 is a Windows x64 release candidate. Windows 11 is the development platform; Windows 10 and installed upgrade/uninstall behavior still need direct acceptance. The current packages are unsigned. Download only from a release location confirmed by the project maintainer, then compare SHA-256 with its published `SHA256SUMS.txt`. No public GitHub release exists yet.
+Todorbit v1.0.5 is a free, MIT-licensed Windows x64 pre-release. Windows 11 is the main development and test platform; Windows 10 and installed upgrade/uninstall behavior still need direct acceptance. The packages are unsigned. Download from the [public GitHub release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.5), then compare SHA-256 with its published `SHA256SUMS.txt`.
 
 ## Installer
 

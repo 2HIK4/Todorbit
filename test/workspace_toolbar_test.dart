@@ -4,6 +4,7 @@ import 'dart:ui' show PointerDeviceKind;
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_manager/app/app_controller.dart';
@@ -43,6 +44,16 @@ void main() {
           expect(buttonFinder, findsOneWidget);
           expect(find.byTooltip('Schedule History'), findsOneWidget);
           expect(find.byIcon(Icons.restore_rounded), findsOneWidget);
+          final info = find.byKey(const ValueKey('view-info-button'));
+          expect(info, findsOneWidget);
+          await tester.tap(info);
+          await tester.pumpAndSettle();
+          expect(
+            find.textContaining('Tasks planned for today'),
+            findsOneWidget,
+          );
+          await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+          await tester.pumpAndSettle();
 
           final button = tester.widget<IconButton>(buttonFinder);
           expect(button.onPressed, isNotNull);

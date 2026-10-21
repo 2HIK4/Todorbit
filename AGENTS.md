@@ -5,8 +5,10 @@
 - Separate planned dates, deadlines, sessions, actual work, and fixed events. Never auto-complete or silently reschedule a task.
 - Keep visible controls functional or explicitly unavailable. Do not show invented data or claim widget behavior without manual verification.
 - Preserve user data. Migrate schemas forward and use transactions for multi-record edits.
-- Read `docs/PROGRESS.md` for the next task. Update it after meaningful work; record major choices in `docs/DECISIONS.md`.
-- Validate with `flutter analyze`, `flutter test`, and Windows builds at milestones. Record failures accurately.
+- Read `docs/PROGRESS.md` when selecting the next product task or preparing a handoff. Update it after meaningful work; record major choices in `docs/DECISIONS.md`.
+- Search targeted paths with `rg`; exclude generated, build, and dependency output. Read only relevant docs and skill references. Reuse existing code and theme tokens.
+- Run focused analysis/tests while editing, then `flutter analyze`, relevant `flutter test` coverage, and Windows builds at release or integration milestones. Record failures accurately.
+- Follow Microsoft Fluent guidance for Windows UI, the existing Todorbit theme system, keyboard access, and responsive layout. Visually verify UI changes on an isolated profile.
 - Do not commit caches, builds, secrets, or machine-specific settings. Use safe Git operations.
 - Public brand is Todorbit; preserve the existing `%APPDATA%\TodoPilot` and legacy `%APPDATA%\Life Manager` data paths, native IPC names, and stable installer AppId until a reviewed migration exists.
 - Theme JSON is validated data only. Keep light/dark defaults and native widget tokens synchronized; imported theme metadata never changes the official contributor registry.

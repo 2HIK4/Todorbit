@@ -1,5 +1,154 @@
 # Progress
 
+## v1.0.5 pre-release preparation (2026-10-21)
+
+- Fetched GitHub: `feature/todorbit-feedback-round4` at `9c12bd0` is six commits ahead of `origin/main`; the worktree was clean. The public repository has v1.0.3 and no v1.0.5 release or tag.
+- Advanced Flutter and standalone native widget versions to 1.0.5 and updated current release documentation. The Windows build derives main executable resources and packaged widget version from Flutter; packaging reads the same version. The v1.0.3 public release and historical audit remain untouched.
+- Physical native widget and installer acceptance limits remain listed in `ACCEPTANCE.md`.
+- `flutter analyze --no-pub` passed with no issues; all 208 serial Flutter tests passed. One existing nonfatal scroll hit-test warning appeared in `workspace_test.dart`. Native .NET Release built with zero warnings/errors and its source self-test passed. The Windows Release build, packaged widget self-test, and disposable-profile single-instance/profile-isolation script passed. The .NET vulnerability query found no vulnerable packages in configured sources.
+- An isolated Release app opened with Todorbit branding and an empty Today view on a disposable profile. The widget process started with that profile, but Computer Use did not expose its Explorer-hosted child as a targetable window. New Task interaction was not completed; live widget painting/input and installer lifecycle remain unverified.
+
+## Native widget final control polish (2026-10-21)
+
+- Replaced the separate bordered date buttons with internal 32 px actions on
+  one rounded date field; drew dropdown arrows at a stable trailing position
+  and removed square parent corners. Rounded Quick Add to match the painted
+  field. Added bottom scroll space, removed the editor footer divider, and
+  raised the default editor client height to 570 px.
+- A first dark/light offscreen render exposed square choice corners and the
+  last field crowding the footer; a second dark/light/custom render showed
+  corrected corners, spacing, date actions, and arrow alignment. The calendar
+  and rounded Quick Add outline were also rendered; its placeholder did not
+  appear in `DrawToBitmap`. These are WinForms observations, not live
+  Explorer pixels. The initial screenshot path was absent; the user then
+  supplied all five baseline images at
+  `D:\AI_Projects\Todorbit_Widget_UI_Review_References`. They confirm the
+  prior date-border collisions, text-adjacent dropdown arrows, corner/edge
+  artifacts, and crowded final row. The post-fix offscreen renders do not
+  establish live Explorer behavior.
+- Native Release build (zero warnings), source and packaged self-tests, four
+  focused Flutter tests, and Windows Release build passed. Geometry tests cover
+  date action separation at 170/245/340 px, clearing, and choice arrow state.
+  Computer Use reported no native windows, so physical mouse, dropdown open,
+  Explorer composition, Win+D, DPI, and monitor-edge checks remain unverified.
+  See `docs/ACCEPTANCE.md` and `docs/windows-widget.md` before release.
+
+## Native widget UI redesign (2026-10-21)
+
+- Rebuilt the native Edit Task form into themed, responsive sections with
+  consistent fields and buttons, custom choice and date controls, and a fixed
+  action area above compact themed scrolling. Every existing value still saves
+  through the widget repository with stale-edit and dependency review handling.
+- Replaced the widget's header action glyph with an app-window/open arrow,
+  corrected view-specific empty copy, added a slim list scroll cue, and made
+  selected tabs and menu hover/check colors follow the active palette. The
+  custom theme error color now reaches native validation feedback.
+- Release native build, source and packaged self-tests, focused Flutter widget
+  tests, `flutter analyze`, and Windows Release build passed. Offscreen editor
+  and calendar renders were inspected in dark/light and narrow layouts. Native
+  computer-use inventory exposed no windows, so Explorer pixels, mouse input,
+  task-editor activation, context-menu placement, DPI, and Win+D are still
+  **UNVERIFIED**. See `docs/ACCEPTANCE.md` and `docs/windows-widget.md`.
+
+## Feedback round 5 implementation and audit (2026-10-21)
+
+- Continued on `feature/todorbit-feedback-round4`. Added inline local spell underlines, shared New/Edit schedule columns, a persistent full/compact checklist and subtask text setting, selectable checklist text, icon-only resource actions, a subtle dismissible Info menu, and working workspace hotkey dispatch. Reordered optional task planning below composition and cleaned major section separators. The native widget received balanced bottom padding and a reorganized task editor. No database schema or production profile changed.
+- An isolated debug Flutter Driver session was visually inspected in light and dark at a 1265 x 681 desktop window. New and Edit Task, schedule columns, long checklist/subtask text, compact and full modes, Settings persistence, Info popover, and the red underline on misspelled title text were observed. A real dialog disposal error found while saving a draft subtask was fixed, then repeated without runtime errors. A second pass also removed row-level subtask dividers. The Windows Release application started with a disposable profile and created its own database, but the available computer-control surface did not expose the Release window for visual interaction.
+- Acceptance evidence and remaining physical Windows checks are in `docs/ACCEPTANCE.md`. Native widget self-test and Flutter widget tests do not establish mouse, Win+D, DPI, or painted native editor behavior.
+
+## Codex environment setup (2026-10-21)
+
+- Installed the official Dart/Flutter Codex plugin and its bundled skills and Dart MCP registration; installed UI/UX Pro Max globally after source inspection. Existing Apple Design and built-in OpenAI skills were retained.
+- Made project guidance task-scoped and added `docs/CODEX_WORKFLOW.md` for reasoning, search, verification, UI review, and handoff conventions. This setup made no application behavior or data changes.
+- Dart MCP initialized, listed 14 tools, accepted the project root, and `analyze_files` returned no errors in a direct protocol probe. A focused Flutter preference test passed. UI/UX Pro Max search returned a relevant result; its optional upstream validation script could not run because PyYAML is not installed. The current chat's tool catalog predates plugin installation, so normal in-chat MCP discovery remains for a new session.
+- The temporary inspection clone `.codex-audit-ui-ux-pro-max/` remains untracked: automatic command review rejected its recursive deletion. Do not commit it.
+
+## Feedback round 4, part 2 implementation (2026-10-20)
+
+- Continued on `feature/todorbit-feedback-round4` from Part 1 commit `5fdc737`.
+  Read all eight private screenshot references. The screenshots show older
+  TodoPilot branding, while current source and the isolated Part 1 Release GUI
+  show Todorbit. No compatible data path or installer identifier was renamed.
+- Replaced the narrow checklist action strip with one overflow menu; rows now
+  reserve width for selectable two-line text, expand and collapse when needed,
+  and have subtle dividers. Saved and draft checklist edits share a responsive
+  dialog whose width stays fixed while typing. Draft and saved subtasks have
+  separators and draft actions use an overflow menu.
+- The task editor now places scheduled day and deadline together where wide,
+  stacks them when narrow, and labels their independent clear actions. Resource
+  actions have compact icons and short labels; the redundant empty-state line
+  is removed. List views have filter-accurate Info actions. Settings is grouped
+  into Appearance & Themes, Hotkeys, Task Preferences, Notifications, Widget,
+  and Privacy & Data, with a compact section picker on narrow windows.
+- The native Explorer-hosted widget menu uses a semantic-palette ToolStrip
+  renderer. The update-time footer is no longer painted, freeing vertical task
+  space. Its Open Todorbit control uses a small window/orbit icon and a native
+  tooltip. The native task editor is shorter and resizable, with matching
+  palette colors and controls anchored to available width and height. Native
+  menu and task editor pixels still require direct GUI acceptance.
+- Version advanced locally to 1.0.4 in Flutter and the native widget for an
+  unpublished release candidate. All 203 serial Flutter tests passed, then the
+  final Info-popover contrast fix passed its focused test; `flutter analyze`,
+  native Release build, widget self-test, and Windows Release build passed.
+  The isolated GUI showed light and dark Settings, the task schedule and
+  checklist draft areas, and the final readable Info popover at 1266 x 713.
+  Native widget menu/editor pixels and long saved checklist interactions remain
+  on the manual checklist. No production profile was opened.
+- The final local portable ZIP has 33 entries and passed a full ZIP read.
+  `release/Todorbit-1.0.4-win-x64-portable.zip` SHA-256:
+  `B3AE11E5E7F00CCB428FFE8827377275BC18C84089CA037F5693E7DC53340ABF`.
+  `release/Todorbit-1.0.4-win-x64-setup.exe` compiled with Inno Setup 7.1.0;
+  SHA-256: `065D01F0A04E33441E7F54CBB6413446EFF2E3FF7C35B00A6B7DBDF9D85B3B05`.
+  Both artifacts are unsigned and have not been installed or published.
+  The final single-instance and separate-profile script passed; one disposable
+  process required a forced close after its cleanup warning.
+
+## Feedback round 4, part 1 implementation (2026-10-20)
+
+- Created `feature/todorbit-feedback-round4` from fetched `origin/main` with a
+  clean initial working tree. The public v1.0.3 tag, release, assets, and
+  published branch remain untouched. Read the private screenshot references
+  from `D:\AI_Projects\Todorbit_Feedback_Round4_Screenshots`; current source
+  and an isolated Release GUI show Todorbit branding, so the TodoPilot image
+  appears to be from an older executable.
+- Fixed widget movement snap-back: `RenderLayer` reused saved settings X/Y
+  while `SetWindowPos` was applying live drag coordinates. Painting now uses
+  the HWND rectangle; resize repaint is coalesced, capture loss saves current
+  geometry, and DPI/display repositioning waits until drag ends. Geometry
+  calculations have self-test coverage. Real mouse movement remains pending
+  because the Explorer child is not targetable by Computer Use.
+- Added a per-profile native main-app mutex and same-window activation with
+  queued task/appearance commands. Ten secondary launches on one disposable
+  profile left one process; an independent profile ran simultaneously with
+  its own database. `--appearance` routed to one existing Customize Theme
+  dialog in isolated GUI observation. Native widget launch now inherits its
+  explicit APPDATA override rather than delegating to the shell. Widget menu
+  click and minimized restore still need direct GUI checks.
+- Added a functional per-profile Hotkeys editor with capture, conflict and
+  reserved-key rejection, search, reset, and named preset operations. Added
+  task display/default settings: Today by default, No Date option, Anytime
+  exception, and completed tasks optionally faded at the bottom of eligible
+  active lists. Completed view remains independent.
+- New Task now holds draft checklist items and one-level subtasks with child
+  planned dates/deadlines until Save. Repository creation is transactional;
+  cancellation writes no children. Checklist text is selectable without
+  editing. Existing task checklist edit dialog has stable width.
+- Added an on-demand local Windows spelling review for task titles, notes,
+  checklist items, and subtask titles, with explicit suggestion choice and an
+  enable/disable setting. It currently uses the installed `en-US` dictionary;
+  Windows COM GUI behavior still needs observation. Added native Explorer file
+  drop handling in task Resources, with target feedback, path deduplication,
+  validation, and attach-copy/link-original choice. The Windows drop path still
+  needs real Explorer drag testing.
+- No SQLite schema change. New preferences extend the existing per-profile
+  appearance settings JSON. All 198 Flutter tests pass with serial execution,
+  and `flutter analyze` reports no issues. The final native Release build has
+  zero warnings/errors and its widget self-test passes on a disposable profile.
+  The final Windows Release build passes; its packaged widget self-test and
+  the disposable-profile single-instance regression script also pass. Actual
+  widget dragging, native Explorer drop, and Windows spell-checker GUI behavior
+  still need direct observation. The manual matrix is in `docs/ACCEPTANCE.md`.
+
 ## Final private GitHub review (2026-10-20)
 
 - Authenticated GitHub account `2HIK4` and private repository `2HIK4/Todorbit`

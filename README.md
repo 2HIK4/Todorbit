@@ -18,7 +18,7 @@ Todorbit is an offline Windows productivity app for tasks, calendar events, habi
 
 ## Windows installation
 
-The current target is Windows x64. Windows 11 is the tested development environment; Windows 10 and other configurations need acceptance testing. After public release approval, download the installer or portable ZIP from this project's GitHub Releases page and compare it with the published SHA-256 checksum. No public download is available yet. Use the installer or extract the portable ZIP and run `Todorbit.exe`. Keep the full extracted folder together, including `TodorbitWidget.exe`, DLLs, and the `data` folder. Neither package requires Flutter or Visual Studio on the user's computer.
+Todorbit v1.0.5 is a free, MIT-licensed Windows x64 pre-release. Windows 11 is the main development and test platform; Windows 10 acceptance is limited. Download the unsigned installer or portable ZIP from [GitHub Releases](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.5) and compare it with the published SHA-256 checksum. Run the installer or extract the portable ZIP and run `Todorbit.exe`. Keep the full extracted folder together, including `TodorbitWidget.exe`, DLLs, and the `data` folder. Neither package requires Flutter or Visual Studio on the user's computer.
 
 The portable ZIP does **not** store data beside the executable. Each extracted portable location uses its own `%APPDATA%\TodoPilot\portable-<location-id>` profile; copying or moving the extracted folder selects a new empty profile. An installer fresh profile uses `%APPDATA%\TodoPilot\life_manager.sqlite`. This legacy path remains stable through the rename. An older `%APPDATA%\Life Manager` database is never selected just because it exists; on first launch Todorbit offers a reviewed, explicit import through Backups. Upgrading an installed TodoPilot retains its existing profile and settings. Export/import data before moving a portable folder, and do not delete either profile folder.
 
@@ -47,8 +47,6 @@ Creator: **Hussam Alkhatib**, Creator & Project Founder. Original concept, produ
 
 ## Current release status
 
-The source and packages are being prepared for an open-source release. Native widget alpha blending, Win+D, different wallpapers and monitor layouts, installer upgrade/uninstall, and complete Windows GUI flows still require manual acceptance. The installer is unsigned. See [release preparation](docs/RELEASE.md) and [acceptance matrix](docs/ACCEPTANCE.md).
-
-The 1.0.3 candidate is **not ready for public release**. The [release audit](docs/RELEASE_AUDIT.md) records the remaining installer, widget, and name-clearance checks. The creator selected Todorbit after a [preliminary naming review](docs/NAMING_REVIEW.md); formal trademark clearance remains open.
+The v1.0.5 pre-release includes task editing, checklist, spelling, scheduling, shortcut, theme, and native widget improvements. Native widget alpha blending, Win+D, different wallpapers and monitor layouts, installer upgrade/uninstall, and some physical Windows GUI flows still require manual acceptance. The installer is unsigned. See [release preparation](docs/RELEASE.md), [acceptance matrix](docs/ACCEPTANCE.md), and the [preliminary naming review](docs/NAMING_REVIEW.md); formal trademark clearance remains open.
 
 **License:** [MIT](LICENSE), approved by the creator for this project. Third-party terms remain separate in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the distributed Flutter and native notices.

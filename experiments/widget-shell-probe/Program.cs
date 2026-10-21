@@ -22,6 +22,42 @@ if (args.Length >= 1 && args[0] is "--widget" or "--widget-command") {
   if (args[0] == "--widget-command" && initialCommand is "hide" or "exit") {
     return;
   }
+  if (args[0] == "--widget-command" && (
+      initialCommand is "layout-lock" or "layout-unlock" or
+      "startup-on" or "startup-off" or "theme-system" or
+      "theme-light" or "theme-dark" ||
+      initialCommand.StartsWith("opacity-", StringComparison.OrdinalIgnoreCase))) {
+    var settingsStore = new WidgetSettingsStore();
+    var settings = settingsStore.Load();
+    if (initialCommand is "layout-lock" or "layout-unlock") {
+      settings.LayoutLocked = initialCommand == "layout-lock";
+      settingsStore.Save(settings);
+    } else if (initialCommand is "startup-on" or "startup-off") {
+      var enabled = initialCommand == "startup-on";
+      StartupRegistration.SetEnabled(enabled);
+      settings.LaunchAtSignIn = enabled;
+      settingsStore.Save(settings);
+    } else if (initialCommand.StartsWith("opacity-", StringComparison.OrdinalIgnoreCase) &&
+               int.TryParse(initialCommand.AsSpan(8), out var opacity) &&
+               opacity is >= 0 and <= 100) {
+      settings.BackgroundOpacity = opacity;
+      settingsStore.Save(settings);
+      var appearanceStore = new AppearanceSettingsStore();
+      var appearance = appearanceStore.Load();
+      appearance.WidgetOpacity = opacity;
+      appearanceStore.Save(appearance);
+    } else if (initialCommand.StartsWith("theme-", StringComparison.OrdinalIgnoreCase)) {
+      var appearanceStore = new AppearanceSettingsStore();
+      var appearance = appearanceStore.Load();
+      appearance.Theme = initialCommand.ToLowerInvariant() switch {
+        "theme-light" => WidgetThemePreference.Light,
+        "theme-dark" => WidgetThemePreference.Dark,
+        _ => WidgetThemePreference.System,
+      };
+      appearanceStore.Save(appearance);
+    }
+    return;
+  }
   ApplicationConfiguration.Initialize();
   try {
     using var repository = LifeManagerWidgetRepository.OpenDefault();
@@ -59,6 +95,7 @@ if (args.Length >= 1 && args[0] is
   return;
 }
 if (args is ["--self-test"]) {
+  ApplicationConfiguration.Initialize();
   try {
     LifeManagerWidgetSelfTest.Run();
     Console.WriteLine("Widget persistence self-test passed.");
@@ -66,6 +103,31 @@ if (args is ["--self-test"]) {
     Console.Error.WriteLine(error);
     Environment.ExitCode = 1;
   }
+  return;
+}
+if (args is ["--preview-editor"] or ["--preview-editor", "--light"]) {
+  ApplicationConfiguration.Initialize();
+  LifeManagerWidgetSelfTest.PreviewEditor(args.Contains("--light"));
+  return;
+}
+if (args.Length >= 2 && args[0] == "--capture-editor" &&
+    args.Skip(2).All(value => value is "--light" or "--narrow" or "--custom")) {
+  ApplicationConfiguration.Initialize();
+  LifeManagerWidgetSelfTest.PreviewEditor(args.Contains("--light"),
+    args[1], args.Contains("--narrow"), args.Contains("--custom"));
+  return;
+}
+if (args.Length is 2 or 3 && args[0] == "--capture-calendar" &&
+    (args.Length == 2 || args[2] == "--light")) {
+  ApplicationConfiguration.Initialize();
+  LifeManagerWidgetSelfTest.CaptureCalendar(args[1],
+    args.Contains("--light"));
+  return;
+}
+if (args.Length is 2 or 3 && args[0] == "--capture-quick-add" &&
+    (args.Length == 2 || args[2] == "--light")) {
+  ApplicationConfiguration.Initialize();
+  LifeManagerWidgetSelfTest.CaptureQuickAdd(args[1], args.Contains("--light"));
   return;
 }
 if (args is ["--attach-prototype"]) {

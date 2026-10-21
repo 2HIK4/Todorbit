@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 
 import '../../data/app_database.dart';
@@ -25,6 +26,10 @@ class TaskResourcesSection extends StatefulWidget {
 }
 
 class _TaskResourcesSectionState extends State<TaskResourcesSection> {
+  static const _dropChannel = MethodChannel('life_manager/file_drop');
+  final _dropArea = GlobalKey();
+  bool dropAvailable = false;
+  bool dropHover = false;
   List<TaskResource>? resources;
   final availability = <String, bool>{};
   String? error;
@@ -34,6 +39,123 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
   void initState() {
     super.initState();
     _reload();
+    if (Platform.isWindows) {
+      _dropChannel.setMethodCallHandler(_handleDropEvent);
+      _dropChannel
+          .invokeMethod<bool>('available')
+          .then((available) {
+            if (mounted) setState(() => dropAvailable = available == true);
+          })
+          .catchError((Object _) {});
+    }
+  }
+
+  @override
+  void dispose() {
+    if (Platform.isWindows) _dropChannel.setMethodCallHandler(null);
+    super.dispose();
+  }
+
+  bool _insideDropArea(dynamic arguments) {
+    if (arguments is! Map) return false;
+    final x = arguments['x'];
+    final y = arguments['y'];
+    final render = _dropArea.currentContext?.findRenderObject();
+    if (x is! num || y is! num || render is! RenderBox) return false;
+    final local = render.globalToLocal(Offset(x.toDouble(), y.toDouble()));
+    return local.dx >= 0 &&
+        local.dy >= 0 &&
+        local.dx < render.size.width &&
+        local.dy < render.size.height;
+  }
+
+  Future<void> _handleDropEvent(MethodCall call) async {
+    if (!mounted) return;
+    if (call.method == 'leave') {
+      if (dropHover) setState(() => dropHover = false);
+      return;
+    }
+    final inside = _insideDropArea(call.arguments);
+    if (call.method == 'hover') {
+      if (inside != dropHover) setState(() => dropHover = inside);
+      return;
+    }
+    if (dropHover) setState(() => dropHover = false);
+    if (call.method != 'drop' || !inside || busy) return;
+    final arguments = call.arguments;
+    final raw = arguments is Map ? arguments['files'] : null;
+    if (raw is! List) return;
+    final paths = raw.whereType<String>().toList();
+    if (paths.isEmpty) return;
+    await _acceptDrop(paths);
+  }
+
+  Future<void> _acceptDrop(List<String> paths) async {
+    final unique = <String, String>{};
+    for (final entered in paths) {
+      final absolute = path.normalize(path.absolute(entered));
+      unique[absolute.toLowerCase()] = absolute;
+    }
+    try {
+      for (final file in unique.values) {
+        if (await FileSystemEntity.type(file, followLinks: false) !=
+            FileSystemEntityType.file) {
+          throw StateError(
+            'Dropped file is missing, inaccessible, or unsupported: $file',
+          );
+        }
+      }
+    } catch (failure) {
+      if (mounted) setState(() => error = '$failure');
+      return;
+    }
+    if (!mounted) return;
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Add ${unique.length} file${unique.length == 1 ? '' : 's'}?',
+        ),
+        content: const Text(
+          'Attach stores portable copies in the task database. Link keeps files at their original location on this computer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          OutlinedButton(
+            onPressed: () => Navigator.pop(context, 'link'),
+            child: const Text('Link originals'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, 'attach'),
+            child: const Text('Attach copies'),
+          ),
+        ],
+      ),
+    );
+    if (choice == null || !mounted) return;
+    await _run(() async {
+      final existingLinks = (resources ?? const <TaskResource>[])
+          .where((item) => item.kind == TaskResourceKind.externalFile)
+          .map(
+            (item) => path.normalize(path.absolute(item.target!)).toLowerCase(),
+          )
+          .toSet();
+      for (final file in unique.values) {
+        if (choice == 'link') {
+          if (existingLinks.contains(file.toLowerCase())) continue;
+          await widget.repository.addExternalResource(
+            widget.taskId,
+            TaskResourceKind.externalFile,
+            file,
+          );
+        } else {
+          await widget.repository.attachManagedFile(widget.taskId, File(file));
+        }
+      }
+    });
   }
 
   Future<void> _reload() async {
@@ -238,129 +360,149 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
   }
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text('Resources', style: Theme.of(context).textTheme.titleMedium),
-      const Text(
-        'Attachments are stored in the database and included in backups. External files and folders stay in their original location.',
+  Widget build(BuildContext context) => Container(
+    key: _dropArea,
+    decoration: BoxDecoration(
+      border: Border.all(
+        color: dropHover
+            ? Theme.of(context).colorScheme.primary
+            : Colors.transparent,
+        width: 2,
       ),
-      const SizedBox(height: 8),
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          OutlinedButton(
-            onPressed: busy
-                ? null
-                : () => _run(() async {
-                    final file = await widget.dialog.chooseFile();
-                    if (file != null) {
-                      await widget.repository.attachManagedFile(
-                        widget.taskId,
-                        file,
-                      );
-                    }
-                  }),
-            child: const Text('Attach file'),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Resources', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        if (dropAvailable && dropHover)
+          Text(
+            'Release to add files',
+            style: TextStyle(color: Theme.of(context).colorScheme.primary),
           ),
-          OutlinedButton(
-            onPressed: busy
-                ? null
-                : () => _run(() async {
-                    final file = await widget.dialog.chooseFile();
-                    if (file != null) {
-                      await widget.repository.addExternalResource(
-                        widget.taskId,
-                        TaskResourceKind.externalFile,
-                        file.path,
-                      );
-                    }
-                  }),
-            child: const Text('Link file'),
-          ),
-          OutlinedButton(
-            onPressed: busy
-                ? null
-                : () => _run(() async {
-                    final folder = await widget.dialog.chooseFolder();
-                    if (folder != null) {
-                      await widget.repository.addExternalResource(
-                        widget.taskId,
-                        TaskResourceKind.externalFolder,
-                        folder.path,
-                      );
-                    }
-                  }),
-            child: const Text('Link folder'),
-          ),
-          OutlinedButton(
-            onPressed: busy ? null : _addUrl,
-            child: const Text('Add URL'),
-          ),
-        ],
-      ),
-      if (error != null)
-        Text(
-          error!,
-          style: TextStyle(color: Theme.of(context).colorScheme.error),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            IconButton.outlined(
+              tooltip: 'Attach a copy of a file',
+              onPressed: busy
+                  ? null
+                  : () => _run(() async {
+                      final file = await widget.dialog.chooseFile();
+                      if (file != null) {
+                        await widget.repository.attachManagedFile(
+                          widget.taskId,
+                          file,
+                        );
+                      }
+                    }),
+              icon: const Icon(Icons.attach_file, size: 18),
+            ),
+            IconButton.outlined(
+              tooltip: 'Link an existing file',
+              onPressed: busy
+                  ? null
+                  : () => _run(() async {
+                      final file = await widget.dialog.chooseFile();
+                      if (file != null) {
+                        await widget.repository.addExternalResource(
+                          widget.taskId,
+                          TaskResourceKind.externalFile,
+                          file.path,
+                        );
+                      }
+                    }),
+              icon: const Icon(Icons.insert_drive_file_outlined, size: 18),
+            ),
+            IconButton.outlined(
+              tooltip: 'Link an existing folder',
+              onPressed: busy
+                  ? null
+                  : () => _run(() async {
+                      final folder = await widget.dialog.chooseFolder();
+                      if (folder != null) {
+                        await widget.repository.addExternalResource(
+                          widget.taskId,
+                          TaskResourceKind.externalFolder,
+                          folder.path,
+                        );
+                      }
+                    }),
+              icon: const Icon(Icons.folder_outlined, size: 18),
+            ),
+            IconButton.outlined(
+              tooltip: 'Add a URL',
+              onPressed: busy ? null : _addUrl,
+              icon: const Icon(Icons.link, size: 18),
+            ),
+          ],
         ),
-      if (resources == null) const LinearProgressIndicator(),
-      if (resources != null && resources!.isEmpty)
-        const Text('No resources attached.'),
-      for (final resource in resources ?? <TaskResource>[])
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          title: Text(resource.label),
-          subtitle: Text(
-            '${_kindLabel(resource.kind)} · ${_resourceStatus(resource)}'
-            '${resource.byteSize == null
-                ? ''
-                : resource.kind == TaskResourceKind.managed
-                ? ' · ${resource.byteSize} bytes'
-                : ' · ${resource.byteSize} bytes when linked'}',
+        if (error != null)
+          Text(
+            error!,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
-          trailing: PopupMenuButton<String>(
-            tooltip: 'Resource actions for ${resource.label}',
-            enabled: !busy,
-            onSelected: (action) async {
-              if (action == 'open') await _open(resource);
-              if (action == 'remove') await _remove(resource);
-              if (action == 'rename') {
-                final label = await _textDialog(
-                  'Rename resource',
-                  resource.label,
-                  'Label',
-                );
-                if (label != null) {
-                  await _run(
-                    () => widget.repository.renameTaskResource(resource, label),
+        if (resources == null) const LinearProgressIndicator(),
+        for (final resource in resources ?? <TaskResource>[])
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(resource.label),
+            subtitle: Text(
+              '${_kindLabel(resource.kind)} · ${_resourceStatus(resource)}'
+              '${resource.byteSize == null
+                  ? ''
+                  : resource.kind == TaskResourceKind.managed
+                  ? ' · ${resource.byteSize} bytes'
+                  : ' · ${resource.byteSize} bytes when linked'}',
+            ),
+            trailing: PopupMenuButton<String>(
+              tooltip: 'Resource actions for ${resource.label}',
+              enabled: !busy,
+              onSelected: (action) async {
+                if (action == 'open') await _open(resource);
+                if (action == 'remove') await _remove(resource);
+                if (action == 'rename') {
+                  final label = await _textDialog(
+                    'Rename resource',
+                    resource.label,
+                    'Label',
                   );
+                  if (label != null) {
+                    await _run(
+                      () =>
+                          widget.repository.renameTaskResource(resource, label),
+                    );
+                  }
                 }
-              }
-              if (action == 'edit') {
-                final target = await _textDialog(
-                  'Edit URL',
-                  resource.target!,
-                  'URL',
-                );
-                if (target != null) {
-                  await _run(
-                    () => widget.repository.updateTaskUrl(resource, target),
+                if (action == 'edit') {
+                  final target = await _textDialog(
+                    'Edit URL',
+                    resource.target!,
+                    'URL',
                   );
+                  if (target != null) {
+                    await _run(
+                      () => widget.repository.updateTaskUrl(resource, target),
+                    );
+                  }
                 }
-              }
-            },
-            itemBuilder: (_) => [
-              const PopupMenuItem(value: 'open', child: Text('Open')),
-              const PopupMenuItem(value: 'rename', child: Text('Rename label')),
-              if (resource.kind == TaskResourceKind.url)
-                const PopupMenuItem(value: 'edit', child: Text('Edit URL')),
-              const PopupMenuItem(value: 'remove', child: Text('Remove')),
-            ],
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(value: 'open', child: Text('Open')),
+                const PopupMenuItem(
+                  value: 'rename',
+                  child: Text('Rename label'),
+                ),
+                if (resource.kind == TaskResourceKind.url)
+                  const PopupMenuItem(value: 'edit', child: Text('Edit URL')),
+                const PopupMenuItem(value: 'remove', child: Text('Remove')),
+              ],
+            ),
           ),
-        ),
-    ],
+      ],
+    ),
   );
 
   String _resourceStatus(TaskResource resource) => switch (resource.kind) {

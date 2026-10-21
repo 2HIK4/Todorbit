@@ -56,9 +56,9 @@ a different path changes the selected profile. Before upgrading, export a
 verified SQLite backup and keep the old folder. Import that backup into a new
 extraction through Backups > Import SQLite, then verify its data. Replacing
 files at the exact same path should retain the profile; confirm the path in
-Settings > Data profile afterward.
+Settings > Privacy & Data > Data profile afterward.
 Older Life Manager data is never loaded automatically. On first launch,
-choose Review import if prompted, or use Settings > Backups > Import SQLite.
+choose Review import if prompted, or use Settings > Privacy & Data > Backups > Import SQLite.
 A registered older TodoPilot installation can retain its existing profile.
 
 The app and installer are unsigned pending release acceptance.

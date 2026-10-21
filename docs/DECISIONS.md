@@ -1,5 +1,52 @@
 # Decisions
 
+## v1.0.5 public pre-release (2026-10-21)
+
+- Publish the verified Feedback Round 4 and 5 work as v1.0.5 Windows x64 pre-release, with unsigned packages and explicit limits for Windows 10, native Explorer widget input/painting, DPI/Win+D, and installer lifecycle checks. Keep v1.0.3 and all legacy data and installer identities unchanged.
+- Set Flutter to `1.0.5+6` and the standalone native widget project to `1.0.5`; the packaged Windows build continues to pass Flutter's version into the widget publish step.
+
+## Feedback round 5 (2026-10-21)
+
+- Keep spell checking local to Windows through the existing spelling channel. A debounced text controller paints red wavy spans in editable fields without rewriting input; the old review button is removed. The installed `en-US` dictionary determines suggestions and coverage.
+- Store the checklist/subtask text mode in the existing per-profile appearance JSON, with full text or two-line compact text and an explicit expand control. No SQLite schema change is needed.
+- Keep the Flutter task editor shared between creation and editing. Use one major divider before composition and one before optional planning; keep row groups free of separator lines. The native Win32 editor retains native controls while matching the same section order and palette.
+
+## Codex environment (2026-10-21)
+
+- Use the official Dart/Flutter Codex plugin for its skills and MCP server; avoid duplicate standalone Dart/Flutter skill installs. Keep general UI guidance global and Todorbit constraints in project instructions and docs. No new project skill is needed while existing references cover the workflows.
+- Default new Codex work to low reasoning and raise effort by task complexity. Keep tests targeted during edits, with broad verification at integration or release milestones. Microsoft Fluent is the Windows design reference; Apple Design remains available for independent review.
+
+## Feedback round 4, part 2 (2026-10-20)
+
+- Keep the native widget Explorer-hosted. Style its existing Windows
+  `ContextMenuStrip` through a palette renderer; retain native menu focus,
+  screen-edge handling, and dismissal rather than adding a layered popup.
+- Put the widget's layout lock, startup, and opacity controls in the grouped
+  Flutter Settings page through existing profile-aware widget commands. When
+  the widget is closed, those commands update its settings without launching
+  a new desktop widget. The historical registry value name remains stable.
+- Keep the current per-profile database and appearance/settings formats. The
+  local 1.0.4 candidate changes Flutter/native binary versions only and does
+  not alter the public 1.0.3 assets or stable installer AppId.
+
+- **Feedback round 4, part 1 (2026-10-20):** keep the Explorer-hosted layered
+  widget. Paint at the current HWND screen rectangle during drag/resize and
+  persist geometry only when capture ends. Coordinate the main Windows app
+  before Flutter and SQLite startup with a profile-scoped named mutex and
+  `WM_COPYDATA`; queue navigation until the Flutter workspace is ready. Keep
+  portable profiles separate by data root and extraction directory.
+- Store task display/default, spelling-review, and shortcut preferences as
+  typed values in the existing per-profile appearance settings file. No SQLite
+  schema migration is needed. Draft checklists and one-level subtasks are
+  committed through one repository transaction when the parent task is saved.
+- Flutter's default spell-check service is unavailable on Windows. Provide an
+  explicit review action backed by the local Windows `ISpellChecker` COM API,
+  currently using `en-US`; suggestions change text only after selection. Do
+  not imply inline underlines. Receive Explorer `CF_HDROP` through the Windows
+  runner and let the user choose a managed copy or a machine-local link. The
+  desktop_drop plugin was evaluated but its generated symlinks could not be
+  built in this Windows environment without changing system settings.
+
 - **Public branch and existing tag (2026-10-20):** prepare `main` as a linear
   descendant of the reviewed development branch, preserving `master`, the
   development branch, and all history. Keep `v1.0.3` and its uploaded assets

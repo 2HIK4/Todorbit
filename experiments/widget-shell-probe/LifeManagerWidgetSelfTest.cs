@@ -1,12 +1,84 @@
 using Microsoft.Data.Sqlite;
 
 internal static class LifeManagerWidgetSelfTest {
+  internal static void CaptureQuickAdd(string path, bool light) {
+    using var quickAdd = new InlineQuickAddForm(
+      light ? WidgetPalette.Light : WidgetPalette.Dark,
+      new Rectangle(100, 100, 344, 40), "Today", _ => { });
+    quickAdd.Shown += (_, _) => {
+      using var bitmap = new Bitmap(quickAdd.Width, quickAdd.Height);
+      quickAdd.DrawToBitmap(bitmap, new Rectangle(Point.Empty, bitmap.Size));
+      bitmap.Save(path);
+      quickAdd.BeginInvoke(quickAdd.Close);
+    };
+    Application.Run(quickAdd);
+  }
+
+  internal static void CaptureCalendar(string path, bool light) {
+    using var calendar = new WidgetCalendarDialog(
+      light ? WidgetPalette.Light : WidgetPalette.Dark, DateTime.Today);
+    calendar.Shown += (_, _) => {
+      using var bitmap = new Bitmap(calendar.Width, calendar.Height);
+      calendar.DrawToBitmap(bitmap, new Rectangle(Point.Empty, bitmap.Size));
+      bitmap.Save(path);
+      calendar.BeginInvoke(calendar.Close);
+    };
+    Application.Run(calendar);
+  }
+
+  internal static void PreviewEditor(bool light, string? capturePath = null,
+      bool narrow = false, bool custom = false) {
+    var directory = Path.Combine(Path.GetTempPath(),
+      $"todorbit-editor-preview-{Guid.NewGuid()}");
+    Directory.CreateDirectory(directory);
+    try {
+      var path = Path.Combine(directory, "preview.sqlite");
+      CreateDatabase(path);
+      using var repository = LifeManagerWidgetRepository.OpenForTest(path);
+      var id = repository.AddTask("Plan the next week", DateTime.Today);
+      var task = repository.LoadTask(id)!;
+      var palette = light ? WidgetPalette.Light : WidgetPalette.Dark;
+      if (custom) palette = WidgetPalette.FromCustom(new() {
+        ["background"] = "#0D2630", ["surface"] = "#173640",
+        ["accent"] = "#6DDBC8", ["primaryText"] = "#F2FBF9",
+        ["secondaryText"] = "#BDDBD7", ["border"] = "#50737A",
+        ["error"] = "#FFACB6",
+      }, palette);
+      using var dialog = new TaskEditorDialog(repository, task, palette);
+      dialog.StartPosition = FormStartPosition.CenterScreen;
+      if (narrow) dialog.ClientSize = new Size(380, 360);
+      if (capturePath != null) {
+        dialog.Shown += (_, _) => {
+          using var bitmap = new Bitmap(dialog.Width, dialog.Height);
+          dialog.DrawToBitmap(bitmap,
+            new Rectangle(Point.Empty, bitmap.Size));
+          bitmap.Save(capturePath);
+          dialog.BeginInvoke(dialog.Close);
+        };
+      }
+      Application.Run(dialog);
+    } finally {
+      SqliteConnection.ClearAllPools();
+      Directory.Delete(directory, true);
+    }
+  }
+
   internal static void Run() {
     var directory = Path.Combine(Path.GetTempPath(),
       $"life-manager-widget-test-{Guid.NewGuid()}");
     Directory.CreateDirectory(directory);
     var databasePath = Path.Combine(directory, "test.sqlite");
     try {
+      TestEditorControlGeometry();
+      using (var menu = new ContextMenuStrip()) {
+        menu.Items.Add("Open Todorbit");
+        WidgetMenuStyle.Apply(menu, WidgetPalette.Dark);
+        if (menu.BackColor != WidgetPalette.Dark.Panel ||
+            menu.ForeColor != WidgetPalette.Dark.Foreground ||
+            menu.Items[0].ForeColor != WidgetPalette.Dark.Foreground) {
+          throw new InvalidOperationException("Widget menu palette was not applied.");
+        }
+      }
       TestIsolatedAppData(directory);
       TestPrivacy(directory);
       CreateDatabase(databasePath);
@@ -41,6 +113,35 @@ internal static class LifeManagerWidgetSelfTest {
             edited.CategoryId != categories[0].Id ||
             edited.ProjectId != projects[0].Id) {
           throw new InvalidOperationException("Task editing was not persisted.");
+        }
+        using (var editor = new TaskEditorDialog(repository, edited,
+            WidgetPalette.Dark)) {
+          editor.ClientSize = new Size(550, 580);
+          editor.PerformLayout();
+          if (editor.IsStacked || editor.ContentHeight > editor.ClientSize.Height ||
+              editor.AcceptButton is not Button { Text: "Save" } ||
+              editor.CancelButton is not Button { Text: "Cancel" }) {
+            throw new InvalidOperationException("Wide task editor layout is not compact.");
+          }
+          editor.ClientSize = new Size(380, 360);
+          editor.PerformLayout();
+          if (!editor.IsStacked || editor.ContentHeight <= editor.ClientSize.Height) {
+            throw new InvalidOperationException("Narrow task editor did not scroll.");
+          }
+        }
+        using (var editor = new TaskEditorDialog(repository, edited,
+            WidgetPalette.Light)) {
+          if (editor.BackColor != WidgetPalette.Light.Background) {
+            throw new InvalidOperationException("Light editor palette was not applied.");
+          }
+        }
+        if (WidgetEditorStyle.Contrast(
+            WidgetEditorStyle.OnAccent(WidgetPalette.Dark),
+            WidgetPalette.Dark.Accent) < 4.5 ||
+            WidgetEditorStyle.Contrast(
+              WidgetEditorStyle.OnAccent(WidgetPalette.Light),
+              WidgetPalette.Light.Accent) < 4.5) {
+          throw new InvalidOperationException("Primary action contrast regressed.");
         }
         try {
           repository.UpdateTask(id, new WidgetTaskUpdate(
@@ -616,6 +717,40 @@ internal static class LifeManagerWidgetSelfTest {
     }
   }
 
+  private static void TestEditorControlGeometry() {
+    foreach (var palette in new[] { WidgetPalette.Dark, WidgetPalette.Light }) {
+      foreach (var width in new[] { 170, 245, 340 }) {
+        using var date = new WidgetDateInput(palette, "Scheduled day", "2026-10-21") {
+          Size = new Size(width, WidgetEditorStyle.FieldHeight),
+        };
+        date.PerformLayout();
+        var editor = date.Controls.OfType<TextBox>().Single();
+        var actions = date.Controls.OfType<WidgetDateAction>()
+          .OrderBy(action => action.Left).ToArray();
+        if (date.DateValue != "2026-10-21" || actions.Length != 2 ||
+            editor.Right > actions[0].Left ||
+            actions[0].Right > actions[1].Left ||
+            actions[1].Right > date.Width - 1 ||
+            actions.Any(action => action.Height < 28)) {
+          throw new InvalidOperationException(
+            $"Date field children overlap or clip at width {width}.");
+        }
+        actions[1].PerformClick();
+        if (date.DateValue != null) {
+          throw new InvalidOperationException("Date clear did not reset the value.");
+        }
+      }
+      using var choice = new WidgetChoiceBox(palette, "Task category") {
+        Size = new Size(170, WidgetEditorStyle.FieldHeight),
+      };
+      choice.SetChoices([("None / Inbox", ""), ("Long category name", "id")], "id");
+      if (choice.Value != "id" || choice.Controls.OfType<WidgetStyledButton>()
+          .Single() is not { ShowChoiceArrow: true, Text: "Long category name" }) {
+        throw new InvalidOperationException("Choice arrow or selection regressed.");
+      }
+    }
+  }
+
   private static void TestIsolatedAppData(string directory) {
     var previous = Environment.GetEnvironmentVariable("APPDATA");
     try {
@@ -707,13 +842,16 @@ internal static class LifeManagerWidgetSelfTest {
         ["background"] = "#F8F7FC", ["surface"] = "#FFFFFF",
         ["accent"] = "#123456", ["primaryText"] = "#211B35",
         ["secondaryText"] = "#665F78", ["border"] = "#DCD7E9",
+        ["error"] = "#B63B53",
       },
     };
     store.Save(settings);
     if (store.Load().Theme != WidgetThemePreference.Light ||
         store.Load().WidgetOpacity != 35 ||
         WidgetPalette.FromCustom(store.Load().Customization?.Light,
-          WidgetPalette.Light).Accent != Color.FromArgb(0x12, 0x34, 0x56)) {
+          WidgetPalette.Light).Accent != Color.FromArgb(0x12, 0x34, 0x56) ||
+        WidgetPalette.FromCustom(store.Load().Customization?.Light,
+          WidgetPalette.Light).Error != Color.FromArgb(0xB6, 0x3B, 0x53)) {
       throw new InvalidOperationException("Shared appearance did not round-trip.");
     }
   }
@@ -798,6 +936,18 @@ internal static class LifeManagerWidgetSelfTest {
     if (WidgetGeometry.LogicalSize(100, 1200) != new Size(260, 1200) ||
         WidgetGeometry.Scale(new Size(400, 500), 1.5f) != new Size(600, 750)) {
       throw new InvalidOperationException("Resize or DPI sizing bounds failed.");
+    }
+    var start = new Rectangle(120, 90, 400, 300);
+    if (WidgetGeometry.MoveOrResize(start, 75, -20, true,
+        WidgetResizeEdge.None, 260, 230) !=
+        new Rectangle(195, 70, 400, 300) ||
+        WidgetGeometry.MoveOrResize(start, 60, 40, false,
+          WidgetResizeEdge.Left | WidgetResizeEdge.Top, 260, 230) !=
+        new Rectangle(180, 130, 340, 260) ||
+        WidgetGeometry.MoveOrResize(start, 500, 500, false,
+          WidgetResizeEdge.Left | WidgetResizeEdge.Top, 260, 230) !=
+        new Rectangle(260, 160, 260, 230)) {
+      throw new InvalidOperationException("Drag or corner resize geometry failed.");
     }
     var clamped = WidgetGeometry.ClampToWorkingArea(
       new Rectangle(-800, 900, 400, 500), new Rectangle(0, 0, 1920, 1040));

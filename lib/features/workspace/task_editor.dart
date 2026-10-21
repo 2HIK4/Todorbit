@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
+import '../../domain/task_view_preferences.dart';
 import '../shared/icon_picker.dart';
+import '../shared/inline_spelling_controller.dart';
 import '../../domain/recurrence.dart';
 import '../calendar/session_editor.dart';
 import '../time_tracking/time_tracking_dialog.dart';
@@ -13,7 +15,16 @@ import '../templates/templates_dialog.dart';
 import 'series_editor.dart';
 import 'task_resources_section.dart';
 import 'task_composition_section.dart';
+import 'checklist_item_dialog.dart';
+import 'composition_text.dart';
 import 'progressive_plan_dialog.dart';
+
+class _DraftSubtask {
+  _DraftSubtask(this.title, {this.plannedDay, this.deadline});
+  String title;
+  DateTime? plannedDay;
+  DateTime? deadline;
+}
 
 class TaskEditor extends ConsumerStatefulWidget {
   const TaskEditor({
@@ -35,13 +46,16 @@ class TaskEditor extends ConsumerStatefulWidget {
 }
 
 class _TaskEditorState extends ConsumerState<TaskEditor> {
-  late final TextEditingController title;
-  late final TextEditingController notes;
+  late final InlineSpellingController title;
+  late final InlineSpellingController notes;
   late final TextEditingController plannedDuration;
   late final TextEditingController remainingWork;
   late final TextEditingController recurrenceInterval;
   late final TextEditingController recurrenceCount;
   late final TextEditingController progressiveSteps;
+  late final InlineSpellingController checklistEntry;
+  final List<String> draftChecklist = [];
+  final List<_DraftSubtask> draftSubtasks = [];
   final ScrollController editorScroll = ScrollController();
   late TaskStatus status;
   late int priority;
@@ -72,8 +86,14 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         .where((link) => link.taskId == task?.id)
         .map((link) => link.prerequisiteId)
         .toSet();
-    title = TextEditingController(text: task?.title ?? '');
-    notes = TextEditingController(text: task?.notes ?? '');
+    title = InlineSpellingController(
+      text: task?.title ?? '',
+      enabled: workspace.taskViewPreferences.spellCheckEnabled,
+    );
+    notes = InlineSpellingController(
+      text: task?.notes ?? '',
+      enabled: workspace.taskViewPreferences.spellCheckEnabled,
+    );
     plannedDuration = TextEditingController(
       text: task?.plannedDurationMinutes?.toString() ?? '',
     );
@@ -83,6 +103,9 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     recurrenceInterval = TextEditingController(text: '1');
     recurrenceCount = TextEditingController();
     progressiveSteps = TextEditingController();
+    checklistEntry = InlineSpellingController(
+      enabled: workspace.taskViewPreferences.spellCheckEnabled,
+    );
     schedulingLocked = task?.schedulingLocked ?? false;
     status = task?.status ?? TaskStatus.notStarted;
     priority = task?.priority ?? 0;
@@ -103,9 +126,16 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         if (project.id == projectId) categoryId = project.categoryId;
       }
     }
-    scheduled = task?.scheduledDate == null
-        ? widget.initialScheduled
-        : DateTime.parse(task!.scheduledDate!);
+    scheduled = task != null
+        ? (task.scheduledDate == null
+              ? null
+              : DateTime.parse(task.scheduledDate!))
+        : widget.initialScheduled ??
+              (workspace.view != WorkspaceView.anytime &&
+                      workspace.taskViewPreferences.newTaskPlannedDay ==
+                          NewTaskPlannedDay.today
+                  ? DateTime.now()
+                  : null);
     deadline = task?.deadlineDate == null
         ? null
         : DateTime.parse(task!.deadlineDate!);
@@ -120,6 +150,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     recurrenceInterval.dispose();
     recurrenceCount.dispose();
     progressiveSteps.dispose();
+    checklistEntry.dispose();
     editorScroll.dispose();
     super.dispose();
   }
@@ -216,6 +247,260 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     }
   }
 
+  void _addDraftChecklist() {
+    final value = checklistEntry.text.trim();
+    if (value.isEmpty) return;
+    setState(() {
+      draftChecklist.add(value);
+      checklistEntry.clear();
+    });
+  }
+
+  Future<void> _editDraftChecklist(int index) async {
+    final result = await editChecklistItem(
+      context,
+      title: 'Edit checklist item',
+      initialValue: draftChecklist[index],
+      spellCheckEnabled: ref
+          .read(appControllerProvider)
+          .taskViewPreferences
+          .spellCheckEnabled,
+    );
+    if (result != null && result.isNotEmpty && mounted) {
+      setState(() => draftChecklist[index] = result);
+    }
+  }
+
+  Future<void> _editDraftSubtask([int? index]) async {
+    final previous = index == null ? null : draftSubtasks[index];
+    final field = InlineSpellingController(
+      text: previous?.title ?? '',
+      enabled: ref
+          .read(appControllerProvider)
+          .taskViewPreferences
+          .spellCheckEnabled,
+    );
+    ModalRoute<dynamic>? dialogRoute;
+    DateTime? plannedDay = previous?.plannedDay;
+    DateTime? childDeadline = previous?.deadline;
+    final result = await showDialog<_DraftSubtask>(
+      context: context,
+      builder: (dialogContext) {
+        dialogRoute ??= ModalRoute.of(dialogContext);
+        return StatefulBuilder(
+          builder: (dialogContext, update) => AlertDialog(
+            title: Text(index == null ? 'Add subtask' : 'Edit subtask'),
+            content: SizedBox(
+              width: 420,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    key: const ValueKey('draft-subtask-title'),
+                    controller: field,
+                    autofocus: true,
+                    decoration: const InputDecoration(labelText: 'Title'),
+                  ),
+                  for (final isDeadline in [false, true])
+                    ListTile(
+                      title: Text(isDeadline ? 'Deadline' : 'Planned day'),
+                      subtitle: Text(
+                        (isDeadline ? childDeadline : plannedDay) == null
+                            ? 'No date'
+                            : localDate(
+                                (isDeadline ? childDeadline : plannedDay)!,
+                              ),
+                      ),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: dialogContext,
+                          initialDate:
+                              (isDeadline ? childDeadline : plannedDay) ??
+                              DateTime.now(),
+                          firstDate: DateTime(1900),
+                          lastDate: DateTime(2100),
+                        );
+                        if (picked != null) {
+                          update(() {
+                            if (isDeadline) {
+                              childDeadline = picked;
+                            } else {
+                              plannedDay = picked;
+                            }
+                          });
+                        }
+                      },
+                      trailing:
+                          (isDeadline ? childDeadline : plannedDay) == null
+                          ? null
+                          : IconButton(
+                              tooltip:
+                                  'Clear ${isDeadline ? 'deadline' : 'planned day'}',
+                              icon: const Icon(Icons.close),
+                              onPressed: () => update(() {
+                                if (isDeadline) {
+                                  childDeadline = null;
+                                } else {
+                                  plannedDay = null;
+                                }
+                              }),
+                            ),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final cleaned = field.text.trim();
+                  if (cleaned.isNotEmpty) {
+                    Navigator.pop(
+                      dialogContext,
+                      _DraftSubtask(
+                        cleaned,
+                        plannedDay: plannedDay,
+                        deadline: childDeadline,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    // The dialog remains mounted through its exit animation after showDialog returns.
+    await dialogRoute?.completed;
+    field.dispose();
+    if (result != null && mounted) {
+      setState(() {
+        if (index == null) {
+          draftSubtasks.add(result);
+        } else {
+          draftSubtasks[index] = result;
+        }
+      });
+    }
+  }
+
+  Widget _draftCompositionSection() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('Checklist', style: Theme.of(context).textTheme.titleSmall),
+      for (var index = 0; index < draftChecklist.length; index++)
+        ListTile(
+          dense: true,
+          title: CompositionText(
+            text: draftChecklist[index],
+            display: ref
+                .watch(appControllerProvider)
+                .taskViewPreferences
+                .compositionTextDisplay,
+          ),
+          trailing: PopupMenuButton<String>(
+            tooltip: 'Draft checklist actions',
+            onSelected: (action) {
+              if (action == 'edit') {
+                _editDraftChecklist(index);
+              } else if (action == 'remove') {
+                setState(() => draftChecklist.removeAt(index));
+              } else if (action == 'up' || action == 'down') {
+                setState(() {
+                  final item = draftChecklist.removeAt(index);
+                  draftChecklist.insert(
+                    index + (action == 'up' ? -1 : 1),
+                    item,
+                  );
+                });
+              }
+            },
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 'edit', child: Text('Edit')),
+              if (index > 0)
+                const PopupMenuItem(value: 'up', child: Text('Move up')),
+              if (index < draftChecklist.length - 1)
+                const PopupMenuItem(value: 'down', child: Text('Move down')),
+              const PopupMenuItem(value: 'remove', child: Text('Remove')),
+            ],
+          ),
+        ),
+      Row(
+        children: [
+          Expanded(
+            child: TextField(
+              key: const ValueKey('draft-checklist-entry'),
+              controller: checklistEntry,
+              decoration: const InputDecoration(
+                labelText: 'New checklist item',
+              ),
+              onSubmitted: (_) => _addDraftChecklist(),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Add draft checklist item',
+            onPressed: _addDraftChecklist,
+            icon: const Icon(Icons.add),
+          ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      const Divider(),
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Subtasks',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+          ),
+          TextButton.icon(
+            onPressed: () => _editDraftSubtask(),
+            icon: const Icon(Icons.add),
+            label: const Text('Add subtask'),
+          ),
+        ],
+      ),
+      for (var index = 0; index < draftSubtasks.length; index++)
+        ListTile(
+          dense: true,
+          title: CompositionText(
+            text: draftSubtasks[index].title,
+            display: ref
+                .watch(appControllerProvider)
+                .taskViewPreferences
+                .compositionTextDisplay,
+          ),
+          subtitle: Text(
+            [
+              if (draftSubtasks[index].plannedDay != null)
+                'Planned ${localDate(draftSubtasks[index].plannedDay!)}',
+              if (draftSubtasks[index].deadline != null)
+                'Deadline ${localDate(draftSubtasks[index].deadline!)}',
+            ].join(' · '),
+          ),
+          trailing: PopupMenuButton<String>(
+            tooltip: 'Draft subtask actions',
+            onSelected: (action) {
+              if (action == 'edit') _editDraftSubtask(index);
+              if (action == 'remove') {
+                setState(() => draftSubtasks.removeAt(index));
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'edit', child: Text('Edit')),
+              PopupMenuItem(value: 'remove', child: Text('Remove')),
+            ],
+          ),
+        ),
+    ],
+  );
+
   Future<void> _save() async {
     if (title.text.trim().isEmpty) {
       ScaffoldMessenger.of(context)
@@ -297,8 +582,36 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
           if (parent == null) throw StateError('Parent task is unavailable');
           await controller.addSubtask(parent, draft);
         } else if (recurrenceKind == null) {
-          await controller.addTask(draft);
+          await controller.addTaskWithComposition(
+            draft,
+            [
+              ...draftChecklist,
+              if (checklistEntry.text.trim().isNotEmpty)
+                checklistEntry.text.trim(),
+            ],
+            [
+              for (final child in draftSubtasks)
+                TaskDraft(
+                  title: child.title,
+                  categoryId: categoryId,
+                  projectId: projectId,
+                  scheduledDate: child.plannedDay == null
+                      ? null
+                      : localDate(child.plannedDay!),
+                  deadlineDate: child.deadline == null
+                      ? null
+                      : localDate(child.deadline!),
+                ),
+            ],
+          );
         } else {
+          if (draftChecklist.isNotEmpty ||
+              checklistEntry.text.trim().isNotEmpty ||
+              draftSubtasks.isNotEmpty) {
+            throw const FormatException(
+              'Draft checklist items and subtasks cannot be added to a recurring task yet',
+            );
+          }
           if (draft.scheduledDate == null) {
             throw const FormatException(
               'Select a scheduled day for recurrence',
@@ -570,6 +883,12 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(appControllerProvider);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      for (final field in [title, notes, checklistEntry]) {
+        field.enabled = controller.taskViewPreferences.spellCheckEnabled;
+      }
+    });
     final projectChoices = controller.projects
         .where((project) => project.categoryId == categoryId)
         .toList();
@@ -615,6 +934,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                     children: [
                       Expanded(
                         child: TextField(
+                          key: const ValueKey('task-title-field'),
                           controller: title,
                           autofocus: widget.task == null,
                           decoration: const InputDecoration(
@@ -649,6 +969,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                   ),
                   const SizedBox(height: 12),
                   TextField(
+                    key: const ValueKey('task-notes-field'),
                     controller: notes,
                     minLines: 2,
                     maxLines: 4,
@@ -660,38 +981,34 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const SizedBox(height: 8),
-                  _dateRow(
-                    'Scheduled day',
-                    scheduled,
-                    () => _pickDate(false),
-                    () => setState(() => scheduled = null),
-                  ),
-                  _dateRow(
-                    'Deadline',
-                    deadline,
-                    () => _pickDate(true),
-                    () => setState(() => deadline = null),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final planned = _dateRow(
+                        'Scheduled day',
+                        scheduled,
+                        () => _pickDate(false),
+                        () => setState(() => scheduled = null),
+                      );
+                      final due = _dateRow(
+                        'Deadline',
+                        deadline,
+                        () => _pickDate(true),
+                        () => setState(() => deadline = null),
+                      );
+                      if (constraints.maxWidth < 380) {
+                        return Column(children: [planned, due]);
+                      }
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: planned),
+                          const SizedBox(width: 12),
+                          Expanded(child: due),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
-                  if (currentTask case final task?) ...[
-                    TaskResourcesSection(
-                      key: ValueKey('resources:${task.id}'),
-                      taskId: task.id,
-                      repository: controller.repository,
-                    ),
-                    const SizedBox(height: 16),
-                    TaskCompositionSection(
-                      task: task,
-                      onAddSubtask:
-                          ref
-                              .watch(appControllerProvider)
-                              .taskParents
-                              .containsKey(task.id)
-                          ? null
-                          : () => _newSubtask(task),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
                   Text(
                     'Organization',
                     style: Theme.of(context).textTheme.titleSmall,
@@ -763,47 +1080,6 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                             }
                           },
                   ),
-                  ExpansionTile(
-                    tilePadding: EdgeInsets.zero,
-                    childrenPadding: const EdgeInsets.only(bottom: 12),
-                    initiallyExpanded:
-                        status != TaskStatus.notStarted || priority != 0,
-                    title: const Text('Status and priority'),
-                    subtitle: const Text('Optional for a new task'),
-                    children: [
-                      DropdownButtonFormField<TaskStatus>(
-                        key: ValueKey('status:$status:$recurrenceKind'),
-                        initialValue: status,
-                        decoration: const InputDecoration(labelText: 'Status'),
-                        items: TaskStatus.values
-                            .map(
-                              (value) => DropdownMenuItem(
-                                value: value,
-                                child: Text(_statusName(value)),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: widget.task == null && recurrenceKind != null
-                            ? null
-                            : (value) => setState(() => status = value!),
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<int>(
-                        initialValue: priority,
-                        decoration: const InputDecoration(
-                          labelText: 'Priority',
-                        ),
-                        items: const [
-                          DropdownMenuItem(value: 0, child: Text('None')),
-                          DropdownMenuItem(value: 1, child: Text('Low')),
-                          DropdownMenuItem(value: 2, child: Text('Medium')),
-                          DropdownMenuItem(value: 3, child: Text('High')),
-                        ],
-                        onChanged: (value) => setState(() => priority = value!),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
                   if (widget.task == null) ...[
                     const SizedBox(height: 12),
                     if (widget.parentTaskId == null)
@@ -981,6 +1257,71 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                         ),
                       ),
                   ],
+                  const Divider(),
+                  if (currentTask case final task?) ...[
+                    TaskResourcesSection(
+                      key: ValueKey('resources:${task.id}'),
+                      taskId: task.id,
+                      repository: controller.repository,
+                    ),
+                    const SizedBox(height: 16),
+                    TaskCompositionSection(
+                      task: task,
+                      onAddSubtask:
+                          ref
+                              .watch(appControllerProvider)
+                              .taskParents
+                              .containsKey(task.id)
+                          ? null
+                          : () => _newSubtask(task),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (currentTask == null && widget.parentTaskId == null) ...[
+                    const SizedBox(height: 16),
+                    _draftCompositionSection(),
+                  ],
+                  const Divider(),
+                  ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    childrenPadding: const EdgeInsets.only(bottom: 12),
+                    initiallyExpanded:
+                        status != TaskStatus.notStarted || priority != 0,
+                    title: const Text('Status and priority'),
+                    subtitle: const Text('Optional for a new task'),
+                    children: [
+                      DropdownButtonFormField<TaskStatus>(
+                        key: ValueKey('status:$status:$recurrenceKind'),
+                        initialValue: status,
+                        decoration: const InputDecoration(labelText: 'Status'),
+                        items: TaskStatus.values
+                            .map(
+                              (value) => DropdownMenuItem(
+                                value: value,
+                                child: Text(_statusName(value)),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: widget.task == null && recurrenceKind != null
+                            ? null
+                            : (value) => setState(() => status = value!),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<int>(
+                        initialValue: priority,
+                        decoration: const InputDecoration(
+                          labelText: 'Priority',
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 0, child: Text('None')),
+                          DropdownMenuItem(value: 1, child: Text('Low')),
+                          DropdownMenuItem(value: 2, child: Text('Medium')),
+                          DropdownMenuItem(value: 3, child: Text('High')),
+                        ],
+                        onChanged: (value) => setState(() => priority = value!),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 8),
                   ExpansionTile(
                     tilePadding: EdgeInsets.zero,
@@ -1160,21 +1501,31 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     VoidCallback clear,
   ) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
-    child: Row(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: pick,
-            icon: const Icon(Icons.calendar_today_outlined, size: 18),
-            label: Text('$label: ${date == null ? 'None' : localDate(date)}'),
-          ),
+        Text(label, style: Theme.of(context).textTheme.labelMedium),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: pick,
+                icon: const Icon(Icons.calendar_today_outlined, size: 18),
+                label: Text(
+                  date == null ? 'No date' : localDate(date),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            if (date != null)
+              IconButton(
+                tooltip: 'Clear $label',
+                onPressed: clear,
+                icon: const Icon(Icons.close, size: 18),
+              ),
+          ],
         ),
-        if (date != null)
-          IconButton(
-            tooltip: 'Clear $label',
-            onPressed: clear,
-            icon: const Icon(Icons.close, size: 18),
-          ),
       ],
     ),
   );

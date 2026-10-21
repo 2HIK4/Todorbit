@@ -1,5 +1,14 @@
 # Integrated Windows widget
 
+Feedback round 4 movement fix: the layered paint path must use the current
+HWND screen rectangle. The previous path passed saved `widget-settings.json`
+coordinates to `UpdateLayeredWindow` during each drag repaint, reversing the
+live `SetWindowPos` movement until mouse release. Geometry is saved only on
+release or capture loss. The self-test now covers drag and corner resize math.
+Repeat the manual drag, resize, lock, DPI, Win+D, Explorer attachment, and
+task-input checklist below before release; the Explorer child could not be
+mouse-driven by the available Computer Use helper in this checkpoint.
+
 The packaged owner-drawn native companion passed manual acceptance on the
 target Windows system, including continuous presentation, `Win + D`, Quick
 Add, task editing, resizing, icons, views, theme synchronization, and main-app
@@ -98,6 +107,14 @@ These checks do not exercise physical keyboard activation, mouse dragging,
 Explorer composition, or `Win + D`.
 
 ## Manual regression checklist
+
+For the native editor redesign, include dark, light, and a custom palette. At
+regular and narrow widths, verify field stacking and scroll-to-focused-field
+with Tab/Shift+Tab. Check the themed choice popups and calendar at screen edges,
+date typing and independent clear buttons, Enter/Escape, validation text,
+selection/paste, hover/pressed/disabled/focus colors, and a short monitor work
+area. The offscreen render checks in `docs/ACCEPTANCE.md` do not replace these
+physical Windows checks.
 
 Record Pass/Fail plus Windows build, monitor topology, and scale:
 

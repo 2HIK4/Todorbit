@@ -3,6 +3,9 @@
 #include <windows.h>
 
 #include <algorithm>
+#include <cwctype>
+#include <iomanip>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -12,6 +15,60 @@
 #include "widget_diagnostics.h"
 
 namespace {
+
+std::wstring ProfileInstanceKey() {
+  wchar_t executable[MAX_PATH];
+  const DWORD length = ::GetModuleFileNameW(nullptr, executable, MAX_PATH);
+  if (length == 0 || length >= MAX_PATH) return {};
+  const std::wstring path(executable, length);
+  const auto separator = path.find_last_of(L"\\/");
+  if (separator == std::wstring::npos) return {};
+  const std::wstring directory = path.substr(0, separator);
+  const bool portable = ::GetFileAttributesW(
+      (directory + L"\\PORTABLE-MODE").c_str()) != INVALID_FILE_ATTRIBUTES;
+  const DWORD root_size = ::GetEnvironmentVariableW(L"APPDATA", nullptr, 0);
+  if (root_size < 2) return {};
+  std::wstring root(root_size, L'\0');
+  if (::GetEnvironmentVariableW(L"APPDATA", root.data(), root_size) == 0)
+    return {};
+  root.resize(root_size - 1);
+  std::wstring profile = portable
+      ? root + L"\\TodoPilot\\portable|" + directory
+      : root + L"\\TodoPilot";
+  std::transform(profile.begin(), profile.end(), profile.begin(),
+                 [](wchar_t value) { return std::towlower(value); });
+  uint64_t hash = 14695981039346656037ULL;
+  for (const auto value : profile) {
+    hash ^= static_cast<uint16_t>(value);
+    hash *= 1099511628211ULL;
+  }
+  std::wostringstream output;
+  output << std::hex << std::setw(16) << std::setfill(L'0') << hash;
+  return output.str();
+}
+
+HWND FindProfileWindow(const std::wstring& key) {
+  struct Search { std::wstring property; HWND found = nullptr; } search{
+      L"TodorbitMain-" + key};
+  ::EnumWindows([](HWND window, LPARAM parameter) -> BOOL {
+    auto* target = reinterpret_cast<Search*>(parameter);
+    if (::GetPropW(window, target->property.c_str()) != nullptr) {
+      target->found = window;
+      return FALSE;
+    }
+    return TRUE;
+  }, reinterpret_cast<LPARAM>(&search));
+  return search.found;
+}
+
+std::string ActivationCommand(const std::vector<std::string>& arguments) {
+  const auto task = std::find(arguments.begin(), arguments.end(), "--task-id");
+  if (task != arguments.end() && task + 1 != arguments.end())
+    return "task:" + *(task + 1);
+  if (std::find(arguments.begin(), arguments.end(), "--appearance") !=
+      arguments.end()) return "appearance";
+  return "open";
+}
 
 bool LaunchNativeWidgetCompanion() {
   wchar_t executable_buffer[MAX_PATH];
@@ -63,7 +120,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   // Initialize COM, so that it is available for use in the library and/or
   // plugins.
-  ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+  ::OleInitialize(nullptr);
 
   std::vector<std::string> command_line_arguments =
       GetCommandLineArguments();
@@ -80,7 +137,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                     L"TodorbitWidget.exe is beside Todorbit.exe.",
                     L"Todorbit widget", MB_OK | MB_ICONERROR);
     }
-    ::CoUninitialize();
+    ::OleUninitialize();
     return launched ? EXIT_SUCCESS : EXIT_FAILURE;
   }
 
@@ -90,6 +147,54 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   const bool diagnostics_requested = legacy_widget_mode &&
       std::find(command_line_arguments.begin(), command_line_arguments.end(),
                 "--widget-diagnostics") != command_line_arguments.end();
+  const std::wstring profile_key = legacy_widget_mode ? L"" : ProfileInstanceKey();
+  HANDLE instance_mutex = nullptr;
+  bool owns_instance = false;
+  if (!legacy_widget_mode) {
+    if (profile_key.empty()) {
+      ::OleUninitialize();
+      return EXIT_FAILURE;
+    }
+    const std::wstring mutex_name = L"Local\\TodorbitMain-" + profile_key;
+    instance_mutex = ::CreateMutexW(nullptr, TRUE, mutex_name.c_str());
+    if (instance_mutex == nullptr) {
+      ::OleUninitialize();
+      return EXIT_FAILURE;
+    }
+    owns_instance = ::GetLastError() != ERROR_ALREADY_EXISTS;
+    if (!owns_instance) {
+      const std::string command = ActivationCommand(command_line_arguments);
+      for (int attempt = 0; attempt < 150; ++attempt) {
+        if (const HWND existing = FindProfileWindow(profile_key)) {
+          DWORD existing_process = 0;
+          ::GetWindowThreadProcessId(existing, &existing_process);
+          if (existing_process != 0) ::AllowSetForegroundWindow(existing_process);
+          COPYDATASTRUCT packet{};
+          packet.dwData = 0x54444F52;
+          packet.cbData = static_cast<DWORD>(command.size());
+          packet.lpData = const_cast<char*>(command.data());
+          DWORD_PTR delivered = 0;
+          const LRESULT sent = ::SendMessageTimeoutW(
+              existing, WM_COPYDATA, 0, reinterpret_cast<LPARAM>(&packet),
+              SMTO_ABORTIFHUNG, 2000, &delivered);
+          ::CloseHandle(instance_mutex);
+          ::OleUninitialize();
+          return sent && delivered ? EXIT_SUCCESS : EXIT_FAILURE;
+        }
+        const DWORD acquired = ::WaitForSingleObject(instance_mutex, 0);
+        if (acquired == WAIT_OBJECT_0 || acquired == WAIT_ABANDONED) {
+          owns_instance = true;
+          break;
+        }
+        ::Sleep(100);
+      }
+      if (!owns_instance) {
+        ::CloseHandle(instance_mutex);
+        ::OleUninitialize();
+        return EXIT_FAILURE;
+      }
+    }
+  }
   WidgetDiagnostics::Start(diagnostics_requested);
   WidgetDiagnostics::Log(legacy_widget_mode
                              ? L"legacy Flutter widget process starting"
@@ -108,8 +213,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   if (!window.Create(window_title, origin, size)) {
     WidgetDiagnostics::Log(L"window creation failed");
     WidgetDiagnostics::Stop();
+    if (owns_instance) ::ReleaseMutex(instance_mutex);
+    if (instance_mutex) ::CloseHandle(instance_mutex);
     return EXIT_FAILURE;
   }
+  const std::wstring profile_property = L"TodorbitMain-" + profile_key;
+  if (owns_instance) ::SetPropW(window.GetHandle(), profile_property.c_str(),
+                                reinterpret_cast<HANDLE>(1));
   WidgetDiagnostics::Snapshot(window.GetHandle(), nullptr, L"before desktop attachment");
   if (legacy_widget_mode && !AttachWidgetToDesktop(window.GetHandle())) {
     WidgetDiagnostics::Log(L"desktop attachment failed");
@@ -139,6 +249,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     ::KillTimer(window.GetHandle(), kDiagnosticsTimer);
   }
   WidgetDiagnostics::Stop();
-  ::CoUninitialize();
+  if (owns_instance) {
+    if (window.GetHandle()) ::RemovePropW(window.GetHandle(), profile_property.c_str());
+    ::ReleaseMutex(instance_mutex);
+  }
+  if (instance_mutex) ::CloseHandle(instance_mutex);
+  ::OleUninitialize();
   return EXIT_SUCCESS;
 }

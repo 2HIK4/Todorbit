@@ -19,6 +19,8 @@ import '../domain/progressive_plan.dart';
 import '../domain/templates.dart';
 import '../domain/saved_views.dart';
 import '../domain/appearance.dart';
+import '../domain/task_view_preferences.dart';
+import '../domain/hotkeys.dart';
 import '../domain/scheduling_models.dart';
 import '../domain/trash.dart';
 import '../domain/reports.dart';
@@ -98,6 +100,8 @@ class AppController extends ChangeNotifier {
   String? selectedTaskId;
   ThemeModePreference theme = ThemeModePreference.system;
   ThemeCustomization customization = const ThemeCustomization();
+  TaskViewPreferences taskViewPreferences = const TaskViewPreferences();
+  HotkeyPreferences hotkeys = HotkeyPreferences();
   CalendarContent calendarContent = CalendarContent.both;
   bool loading = true;
 
@@ -236,6 +240,8 @@ class AppController extends ChangeNotifier {
     if (appearanceStore != null) {
       theme = await appearanceStore!.load();
       customization = await appearanceStore!.loadCustomization();
+      taskViewPreferences = await appearanceStore!.loadTaskViewPreferences();
+      hotkeys = await appearanceStore!.loadHotkeys();
       view = WorkspaceView.values.firstWhere(
         (candidate) => candidate.name == customization.openingScreen,
         orElse: () => WorkspaceView.today,
@@ -245,6 +251,18 @@ class AppController extends ChangeNotifier {
       calendarContent = await calendarPreferenceStore!.load();
     }
     await refresh();
+  }
+
+  Future<void> setTaskViewPreferences(TaskViewPreferences value) async {
+    await appearanceStore?.saveTaskViewPreferences(value);
+    taskViewPreferences = value;
+    notifyListeners();
+  }
+
+  Future<void> setHotkeys(HotkeyPreferences value) async {
+    await appearanceStore?.saveHotkeys(value);
+    hotkeys = value;
+    notifyListeners();
   }
 
   Future<void> setCalendarContent(CalendarContent value) async {
@@ -346,6 +364,10 @@ class AppController extends ChangeNotifier {
 
   List<LifeTask> get visibleTasks {
     final today = localDate(DateTime.now());
+    bool active(LifeTask task) =>
+        task.isOpen ||
+        (taskViewPreferences.keepCompletedVisible &&
+            task.status == TaskStatus.completed);
     final selectedView = savedViews
         .where((item) => item.id == scopeId)
         .firstOrNull;
@@ -355,23 +377,23 @@ class AppController extends ChangeNotifier {
     final items = tasks.where((task) {
       switch (view) {
         case WorkspaceView.today:
-          return task.isOpen && task.scheduledDate == today;
+          return active(task) && task.scheduledDate == today;
         case WorkspaceView.anytime:
-          return task.isOpen &&
+          return active(task) &&
               task.scheduledDate == null &&
               task.deadlineDate == null;
         case WorkspaceView.all:
-          return task.isOpen;
+          return active(task);
         case WorkspaceView.inbox:
-          return task.isOpen &&
+          return active(task) &&
               task.categoryId == null &&
               task.projectId == null;
         case WorkspaceView.upcoming:
-          return task.isOpen &&
+          return active(task) &&
               task.scheduledDate != null &&
               task.scheduledDate!.compareTo(today) > 0;
         case WorkspaceView.overdue:
-          return task.isOpen &&
+          return active(task) &&
               task.deadlineDate != null &&
               task.deadlineDate!.compareTo(today) < 0;
         case WorkspaceView.waiting:
@@ -389,12 +411,17 @@ class AppController extends ChangeNotifier {
         case WorkspaceView.saved:
           return savedIds.contains(task.id);
         case WorkspaceView.category:
-          return task.isOpen && task.categoryId == scopeId;
+          return active(task) && task.categoryId == scopeId;
         case WorkspaceView.project:
-          return task.isOpen && task.projectId == scopeId;
+          return active(task) && task.projectId == scopeId;
       }
     }).toList();
     items.sort((a, b) {
+      final aDone = a.status == TaskStatus.completed;
+      final bDone = b.status == TaskStatus.completed;
+      if (view != WorkspaceView.completed && aDone != bDone) {
+        return aDone ? 1 : -1;
+      }
       final effectiveSort = view == WorkspaceView.saved && selectedView != null
           ? TaskSort.values.byName(selectedView.filter.sort.name)
           : sort;
@@ -485,6 +512,20 @@ class AppController extends ChangeNotifier {
 
   Future<void> addTask(TaskDraft draft) async {
     final task = await repository.addTask(draft);
+    await refresh();
+    select(task.id);
+  }
+
+  Future<void> addTaskWithComposition(
+    TaskDraft draft,
+    List<String> checklist,
+    List<TaskDraft> subtasks,
+  ) async {
+    final task = await repository.addTaskWithComposition(
+      draft,
+      checklist,
+      subtasks,
+    );
     await refresh();
     select(task.id);
   }

@@ -4,6 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../../domain/task_composition.dart';
+import '../../domain/task_view_preferences.dart';
+import '../shared/inline_spelling_controller.dart';
+import 'checklist_item_dialog.dart';
+import 'composition_text.dart';
 
 class TaskCompositionSection extends ConsumerStatefulWidget {
   const TaskCompositionSection({
@@ -21,7 +25,12 @@ class TaskCompositionSection extends ConsumerStatefulWidget {
 
 class _TaskCompositionSectionState
     extends ConsumerState<TaskCompositionSection> {
-  final entry = TextEditingController();
+  late final entry = InlineSpellingController(
+    enabled: ref
+        .read(appControllerProvider)
+        .taskViewPreferences
+        .spellCheckEnabled,
+  );
   String? error;
 
   @override
@@ -40,30 +49,16 @@ class _TaskCompositionSectionState
   }
 
   Future<void> _rename(TaskChecklistItem item) async {
-    final field = TextEditingController(text: item.title);
-    final value = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit checklist item'),
-        content: TextField(
-          controller: field,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Activity'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, field.text),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+    final value = await editChecklistItem(
+      context,
+      title: 'Edit checklist item',
+      initialValue: item.title,
+      spellCheckEnabled: ref
+          .read(appControllerProvider)
+          .taskViewPreferences
+          .spellCheckEnabled,
     );
-    field.dispose();
-    if (value != null && mounted) {
+    if (value != null && value.isNotEmpty && mounted) {
       await _run(
         () => ref
             .read(appControllerProvider)
@@ -75,6 +70,11 @@ class _TaskCompositionSectionState
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(appControllerProvider);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        entry.enabled = controller.taskViewPreferences.spellCheckEnabled;
+      }
+    });
     final items = controller.checklistItems
         .where((item) => item.taskId == widget.task.id)
         .toList();
@@ -88,69 +88,38 @@ class _TaskCompositionSectionState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Divider(),
         Text(
           'Checklist${items.isEmpty ? '' : ' · $done/${items.length}'}',
           style: Theme.of(context).textTheme.titleSmall,
         ),
         const SizedBox(height: 6),
         for (var index = 0; index < items.length; index++)
-          Row(
-            children: [
-              Checkbox(
-                value: items[index].done,
-                onChanged: (value) => _run(
-                  () => controller.updateChecklistItem(
-                    items[index],
-                    done: value ?? false,
+          ChecklistItemRow(
+            key: ValueKey(items[index].id),
+            title: items[index].title,
+            display: controller.taskViewPreferences.compositionTextDisplay,
+            done: items[index].done,
+            onChanged: (value) => _run(
+              () => controller.updateChecklistItem(items[index], done: value),
+            ),
+            onEdit: () => _rename(items[index]),
+            onMoveUp: index == 0
+                ? null
+                : () => _run(
+                    () => controller.moveChecklistItem(items[index], -1),
                   ),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  items[index].title,
-                  style: TextStyle(
-                    decoration: items[index].done
-                        ? TextDecoration.lineThrough
-                        : null,
-                  ),
-                ),
-              ),
-              IconButton(
-                tooltip: 'Edit checklist item',
-                icon: const Icon(Icons.edit_outlined, size: 17),
-                onPressed: () => _rename(items[index]),
-              ),
-              IconButton(
-                tooltip: 'Move checklist item up',
-                icon: const Icon(Icons.arrow_upward, size: 17),
-                onPressed: index == 0
-                    ? null
-                    : () => _run(
-                        () => controller.moveChecklistItem(items[index], -1),
-                      ),
-              ),
-              IconButton(
-                tooltip: 'Move checklist item down',
-                icon: const Icon(Icons.arrow_downward, size: 17),
-                onPressed: index == items.length - 1
-                    ? null
-                    : () => _run(
-                        () => controller.moveChecklistItem(items[index], 1),
-                      ),
-              ),
-              IconButton(
-                tooltip: 'Remove checklist item',
-                icon: const Icon(Icons.close, size: 17),
-                onPressed: () =>
-                    _run(() => controller.removeChecklistItem(items[index])),
-              ),
-            ],
+            onMoveDown: index == items.length - 1
+                ? null
+                : () =>
+                      _run(() => controller.moveChecklistItem(items[index], 1)),
+            onRemove: () =>
+                _run(() => controller.removeChecklistItem(items[index])),
           ),
         Row(
           children: [
             Expanded(
               child: TextField(
+                key: const ValueKey('saved-checklist-entry'),
                 controller: entry,
                 decoration: const InputDecoration(
                   labelText: 'New checklist item',
@@ -166,6 +135,7 @@ class _TaskCompositionSectionState
           ],
         ),
         const SizedBox(height: 12),
+        const Divider(),
         Row(
           children: [
             Expanded(
@@ -182,17 +152,20 @@ class _TaskCompositionSectionState
               ),
           ],
         ),
-        for (final child in children)
+        for (var index = 0; index < children.length; index++)
           ListTile(
             dense: true,
             leading: Icon(
-              child.status == TaskStatus.completed
+              children[index].status == TaskStatus.completed
                   ? Icons.check_circle
                   : Icons.radio_button_unchecked,
             ),
-            title: Text(child.title),
-            subtitle: Text(child.status.name),
-            onTap: () => controller.select(child.id),
+            title: CompositionText(
+              text: children[index].title,
+              display: controller.taskViewPreferences.compositionTextDisplay,
+            ),
+            subtitle: Text(_statusLabel(children[index].status)),
+            onTap: () => controller.select(children[index].id),
           ),
         if (error != null)
           Text(
@@ -212,5 +185,105 @@ class _TaskCompositionSectionState
           .addChecklistItem(widget.task.id, title),
     );
     if (error == null) entry.clear();
+  }
+}
+
+String _statusLabel(TaskStatus status) => switch (status) {
+  TaskStatus.notStarted => 'Not started',
+  TaskStatus.inProgress => 'In progress',
+  TaskStatus.waiting => 'Waiting',
+  TaskStatus.onHold => 'On hold',
+  TaskStatus.completed => 'Completed',
+  TaskStatus.cancelled => 'Cancelled',
+};
+
+class ChecklistItemRow extends StatefulWidget {
+  const ChecklistItemRow({
+    super.key,
+    required this.title,
+    this.display = CompositionTextDisplay.compact,
+    required this.done,
+    required this.onChanged,
+    required this.onEdit,
+    required this.onMoveUp,
+    required this.onMoveDown,
+    required this.onRemove,
+  });
+
+  final String title;
+  final CompositionTextDisplay display;
+  final bool done;
+  final ValueChanged<bool> onChanged;
+  final VoidCallback onEdit;
+  final VoidCallback? onMoveUp;
+  final VoidCallback? onMoveDown;
+  final VoidCallback onRemove;
+
+  @override
+  State<ChecklistItemRow> createState() => _ChecklistItemRowState();
+}
+
+class _ChecklistItemRowState extends State<ChecklistItemRow> {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = theme.textTheme.bodyMedium?.copyWith(
+      decoration: widget.done ? TextDecoration.lineThrough : null,
+      color: widget.done ? theme.colorScheme.onSurfaceVariant : null,
+    );
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Checkbox(
+                value: widget.done,
+                semanticLabel: 'Complete ${widget.title}',
+                onChanged: (value) => widget.onChanged(value ?? false),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: CompositionText(
+                    text: widget.title,
+                    display: widget.display,
+                    style: style,
+                  ),
+                ),
+              ),
+              PopupMenuButton<String>(
+                tooltip: 'Checklist actions for ${widget.title}',
+                onSelected: (action) {
+                  switch (action) {
+                    case 'edit':
+                      widget.onEdit();
+                    case 'up':
+                      widget.onMoveUp?.call();
+                    case 'down':
+                      widget.onMoveDown?.call();
+                    case 'remove':
+                      widget.onRemove();
+                  }
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                  if (widget.onMoveUp != null)
+                    const PopupMenuItem(value: 'up', child: Text('Move up')),
+                  if (widget.onMoveDown != null)
+                    const PopupMenuItem(
+                      value: 'down',
+                      child: Text('Move down'),
+                    ),
+                  const PopupMenuItem(value: 'remove', child: Text('Remove')),
+                ],
+                icon: const Icon(Icons.more_vert),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }
