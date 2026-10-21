@@ -12,8 +12,12 @@
   corrected corners, spacing, date actions, and arrow alignment. The calendar
   and rounded Quick Add outline were also rendered; its placeholder did not
   appear in `DrawToBitmap`. These are WinForms observations, not live
-  Explorer pixels. The five requested images were not at the supplied path;
-  the older round-four editor image was reviewed for context.
+  Explorer pixels. The initial screenshot path was absent; the user then
+  supplied all five baseline images at
+  `D:\AI_Projects\Todorbit_Widget_UI_Review_References`. They confirm the
+  prior date-border collisions, text-adjacent dropdown arrows, corner/edge
+  artifacts, and crowded final row. The post-fix offscreen renders do not
+  establish live Explorer behavior.
 - Native Release build (zero warnings), source and packaged self-tests, four
   focused Flutter tests, and Windows Release build passed. Geometry tests cover
   date action separation at 170/245/340 px, clearing, and choice arrow state.

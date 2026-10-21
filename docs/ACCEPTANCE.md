@@ -4,17 +4,23 @@
 
 | Surface / check | Result | Evidence and limit |
 | --- | --- | --- |
-| Edit Task date fields and four choices | PARTIAL | Two offscreen render passes in dark/light plus a custom palette show a single clean date outline, separate 32 px calendar/clear actions, stable trailing arrows, and rounded choice corners. Source self-test checks geometry and clearing. Actual popup input is unverified. |
+| Edit Task date fields and four choices | PARTIAL | The five user screenshots at `D:\AI_Projects\Todorbit_Widget_UI_Review_References` document overlapping date-action borders, text-adjacent dropdown arrows, and clipped/square corners in the prior editor. Two post-fix offscreen render passes in dark/light plus a custom palette show a single date outline, separate 32 px calendar/clear actions, stable trailing arrows, and rounded choice corners. Source self-test checks geometry and clearing. Native date placeholder text did not appear in `DrawToBitmap`; live placeholder and popup input are unverified. |
 | Footer and compact layout | PARTIAL | Second wide render shows breathing room after Priority and no divider; 380 px narrow render shows an independent fixed footer and scroll cue. Scrolling by real input remains unverified. |
 | Calendar | PARTIAL | Offscreen dark calendar render shows themed cells and month controls. Open/close, keyboard navigation, and screen-edge placement need live checks. |
 | Quick Add and main Explorer widget | PARTIAL / UNVERIFIED (GUI) | Offscreen Quick Add capture shows the rounded focus outline; its native placeholder was absent in `DrawToBitmap`, so text rendering and input remain unverified. Main paint/menu code was reviewed, but no Explorer window was available to Computer Use. Old round-four screenshot is historical. |
 | Functional and packaging gates | PASS (automated) | Native Release build: zero warnings/errors. Source and packaged self-test passed. Four focused Flutter tests passed. Windows Release build passed. No Flutter source changed, so analysis was not required for this pass. |
 
-The five screenshot references at `D:\AI_Projects\Todorbit_Widget_UI_Review`
-were absent. No claim is made about their exact pixels. Current offscreen
-captures are diagnostic only; `DrawToBitmap` does not prove live DWM, Explorer,
+The initial screenshot path was absent; the user supplied the five images at
+`D:\AI_Projects\Todorbit_Widget_UI_Review_References` afterward. The full
+image also shows the former footer divider and final row pressed against it;
+the corner crops show artifacts around adjacent rounded controls. These
+images establish the baseline symptoms, not their technical causes or the
+live result after this commit. Post-fix offscreen captures are diagnostic only;
+`DrawToBitmap` does not prove live DWM, Explorer,
 popup, DPI, hover, pressed, or keyboard appearance. No production profile,
 installed application, or public v1.0.3 assets were changed.
+The disposable live `--preview-editor` process was also started, but Computer
+Use still reported no native windows; it was stopped without saving a task.
 
 Before treating this as final visual acceptance, use a disposable APPDATA and
 LOCALAPPDATA profile and perform these checks on the target Windows desktop:

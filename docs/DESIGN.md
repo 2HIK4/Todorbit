@@ -2,6 +2,13 @@
 
 ## Native widget control polish (2026-10-21)
 
+The five user-provided baseline screenshots in
+`D:\AI_Projects\Todorbit_Widget_UI_Review_References` show colliding date
+outlines, arrows attached to selection text, square/cropped rounded corners,
+and the status row against the footer. Source inspection traced the first
+three to separate child-button painting, text-based arrows, and parent
+backgrounds showing through rounded WinForms buttons.
+
 The Edit Task date field is one painted surface containing a native borderless
 text box and two 32 px icon actions. The actions keep native button focus and
 keyboard activation, but paint no competing outlines. The field owns its
