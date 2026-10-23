@@ -1,5 +1,11 @@
 # Windows v1.0 final acceptance record
 
+## v1.0.6 release checkpoint (2026-10-24)
+
+`flutter analyze --no-pub` found no issues; all 229 serial Flutter tests passed with the existing nonfatal workspace scroll hit-test warning. Native .NET and Flutter Windows Release builds passed, as did source and packaged widget self-tests. Inno Setup 7 compiled the installer. The portable ZIP passed its archive integrity check and contains the executable, widget, Flutter/SQLite runtime, update helper, licenses, and portable marker; no profile database, settings, logs, or keys were found.
+
+A same-path disposable portable update using the locally built 1.0.5 ZIP and the new 1.0.6 ZIP succeeded: the helper restarted the app, retained the exact profile database bytes and a sentinel file, and kept a binary rollback folder. The local 1.0.5 ZIP differs from the public 1.0.5 asset, so the same check was repeated with the public package after verifying its published SHA-256 digest; it also passed. The registered installation on this Windows account was not opened or modified. Actual installer upgrade, schema migration approval in the updated GUI, physical widget/Explorer input, Windows 10, and mixed DPI remain unverified; publish as a pre-release.
+
 ## Software Updates acceptance (2026-10-24)
 
 | Check | Status | Evidence and limit |

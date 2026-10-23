@@ -1,5 +1,11 @@
 # Progress
 
+## v1.0.6 Windows pre-release (2026-10-24)
+
+- Advanced app and native widget versions to 1.0.6, updated public docs and release notes, and retained the stable installer AppId, install directory, and profile paths.
+- `flutter analyze --no-pub` and 229 serial Flutter tests passed (existing nonfatal workspace scroll hit-test warning). Native .NET and Windows Release builds, source and packaged widget self-tests, Inno Setup 7 compilation, and portable ZIP archive/contents checks passed.
+- A disposable same-path portable 1.0.5 to 1.0.6 update passed with isolated profiles using both the local 1.0.5 ZIP and the SHA-256-verified public 1.0.5 ZIP: the helper restarted the new bundle, retained each database and sentinel file unchanged, and kept binary rollback. Actual installed upgrade remains unverified because the current account has a real registered Todorbit installation; it was not touched. See `docs/ACCEPTANCE.md`.
+
 ## Codex development workflow (2026-10-24)
 
 - Kept the installed official Dart/Flutter plugin and Apple Design skill. Added repo-local `todorbit-ui-review` and `todorbit-regression` skills under `.agents/skills/` and linked them from concise `AGENTS.md` and `docs/CODEX_WORKFLOW.md`. No new plugin, MCP config, or project dependency was added.
