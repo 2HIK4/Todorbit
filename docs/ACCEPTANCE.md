@@ -3,10 +3,10 @@
 The 2026-10-23 calendar, sidebar, and cross-app UI audit is recorded in
 [`CALENDAR_UI_AUDIT.md`](CALENDAR_UI_AUDIT.md). Its schema 21 and interface
 results are newer than the historical v1.0.5 record below.
-The follow-up from `e10fe1a` fixed Habit editor height, Advanced Search field
-gaps, and narrow select/action overflows. Isolated debug GUI and widget tests
-support those changes; Release, physical DPI/scrollbar, and Explorer widget
-interaction remain manual checks in the linked audit.
+The follow-up from `e10fe1a` fixed Habit editor height, Advanced Search and
+Template field gaps, and narrow select/action overflows. Isolated debug GUI
+and widget tests support those changes; Release, physical DPI/scrollbar, and
+Explorer widget interaction remain manual checks in the linked audit.
 
 ## v1.0.5 publication scope (2026-10-21)
 

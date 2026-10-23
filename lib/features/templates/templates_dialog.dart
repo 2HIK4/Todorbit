@@ -26,6 +26,7 @@ Future<void> showSaveTemplateDialog(
             const Text(
               'Copies the current definition. Completion, work history, planned sessions, and external project links are not included.',
             ),
+            const SizedBox(height: 12),
             TextFormField(
               initialValue: sourceName,
               decoration: const InputDecoration(labelText: 'Template name'),
@@ -283,7 +284,9 @@ class _ApplyTemplateDialogState extends ConsumerState<_ApplyTemplateDialog> {
                 Text(
                   '$externalLinks prerequisite links to tasks outside the source project will not be copied.',
                 ),
+              const SizedBox(height: 12),
               DropdownButtonFormField<String?>(
+                isExpanded: true,
                 key: ValueKey('template-category:$categoryId'),
                 initialValue: categoryId,
                 decoration: InputDecoration(
@@ -308,16 +311,19 @@ class _ApplyTemplateDialogState extends ConsumerState<_ApplyTemplateDialog> {
                   projectId = null;
                 }),
               ),
-              if (template.kind == TemplateKind.project)
+              if (template.kind == TemplateKind.project) ...[
+                const SizedBox(height: 12),
                 TextFormField(
                   initialValue: projectName,
                   decoration: const InputDecoration(
                     labelText: 'New project name *',
                   ),
                   onChanged: (value) => projectName = value,
-                )
-              else if (categoryId != null)
+                ),
+              ] else if (categoryId != null) ...[
+                const SizedBox(height: 12),
                 DropdownButtonFormField<String?>(
+                  isExpanded: true,
                   key: ValueKey('template-project:$categoryId:$projectId'),
                   initialValue: projectId,
                   decoration: const InputDecoration(
@@ -336,6 +342,7 @@ class _ApplyTemplateDialogState extends ConsumerState<_ApplyTemplateDialog> {
                   ],
                   onChanged: (value) => setState(() => projectId = value),
                 ),
+              ],
               const SizedBox(height: 12),
               Text(
                 'Creates ${recipes.length} ${recipes.length == 1 ? 'task' : 'tasks'}${linkCount == 0 ? '' : ' with $linkCount internal dependencies'}:',

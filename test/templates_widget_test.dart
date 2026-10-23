@@ -31,6 +31,20 @@ void main() {
       await tester.tap(find.text('Writing setup'));
       await tester.pumpAndSettle();
       expect(find.text('Apply Writing setup'), findsOneWidget);
+      expect(
+        tester
+                .getRect(find.byKey(const ValueKey('template-category:null')))
+                .top -
+            tester
+                .getRect(
+                  find.ancestor(
+                    of: find.byIcon(Icons.calendar_today_outlined),
+                    matching: find.byType(OutlinedButton),
+                  ),
+                )
+                .bottom,
+        greaterThanOrEqualTo(8),
+      );
       await tester.tap(find.text('Create from template'));
       await tester.pumpAndSettle();
       expect((await repository.tasks()), hasLength(2));
@@ -78,6 +92,19 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Work').last);
       await tester.pumpAndSettle();
+      expect(
+        tester
+                .getRect(
+                  find.widgetWithText(TextFormField, 'New project name *'),
+                )
+                .top -
+            tester
+                .getRect(
+                  find.byKey(ValueKey('template-category:${category.id}')),
+                )
+                .bottom,
+        greaterThanOrEqualTo(8),
+      );
       await tester.enterText(
         find.widgetWithText(TextFormField, 'New project name *'),
         'Plan again',
@@ -96,5 +123,36 @@ void main() {
       await database.close();
       await tester.binding.setSurfaceSize(null);
     }
+  });
+
+  testWidgets('save template explanation clears the floating name label', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async => showSaveTemplateDialog(
+                context,
+                sourceName: 'Write',
+                save: (_) async {},
+              ),
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getRect(find.byType(TextFormField)).top -
+          tester
+              .getRect(find.textContaining('Copies the current definition'))
+              .bottom,
+      greaterThanOrEqualTo(8),
+    );
+    expect(tester.takeException(), isNull);
   });
 }
