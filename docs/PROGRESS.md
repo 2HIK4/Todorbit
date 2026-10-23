@@ -1,5 +1,11 @@
 # Progress
 
+## Windows software updates (2026-10-23)
+
+- Added Settings > Software Updates, per-profile preferences, automatic and manual GitHub Release checks, semantic-version/channel selection, exact Windows x64 package and SHA-256 validation, download progress, explicit unsigned-package confirmation, and a separate Windows update helper. Portable staging keeps the installation path and rollback copy; registered installs use the existing Inno identity. Installation does not modify profile databases or existing personalization files. See `docs/SOFTWARE_UPDATES.md` for publishing and recovery steps.
+- Final `flutter analyze --no-pub` and all 228 serial Flutter tests passed. Windows Release and native .NET Release builds, packaged widget self-test, Inno installer compilation, and portable ZIP packaging passed. The final local artifact hashes are in `release/SHA256SUMS.txt`. Disposable synthetic portable helper checks confirmed both rollback after a failed restart and a same-path swap retaining the old binary folder. An isolated debug app started and hot restarted under temporary APPDATA/LOCALAPPDATA; native Computer Use could not connect to its pipe, so live Settings pixels remain unverified.
+- Real installed and portable updates, signed-package verification, native widget close/restart, migration failure recovery, and success without duplicate windows still need isolated Windows acceptance. No production profile was opened or modified for this work. No release was published.
+
 ## Calendar UI audit follow-up (2026-10-23)
 
 - Continued from `e10fe1a` on `feature/calendar-ui-audit`. Isolated debug GUI inspection of New/Edit Event, Task, Habit, and Goal confirmed their title and footer layouts at 1264 × 681. Habit End day was hidden at the old 510 px cap; New/Edit now cap at 550/580 px. Advanced Search needed spacing between floating-label selects. Narrow widget tests exposed Habit/Search dropdown and footer overflows; selects now constrain content and Habit, Goal, and Search use a shared wrapping action bar. No model, repository, schema, or production data changed.

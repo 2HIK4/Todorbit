@@ -18,6 +18,7 @@ import 'data/life_repository.dart';
 import 'data/migration_gate.dart';
 import 'data/privacy_store.dart';
 import 'data/profile_paths.dart';
+import 'data/software_update_service.dart';
 import 'domain/appearance.dart';
 import 'features/workspace/workspace.dart';
 import 'features/settings/privacy_dialog.dart';
@@ -118,6 +119,7 @@ Future<void> _startApplication(
     backupService: backupService,
   );
   await controller.initialize();
+  if (Platform.isWindows) unawaited(_checkUpdatesInBackground());
   if (Platform.isWindows) {
     final companion = NativeWidgetService();
     if (companion.isAvailable &&
@@ -158,6 +160,38 @@ Future<void> _startApplication(
             ),
     ),
   );
+}
+
+Future<void> _checkUpdatesInBackground() async {
+  final service = SoftwareUpdateService();
+  try {
+    final store = UpdatePreferenceStore.forActiveProfile();
+    final preferences = await store.load();
+    if (!preferences.automaticChecks ||
+        (preferences.lastChecked != null &&
+            DateTime.now().toUtc().difference(preferences.lastChecked!) <
+                const Duration(hours: 24))) {
+      return;
+    }
+    final version = await const MethodChannel('life_manager/window_theme')
+        .invokeMethod<String>('getVersion');
+    if (version == null) return;
+    await service.check(
+      currentVersion: version,
+      channel: preferences.channel,
+      portable:
+          ProfilePaths.portableDirectoryIn(
+            ProfilePaths.dataRoot(),
+            Platform.resolvedExecutable,
+          ) !=
+          null,
+    );
+    await store.save(preferences.copyWith(lastChecked: DateTime.now().toUtc()));
+  } catch (error) {
+    debugPrint('Background update check failed: $error');
+  } finally {
+    service.close();
+  }
 }
 
 class _MigrationApprovalApp extends StatefulWidget {

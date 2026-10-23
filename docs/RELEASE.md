@@ -14,6 +14,9 @@ formal name clearance remains open. See `ACCEPTANCE.md`.
 
 ## Build and install
 
+For in-app update package naming, verification, installed/portable recovery,
+and publishing requirements, see `SOFTWARE_UPDATES.md`.
+
 Run `flutter build windows --release`. The bundle is under
 `build/windows/x64/runner/Release`; keep the entire directory together. To
 compile the per-user installer with Inno Setup 7, run

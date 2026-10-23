@@ -368,6 +368,10 @@ bool FlutterWindow::OnCreate() {
   window_theme_channel_->SetMethodCallHandler(
       [this](const flutter::MethodCall<flutter::EncodableValue>& call,
              std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+        if (call.method_name() == "getVersion") {
+          result->Success(flutter::EncodableValue(std::string(FLUTTER_VERSION)));
+          return;
+        }
         if (call.method_name() != "set") {
           result->NotImplemented();
           return;

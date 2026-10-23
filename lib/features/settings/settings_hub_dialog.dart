@@ -14,6 +14,7 @@ import 'privacy_dialog.dart';
 import 'task_view_settings_dialog.dart';
 import 'theme_dialog.dart';
 import 'sidebar_order_dialog.dart';
+import 'software_updates_page.dart';
 
 enum _SettingsPage {
   appearance('Appearance & Themes', Icons.palette_outlined),
@@ -22,7 +23,8 @@ enum _SettingsPage {
   navigation('Navigation & Calendar', Icons.calendar_month_outlined),
   notifications('Notifications', Icons.notifications_outlined),
   widget('Widget', Icons.widgets_outlined),
-  privacy('Privacy & Data', Icons.lock_outline);
+  privacy('Privacy & Data', Icons.lock_outline),
+  updates('Software Updates', Icons.system_update_outlined);
 
   const _SettingsPage(this.title, this.icon);
   final String title;
@@ -388,6 +390,9 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
                 widget.showDataProfile,
               ),
           ],
+        ),
+        _SettingsPage.updates => SoftwareUpdatesPage(
+          nativeWidget: widget.nativeWidget,
         ),
       },
     ],

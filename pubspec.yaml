@@ -41,6 +41,7 @@ dependencies:
   sqlite3: ^3.7.1
   crypto: ^3.0.7
   flex_color_picker: ^4.0.0
+  archive: ^4.5.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -63,6 +64,7 @@ flutter:
     - assets/contributors.json
     - assets/app_icon.png
     - assets/todorbit_brand_mark.png
+    - tools/update-helper.ps1
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

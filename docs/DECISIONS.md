@@ -1,5 +1,11 @@
 # Decisions
 
+## In-app Windows updates (2026-10-23)
+
+- Check only published `2HIK4/Todorbit` GitHub Releases with strict semantic-version ordering. Require the exact Windows x64 asset and GitHub asset SHA-256 digest; unsigned packages require explicit install confirmation.
+- Keep update preferences in a separate versioned JSON file under the active profile. Background checks never download or install.
+- Run a bundled helper after the main process closes. Installed copies use the stable Inno AppId; portable copies stage a complete ZIP beside the current folder and swap into the same path, retaining a binary rollback folder. The updater never modifies profile data. The existing verified SQLite backup and migration gate remains separate from binary rollback.
+
 ## Calendar and navigation audit (2026-10-23)
 
 - Keep sidebar order, the last selected Calendar mode, and first weekday in the per-profile appearance settings file, separate from validated theme customization JSON. Missing settings retain the existing sidebar order and Week default; the first weekday defaults to Sunday.
