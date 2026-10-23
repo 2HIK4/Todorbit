@@ -8,6 +8,7 @@ import '../../domain/habits.dart';
 import '../../domain/models.dart';
 import '../../domain/recurrence.dart';
 import '../shared/weekdays.dart';
+import '../shared/dialog_action_bar.dart';
 
 class HabitEditorDialog extends ConsumerStatefulWidget {
   const HabitEditorDialog({super.key, this.habit});
@@ -131,7 +132,10 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
   Widget build(BuildContext context) => Dialog(
     child: SizedBox(
       width: math.min(MediaQuery.sizeOf(context).width - 48, 560),
-      height: math.min(MediaQuery.sizeOf(context).height - 48, 510),
+      height: math.min(
+        MediaQuery.sizeOf(context).height - 48,
+        widget.habit == null ? 550 : 580,
+      ),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -148,9 +152,11 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
             const SizedBox(height: 10),
             Expanded(
               child: ListView(
+                key: const ValueKey('habit-editor-form-list'),
                 padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
                 children: [
                   TextField(
+                    key: const ValueKey('habit-editor-title'),
                     controller: title,
                     decoration: const InputDecoration(labelText: 'Title *'),
                   ),
@@ -162,6 +168,7 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<HabitKind>(
+                    isExpanded: true,
                     initialValue: kind,
                     decoration: const InputDecoration(labelText: 'Measurement'),
                     items: const [
@@ -203,6 +210,7 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
                   ],
                   const SizedBox(height: 12),
                   DropdownButtonFormField<RecurrenceKind>(
+                    isExpanded: true,
                     key: ValueKey(scheduleKind),
                     initialValue: scheduleKind,
                     decoration: const InputDecoration(labelText: 'Schedule'),
@@ -301,14 +309,12 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
                 ],
               ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            DialogActionBar(
               children: [
                 TextButton(
                   onPressed: busy ? null : () => Navigator.pop(context, false),
                   child: const Text('Cancel'),
                 ),
-                const SizedBox(width: 8),
                 FilledButton(
                   onPressed: busy ? null : _save,
                   child: Text(

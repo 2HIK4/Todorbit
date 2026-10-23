@@ -1,5 +1,11 @@
 # Progress
 
+## Calendar UI audit follow-up (2026-10-23)
+
+- Continued from `e10fe1a` on `feature/calendar-ui-audit`. Isolated debug GUI inspection of New/Edit Event, Task, Habit, and Goal confirmed their title and footer layouts at 1264 × 681. Habit End day was hidden at the old 510 px cap; New/Edit now cap at 550/580 px. Advanced Search needed spacing between floating-label selects. Narrow widget tests exposed Habit/Search dropdown and footer overflows; selects now constrain content and Habit, Goal, and Search use a shared wrapping action bar. No model, repository, schema, or production data changed.
+- `flutter analyze --no-pub` and all 220 serial Flutter tests passed; the suite emitted the existing nonfatal `workspace_test.dart` scroll hit-test warning. Native .NET Release built with zero warnings/errors and the source widget self-test passed. Windows Release build and packaged widget self-test evidence is recorded in `docs/CALENDAR_UI_AUDIT.md`.
+- Narrow 360 × 600 at 1.5× and Search 430 × 620 at 1.3× were widget-tested, not physically resized in Windows. A native narrow offscreen capture showed control and scrollbar clearance, but Computer Use exposed no native windows. Release GUI pixels, real scrollbar drag, Explorer widget input, and physical DPI/text scaling remain manual acceptance items in `docs/CALENDAR_UI_AUDIT.md`.
+
 ## Calendar and cross-app UI audit (2026-10-23)
 
 - Work is on `feature/calendar-ui-audit` from clean `main` at `0a3548e`. Schema 21 adds category event colors and extensible event details with a reusable type catalog. Existing location data migrates to a saved Location detail; native schema support is raised to 21. Existing events keep explicit colors, and project inheritance is omitted because events have no project ID.

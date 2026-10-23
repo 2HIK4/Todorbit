@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../shared/dialog_action_bar.dart';
+
 import '../../app/app_controller.dart';
 import '../../domain/goals.dart';
 import '../../domain/habits.dart';
@@ -113,9 +115,11 @@ class _GoalEditorDialogState extends ConsumerState<GoalEditorDialog> {
             const SizedBox(height: 8),
             Expanded(
               child: ListView(
+                key: const ValueKey('goal-editor-form-list'),
                 padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
                 children: [
                   TextField(
+                    key: const ValueKey('goal-editor-title'),
                     controller: title,
                     decoration: const InputDecoration(labelText: 'Title *'),
                   ),
@@ -130,6 +134,7 @@ class _GoalEditorDialogState extends ConsumerState<GoalEditorDialog> {
                     children: [
                       Expanded(
                         child: TextField(
+                          key: const ValueKey('goal-editor-target'),
                           controller: target,
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
@@ -182,8 +187,7 @@ class _GoalEditorDialogState extends ConsumerState<GoalEditorDialog> {
                 ],
               ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            DialogActionBar(
               children: [
                 TextButton(
                   onPressed: busy ? null : () => Navigator.pop(context, false),

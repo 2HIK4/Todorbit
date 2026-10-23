@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../../domain/saved_views.dart';
+import '../shared/dialog_action_bar.dart';
 
 class AdvancedSearchDialog extends ConsumerStatefulWidget {
   const AdvancedSearchDialog({
@@ -158,6 +159,7 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
               ),
               Expanded(
                 child: ListView(
+                  key: const ValueKey('advanced-search-form-list'),
                   padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
                   children: [
                     if (widget.creatingSavedView ||
@@ -202,7 +204,9 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                           ),
                       ],
                     ),
+                    const SizedBox(height: 12),
                     DropdownButtonFormField<String?>(
+                      isExpanded: true,
                       key: ValueKey('search-category:$categoryId'),
                       initialValue: categoryId,
                       decoration: const InputDecoration(labelText: 'Category'),
@@ -227,8 +231,10 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                         projectId = null;
                       }),
                     ),
-                    if (categoryId != null)
+                    if (categoryId != null) ...[
+                      const SizedBox(height: 12),
                       DropdownButtonFormField<String?>(
+                        isExpanded: true,
                         key: ValueKey('search-project:$categoryId:$projectId'),
                         initialValue: projectId,
                         decoration: const InputDecoration(labelText: 'Project'),
@@ -250,7 +256,10 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                         ],
                         onChanged: (value) => setState(() => projectId = value),
                       ),
+                    ],
+                    const SizedBox(height: 12),
                     DropdownButtonFormField<int>(
+                      isExpanded: true,
                       initialValue: minimumPriority,
                       decoration: const InputDecoration(
                         labelText: 'Minimum priority',
@@ -270,7 +279,9 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                       onChanged: (value) =>
                           setState(() => minimumPriority = value!),
                     ),
+                    const SizedBox(height: 12),
                     DropdownButtonFormField<ScheduledFilter>(
+                      isExpanded: true,
                       initialValue: scheduled,
                       decoration: const InputDecoration(
                         labelText: 'Planned day',
@@ -284,7 +295,9 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                       ],
                       onChanged: (value) => setState(() => scheduled = value!),
                     ),
+                    const SizedBox(height: 12),
                     DropdownButtonFormField<DeadlineFilter>(
+                      isExpanded: true,
                       initialValue: deadline,
                       decoration: const InputDecoration(labelText: 'Deadline'),
                       items: [
@@ -296,6 +309,7 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                       ],
                       onChanged: (value) => setState(() => deadline = value!),
                     ),
+                    const SizedBox(height: 12),
                     SwitchListTile(
                       title: const Text('Recurring tasks only'),
                       value: recurringOnly,
@@ -307,7 +321,9 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                       value: blockedOnly,
                       onChanged: (value) => setState(() => blockedOnly = value),
                     ),
+                    const SizedBox(height: 12),
                     DropdownButtonFormField<SavedViewSort>(
+                      isExpanded: true,
                       initialValue: sort,
                       decoration: const InputDecoration(
                         labelText: 'Sort results by',
@@ -369,14 +385,12 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                   error!,
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              DialogActionBar(
                 children: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     child: const Text('Cancel'),
                   ),
-                  const SizedBox(width: 8),
                   FilledButton.icon(
                     onPressed: busy ? null : _save,
                     icon: const Icon(Icons.bookmark_add_outlined),
