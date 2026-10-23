@@ -1,5 +1,12 @@
 # Progress
 
+## Calendar and cross-app UI audit (2026-10-23)
+
+- Work is on `feature/calendar-ui-audit` from clean `main` at `0a3548e`. Schema 21 adds category event colors and extensible event details with a reusable type catalog. Existing location data migrates to a saved Location detail; native schema support is raised to 21. Existing events keep explicit colors, and project inheritance is omitted because events have no project ID.
+- Profile settings now persist sidebar order, last selected Calendar view, and first weekday. Calendar Week/Month headers, date pickers, recurrence weekday rows, habit week summaries, and weekly availability use the configured order. The Event editor has a compact title/icon row, anchored Category and Color menus, a custom color wheel/HEX picker, live duration, clearer recurrence ending options, and optional Details rows. Day details open in a centered modal. Creation/editing forms gained top and trailing scroll space; Habit and Goal dialogs are shorter.
+- `flutter analyze --no-pub` passed with no issues, focused tests passed, and the full serial Flutter suite passed 217 tests. Native .NET Release built with zero warnings/errors; source and packaged widget self-tests passed. Windows Flutter Release built and its executable stayed alive on `C:\Users\User\AppData\Local\Temp\TodorbitCalendarAuditFinal`, creating an isolated SQLite database.
+- An isolated Flutter Driver debug session was inspected in dark and light at 1264 × 681. Month headers and restoration, Event Title, Category/Color menus, custom HEX preview/application, Details row, duration, recurrence controls, centered day dialog, Habit dialog, Settings, and sidebar-order dialog were observed. A color-dialog disposal assertion found during this pass was fixed and the interaction repeated without a new process error. The Computer Use native helper could not connect to its pipe, so Release pixels, physical scrollbar/DPI/keyboard interactions, and native widget UI remain unverified. See `docs/CALENDAR_UI_AUDIT.md` for per-issue evidence and steps. No production profile was opened.
+
 ## v1.0.5 pre-release preparation (2026-10-21)
 
 - Fetched GitHub: `feature/todorbit-feedback-round4` at `9c12bd0` is six commits ahead of `origin/main`; the worktree was clean. The public repository has v1.0.3 and no v1.0.5 release or tag.

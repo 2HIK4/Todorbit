@@ -922,7 +922,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                   'task-editor:${widget.task?.id ?? widget.parentTaskId ?? 'new'}',
                 ),
                 controller: editorScroll,
-                padding: const EdgeInsets.fromLTRB(0, 4, 14, 16),
+                padding: const EdgeInsets.fromLTRB(0, 8, 14, 16),
                 children: [
                   if (widget.parentTaskId != null) ...[
                     Text(

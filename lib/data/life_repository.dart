@@ -54,6 +54,7 @@ class LifeRepository {
             id: r.read<String>('id'),
             name: r.read<String>('name'),
             createdAt: DateTime.parse(r.read<String>('created_at')),
+            eventColor: r.read<int?>('event_color'),
           ),
         )
         .toList();
@@ -338,8 +339,8 @@ class LifeRepository {
         id,title,notes,starts_at,ends_at,created_at,updated_at,
         location,all_day,category_id,color_value,icon_name,reminder_minutes,
         recurrence_kind,recurrence_interval,recurrence_weekdays,recurrence_until,
-        series_family_id,active_from_date)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        series_family_id,active_from_date,details_json)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ''',
       variables: [
         Variable.withString(id),
@@ -352,6 +353,9 @@ class LifeRepository {
         ..._eventExtraVariables(draft),
         Variable.withString(id),
         Variable.withString(localDate(draft.startsAt.toLocal())),
+        Variable.withString(
+          jsonEncode(draft.details.map((item) => item.toJson()).toList()),
+        ),
       ],
     );
     return (await events()).firstWhere((event) => event.id == id);
@@ -364,7 +368,7 @@ class LifeRepository {
       UPDATE fixed_events SET title=?,notes=?,starts_at=?,ends_at=?,updated_at=?,
         location=?,all_day=?,category_id=?,color_value=?,icon_name=?,
         reminder_minutes=?,recurrence_kind=?,recurrence_interval=?,
-        recurrence_weekdays=?,recurrence_until=?
+        recurrence_weekdays=?,recurrence_until=?,details_json=?
       WHERE id=? AND updated_at=? AND deleted_at IS NULL
     ''',
       variables: [
@@ -374,6 +378,9 @@ class LifeRepository {
         Variable.withString(draft.endsAt.toUtc().toIso8601String()),
         Variable.withString(DateTime.now().toUtc().toIso8601String()),
         ..._eventExtraVariables(draft),
+        Variable.withString(
+          jsonEncode(draft.details.map((item) => item.toJson()).toList()),
+        ),
         Variable.withString(previous.id),
         Variable.withString(previous.updatedAt.toUtc().toIso8601String()),
       ],
@@ -529,6 +536,16 @@ class LifeRepository {
     if (draft.reminderMinutes != null && draft.reminderMinutes! < 0) {
       throw ArgumentError('Reminder must be nonnegative');
     }
+    for (final detail in draft.details) {
+      if (detail.typeId == 'meeting-link' && detail.value.trim().isNotEmpty) {
+        final uri = Uri.tryParse(detail.value.trim());
+        if (uri == null ||
+            !const ['http', 'https'].contains(uri.scheme) ||
+            uri.host.isEmpty) {
+          throw ArgumentError('Meeting link must be an HTTP or HTTPS URL');
+        }
+      }
+    }
     final repeat = draft.repeat;
     if (repeat != null) {
       RecurrenceRule(
@@ -597,6 +614,54 @@ class LifeRepository {
         Variable.withString(id),
       ],
     );
+  }
+
+  Future<void> setCategoryEventColor(String id, int? color) async {
+    await db.customUpdate(
+      'UPDATE categories SET event_color=?,updated_at=? WHERE id=? AND deleted_at IS NULL',
+      variables: [
+        Variable<int>(color),
+        Variable.withString(DateTime.now().toUtc().toIso8601String()),
+        Variable.withString(id),
+      ],
+    );
+  }
+
+  Future<List<EventDetailType>> eventDetailTypes() async {
+    final rows = await db
+        .customSelect(
+          'SELECT id,name FROM event_detail_types ORDER BY name COLLATE NOCASE',
+        )
+        .get();
+    return rows
+        .map(
+          (row) => EventDetailType(
+            id: row.read<String>('id'),
+            name: row.read<String>('name'),
+          ),
+        )
+        .toList();
+  }
+
+  Future<EventDetailType> addEventDetailType(String name) async {
+    final clean = name.trim();
+    if (clean.isEmpty || clean.length > 60) {
+      throw ArgumentError('Enter a detail type name up to 60 characters');
+    }
+    final id = _uuid.v4();
+    await db.customInsert(
+      'INSERT INTO event_detail_types(id,name,created_at) VALUES(?,?,?)',
+      variables: [
+        Variable.withString(id),
+        Variable.withString(clean),
+        Variable.withString(DateTime.now().toUtc().toIso8601String()),
+      ],
+    );
+    return EventDetailType(id: id, name: clean);
+  }
+
+  Future<void> deleteEventDetailType(String id) async {
+    await db.customStatement('DELETE FROM event_detail_types WHERE id=?', [id]);
   }
 
   Future<Project> addProject(String categoryId, String name) async {

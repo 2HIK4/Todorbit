@@ -1,5 +1,12 @@
 # Decisions
 
+## Calendar and navigation audit (2026-10-23)
+
+- Keep sidebar order, the last selected Calendar mode, and first weekday in the per-profile appearance settings file, separate from validated theme customization JSON. Missing settings retain the existing sidebar order and Week default; the first weekday defaults to Sunday.
+- Schema 21 adds a nullable category event color, event details JSON, and a reusable custom detail-type catalog. Event colors remain nullable to mean inherited category/app color. Events have no project relationship, so project color inheritance is deferred rather than inventing one. The old `location` column stays for native compatibility; migration copies its values to a Location detail.
+- Keep event detail labels and values on each event, so removing a custom type from the catalog never erases existing event data. Recurrence templates and occurrence overrides retain their own detail snapshots.
+- Use anchored popup menus in the Event editor for Category and Color because the former dropdown overlay could obscure its trigger after scrolling. Keep contextual menus contextual; use a centered modal for Calendar day details.
+
 ## v1.0.5 public pre-release (2026-10-21)
 
 - Publish the verified Feedback Round 4 and 5 work as v1.0.5 Windows x64 pre-release, with unsigned packages and explicit limits for Windows 10, native Explorer widget input/painting, DPI/Win+D, and installer lifecycle checks. Keep v1.0.3 and all legacy data and installer identities unchanged.

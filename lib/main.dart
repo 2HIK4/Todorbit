@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+
+import 'features/shared/week_start_localizations.dart';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -413,6 +416,11 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
       ThemeModePreference.system => ThemeMode.system,
     };
     return MaterialApp(
+      localizationsDelegates: [
+        WeekStartLocalizationsDelegate(
+          ref.watch(appControllerProvider).firstWeekday,
+        ),
+      ],
       title: 'Todorbit',
       debugShowCheckedModeBanner: false,
       themeMode: mode,

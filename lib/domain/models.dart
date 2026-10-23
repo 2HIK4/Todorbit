@@ -14,10 +14,12 @@ class Category {
     required this.id,
     required this.name,
     required this.createdAt,
+    this.eventColor,
   });
   final String id;
   final String name;
   final DateTime createdAt;
+  final int? eventColor;
 }
 
 class Project {
@@ -75,6 +77,7 @@ class FixedEvent {
     this.activeFromDate,
     this.activeThroughDate,
     this.seriesFamilyId,
+    this.details = const [],
   });
   final String id;
   final String title;
@@ -97,6 +100,41 @@ class FixedEvent {
   final String? activeFromDate;
   final String? activeThroughDate;
   final String? seriesFamilyId;
+  final List<EventDetail> details;
+}
+
+class EventDetail {
+  const EventDetail({
+    required this.typeId,
+    required this.label,
+    required this.value,
+  });
+  final String typeId;
+  final String label;
+  final String value;
+
+  Map<String, String> toJson() => {
+    'typeId': typeId,
+    'label': label,
+    'value': value,
+  };
+
+  factory EventDetail.fromJson(Object? source) {
+    if (source case {
+      'typeId': String typeId,
+      'label': String label,
+      'value': String value,
+    }) {
+      return EventDetail(typeId: typeId, label: label, value: value);
+    }
+    throw const FormatException('Invalid event detail');
+  }
+}
+
+class EventDetailType {
+  const EventDetailType({required this.id, required this.name});
+  final String id;
+  final String name;
 }
 
 enum EventRepeatKind { daily, weekly, weekdays, monthly, yearly }
@@ -127,6 +165,7 @@ class EventDraft {
     this.iconName,
     this.reminderMinutes,
     this.repeat,
+    this.details = const [],
   });
   final String title;
   final String notes;
@@ -139,6 +178,7 @@ class EventDraft {
   final String? iconName;
   final int? reminderMinutes;
   final EventRepeat? repeat;
+  final List<EventDetail> details;
 }
 
 enum SessionOutcome {

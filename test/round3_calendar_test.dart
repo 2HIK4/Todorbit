@@ -145,11 +145,10 @@ void main() {
         find.widgetWithText(TextField, 'Title *'),
         'Ocean event',
       );
-      await tester.ensureVisible(find.byType(DropdownMenu<int>));
-      await tester.tap(find.byType(DropdownMenu<int>));
+      await tester.ensureVisible(find.byType(PopupMenuButton<int>));
+      await tester.tap(find.byType(PopupMenuButton<int>));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Ocean').last);
-      await tester.pumpAndSettle();
       await tester.tap(find.text('Ocean').last);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Save event'));

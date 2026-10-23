@@ -103,6 +103,22 @@ class AppController extends ChangeNotifier {
   TaskViewPreferences taskViewPreferences = const TaskViewPreferences();
   HotkeyPreferences hotkeys = HotkeyPreferences();
   CalendarContent calendarContent = CalendarContent.both;
+  int firstWeekday = 7;
+  String? lastCalendarMode;
+  static const defaultSidebarOrder = <WorkspaceView>[
+    WorkspaceView.today,
+    WorkspaceView.all,
+    WorkspaceView.inbox,
+    WorkspaceView.anytime,
+    WorkspaceView.calendar,
+    WorkspaceView.habits,
+    WorkspaceView.goals,
+    WorkspaceView.upcoming,
+    WorkspaceView.overdue,
+    WorkspaceView.waiting,
+    WorkspaceView.completed,
+  ];
+  List<WorkspaceView> sidebarOrder = List.of(defaultSidebarOrder);
   bool loading = true;
 
   LifeTask? get selectedTask {
@@ -242,6 +258,11 @@ class AppController extends ChangeNotifier {
       customization = await appearanceStore!.loadCustomization();
       taskViewPreferences = await appearanceStore!.loadTaskViewPreferences();
       hotkeys = await appearanceStore!.loadHotkeys();
+      firstWeekday = await appearanceStore!.loadFirstWeekday();
+      lastCalendarMode = await appearanceStore!.loadLastCalendarMode();
+      sidebarOrder = (await appearanceStore!.loadSidebarOrder(
+        defaultSidebarOrder.map((item) => item.name).toList(),
+      )).map(WorkspaceView.values.byName).toList();
       view = WorkspaceView.values.firstWhere(
         (candidate) => candidate.name == customization.openingScreen,
         orElse: () => WorkspaceView.today,
@@ -276,6 +297,31 @@ class AppController extends ChangeNotifier {
       notifyListeners();
       rethrow;
     }
+  }
+
+  Future<void> setFirstWeekday(int value) async {
+    await appearanceStore?.saveFirstWeekday(value);
+    firstWeekday = value;
+    notifyListeners();
+  }
+
+  Future<void> setLastCalendarMode(String value) async {
+    await appearanceStore?.saveLastCalendarMode(value);
+    lastCalendarMode = value;
+    notifyListeners();
+  }
+
+  Future<void> setSidebarOrder(List<WorkspaceView> value) async {
+    if (value.length != defaultSidebarOrder.length ||
+        value.toSet().length != value.length ||
+        !value.toSet().containsAll(defaultSidebarOrder)) {
+      throw ArgumentError('Invalid sidebar order');
+    }
+    await appearanceStore?.saveSidebarOrder(
+      value.map((item) => item.name).toList(),
+    );
+    sidebarOrder = List.of(value);
+    notifyListeners();
   }
 
   String? iconForTask(LifeTask task) =>
@@ -1044,6 +1090,18 @@ class AppController extends ChangeNotifier {
     await repository.renameCategory(id, name);
     await refresh();
   }
+
+  Future<void> setCategoryEventColor(String id, int? color) async {
+    await repository.setCategoryEventColor(id, color);
+    await refresh();
+  }
+
+  int? effectiveEventColor(FixedEvent event) =>
+      event.colorValue ??
+      categories
+          .where((category) => category.id == event.categoryId)
+          .firstOrNull
+          ?.eventColor;
 
   Future<void> deleteCategory(String id) async {
     await repository.deleteCategory(id);

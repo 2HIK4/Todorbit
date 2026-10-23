@@ -88,6 +88,41 @@ class AppearancePreferenceStore {
     await _write({...await _read(), 'hotkeys': value.toJson()});
   }
 
+  Future<int> loadFirstWeekday() async {
+    final value = (await _read())['firstWeekday'];
+    return value is int && value >= 1 && value <= 7 ? value : 7;
+  }
+
+  Future<void> saveFirstWeekday(int value) async {
+    if (value < 1 || value > 7) throw ArgumentError.value(value);
+    await _write({...await _read(), 'firstWeekday': value});
+  }
+
+  Future<String?> loadLastCalendarMode() async {
+    final value = (await _read())['lastCalendarMode'];
+    return value is String && const ['day', 'week', 'month'].contains(value)
+        ? value
+        : null;
+  }
+
+  Future<void> saveLastCalendarMode(String value) async {
+    if (!const ['day', 'week', 'month'].contains(value)) {
+      throw ArgumentError.value(value);
+    }
+    await _write({...await _read(), 'lastCalendarMode': value});
+  }
+
+  Future<List<String>> loadSidebarOrder(List<String> defaults) async {
+    final value = (await _read())['sidebarOrder'];
+    if (value is! List) return List.of(defaults);
+    final saved = value.whereType<String>().where(defaults.contains).toSet();
+    return [...saved, ...defaults.where((item) => !saved.contains(item))];
+  }
+
+  Future<void> saveSidebarOrder(List<String> value) async {
+    await _write({...await _read(), 'sidebarOrder': value});
+  }
+
   Future<Map<String, dynamic>> _read() async {
     if (!await file.exists()) return {};
     try {

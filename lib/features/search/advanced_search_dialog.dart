@@ -158,6 +158,7 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
               ),
               Expanded(
                 child: ListView(
+                  padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
                   children: [
                     if (widget.creatingSavedView ||
                         widget.savedView != null) ...[

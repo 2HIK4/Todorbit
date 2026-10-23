@@ -9,7 +9,7 @@ import 'profile_paths.dart';
 class AppDatabase extends GeneratedDatabase {
   AppDatabase(super.executor);
 
-  static const currentSchemaVersion = 20;
+  static const currentSchemaVersion = 21;
 
   /// Resolve the database within a selected per-user data root. This also lets
   /// disposable profile tests exercise the same path as a packaged build.
@@ -126,9 +126,10 @@ class AppDatabase extends GeneratedDatabase {
       await _createTaskComposition();
       await _createProgressivePlans();
       await _createEventReminderDeliveries();
+      await _createEventDetails();
     },
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 19 || to != 20) {
+      if (from < 1 || from > 20 || to != 21) {
         throw StateError('No migration registered from schema $from to $to');
       }
       if (from == 1) {
@@ -174,8 +175,26 @@ class AppDatabase extends GeneratedDatabase {
       await _createTaskComposition();
       await _createProgressivePlans();
       await _createEventReminderDeliveries();
+      await _createEventDetails();
     },
   );
+
+  Future<void> _createEventDetails() async {
+    await _addColumnIfMissing('categories', 'event_color', 'INTEGER');
+    await _addColumnIfMissing(
+      'fixed_events',
+      'details_json',
+      "TEXT NOT NULL DEFAULT '[]'",
+    );
+    await customStatement('''CREATE TABLE IF NOT EXISTS event_detail_types (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL COLLATE NOCASE UNIQUE,
+      created_at TEXT NOT NULL
+    )''');
+    await customStatement('''UPDATE fixed_events SET details_json =
+      json_array(json_object('typeId','location','label','Location','value',location))
+      WHERE length(trim(location)) > 0 AND details_json = '[]' ''');
+  }
 
   Future<void> _createTaskResources() async {
     await customStatement('''CREATE TABLE IF NOT EXISTS task_resources (

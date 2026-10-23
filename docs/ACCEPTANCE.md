@@ -1,5 +1,9 @@
 # Windows v1.0 final acceptance record
 
+The 2026-10-23 calendar, sidebar, and cross-app UI audit is recorded in
+[`CALENDAR_UI_AUDIT.md`](CALENDAR_UI_AUDIT.md). Its schema 21 and interface
+results are newer than the historical v1.0.5 record below.
+
 ## v1.0.5 publication scope (2026-10-21)
 
 This Windows x64 pre-release uses the completed Feedback Round 4 Part 1 and 2,

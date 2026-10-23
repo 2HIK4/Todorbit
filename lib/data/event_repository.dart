@@ -3,6 +3,9 @@ part of 'life_repository.dart';
 FixedEvent _eventFromRow(QueryRow row) {
   final kind = row.read<String?>('recurrence_kind');
   final weekdays = row.read<String?>('recurrence_weekdays');
+  final savedDetails = (jsonDecode(row.read<String>('details_json')) as List<dynamic>)
+      .map(EventDetail.fromJson).toList();
+  final location = row.read<String>('location');
   return FixedEvent(
     id: row.read<String>('id'),
     title: row.read<String>('title'),
@@ -11,7 +14,10 @@ FixedEvent _eventFromRow(QueryRow row) {
     endsAt: DateTime.parse(row.read<String>('ends_at')),
     createdAt: DateTime.parse(row.read<String>('created_at')),
     updatedAt: DateTime.parse(row.read<String>('updated_at')),
-    location: row.read<String>('location'),
+    location: location,
+    details: savedDetails.isEmpty && location.trim().isNotEmpty
+        ? [EventDetail(typeId: 'location', label: 'Location', value: location)]
+        : savedDetails,
     allDay: row.read<int>('all_day') == 1,
     categoryId: row.read<String?>('category_id'),
     colorValue: row.read<int?>('color_value'),
@@ -189,6 +195,7 @@ extension EventRepository on LifeRepository {
       startsAt: adjustedStart,
       endsAt: adjustedStart.add(draft.endsAt.difference(draft.startsAt)),
       location: draft.location,
+      details: draft.details,
       allDay: draft.allDay,
       categoryId: draft.categoryId,
       colorValue: draft.colorValue,
@@ -344,6 +351,11 @@ extension EventRepository on LifeRepository {
             createdAt: template.createdAt,
             updatedAt: template.updatedAt,
             location: override?['location'] as String? ?? template.location,
+            details: override?['details'] is List
+                ? (override!['details'] as List<dynamic>)
+                      .map(EventDetail.fromJson)
+                      .toList()
+                : template.details,
             allDay: override?['allDay'] as bool? ?? template.allDay,
             categoryId:
                 override?['categoryId'] as String? ?? template.categoryId,
@@ -396,6 +408,11 @@ extension EventRepository on LifeRepository {
             createdAt: template.createdAt,
             updatedAt: template.updatedAt,
             location: override['location'] as String,
+            details: override['details'] is List
+                ? (override['details'] as List<dynamic>)
+                      .map(EventDetail.fromJson)
+                      .toList()
+                : template.details,
             allDay: override['allDay'] as bool,
             categoryId: override['categoryId'] as String?,
             colorValue: override['colorValue'] as int?,
@@ -445,6 +462,7 @@ extension EventRepository on LifeRepository {
       'startsAt': draft.startsAt.toUtc().toIso8601String(),
       'endsAt': draft.endsAt.toUtc().toIso8601String(),
       'location': draft.location.trim(),
+      'details': draft.details.map((item) => item.toJson()).toList(),
       'allDay': draft.allDay,
       'categoryId': draft.categoryId,
       'colorValue': draft.colorValue,

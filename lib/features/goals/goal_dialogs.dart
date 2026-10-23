@@ -100,7 +100,7 @@ class _GoalEditorDialogState extends ConsumerState<GoalEditorDialog> {
   Widget build(BuildContext context) => Dialog(
     child: SizedBox(
       width: math.min(MediaQuery.sizeOf(context).width - 48, 520),
-      height: math.min(MediaQuery.sizeOf(context).height - 48, 520),
+      height: math.min(MediaQuery.sizeOf(context).height - 48, 440),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -113,16 +113,19 @@ class _GoalEditorDialogState extends ConsumerState<GoalEditorDialog> {
             const SizedBox(height: 8),
             Expanded(
               child: ListView(
+                padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
                 children: [
                   TextField(
                     controller: title,
                     decoration: const InputDecoration(labelText: 'Title *'),
                   ),
+                  const SizedBox(height: 12),
                   TextField(
                     controller: description,
                     maxLines: 2,
                     decoration: const InputDecoration(labelText: 'Description'),
                   ),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
@@ -145,10 +148,12 @@ class _GoalEditorDialogState extends ConsumerState<GoalEditorDialog> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 12),
                   OutlinedButton(
                     onPressed: busy ? null : () => _pick(start: true),
                     child: Text('Start day: $startDate'),
                   ),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(

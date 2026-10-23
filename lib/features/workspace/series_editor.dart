@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
+import '../shared/weekdays.dart';
 import '../../domain/models.dart';
 import '../../domain/recurrence.dart';
 import '../../domain/series_edit.dart';
@@ -307,6 +308,7 @@ class _SeriesEditorDialogState extends ConsumerState<SeriesEditorDialog> {
               else
                 Expanded(
                   child: ListView(
+                    padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
                     children: [
                       DropdownButtonFormField<SeriesEditScope>(
                         initialValue: scope,
@@ -394,35 +396,21 @@ class _SeriesEditorDialogState extends ConsumerState<SeriesEditorDialog> {
                         ),
                       ),
                       if (kind == RecurrenceKind.weekdays)
-                        Wrap(
-                          spacing: 4,
-                          children: [
-                            for (var day = 1; day <= 7; day++)
-                              FilterChip(
-                                label: Text(
-                                  const [
-                                    'Mon',
-                                    'Tue',
-                                    'Wed',
-                                    'Thu',
-                                    'Fri',
-                                    'Sat',
-                                    'Sun',
-                                  ][day - 1],
-                                ),
-                                selected: weekdays.contains(day),
-                                onSelected: (selected) {
-                                  setState(() {
-                                    if (selected) {
-                                      weekdays.add(day);
-                                    } else {
-                                      weekdays.remove(day);
-                                    }
-                                  });
-                                  _invalidate();
-                                },
-                              ),
-                          ],
+                        WeekdayPickerRow(
+                          firstWeekday: ref
+                              .watch(appControllerProvider)
+                              .firstWeekday,
+                          selected: weekdays,
+                          onSelected: (day, selected) {
+                            setState(() {
+                              if (selected) {
+                                weekdays.add(day);
+                              } else {
+                                weekdays.remove(day);
+                              }
+                            });
+                            _invalidate();
+                          },
                         ),
                       _dateButton(
                         'Rule anchor day',

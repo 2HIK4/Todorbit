@@ -391,6 +391,9 @@ void _validateLifeManagerSnapshot(String filePath) {
     if (schema >= 2) {
       required.add('fixed_events');
     }
+    if (schema >= 21) {
+      required.add('event_detail_types');
+    }
     if (schema >= 3) {
       required.add('work_sessions');
     }
