@@ -6,6 +6,8 @@
 
 A same-path disposable portable update using the locally built 1.0.5 ZIP and the new 1.0.6 ZIP succeeded: the helper restarted the app, retained the exact profile database bytes and a sentinel file, and kept a binary rollback folder. The local 1.0.5 ZIP differs from the public 1.0.5 asset, so the same check was repeated with the public package after verifying its published SHA-256 digest; it also passed. The registered installation on this Windows account was not opened or modified. Actual installer upgrade, schema migration approval in the updated GUI, physical widget/Explorer input, Windows 10, and mixed DPI remain unverified; publish as a pre-release.
 
+The v1.0.6 pre-release is published. All four assets were downloaded and their SHA-256 hashes matched the local files and GitHub digests. The built-in selector recognized both exact package names from the live GitHub Releases API for a 1.0.5 user on the Pre-release channel; Stable ignores this pre-release by design.
+
 ## Software Updates acceptance (2026-10-24)
 
 | Check | Status | Evidence and limit |

@@ -5,6 +5,7 @@
 - Advanced app and native widget versions to 1.0.6, updated public docs and release notes, and retained the stable installer AppId, install directory, and profile paths.
 - `flutter analyze --no-pub` and 229 serial Flutter tests passed (existing nonfatal workspace scroll hit-test warning). Native .NET and Windows Release builds, source and packaged widget self-tests, Inno Setup 7 compilation, and portable ZIP archive/contents checks passed.
 - A disposable same-path portable 1.0.5 to 1.0.6 update passed with isolated profiles using both the local 1.0.5 ZIP and the SHA-256-verified public 1.0.5 ZIP: the helper restarted the new bundle, retained each database and sentinel file unchanged, and kept binary rollback. Actual installed upgrade remains unverified because the current account has a real registered Todorbit installation; it was not touched. See `docs/ACCEPTANCE.md`.
+- Merged `feature/calendar-ui-audit` into `main` and published [v1.0.6](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.6) as a pre-release. Downloaded installer, portable ZIP, checksum file, and release notes matched local SHA-256 hashes and GitHub asset digests. The app's `SoftwareUpdateService.selectRelease` selected both package types from the live GitHub API response for a 1.0.5 user on the Pre-release channel. Stable intentionally ignores pre-releases.
 
 ## Codex development workflow (2026-10-24)
 
