@@ -43,8 +43,11 @@ void main() {
     expect(UpdateVersion.parse('v1.0.5+6'), isNotNull);
     expect(UpdateVersion.parse('1.0.5-alpha.01'), isNull);
     expect(UpdateVersion.parse('1.0.5+broken..metadata'), isNull);
-    expect(UpdateVersion.parse('1.0.5-99999999999999999999')!
-        .compareTo(UpdateVersion.parse('1.0.5-2')!), greaterThan(0));
+    expect(
+      UpdateVersion.parse('1.0.5-99999999999999999999')!
+          .compareTo(UpdateVersion.parse('1.0.5-2')!),
+      greaterThan(0),
+    );
     expect(UpdateVersion.parse('unpublished'), isNull);
   });
 
@@ -128,6 +131,14 @@ void main() {
       await store.save(saved.copyWith(automaticChecks: true));
       expect((await store.load()).automaticChecks, isTrue);
       await store.file.writeAsString('{"version":2}');
+      expect(store.load(), throwsFormatException);
+      await store.file.writeAsString(
+        '{"version":1,"automaticChecks":"false","channel":"stable"}',
+      );
+      expect(store.load(), throwsFormatException);
+      await store.file.writeAsString(
+        '{"version":1,"automaticChecks":false,"channel":"unknown"}',
+      );
       expect(store.load(), throwsFormatException);
     },
   );

@@ -5,6 +5,7 @@
 - Check only published `2HIK4/Todorbit` GitHub Releases with strict semantic-version ordering. Require the exact Windows x64 asset and GitHub asset SHA-256 digest; unsigned packages require explicit install confirmation.
 - Keep update preferences in a separate versioned JSON file under the active profile. Background checks never download or install.
 - Run a bundled helper after the main process closes. Installed copies use the stable Inno AppId; portable copies stage a complete ZIP beside the current folder and swap into the same path, retaining a binary rollback folder. The updater never modifies profile data. The existing verified SQLite backup and migration gate remains separate from binary rollback.
+- After the app's widget exit command, wait for the widget process at this exact bundle path to close before replacement. Treat an immediate portable restart exit as a failed update and restore the old binary folder. Keep the rollback folder after a successful start for manual validation; three seconds of process liveness is only a startup smoke check.
 
 ## Calendar and navigation audit (2026-10-23)
 

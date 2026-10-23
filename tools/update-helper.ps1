@@ -28,6 +28,20 @@ try {
   if ($oldProcess) {
     $oldProcess | Wait-Process -Timeout 90
   }
+  # The widget is a separate process and can keep files in the bundle locked
+  # after its IPC exit command has returned.
+  $widgetPath = Join-Path $targetPath 'TodorbitWidget.exe'
+  $widgetDeadline = (Get-Date).AddSeconds(15)
+  do {
+    $widgets = @(Get-Process -Name TodorbitWidget -ErrorAction SilentlyContinue | Where-Object {
+      try { $_.Path -and [IO.Path]::GetFullPath($_.Path) -ieq $widgetPath } catch { $false }
+    })
+    if ($widgets.Count -eq 0) { break }
+    Start-Sleep -Milliseconds 250
+  } while ((Get-Date) -lt $widgetDeadline)
+  if ($widgets.Count -gt 0) {
+    throw 'The native widget did not close. The existing installation was left in place.'
+  }
   if ($Mode -eq 'installed') {
     if ([IO.Path]::GetExtension($packagePath) -ine '.exe') {
       throw 'Installed updates require the verified setup executable.'
@@ -63,7 +77,12 @@ try {
     }
   }
   try {
-    Start-Process -FilePath (Join-Path $targetPath 'Todorbit.exe') -WorkingDirectory $targetPath
+    $started = Start-Process -FilePath (Join-Path $targetPath 'Todorbit.exe') -WorkingDirectory $targetPath -PassThru
+    Start-Sleep -Seconds 3
+    $started.Refresh()
+    if ($started.HasExited) {
+      throw "Updated Todorbit exited immediately (code $($started.ExitCode))."
+    }
   } catch {
     if ($Mode -eq 'portable' -and $rollback -and
         (Test-Path -LiteralPath $rollback -PathType Container)) {

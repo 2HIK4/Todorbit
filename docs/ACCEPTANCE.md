@@ -1,5 +1,21 @@
 # Windows v1.0 final acceptance record
 
+## Software Updates acceptance (2026-10-24)
+
+| Check | Status | Evidence and limit |
+| --- | --- | --- |
+| Release selection, exact asset, digest and redirect validation | PASS | Focused update service tests exercise semver, channels, missing digest, corrupt and short downloads, and rejected redirects. |
+| Settings controls and persistence | PASS | Widget test and isolated Flutter Driver session covered navigation, version/status display, automatic-check toggle persistence, reopening, and screenshot inspection at 1264 × 681. Physical mouse and DPI behavior remain in the separate manual row. |
+| Portable 1.0.4 to 1.0.5 replacement and restart | PASS | Real packaged bundles swapped at one disposable path under temporary APPDATA/LOCALAPPDATA; helper reported success and the new executable remained running. |
+| Portable profile and user data | PARTIAL | The disposable schema 20 profile retained a seeded task and event plus valid appearance/custom theme, calendar, widget, and update preference values after the swap. Migration approval and full UI reading of those records remain unverified. |
+| Immediate startup failure and corrupt package | PASS | An injected executable that exited immediately caused helper exit 1 and restored the prior binary; a wrong digest failed before changing the binary. Seeded task and event survived. |
+| Native widget shutdown | PARTIAL | Isolated widget process accepted the exit command and exited. The helper's refusal to swap a still-running widget is tested separately; live Explorer painting and post-update widget restart are unverified. |
+| Registered installer update | UNVERIFIED | The current Windows account has a real Todorbit registration at the stable AppId/path. No separate Windows user or VM was available for a safe installed upgrade, so the registered install was not modified. The helper rejected a mismatched disposable target. |
+| Database migration and recovery | PARTIAL | Existing migration and backup tests verify schema 20 to 21 and pre-upgrade snapshot behavior. The real portable swap kept schema 20 untouched pending approval; a live approval and rollback flow was not exercised. |
+| Physical Settings, widget, DPI, and keyboard acceptance | UNVERIFIED | Native computer control exposed no app windows. Flutter Driver and widget tests do not establish physical mouse or Explorer behavior. |
+
+No new GitHub Release was created; the installer remains unsigned.
+
 The 2026-10-23 calendar, sidebar, and cross-app UI audit is recorded in
 [`CALENDAR_UI_AUDIT.md`](CALENDAR_UI_AUDIT.md). Its schema 21 and interface
 results are newer than the historical v1.0.5 record below.

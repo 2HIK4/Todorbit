@@ -26,7 +26,11 @@ folder before closing. The helper renames the existing application folder to
 a rollback folder and moves the complete new folder into the *same exact
 path*. This keeps the location-derived portable profile identity. The helper
 restarts Todorbit. It records a result in `updates/<tag>/last-install-result.txt`.
-No updater step touches profile databases, attachments, backups, or settings.
+The helper waits for the native widget from that installation to exit before
+replacing files. A portable restart that exits within three seconds triggers
+binary rollback. The updater leaves profile databases, attachments, backups,
+and other settings in place; the Software Updates page writes only its own
+`update-settings.json` preferences.
 Do not move the portable folder during recovery.
 
 On next launch the existing migration gate checks the SQLite schema. A schema
@@ -65,3 +69,6 @@ registration. For a portable swap failure, the helper tries to put the old
 folder back. For an installer failure, use the verified previous installer;
 keep the profile and its backups untouched. An Inno exit code of zero and a
 restart request do not by themselves prove the new app launched correctly.
+The three-second portable restart check catches immediate exits, but it does
+not establish that startup, migration approval, or later use succeeded. Keep
+the rollback folder until the updated app and profile have been inspected.

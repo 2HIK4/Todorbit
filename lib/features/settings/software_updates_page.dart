@@ -50,6 +50,7 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
   File? _package;
   int _received = 0;
   bool _portable = false;
+  bool _installing = false;
 
   @override
   void initState() {
@@ -215,9 +216,11 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
   }
 
   Future<void> _install() async {
+    if (_installing) return;
     final package = _package;
     final release = _release;
     if (package == null || release == null) return;
+    setState(() => _installing = true);
     final approved = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -240,7 +243,10 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
         ],
       ),
     );
-    if (approved != true || !mounted) return;
+    if (approved != true || !mounted) {
+      if (mounted) setState(() => _installing = false);
+      return;
+    }
     try {
       // Installation is delegated to a separate process after verification.
       if (widget.nativeWidget.isAvailable) {
@@ -251,6 +257,7 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
     } catch (error) {
       if (mounted) {
         setState(() {
+          _installing = false;
           _status = UpdateStatus.failed;
           _error = 'Could not start update: $error';
         });
@@ -319,8 +326,12 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
       if (_portable) ...['-Stage', stage],
     ], mode: ProcessStartMode.detached);
     if (process.pid <= 0) throw StateError('Update helper did not start');
-    await ref.read(appControllerProvider).repository.db.close();
-    exit(0);
+    try {
+      await ref.read(appControllerProvider).repository.db.close();
+    } finally {
+      // Once the helper is running, this process must release bundle files.
+      exit(0);
+    }
   }
 
   @override
@@ -450,8 +461,10 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
             Align(
               alignment: Alignment.centerLeft,
               child: FilledButton(
-                onPressed: _install,
-                child: const Text('Update and Restart'),
+                onPressed: _installing ? null : _install,
+                child: Text(
+                  _installing ? 'Preparing update…' : 'Update and Restart',
+                ),
               ),
             ),
         ],

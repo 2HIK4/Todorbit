@@ -44,12 +44,16 @@ class UpdatePreferenceStore {
     if (!await file.exists()) return const UpdatePreferences();
     final value = jsonDecode(await file.readAsString());
     if (value is! Map<String, dynamic> ||
-        (value['version'] != null && value['version'] != 1)) {
+        value['version'] != 1 ||
+        value['automaticChecks'] is! bool ||
+        !const ['stable', 'prerelease'].contains(value['channel']) ||
+        (value['lastCheckedUtc'] != null &&
+            value['lastCheckedUtc'] is! String)) {
       throw const FormatException('Unsupported update settings format');
     }
     final checked = value['lastCheckedUtc'];
     return UpdatePreferences(
-      automaticChecks: value['automaticChecks'] != false,
+      automaticChecks: value['automaticChecks'] as bool,
       channel: value['channel'] == 'prerelease'
           ? UpdateChannel.prerelease
           : UpdateChannel.stable,
@@ -126,13 +130,13 @@ class UpdateVersion implements Comparable<UpdateVersion> {
       final rightNumeric = RegExp(r'^\d+$').hasMatch(right);
       final comparison = leftNumeric && rightNumeric
           ? (left.length == right.length
-              ? left.compareTo(right)
-              : left.length.compareTo(right.length))
+                ? left.compareTo(right)
+                : left.length.compareTo(right.length))
           : leftNumeric
-              ? -1
-              : rightNumeric
-                  ? 1
-                  : left.compareTo(right);
+          ? -1
+          : rightNumeric
+          ? 1
+          : left.compareTo(right);
       if (comparison != 0) return comparison;
     }
     return pre.length.compareTo(other.pre.length);
