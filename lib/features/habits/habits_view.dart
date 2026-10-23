@@ -283,7 +283,9 @@ class _HabitsViewState extends ConsumerState<HabitsView> {
     final reference = day.compareTo(today) > 0 ? today : day;
     final todayDate = DateTime.parse(reference);
     final weekStart = localDate(
-      todayDate.subtract(Duration(days: todayDate.weekday - 1)),
+      todayDate.subtract(
+        Duration(days: (todayDate.weekday - controller.firstWeekday + 7) % 7),
+      ),
     );
     final monthStart = localDate(DateTime(todayDate.year, todayDate.month));
     final yearStart = localDate(DateTime(todayDate.year));

@@ -1,5 +1,21 @@
 # Calendar
 
+Schema v21 stores a nullable default event color on each category and a JSON
+list of optional details on each event. A separate table keeps reusable custom
+detail-type names; deleting a type does not erase labels or values already
+saved on events. Existing location text migrates into a Location detail and
+the old column remains for native compatibility. Events have no project link,
+so project colors do not currently apply. An explicit event color overrides
+the category color. The event editor supports preset and HEX colors, a color
+wheel, live duration, and clear Never/On date recurrence ending controls.
+Occurrence overrides and split series carry details forward.
+
+The per-profile appearance settings retain the last selected Day/Week/Month
+view and the first weekday. Week starts Sunday until a user changes it. The
+setting reorders Calendar Week/Month, date pickers, recurrence weekday rows,
+habit weekly summaries, and weekly availability. Month has weekday headers;
+day details open in a centered dialog.
+
 Schema v16 adds recurring events to the existing fixed-event table. Daily,
 weekly, selected-weekday, monthly, and yearly rules use local nominal dates;
 selected weekdays and an inclusive last date support semester lectures. The

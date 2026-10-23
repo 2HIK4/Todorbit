@@ -1,6 +1,6 @@
 # Install Todorbit on Windows
 
-Todorbit v1.0.5 is a free, MIT-licensed Windows x64 pre-release. Windows 11 is the main development and test platform; Windows 10 and installed upgrade/uninstall behavior still need direct acceptance. The packages are unsigned. Download from the [public GitHub release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.5), then compare SHA-256 with its published `SHA256SUMS.txt`.
+Todorbit v1.0.6 is a free, MIT-licensed Windows x64 pre-release. Windows 11 is the main development and test platform; Windows 10 and installed upgrade/uninstall behavior still need direct acceptance. The packages are unsigned. Download from the [public GitHub release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.6), then compare SHA-256 with its published `SHA256SUMS.txt`.
 
 ## Installer
 

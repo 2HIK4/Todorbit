@@ -13,14 +13,18 @@ import 'notification_dialog.dart';
 import 'privacy_dialog.dart';
 import 'task_view_settings_dialog.dart';
 import 'theme_dialog.dart';
+import 'sidebar_order_dialog.dart';
+import 'software_updates_page.dart';
 
 enum _SettingsPage {
   appearance('Appearance & Themes', Icons.palette_outlined),
   hotkeys('Hotkeys', Icons.keyboard_outlined),
   tasks('Task Preferences', Icons.task_alt_outlined),
+  navigation('Navigation & Calendar', Icons.calendar_month_outlined),
   notifications('Notifications', Icons.notifications_outlined),
   widget('Widget', Icons.widgets_outlined),
-  privacy('Privacy & Data', Icons.lock_outline);
+  privacy('Privacy & Data', Icons.lock_outline),
+  updates('Software Updates', Icons.system_update_outlined);
 
   const _SettingsPage(this.title, this.icon);
   final String title;
@@ -240,6 +244,37 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
           Icons.task_alt_outlined,
           () => _open(const TaskViewSettingsDialog()),
         ),
+        _SettingsPage.navigation => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _action(
+              'Sidebar order',
+              'Reorder the main navigation items',
+              Icons.reorder,
+              () => _open(const SidebarOrderDialog()),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int>(
+              key: ValueKey(controller.firstWeekday),
+              initialValue: controller.firstWeekday,
+              decoration: const InputDecoration(
+                labelText: 'First day of the week',
+              ),
+              items: const [
+                DropdownMenuItem(value: 7, child: Text('Sunday')),
+                DropdownMenuItem(value: 1, child: Text('Monday')),
+                DropdownMenuItem(value: 2, child: Text('Tuesday')),
+                DropdownMenuItem(value: 3, child: Text('Wednesday')),
+                DropdownMenuItem(value: 4, child: Text('Thursday')),
+                DropdownMenuItem(value: 5, child: Text('Friday')),
+                DropdownMenuItem(value: 6, child: Text('Saturday')),
+              ],
+              onChanged: (value) {
+                if (value != null) controller.setFirstWeekday(value);
+              },
+            ),
+          ],
+        ),
         _SettingsPage.notifications => _action(
           'Reminder settings',
           'Reminders and daily summary delivery',
@@ -355,6 +390,9 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
                 widget.showDataProfile,
               ),
           ],
+        ),
+        _SettingsPage.updates => SoftwareUpdatesPage(
+          nativeWidget: widget.nativeWidget,
         ),
       },
     ],

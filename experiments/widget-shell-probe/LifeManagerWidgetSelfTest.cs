@@ -705,6 +705,17 @@ internal static class LifeManagerWidgetSelfTest {
         if (v20Repository.ClaimEventReminders(now).Count != 0)
           throw new InvalidOperationException("Event reminder fired twice.");
       }
+      using (var connection = new SqliteConnection($"Data Source={databasePath}")) {
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA user_version=21";
+        command.ExecuteNonQuery();
+      }
+      using (var v21Repository =
+          LifeManagerWidgetRepository.OpenForTest(databasePath)) {
+        if (v21Repository.ClaimEventReminders(DateTime.Now).Count != 0)
+          throw new InvalidOperationException("Schema v21 reminder compatibility failed.");
+      }
       VerifySettingsRoundTrip(directory);
       VerifyAppearanceRoundTrip(directory);
       VerifySingleInstanceMutex();

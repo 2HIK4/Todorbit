@@ -28,6 +28,8 @@ import '../settings/theme_dialog.dart';
 import '../settings/settings_hub_dialog.dart';
 import '../scheduling/smart_reschedule.dart';
 import '../shared/icon_picker.dart';
+import '../shared/event_color_picker.dart';
+import '../shared/sidebar_items.dart';
 import '../widget/native_widget_service.dart';
 import 'task_editor.dart';
 import 'sequence_dialog.dart';
@@ -67,6 +69,46 @@ String _viewDescription(WorkspaceView view) => switch (view) {
 };
 
 class _WorkspaceState extends ConsumerState<Workspace> {
+  Future<void> _chooseCategoryEventColor(Category category) async {
+    final selected = await showDialog<int>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text('Default event color for ${category.name}'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, 0),
+            child: const Text('App default'),
+          ),
+          for (final color in eventColors)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, color.$2),
+              child: Row(
+                children: [
+                  Icon(Icons.circle, color: Color(color.$2)),
+                  const SizedBox(width: 8),
+                  Text(color.$1),
+                ],
+              ),
+            ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, -1),
+            child: const Text('Custom Color'),
+          ),
+        ],
+      ),
+    );
+    if (selected == null || !mounted) return;
+    final color = selected == -1
+        ? await chooseEventColor(context, category.eventColor ?? 0xFF5365B5)
+        : selected == 0
+        ? null
+        : selected;
+    if (selected == -1 && color == null) return;
+    await ref
+        .read(appControllerProvider)
+        .setCategoryEventColor(category.id, color);
+  }
+
   static const _activationChannel = MethodChannel('life_manager/activation');
   bool _appearanceDialogOpen = false;
   bool creating = false;
@@ -635,72 +677,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               children: [
-                _nav(
-                  controller,
-                  WorkspaceView.today,
-                  'Today',
-                  Icons.today_outlined,
-                ),
-                _nav(
-                  controller,
-                  WorkspaceView.all,
-                  'All tasks',
-                  Icons.checklist_outlined,
-                ),
-                _nav(
-                  controller,
-                  WorkspaceView.inbox,
-                  'Inbox',
-                  Icons.inbox_outlined,
-                ),
-                _nav(
-                  controller,
-                  WorkspaceView.anytime,
-                  'Anytime',
-                  Icons.all_inclusive,
-                ),
-                _nav(
-                  controller,
-                  WorkspaceView.calendar,
-                  'Calendar',
-                  Icons.calendar_month_outlined,
-                ),
-                _nav(
-                  controller,
-                  WorkspaceView.habits,
-                  'Habits',
-                  Icons.insights_outlined,
-                ),
-                _nav(
-                  controller,
-                  WorkspaceView.goals,
-                  'Goals',
-                  Icons.flag_outlined,
-                ),
-                _nav(
-                  controller,
-                  WorkspaceView.upcoming,
-                  'Upcoming',
-                  Icons.event_outlined,
-                ),
-                _nav(
-                  controller,
-                  WorkspaceView.overdue,
-                  'Overdue',
-                  Icons.notification_important_outlined,
-                ),
-                _nav(
-                  controller,
-                  WorkspaceView.waiting,
-                  'Waiting / On hold',
-                  Icons.pause_circle_outline,
-                ),
-                _nav(
-                  controller,
-                  WorkspaceView.completed,
-                  'Completed',
-                  Icons.task_alt_outlined,
-                ),
+                for (final view in controller.sidebarOrder)
+                  _nav(controller, view, sidebarName(view), sidebarIcon(view)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -756,6 +734,10 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                         ),
                         PopupMenuItem(value: 'rename', child: Text('Rename')),
                         PopupMenuItem(
+                          value: 'event-color',
+                          child: Text('Default event color'),
+                        ),
+                        PopupMenuItem(
                           value: 'icon',
                           child: Text('Change icon'),
                         ),
@@ -771,6 +753,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                           }
                         } else if (action == 'icon') {
                           await _changeIcon('category', category.id);
+                        } else if (action == 'event-color') {
+                          await _chooseCategoryEventColor(category);
                         } else if (action == 'rename') {
                           final name = await _nameDialog(
                             'Rename category',

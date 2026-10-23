@@ -6,9 +6,32 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../shared/icon_picker.dart';
+import '../shared/event_color_picker.dart';
+import '../shared/weekdays.dart';
 import '../widget/native_widget_service.dart';
 
 enum _EventEditScope { occurrence, future, series }
+
+String eventDurationLabel(DateTime start, DateTime end, {bool allDay = false}) {
+  if (!end.isAfter(start)) return 'End must follow Start';
+  if (allDay) {
+    final days = DateTime.utc(
+      end.year,
+      end.month,
+      end.day,
+    ).difference(DateTime.utc(start.year, start.month, start.day)).inDays;
+    return days == 1 ? '1 day' : '$days days';
+  }
+  final minutes = end.difference(start).inMinutes;
+  final days = minutes ~/ 1440;
+  final hours = (minutes % 1440) ~/ 60;
+  final rest = minutes % 60;
+  final parts = <String>[];
+  if (days > 0) parts.add('$days ${days == 1 ? 'day' : 'days'}');
+  if (hours > 0) parts.add('$hours ${hours == 1 ? 'hour' : 'hours'}');
+  if (rest > 0) parts.add('$rest ${rest == 1 ? 'minute' : 'minutes'}');
+  return parts.isEmpty ? 'Less than 1 minute' : parts.join(' ');
+}
 
 class EventEditor extends ConsumerStatefulWidget {
   const EventEditor({
@@ -26,9 +49,25 @@ class EventEditor extends ConsumerStatefulWidget {
 }
 
 class _EventEditorState extends ConsumerState<EventEditor> {
+  Color _inheritedColor() {
+    final controller = ref.read(appControllerProvider);
+    final value = controller.categories
+        .where((item) => item.id == categoryId)
+        .firstOrNull
+        ?.eventColor;
+    return value == null ? Theme.of(context).colorScheme.primary : Color(value);
+  }
+
+  static const builtInDetails = <EventDetailType>[
+    EventDetailType(id: 'location', name: 'Location'),
+    EventDetailType(id: 'room', name: 'Room'),
+    EventDetailType(id: 'meeting-link', name: 'Meeting link / URL'),
+    EventDetailType(id: 'contact', name: 'Organizer or Contact'),
+  ];
   late final TextEditingController title;
   late final TextEditingController notes;
-  late final TextEditingController location;
+  List<EventDetail> details = [];
+  List<EventDetailType> detailTypes = [];
   late DateTime start;
   late DateTime end;
   bool allDay = false;
@@ -47,7 +86,8 @@ class _EventEditorState extends ConsumerState<EventEditor> {
     super.initState();
     title = TextEditingController(text: widget.event?.title ?? '');
     notes = TextEditingController(text: widget.event?.notes ?? '');
-    location = TextEditingController(text: widget.event?.location ?? '');
+    details = List.of(widget.event?.details ?? const []);
+    _loadDetailTypes();
     allDay = widget.event?.allDay ?? false;
     repeatKind = widget.event?.repeat?.kind;
     weekdays = {...?widget.event?.repeat?.weekdays};
@@ -74,9 +114,221 @@ class _EventEditorState extends ConsumerState<EventEditor> {
   void dispose() {
     title.dispose();
     notes.dispose();
-    location.dispose();
     super.dispose();
   }
+
+  Future<void> _loadDetailTypes() async {
+    final loaded = await ref
+        .read(appControllerProvider)
+        .repository
+        .eventDetailTypes();
+    if (mounted) setState(() => detailTypes = loaded);
+  }
+
+  Future<void> _addDetail(String typeId) async {
+    if (typeId == 'manage') {
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Custom detail types'),
+          content: SizedBox(
+            width: 350,
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                const Text(
+                  'Deleting a type removes it from this list. Details already saved on events stay intact.',
+                ),
+                const SizedBox(height: 8),
+                if (detailTypes.isEmpty) const Text('No custom types yet.'),
+                for (final type in detailTypes)
+                  ListTile(
+                    title: Text(type.name),
+                    trailing: IconButton(
+                      tooltip: 'Delete ${type.name} from catalog',
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () async {
+                        await ref
+                            .read(appControllerProvider)
+                            .repository
+                            .deleteEventDetailType(type.id);
+                        await _loadDetailTypes();
+                        if (context.mounted) Navigator.pop(context);
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Done'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    EventDetailType? type;
+    if (typeId == 'custom') {
+      var enteredName = '';
+      final name = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Add custom detail type'),
+          content: TextField(
+            onChanged: (value) => enteredName = value,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'Type name'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, enteredName),
+              child: const Text('Add'),
+            ),
+          ],
+        ),
+      );
+      if (name == null || name.trim().isEmpty) return;
+      try {
+        type = await ref
+            .read(appControllerProvider)
+            .repository
+            .addEventDetailType(name);
+        await _loadDetailTypes();
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('$error')));
+        }
+        return;
+      }
+    } else {
+      type = [
+        ...builtInDetails,
+        ...detailTypes,
+      ].where((item) => item.id == typeId).firstOrNull;
+    }
+    if (type != null && mounted) {
+      setState(
+        () => details.add(
+          EventDetail(typeId: type!.id, label: type.name, value: ''),
+        ),
+      );
+    }
+  }
+
+  Widget _detailsSection() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Details',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Add detail',
+            icon: const Icon(Icons.add),
+            onSelected: _addDetail,
+            itemBuilder: (_) => [
+              for (final type in [...builtInDetails, ...detailTypes])
+                PopupMenuItem(value: type.id, child: Text(type.name)),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'manage',
+                child: Text('Manage custom types'),
+              ),
+              const PopupMenuItem(
+                value: 'custom',
+                child: Text('Add custom detail type'),
+              ),
+            ],
+          ),
+        ],
+      ),
+      for (var index = 0; index < details.length; index++) ...[
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                key: ValueKey('detail-$index-${details[index].typeId}'),
+                initialValue: details[index].value,
+                keyboardType: details[index].typeId == 'meeting-link'
+                    ? TextInputType.url
+                    : TextInputType.text,
+                decoration: InputDecoration(labelText: details[index].label),
+                validator: details[index].typeId == 'meeting-link'
+                    ? (value) {
+                        if (value == null || value.trim().isEmpty) return null;
+                        final uri = Uri.tryParse(value.trim());
+                        return uri != null &&
+                                (uri.scheme == 'https' ||
+                                    uri.scheme == 'http') &&
+                                uri.host.isNotEmpty
+                            ? null
+                            : 'Enter a valid HTTP or HTTPS URL';
+                      }
+                    : null,
+                onChanged: (value) {
+                  final current = details[index];
+                  details[index] = EventDetail(
+                    typeId: current.typeId,
+                    label: current.label,
+                    value: value,
+                  );
+                },
+              ),
+            ),
+            PopupMenuButton<String>(
+              tooltip: 'Detail actions',
+              icon: const Icon(Icons.more_vert),
+              onSelected: (action) async {
+                if (action == 'remove') {
+                  setState(() => details.removeAt(index));
+                } else {
+                  final chosen = await showDialog<EventDetailType>(
+                    context: context,
+                    builder: (context) => SimpleDialog(
+                      title: const Text('Edit type'),
+                      children: [
+                        for (final type in [...builtInDetails, ...detailTypes])
+                          SimpleDialogOption(
+                            onPressed: () => Navigator.pop(context, type),
+                            child: Text(type.name),
+                          ),
+                      ],
+                    ),
+                  );
+                  if (chosen != null && mounted) {
+                    setState(() {
+                      details[index] = EventDetail(
+                        typeId: chosen.id,
+                        label: chosen.name,
+                        value: details[index].value,
+                      );
+                    });
+                  }
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'edit', child: Text('Edit Type')),
+                PopupMenuItem(value: 'remove', child: Text('Remove Detail')),
+              ],
+            ),
+          ],
+        ),
+      ],
+    ],
+  );
 
   Future<void> _pick(bool isStart, bool dateOnly) async {
     final current = isStart ? start : end;
@@ -125,6 +377,21 @@ class _EventEditorState extends ConsumerState<EventEditor> {
   }
 
   Future<void> _save() async {
+    for (final detail in details.where(
+      (item) => item.typeId == 'meeting-link' && item.value.trim().isNotEmpty,
+    )) {
+      final uri = Uri.tryParse(detail.value.trim());
+      if (uri == null ||
+          !const ['http', 'https'].contains(uri.scheme) ||
+          uri.host.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Enter a valid HTTP or HTTPS meeting link.'),
+          ),
+        );
+        return;
+      }
+    }
     if (title.text.trim().isEmpty || !end.isAfter(start)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -140,7 +407,15 @@ class _EventEditorState extends ConsumerState<EventEditor> {
         notes: notes.text,
         startsAt: start,
         endsAt: end,
-        location: location.text,
+        location:
+            details
+                .where(
+                  (item) => item.typeId == 'location' || item.typeId == 'room',
+                )
+                .map((item) => item.value)
+                .firstOrNull ??
+            '',
+        details: details.where((item) => item.value.trim().isNotEmpty).toList(),
         allDay: allDay,
         categoryId: categoryId,
         colorValue: colorValue,
@@ -322,6 +597,7 @@ class _EventEditorState extends ConsumerState<EventEditor> {
               startsAt: event.startsAt,
               endsAt: event.endsAt,
               location: event.location,
+              details: event.details,
               allDay: event.allDay,
               categoryId: event.categoryId,
               colorValue: event.colorValue,
@@ -349,7 +625,7 @@ class _EventEditorState extends ConsumerState<EventEditor> {
         editScope = value;
         title.text = occurrence.title;
         notes.text = occurrence.notes;
-        location.text = occurrence.location;
+        details = List.of(occurrence.details);
         start = occurrence.startsAt.toLocal();
         end = occurrence.endsAt.toLocal();
         allDay = occurrence.allDay;
@@ -372,7 +648,7 @@ class _EventEditorState extends ConsumerState<EventEditor> {
       editScope = value;
       title.text = original.title;
       notes.text = original.notes;
-      location.text = original.location;
+      details = List.of(original.details);
       start = original.startsAt.toLocal();
       end = original.endsAt.toLocal();
       allDay = original.allDay;
@@ -414,6 +690,8 @@ class _EventEditorState extends ConsumerState<EventEditor> {
         const SizedBox(height: 14),
         Expanded(
           child: ListView(
+            key: const ValueKey('event-editor-form-list'),
+            padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
             children: [
               if (widget.event?.nominalDate != null) ...[
                 SegmentedButton<_EventEditScope>(
@@ -438,10 +716,30 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                 ),
                 const SizedBox(height: 14),
               ],
-              TextField(
-                controller: title,
-                autofocus: widget.event == null,
-                decoration: const InputDecoration(labelText: 'Title *'),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: title,
+                      autofocus: widget.event == null,
+                      decoration: const InputDecoration(labelText: 'Title *'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.outlined(
+                    tooltip: 'Choose event icon',
+                    icon: Icon(iconForKey(iconName, Icons.event_outlined)),
+                    onPressed: () async {
+                      final choice = await chooseBuiltInIcon(
+                        context,
+                        current: iconName,
+                      );
+                      if (choice.$1 && mounted) {
+                        setState(() => iconName = choice.$2);
+                      }
+                    },
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               TextField(
@@ -450,95 +748,137 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                 decoration: const InputDecoration(labelText: 'Notes'),
               ),
               const SizedBox(height: 12),
-              TextField(
-                controller: location,
-                decoration: const InputDecoration(
-                  labelText: 'Location or room',
-                ),
-              ),
+              _detailsSection(),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String?>(
-                initialValue: categoryId,
-                decoration: const InputDecoration(labelText: 'Category'),
-                items: [
-                  const DropdownMenuItem(value: null, child: Text('None')),
-                  for (final category
-                      in ref.watch(appControllerProvider).categories)
-                    DropdownMenuItem(
-                      value: category.id,
-                      child: Text(category.name),
+              LayoutBuilder(
+                builder: (context, bounds) => PopupMenuButton<String>(
+                  tooltip: 'Choose category',
+                  position: PopupMenuPosition.under,
+                  constraints: BoxConstraints(
+                    minWidth: bounds.maxWidth,
+                    maxWidth: bounds.maxWidth,
+                    maxHeight: 240,
+                  ),
+                  initialValue: categoryId,
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(value: '', child: Text('None')),
+                    for (final category
+                        in ref.watch(appControllerProvider).categories)
+                      PopupMenuItem(
+                        value: category.id,
+                        child: Text(category.name),
+                      ),
+                  ],
+                  onSelected: (value) =>
+                      setState(() => categoryId = value == '' ? null : value),
+                  child: InputDecorator(
+                    isEmpty: false,
+                    decoration: const InputDecoration(
+                      labelText: 'Category',
+                      suffixIcon: Icon(Icons.arrow_drop_down),
                     ),
-                ],
-                onChanged: (value) => setState(() => categoryId = value),
+                    child: Text(
+                      ref
+                              .watch(appControllerProvider)
+                              .categories
+                              .where((item) => item.id == categoryId)
+                              .map((item) => item.name)
+                              .firstOrNull ??
+                          'None',
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 12),
               LayoutBuilder(
-                builder: (context, bounds) => DropdownMenu<int>(
-                  key: ValueKey('event-color:${colorValue ?? 0}'),
-                  label: const Text('Color'),
-                  width: bounds.maxWidth,
-                  menuHeight: 250,
-                  initialSelection: colorValue ?? 0,
-                  dropdownMenuEntries: const [
-                    DropdownMenuEntry(value: 0, label: 'Default'),
-                    DropdownMenuEntry(
-                      value: 0xFF5365B5,
-                      label: 'Indigo',
-                      leadingIcon: Icon(Icons.circle, color: Color(0xFF5365B5)),
+                builder: (context, bounds) => PopupMenuButton<int>(
+                  tooltip: 'Choose event color',
+                  position: PopupMenuPosition.under,
+                  constraints: BoxConstraints(
+                    minWidth: bounds.maxWidth,
+                    maxWidth: bounds.maxWidth,
+                    maxHeight: 240,
+                  ),
+                  initialValue: colorValue ?? 0,
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 0,
+                      child: Row(
+                        children: [
+                          Icon(Icons.circle, color: _inheritedColor()),
+                          const SizedBox(width: 10),
+                          const Text('Inherited default'),
+                        ],
+                      ),
                     ),
-                    DropdownMenuEntry(
-                      value: 0xFF7E57C2,
-                      label: 'Purple',
-                      leadingIcon: Icon(Icons.circle, color: Color(0xFF7E57C2)),
-                    ),
-                    DropdownMenuEntry(
-                      value: 0xFF00897B,
-                      label: 'Teal',
-                      leadingIcon: Icon(Icons.circle, color: Color(0xFF00897B)),
-                    ),
-                    DropdownMenuEntry(
-                      value: 0xFFD17A22,
-                      label: 'Amber',
-                      leadingIcon: Icon(Icons.circle, color: Color(0xFFD17A22)),
-                    ),
-                    DropdownMenuEntry(
-                      value: 0xFFB65372,
-                      label: 'Rose',
-                      leadingIcon: Icon(Icons.circle, color: Color(0xFFB65372)),
-                    ),
-                    DropdownMenuEntry(
-                      value: 0xFF3376A3,
-                      label: 'Ocean',
-                      leadingIcon: Icon(Icons.circle, color: Color(0xFF3376A3)),
-                    ),
-                    DropdownMenuEntry(
-                      value: 0xFF6A8A43,
-                      label: 'Olive',
-                      leadingIcon: Icon(Icons.circle, color: Color(0xFF6A8A43)),
-                    ),
-                    DropdownMenuEntry(
-                      value: 0xFFB45A44,
-                      label: 'Coral',
-                      leadingIcon: Icon(Icons.circle, color: Color(0xFFB45A44)),
+                    for (final color in eventColors)
+                      PopupMenuItem(
+                        value: color.$2,
+                        child: Row(
+                          children: [
+                            Icon(Icons.circle, color: Color(color.$2)),
+                            const SizedBox(width: 10),
+                            Text(color.$1),
+                          ],
+                        ),
+                      ),
+                    if (colorValue != null &&
+                        !eventColors.any((item) => item.$2 == colorValue))
+                      PopupMenuItem(
+                        value: colorValue!,
+                        child: Row(
+                          children: [
+                            Icon(Icons.circle, color: Color(colorValue!)),
+                            const SizedBox(width: 10),
+                            Text(eventColorLabel(colorValue)),
+                          ],
+                        ),
+                      ),
+                    const PopupMenuItem(
+                      value: -1,
+                      child: Row(
+                        children: [
+                          Icon(Icons.colorize_outlined),
+                          SizedBox(width: 10),
+                          Text('Custom Color'),
+                        ],
+                      ),
                     ),
                   ],
-                  onSelected: (value) =>
-                      setState(() => colorValue = value == 0 ? null : value),
+                  onSelected: (value) async {
+                    if (value == -1) {
+                      final chosen = await chooseEventColor(
+                        context,
+                        colorValue ?? 0xFF5365B5,
+                      );
+                      if (chosen != null && mounted) {
+                        setState(() => colorValue = chosen);
+                      }
+                    } else {
+                      setState(() => colorValue = value == 0 ? null : value);
+                    }
+                  },
+                  child: InputDecorator(
+                    isEmpty: false,
+                    decoration: const InputDecoration(
+                      labelText: 'Color',
+                      suffixIcon: Icon(Icons.arrow_drop_down),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.circle,
+                          size: 18,
+                          color: colorValue == null
+                              ? _inheritedColor()
+                              : Color(colorValue!),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(eventColorLabel(colorValue)),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                icon: Icon(iconForKey(iconName, Icons.event_outlined)),
-                label: const Text('Choose event icon'),
-                onPressed: () async {
-                  final choice = await chooseBuiltInIcon(
-                    context,
-                    current: iconName,
-                  );
-                  if (choice.$1 && mounted) {
-                    setState(() => iconName = choice.$2);
-                  }
-                },
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
@@ -558,6 +898,13 @@ class _EventEditorState extends ConsumerState<EventEditor> {
               const SizedBox(height: 12),
               Text('End', style: Theme.of(context).textTheme.titleSmall),
               _dateTimeRow(end, false),
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'Duration: ${eventDurationLabel(start, end, allDay: allDay)}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
               const SizedBox(height: 14),
               DropdownButtonFormField<int?>(
                 initialValue: reminderMinutes,
@@ -622,66 +969,62 @@ class _EventEditorState extends ConsumerState<EventEditor> {
               ),
               if (repeatKind == EventRepeatKind.weekdays) ...[
                 const SizedBox(height: 8),
-                Wrap(
-                  spacing: 5,
-                  children: [
-                    for (var day = 1; day <= 7; day++)
-                      FilterChip(
-                        label: Text(
-                          const [
-                            'Mon',
-                            'Tue',
-                            'Wed',
-                            'Thu',
-                            'Fri',
-                            'Sat',
-                            'Sun',
-                          ][day - 1],
-                        ),
-                        selected: weekdays.contains(day),
-                        onSelected:
-                            widget.event?.nominalDate != null &&
-                                editScope == _EventEditScope.occurrence
-                            ? null
-                            : (selected) => setState(() {
-                                if (selected) {
-                                  weekdays.add(day);
-                                } else {
-                                  weekdays.remove(day);
-                                }
-                              }),
-                      ),
-                  ],
+                WeekdayPickerRow(
+                  firstWeekday: ref.watch(appControllerProvider).firstWeekday,
+                  selected: weekdays,
+                  onSelected:
+                      widget.event?.nominalDate != null &&
+                          editScope == _EventEditScope.occurrence
+                      ? null
+                      : (day, selected) => setState(() {
+                          if (selected) {
+                            weekdays.add(day);
+                          } else {
+                            weekdays.remove(day);
+                          }
+                        }),
                 ),
               ],
               if (repeatKind != null) ...[
                 const SizedBox(height: 8),
-                OutlinedButton(
-                  onPressed:
+                DropdownButtonFormField<bool>(
+                  key: ValueKey('recurrence-ends-${repeatUntil != null}'),
+                  initialValue: repeatUntil != null,
+                  decoration: const InputDecoration(
+                    labelText: 'Recurrence ends',
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: false, child: Text('Never')),
+                    DropdownMenuItem(value: true, child: Text('On date')),
+                  ],
+                  onChanged:
                       widget.event?.nominalDate != null &&
                           editScope == _EventEditScope.occurrence
                       ? null
-                      : () async {
-                          final chosen = await showDatePicker(
-                            context: context,
-                            initialDate: repeatUntil ?? start,
-                            firstDate: start,
-                            lastDate: DateTime(2100),
-                          );
-                          if (chosen != null) {
-                            setState(() => repeatUntil = chosen);
-                          }
-                        },
-                  child: Text(
-                    repeatUntil == null
-                        ? 'Recurrence has no end'
-                        : 'Repeat through ${localDate(repeatUntil!)}',
-                  ),
+                      : (value) => setState(
+                          () => repeatUntil = value == true
+                              ? (repeatUntil ?? start)
+                              : null,
+                        ),
                 ),
                 if (repeatUntil != null)
-                  TextButton(
-                    onPressed: () => setState(() => repeatUntil = null),
-                    child: const Text('Clear recurrence end'),
+                  OutlinedButton(
+                    onPressed:
+                        widget.event?.nominalDate != null &&
+                            editScope == _EventEditScope.occurrence
+                        ? null
+                        : () async {
+                            final chosen = await showDatePicker(
+                              context: context,
+                              initialDate: repeatUntil ?? start,
+                              firstDate: start,
+                              lastDate: DateTime(2100),
+                            );
+                            if (chosen != null) {
+                              setState(() => repeatUntil = chosen);
+                            }
+                          },
+                    child: Text('Repeat through ${localDate(repeatUntil!)}'),
                   ),
               ],
               const SizedBox(height: 10),

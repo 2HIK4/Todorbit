@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../shared/dialog_action_bar.dart';
+
 import '../../app/app_controller.dart';
 import '../../domain/goals.dart';
 import '../../domain/habits.dart';
@@ -100,7 +102,7 @@ class _GoalEditorDialogState extends ConsumerState<GoalEditorDialog> {
   Widget build(BuildContext context) => Dialog(
     child: SizedBox(
       width: math.min(MediaQuery.sizeOf(context).width - 48, 520),
-      height: math.min(MediaQuery.sizeOf(context).height - 48, 520),
+      height: math.min(MediaQuery.sizeOf(context).height - 48, 440),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -113,20 +115,26 @@ class _GoalEditorDialogState extends ConsumerState<GoalEditorDialog> {
             const SizedBox(height: 8),
             Expanded(
               child: ListView(
+                key: const ValueKey('goal-editor-form-list'),
+                padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
                 children: [
                   TextField(
+                    key: const ValueKey('goal-editor-title'),
                     controller: title,
                     decoration: const InputDecoration(labelText: 'Title *'),
                   ),
+                  const SizedBox(height: 12),
                   TextField(
                     controller: description,
                     maxLines: 2,
                     decoration: const InputDecoration(labelText: 'Description'),
                   ),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
                         child: TextField(
+                          key: const ValueKey('goal-editor-target'),
                           controller: target,
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
@@ -145,10 +153,12 @@ class _GoalEditorDialogState extends ConsumerState<GoalEditorDialog> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 12),
                   OutlinedButton(
                     onPressed: busy ? null : () => _pick(start: true),
                     child: Text('Start day: $startDate'),
                   ),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
@@ -177,8 +187,7 @@ class _GoalEditorDialogState extends ConsumerState<GoalEditorDialog> {
                 ],
               ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            DialogActionBar(
               children: [
                 TextButton(
                   onPressed: busy ? null : () => Navigator.pop(context, false),

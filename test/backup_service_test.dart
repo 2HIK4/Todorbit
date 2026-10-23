@@ -9,6 +9,35 @@ import 'package:life_manager/domain/models.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {
+  test('snapshot includes event detail catalog and inherited colors', () async {
+    final directory = await Directory.systemTemp.createTemp('todorbit-event-backup-');
+    final file = File('${directory.path}/life.sqlite');
+    final database = AppDatabase(NativeDatabase(file));
+    try {
+      final repo = LifeRepository(database);
+      final category = await repo.addCategory('Meetings');
+      await repo.setCategoryEventColor(category.id, 0xFF123456);
+      final type = await repo.addEventDetailType('Organizer');
+      await repo.addEvent(EventDraft(
+        title: 'Review', startsAt: DateTime(2026, 10, 25, 9),
+        endsAt: DateTime(2026, 10, 25, 10), categoryId: category.id,
+        details: [EventDetail(typeId: type.id, label: type.name, value: 'Alex')],
+      ));
+      final backup = await BackupService(file).createBackup(BackupKind.manual);
+      final snapshot = sqlite.sqlite3.open(backup.file.path, mode: sqlite.OpenMode.readOnly);
+      try {
+        expect(snapshot.select('SELECT event_color FROM categories').single['event_color'], 0xFF123456);
+        expect(snapshot.select('SELECT name FROM event_detail_types').single['name'], 'Organizer');
+        expect(snapshot.select('SELECT details_json FROM fixed_events').single['details_json'], contains('Alex'));
+      } finally {
+        snapshot.close();
+      }
+    } finally {
+      await database.close();
+      await directory.delete(recursive: true);
+    }
+  });
+
   test(
     'snapshot includes WAL data and is independent of later writes',
     () async {

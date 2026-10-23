@@ -5,14 +5,17 @@
 The Windows Release bundle contains `Todorbit.exe`,
 `TodorbitWidget.exe`, Flutter assets, `flutter_windows.dll`, and
 `sqlite3.dll`. Inno Setup 7.1.0 compiles the installer at
-`release/Todorbit-1.0.5-win-x64-setup.exe`. A portable ZIP is built at
-`release/Todorbit-1.0.5-win-x64-portable.zip`. This is a Windows x64
+`release/Todorbit-1.0.6-win-x64-setup.exe`. A portable ZIP is built at
+`release/Todorbit-1.0.6-win-x64-portable.zip`. This is a Windows x64
 **pre-release** with limited installed upgrade/uninstall and native widget
 manual acceptance. Windows 11 is the main development/test platform; Windows
 10 acceptance is limited. The creator approved Todorbit and the MIT license;
 formal name clearance remains open. See `ACCEPTANCE.md`.
 
 ## Build and install
+
+For in-app update package naming, verification, installed/portable recovery,
+and publishing requirements, see `SOFTWARE_UPDATES.md`.
 
 Run `flutter build windows --release`. The bundle is under
 `build/windows/x64/runner/Release`; keep the entire directory together. To
@@ -36,7 +39,7 @@ These behaviors still require an actual installer acceptance test.
 Fresh installer database and settings are under `%APPDATA%\TodoPilot`, outside the
 installation directory. Portable copies use separate location-keyed folders
 under that directory; moving a portable copy selects a new profile, so use
-Export/Import to move data. A database below schema v20 prompts for approval
+Export/Import to move data. A database below schema v21 prompts for approval
 before backup or migration. Approval creates and checks a `Before upgrade`
 SQLite backup before opening the newer schema. If preparation fails, the
 workspace remains closed. Do not use the personal database for development or
@@ -85,9 +88,9 @@ acceptance on an isolated profile.
 
 ## Release notes
 
-Todorbit v1.0.5 retains the schema-v20 planner and TodoPilot data profile.
-It adds task composition, inline spelling, configurable hotkeys, scheduling
-preferences, resource drop, and main app UI refinements. The native widget
-editor and controls are redesigned; single-instance and profile handling are
-improved. Packages include MIT and third-party notices. Native GUI and installed
+Todorbit v1.0.6 advances the planner to schema 21 and preserves the existing
+installer identity and TodoPilot data paths. It adds Calendar event details and
+colors, configurable first weekday and sidebar order, and Settings > Software
+Updates. Older databases require an approved, verified backup before migration.
+Packages include MIT and third-party notices. Native GUI and installed
 upgrade/uninstall acceptance remain limited; see `ACCEPTANCE.md`.

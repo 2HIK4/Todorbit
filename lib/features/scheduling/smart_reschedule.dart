@@ -8,6 +8,7 @@ import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../../domain/scheduling_engine.dart';
 import '../../domain/series_edit.dart';
+import '../shared/weekdays.dart';
 
 class SmartRescheduleDialog extends ConsumerStatefulWidget {
   const SmartRescheduleDialog({
@@ -846,7 +847,9 @@ class _AvailabilityDialogState extends ConsumerState<AvailabilityDialog> {
             'No hours are assumed. Repack only uses windows enabled here. Buffer defaults to 0 minutes.',
           ),
           const SizedBox(height: 12),
-          for (var day = 1; day <= 7; day++)
+          for (final day in weekdaysFrom(
+            ref.watch(appControllerProvider).firstWeekday,
+          ))
             Row(
               children: [
                 Checkbox(

@@ -5,6 +5,7 @@ import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import 'event_editor.dart';
 import '../shared/icon_picker.dart';
+import '../shared/weekdays.dart';
 import 'session_editor.dart';
 
 enum CalendarMode { day, week, month }
@@ -32,19 +33,31 @@ class CalendarView extends ConsumerStatefulWidget {
 class _CalendarViewState extends ConsumerState<CalendarView> {
   DateTime selected = DateTime.now();
   CalendarMode mode = CalendarMode.week;
-  Offset _lastTapPosition = Offset.zero;
 
   @override
   void initState() {
     super.initState();
+    final controller = ref.read(appControllerProvider);
     mode = CalendarMode.values.byName(
-      ref.read(appControllerProvider).customization.calendarDefaultView,
+      controller.lastCalendarMode ??
+          controller.customization.calendarDefaultView,
     );
   }
 
   DateTime get day => DateTime(selected.year, selected.month, selected.day);
-  DateTime get weekStart =>
-      DateTime(day.year, day.month, day.day - day.weekday + 1);
+  DateTime get weekStart {
+    final first = ref.read(appControllerProvider).firstWeekday;
+    return DateTime(
+      day.year,
+      day.month,
+      day.day - (day.weekday - first + 7) % 7,
+    );
+  }
+
+  void _setMode(CalendarMode value) {
+    setState(() => mode = value);
+    ref.read(appControllerProvider).setLastCalendarMode(value.name);
+  }
 
   Future<void> _move(int direction) async {
     setState(() {
@@ -84,8 +97,8 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
       context: context,
       builder: (context) => Dialog(
         child: SizedBox(
-          width: 460,
-          height: 550,
+          width: 500,
+          height: (MediaQuery.sizeOf(context).height - 48).clamp(0.0, 650.0),
           child: EventEditor(
             event: event,
             initialDay: initialDate ?? day,
@@ -119,119 +132,112 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
     if (action == 'task') widget.onAddTask(date);
   }
 
-  Future<void> _showDayPreview(DateTime date, Offset position) async {
+  Future<void> _showDayPreview(DateTime date) async {
     final size = MediaQuery.sizeOf(context);
     final entries = _entries(ref.read(appControllerProvider), date);
     final previewHeight = (132.0 + entries.length * 58.0)
         .clamp(160.0, 440.0)
         .clamp(0.0, size.height - 16);
-    final left = position.dx.clamp(
-      8.0,
-      (size.width - 370).clamp(8.0, double.infinity),
-    );
-    final top = position.dy.clamp(
-      8.0,
-      (size.height - previewHeight - 8).clamp(8.0, double.infinity),
-    );
-    await showGeneralDialog<void>(
+    await showDialog<void>(
       context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Close day preview',
-      pageBuilder: (popupContext, _, _) => Stack(
-        children: [
-          Positioned(
-            left: left,
-            top: top,
-            child: Material(
-              elevation: 12,
-              borderRadius: BorderRadius.circular(12),
-              clipBehavior: Clip.antiAlias,
-              child: SizedBox(
-                width: (size.width - 16).clamp(0.0, 350.0),
-                height: previewHeight,
-                child: Column(
+      builder: (popupContext) => Dialog(
+        child: SizedBox(
+          width: (size.width - 16).clamp(0.0, 350.0),
+          height: previewHeight,
+          child: Column(
+            children: [
+              ListTile(
+                title: Text(localDate(date)),
+                trailing: IconButton(
+                  tooltip: 'Close preview',
+                  onPressed: () => Navigator.pop(popupContext),
+                  icon: const Icon(Icons.close),
+                ),
+              ),
+              Expanded(
+                child: ListView(
                   children: [
-                    ListTile(
-                      title: Text(localDate(date)),
-                      trailing: IconButton(
-                        tooltip: 'Close preview',
-                        onPressed: () => Navigator.pop(popupContext),
-                        icon: const Icon(Icons.close),
-                      ),
-                    ),
-                    Expanded(
-                      child: ListView(
-                        children: [
-                          for (final entry in entries)
-                            ListTile(
-                              dense: true,
-                              leading: Icon(
-                                entry.event != null
-                                    ? Icons.event_outlined
-                                    : entry.session != null
-                                    ? Icons.schedule
-                                    : Icons.task_alt_outlined,
-                              ),
-                              title: Text(
-                                entry.label,
-                                maxLines: 3,
+                    for (final entry in entries)
+                      ListTile(
+                        dense: true,
+                        leading: Icon(
+                          entry.event != null
+                              ? Icons.event_outlined
+                              : entry.session != null
+                              ? Icons.schedule
+                              : Icons.task_alt_outlined,
+                        ),
+                        title: Text(
+                          entry.label,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: entry.event?.cancelled == true
+                            ? const Text('Cancelled')
+                            : entry.event != null &&
+                                  entry.event!.details.isNotEmpty
+                            ? Text(
+                                entry.event!.details
+                                    .map(
+                                      (item) => '${item.label}: ${item.value}',
+                                    )
+                                    .join(' · '),
+                                maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                              ),
-                              subtitle: entry.event?.cancelled == true
-                                  ? const Text('Cancelled')
-                                  : entry.task == null
-                                  ? null
-                                  : Text(entry.task!.status.name),
-                              onTap: () {
-                                Navigator.pop(popupContext);
-                                if (entry.event != null) {
-                                  _editEvent(entry.event);
-                                } else if (entry.session != null) {
-                                  _editSession(entry.session);
-                                } else {
-                                  widget.onTaskTap(entry.task!);
-                                }
-                              },
-                            ),
-                        ],
+                              )
+                            : entry.task == null
+                            ? null
+                            : Text(entry.task!.status.name),
+                        onTap: () {
+                          Navigator.pop(popupContext);
+                          if (entry.event != null) {
+                            _editEvent(entry.event);
+                          } else if (entry.session != null) {
+                            _editSession(entry.session);
+                          } else {
+                            widget.onTaskTap(entry.task!);
+                          }
+                        },
                       ),
-                    ),
-                    const Divider(height: 1),
-                    Wrap(
-                      alignment: WrapAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(popupContext);
-                            _editEvent(null, date);
-                          },
-                          child: const Text('Add Event'),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(popupContext);
-                            widget.onAddTask(date);
-                          },
-                          child: const Text('Add Task'),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(popupContext);
-                            setState(() {
-                              selected = date;
-                              mode = CalendarMode.day;
-                            });
-                          },
-                          child: const Text('Open Day View'),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),
-            ),
+              const Divider(height: 1),
+              Wrap(
+                alignment: WrapAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(popupContext);
+                      _editEvent(null, date);
+                    },
+                    child: const Text('Add Event'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(popupContext);
+                      widget.onAddTask(date);
+                    },
+                    child: const Text('Add Task'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(popupContext);
+                      setState(() {
+                        selected = date;
+                        mode = CalendarMode.day;
+                      });
+                      ref
+                          .read(appControllerProvider)
+                          .setLastCalendarMode('day');
+                    },
+                    child: const Text('Open Day View'),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -301,8 +307,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                   ),
                 ],
                 selected: {mode},
-                onSelectionChanged: (value) =>
-                    setState(() => mode = value.first),
+                onSelectionChanged: (value) => _setMode(value.first),
               ),
               SegmentedButton<CalendarContent>(
                 segments: const [
@@ -433,14 +438,12 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                 GestureDetector(
                   onSecondaryTapDown: (details) =>
                       _showCreateMenu(date, details.globalPosition),
-                  onTapDown: (details) =>
-                      _lastTapPosition = details.globalPosition,
                   child: InkWell(
-                    onTap: () => _showDayPreview(date, _lastTapPosition),
+                    onTap: () => _showDayPreview(date),
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
                       child: Text(
-                        '${_weekdays[index]} ${localDate(date)}',
+                        '${weekdayNames[date.weekday - 1]} ${localDate(date)}',
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
                     ),
@@ -465,8 +468,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
             child: GestureDetector(
               onSecondaryTapDown: (details) =>
                   _showCreateMenu(date, details.globalPosition),
-              onTapDown: (details) => _lastTapPosition = details.globalPosition,
-              onTap: () => _showDayPreview(date, _lastTapPosition),
+              onTap: () => _showDayPreview(date),
               child: Container(
                 decoration: BoxDecoration(
                   border: Border(
@@ -478,9 +480,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                 child: Column(
                   children: [
                     InkWell(
-                      onTapDown: (details) =>
-                          _lastTapPosition = details.globalPosition,
-                      onTap: () => _showDayPreview(date, _lastTapPosition),
+                      onTap: () => _showDayPreview(date),
                       child: Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(8),
@@ -489,7 +489,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                                   .withValues(alpha: 0.55)
                             : null,
                         child: Text(
-                          '${_weekdays[index]} ${date.day}',
+                          '${weekdayNames[date.weekday - 1]} ${date.day}',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
@@ -521,92 +521,113 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
 
   Widget _monthGrid(AppController controller) {
     final first = DateTime(day.year, day.month);
-    final offset = first.weekday - 1;
+    final offset =
+        (first.weekday - ref.read(appControllerProvider).firstWeekday + 7) % 7;
     final days = DateUtils.getDaysInMonth(day.year, day.month);
     final cellCount = ((offset + days + 6) ~/ 7) * 7;
     return LayoutBuilder(
       builder: (context, bounds) {
         final rows = cellCount ~/ 7;
-        final cellHeight = (bounds.maxHeight - 24) / rows;
+        final cellHeight = (bounds.maxHeight - 62) / rows;
         final previewCount = monthEntryCapacity(
           cellHeight,
           MediaQuery.textScalerOf(context).scale(1),
         );
-        return GridView.builder(
-          padding: const EdgeInsets.all(12),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 7,
-            mainAxisExtent: cellHeight.clamp(90.0, double.infinity),
-          ),
-          itemCount: cellCount,
-          itemBuilder: (context, index) {
-            final date = DateTime(
-              first.year,
-              first.month,
-              first.day + index - offset,
-            );
-            final inMonth = date.month == day.month;
-            final entries = _entries(controller, date);
-            final scheme = Theme.of(context).colorScheme;
-            return GestureDetector(
-              onSecondaryTapDown: (details) =>
-                  _showCreateMenu(date, details.globalPosition),
-              child: InkWell(
-                onTapDown: (details) =>
-                    _lastTapPosition = details.globalPosition,
-                onTap: () => _showDayPreview(date, _lastTapPosition),
-                child: Container(
-                  margin: const EdgeInsets.all(2),
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: localDate(date) == localDate(DateTime.now())
-                        ? scheme.primaryContainer
-                        : scheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(8),
-                    border:
-                        date.year == selected.year &&
-                            date.month == selected.month &&
-                            date.day == selected.day
-                        ? Border.all(color: scheme.primary, width: 1.5)
-                        : null,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${date.day}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: inMonth ? null : scheme.outline,
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+              child: Row(
+                children: [
+                  for (final weekday in weekdaysFrom(
+                    ref.read(appControllerProvider).firstWeekday,
+                  ))
+                    Expanded(
+                      child: Text(
+                        weekdayNames[weekday - 1],
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: GridView.builder(
+                padding: const EdgeInsets.all(12),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 7,
+                  mainAxisExtent: cellHeight.clamp(90.0, double.infinity),
+                ),
+                itemCount: cellCount,
+                itemBuilder: (context, index) {
+                  final date = DateTime(
+                    first.year,
+                    first.month,
+                    first.day + index - offset,
+                  );
+                  final inMonth = date.month == day.month;
+                  final entries = _entries(controller, date);
+                  final scheme = Theme.of(context).colorScheme;
+                  return GestureDetector(
+                    onSecondaryTapDown: (details) =>
+                        _showCreateMenu(date, details.globalPosition),
+                    child: InkWell(
+                      onTap: () => _showDayPreview(date),
+                      child: Container(
+                        margin: const EdgeInsets.all(2),
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: localDate(date) == localDate(DateTime.now())
+                              ? scheme.primaryContainer
+                              : scheme.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(8),
+                          border:
+                              date.year == selected.year &&
+                                  date.month == selected.month &&
+                                  date.day == selected.day
+                              ? Border.all(color: scheme.primary, width: 1.5)
+                              : null,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${date.day}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: inMonth ? null : scheme.outline,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            for (final entry in entries.take(
+                              entries.length > previewCount
+                                  ? (previewCount - 1).clamp(0, 30)
+                                  : previewCount,
+                            ))
+                              _monthEntry(entry),
+                            if (entries.length > previewCount)
+                              TextButton(
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: const Size(0, 22),
+                                  alignment: Alignment.centerLeft,
+                                ),
+                                onPressed: () => _showDayPreview(date),
+                                child: Text(
+                                  '+${entries.length - (previewCount - 1).clamp(0, 30)} more',
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 3),
-                      for (final entry in entries.take(
-                        entries.length > previewCount
-                            ? (previewCount - 1).clamp(0, 30)
-                            : previewCount,
-                      ))
-                        _monthEntry(entry),
-                      if (entries.length > previewCount)
-                        TextButton(
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: const Size(0, 22),
-                            alignment: Alignment.centerLeft,
-                          ),
-                          onPressed: () =>
-                              _showDayPreview(date, _lastTapPosition),
-                          child: Text(
-                            '+${entries.length - (previewCount - 1).clamp(0, 30)} more',
-                            style: const TextStyle(fontSize: 11),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               ),
-            );
-          },
+            ),
+          ],
         );
       },
     );
@@ -692,9 +713,10 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
   Widget _monthEntry(_CalendarEntry entry) {
     final scheme = Theme.of(context).colorScheme;
     final event = entry.event;
-    final accent = event?.colorValue == null
-        ? scheme.primary
-        : Color(event!.colorValue!);
+    final eventColor = event == null
+        ? null
+        : ref.read(appControllerProvider).effectiveEventColor(event);
+    final accent = eventColor == null ? scheme.primary : Color(eventColor);
     final text = event == null
         ? entry.label.replaceAll('\n', ' · ')
         : event.title;
@@ -808,9 +830,10 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
         ? 0
         : _eventConflictCount(event);
     final scheme = Theme.of(context).colorScheme;
-    final accent = event?.colorValue == null
-        ? scheme.primary
-        : Color(event!.colorValue!);
+    final eventColor = event == null
+        ? null
+        : ref.read(appControllerProvider).effectiveEventColor(event);
+    final accent = eventColor == null ? scheme.primary : Color(eventColor);
     return Card(
       color: event == null
           ? null
@@ -842,9 +865,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                       ? Icons.schedule
                       : Icons.check_circle_outline,
                   size: compact ? 14 : 18,
-                  color: event?.colorValue == null
-                      ? Theme.of(context).colorScheme.primary
-                      : Color(event!.colorValue!),
+                  color: accent,
                 ),
                 const SizedBox(width: 6),
                 Expanded(
@@ -874,6 +895,20 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                                 color: scheme.onSurfaceVariant,
                               ),
                             ),
+                            if (!compact && event.details.isNotEmpty)
+                              Text(
+                                event.details
+                                    .map(
+                                      (item) => '${item.label}: ${item.value}',
+                                    )
+                                    .join(' · '),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
                           ],
                         )
                       : entry.parentTitle != null
@@ -964,7 +999,6 @@ class _CalendarEntry {
   final String? parentTitle;
 }
 
-const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const _months = [
   'January',
   'February',

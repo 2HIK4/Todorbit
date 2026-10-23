@@ -7,6 +7,8 @@ import '../../app/app_controller.dart';
 import '../../domain/habits.dart';
 import '../../domain/models.dart';
 import '../../domain/recurrence.dart';
+import '../shared/weekdays.dart';
+import '../shared/dialog_action_bar.dart';
 
 class HabitEditorDialog extends ConsumerStatefulWidget {
   const HabitEditorDialog({super.key, this.habit});
@@ -130,7 +132,10 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
   Widget build(BuildContext context) => Dialog(
     child: SizedBox(
       width: math.min(MediaQuery.sizeOf(context).width - 48, 560),
-      height: math.min(MediaQuery.sizeOf(context).height - 48, 690),
+      height: math.min(
+        MediaQuery.sizeOf(context).height - 48,
+        widget.habit == null ? 550 : 580,
+      ),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -147,18 +152,23 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
             const SizedBox(height: 10),
             Expanded(
               child: ListView(
+                key: const ValueKey('habit-editor-form-list'),
+                padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
                 children: [
                   TextField(
+                    key: const ValueKey('habit-editor-title'),
                     controller: title,
                     decoration: const InputDecoration(labelText: 'Title *'),
                   ),
+                  const SizedBox(height: 12),
                   TextField(
                     controller: notes,
                     maxLines: 2,
                     decoration: const InputDecoration(labelText: 'Notes'),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   DropdownButtonFormField<HabitKind>(
+                    isExpanded: true,
                     initialValue: kind,
                     decoration: const InputDecoration(labelText: 'Measurement'),
                     items: const [
@@ -182,6 +192,7 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
                           },
                   ),
                   if (kind != HabitKind.binary) ...[
+                    const SizedBox(height: 12),
                     TextField(
                       controller: target,
                       keyboardType: const TextInputType.numberWithOptions(
@@ -189,6 +200,7 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
                       ),
                       decoration: const InputDecoration(labelText: 'Target *'),
                     ),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: unit,
                       decoration: const InputDecoration(
@@ -196,8 +208,9 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
                       ),
                     ),
                   ],
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   DropdownButtonFormField<RecurrenceKind>(
+                    isExpanded: true,
                     key: ValueKey(scheduleKind),
                     initialValue: scheduleKind,
                     decoration: const InputDecoration(labelText: 'Schedule'),
@@ -236,6 +249,7 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
                             });
                           },
                   ),
+                  const SizedBox(height: 12),
                   TextField(
                     controller: interval,
                     keyboardType: TextInputType.number,
@@ -243,36 +257,28 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
                       labelText: 'Repeat every N days, weeks, months, or years',
                     ),
                   ),
-                  if (scheduleKind == RecurrenceKind.weekdays)
-                    Wrap(
-                      spacing: 5,
-                      children: [
-                        for (var day = 1; day <= 7; day++)
-                          FilterChip(
-                            label: Text(
-                              const [
-                                'Mon',
-                                'Tue',
-                                'Wed',
-                                'Thu',
-                                'Fri',
-                                'Sat',
-                                'Sun',
-                              ][day - 1],
-                            ),
-                            selected: weekdays.contains(day),
-                            onSelected: (selected) => setState(() {
-                              selected
-                                  ? weekdays.add(day)
-                                  : weekdays.remove(day);
-                            }),
-                          ),
-                      ],
+                  if (scheduleKind == RecurrenceKind.weekdays) ...[
+                    const SizedBox(height: 12),
+                    WeekdayPickerRow(
+                      firstWeekday: ref
+                          .watch(appControllerProvider)
+                          .firstWeekday,
+                      selected: weekdays,
+                      onSelected: (day, selected) => setState(() {
+                        if (selected) {
+                          weekdays.add(day);
+                        } else {
+                          weekdays.remove(day);
+                        }
+                      }),
                     ),
+                  ],
+                  const SizedBox(height: 12),
                   OutlinedButton(
                     onPressed: busy ? null : () => _pickDate(start: true),
                     child: Text('First scheduled day: $startDate'),
                   ),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
@@ -303,14 +309,12 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
                 ],
               ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            DialogActionBar(
               children: [
                 TextButton(
                   onPressed: busy ? null : () => Navigator.pop(context, false),
                   child: const Text('Cancel'),
                 ),
-                const SizedBox(width: 8),
                 FilledButton(
                   onPressed: busy ? null : _save,
                   child: Text(

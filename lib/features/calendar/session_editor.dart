@@ -194,6 +194,7 @@ class _SessionEditorState extends ConsumerState<SessionEditor> {
           const SizedBox(height: 14),
           Expanded(
             child: ListView(
+              padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
               children: [
                 DropdownButtonFormField<String>(
                   initialValue: taskId,

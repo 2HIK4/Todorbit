@@ -1,5 +1,19 @@
 # Decisions
 
+## In-app Windows updates (2026-10-23)
+
+- Check only published `2HIK4/Todorbit` GitHub Releases with strict semantic-version ordering. Require the exact Windows x64 asset and GitHub asset SHA-256 digest; unsigned packages require explicit install confirmation.
+- Keep update preferences in a separate versioned JSON file under the active profile. Background checks never download or install.
+- Run a bundled helper after the main process closes. Installed copies use the stable Inno AppId; portable copies stage a complete ZIP beside the current folder and swap into the same path, retaining a binary rollback folder. The updater never modifies profile data. The existing verified SQLite backup and migration gate remains separate from binary rollback.
+- After the app's widget exit command, wait for the widget process at this exact bundle path to close before replacement. Treat an immediate portable restart exit as a failed update and restore the old binary folder. Keep the rollback folder after a successful start for manual validation; three seconds of process liveness is only a startup smoke check.
+
+## Calendar and navigation audit (2026-10-23)
+
+- Keep sidebar order, the last selected Calendar mode, and first weekday in the per-profile appearance settings file, separate from validated theme customization JSON. Missing settings retain the existing sidebar order and Week default; the first weekday defaults to Sunday.
+- Schema 21 adds a nullable category event color, event details JSON, and a reusable custom detail-type catalog. Event colors remain nullable to mean inherited category/app color. Events have no project relationship, so project color inheritance is deferred rather than inventing one. The old `location` column stays for native compatibility; migration copies its values to a Location detail.
+- Keep event detail labels and values on each event, so removing a custom type from the catalog never erases existing event data. Recurrence templates and occurrence overrides retain their own detail snapshots.
+- Use anchored popup menus in the Event editor for Category and Color because the former dropdown overlay could obscure its trigger after scrolling. Keep contextual menus contextual; use a centered modal for Calendar day details.
+
 ## v1.0.5 public pre-release (2026-10-21)
 
 - Publish the verified Feedback Round 4 and 5 work as v1.0.5 Windows x64 pre-release, with unsigned packages and explicit limits for Windows 10, native Explorer widget input/painting, DPI/Win+D, and installer lifecycle checks. Keep v1.0.3 and all legacy data and installer identities unchanged.
@@ -13,7 +27,7 @@
 
 ## Codex environment (2026-10-21)
 
-- Use the official Dart/Flutter Codex plugin for its skills and MCP server; avoid duplicate standalone Dart/Flutter skill installs. Keep general UI guidance global and Todorbit constraints in project instructions and docs. No new project skill is needed while existing references cover the workflows.
+- Use the official Dart/Flutter Codex plugin for its skills and MCP server; avoid duplicate standalone Dart/Flutter skill installs. Keep general UI guidance global and Todorbit constraints in project instructions and docs. The repo-local `todorbit-ui-review` and `todorbit-regression` skills now cover the repeatable, project-specific UI and verification workflows without loading their full instructions for unrelated work.
 - Default new Codex work to low reasoning and raise effort by task complexity. Keep tests targeted during edits, with broad verification at integration or release milestones. Microsoft Fluent is the Windows design reference; Apple Design remains available for independent review.
 
 ## Feedback round 4, part 2 (2026-10-20)

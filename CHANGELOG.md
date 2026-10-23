@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.6 — Windows x64 pre-release
+
+- Added Calendar event detail fields, category event colors, a custom color picker, and clearer Event editing.
+- Added configurable first weekday, sidebar order, and restored Calendar view preference.
+- Added Settings > Software Updates with release selection, SHA-256 validation, explicit unsigned-package confirmation, and portable update rollback.
+- Advanced the database to schema 21. Older profiles require approval and a verified backup before migration; installed and portable profile locations remain stable.
+- Improved narrow dialog layouts and field spacing across Calendar, Habit, Goal, Search, and Template flows.
+- Verified a disposable portable upgrade. Installed upgrade and physical native widget acceptance remain open.
+
 ## 1.0.5 — Windows x64 pre-release
 
 - Improved task creation and editing with draft checklist items and subtasks, independent scheduling fields, Today defaults, Anytime behavior, and completed-task display preferences.
