@@ -1,5 +1,11 @@
 # Progress
 
+## Codex development workflow (2026-10-24)
+
+- Kept the installed official Dart/Flutter plugin and Apple Design skill. Added repo-local `todorbit-ui-review` and `todorbit-regression` skills under `.agents/skills/` and linked them from concise `AGENTS.md` and `docs/CODEX_WORKFLOW.md`. No new plugin, MCP config, or project dependency was added.
+- Added a focused widget regression for the actual app theme's task input in light and dark; existing event editor, dropdown, dialog, calendar, and narrow layout tests remain the targeted UI suite. The Dart/Flutter MCP connected to the editor DTD and analyzed `lib/main.dart` without errors; no app was connected for live inspection. Automated checks do not establish physical Windows GUI or native widget behavior.
+- Both skill manifests passed a local frontmatter/name check. Skill Creator's Python validator could not start because PyYAML is absent in the local Python environment. `flutter analyze --no-pub` and 13 focused UI/calendar tests passed; the Dart/Flutter MCP found no errors in the new test. This checkpoint changes development configuration and tests only, not product or profile data.
+
 ## Windows software updates completion pass (2026-10-24)
 
 - Hardened the helper to wait for the widget process at the current bundle path and roll a portable swap back when the restarted app exits immediately. The Settings install action now ignores repeated clicks and releases the process even if database close reports an error after the helper starts. Update preference loading rejects malformed field types instead of silently changing choices.

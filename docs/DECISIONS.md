@@ -27,7 +27,7 @@
 
 ## Codex environment (2026-10-21)
 
-- Use the official Dart/Flutter Codex plugin for its skills and MCP server; avoid duplicate standalone Dart/Flutter skill installs. Keep general UI guidance global and Todorbit constraints in project instructions and docs. No new project skill is needed while existing references cover the workflows.
+- Use the official Dart/Flutter Codex plugin for its skills and MCP server; avoid duplicate standalone Dart/Flutter skill installs. Keep general UI guidance global and Todorbit constraints in project instructions and docs. The repo-local `todorbit-ui-review` and `todorbit-regression` skills now cover the repeatable, project-specific UI and verification workflows without loading their full instructions for unrelated work.
 - Default new Codex work to low reasoning and raise effort by task complexity. Keep tests targeted during edits, with broad verification at integration or release milestones. Microsoft Fluent is the Windows design reference; Apple Design remains available for independent review.
 
 ## Feedback round 4, part 2 (2026-10-20)
