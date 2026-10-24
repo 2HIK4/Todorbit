@@ -1,4 +1,4 @@
-param([string]$Package = '')
+param([string]$Package = '', [switch]$ExpectFailure)
 
 $ErrorActionPreference = 'Stop'
 $versionText = Get-Content -Raw 'pubspec.yaml'
@@ -93,11 +93,12 @@ db.close()
   $result = Join-Path $root 'last-install-result.txt'
   $env:APPDATA = $roaming
   $env:LOCALAPPDATA = $local
+  $expectedVersion = if ($ExpectFailure) { '9.9.9' } else { $version }
   $helper = Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -PassThru -ArgumentList @(
     '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $script,
     '-Mode', 'portable', '-Package', $packageCopy, '-Target', $target,
     '-Digest', $digest, '-Size', "$size", '-ParentPid', "$($app.Id)",
-    '-ReadyFile', $ready, '-ExpectedVersion', $version, '-Stage', $stage)
+    '-ReadyFile', $ready, '-ExpectedVersion', $expectedVersion, '-Stage', $stage)
   for ($attempt = 0; $attempt -lt 150; $attempt++) {
     if ((Test-Path -LiteralPath $ready) -or (Test-Path -LiteralPath $result)) { break }
     Start-Sleep -Milliseconds 100
@@ -113,11 +114,15 @@ db.close()
   $widget.Dispose()
   [void]$app.CloseMainWindow()
   if (-not $app.WaitForExit(15000)) { throw 'Disposable main app did not close.' }
-  if (-not $helper.WaitForExit(120000) -or $helper.ExitCode -ne 0) {
-    throw "Helper failed: $(Get-Content -LiteralPath $result -ErrorAction SilentlyContinue)"
-  }
-  if ((Get-Content -LiteralPath $result -Raw) -notmatch ('Update installed: ' + [regex]::Escape($version))) {
-    throw 'Helper did not record a successful update.'
+  if (-not $helper.WaitForExit(120000)) { throw 'Helper did not finish.' }
+  $receipt = Get-Content -LiteralPath $result -Raw
+  if ($ExpectFailure) {
+    if ($helper.ExitCode -ne 1 -or $receipt -notmatch 'does not match expected 9\.9\.9') {
+      throw "Expected version mismatch and recovery, got: $receipt"
+    }
+  } elseif ($helper.ExitCode -ne 0 -or
+      $receipt -notmatch ('Update installed: ' + [regex]::Escape($version))) {
+    throw "Helper did not record a successful update: $receipt"
   }
   $widgetSettings = Get-Content -LiteralPath $settings -Raw | ConvertFrom-Json
   if ($widgetSettings.launchAtSignIn -ne $false -or
@@ -141,7 +146,11 @@ sys.exit(0 if task == 1 and integrity == 'ok' else 1)
     try { $_.Path -and [IO.Path]::GetFullPath($_.Path) -ieq $binary } catch { $false }
   })
   if ($running.Count -ne 1) { throw "Expected one restarted app; found $($running.Count)." }
-  Write-Output 'Portable helper swap, automatic restart, and isolated profile preservation passed.'
+  if ($ExpectFailure) {
+    Write-Output 'Portable helper rollback, automatic recovery restart, and isolated profile preservation passed.'
+  } else {
+    Write-Output 'Portable helper swap, automatic restart, and isolated profile preservation passed.'
+  }
 } finally {
   $env:APPDATA = $previousAppData
   $env:LOCALAPPDATA = $previousLocalAppData

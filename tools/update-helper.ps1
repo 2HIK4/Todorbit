@@ -169,7 +169,7 @@ try {
         try { $_.Path -and [IO.Path]::GetFullPath($_.Path) -ieq (Join-Path $targetPath 'Todorbit.exe') } catch { $false }
       })
       if ($running.Count -eq 0) {
-        Start-Process -FilePath (Join-Path $targetPath 'Todorbit.exe') -WorkingDirectory $targetPath | Out-Null
+        Start-Process -FilePath (Join-Path $targetPath 'Todorbit.exe') -ArgumentList '--update-restart' -WorkingDirectory $targetPath | Out-Null
       }
     } catch {}
   }
