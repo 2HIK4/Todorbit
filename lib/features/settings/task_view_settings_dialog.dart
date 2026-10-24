@@ -1,3 +1,4 @@
+import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -31,7 +32,7 @@ class TaskViewSettingsDialog extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            DropdownButtonFormField<NewTaskPlannedDay>(
+            AnchoredSelectField<NewTaskPlannedDay>(
               initialValue: preferences.newTaskPlannedDay,
               decoration: const InputDecoration(
                 labelText: 'New task planned day',
@@ -72,7 +73,7 @@ class TaskViewSettingsDialog extends ConsumerWidget {
                   save(preferences.copyWith(spellCheckEnabled: value)),
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<CompositionTextDisplay>(
+            AnchoredSelectField<CompositionTextDisplay>(
               key: ValueKey(preferences.compositionTextDisplay),
               initialValue: preferences.compositionTextDisplay,
               decoration: const InputDecoration(

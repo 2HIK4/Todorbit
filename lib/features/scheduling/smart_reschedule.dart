@@ -1,3 +1,4 @@
+import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -405,7 +406,7 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
                 children: [
                   SizedBox(
                     width: 190,
-                    child: DropdownButtonFormField<ScheduleOperationType>(
+                    child: AnchoredSelectField<ScheduleOperationType>(
                       initialValue: operation,
                       decoration: const InputDecoration(labelText: 'Operation'),
                       items: operations
@@ -587,7 +588,7 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
                                         (item) =>
                                             included.contains(item.movedTaskId),
                                       ))
-                                    DropdownButtonFormField<
+                                    AnchoredSelectField<
                                       SeriesCollisionChoice
                                     >(
                                       key: ValueKey(

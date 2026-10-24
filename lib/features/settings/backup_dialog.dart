@@ -227,7 +227,7 @@ class _BackupDialogState extends State<BackupDialog> {
               'Create or export',
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -252,6 +252,7 @@ class _BackupDialogState extends State<BackupDialog> {
             const Text(
               'Restoring replaces the current database after you close and reopen Todorbit.',
             ),
+            const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerLeft,
               child: OutlinedButton.icon(

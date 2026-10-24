@@ -1,3 +1,4 @@
+import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -285,7 +286,7 @@ class _ApplyTemplateDialogState extends ConsumerState<_ApplyTemplateDialog> {
                   '$externalLinks prerequisite links to tasks outside the source project will not be copied.',
                 ),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String?>(
+              AnchoredSelectField<String?>(
                 isExpanded: true,
                 key: ValueKey('template-category:$categoryId'),
                 initialValue: categoryId,
@@ -322,7 +323,7 @@ class _ApplyTemplateDialogState extends ConsumerState<_ApplyTemplateDialog> {
                 ),
               ] else if (categoryId != null) ...[
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String?>(
+                AnchoredSelectField<String?>(
                   isExpanded: true,
                   key: ValueKey('template-project:$categoryId:$projectId'),
                   initialValue: projectId,

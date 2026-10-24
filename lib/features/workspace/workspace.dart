@@ -18,6 +18,7 @@ import '../calendar/calendar_view.dart';
 import '../habits/habits_view.dart';
 import '../goals/goals_view.dart';
 import '../reports/reports_view.dart';
+import '../shared/about_view_button.dart';
 import '../contributors/contributors_view.dart';
 import '../time_tracking/time_tracking_dialog.dart';
 import '../templates/templates_dialog.dart';
@@ -1227,32 +1228,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     ],
                   ),
                 ),
-                MenuAnchor(
-                  style: MenuStyle(
-                    backgroundColor: WidgetStatePropertyAll(
-                      Theme.of(context).colorScheme.surfaceContainerHigh,
-                    ),
-                  ),
-                  menuChildren: [
-                    Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 280),
-                        child: Text(_viewDescription(controller.view)),
-                      ),
-                    ),
-                  ],
-                  builder: (context, menu, child) => IconButton(
-                    key: const ValueKey('view-info-button'),
-                    tooltip: 'About this view',
-                    style: IconButton.styleFrom(
-                      overlayColor: Theme.of(context).colorScheme.primary
-                          .withValues(alpha: 0.08),
-                    ),
-                    onPressed: () => menu.isOpen ? menu.close() : menu.open(),
-                    icon: const Icon(Icons.info_outline),
-                  ),
-                ),
+                AboutViewButton(description: _viewDescription(controller.view)),
                 PopupMenuButton<TaskSort>(
                   tooltip: 'Sort tasks',
                   onSelected: controller.setSort,

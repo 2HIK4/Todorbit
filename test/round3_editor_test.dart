@@ -1,3 +1,4 @@
+import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -54,10 +55,11 @@ void main() {
           'Draft notes',
         );
         await tester.ensureVisible(
-          find.widgetWithText(DropdownButtonFormField<String?>, 'Category'),
+          find.widgetWithText(AnchoredSelectField<String?>, 'Category'),
         );
+        await tester.pumpAndSettle();
         await tester.tap(
-          find.widgetWithText(DropdownButtonFormField<String?>, 'Category'),
+          find.widgetWithText(AnchoredSelectField<String?>, 'Category'),
         );
         await tester.pumpAndSettle();
         await tester.tap(find.text('+ New Category').last);
@@ -90,10 +92,11 @@ void main() {
           'Draft notes',
         );
         await tester.ensureVisible(
-          find.widgetWithText(DropdownButtonFormField<String?>, 'Project'),
+          find.widgetWithText(AnchoredSelectField<String?>, 'Project'),
         );
+        await tester.pumpAndSettle();
         await tester.tap(
-          find.widgetWithText(DropdownButtonFormField<String?>, 'Project'),
+          find.widgetWithText(AnchoredSelectField<String?>, 'Project'),
         );
         await tester.pumpAndSettle();
         await tester.tap(find.text('+ New Project').last);

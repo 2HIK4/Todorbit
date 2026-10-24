@@ -35,5 +35,5 @@ jobs:
           $env:APPDATA = Join-Path $env:RUNNER_TEMP 'TodorbitCI\Roaming'
           $env:LOCALAPPDATA = Join-Path $env:RUNNER_TEMP 'TodorbitCI\Local'
           New-Item -ItemType Directory -Force -Path $env:APPDATA,$env:LOCALAPPDATA | Out-Null
-          & 'build\windows\x64\runner\Release\TodorbitWidget.exe' --self-test
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $selfTest = Start-Process -FilePath (Resolve-Path 'build\windows\x64\runner\Release\TodorbitWidget.exe').Path -ArgumentList '--self-test' -PassThru -Wait -WindowStyle Hidden
+          if ($selfTest.ExitCode -ne 0) { exit $selfTest.ExitCode }

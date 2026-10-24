@@ -1,3 +1,4 @@
+import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -196,7 +197,7 @@ class _SessionEditorState extends ConsumerState<SessionEditor> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
               children: [
-                DropdownButtonFormField<String>(
+                AnchoredSelectField<String>(
                   initialValue: taskId,
                   decoration: const InputDecoration(labelText: 'Task'),
                   items: candidates
@@ -219,7 +220,7 @@ class _SessionEditorState extends ConsumerState<SessionEditor> {
                 Text('End', style: Theme.of(context).textTheme.titleSmall),
                 _dateTimeRow(end, false),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<SessionOutcome>(
+                AnchoredSelectField<SessionOutcome>(
                   initialValue: outcome,
                   decoration: const InputDecoration(labelText: 'Outcome'),
                   items: SessionOutcome.values

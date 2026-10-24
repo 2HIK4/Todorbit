@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../../domain/recurrence.dart';
+import '../shared/about_view_button.dart';
+import '../shared/anchored_select_field.dart';
 
 enum _Period { week, month, quarter, custom }
 
@@ -119,29 +121,36 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
               style: Theme.of(context).textTheme.headlineMedium
                   ?.copyWith(fontWeight: FontWeight.w600),
             ),
-            DropdownButton<_Period>(
-              value: period,
-              onChanged: (value) {
-                if (value != null) _setPeriod(value);
-              },
-              items: const [
-                DropdownMenuItem(
-                  value: _Period.week,
-                  child: Text('Last 7 days'),
-                ),
-                DropdownMenuItem(
-                  value: _Period.month,
-                  child: Text('Last 30 days'),
-                ),
-                DropdownMenuItem(
-                  value: _Period.quarter,
-                  child: Text('Last 90 days'),
-                ),
-                DropdownMenuItem(
-                  value: _Period.custom,
-                  child: Text('Custom range'),
-                ),
-              ],
+            const AboutViewButton(
+              description: 'Review completed tasks and work over a selected date range. Choose a recent period or a custom range to compare daily activity.',
+            ),
+            SizedBox(
+              width: 170,
+              child: AnchoredSelectField<_Period>(
+                key: ValueKey(period),
+                initialValue: period,
+                onChanged: (value) {
+                  if (value != null) _setPeriod(value);
+                },
+                items: const [
+                  DropdownMenuItem(
+                    value: _Period.week,
+                    child: Text('Last 7 days'),
+                  ),
+                  DropdownMenuItem(
+                    value: _Period.month,
+                    child: Text('Last 30 days'),
+                  ),
+                  DropdownMenuItem(
+                    value: _Period.quarter,
+                    child: Text('Last 90 days'),
+                  ),
+                  DropdownMenuItem(
+                    value: _Period.custom,
+                    child: Text('Custom range'),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

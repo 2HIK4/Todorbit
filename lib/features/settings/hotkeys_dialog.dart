@@ -1,3 +1,4 @@
+import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -116,7 +117,7 @@ class _HotkeysDialogState extends ConsumerState<HotkeysDialog> {
             Row(
               children: [
                 Expanded(
-                  child: DropdownButtonFormField<String>(
+                  child: AnchoredSelectField<String>(
                     key: ValueKey(hotkeys.activePreset),
                     initialValue: hotkeys.activePreset,
                     decoration: const InputDecoration(labelText: 'Preset'),

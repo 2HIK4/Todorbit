@@ -5,6 +5,7 @@ import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import 'event_editor.dart';
 import '../shared/icon_picker.dart';
+import '../shared/about_view_button.dart';
 import '../shared/weekdays.dart';
 import 'session_editor.dart';
 
@@ -275,6 +276,9 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                 'Calendar',
                 style: Theme.of(context).textTheme.headlineMedium
                     ?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const AboutViewButton(
+                description: 'See planned tasks, fixed events, and work sessions by day, week, or month. Move between dates and open an item to inspect or edit it.',
               ),
               OutlinedButton(
                 onPressed: () {

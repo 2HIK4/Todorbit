@@ -1,3 +1,5 @@
+import 'package:life_manager/features/shared/anchored_select_field.dart';
+
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -48,7 +50,7 @@ class SettingsHubDialog extends ConsumerStatefulWidget {
 class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
   _SettingsPage page = _SettingsPage.appearance;
   bool _layoutLocked = false;
-  bool _launchAtSignIn = false;
+  bool _launchAtSignIn = true;
   double _opacity = 100;
   String? _widgetError;
 
@@ -143,7 +145,7 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
                       children: [
                         Padding(
                           padding: const EdgeInsets.all(12),
-                          child: DropdownButtonFormField<_SettingsPage>(
+                          child: AnchoredSelectField<_SettingsPage>(
                             initialValue: page,
                             decoration: const InputDecoration(
                               labelText: 'Settings section',
@@ -263,7 +265,7 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
               () => _open(const SidebarOrderDialog()),
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<int>(
+            AnchoredSelectField<int>(
               key: ValueKey(controller.firstWeekday),
               initialValue: controller.firstWeekday,
               decoration: const InputDecoration(
@@ -332,7 +334,7 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
                 ),
               ),
               SwitchListTile(
-                title: const Text('Launch at Windows sign-in'),
+                title: const Text('Launch widget at Windows startup'),
                 value: _launchAtSignIn,
                 onChanged: (value) => _widgetChange(
                   () => widget.nativeWidget.setLaunchAtSignIn(value),

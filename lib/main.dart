@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import 'features/shared/week_start_localizations.dart';
 
@@ -112,6 +113,13 @@ Future<void> _startApplication(
   if (Platform.isWindows) unawaited(_checkUpdatesInBackground());
   if (Platform.isWindows) {
     final companion = NativeWidgetService();
+    if (companion.isAvailable && kReleaseMode) {
+      try {
+        await companion.synchronizeStartup();
+      } catch (failure) {
+        debugPrint('Could not synchronize widget startup: $failure');
+      }
+    }
     if (companion.isAvailable &&
         ((await controller.repository.notificationSettings()).enabled ||
             await controller.repository.hasEventReminders())) {

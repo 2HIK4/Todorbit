@@ -1,3 +1,4 @@
+import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'test_privacy.dart';
 
 import 'package:drift/native.dart';
@@ -142,7 +143,7 @@ void main() {
       expect((await repository.events()).single.title, 'Seminar');
       await tester.tap(find.text('Work session'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byType(DropdownButtonFormField<String>));
+      await tester.tap(find.byType(AnchoredSelectField<String>));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Study').last);
       await tester.pumpAndSettle();

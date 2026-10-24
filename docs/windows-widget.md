@@ -1,5 +1,7 @@
 # Integrated Windows widget
 
+The Release app now registers the widget for Windows sign-in by default after the active profile opens. Settings > Widget can disable it. Registration uses one per-user Run value per profile, points directly to `TodorbitWidget.exe --widget`, and is refreshed on a later Release app launch after an update or folder move. The main app is not in the startup command. The native self-test checks toggle, persistence, stale-path repair, and duplicate registry values using a private test key; actual login, Explorer attachment, and physical input remain manual checks on an isolated Windows account.
+
 Feedback round 4 movement fix: the layered paint path must use the current
 HWND screen rectangle. The previous path passed saved `widget-settings.json`
 coordinates to `UpdateLayeredWindow` during each drag repaint, reversing the

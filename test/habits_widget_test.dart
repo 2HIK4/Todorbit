@@ -31,6 +31,11 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(ListTile, 'Habits'));
       await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('About this view'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('rest days without counting a miss'), findsOneWidget);
+      await tester.tap(find.byTooltip('About this view'));
+      await tester.pumpAndSettle();
       expect(
         find.text('No habits yet. Create one to track daily progress.'),
         findsOneWidget,

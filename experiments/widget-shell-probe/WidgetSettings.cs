@@ -13,7 +13,7 @@ internal sealed class WidgetSettings {
   // Retained only to migrate releases that stored appearance in this file.
   public WidgetThemePreference? Theme { get; set; }
   public WidgetTaskView View { get; set; } = WidgetTaskView.Today;
-  public bool LaunchAtSignIn { get; set; }
+  public bool LaunchAtSignIn { get; set; } = true;
   public bool LayoutLocked { get; set; }
   public int BackgroundOpacity { get; set; } = 100;
 }

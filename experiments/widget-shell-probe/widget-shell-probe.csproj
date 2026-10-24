@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -8,9 +8,9 @@
     <AssemblyName>TodorbitWidget</AssemblyName>
     <RootNamespace>LifeManager.Widget</RootNamespace>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
-    <Version>1.0.8</Version>
-    <FileVersion>1.0.8.0</FileVersion>
-    <InformationalVersion>1.0.8+9</InformationalVersion>
+    <Version>1.0.9</Version>
+    <FileVersion>1.0.9.0</FileVersion>
+    <InformationalVersion>1.0.9+10</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Product>Todorbit Widget</Product>
     <ApplicationIcon>../../windows/runner/resources/app_icon.ico</ApplicationIcon>

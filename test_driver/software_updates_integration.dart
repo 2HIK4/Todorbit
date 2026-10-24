@@ -11,6 +11,7 @@ void main() {
   tearDownAll(() async => driver.close());
 
   test('Software Updates opens and persists an automatic-check choice', () async {
+    await Future<void>.delayed(const Duration(seconds: 4));
     await driver.waitFor(find.text('Settings'));
     await driver.tap(find.text('Settings'));
     await driver.waitFor(find.text('Software Updates'));
@@ -21,11 +22,21 @@ void main() {
     await File(
       '${Directory.systemTemp.path}${Platform.pathSeparator}todorbit-software-updates-ui.png',
     ).writeAsBytes(await driver.screenshot());
+    await driver.runUnsynchronized(() async {
+      await driver.tap(find.text('Stable'));
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      await File(
+        '${Directory.systemTemp.path}${Platform.pathSeparator}todorbit-update-channel-open.png',
+      ).writeAsBytes(await driver.screenshot());
+      await driver.tap(find.text('Pre-release'));
+    });
+    await driver.waitFor(find.text('Pre-release'));
     final settings = File(
       '${Platform.environment['APPDATA']}${Platform.pathSeparator}TodoPilot${Platform.pathSeparator}update-settings.json',
     );
     final before =
         jsonDecode(await settings.readAsString()) as Map<String, dynamic>;
+    expect(before['channel'], 'prerelease');
     await driver.tap(find.text('Automatically check for updates'));
     bool? savedValue;
     for (var attempt = 0; attempt < 30; attempt++) {
@@ -40,5 +51,5 @@ void main() {
     await driver.tap(find.text('Settings'));
     await driver.tap(find.text('Software Updates'));
     await driver.waitFor(find.text('Check for Updates'));
-  });
+  }, timeout: const Timeout(Duration(minutes: 2)));
 }

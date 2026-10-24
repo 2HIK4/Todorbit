@@ -1,3 +1,4 @@
+import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -1014,7 +1015,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const SizedBox(height: 8),
-                  DropdownButtonFormField<String?>(
+                  AnchoredSelectField<String?>(
                     key: ValueKey(
                       'category:$categoryId:$organizationPickerRevision',
                     ),
@@ -1048,7 +1049,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                     },
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String?>(
+                  AnchoredSelectField<String?>(
                     key: ValueKey(
                       'project:$projectId:$categoryId:$organizationPickerRevision',
                     ),
@@ -1083,7 +1084,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                   if (widget.task == null) ...[
                     const SizedBox(height: 12),
                     if (widget.parentTaskId == null)
-                      DropdownButtonFormField<RecurrenceKind?>(
+                      AnchoredSelectField<RecurrenceKind?>(
                         initialValue: recurrenceKind,
                         decoration: const InputDecoration(labelText: 'Repeat'),
                         items: const [
@@ -1290,7 +1291,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                     title: const Text('Status and priority'),
                     subtitle: const Text('Optional for a new task'),
                     children: [
-                      DropdownButtonFormField<TaskStatus>(
+                      AnchoredSelectField<TaskStatus>(
                         key: ValueKey('status:$status:$recurrenceKind'),
                         initialValue: status,
                         decoration: const InputDecoration(labelText: 'Status'),
@@ -1307,7 +1308,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                             : (value) => setState(() => status = value!),
                       ),
                       const SizedBox(height: 12),
-                      DropdownButtonFormField<int>(
+                      AnchoredSelectField<int>(
                         initialValue: priority,
                         decoration: const InputDecoration(
                           labelText: 'Priority',

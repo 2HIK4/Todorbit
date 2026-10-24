@@ -1,3 +1,5 @@
+import 'package:life_manager/features/shared/anchored_select_field.dart';
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -491,9 +493,11 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
           onChanged: (value) =>
               _save(_preferences.copyWith(automaticChecks: value)),
         ),
-        DropdownButtonFormField<UpdateChannel>(
+        const SizedBox(height: 12),
+        AnchoredSelectField<UpdateChannel>(
           initialValue: _preferences.channel,
-          decoration: const InputDecoration(labelText: 'Update channel'),
+          externalLabel: 'Update channel',
+          decoration: const InputDecoration(),
           items: const [
             DropdownMenuItem(
               value: UpdateChannel.stable,

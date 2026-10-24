@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flex_color_picker/flex_color_picker.dart';
 
@@ -421,48 +422,69 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
                   ),
                   ListTile(
                     title: const Text('Opening screen'),
-                    trailing: DropdownButton<String>(
-                      value: draft.openingScreen,
-                      items: const [
-                        DropdownMenuItem(value: 'today', child: Text('Today')),
-                        DropdownMenuItem(value: 'inbox', child: Text('Inbox')),
-                        DropdownMenuItem(
-                          value: 'calendar',
-                          child: Text('Calendar'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'habits',
-                          child: Text('Habits'),
-                        ),
-                        DropdownMenuItem(value: 'goals', child: Text('Goals')),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(
-                            () => draft = draft.copyWith(openingScreen: value),
-                          );
-                        }
-                      },
+                    trailing: SizedBox(
+                      width: 160,
+                      child: AnchoredSelectField<String>(
+                        key: ValueKey(draft.openingScreen),
+                        initialValue: draft.openingScreen,
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'today',
+                            child: Text('Today'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'inbox',
+                            child: Text('Inbox'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'calendar',
+                            child: Text('Calendar'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'habits',
+                            child: Text('Habits'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'goals',
+                            child: Text('Goals'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(
+                              () =>
+                                  draft = draft.copyWith(openingScreen: value),
+                            );
+                          }
+                        },
+                      ),
                     ),
                   ),
                   ListTile(
                     title: const Text('Default calendar view'),
-                    trailing: DropdownButton<String>(
-                      value: draft.calendarDefaultView,
-                      items: const [
-                        DropdownMenuItem(value: 'day', child: Text('Day')),
-                        DropdownMenuItem(value: 'week', child: Text('Week')),
-                        DropdownMenuItem(value: 'month', child: Text('Month')),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(
-                            () => draft = draft.copyWith(
-                              calendarDefaultView: value,
-                            ),
-                          );
-                        }
-                      },
+                    trailing: SizedBox(
+                      width: 135,
+                      child: AnchoredSelectField<String>(
+                        key: ValueKey(draft.calendarDefaultView),
+                        initialValue: draft.calendarDefaultView,
+                        items: const [
+                          DropdownMenuItem(value: 'day', child: Text('Day')),
+                          DropdownMenuItem(value: 'week', child: Text('Week')),
+                          DropdownMenuItem(
+                            value: 'month',
+                            child: Text('Month'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(
+                              () => draft = draft.copyWith(
+                                calendarDefaultView: value,
+                              ),
+                            );
+                          }
+                        },
+                      ),
                     ),
                   ),
                   SwitchListTile(

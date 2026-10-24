@@ -11,6 +11,7 @@ import 'package:life_manager/domain/recurrence.dart';
 import 'package:life_manager/features/goals/goal_dialogs.dart';
 import 'package:life_manager/features/habits/habit_editor.dart';
 import 'package:life_manager/features/search/advanced_search_dialog.dart';
+import 'package:life_manager/features/shared/anchored_select_field.dart';
 
 void main() {
   testWidgets('new and edit Habit and Goal forms keep controls reachable', (
@@ -127,11 +128,11 @@ void main() {
       );
       await tester.pumpAndSettle();
       final category = find.widgetWithText(
-        DropdownButtonFormField<String?>,
+        AnchoredSelectField<String?>,
         'Any category',
       );
       final priority = find.widgetWithText(
-        DropdownButtonFormField<int>,
+        AnchoredSelectField<int>,
         'Any priority',
       );
       expect(

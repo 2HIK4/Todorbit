@@ -1,3 +1,4 @@
+import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -310,7 +311,7 @@ class _SeriesEditorDialogState extends ConsumerState<SeriesEditorDialog> {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
                     children: [
-                      DropdownButtonFormField<SeriesEditScope>(
+                      AnchoredSelectField<SeriesEditScope>(
                         initialValue: scope,
                         decoration: const InputDecoration(
                           labelText: 'Edit scope',
@@ -355,7 +356,7 @@ class _SeriesEditorDialogState extends ConsumerState<SeriesEditorDialog> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      DropdownButtonFormField<RecurrenceKind>(
+                      AnchoredSelectField<RecurrenceKind>(
                         key: ValueKey('kind:$kind'),
                         initialValue: kind,
                         decoration: const InputDecoration(
@@ -435,7 +436,7 @@ class _SeriesEditorDialogState extends ConsumerState<SeriesEditorDialog> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      DropdownButtonFormField<String?>(
+                      AnchoredSelectField<String?>(
                         key: ValueKey('category:$categoryId'),
                         initialValue: categoryId,
                         decoration: const InputDecoration(
@@ -460,7 +461,7 @@ class _SeriesEditorDialogState extends ConsumerState<SeriesEditorDialog> {
                           _invalidate();
                         },
                       ),
-                      DropdownButtonFormField<String?>(
+                      AnchoredSelectField<String?>(
                         key: ValueKey('project:$categoryId:$projectId'),
                         initialValue: projectId,
                         decoration: const InputDecoration(
@@ -484,7 +485,7 @@ class _SeriesEditorDialogState extends ConsumerState<SeriesEditorDialog> {
                                 _invalidate();
                               },
                       ),
-                      DropdownButtonFormField<int>(
+                      AnchoredSelectField<int>(
                         initialValue: priority,
                         decoration: const InputDecoration(
                           labelText: 'Shared priority',
@@ -593,7 +594,7 @@ class _SeriesEditorDialogState extends ConsumerState<SeriesEditorDialog> {
                             ],
                           ),
                           for (final collision in preview!.collisions)
-                            DropdownButtonFormField<SeriesCollisionChoice>(
+                            AnchoredSelectField<SeriesCollisionChoice>(
                               key: ValueKey(
                                 'collision:${collision.nominalDate}:${choices[collision.nominalDate]}',
                               ),

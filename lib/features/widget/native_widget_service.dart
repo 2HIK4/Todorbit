@@ -6,7 +6,7 @@ import '../../data/app_database.dart';
 class WidgetControlState {
   const WidgetControlState({
     this.layoutLocked = false,
-    this.launchAtSignIn = false,
+    this.launchAtSignIn = true,
     this.backgroundOpacity = 100,
   });
   final bool layoutLocked;
@@ -55,6 +55,11 @@ class NativeWidgetService {
       _command(locked ? 'layout-lock' : 'layout-unlock');
   Future<void> setLaunchAtSignIn(bool enabled) =>
       _command(enabled ? 'startup-on' : 'startup-off');
+  Future<void> synchronizeStartup() async {
+    final settings = await readSettings();
+    await setLaunchAtSignIn(settings.launchAtSignIn);
+  }
+
   Future<void> setOpacity(int value) {
     if (value < 0 || value > 100) throw RangeError.range(value, 0, 100);
     return _command('opacity-$value');
@@ -72,7 +77,9 @@ class NativeWidgetService {
       final opacity = data['backgroundOpacity'];
       return WidgetControlState(
         layoutLocked: data['layoutLocked'] == true,
-        launchAtSignIn: data['launchAtSignIn'] == true,
+        launchAtSignIn: data['launchAtSignIn'] is bool
+            ? data['launchAtSignIn'] as bool
+            : true,
         backgroundOpacity: opacity is int && opacity >= 0 && opacity <= 100
             ? opacity
             : 100,

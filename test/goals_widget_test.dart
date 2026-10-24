@@ -32,6 +32,11 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(ListTile, 'Goals'));
       await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('About this view'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('milestones and a deadline'), findsOneWidget);
+      await tester.tap(find.byTooltip('About this view'));
+      await tester.pumpAndSettle();
       expect(
         find.text('No goals yet. Create one to track progress.'),
         findsOneWidget,

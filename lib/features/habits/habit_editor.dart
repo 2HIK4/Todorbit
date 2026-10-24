@@ -1,3 +1,4 @@
+import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -167,7 +168,7 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
                     decoration: const InputDecoration(labelText: 'Notes'),
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<HabitKind>(
+                  AnchoredSelectField<HabitKind>(
                     isExpanded: true,
                     initialValue: kind,
                     decoration: const InputDecoration(labelText: 'Measurement'),
@@ -209,7 +210,7 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
                     ),
                   ],
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<RecurrenceKind>(
+                  AnchoredSelectField<RecurrenceKind>(
                     isExpanded: true,
                     key: ValueKey(scheduleKind),
                     initialValue: scheduleKind,

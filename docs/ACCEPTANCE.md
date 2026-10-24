@@ -1,5 +1,16 @@
 # Windows v1.0 final acceptance record
 
+## v1.0.9 candidate acceptance (2026-10-24)
+
+| Original issue | Result | Evidence and remaining check |
+| --- | --- | --- |
+| Dropdown placement, Update Channel | PARTIAL | The exact Settings control was opened and selected through Flutter Driver in isolated dark and light 1264 × 681 debug GUI runs; screenshots show the menu below the field. A 700 × 650 Windows window opened the menu above the field near the bottom while keeping its label and selected value visible. Shared widget tests cover mouse, keyboard, a 350 × 400 viewport, bottom-edge placement, and 1.3× text scale. Physical DPI remains unchecked. |
+| Settings and form spacing | PARTIAL | The exact Update Channel label/field gap and Backup & Restore Import SQLite spacing were inspected in dark and light isolated debug GUI screenshots. Narrow live-window Backup rendering remains to check. |
+| About this view, Habits and Goals | PARTIAL | Their individual widget flows and dark/light debug GUI interactions opened and closed the shared information popover; screenshots show both popovers in place. Calendar and Reports use the same control. Physical keyboard interaction remains to check. |
+| Widget launch at Windows startup | PARTIAL | Native private-key self-test covers default on, saved off, toggle, duplicate prevention, and stale-path repair. The command starts `TodorbitWidget.exe --widget`, not the main app, and the existing profile-suffix mutex protects a single instance. A real Windows login and registered installer upgrade require an isolated account/VM. |
+| CI updater preflight | PARTIAL | The helper now computes SHA-256 through .NET rather than `Get-FileHash`; local preflight passed. Windows CI must pass on this branch/tag before closing this item. |
+| Installed v1.0.8 update to v1.0.9 | UNVERIFIED | The personal registered installation was not touched. Use a disposable Windows account/VM for the complete installed Update and Restart flow; a portable helper test is not equivalent. |
+
 ## Updater repair and v1.0.8 pre-release checkpoint (2026-10-24)
 
 | Check | Result | Evidence and limit |

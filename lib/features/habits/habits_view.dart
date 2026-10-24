@@ -5,6 +5,7 @@ import '../../app/app_controller.dart';
 import '../../domain/habits.dart';
 import '../../domain/models.dart';
 import '../../domain/recurrence.dart';
+import '../shared/about_view_button.dart';
 import 'habit_editor.dart';
 
 class HabitsView extends ConsumerStatefulWidget {
@@ -194,6 +195,9 @@ class _HabitsViewState extends ConsumerState<HabitsView> {
                 'Habits',
                 style: Theme.of(context).textTheme.headlineMedium
                     ?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const AboutViewButton(
+                description: 'Track repeated routines by day. Record progress toward a target, use rest days without counting a miss, and archive habits you no longer follow.',
               ),
               FilledButton.icon(
                 onPressed: () => _edit(null),

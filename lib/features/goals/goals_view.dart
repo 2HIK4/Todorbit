@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_controller.dart';
 import '../../domain/goals.dart';
 import '../../domain/models.dart';
+import '../shared/about_view_button.dart';
 import 'goal_dialogs.dart';
 
 class GoalsView extends ConsumerStatefulWidget {
@@ -328,6 +329,9 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
                 'Goals',
                 style: Theme.of(context).textTheme.headlineMedium
                     ?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const AboutViewButton(
+                description: 'Plan longer-term outcomes with milestones and a deadline. Track progress, complete milestones, and archive goals when they are no longer active.',
               ),
               FilledButton.icon(
                 onPressed: () => _edit(null),

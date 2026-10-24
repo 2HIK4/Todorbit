@@ -1,3 +1,4 @@
+import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -257,7 +258,7 @@ class _PrivacyDialogState extends ConsumerState<PrivacyDialog> {
                           return 'Saved.';
                         }),
                 ),
-                DropdownButtonFormField<int>(
+                AnchoredSelectField<int>(
                   initialValue: settings.inactivityMinutes,
                   decoration: const InputDecoration(
                     labelText: 'Lock after inactivity',

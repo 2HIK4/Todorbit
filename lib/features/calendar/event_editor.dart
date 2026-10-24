@@ -1,3 +1,4 @@
+import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -907,7 +908,7 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                 ),
               ),
               const SizedBox(height: 14),
-              DropdownButtonFormField<int?>(
+              AnchoredSelectField<int?>(
                 initialValue: reminderMinutes,
                 decoration: InputDecoration(
                   labelText: 'Reminder notifications',
@@ -930,7 +931,7 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                     : null,
               ),
               const SizedBox(height: 12),
-              DropdownButtonFormField<EventRepeatKind?>(
+              AnchoredSelectField<EventRepeatKind?>(
                 initialValue: repeatKind,
                 decoration: const InputDecoration(labelText: 'Repeat'),
                 items: const [
@@ -988,7 +989,7 @@ class _EventEditorState extends ConsumerState<EventEditor> {
               ],
               if (repeatKind != null) ...[
                 const SizedBox(height: 8),
-                DropdownButtonFormField<bool>(
+                AnchoredSelectField<bool>(
                   key: ValueKey('recurrence-ends-${repeatUntil != null}'),
                   initialValue: repeatUntil != null,
                   decoration: const InputDecoration(

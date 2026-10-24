@@ -1,5 +1,11 @@
 # Decisions
 
+## Anchored selection and widget startup (2026-10-24)
+
+- Use one `AnchoredSelectField` for form and compact selection controls. Flutter's stock dropdown route aligns the selected menu item with its field, which made the menu appear over the trigger. The shared MenuAnchor implementation opens below when space allows, constrains the menu to the viewport, and provides scrolling and a selected-item mark. Keep contextual PopupMenuButtons for actions.
+- Keep the native widget's per-user Run registration. Use a value keyed by the existing profile channel suffix, default new widget settings to sign-in launch, and synchronize the entry from the Release app after its profile opens. Preserve explicit false; repair the executable path on a later launch after updates. Keep debug GUI runs from changing startup registration.
+- Use the .NET SHA-256 API in the PowerShell update helper so preflight does not depend on `Get-FileHash` availability in the runner's PowerShell environment.
+
 ## Update helper handoff and release notes (2026-10-24)
 
 - Start Windows PowerShell as a normal child process and require an explicit ready file before closing Todorbit. The helper continues after its parent exits; the former Dart detached mode returned a PID but failed before executing the script on this Windows setup. Clear stale handoff and result files before each attempt, and keep the app open when startup or preflight fails.

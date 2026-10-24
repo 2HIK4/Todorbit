@@ -98,17 +98,19 @@ void main() {
         );
         await tester.tap(find.text('Generate preview'));
         await tester.pumpAndSettle();
-        final dialogScroll = find
-            .descendant(
-              of: find.byType(SeriesEditorDialog),
-              matching: find.byType(Scrollable),
-            )
-            .first;
+        final dialogList = find.descendant(
+          of: find.byType(SeriesEditorDialog),
+          matching: find.byType(ListView),
+        );
         await tester.scrollUntilVisible(
           find.text('Combine compatible'),
           200,
-          scrollable: dialogScroll,
+          scrollable: find.descendant(
+            of: dialogList,
+            matching: find.byType(Scrollable),
+          ).first,
         );
+        await tester.pumpAndSettle();
         expect(find.textContaining('collisions'), findsOneWidget);
         expect(
           tester

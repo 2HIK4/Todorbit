@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.9 — Windows x64 pre-release
+
+- Anchored form selection menus below their controls with viewport bounds, scrollbars, and consistent selection marks. Updated Software Updates and Backup & Restore spacing.
+- Added About this view popovers to Habits, Goals, Calendar, and Reports using the shared task-view control.
+- Enabled per-profile widget launch at Windows sign-in by default, with a Settings toggle and startup path repair when a Release app opens. Preserved explicit off preferences.
+- Replaced updater helper's `Get-FileHash` dependency with the .NET SHA-256 API for Windows PowerShell compatibility.
+
+## 1.0.8 — Windows x64 pre-release
+
+- Repaired update helper startup handoff and surfaced preflight errors before the app closes.
+- Simplified Software Updates with a short release summary and collapsible Markdown details.
+
 ## 1.0.7 — Windows x64 pre-release
 
 - Added selective, versioned JSON export and import for appearance, hotkeys, Calendar, navigation, and task display preferences, with validation, preview, and optional hotkey preset merge.

@@ -1,3 +1,4 @@
+import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -147,7 +148,7 @@ class _SequenceDialogState extends ConsumerState<SequenceDialog> {
               Row(
                 children: [
                   Expanded(
-                    child: DropdownButtonFormField<String?>(
+                    child: AnchoredSelectField<String?>(
                       key: ValueKey(selectedId),
                       initialValue: selectedId,
                       decoration: const InputDecoration(labelText: 'Sequence'),

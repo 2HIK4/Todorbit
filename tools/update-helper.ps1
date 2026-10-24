@@ -21,8 +21,19 @@ try {
   if (-not (Test-Path -LiteralPath $packagePath -PathType Leaf)) {
     throw 'The staged package is missing.'
   }
+  $stream = [IO.File]::OpenRead($packagePath)
+  try {
+    $hasher = [Security.Cryptography.SHA256]::Create()
+    try {
+      $actualDigest = [BitConverter]::ToString($hasher.ComputeHash($stream)).Replace('-', '')
+    } finally {
+      $hasher.Dispose()
+    }
+  } finally {
+    $stream.Dispose()
+  }
   if ((Get-Item -LiteralPath $packagePath).Length -ne $Size -or
-      (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash -ine $Digest) {
+      $actualDigest -ine $Digest) {
     throw 'The staged package changed after verification.'
   }
   if (-not (Test-Path -LiteralPath (Join-Path $targetPath 'Todorbit.exe') -PathType Leaf)) {

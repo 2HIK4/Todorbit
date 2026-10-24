@@ -1,3 +1,4 @@
+import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -205,7 +206,7 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<String?>(
+                    AnchoredSelectField<String?>(
                       isExpanded: true,
                       key: ValueKey('search-category:$categoryId'),
                       initialValue: categoryId,
@@ -233,7 +234,7 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                     ),
                     if (categoryId != null) ...[
                       const SizedBox(height: 12),
-                      DropdownButtonFormField<String?>(
+                      AnchoredSelectField<String?>(
                         isExpanded: true,
                         key: ValueKey('search-project:$categoryId:$projectId'),
                         initialValue: projectId,
@@ -258,7 +259,7 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                       ),
                     ],
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<int>(
+                    AnchoredSelectField<int>(
                       isExpanded: true,
                       initialValue: minimumPriority,
                       decoration: const InputDecoration(
@@ -280,7 +281,7 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                           setState(() => minimumPriority = value!),
                     ),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<ScheduledFilter>(
+                    AnchoredSelectField<ScheduledFilter>(
                       isExpanded: true,
                       initialValue: scheduled,
                       decoration: const InputDecoration(
@@ -296,7 +297,7 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                       onChanged: (value) => setState(() => scheduled = value!),
                     ),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<DeadlineFilter>(
+                    AnchoredSelectField<DeadlineFilter>(
                       isExpanded: true,
                       initialValue: deadline,
                       decoration: const InputDecoration(labelText: 'Deadline'),
@@ -322,7 +323,7 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                       onChanged: (value) => setState(() => blockedOnly = value),
                     ),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<SavedViewSort>(
+                    AnchoredSelectField<SavedViewSort>(
                       isExpanded: true,
                       initialValue: sort,
                       decoration: const InputDecoration(

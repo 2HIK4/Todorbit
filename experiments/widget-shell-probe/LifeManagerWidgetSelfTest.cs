@@ -1,6 +1,48 @@
 using Microsoft.Data.Sqlite;
+using Microsoft.Win32;
 
 internal static class LifeManagerWidgetSelfTest {
+  private static void TestStartupRegistration(string directory) {
+    var keyPath = @"Software\Todorbit\StartupSelfTest\" + Guid.NewGuid().ToString("N");
+    try {
+      var store = new WidgetSettingsStore(Path.Combine(directory, "widget-settings.json"));
+      if (!store.Load().LaunchAtSignIn) {
+        throw new InvalidOperationException("New widget profiles must default startup on.");
+      }
+      store.Save(new WidgetSettings { LaunchAtSignIn = false });
+      if (store.Load().LaunchAtSignIn) {
+        throw new InvalidOperationException("Explicit startup off was not preserved.");
+      }
+      StartupRegistration.SetEnabled(true, keyPath);
+      StartupRegistration.SetEnabled(true, keyPath);
+      if (!StartupRegistration.IsEnabled(keyPath)) {
+        throw new InvalidOperationException("Widget startup registration was not created.");
+      }
+      using (var key = Registry.CurrentUser.OpenSubKey(keyPath)) {
+        if (key?.GetValueNames().Length != 1) {
+          throw new InvalidOperationException("Widget startup registration was duplicated.");
+        }
+      }
+      using (var key = Registry.CurrentUser.OpenSubKey(keyPath, writable: true)) {
+        key!.SetValue(key.GetValueNames().Single(),
+          "\"C:\\moved\\TodorbitWidget.exe\" --widget", RegistryValueKind.String);
+      }
+      if (StartupRegistration.IsEnabled(keyPath)) {
+        throw new InvalidOperationException("A stale startup path appeared current.");
+      }
+      StartupRegistration.SetEnabled(true, keyPath);
+      if (!StartupRegistration.IsEnabled(keyPath)) {
+        throw new InvalidOperationException("The widget startup path was not repaired.");
+      }
+      StartupRegistration.SetEnabled(false, keyPath);
+      if (StartupRegistration.IsEnabled(keyPath)) {
+        throw new InvalidOperationException("Widget startup registration was not removed.");
+      }
+    } finally {
+      Registry.CurrentUser.DeleteSubKeyTree(keyPath, throwOnMissingSubKey: false);
+    }
+  }
+
   internal static void CaptureQuickAdd(string path, bool light) {
     using var quickAdd = new InlineQuickAddForm(
       light ? WidgetPalette.Light : WidgetPalette.Dark,
@@ -80,6 +122,7 @@ internal static class LifeManagerWidgetSelfTest {
         }
       }
       TestIsolatedAppData(directory);
+      TestStartupRegistration(directory);
       TestPrivacy(directory);
       CreateDatabase(databasePath);
       string id, inboxId;
