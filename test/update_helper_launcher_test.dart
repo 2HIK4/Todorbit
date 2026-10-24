@@ -106,4 +106,55 @@ Set-Content -LiteralPath \$ResultFile -Value 'finished'
       );
     },
   );
+
+  test('bundled helper identifies a conflicting app before handoff', () async {
+    if (!Platform.isWindows) return;
+    final folder = await Directory.systemTemp.createTemp(
+      'todorbit-update-conflict-',
+    );
+    addTearDown(() => folder.delete(recursive: true));
+    final target = Directory(path.join(folder.path, 'target'));
+    await target.create();
+    final app = File(path.join(target.path, 'Todorbit.exe'));
+    await File(Platform.environment['ComSpec']!).copy(app.path);
+    final conflicting = await Process.start(app.path, ['/k', 'echo ready']);
+    addTearDown(() async {
+      conflicting.kill();
+      await conflicting.exitCode;
+    });
+    final package = File(path.join(folder.path, 'fixture.zip'));
+    await package.writeAsString('fixture package');
+    final digest = sha256.convert(await package.readAsBytes()).toString();
+    final ready = File(path.join(folder.path, 'ready.txt'));
+    final result = File(path.join(folder.path, 'last-install-result.txt'));
+    await expectLater(
+      startUpdateHelper(
+        script: File('tools/update-helper.ps1').absolute,
+        arguments: [
+          '-Mode',
+          'portable',
+          '-Package',
+          package.path,
+          '-Target',
+          target.path,
+          '-Digest',
+          digest,
+          '-Size',
+          '${await package.length()}',
+          '-ParentPid',
+          '$pid',
+          '-ReadyFile',
+          ready.path,
+          '-ExpectedVersion',
+          '1.0.11',
+        ],
+        readyFile: ready,
+        resultFile: result,
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(await ready.exists(), isFalse);
+    expect(await result.readAsString(), contains('PID ${conflicting.pid}'));
+    expect(await app.exists(), isTrue);
+  });
 }

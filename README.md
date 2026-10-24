@@ -2,7 +2,7 @@
 
 ![Todorbit icon](assets/app_icon.png)
 
-![Todorbit Today view with a sample task in an isolated test profile](docs/screenshots/todorbit-today.png)
+![Todorbit Today view](docs/screenshots/todorbit-today.png)
 
 Todorbit is an offline Windows productivity app for tasks, calendar events, habits, goals, focus sessions, and a native desktop widget. It is built with Flutter and SQLite. Creator: [Hussam Alkhatib](https://2hik4.github.io/).
 
@@ -18,7 +18,7 @@ Todorbit is an offline Windows productivity app for tasks, calendar events, habi
 
 ## Windows installation
 
-Todorbit v1.0.9 is a free, MIT-licensed Windows x64 pre-release. Windows 11 is the main development and test platform; Windows 10 acceptance is limited. Download the unsigned installer or portable ZIP from [GitHub Releases](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.9) and compare it with the published SHA-256 checksum. Run the installer or extract the portable ZIP and run `Todorbit.exe`. Keep the full extracted folder together, including `TodorbitWidget.exe`, DLLs, and the `data` folder. Neither package requires Flutter or Visual Studio on the user's computer.
+Todorbit v1.0.11 is a free, MIT-licensed Windows x64 pre-release. Windows 11 is the main development and test platform; Windows 10 acceptance is limited. Download the unsigned installer or portable ZIP from [GitHub Releases](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.11) and compare it with the published SHA-256 checksum. Run the installer or extract the portable ZIP and run `Todorbit.exe`. Keep the full extracted folder together, including `TodorbitWidget.exe`, DLLs, and the `data` folder. Neither package requires Flutter or Visual Studio on the user's computer.
 
 The portable ZIP does **not** store data beside the executable. Each extracted portable location uses its own `%APPDATA%\TodoPilot\portable-<location-id>` profile; copying or moving the extracted folder selects a new empty profile. An installer fresh profile uses `%APPDATA%\TodoPilot\life_manager.sqlite`. This legacy path remains stable through the rename. An older `%APPDATA%\Life Manager` database is never selected just because it exists; on first launch Todorbit offers a reviewed, explicit import through Backups. Upgrading an installed TodoPilot retains its existing profile and settings. Export/import data before moving a portable folder, and do not delete either profile folder.
 

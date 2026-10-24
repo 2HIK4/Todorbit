@@ -15,6 +15,8 @@ $ErrorActionPreference = 'Stop'
 $status = Join-Path (Split-Path -Parent $Package) 'last-install-result.txt'
 $rollback = ''
 $handedOff = $false
+$updateMutex = $null
+$ownsUpdateMutex = $false
 try {
   $packagePath = [IO.Path]::GetFullPath($Package)
   $targetPath = [IO.Path]::GetFullPath($Target).TrimEnd('\')
@@ -49,6 +51,26 @@ try {
       throw 'This copy is not the registered Todorbit installation. The existing installation was left in place.'
     }
   }
+  $appPath = Join-Path $targetPath 'Todorbit.exe'
+  $updateMutex = [System.Threading.Mutex]::new($false, 'Local\TodorbitUpdateHandoff')
+  $ownsUpdateMutex = $updateMutex.WaitOne(0)
+  if (-not $ownsUpdateMutex) {
+    throw 'Another Todorbit update is already running. Wait for it to finish, then retry.'
+  }
+  for ($attempt = 0; $attempt -lt 20; $attempt++) {
+    $otherApps = @(Get-Process -Name Todorbit -ErrorAction SilentlyContinue | Where-Object {
+      try {
+        $_.Id -ne $ParentPid -and $_.Path -and
+          [IO.Path]::GetFullPath($_.Path) -ieq $appPath
+      } catch { $false }
+    })
+    if ($otherApps.Count -eq 0) { break }
+    Start-Sleep -Milliseconds 100
+  }
+  if ($otherApps.Count -gt 0) {
+    $ids = ($otherApps | ForEach-Object { $_.Id }) -join ', '
+    throw "Another Todorbit process is using this installation (PID $ids). Close it and retry."
+  }
   # The app must observe this file before closing. Without the handshake a
   # failed PowerShell startup leaves no visible explanation or recovery path.
   Set-Content -LiteralPath $ReadyFile -Value 'Helper ready.'
@@ -56,12 +78,16 @@ try {
   if ($oldProcess) {
     $oldProcess | Wait-Process -Timeout 90
   }
-  $appPath = Join-Path $targetPath 'Todorbit.exe'
-  $apps = @(Get-Process -Name Todorbit -ErrorAction SilentlyContinue | Where-Object {
-    try { $_.Path -and [IO.Path]::GetFullPath($_.Path) -ieq $appPath } catch { $false }
-  })
+  for ($attempt = 0; $attempt -lt 20; $attempt++) {
+    $apps = @(Get-Process -Name Todorbit -ErrorAction SilentlyContinue | Where-Object {
+      try { $_.Path -and [IO.Path]::GetFullPath($_.Path) -ieq $appPath } catch { $false }
+    })
+    if ($apps.Count -eq 0) { break }
+    Start-Sleep -Milliseconds 100
+  }
   if ($apps.Count -gt 0) {
-    throw 'Another Todorbit window is using this installation. Close it and retry.'
+    $ids = ($apps | ForEach-Object { $_.Id }) -join ', '
+    throw "A Todorbit process started during the update handoff (PID $ids). Close it and retry."
   }
   $handedOff = $true
   # The widget is a separate process and can keep files in the bundle locked
@@ -117,7 +143,7 @@ try {
         -not $installedVersion.StartsWith($ExpectedVersion + '+')) {
       throw "Installed version $installedVersion does not match expected $ExpectedVersion."
     }
-    $started = Start-Process -FilePath (Join-Path $targetPath 'Todorbit.exe') -WorkingDirectory $targetPath -PassThru
+    $started = Start-Process -FilePath (Join-Path $targetPath 'Todorbit.exe') -ArgumentList '--update-restart' -WorkingDirectory $targetPath -PassThru
     Start-Sleep -Seconds 3
     $started.Refresh()
     if ($started.HasExited) {
@@ -161,4 +187,7 @@ try {
     } catch {}
   }
   exit 1
+} finally {
+  if ($ownsUpdateMutex) { $updateMutex.ReleaseMutex() }
+  if ($updateMutex) { $updateMutex.Dispose() }
 }

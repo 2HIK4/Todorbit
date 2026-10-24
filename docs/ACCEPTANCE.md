@@ -1,5 +1,14 @@
 # Windows v1.0 final acceptance record
 
+## v1.0.11 updater handoff (2026-10-24)
+
+| Check | Result | Evidence and limit |
+| --- | --- | --- |
+| Same-path process conflict | PASS | Focused Windows test runs a disposable `Todorbit.exe` process and confirms the helper refuses the handoff with its PID. |
+| Launch during update | PASS | Isolated Release app exits before opening a profile while the helper mutex is held; the helper restart opens one app. The executable is released before replacement. |
+| Portable helper swap and profile | PASS | Final ZIP swapped at one disposable path after a running widget exited, automatically reopened Todorbit, and retained a seeded task, valid SQLite database, sentinel, and disabled widget startup preference. |
+| Registered installer upgrade and exact in-app button | UNVERIFIED | This Windows account already contains the personal registered installation. Use a disposable Windows account or VM with an older registered Todorbit, seed a task and event and save a backup, then exercise Settings > Software Updates > Update and Restart. Verify one main app and widget, version 1.0.11, profile path, records, themes and settings, plus retry and genuine duplicate-process behavior. Do not use the personal installation for this test. |
+
 ## v1.0.9 release acceptance (2026-10-24)
 
 | Original issue | Result | Evidence and remaining check |

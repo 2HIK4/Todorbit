@@ -20,9 +20,12 @@ update if you cannot trust the release or repository account.
 
 The update helper is packaged with the app as a Flutter asset. Todorbit waits
 for its ready receipt before closing; an early helper failure remains visible
-in Settings. The helper rechecks the package and registered target, waits for
-the main app and widget to exit, and refuses a second app at the same bundle
-path. For a registered installation it runs the
+in Settings. The helper rechecks the package and registered target, checks for
+a second app at the same bundle path before handoff, then waits for the main
+app and widget to exit. It holds a Windows update mutex during installation;
+new app launches exit promptly and the helper restarts Todorbit. An
+existing conflict is reported with its process ID. For a registered
+installation it runs the
 existing Inno Setup package with the same AppId and install location. For a
 portable copy, the app validates and extracts the complete ZIP to a sibling
 folder before closing. The helper renames the existing application folder to

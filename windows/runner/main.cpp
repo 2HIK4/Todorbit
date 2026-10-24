@@ -125,6 +125,26 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   std::vector<std::string> command_line_arguments =
       GetCommandLineArguments();
 
+  // The helper owns this mutex while replacing the bundle. A normal launch
+  // during that interval exits promptly so it cannot lock the executable.
+  // The helper starts the updated app after installation.
+  const bool update_restart =
+      std::find(command_line_arguments.begin(), command_line_arguments.end(),
+                "--update-restart") != command_line_arguments.end();
+  if (!update_restart) {
+    HANDLE update_mutex = ::OpenMutexW(SYNCHRONIZE | MUTEX_MODIFY_STATE, FALSE,
+                                      L"Local\\TodorbitUpdateHandoff");
+    if (update_mutex == nullptr && ::GetLastError() != ERROR_FILE_NOT_FOUND) {
+      ::OleUninitialize();
+      return EXIT_FAILURE;
+    }
+    if (update_mutex != nullptr) {
+      ::CloseHandle(update_mutex);
+      ::OleUninitialize();
+      return EXIT_SUCCESS;
+    }
+  }
+
   const bool native_widget_requested =
       std::find(command_line_arguments.begin(), command_line_arguments.end(),
                 "--widget") != command_line_arguments.end();

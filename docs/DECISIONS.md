@@ -1,5 +1,9 @@
 # Decisions
 
+## Update handoff gate (2026-10-24)
+
+- Hold a named Windows mutex from helper preflight through the helper's restart check. A normal Todorbit launch exits promptly when the mutex exists, releasing its executable file; the helper restart uses `--update-restart` to enter first. Continue to reject a same-path app that was already running before handoff and report its PID. The v1.0.9 installed binary cannot honor this new gate, so a failed update from that version may still require a manual installer run.
+
 ## Anchored selection and widget startup (2026-10-24)
 
 - Use one `AnchoredSelectField` for form and compact selection controls. Flutter's stock dropdown route aligns the selected menu item with its field, which made the menu appear over the trigger. The shared MenuAnchor implementation opens below when space allows, constrains the menu to the viewport, and provides scrolling and a selected-item mark. Keep contextual PopupMenuButtons for actions.
