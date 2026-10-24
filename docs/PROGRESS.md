@@ -1,5 +1,11 @@
 # Progress
 
+## v1.0.10 Software Updates layout (2026-10-24)
+
+- Moved only the available update action and collapsed Markdown Details below Check for Updates. Version/status, last checked, automatic checks, channel, and Check retain their previous relative positions. The 460 px, 1.3x text widget test now asserts the full order and Details behavior.
+- `flutter analyze --no-pub`, the focused Software Updates test, and all 242 serial Flutter tests passed locally. An isolated debug profile showed the current-version Software Updates screen in dark theme with the requested preference order. The available-release action order was verified in the rendered widget test because the live app is already v1.0.9. The production installation and profile were untouched.
+- The prior documentation-only `main` CI run failed on a temporary-file lock in an unrelated privacy test; that test passed locally in this run. Require a fresh passing Windows CI run before publishing v1.0.10.
+
 ## v1.0.9 publication and public updater check (2026-10-24)
 
 - Merged feature commit `1a41569` into `main` by fast-forward and published [v1.0.9](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.9) as a Windows x64 pre-release at that commit. Feature, `main`, and tag Windows CI runs passed analysis, the full Flutter suite, Windows Release build, and the disposable-profile native widget self-test. This closes the v1.0.8 `Get-FileHash` CI preflight failure.
