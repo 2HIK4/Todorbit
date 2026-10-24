@@ -5,12 +5,16 @@ param(
   [Parameter(Mandatory)][string]$Digest,
   [Parameter(Mandatory)][long]$Size,
   [Parameter(Mandatory)][int]$ParentPid,
+  [Parameter(Mandatory)][string]$ReadyFile,
+  [Parameter(Mandatory)][string]$ExpectedVersion,
+  [switch]$ShowErrors,
   [string]$Stage = ''
 )
 
 $ErrorActionPreference = 'Stop'
 $status = Join-Path (Split-Path -Parent $Package) 'last-install-result.txt'
 $rollback = ''
+$handedOff = $false
 try {
   $packagePath = [IO.Path]::GetFullPath($Package)
   $targetPath = [IO.Path]::GetFullPath($Target).TrimEnd('\')
@@ -24,10 +28,31 @@ try {
   if (-not (Test-Path -LiteralPath (Join-Path $targetPath 'Todorbit.exe') -PathType Leaf)) {
     throw 'The current Todorbit installation is missing.'
   }
+  if ($Mode -eq 'installed') {
+    if ([IO.Path]::GetExtension($packagePath) -ine '.exe') {
+      throw 'Installed updates require the verified setup executable.'
+    }
+    $registration = Get-ItemProperty -LiteralPath 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8C3E7B4A-17A4-42D7-8C45-EBB4C79B6941}_is1' -ErrorAction SilentlyContinue
+    if (-not $registration -or
+        [IO.Path]::GetFullPath($registration.InstallLocation).TrimEnd('\') -ine $targetPath) {
+      throw 'This copy is not the registered Todorbit installation. The existing installation was left in place.'
+    }
+  }
+  # The app must observe this file before closing. Without the handshake a
+  # failed PowerShell startup leaves no visible explanation or recovery path.
+  Set-Content -LiteralPath $ReadyFile -Value 'Helper ready.'
   $oldProcess = Get-Process -Id $ParentPid -ErrorAction SilentlyContinue
   if ($oldProcess) {
     $oldProcess | Wait-Process -Timeout 90
   }
+  $appPath = Join-Path $targetPath 'Todorbit.exe'
+  $apps = @(Get-Process -Name Todorbit -ErrorAction SilentlyContinue | Where-Object {
+    try { $_.Path -and [IO.Path]::GetFullPath($_.Path) -ieq $appPath } catch { $false }
+  })
+  if ($apps.Count -gt 0) {
+    throw 'Another Todorbit window is using this installation. Close it and retry.'
+  }
+  $handedOff = $true
   # The widget is a separate process and can keep files in the bundle locked
   # after its IPC exit command has returned.
   $widgetPath = Join-Path $targetPath 'TodorbitWidget.exe'
@@ -43,17 +68,16 @@ try {
     throw 'The native widget did not close. The existing installation was left in place.'
   }
   if ($Mode -eq 'installed') {
-    if ([IO.Path]::GetExtension($packagePath) -ine '.exe') {
-      throw 'Installed updates require the verified setup executable.'
-    }
-    $registration = Get-ItemProperty -LiteralPath 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8C3E7B4A-17A4-42D7-8C45-EBB4C79B6941}_is1' -ErrorAction SilentlyContinue
-    if (-not $registration -or
-        [IO.Path]::GetFullPath($registration.InstallLocation).TrimEnd('\') -ine $targetPath) {
-      throw 'This copy is not the registered Todorbit installation. Use the portable update path or reinstall after a verified backup.'
-    }
-    $setup = Start-Process -FilePath $packagePath -ArgumentList @('/SILENT', '/NORESTART', '/CLOSEAPPLICATIONS') -PassThru -Wait
+    $installerLog = Join-Path (Split-Path -Parent $packagePath) 'installer.log'
+    $setup = Start-Process -FilePath $packagePath -ArgumentList @('/SILENT', '/NORESTART', '/CLOSEAPPLICATIONS', ('/LOG="' + $installerLog + '"')) -PassThru -Wait
     if ($setup.ExitCode -ne 0) {
-      throw "The installer exited with code $($setup.ExitCode)."
+      $reason = switch ($setup.ExitCode) {
+        { $_ -in 2, 5 } { 'Installation was canceled.'; break }
+        8 { 'Windows must restart before installation can continue.'; break }
+        7 { 'Windows could not prepare this installation.'; break }
+        default { 'The installer could not complete.' }
+      }
+      throw "$reason Installer exit code $($setup.ExitCode). See installer.log for details."
     }
   } else {
     if ([IO.Path]::GetExtension($packagePath) -ine '.zip') {
@@ -77,6 +101,11 @@ try {
     }
   }
   try {
+    $installedVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $targetPath 'Todorbit.exe')).ProductVersion
+    if ($installedVersion -ne $ExpectedVersion -and
+        -not $installedVersion.StartsWith($ExpectedVersion + '+')) {
+      throw "Installed version $installedVersion does not match expected $ExpectedVersion."
+    }
     $started = Start-Process -FilePath (Join-Path $targetPath 'Todorbit.exe') -WorkingDirectory $targetPath -PassThru
     Start-Sleep -Seconds 3
     $started.Refresh()
@@ -92,8 +121,33 @@ try {
     }
     throw
   }
-  Set-Content -LiteralPath $status -Value 'Update installed and Todorbit restart requested.'
+  Set-Content -LiteralPath $status -Value "Update installed: $installedVersion. Todorbit restart requested."
 } catch {
-  Set-Content -LiteralPath $status -Value ('Update failed: ' + $_.Exception.Message)
+  $failureMessage = $_.Exception.Message
+  Set-Content -LiteralPath $status -Value ('Update failed: ' + $failureMessage)
+  if ($targetPath -and
+      (Test-Path -LiteralPath (Join-Path $targetPath 'Todorbit.exe') -PathType Leaf)) {
+    try {
+      $running = @(Get-Process -Name Todorbit -ErrorAction SilentlyContinue | Where-Object {
+        try { $_.Path -and [IO.Path]::GetFullPath($_.Path) -ieq (Join-Path $targetPath 'Todorbit.exe') } catch { $false }
+      })
+      if ($running.Count -eq 0) {
+        Start-Process -FilePath (Join-Path $targetPath 'Todorbit.exe') -WorkingDirectory $targetPath | Out-Null
+      }
+    } catch {}
+  }
+  if ($ShowErrors -and $handedOff) {
+    try {
+      Add-Type -AssemblyName System.Windows.Forms
+      [System.Windows.Forms.MessageBox]::Show(
+        "Update failed: $failureMessage`r`n`r`n" +
+        'Todorbit attempted to reopen the available installation. ' +
+        'Open Settings > Software Updates to retry. If Todorbit does not open, ' +
+        'run a verified installer manually and keep the profile data untouched.',
+        'Todorbit update failed',
+        [System.Windows.Forms.MessageBoxButtons]::OK,
+        [System.Windows.Forms.MessageBoxIcon]::Error) | Out-Null
+    } catch {}
+  }
   exit 1
 }

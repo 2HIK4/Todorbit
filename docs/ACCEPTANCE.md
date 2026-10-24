@@ -1,5 +1,18 @@
 # Windows v1.0 final acceptance record
 
+## Updater repair checkpoint (2026-10-24, unreleased feature branch)
+
+| Check | Result | Evidence and limit |
+| --- | --- | --- |
+| User's v1.0.6 procedure and failure | PASS (diagnosis) | Pre-release selection, download, Update and Restart, and unsigned confirmation were the intended actions. The personal installed binary is still 1.0.6 and its v1.0.7 helper was staged with no result file. Disposable Dart detached launches returned a PID but did not execute even a minimal PowerShell file; normal launches did. The missing installer is explained by the failed handoff. |
+| New helper startup and error handoff | PASS (automated) | A Windows process test exercises ready acknowledgment and continued execution, plus failure before acknowledgment. A mismatched registered path produces a written failure without a ready receipt. |
+| Installer completion, cancellation, UAC rejection, and post-install version | UNVERIFIED | Version verification and recovery are implemented, but a real registered upgrade was not run. The current user owns a personal registered installation at the stable AppId and path. Do not replace it for testing. Use a disposable Windows user or VM with an isolated v1.0.6 install and profile. |
+| Portable replacement, restart, and profile | PARTIAL | The helper swapped real 1.0.6 → 1.0.7 and 1.0.7 → local 1.0.8 ZIP bundles at disposable paths. The latter profile had a repository-created task and fixed event, update settings, and a sentinel; they remained after automatic restart, with product version 1.0.8+9 and one app process. A wrong digest failed with a receipt and reopened the available app; a repeated helper swap succeeded. The in-app button was not exercised with an available 1.0.8 release. |
+| Software Updates action and Markdown | PARTIAL | Narrow 460 px widget test at 1.3 text scale verifies collapsed release headings, Details expansion, and action presence. A live isolated debug screenshot covers the current-version dark Settings screen; available-release live pixels, mouse, keyboard, and DPI remain unchecked. |
+| Full application and packaging | PARTIAL | Final analyzer, serial Flutter suite, Windows Release, native widget self-test, Inno package, and portable ZIP checks are recorded in `docs/PROGRESS.md`. An installed upgrade still gates release claims. |
+
+For installed acceptance, create a disposable Windows account or VM with no Todorbit registration. Install the published v1.0.6 setup there using that account's isolated `%APPDATA%` and `%LOCALAPPDATA%`. Create a named task, fixed event, custom theme, and widget preference, then save a verified SQLite backup. From v1.0.6, choose Pre-release, download the target update, and confirm. Because v1.0.6 contains the broken handoff, first manually install a build containing this repair at the **same** AppId/path; then use the repaired in-app updater to upgrade to a later version. Observe installer completion, automatic restart, executable version, restored profile/data, widget state, and one app/widget process. Repeat with installer cancellation, rejected permission, missing package, corrupt digest, running widget, and interrupted setup. Keep the account/VM disposable and never run these checks against the personal installation.
+
 ## Settings, backup, and UI audit checkpoint (2026-10-24)
 
 | ID | Result | Evidence and limit |

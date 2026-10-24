@@ -1,5 +1,11 @@
 # Decisions
 
+## Update helper handoff and release notes (2026-10-24)
+
+- Start Windows PowerShell as a normal child process and require an explicit ready file before closing Todorbit. The helper continues after its parent exits; the former Dart detached mode returned a PID but failed before executing the script on this Windows setup. Clear stale handoff and result files before each attempt, and keep the app open when startup or preflight fails.
+- Validate the registered AppId and exact target before handoff. After setup, compare the installed executable product version with the selected release before claiming success. On failure, write a per-update receipt and reopen the available app if no instance is running. Keep the existing Inno identity, profile paths, and migration gate.
+- Render GitHub release notes as Markdown in a bounded, collapsed Details section below the primary update action. Use the Markdown parser's first paragraph for a short syntax-free summary above the action. Block embedded images and open only HTTPS links through the existing Windows shell channel.
+
 ## Settings transfer and reviewed restore (2026-10-24)
 
 - Keep shareable settings separate from SQLite backup. The versioned JSON transfer allowlists appearance, hotkeys, calendar display, sidebar order, and task display; it never reads the PIN policy, update staging, widget paths, or task/event database. Import validates the file and lets the user select categories. Hotkey presets may be merged under distinct names; other selected categories replace their values.

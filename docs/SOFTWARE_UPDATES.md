@@ -18,14 +18,30 @@ current releases are unsigned: the GitHub digest checks integrity, but does
 not independently authenticate the publisher. Do not accept an unsigned
 update if you cannot trust the release or repository account.
 
-The update helper is packaged with the app as a Flutter asset. It rechecks the
-package after the main app exits. For a registered installation it runs the
+The update helper is packaged with the app as a Flutter asset. Todorbit waits
+for its ready receipt before closing; an early helper failure remains visible
+in Settings. The helper rechecks the package and registered target, waits for
+the main app and widget to exit, and refuses a second app at the same bundle
+path. For a registered installation it runs the
 existing Inno Setup package with the same AppId and install location. For a
 portable copy, the app validates and extracts the complete ZIP to a sibling
 folder before closing. The helper renames the existing application folder to
 a rollback folder and moves the complete new folder into the *same exact
 path*. This keeps the location-derived portable profile identity. The helper
-restarts Todorbit. It records a result in `updates/<tag>/last-install-result.txt`.
+restarts Todorbit only after the replacement executable's product version
+matches the selected release. It records a result in
+`updates/<tag>/last-install-result.txt`. A failed or canceled setup records the
+error and attempts to reopen the available app. Inno Setup runs silently for
+this per-user installation; its progress window may appear, but the wizard and
+UAC prompt should not appear for the default path. The installer writes
+`updates/<tag>/installer.log` for diagnosis.
+An installation moved to a protected location may fail because this per-user
+installer does not request elevation; install manually from the owning account
+after reviewing its permissions. Running an elevated installer under a different
+account could select a different profile and is not attempted automatically.
+After a post-handoff failure the helper also shows a Windows error message;
+the detailed reason remains in the result file and appears in Software Updates
+on the next visit.
 The helper waits for the native widget from that installation to exit before
 replacing files. A portable restart that exits within three seconds triggers
 binary rollback. The updater leaves profile databases, attachments, backups,
@@ -40,6 +56,13 @@ migration. If the older executable cannot open a newer database, leave the
 database untouched and use the matching version or a reviewed database restore.
 The `updates` folder and portable rollback folder can be removed only after
 checking the new app and preserving any backup you need.
+
+The published v1.0.6 app still contains the failed detached handoff. Installing
+a future build that contains this repair requires one manual installer run on
+the existing registered installation (after verifying the published package).
+That installer must retain the same AppId and path. Later updates can use the
+repaired in-app flow. Do not run a disposable test against the personal
+registered installation or profile.
 
 ## Publishing a compatible release
 

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
@@ -7,10 +8,13 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:markdown/markdown.dart' as md;
 import 'package:path/path.dart' as path;
 
 import '../../data/profile_paths.dart';
 import '../../data/software_update_service.dart';
+import '../../data/update_helper_launcher.dart';
 import '../../app/app_controller.dart';
 import '../widget/native_widget_service.dart';
 
@@ -30,9 +34,11 @@ class SoftwareUpdatesPage extends ConsumerStatefulWidget {
     super.key,
     required this.nativeWidget,
     this.preferenceStore,
+    this.updateService,
   });
   final NativeWidgetService nativeWidget;
   final UpdatePreferenceStore? preferenceStore;
+  final SoftwareUpdateService? updateService;
 
   @override
   ConsumerState<SoftwareUpdatesPage> createState() =>
@@ -40,7 +46,8 @@ class SoftwareUpdatesPage extends ConsumerStatefulWidget {
 }
 
 class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
-  final _service = SoftwareUpdateService();
+  late final SoftwareUpdateService _service =
+      widget.updateService ?? SoftwareUpdateService();
   late final UpdatePreferenceStore _store;
   UpdatePreferences _preferences = const UpdatePreferences();
   UpdateRelease? _release;
@@ -51,6 +58,7 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
   int _received = 0;
   bool _portable = false;
   bool _installing = false;
+  bool _detailsExpanded = false;
 
   @override
   void initState() {
@@ -144,6 +152,7 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
       _error = null;
       _release = null;
       _package = null;
+      _detailsExpanded = false;
     });
     try {
       final result = await _service.check(
@@ -305,27 +314,35 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
     final script = File(path.join(package.parent.path, 'update-helper.ps1'));
     final bundled = await rootBundle.loadString('tools/update-helper.ps1');
     await script.writeAsString(bundled, flush: true);
-    final process = await Process.start('powershell.exe', [
-      '-NoProfile',
-      '-ExecutionPolicy',
-      'Bypass',
-      '-File',
-      script.path,
-      '-Mode',
-      _portable ? 'portable' : 'installed',
-      '-Package',
-      package.path,
-      '-Target',
-      target.path,
-      '-Digest',
-      release.sha256Digest,
-      '-Size',
-      '${release.size}',
-      '-ParentPid',
-      '$pid',
-      if (_portable) ...['-Stage', stage],
-    ], mode: ProcessStartMode.detached);
-    if (process.pid <= 0) throw StateError('Update helper did not start');
+    final ready = File(path.join(package.parent.path, 'helper-ready.txt'));
+    final result = File(
+      path.join(package.parent.path, 'last-install-result.txt'),
+    );
+    await startUpdateHelper(
+      script: script,
+      readyFile: ready,
+      resultFile: result,
+      arguments: [
+        '-Mode',
+        _portable ? 'portable' : 'installed',
+        '-Package',
+        package.path,
+        '-Target',
+        target.path,
+        '-Digest',
+        release.sha256Digest,
+        '-Size',
+        '${release.size}',
+        '-ParentPid',
+        '$pid',
+        '-ReadyFile',
+        ready.path,
+        '-ExpectedVersion',
+        release.tag.startsWith('v') ? release.tag.substring(1) : release.tag,
+        '-ShowErrors',
+        if (_portable) ...['-Stage', stage],
+      ],
+    );
     try {
       await ref.read(appControllerProvider).repository.db.close();
     } finally {
@@ -362,6 +379,101 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
           subtitle: Text(_version),
         ),
         ListTile(title: const Text('Status'), subtitle: Text(statusText)),
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: SelectableText(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
+        if (release != null) ...[
+          ListTile(
+            title: const Text('Available update'),
+            subtitle: Text('Todorbit ${release.tag}'),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Text(_releaseSummary(release.notes)),
+          ),
+          if (_status == UpdateStatus.downloading)
+            LinearProgressIndicator(
+              value: total == 0 ? null : _received / total,
+            ),
+          if (_status == UpdateStatus.downloading)
+            Text('$_received of $total bytes'),
+          if (_status == UpdateStatus.available ||
+              _status == UpdateStatus.failed)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton(
+                onPressed: _download,
+                child: Text(
+                  _status == UpdateStatus.failed
+                      ? 'Retry download'
+                      : 'Download update',
+                ),
+              ),
+            ),
+          if (_status == UpdateStatus.ready)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton(
+                onPressed: _installing ? null : _install,
+                child: Text(
+                  _installing ? 'Preparing update…' : 'Update and Restart',
+                ),
+              ),
+            ),
+          const SizedBox(height: 8),
+          Semantics(
+            expanded: _detailsExpanded,
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              title: const Text('Details'),
+              trailing: Icon(
+                _detailsExpanded ? Icons.expand_less : Icons.expand_more,
+              ),
+              onTap: () => setState(() => _detailsExpanded = !_detailsExpanded),
+            ),
+          ),
+          if (_detailsExpanded)
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 320),
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: MarkdownBody(
+                    data: release.notes.isEmpty
+                        ? 'No release notes provided.'
+                        : release.notes,
+                    selectable: true,
+                    imageBuilder: (uri, title, alt) => const SizedBox.shrink(),
+                    onTapLink: (_, href, title) async {
+                      final uri = href == null ? null : Uri.tryParse(href);
+                      if (uri != null &&
+                          uri.scheme == 'https' &&
+                          uri.host.isNotEmpty &&
+                          uri.userInfo.isEmpty &&
+                          uri.toString().length <= 2048) {
+                        await const MethodChannel('life_manager/file_dialog')
+                            .invokeMethod<void>('openResource', uri.toString());
+                      }
+                    },
+                    styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context))
+                        .copyWith(
+                          a: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            decoration: TextDecoration.underline,
+                          ),
+                          p: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(height: 1.45),
+                        ),
+                  ),
+                ),
+              ),
+            ),
+        ],
         ListTile(
           title: const Text('Last checked'),
           subtitle: Text(
@@ -417,60 +529,25 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
             label: const Text('Check for Updates'),
           ),
         ),
-        if (_error != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: SelectableText(
-              _error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          ),
-        if (release != null) ...[
-          const SizedBox(height: 16),
-          Text(
-            'Todorbit ${release.tag}',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          SelectableText(
-            release.notes.isEmpty
-                ? 'No release notes provided.'
-                : release.notes,
-          ),
-          const SizedBox(height: 12),
-          if (_status == UpdateStatus.downloading)
-            LinearProgressIndicator(
-              value: total == 0 ? null : _received / total,
-            ),
-          if (_status == UpdateStatus.downloading)
-            Text('$_received of $total bytes'),
-          if (_status == UpdateStatus.available ||
-              _status == UpdateStatus.failed)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: FilledButton(
-                onPressed: _download,
-                child: Text(
-                  _status == UpdateStatus.failed
-                      ? 'Retry download'
-                      : 'Download update',
-                ),
-              ),
-            ),
-          if (_status == UpdateStatus.ready)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: FilledButton(
-                onPressed: _installing ? null : _install,
-                child: Text(
-                  _installing ? 'Preparing update…' : 'Update and Restart',
-                ),
-              ),
-            ),
-        ],
       ],
     );
   }
+}
+
+String _releaseSummary(String notes) {
+  final blocks = md.Document(extensionSet: md.ExtensionSet.gitHubFlavored)
+      .parseLines(const LineSplitter().convert(notes));
+  for (final block in blocks) {
+    if (block is md.Element && block.tag == 'p') {
+      final summary = block.textContent.replaceAll(RegExp(r'\s+'), ' ').trim();
+      if (summary.isNotEmpty) {
+        return summary.length <= 180
+            ? summary
+            : '${summary.substring(0, 180).trimRight()}…';
+      }
+    }
+  }
+  return 'Review the release notes in Details.';
 }
 
 void _extractPortable(String archivePath, String containerPath) {
