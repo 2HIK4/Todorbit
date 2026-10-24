@@ -404,6 +404,66 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
             ),
           if (_status == UpdateStatus.downloading)
             Text('$_received of $total bytes'),
+        ],
+        ListTile(
+          title: const Text('Last checked'),
+          subtitle: Text(
+            _preferences.lastChecked == null
+                ? 'Never'
+                : _preferences.lastChecked!.toLocal().toString(),
+          ),
+        ),
+        SwitchListTile(
+          title: const Text('Automatically check for updates'),
+          subtitle: const Text(
+            'Checks when you open Software Updates; downloads require your approval.',
+          ),
+          value: _preferences.automaticChecks,
+          onChanged: (value) =>
+              _save(_preferences.copyWith(automaticChecks: value)),
+        ),
+        const SizedBox(height: 12),
+        AnchoredSelectField<UpdateChannel>(
+          initialValue: _preferences.channel,
+          externalLabel: 'Update channel',
+          decoration: const InputDecoration(),
+          items: const [
+            DropdownMenuItem(
+              value: UpdateChannel.stable,
+              child: Text('Stable'),
+            ),
+            DropdownMenuItem(
+              value: UpdateChannel.prerelease,
+              child: Text('Pre-release'),
+            ),
+          ],
+          onChanged: (value) async {
+            if (value == null) return;
+            await _save(_preferences.copyWith(channel: value));
+            if (mounted) {
+              setState(() {
+                _status = UpdateStatus.idle;
+                _release = null;
+                _package = null;
+              });
+            }
+          },
+        ),
+        const SizedBox(height: 14),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            onPressed:
+                _status == UpdateStatus.checking ||
+                    _status == UpdateStatus.downloading
+                ? null
+                : _check,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Check for Updates'),
+          ),
+        ),
+        if (release != null) ...[
+          const SizedBox(height: 8),
           if (_status == UpdateStatus.available ||
               _status == UpdateStatus.failed)
             Align(
@@ -476,63 +536,6 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
               ),
             ),
         ],
-        ListTile(
-          title: const Text('Last checked'),
-          subtitle: Text(
-            _preferences.lastChecked == null
-                ? 'Never'
-                : _preferences.lastChecked!.toLocal().toString(),
-          ),
-        ),
-        SwitchListTile(
-          title: const Text('Automatically check for updates'),
-          subtitle: const Text(
-            'Checks when you open Software Updates; downloads require your approval.',
-          ),
-          value: _preferences.automaticChecks,
-          onChanged: (value) =>
-              _save(_preferences.copyWith(automaticChecks: value)),
-        ),
-        const SizedBox(height: 12),
-        AnchoredSelectField<UpdateChannel>(
-          initialValue: _preferences.channel,
-          externalLabel: 'Update channel',
-          decoration: const InputDecoration(),
-          items: const [
-            DropdownMenuItem(
-              value: UpdateChannel.stable,
-              child: Text('Stable'),
-            ),
-            DropdownMenuItem(
-              value: UpdateChannel.prerelease,
-              child: Text('Pre-release'),
-            ),
-          ],
-          onChanged: (value) async {
-            if (value == null) return;
-            await _save(_preferences.copyWith(channel: value));
-            if (mounted) {
-              setState(() {
-                _status = UpdateStatus.idle;
-                _release = null;
-                _package = null;
-              });
-            }
-          },
-        ),
-        const SizedBox(height: 14),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: OutlinedButton.icon(
-            onPressed:
-                _status == UpdateStatus.checking ||
-                    _status == UpdateStatus.downloading
-                ? null
-                : _check,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Check for Updates'),
-          ),
-        ),
       ],
     );
   }

@@ -79,7 +79,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Release notes stay collapsed below the update action', (
+  testWidgets('Update action and collapsed details follow preferences and check', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(460, 620);
@@ -135,8 +135,27 @@ void main() {
     expect(find.text('Important release notes with a link.'), findsOneWidget);
     expect(find.text('Verification limits'), findsNothing);
     expect(find.byIcon(Icons.expand_more), findsOneWidget);
+    final ordered = [
+      'Installed version',
+      'Status',
+      'Available update',
+      'Last checked',
+      'Automatically check for updates',
+      'Update channel',
+      'Check for Updates',
+      'Download update',
+      'Details',
+    ];
+    for (var index = 1; index < ordered.length; index++) {
+      expect(
+        tester.getRect(find.text(ordered[index - 1])).top,
+        lessThan(tester.getRect(find.text(ordered[index])).top),
+        reason: '${ordered[index - 1]} should precede ${ordered[index]}',
+      );
+    }
+    await tester.ensureVisible(find.text('Details'));
+    await tester.pumpAndSettle();
     final actionBefore = tester.getRect(find.text('Download update'));
-    expect(actionBefore.bottom, lessThan(620));
     await tester.tap(find.text('Details'));
     await tester.pumpAndSettle();
     expect(find.text('Verification limits'), findsOneWidget);
