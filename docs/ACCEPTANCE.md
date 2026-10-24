@@ -20,6 +20,8 @@ These are debug GUI and automated checks on disposable profiles. Release pixels,
 
 The v1.0.7 release gate passed `flutter analyze --no-pub`, all 234 serial Flutter tests, native .NET Release with zero warnings, Windows Release, and source and packaged widget self-tests. Inno Setup 7.1.0 compiled the installer; the 34-entry portable ZIP passed archive integrity and private-file checks. Package hashes are in the published `SHA256SUMS.txt`. Native file picker interaction, registered installer upgrade, and physical widget/DPI behavior remain unverified on a disposable Windows user or VM.
 
+The v1.0.7 pre-release was published from `66f4693`. All four public assets were downloaded and matched local SHA-256 hashes and GitHub digests. The live update service selected v1.0.7, release notes, and the exact installer/portable package from the GitHub API for a v1.0.6 Pre-release user; a public installer download completed with progress callbacks and digest verification. It reported v1.0.7 as up to date. The installed v1.0.6 Settings screen, update confirmation, installer launch, profile preservation, and post-update widget/process state remain UNVERIFIED because this account's registered installation was not modified.
+
 ## v1.0.6 release checkpoint (2026-10-24)
 
 `flutter analyze --no-pub` found no issues; all 229 serial Flutter tests passed with the existing nonfatal workspace scroll hit-test warning. Native .NET and Flutter Windows Release builds passed, as did source and packaged widget self-tests. Inno Setup 7 compiled the installer. The portable ZIP passed its archive integrity check and contains the executable, widget, Flutter/SQLite runtime, update helper, licenses, and portable marker; no profile database, settings, logs, or keys were found.
