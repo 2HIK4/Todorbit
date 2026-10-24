@@ -57,12 +57,13 @@ database untouched and use the matching version or a reviewed database restore.
 The `updates` folder and portable rollback folder can be removed only after
 checking the new app and preserving any backup you need.
 
-The published v1.0.6 app still contains the failed detached handoff. Installing
-a future build that contains this repair requires one manual installer run on
-the existing registered installation (after verifying the published package).
-That installer must retain the same AppId and path. Later updates can use the
-repaired in-app flow. Do not run a disposable test against the personal
-registered installation or profile.
+The published v1.0.6 app still contains the failed detached handoff. Upgrading
+that registered copy to [v1.0.8](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.8)
+requires one manual installer run (after verifying the published package).
+Keep the same Windows account, AppId, and installation path. Later updates are
+intended to use the repaired in-app flow, which still needs a registered-install
+test. Do not run a disposable test against the personal registered installation
+or profile.
 
 ## Publishing a compatible release
 
