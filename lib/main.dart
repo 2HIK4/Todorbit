@@ -61,26 +61,6 @@ Future<void> _startApplication(
       !await freshDatabase.exists() &&
       await legacyDatabase.exists();
   final databaseFile = await AppDatabase.defaultFile();
-  try {
-    final olderSchema = await MigrationGate.olderSchema(databaseFile);
-    if (olderSchema != null && !migrationApproved) {
-      runApp(_MigrationApprovalApp(arguments: args, olderSchema: olderSchema));
-      return;
-    }
-  } catch (failure) {
-    runApp(
-      MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: Text(
-              'Todorbit could not inspect the database safely: $failure',
-            ),
-          ),
-        ),
-      ),
-    );
-    return;
-  }
   final backupService = BackupService(databaseFile);
   try {
     if (await backupService.pendingRestoreName() != null) {
@@ -92,6 +72,11 @@ Future<void> _startApplication(
       await backupService.applyScheduledRestore(
         appSchemaVersion: AppDatabase.currentSchemaVersion,
       );
+    }
+    final olderSchema = await MigrationGate.olderSchema(databaseFile);
+    if (olderSchema != null && !migrationApproved) {
+      runApp(_MigrationApprovalApp(arguments: args, olderSchema: olderSchema));
+      return;
     }
     await backupService.ensureAutomaticBackup(
       appSchemaVersion: AppDatabase.currentSchemaVersion,
@@ -119,6 +104,11 @@ Future<void> _startApplication(
     backupService: backupService,
   );
   await controller.initialize();
+  try {
+    await backupService.markRestoreOpened();
+  } catch (_) {
+    // A status receipt must never block access to a verified database.
+  }
   if (Platform.isWindows) unawaited(_checkUpdatesInBackground());
   if (Platform.isWindows) {
     final companion = NativeWidgetService();

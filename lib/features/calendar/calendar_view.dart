@@ -293,23 +293,45 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                 onPressed: () => _move(1),
                 icon: const Icon(Icons.chevron_right),
               ),
-              Text(
-                _periodLabel(),
-                style: Theme.of(context).textTheme.titleMedium,
+              SizedBox(
+                width: 240,
+                child: Text(
+                  _periodLabel(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ),
               SegmentedButton<CalendarMode>(
+                showSelectedIcon: false,
                 segments: const [
-                  ButtonSegment(value: CalendarMode.day, label: Text('Day')),
-                  ButtonSegment(value: CalendarMode.week, label: Text('Week')),
+                  ButtonSegment(
+                    value: CalendarMode.day,
+                    label: SizedBox(
+                      width: 48,
+                      child: Center(child: Text('Day')),
+                    ),
+                  ),
+                  ButtonSegment(
+                    value: CalendarMode.week,
+                    label: SizedBox(
+                      width: 48,
+                      child: Center(child: Text('Week')),
+                    ),
+                  ),
                   ButtonSegment(
                     value: CalendarMode.month,
-                    label: Text('Month'),
+                    label: SizedBox(
+                      width: 48,
+                      child: Center(child: Text('Month')),
+                    ),
                   ),
                 ],
                 selected: {mode},
                 onSelectionChanged: (value) => _setMode(value.first),
               ),
               SegmentedButton<CalendarContent>(
+                showSelectedIcon: false,
                 segments: const [
                   ButtonSegment(
                     value: CalendarContent.both,

@@ -99,6 +99,7 @@ class ExplorerFileDropTarget final : public IDropTarget {
 
 void ShowFileDialog(
     HWND owner, bool save, bool any_file, bool folder,
+    bool settings_json,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
   Microsoft::WRL::ComPtr<IFileDialog> dialog;
   HRESULT status = ::CoCreateInstance(
@@ -108,8 +109,10 @@ void ShowFileDialog(
     result->Error("dialog_failed", "Could not open the Windows file dialog");
     return;
   }
-  COMDLG_FILTERSPEC filter{L"SQLite database (*.sqlite)", L"*.sqlite"};
-  if (!any_file && !folder) status = dialog->SetFileTypes(1, &filter);
+  COMDLG_FILTERSPEC filter = settings_json
+      ? COMDLG_FILTERSPEC{L"Todorbit settings (*.json)", L"*.json"}
+      : COMDLG_FILTERSPEC{L"SQLite database (*.sqlite)", L"*.sqlite"};
+  if ((!any_file && !folder) || settings_json) status = dialog->SetFileTypes(1, &filter);
   if (SUCCEEDED(status)) {
     DWORD options = 0;
     status = dialog->GetOptions(&options);
@@ -120,8 +123,8 @@ void ShowFileDialog(
     }
   }
   if (SUCCEEDED(status) && save) {
-    status = dialog->SetFileName(L"life-manager-export.sqlite");
-    if (SUCCEEDED(status)) status = dialog->SetDefaultExtension(L"sqlite");
+    status = dialog->SetFileName(settings_json ? L"Todorbit-settings.json" : L"life-manager-export.sqlite");
+    if (SUCCEEDED(status)) status = dialog->SetDefaultExtension(settings_json ? L"json" : L"sqlite");
   }
   if (SUCCEEDED(status)) status = dialog->Show(owner);
   if (status == HRESULT_FROM_WIN32(ERROR_CANCELLED)) {
@@ -129,7 +132,9 @@ void ShowFileDialog(
     return;
   }
   if (FAILED(status)) {
-    result->Error("dialog_failed", "Windows could not select a database file");
+    result->Error("dialog_failed", settings_json
+        ? "Windows could not select a settings file"
+        : "Windows could not select a database file");
     return;
   }
   Microsoft::WRL::ComPtr<IShellItem> item;
@@ -331,13 +336,17 @@ bool FlutterWindow::OnCreate() {
       [this](const flutter::MethodCall<flutter::EncodableValue>& call,
              std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
         if (call.method_name() == "openDatabase") {
-          ShowFileDialog(GetHandle(), false, false, false, std::move(result));
+          ShowFileDialog(GetHandle(), false, false, false, false, std::move(result));
         } else if (call.method_name() == "saveDatabase") {
-          ShowFileDialog(GetHandle(), true, false, false, std::move(result));
+          ShowFileDialog(GetHandle(), true, false, false, false, std::move(result));
+        } else if (call.method_name() == "openSettings") {
+          ShowFileDialog(GetHandle(), false, false, false, true, std::move(result));
+        } else if (call.method_name() == "saveSettings") {
+          ShowFileDialog(GetHandle(), true, false, false, true, std::move(result));
         } else if (call.method_name() == "openFile") {
-          ShowFileDialog(GetHandle(), false, true, false, std::move(result));
+          ShowFileDialog(GetHandle(), false, true, false, false, std::move(result));
         } else if (call.method_name() == "openFolder") {
-          ShowFileDialog(GetHandle(), false, true, true, std::move(result));
+          ShowFileDialog(GetHandle(), false, true, true, false, std::move(result));
         } else if (call.method_name() == "openResource") {
           const auto* value = std::get_if<std::string>(call.arguments());
           if (value == nullptr) {

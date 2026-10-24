@@ -23,6 +23,16 @@ class BackupRecord {
   final int schemaVersion;
 }
 
+class BackupSummary {
+  const BackupSummary(this.counts);
+  final Map<String, int> counts;
+
+  String get description => counts.entries
+      .where((entry) => entry.value > 0)
+      .map((entry) => '${entry.value} ${entry.key}')
+      .join(' · ');
+}
+
 /// Creates standalone, integrity-checked SQLite snapshots through VACUUM INTO.
 /// It never copies a live WAL file or removes user-created backup files.
 class BackupService {
@@ -35,6 +45,9 @@ class BackupService {
 
   File get _restoreMarker =>
       File(path.join(databaseFile.parent.path, 'pending-restore.json'));
+
+  File get _restoreStatus =>
+      File(path.join(databaseFile.parent.path, 'restore-status.json'));
 
   Directory get backupDirectory =>
       Directory(path.join(databaseFile.parent.path, 'backups'));
@@ -245,6 +258,44 @@ class BackupService {
 
   Future<bool> hasScheduledRestore() => _restoreMarker.exists();
 
+  Future<String?> restoreStatus() async {
+    if (!await _restoreStatus.exists()) return null;
+    try {
+      final data = jsonDecode(await _restoreStatus.readAsString());
+      if (data is! Map ||
+          data['state'] != 'opened' ||
+          data['backup'] is! String) {
+        return null;
+      }
+      return 'The selected backup was restored and its database opened successfully.';
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> markRestoreOpened() async {
+    if (!await _restoreStatus.exists()) return;
+    final data = jsonDecode(await _restoreStatus.readAsString());
+    if (data is! Map ||
+        data['state'] != 'applied' ||
+        data['backup'] is! String) {
+      return;
+    }
+    await _restoreStatus.writeAsString(
+      jsonEncode({
+        'state': 'opened',
+        'backup': data['backup'],
+        'openedAt': DateTime.now().toUtc().toIso8601String(),
+      }),
+      flush: true,
+    );
+  }
+
+  Future<BackupSummary> summarize(BackupRecord selected) async {
+    final filePath = selected.file.path;
+    return Isolate.run(() => _summarizeSnapshot(filePath));
+  }
+
   Future<void> scheduleRestore(
     BackupRecord selected, {
     required int appSchemaVersion,
@@ -341,6 +392,14 @@ class BackupService {
       throw StateError('Restored database failed schema verification');
     }
     await _restoreMarker.delete();
+    try {
+      await _restoreStatus.writeAsString(
+        jsonEncode({'state': 'applied', 'backup': filename}),
+        flush: true,
+      );
+    } catch (_) {
+      // The verified restore is already complete; a status write is optional.
+    }
     return rollback;
   }
 }
@@ -557,6 +616,42 @@ Future<void> _restoreSnapshot(String snapshotPath, String targetPath) async {
   } finally {
     target.close();
     source.close();
+  }
+}
+
+BackupSummary _summarizeSnapshot(String snapshotPath) {
+  _validateLifeManagerSnapshot(snapshotPath);
+  final database = sqlite.sqlite3.open(
+    snapshotPath,
+    mode: sqlite.OpenMode.readOnly,
+  );
+  try {
+    final tables = database
+        .select("SELECT name FROM sqlite_master WHERE type='table'")
+        .map((row) => row['name'] as String)
+        .toSet();
+    final counts = <String, int>{};
+    for (final (table, label) in <(String, String)>[
+      ('tasks', 'tasks'),
+      ('fixed_events', 'events'),
+      ('categories', 'categories'),
+      ('projects', 'projects'),
+      ('habits', 'habits'),
+      ('goals', 'goals'),
+      ('work_sessions', 'work sessions'),
+      ('recurrence_series', 'task recurrence series'),
+    ]) {
+      if (tables.contains(table)) {
+        counts[label] =
+            database
+                    .select('SELECT COUNT(*) AS count FROM $table')
+                    .single['count']
+                as int;
+      }
+    }
+    return BackupSummary(counts);
+  } finally {
+    database.close();
   }
 }
 

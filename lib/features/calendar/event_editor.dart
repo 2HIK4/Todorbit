@@ -695,6 +695,7 @@ class _EventEditorState extends ConsumerState<EventEditor> {
             children: [
               if (widget.event?.nominalDate != null) ...[
                 SegmentedButton<_EventEditScope>(
+                  showSelectedIcon: false,
                   segments: const [
                     ButtonSegment(
                       value: _EventEditScope.occurrence,

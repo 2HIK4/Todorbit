@@ -142,6 +142,15 @@ void main() {
     );
     await tester.tap(find.text('Choose color'));
     await tester.pumpAndSettle();
+    expect(find.text('Primary'), findsOneWidget);
+    expect(find.text('Accent'), findsOneWidget);
+    expect(find.text('Wheel'), findsOneWidget);
+    await tester.tap(find.text('Accent'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Primary'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Wheel'));
+    await tester.pumpAndSettle();
     await tester.enterText(
       find.widgetWithText(TextField, 'HEX color'),
       '#12AB34',

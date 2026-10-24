@@ -28,6 +28,9 @@ class _TransferService extends BackupService {
   Future<String?> pendingRestoreName() async => null;
 
   @override
+  Future<String?> restoreStatus() async => null;
+
+  @override
   Future<BackupRecord> importSnapshot(
     File source, {
     required int appSchemaVersion,
@@ -49,6 +52,10 @@ class _TransferService extends BackupService {
   }) async {
     scheduleCalls++;
   }
+
+  @override
+  Future<BackupSummary> summarize(BackupRecord selected) async =>
+      const BackupSummary({'tasks': 2, 'events': 1});
 }
 
 void main() {
@@ -119,12 +126,9 @@ void main() {
       );
       picker.complete(File('portable.sqlite'));
       await tester.pumpAndSettle();
+      expect(find.textContaining('Imported backup'), findsOneWidget);
       expect(
-        find.textContaining('Imported from: portable.sqlite'),
-        findsOneWidget,
-      );
-      expect(
-        find.textContaining('Schema: ${AppDatabase.currentSchemaVersion}'),
+        find.textContaining('replaces your current tasks, events'),
         findsOneWidget,
       );
       expect(service.scheduleCalls, 0);

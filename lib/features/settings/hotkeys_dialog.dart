@@ -143,6 +143,19 @@ class _HotkeysDialogState extends ConsumerState<HotkeysDialog> {
                   },
                 ),
                 IconButton(
+                  tooltip: 'Duplicate preset',
+                  icon: const Icon(Icons.copy_outlined),
+                  onPressed: () async {
+                    final name = await _nameDialog('Duplicate preset', '');
+                    if (name == null) return;
+                    try {
+                      await _update(hotkeys.saveAs(name));
+                    } catch (failure) {
+                      _error(failure);
+                    }
+                  },
+                ),
+                IconButton(
                   tooltip: 'Rename preset',
                   icon: const Icon(Icons.drive_file_rename_outline),
                   onPressed: hotkeys.activePreset == 'Default'
@@ -240,13 +253,17 @@ class _HotkeysDialogState extends ConsumerState<HotkeysDialog> {
                           IconButton(
                             tooltip: 'Reset ${action.label}',
                             icon: const Icon(Icons.restart_alt),
-                            onPressed: () {
-                              try {
-                                _update(hotkeys.resetOne(action));
-                              } catch (failure) {
-                                _error(failure);
-                              }
-                            },
+                            onPressed:
+                                hotkeys.bindings[action] ==
+                                    HotkeyPreferences.defaults[action]
+                                ? null
+                                : () {
+                                    try {
+                                      _update(hotkeys.resetOne(action));
+                                    } catch (failure) {
+                                      _error(failure);
+                                    }
+                                  },
                           ),
                         ],
                       ),

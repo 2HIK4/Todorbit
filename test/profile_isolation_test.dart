@@ -68,13 +68,13 @@ void main() {
       );
       await fresh.parent.create(recursive: true);
       final newDb = AppDatabase(NativeDatabase(fresh));
-      for (final table in [
-        'tasks',
-        'fixed_events',
-        'goals',
-        'habits',
-        'work_sessions',
-      ]) {
+      final tables = await newDb
+          .customSelect(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name != 'schema_version'",
+          )
+          .get();
+      for (final entry in tables) {
+        final table = entry.read<String>('name');
         final row = await newDb
             .customSelect('SELECT COUNT(*) AS total FROM $table')
             .getSingle();

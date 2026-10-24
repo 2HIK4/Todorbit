@@ -39,6 +39,7 @@ class _EventColorDialogState extends State<_EventColorDialog> {
   late Color preview;
   late final TextEditingController hex;
   var valid = true;
+  var picker = ColorPickerType.primary;
 
   @override
   void initState() {
@@ -72,9 +73,36 @@ class _EventColorDialogState extends State<_EventColorDialog> {
               borderRadius: BorderRadius.circular(8),
             ),
           ),
+          const SizedBox(height: 12),
+          SegmentedButton<ColorPickerType>(
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(
+                value: ColorPickerType.primary,
+                label: SizedBox(
+                  width: 65,
+                  child: Center(child: Text('Primary')),
+                ),
+              ),
+              ButtonSegment(
+                value: ColorPickerType.accent,
+                label: SizedBox(
+                  width: 65,
+                  child: Center(child: Text('Accent')),
+                ),
+              ),
+              ButtonSegment(
+                value: ColorPickerType.wheel,
+                label: SizedBox(width: 65, child: Center(child: Text('Wheel'))),
+              ),
+            ],
+            selected: {picker},
+            onSelectionChanged: (value) => setState(() => picker = value.first),
+          ),
           Expanded(
             child: SingleChildScrollView(
               child: ColorPicker(
+                key: ValueKey(picker),
                 color: preview,
                 onColorChanged: (color) => setState(() {
                   preview = color;
@@ -82,7 +110,15 @@ class _EventColorDialogState extends State<_EventColorDialog> {
                   hex.text =
                       '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
                 }),
-                pickersEnabled: const {ColorPickerType.wheel: true},
+                pickersEnabled: {
+                  ColorPickerType.both: false,
+                  ColorPickerType.primary: picker == ColorPickerType.primary,
+                  ColorPickerType.accent: picker == ColorPickerType.accent,
+                  ColorPickerType.bw: false,
+                  ColorPickerType.custom: false,
+                  ColorPickerType.customSecondary: false,
+                  ColorPickerType.wheel: picker == ColorPickerType.wheel,
+                },
                 enableShadesSelection: false,
                 wheelDiameter: 190,
                 wheelWidth: 18,

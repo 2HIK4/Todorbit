@@ -232,6 +232,7 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
         child: Column(
           children: [
             SegmentedButton<bool>(
+              showSelectedIcon: false,
               segments: const [
                 ButtonSegment(value: false, label: Text('Light Mode')),
                 ButtonSegment(value: true, label: Text('Dark Mode')),

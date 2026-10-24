@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.7 — Windows x64 pre-release
+
+- Added selective, versioned JSON export and import for appearance, hotkeys, Calendar, navigation, and task display preferences, with validation, preview, and optional hotkey preset merge.
+- Clarified Backup & Restore actions and snapshot contents. A queued restore now reports success only after its database has opened; an older restored database still requires reviewed migration approval.
+- Kept Calendar header and segmented controls stable across views and refined the themed event color picker, hotkey preset actions, and Backups sidebar alignment.
+- Verified synthetic older-schema restore and isolated profile behavior. Installed upgrade and physical native widget checks remain open.
+
 ## 1.0.6 — Windows x64 pre-release
 
 - Added Calendar event detail fields, category event colors, a custom color picker, and clearer Event editing.

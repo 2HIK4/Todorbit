@@ -1,5 +1,11 @@
 # Decisions
 
+## Settings transfer and reviewed restore (2026-10-24)
+
+- Keep shareable settings separate from SQLite backup. The versioned JSON transfer allowlists appearance, hotkeys, calendar display, sidebar order, and task display; it never reads the PIN policy, update staging, widget paths, or task/event database. Import validates the file and lets the user select categories. Hotkey presets may be merged under distinct names; other selected categories replace their values.
+- Keep database restore staged for the next launch so Drift and the native widget have closed their connections. Apply the verified snapshot before checking the restored schema for migration approval. Create a verified Before Restore backup, then record completion only after the restored database opens successfully. Older snapshots still require the existing explicit upgrade gate and Before Upgrade backup.
+- Use shared Material segmented controls for calendar and color selection. Suppress the selected icon where it changed the control height. Reserve space for the calendar period label so Day, Week, and Month do not move neighboring controls.
+
 ## In-app Windows updates (2026-10-23)
 
 - Check only published `2HIK4/Todorbit` GitHub Releases with strict semantic-version ordering. Require the exact Windows x64 asset and GitHub asset SHA-256 digest; unsigned packages require explicit install confirmation.

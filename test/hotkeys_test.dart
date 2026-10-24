@@ -41,10 +41,12 @@ void main() {
       expect(find.text('New task'), findsWidgets);
       await tester.tap(find.byTooltip('Close details'));
       await tester.pumpAndSettle();
-      await controller.setHotkeys(HotkeyPreferences().withBinding(
-        HotkeyAction.settings,
-        const HotkeyBinding('T', shift: true),
-      ));
+      await controller.setHotkeys(
+        HotkeyPreferences().withBinding(
+          HotkeyAction.settings,
+          const HotkeyBinding('T', shift: true),
+        ),
+      );
       await tester.pump();
       await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
       await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
@@ -60,6 +62,53 @@ void main() {
       await tester.tap(find.text('Edit hotkeys'));
       await tester.pumpAndSettle();
       expect(find.byTooltip('Save as new preset'), findsOneWidget);
+      expect(find.byTooltip('Duplicate preset'), findsOneWidget);
+      expect(
+        tester
+            .widget<IconButton>(
+              find.ancestor(
+                of: find.byTooltip('Reset Create new task'),
+                matching: find.byType(IconButton),
+              ),
+            )
+            .onPressed,
+        isNull,
+      );
+      await controller.setHotkeys(
+        controller.hotkeys.withBinding(
+          HotkeyAction.newTask,
+          const HotkeyBinding('T'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<IconButton>(
+              find.ancestor(
+                of: find.byTooltip('Reset Create new task'),
+                matching: find.byType(IconButton),
+              ),
+            )
+            .onPressed,
+        isNotNull,
+      );
+      await tester.tap(find.byTooltip('Reset Create new task'));
+      await tester.pumpAndSettle();
+      expect(
+        controller.hotkeys.bindings[HotkeyAction.newTask],
+        HotkeyPreferences.defaults[HotkeyAction.newTask],
+      );
+      expect(
+        tester
+            .widget<IconButton>(
+              find.ancestor(
+                of: find.byTooltip('Reset Create new task'),
+                matching: find.byType(IconButton),
+              ),
+            )
+            .onPressed,
+        isNull,
+      );
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
       await database.close();

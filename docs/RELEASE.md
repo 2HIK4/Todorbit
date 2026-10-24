@@ -5,8 +5,8 @@
 The Windows Release bundle contains `Todorbit.exe`,
 `TodorbitWidget.exe`, Flutter assets, `flutter_windows.dll`, and
 `sqlite3.dll`. Inno Setup 7.1.0 compiles the installer at
-`release/Todorbit-1.0.6-win-x64-setup.exe`. A portable ZIP is built at
-`release/Todorbit-1.0.6-win-x64-portable.zip`. This is a Windows x64
+`release/Todorbit-1.0.7-win-x64-setup.exe`. A portable ZIP is built at
+`release/Todorbit-1.0.7-win-x64-portable.zip`. This is a Windows x64
 **pre-release** with limited installed upgrade/uninstall and native widget
 manual acceptance. Windows 11 is the main development/test platform; Windows
 10 acceptance is limited. The creator approved Todorbit and the MIT license;
@@ -88,9 +88,9 @@ acceptance on an isolated profile.
 
 ## Release notes
 
-Todorbit v1.0.6 advances the planner to schema 21 and preserves the existing
-installer identity and TodoPilot data paths. It adds Calendar event details and
-colors, configurable first weekday and sidebar order, and Settings > Software
-Updates. Older databases require an approved, verified backup before migration.
+Todorbit v1.0.7 preserves schema 21, the existing installer identity, and
+TodoPilot data paths. It adds selected settings transfer, clearer backup restore
+status, stable Calendar controls, and hotkey preset improvements. Older
+databases require an approved, verified backup before migration.
 Packages include MIT and third-party notices. Native GUI and installed
 upgrade/uninstall acceptance remain limited; see `ACCEPTANCE.md`.

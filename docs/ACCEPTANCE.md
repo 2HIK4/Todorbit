@@ -1,5 +1,23 @@
 # Windows v1.0 final acceptance record
 
+## Settings, backup, and UI audit checkpoint (2026-10-24)
+
+| ID | Result | Evidence and limit |
+| --- | --- | --- |
+| 01 Fresh Trash/profile isolation | PARTIAL | A fresh isolated debug profile and direct SQLite query had zero records in the user tables and deletion tombstones. The provenance of the user's existing Trash records is unknown because the personal profile was not opened. |
+| 02 Calendar header position | PASS | Isolated debug GUI showed unchanged Day control coordinates and adjacent header alignment in Day, Week, and Month; a geometry widget test covers the mode changes. |
+| 03 Calendar mode dimensions | PASS | The shared mode control no longer changes height in the geometry test; isolated debug screenshots show the same bounds through all three modes. |
+| 04 Custom Event Color | PARTIAL | Live light-theme Primary/Wheel switching, HEX entry, preview, confirmation, and closing worked without a new disposal error. Accent switching and closing are covered by a widget test. A live dark-theme color dialog and physical input remain unchecked. |
+| 05 Hotkey presets | PARTIAL | A live disposable profile created a named preset and persisted its active name; unit and widget tests cover binding, conflict, rename/delete, and shortcut dispatch. Full live restart and every preset operation remain unchecked. |
+| 06 Reset hotkey state | PARTIAL | Live Default reset buttons appeared disabled; a widget test confirms modified becomes enabled and reset returns to disabled. Live modified-state mouse interaction remains unchecked. |
+| 07 Shareable settings | PARTIAL | Allowlisted JSON export/import, schema and size rejection, category selection, persistence, and hotkey merge have focused tests. The dark-theme dialog was inspected live; native file picker interaction remains unchecked. |
+| 08 Backup clarity | PASS | Isolated debug GUI showed grouped actions, human dates, collapsed technical details, a restore result, and Before Restore/Before Upgrade history. |
+| 09 Restore restart flow | PARTIAL | Staged restore is explicit and shows pending/completed states. Manual close and reopen remain required; automatic restart was not implemented. |
+| 10 Schema 20 restored events | PASS | A disposable schema 20 snapshot with a weekly event and task restored through debug startup, received upgrade approval, migrated to schema 21, and displayed the event in Day Calendar. Read-only queries confirmed records and the Before Restore recovery copy. This does not identify the cause of the user's earlier missing events. |
+| 11 Sidebar Backups alignment | PASS | Live dark-theme sidebar shows Backups aligned with the Settings utility row after applying their shared padding pattern. |
+
+These are debug GUI and automated checks on disposable profiles. Release pixels, native file dialogs, physical DPI/window resizing, and installed v1.0.6 update behavior are separate release checks; they are not established by this table.
+
 ## v1.0.6 release checkpoint (2026-10-24)
 
 `flutter analyze --no-pub` found no issues; all 229 serial Flutter tests passed with the existing nonfatal workspace scroll hit-test warning. Native .NET and Flutter Windows Release builds passed, as did source and packaged widget self-tests. Inno Setup 7 compiled the installer. The portable ZIP passed its archive integrity check and contains the executable, widget, Flutter/SQLite runtime, update helper, licenses, and portable marker; no profile database, settings, logs, or keys were found.

@@ -8,6 +8,7 @@ import '../../app/app_controller.dart';
 import '../../domain/appearance.dart';
 import '../widget/native_widget_service.dart';
 import 'backup_dialog.dart';
+import 'settings_transfer_dialog.dart';
 import 'hotkeys_dialog.dart';
 import 'notification_dialog.dart';
 import 'privacy_dialog.dart';
@@ -206,6 +207,7 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
         _SettingsPage.appearance => Column(
           children: [
             SegmentedButton<ThemeModePreference>(
+              showSelectedIcon: false,
               segments: const [
                 ButtonSegment(
                   value: ThemeModePreference.system,
@@ -229,6 +231,13 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
               'Colors, presets, text scale, density, layout, and import/export',
               Icons.tune,
               () => _open(const ThemeDialog()),
+            ),
+            const SizedBox(height: 12),
+            _action(
+              'Share settings',
+              'Export or import selected personalization as JSON',
+              Icons.ios_share_outlined,
+              () => _open(const SettingsTransferDialog()),
             ),
           ],
         ),

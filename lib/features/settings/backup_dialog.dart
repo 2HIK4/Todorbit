@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'dart:io';
+import 'dart:math' as math;
 
 import '../../data/backup_service.dart';
 import '../../data/app_database.dart';
@@ -27,6 +27,7 @@ class BackupDialog extends StatefulWidget {
 class _BackupDialogState extends State<BackupDialog> {
   List<BackupRecord>? records;
   String? pendingName;
+  String? restoreResult;
   String? error;
   String? success;
   bool busy = false;
@@ -41,10 +42,12 @@ class _BackupDialogState extends State<BackupDialog> {
     try {
       final loaded = await widget.service.list();
       final pending = await widget.service.pendingRestoreName();
+      final result = await widget.service.restoreStatus();
       if (mounted) {
         setState(() {
           records = loaded;
           pendingName = pending;
+          restoreResult = result;
           error = null;
         });
       }
@@ -61,6 +64,7 @@ class _BackupDialogState extends State<BackupDialog> {
     try {
       await widget.service.createBackup(BackupKind.manual);
       await _reload();
+      if (mounted) setState(() => success = 'Backup created and verified.');
     } catch (failure) {
       if (mounted) setState(() => error = '$failure');
     } finally {
@@ -122,18 +126,23 @@ class _BackupDialogState extends State<BackupDialog> {
   }
 
   Future<void> _schedule(BackupRecord record, {String? importedFrom}) async {
+    BackupSummary summary;
+    try {
+      summary = await widget.service.summarize(record);
+    } catch (failure) {
+      if (mounted) setState(() => error = 'Could not preview backup: $failure');
+      return;
+    }
+    if (!mounted) return;
     final approved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Restore this snapshot on next launch?'),
+        title: const Text('Replace current data on next launch?'),
         content: Text(
-          '${importedFrom == null ? 'Stored snapshot' : 'Imported from: $importedFrom'}\n'
-          'Snapshot: ${record.file.uri.pathSegments.last}\n'
-          'Schema: ${record.schemaVersion} · Size: ${_size(record.bytes)}\n\n'
-          'Todorbit will replace its current database with this snapshot '
-          'when it next starts. '
-          'Current data will first be saved in a separate Before restore backup. '
-          'Changes made after this snapshot will no longer appear in the active database.',
+          '${importedFrom == null ? 'Stored backup' : 'Imported backup'} from ${_date(dialogContext, record.createdAt)}.\n\n'
+          '${summary.description.isEmpty ? 'No records in this backup' : summary.description}.\n\n'
+          'When you next start Todorbit, this backup replaces your current tasks, events, and other database records. It does not merge them. Todorbit first saves your current database as a Before Restore backup so you can recover it.\n\n'
+          'Changes made since this backup will no longer appear in the active database.',
         ),
         actions: [
           TextButton(
@@ -142,7 +151,7 @@ class _BackupDialogState extends State<BackupDialog> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Schedule restore'),
+            child: const Text('Confirm replacement'),
           ),
         ],
       ),
@@ -183,8 +192,13 @@ class _BackupDialogState extends State<BackupDialog> {
   @override
   Widget build(BuildContext context) => Dialog(
     child: SizedBox(
-      width: 620,
-      height: 560,
+      width: 700,
+      height: math.min(
+        MediaQuery.sizeOf(context).height * 0.85,
+        records != null && records!.length < 3 && pendingName == null
+            ? 480.0
+            : 620.0,
+      ),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -194,7 +208,7 @@ class _BackupDialogState extends State<BackupDialog> {
               children: [
                 Expanded(
                   child: Text(
-                    'Database backups',
+                    'Backup & Restore',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
@@ -206,38 +220,44 @@ class _BackupDialogState extends State<BackupDialog> {
               ],
             ),
             const Text(
-              'Automatic snapshots are taken daily and before a schema upgrade. The newest 14 daily copies are retained; manual and pre-upgrade copies are kept.',
+              'Backups include your tasks, events, and other database records.',
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Export a standalone SQLite copy or import one from another Todorbit installation. Import stages a verified copy, then asks before replacing this database on the next launch.',
+            const SizedBox(height: 16),
+            Text(
+              'Create or export',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             Wrap(
               spacing: 8,
+              runSpacing: 8,
               children: [
+                FilledButton.icon(
+                  onPressed: busy ? null : _create,
+                  icon: const Icon(Icons.save_outlined),
+                  label: Text(busy ? 'Creating…' : 'Create backup now'),
+                ),
                 OutlinedButton.icon(
                   onPressed: busy ? null : _export,
                   icon: const Icon(Icons.file_upload_outlined),
                   label: const Text('Export SQLite'),
                 ),
-                OutlinedButton.icon(
-                  onPressed: busy || pendingName != null ? null : _import,
-                  icon: const Icon(Icons.file_download_outlined),
-                  label: const Text('Import SQLite'),
-                ),
               ],
             ),
-            const SizedBox(height: 8),
-            SelectableText(widget.service.backupDirectory.path),
+            const SizedBox(height: 16),
+            Text(
+              'Import or restore',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const Text(
+              'Restoring replaces the current database after you close and reopen Todorbit.',
+            ),
             Align(
               alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () => Clipboard.setData(
-                  ClipboardData(text: widget.service.backupDirectory.path),
-                ),
-                icon: const Icon(Icons.copy_outlined),
-                label: const Text('Copy backup folder path'),
+              child: OutlinedButton.icon(
+                onPressed: busy || pendingName != null ? null : _import,
+                icon: const Icon(Icons.file_download_outlined),
+                label: const Text('Import SQLite'),
               ),
             ),
             if (widget.automaticError != null)
@@ -251,6 +271,13 @@ class _BackupDialogState extends State<BackupDialog> {
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             if (success != null) SelectableText(success!),
+            if (pendingName == null && restoreResult != null)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Text(restoreResult!),
+                ),
+              ),
             if (pendingName != null)
               Card(
                 child: Padding(
@@ -258,9 +285,12 @@ class _BackupDialogState extends State<BackupDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Restore scheduled: $pendingName'),
                       const Text(
-                        'Close and reopen Todorbit to apply it. The current database will be backed up first.',
+                        'Pending restore',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const Text(
+                        'Close Todorbit and its widget, then reopen Todorbit to apply the backup. Your current database will first be saved as a Before Restore backup. This restore has not happened yet.',
                       ),
                       TextButton(
                         onPressed: busy ? null : _cancelRestore,
@@ -270,20 +300,10 @@ class _BackupDialogState extends State<BackupDialog> {
                   ),
                 ),
               ),
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Stored snapshots',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                FilledButton.icon(
-                  onPressed: busy ? null : _create,
-                  icon: const Icon(Icons.save_outlined),
-                  label: Text(busy ? 'Creating…' : 'Create backup now'),
-                ),
-              ],
+            const SizedBox(height: 12),
+            Text(
+              'Backup history',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
             Expanded(
               child: records == null
@@ -292,7 +312,7 @@ class _BackupDialogState extends State<BackupDialog> {
                   ? const Center(child: Text('No backups yet.'))
                   : ListView(
                       children: [
-                        for (final record in records!)
+                        for (final record in records!) ...[
                           ListTile(
                             dense: true,
                             leading: Icon(
@@ -300,12 +320,14 @@ class _BackupDialogState extends State<BackupDialog> {
                                   ? Icons.warning_amber_outlined
                                   : Icons.storage_outlined,
                             ),
-                            title: Text(_kind(record.kind)),
-                            subtitle: Text(
-                              '${record.file.uri.pathSegments.last}\n'
-                              '${_size(record.bytes)} · ${record.schemaVersion < 0 ? 'Integrity check failed' : 'Schema ${record.schemaVersion}'}',
+                            title: Text(
+                              '${_kind(record.kind)} · ${_date(context, record.createdAt)}',
                             ),
-                            isThreeLine: true,
+                            subtitle: Text(
+                              record.schemaVersion < 0
+                                  ? 'Integrity check failed'
+                                  : '${_size(record.bytes)} · ${record.schemaVersion > AppDatabase.currentSchemaVersion ? 'Newer version, cannot restore' : 'Ready to restore'}',
+                            ),
                             trailing:
                                 record.schemaVersion < 1 ||
                                     record.schemaVersion >
@@ -318,6 +340,27 @@ class _BackupDialogState extends State<BackupDialog> {
                                     child: const Text('Restore'),
                                   ),
                           ),
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              left: 48,
+                              right: 8,
+                              bottom: 4,
+                            ),
+                            child: ExpansionTile(
+                              title: const Text('Details'),
+                              tilePadding: EdgeInsets.zero,
+                              childrenPadding: const EdgeInsets.only(bottom: 8),
+                              children: [
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: SelectableText(
+                                    'Schema ${record.schemaVersion}\n${record.file.path}',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
             ),
@@ -326,6 +369,12 @@ class _BackupDialogState extends State<BackupDialog> {
       ),
     ),
   );
+}
+
+String _date(BuildContext context, DateTime instant) {
+  final local = instant.toLocal();
+  final format = MaterialLocalizations.of(context);
+  return '${format.formatMediumDate(local)} ${format.formatTimeOfDay(TimeOfDay.fromDateTime(local))}';
 }
 
 String _kind(BackupKind kind) => switch (kind) {

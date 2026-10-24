@@ -19,6 +19,49 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'test_privacy.dart';
 
 void main() {
+  testWidgets('calendar controls stay in place across display modes', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    final db = AppDatabase(NativeDatabase.memory());
+    final controller = AppController(LifeRepository(db));
+    await controller.refresh();
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appControllerProvider.overrideWith((ref) => controller)],
+          child: MaterialApp(
+            home: Scaffold(
+              body: CalendarView(
+                onTaskTap: (_) {},
+                onSmartReschedule: () {},
+                onAddTask: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final mode = find.byType(SegmentedButton<CalendarMode>);
+      final previous = find.byTooltip('Previous period');
+      final modePosition = tester.getTopLeft(mode);
+      final modeSize = tester.getSize(mode);
+      final previousPosition = tester.getTopLeft(previous);
+      for (final label in ['Day', 'Month', 'Week']) {
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+        expect(tester.getTopLeft(mode), modePosition, reason: label);
+        expect(tester.getSize(mode), modeSize, reason: label);
+        expect(tester.getTopLeft(previous), previousPosition, reason: label);
+      }
+      expect(tester.takeException(), isNull);
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await db.close();
+      await tester.binding.setSurfaceSize(null);
+    }
+  });
+
   testWidgets('sidebar order controls update navigation immediately', (
     tester,
   ) async {
@@ -39,8 +82,10 @@ void main() {
       await tester.tap(find.text('Reset to default'));
       await tester.pumpAndSettle();
       expect(controller.sidebarOrder, AppController.defaultSidebarOrder);
-      await tester.drag(find.byType(ReorderableDragStartListener).first,
-          const Offset(0, 90));
+      await tester.drag(
+        find.byType(ReorderableDragStartListener).first,
+        const Offset(0, 90),
+      );
       await tester.pumpAndSettle();
       expect(controller.sidebarOrder.first, WorkspaceView.all);
     } finally {

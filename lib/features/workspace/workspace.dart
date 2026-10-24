@@ -1016,19 +1016,23 @@ class _WorkspaceState extends ConsumerState<Workspace> {
             ),
           ),
           if (controller.backupService case final backupService?)
-            ListTile(
-              dense: true,
-              leading: Icon(
-                controller.backupError == null
-                    ? Icons.backup_outlined
-                    : Icons.warning_amber_outlined,
-              ),
-              title: const Text('Backups'),
-              onTap: () => showDialog<void>(
-                context: context,
-                builder: (_) => BackupDialog(
-                  service: backupService,
-                  automaticError: controller.backupError,
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: ListTile(
+                dense: true,
+                leading: Icon(
+                  controller.backupError == null
+                      ? Icons.backup_outlined
+                      : Icons.warning_amber_outlined,
+                ),
+                title: const Text('Backups'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => BackupDialog(
+                    service: backupService,
+                    automaticError: controller.backupError,
+                  ),
                 ),
               ),
             ),

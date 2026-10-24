@@ -20,7 +20,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $bundle 'data\flutter_assets\NOTICES
   throw 'Release bundle lacks Flutter license notices.'
 }
 $privateData = Get-ChildItem -LiteralPath $bundle -Recurse -File | Where-Object {
-  $_.Name -match '(?i)\.(sqlite|db)(-(wal|shm))?$|\.log$|\.(pfx|p12|pem|key)$|(-settings|privacy-session|pending-restore)\.json$' -or
+  $_.Name -match '(?i)\.(sqlite|db)(-(wal|shm))?$|\.log$|\.(pfx|p12|pem|key)$|(-settings|privacy-session|pending-restore|restore-status)\.json$' -or
   $_.FullName -match '(?i)[\\/]backups[\\/]'
 }
 if ($privateData) { throw 'Release bundle contains private data or secrets.' }

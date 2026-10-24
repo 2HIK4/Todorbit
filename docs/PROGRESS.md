@@ -1,5 +1,14 @@
 # Progress
 
+## Settings, backup, and UI audit (2026-10-24)
+
+- Work is on `feature/settings-backup-ui-audit` from the fetched v1.0.6 `main`. A fresh disposable APPDATA/LOCALAPPDATA profile opened with zero user records; its tasks, events, categories, projects, habits, goals, work sessions, and deletion tombstones were all empty. No seed inserts were found. Existing personal Trash records were not inspected or changed, so their provenance remains unknown.
+- Calendar period and segmented controls now retain their positions through Day/Week/Month, including a live isolated debug GUI pass. Segmented choices across Calendar, event editing, and Settings no longer gain a selected-icon height. The Custom Event Color dialog uses Todorbit's Material segmented control; live light-theme Primary/Wheel, HEX preview/application, and the widget test for Primary/Accent/Wheel and safe closing passed. Backups now aligns with Settings in the sidebar.
+- Hotkeys gained a Duplicate preset action and a disabled Reset control when a binding equals its default. Existing preset persistence and shortcut dispatch were retained; focused tests cover conflicts, reset state, and store reload. Share settings exports selected allowlisted personalization into versioned JSON and validates imported categories before replacement; hotkey presets may be merged. The native Windows JSON file dialog was added.
+- Backup & Restore now groups creation/export, import/restore, and history, with human dates and technical details collapsed. A verified snapshot preview shows record counts. A pending restore explicitly requires reopening, and a completion receipt appears only after the restored database opens. Startup now checks the restored schema after applying the snapshot, preserving the upgrade approval gate.
+- A disposable schema 20 snapshot with identifiable task and weekly event restored through actual debug startup. The app presented schema upgrade approval, made Before Restore and Before Upgrade backups, migrated to schema 21, and displayed the event in Day Calendar. Read-only SQLite queries found the restored task/event and the previous task in Before Restore. This is debug GUI evidence, not a production-profile restore or installed-updater test.
+- Final `flutter analyze --no-pub` passed with no issues, all 234 serial Flutter tests passed, native .NET Release built with zero warnings, source and packaged widget self-tests passed, and Windows Release built as v1.0.7. A final isolated debug launch and hot reload completed. Installer/portable packaging and public updater checks follow the merge; no pre-release had been published at this checkpoint.
+
 ## v1.0.6 Windows pre-release (2026-10-24)
 
 - Advanced app and native widget versions to 1.0.6, updated public docs and release notes, and retained the stable installer AppId, install directory, and profile paths.
