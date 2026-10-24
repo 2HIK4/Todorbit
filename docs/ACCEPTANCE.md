@@ -1,6 +1,6 @@
 # Windows v1.0 final acceptance record
 
-## v1.0.9 candidate acceptance (2026-10-24)
+## v1.0.9 release acceptance (2026-10-24)
 
 | Original issue | Result | Evidence and remaining check |
 | --- | --- | --- |
@@ -8,7 +8,8 @@
 | Settings and form spacing | PARTIAL | The exact Update Channel label/field gap and Backup & Restore Import SQLite spacing were inspected in dark and light isolated debug GUI screenshots. Narrow live-window Backup rendering remains to check. |
 | About this view, Habits and Goals | PARTIAL | Their individual widget flows and dark/light debug GUI interactions opened and closed the shared information popover; screenshots show both popovers in place. Calendar and Reports use the same control. Physical keyboard interaction remains to check. |
 | Widget launch at Windows startup | PARTIAL | Native private-key self-test covers default on, saved off, toggle, duplicate prevention, and stale-path repair. The command starts `TodorbitWidget.exe --widget`, not the main app, and the existing profile-suffix mutex protects a single instance. A real Windows login and registered installer upgrade require an isolated account/VM. |
-| CI updater preflight | PARTIAL | The helper now computes SHA-256 through .NET rather than `Get-FileHash`; local preflight passed. Windows CI must pass on this branch/tag before closing this item. |
+| CI updater preflight | PASS | The helper now computes SHA-256 through .NET rather than `Get-FileHash`; local preflight and the complete feature, `main`, and tag Windows CI runs passed. |
+| Public pre-release and update detection | PASS | v1.0.9 was published from `main` commit `1a41569`. All four public assets downloaded and matched local SHA-256 hashes. `SoftwareUpdateService` selected v1.0.9 for v1.0.8 on the Pre-release channel, downloaded and verified the installer in a temporary directory, and reported v1.0.9 up to date. |
 | Installed v1.0.8 update to v1.0.9 | UNVERIFIED | The personal registered installation was not touched. Use a disposable Windows account/VM for the complete installed Update and Restart flow; a portable helper test is not equivalent. |
 
 ## Updater repair and v1.0.8 pre-release checkpoint (2026-10-24)

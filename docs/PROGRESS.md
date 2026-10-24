@@ -1,5 +1,11 @@
 # Progress
 
+## v1.0.9 publication and public updater check (2026-10-24)
+
+- Merged feature commit `1a41569` into `main` by fast-forward and published [v1.0.9](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.9) as a Windows x64 pre-release at that commit. Feature, `main`, and tag Windows CI runs passed analysis, the full Flutter suite, Windows Release build, and the disposable-profile native widget self-test. This closes the v1.0.8 `Get-FileHash` CI preflight failure.
+- All four public assets were downloaded and matched their local SHA-256 digests. The installer digest is `8877F81553E6D92C982E3E2E3D25857930DCE3BBE0718D3DAB2C0FE305B12F8F`; the portable ZIP digest is `4F94CD316A2B6B7675FE5E6352D68569D1CE1CBD01D6DDB4C6134500D81B66EC`. The published tag points to `1a41569`.
+- In a temporary staging directory, the actual `SoftwareUpdateService` selected the v1.0.9 installer from the public GitHub feed for v1.0.8 on the Pre-release channel, downloaded all 46,907,767 bytes, passed its size/SHA-256 verification, and reported v1.0.9 up to date. The temporary download was removed. The personal installation and profile were not touched. A registered v1.0.8 Update and Restart flow, real Windows login, and physical DPI checks remain unverified and require an isolated Windows account or VM.
+
 ## v1.0.9 UI and widget startup candidate (2026-10-24)
 
 - Traced repeated selection overlap to Flutter's `DropdownButtonFormField`/`DropdownButton` route centering the selected row over the trigger. Replaced form and compact selects with shared `AnchoredSelectField`; action menus keep their separate PopupMenuButton behavior. A widget test checks below-field placement in light/dark, viewport containment near the bottom at 1.3× text scale, mouse selection, and keyboard choice. An isolated Flutter Driver GUI selected Pre-release and persisted it; dark and light open-menu screenshots show the trigger and label visible with the menu below.
