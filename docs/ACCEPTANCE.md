@@ -18,6 +18,8 @@
 
 These are debug GUI and automated checks on disposable profiles. Release pixels, native file dialogs, physical DPI/window resizing, and installed v1.0.6 update behavior are separate release checks; they are not established by this table.
 
+The v1.0.7 release gate passed `flutter analyze --no-pub`, all 234 serial Flutter tests, native .NET Release with zero warnings, Windows Release, and source and packaged widget self-tests. Inno Setup 7.1.0 compiled the installer; the 34-entry portable ZIP passed archive integrity and private-file checks. Package hashes are in the published `SHA256SUMS.txt`. Native file picker interaction, registered installer upgrade, and physical widget/DPI behavior remain unverified on a disposable Windows user or VM.
+
 ## v1.0.6 release checkpoint (2026-10-24)
 
 `flutter analyze --no-pub` found no issues; all 229 serial Flutter tests passed with the existing nonfatal workspace scroll hit-test warning. Native .NET and Flutter Windows Release builds passed, as did source and packaged widget self-tests. Inno Setup 7 compiled the installer. The portable ZIP passed its archive integrity check and contains the executable, widget, Flutter/SQLite runtime, update helper, licenses, and portable marker; no profile database, settings, logs, or keys were found.
