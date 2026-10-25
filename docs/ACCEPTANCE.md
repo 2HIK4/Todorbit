@@ -1,5 +1,14 @@
 # Windows v1.0 final acceptance record
 
+## v1.0.12 UI polish pre-release (2026-10-25)
+
+- Release commit/tag: `ebba16e` / `v1.0.12`, version 1.0.12+13. Feature branch pushed and fast-forwarded into main. Main Windows CI passed analysis, all 245 tests, Release build, and packaged native self-test; duplicate feature CI for the identical SHA was canceled. Tag Windows CI also passed the same gates. [Published v1.0.12](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.12). CI: [main](https://github.com/2HIK4/Todorbit/actions/runs/40194712436), [tag](https://github.com/2HIK4/Todorbit/actions/runs/40195355512).
+- Reused the completed local 245-test run, analysis, and isolated dark/light UI inspection. Built the new versioned Release bundle once. Both executables report 1.0.12+13; packaged widget self-test passed under isolated APPDATA/LOCALAPPDATA. Inno Setup 7.1.0 compiled the unsigned installer. Portable ZIP passed CRC, all 34 entries, private-data exclusions, complete bundle byte equality, and embedded helper equality.
+- The final ZIP passed the disposable same-version portable helper swap: widget exit, main app automatic restart at the same path, seeded task, SQLite integrity, startup-off preference, and sentinel preservation. This is not a registered installer upgrade or the exact Settings button handoff. No personal installation or profile was modified.
+- Installer: 46,904,583 bytes, SHA-256 `376ea4c31d8959d013e0efe28cfbf94de4b9ee2d58aadcdf6a0c0c6445f416d4`. Portable: 61,967,723 bytes, SHA-256 `3a1f31ace88e9753c57b78d25a7dc215698e258cffa9a2d4ac22c1c79dde3575`.
+- All four public assets were downloaded and matched local sizes, SHA-256 hashes, GitHub asset digests, and the checksum manifest. The same `SoftwareUpdateService.check` used by Check for Updates selected v1.0.12 for v1.0.11+12 on Pre-release for both package types; `download` validated both packages. Version 1.0.12+13 reported current for both packages, and Stable ignored the pre-release. This checks the real public update service, not a click on the installed application's Settings button.
+- Physical resizing/DPI, Release GUI pixels, native widget input/Explorer hosting, Windows sign-in, enabled-lock PIN layout, Windows 10, and registered installer upgrade/uninstall remain manual acceptance limits. Packages remain unsigned.
+
 ## UI audit verification follow-up (2026-10-25)
 
 Continues `56a27d0` on `feature/app-ui-layout-audit`. The eight failures in the completed 237/245 run were:

@@ -1,9 +1,10 @@
 # Progress
 
-## v1.0.12 pre-release preparation (2026-10-25)
+## v1.0.12 publication (2026-10-25)
 
-- Verified the live GitHub release list: v1.0.11 is the latest published pre-release. Prepared 1.0.12+13 with synchronized native metadata and brief release notes for the completed shared UI audit. The feature branch starts from clean `100d10f`; no application logic changed during release preparation.
-- Reuse the clean local 245/245 tests and analysis from the verification follow-up; release CI will verify the merged version metadata. A new versioned Windows Release bundle and installer/portable packages are required. Publication and final asset checks are pending. Production installation and profile remain untouched.
+- Pushed and fast-forwarded `feature/app-ui-layout-audit` into main and published [v1.0.12](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.12) at `ebba16e` as a Windows x64 pre-release, version 1.0.12+13. Reused the clean local 245-test run and visual evidence from `100d10f`. Both [main CI](https://github.com/2HIK4/Todorbit/actions/runs/40194712436) and [tag CI](https://github.com/2HIK4/Todorbit/actions/runs/40195355512) passed analysis, 245 Flutter tests, Windows Release build, and packaged widget self-test. Canceled only the duplicate feature CI for the identical SHA.
+- One new local versioned Release build, isolated packaged widget self-test, Inno Setup 7.1.0 compile, ZIP CRC (34 entries), private-data audit, complete bundle/helper byte equality, and disposable same-version portable helper swap passed. The smoke test retained its seeded task, valid SQLite database, startup-off preference, and sentinel while restarting one app at the same path. The installed application and production profile were not modified.
+- Downloaded all four published assets and verified local/public/GitHub SHA-256 equality and the checksum manifest. The actual update service detected v1.0.12 from v1.0.11 for installed and portable packages, downloaded and validated each, reported v1.0.12 current, and excluded the pre-release on Stable. Checksums and unchanged manual acceptance limits are recorded in `docs/ACCEPTANCE.md`. This documentation-only publication receipt reuses the successful release CI; no additional application build is needed.
 
 ## UI audit verification completion (2026-10-25)
 
