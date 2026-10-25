@@ -160,13 +160,16 @@ class _PrivacyDialogState extends ConsumerState<PrivacyDialog> {
               ),
               const SizedBox(height: 12),
               Text(settings.enabled ? 'App lock enabled' : 'App lock disabled'),
-              if (settings.enabled)
+              const SizedBox(height: 12),
+              if (settings.enabled) ...[
                 TextField(
                   controller: currentPin,
                   obscureText: true,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(labelText: 'Current PIN'),
                 ),
+                const SizedBox(height: 12),
+              ],
               TextField(
                 controller: newPin,
                 obscureText: true,
@@ -178,6 +181,7 @@ class _PrivacyDialogState extends ConsumerState<PrivacyDialog> {
                       : 'Set PIN (6–12 digits)',
                 ),
               ),
+              const SizedBox(height: 12),
               TextField(
                 controller: confirmPin,
                 obscureText: true,

@@ -350,7 +350,6 @@ class _BackupDialogState extends State<BackupDialog> {
                             child: ExpansionTile(
                               title: const Text('Details'),
                               tilePadding: EdgeInsets.zero,
-                              childrenPadding: const EdgeInsets.only(bottom: 8),
                               children: [
                                 Align(
                                   alignment: Alignment.centerLeft,

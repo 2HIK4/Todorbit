@@ -1,4 +1,5 @@
 import 'package:life_manager/features/shared/anchored_select_field.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../../domain/task_view_preferences.dart';
 import '../shared/icon_picker.dart';
+import '../shared/checklist_entry.dart';
 import '../shared/inline_spelling_controller.dart';
 import '../../domain/recurrence.dart';
 import '../calendar/session_editor.dart';
@@ -431,24 +433,11 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
             ],
           ),
         ),
-      Row(
-        children: [
-          Expanded(
-            child: TextField(
-              key: const ValueKey('draft-checklist-entry'),
-              controller: checklistEntry,
-              decoration: const InputDecoration(
-                labelText: 'New checklist item',
-              ),
-              onSubmitted: (_) => _addDraftChecklist(),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Add draft checklist item',
-            onPressed: _addDraftChecklist,
-            icon: const Icon(Icons.add),
-          ),
-        ],
+      ChecklistEntry(
+        fieldKey: const ValueKey('draft-checklist-entry'),
+        controller: checklistEntry,
+        onAdd: _addDraftChecklist,
+        tooltip: 'Add draft checklist item',
       ),
       const SizedBox(height: 12),
       const Divider(),
@@ -1284,8 +1273,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                   ],
                   const Divider(),
                   ExpansionTile(
-                    tilePadding: EdgeInsets.zero,
-                    childrenPadding: const EdgeInsets.only(bottom: 12),
+                    tilePadding: const EdgeInsets.symmetric(vertical: 4),
                     initiallyExpanded:
                         status != TaskStatus.notStarted || priority != 0,
                     title: const Text('Status and priority'),
@@ -1325,8 +1313,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                   ),
                   const SizedBox(height: 8),
                   ExpansionTile(
-                    tilePadding: EdgeInsets.zero,
-                    childrenPadding: const EdgeInsets.only(bottom: 8),
+                    tilePadding: const EdgeInsets.symmetric(vertical: 4),
                     initiallyExpanded:
                         plannedDuration.text.isNotEmpty ||
                         remainingWork.text.isNotEmpty ||
@@ -1398,7 +1385,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                     ),
                     const SizedBox(height: 8),
                     ExpansionTile(
-                      tilePadding: EdgeInsets.zero,
+                      tilePadding: const EdgeInsets.symmetric(vertical: 4),
                       title: const Text('Prerequisites'),
                       subtitle: Text(
                         controller.unmetPrerequisites(widget.task!.id).isEmpty

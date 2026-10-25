@@ -550,6 +550,11 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
         ),
         helperStyle: TextStyle(color: scheme.onSurfaceVariant),
       ),
+      expansionTileTheme: const ExpansionTileThemeData(
+        childrenPadding: EdgeInsets.symmetric(vertical: 12),
+        shape: Border(),
+        collapsedShape: Border(),
+      ),
       cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(

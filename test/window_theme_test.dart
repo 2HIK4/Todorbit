@@ -12,8 +12,127 @@ import 'package:life_manager/data/app_database.dart';
 import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/domain/appearance.dart';
 import 'package:life_manager/main.dart';
+import 'package:life_manager/domain/models.dart';
+import 'package:life_manager/features/workspace/task_editor.dart';
+import 'package:life_manager/features/shared/anchored_select_field.dart';
+import 'package:life_manager/features/shared/checklist_entry.dart';
 
 void main() {
+  testWidgets('new and edit forms clear headings and expanded section labels', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final repo = LifeRepository(database);
+    final saved = await repo.addTask(
+      const TaskDraft(title: 'Saved layout task'),
+    );
+    final controller = AppController(repo);
+    await controller.refresh();
+    final container = ProviderContainer(
+      overrides: [
+        appControllerProvider.overrideWith((ref) => controller),
+        privacyOverride,
+      ],
+    );
+    try {
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const LifeManagerApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
+      for (final theme in [app.theme!, app.darkTheme!]) {
+        for (final width in [380.0, 740.0]) {
+          for (final task in <LifeTask?>[null, saved]) {
+            await tester.binding.setSurfaceSize(Size(width, 700));
+            await tester.pumpWidget(
+              UncontrolledProviderScope(
+                container: container,
+                child: MaterialApp(
+                  theme: theme,
+                  builder: (context, child) => MediaQuery(
+                    data: MediaQuery.of(context)
+                        .copyWith(textScaler: const TextScaler.linear(1.3)),
+                    child: child!,
+                  ),
+                  home: Scaffold(
+                    body: TaskEditor(key: UniqueKey(), task: task),
+                  ),
+                ),
+              ),
+            );
+            await tester.pumpAndSettle();
+            final entry = find.byType(ChecklistEntry);
+            await tester.scrollUntilVisible(
+              entry,
+              180,
+              scrollable: find
+                  .descendant(
+                    of: find.byType(ListView).first,
+                    matching: find.byType(Scrollable),
+                  )
+                  .first,
+            );
+            await tester.pumpAndSettle();
+            final field = find.descendant(
+              of: entry,
+              matching: find.byType(TextField),
+            );
+            final heading = find.textContaining('Checklist').first;
+            expect(
+              tester.getRect(field).top - tester.getRect(heading).bottom,
+              greaterThanOrEqualTo(12),
+            );
+            final add = find.descendant(
+              of: entry,
+              matching: find.byType(IconButton),
+            );
+            expect(tester.getRect(add).left - tester.getRect(field).right, 8);
+            for (final text in [
+              '',
+              'A long checklist item that remains editable in a narrow form',
+            ]) {
+              await tester.enterText(field, text);
+              await tester.pumpAndSettle();
+              expect(tester.takeException(), isNull);
+            }
+            FocusManager.instance.primaryFocus?.unfocus();
+            final section = find.widgetWithText(
+              ExpansionTile,
+              'Status and priority',
+            );
+            await tester.ensureVisible(section);
+            await tester.pumpAndSettle();
+            await tester.tap(find.text('Status and priority'));
+            await tester.pumpAndSettle();
+            final status = find.widgetWithText(
+              AnchoredSelectField<TaskStatus>,
+              'Status',
+            );
+            await tester.ensureVisible(status);
+            await tester.pumpAndSettle();
+            final subtitle = tester.getRect(
+              find.text('Optional for a new task'),
+            );
+            expect(
+              tester.getRect(status).top - subtitle.bottom,
+              greaterThanOrEqualTo(12),
+            );
+            expect(tester.takeException(), isNull);
+            await tester.pumpWidget(const SizedBox.shrink());
+          }
+        }
+      }
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      container.dispose();
+      await database.close();
+      await tester.binding.setSurfaceSize(null);
+    }
+  });
+
   testWidgets(
     'task input keeps themed border and visible bounds in both modes',
     (tester) async {

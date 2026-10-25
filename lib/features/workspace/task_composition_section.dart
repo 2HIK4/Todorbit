@@ -6,6 +6,7 @@ import '../../domain/models.dart';
 import '../../domain/task_composition.dart';
 import '../../domain/task_view_preferences.dart';
 import '../shared/inline_spelling_controller.dart';
+import '../shared/checklist_entry.dart';
 import 'checklist_item_dialog.dart';
 import 'composition_text.dart';
 
@@ -92,7 +93,6 @@ class _TaskCompositionSectionState
           'Checklist${items.isEmpty ? '' : ' · $done/${items.length}'}',
           style: Theme.of(context).textTheme.titleSmall,
         ),
-        const SizedBox(height: 6),
         for (var index = 0; index < items.length; index++)
           ChecklistItemRow(
             key: ValueKey(items[index].id),
@@ -115,24 +115,11 @@ class _TaskCompositionSectionState
             onRemove: () =>
                 _run(() => controller.removeChecklistItem(items[index])),
           ),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                key: const ValueKey('saved-checklist-entry'),
-                controller: entry,
-                decoration: const InputDecoration(
-                  labelText: 'New checklist item',
-                ),
-                onSubmitted: (_) => _add(),
-              ),
-            ),
-            IconButton(
-              tooltip: 'Add checklist item',
-              onPressed: _add,
-              icon: const Icon(Icons.add),
-            ),
-          ],
+        ChecklistEntry(
+          fieldKey: const ValueKey('saved-checklist-entry'),
+          controller: entry,
+          onAdd: _add,
+          tooltip: 'Add checklist item',
         ),
         const SizedBox(height: 12),
         const Divider(),

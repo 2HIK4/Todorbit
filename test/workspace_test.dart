@@ -329,6 +329,8 @@ void main() {
             )
             .first,
       );
+      await tester.pumpAndSettle();
+      expect(find.text('Prerequisites').hitTestable(), findsOneWidget);
       await tester.tap(find.text('Prerequisites'));
       await tester.pumpAndSettle();
       await Scrollable.ensureVisible(

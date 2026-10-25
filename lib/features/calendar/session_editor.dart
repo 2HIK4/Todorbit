@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
+import '../shared/dialog_action_bar.dart';
 
 class SessionEditor extends ConsumerStatefulWidget {
   const SessionEditor({
@@ -240,7 +241,8 @@ class _SessionEditorState extends ConsumerState<SessionEditor> {
               ],
             ),
           ),
-          Row(
+          const SizedBox(height: 12),
+          DialogActionBar(
             children: [
               if (widget.session != null)
                 TextButton.icon(
@@ -248,7 +250,6 @@ class _SessionEditorState extends ConsumerState<SessionEditor> {
                   icon: const Icon(Icons.delete_outline),
                   label: const Text('Delete'),
                 ),
-              const Spacer(),
               FilledButton.icon(
                 onPressed: busy ? null : _save,
                 icon: const Icon(Icons.save_outlined),
