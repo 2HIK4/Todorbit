@@ -1,5 +1,31 @@
 # Windows v1.0 final acceptance record
 
+## UI audit verification follow-up (2026-10-25)
+
+Continues `56a27d0` on `feature/app-ui-layout-audit`. The eight failures in the completed 237/245 run were:
+
+| Test file and exact test name | Diagnosis and correction |
+| --- | --- |
+| `backup_service_test.dart`: schema 20 import restores an event and recurrence before migrating | 30-second timeout during file-backed restore/migration under the custom workspace-drive temp root. Passed in the normal Windows temp directory with the unchanged timeout. |
+| `import_export_test.dart`: full SQLite export imports through reviewed restore | Same storage-latency timeout; unchanged assertions and timeout pass with normal temp. |
+| `privacy_test.dart`: failed-attempt delay survives restart | Fixture shared-state race: the original manager's heartbeat remained active while the restarted manager used the same store. Per-manager queues did not coordinate their identical PID-based temporary filenames. Stop/drain/dispose the old owner before constructing the next; assert single fixture ownership and clean up managers even on assertion failure. The original OS error 32 did not identify the locking process, so additional external interference cannot be excluded. |
+| `profile_isolation_test.dart`: a new data root starts empty while an existing root keeps its task | Storage-latency timeout while opening/reopening disposable databases; unchanged assertions and timeout pass with normal temp. |
+| `task_relationships_test.dart`: disposable v4 projects, tasks, sessions and history migrate to v15 | Storage-latency timeout during disposable schema migration; unchanged assertions and timeout pass with normal temp. |
+| `task_resources_test.dart`: portable transfer includes attachment bytes and rejects tampering | Storage-latency timeout during file-backed transfer; unchanged assertions and timeout pass with normal temp. |
+| `task_resources_test.dart`: blocked restore keeps live attachment and pending request | Storage-latency timeout during file-backed restore; unchanged assertions and timeout pass with normal temp. |
+| `workspace_test.dart`: narrow editor keeps unsaved fields after saving prerequisites | Test interaction timing exposed by increased spacing: it tapped before scrolling settled, missed the expander, then found the background task title. `56a27d0` already added settling and a hittability assertion; keep that correction. No application regression found. |
+
+The six timeout cases had unique disposable roots and no failed data assertions. The earlier custom-temp run took 20:37, versus 00:53 for all 43 focused checks with normal temp and the original 30-second timeout in this follow-up. This supports environment-sensitive I/O timing, not evidence of a storage logic regression; the process responsible for the original delays was not captured. No timeout increase, retry-on-failure, skipped test, or weakened assertion was introduced. Flutter test/build/analyzer processes run sequentially here to avoid native-asset contention seen in the earlier session.
+
+The privacy widget fixture also now awaits shutdown before provider unmount, so its synchronous disposal cannot leave an unawaited session write racing temporary-directory deletion. Production code is unchanged. Previous isolated UI screenshots and Windows Release build remain applicable; no repeat build or visual pass is needed. Physical resizing/DPI, Release GUI, native widget behavior, and enabled-lock PIN layout retain their prior unverified status.
+
+Verification results:
+
+- Focused affected groups: 43/43 passed at the original timeout; after the final widget cleanup adjustment, Privacy: 6/6 passed.
+- One final full serial run: **245/245 passed**, zero error events, 04:35. Command: `flutter test --no-pub --concurrency=1 --reporter expanded --file-reporter json:.dart_tool/ui-audit-verification.json`. No retries or timeout overrides. The ignored local JSON report retains individual test results.
+- `flutter analyze --no-pub` passed with no issues. Existing nonfatal hit-test warnings remain in Smart Reschedule and the workspace invalid-duration test; no warnings were suppressed.
+- Build and visual evidence from `56a27d0` reused because only test fixtures and documentation changed. No production profile, installation, or application settings were accessed.
+
 ## v1.0.11 updater handoff (2026-10-24)
 
 | Check | Result | Evidence and limit |

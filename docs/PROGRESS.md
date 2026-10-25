@@ -1,5 +1,11 @@
 # Progress
 
+## UI audit verification completion (2026-10-25)
+
+- Audited the exact eight prior failures in `docs/ACCEPTANCE.md`: six custom-temp I/O timeouts, one privacy fixture with concurrent old/restarted profile owners, and one pre-scroll-settlement tap already corrected in `56a27d0`. The original external locking/delay process was not captured. No application regression found.
+- Privacy tests now stop and drain the old manager before restart, assert single fixture ownership, clean up on failure, and await session I/O with `tester.runAsync` before provider unmount. Existing behavioral assertions and timeouts are unchanged; production code is untouched.
+- Focused affected groups passed 43/43; final privacy checks passed 6/6. One final full serial Flutter run passed **245/245** in 04:35 with no retries or timeout overrides and zero JSON error events. `flutter analyze --no-pub` passed with no issues. Reused the prior Windows Release build and isolated UI evidence; physical resizing/DPI, Release GUI, native widget behavior, and enabled-lock PIN layout retain their previous limits. No production data or installation was changed.
+
 ## Shared form layout audit (2026-10-25)
 
 - Shared expansion styling now gives child fields 12 px of vertical clearance and avoids duplicate section borders; Task Status/Estimates/Prerequisites, series review, and backup details inherit it. New/Edit checklists share one entry row with 12 px label clearance and an 8 px action gap. PIN fields have explicit separation; session footers reuse the wrapping dialog action bar. Generated `release/` output is excluded from analysis.
