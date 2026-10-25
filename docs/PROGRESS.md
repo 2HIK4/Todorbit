@@ -1,5 +1,10 @@
 # Progress
 
+## v1.0.12 pre-release preparation (2026-10-25)
+
+- Verified the live GitHub release list: v1.0.11 is the latest published pre-release. Prepared 1.0.12+13 with synchronized native metadata and brief release notes for the completed shared UI audit. The feature branch starts from clean `100d10f`; no application logic changed during release preparation.
+- Reuse the clean local 245/245 tests and analysis from the verification follow-up; release CI will verify the merged version metadata. A new versioned Windows Release bundle and installer/portable packages are required. Publication and final asset checks are pending. Production installation and profile remain untouched.
+
 ## UI audit verification completion (2026-10-25)
 
 - Audited the exact eight prior failures in `docs/ACCEPTANCE.md`: six custom-temp I/O timeouts, one privacy fixture with concurrent old/restarted profile owners, and one pre-scroll-settlement tap already corrected in `56a27d0`. The original external locking/delay process was not captured. No application regression found.

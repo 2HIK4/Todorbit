@@ -5,8 +5,8 @@
 The Windows Release bundle contains `Todorbit.exe`,
 `TodorbitWidget.exe`, Flutter assets, `flutter_windows.dll`, and
 `sqlite3.dll`. Inno Setup 7.1.0 compiles the installer at
-`release/Todorbit-1.0.7-win-x64-setup.exe`. A portable ZIP is built at
-`release/Todorbit-1.0.7-win-x64-portable.zip`. This is a Windows x64
+`release/Todorbit-1.0.12-win-x64-setup.exe`. A portable ZIP is built at
+`release/Todorbit-1.0.12-win-x64-portable.zip`. This is a Windows x64
 **pre-release** with limited installed upgrade/uninstall and native widget
 manual acceptance. Windows 11 is the main development/test platform; Windows
 10 acceptance is limited. The creator approved Todorbit and the MIT license;
