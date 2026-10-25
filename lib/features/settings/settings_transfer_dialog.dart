@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
@@ -12,10 +13,16 @@ class SettingsTransferDialog extends ConsumerStatefulWidget {
     super.key,
     this.chooseImport,
     this.chooseExport,
+    this.initialTransfer,
+    this.uploadSettings,
+    this.cloudProgress,
   });
 
   final Future<File?> Function()? chooseImport;
   final Future<File?> Function()? chooseExport;
+  final SettingsTransfer? initialTransfer;
+  final Future<void> Function(String encoded)? uploadSettings;
+  final ValueListenable<({String stage, double? fraction})>? cloudProgress;
 
   @override
   ConsumerState<SettingsTransferDialog> createState() =>
@@ -29,6 +36,28 @@ class _SettingsTransferDialogState
   String? message;
   bool busy = false;
   bool mergeHotkeys = false;
+
+  @override
+  void initState() {
+    super.initState();
+    imported = widget.initialTransfer;
+    if (imported != null) selected = imported!.categories.keys.toSet();
+  }
+
+  Future<void> _upload() async {
+    setState(() => busy = true);
+    try {
+      await widget.uploadSettings!(
+        SettingsTransfer.fromController(ref.read(appControllerProvider))
+            .encode(selected),
+      );
+      if (mounted) Navigator.pop(context);
+    } catch (error) {
+      if (mounted) setState(() => message = '$error');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
 
   String _preview(SettingsCategory category, AppController current) {
     final value = imported?.categories[category];
@@ -158,7 +187,13 @@ class _SettingsTransferDialogState
     final available =
         imported?.categories.keys.toSet() ?? SettingsCategory.values.toSet();
     return AlertDialog(
-      title: const Text('Share settings'),
+      title: Text(
+        widget.initialTransfer != null
+            ? 'Restore cloud settings'
+            : widget.uploadSettings != null
+            ? 'Back up settings to Google Drive'
+            : 'Share settings',
+      ),
       actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       buttonPadding: const EdgeInsets.symmetric(horizontal: 8),
       content: SizedBox(
@@ -217,27 +252,46 @@ class _SettingsTransferDialogState
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(message!),
                   ),
+                if (busy && widget.cloudProgress != null)
+                  ValueListenableBuilder(
+                    valueListenable: widget.cloudProgress!,
+                    builder: (context, value, _) => Column(
+                      children: [
+                        Text(value.stage),
+                        LinearProgressIndicator(value: value.fraction),
+                        if (value.fraction != null)
+                          Text('${(value.fraction! * 100).round()}%'),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: busy ? null : _import,
-          child: const Text('Import JSON'),
-        ),
-        TextButton(
-          onPressed: busy || selected.isEmpty ? null : _export,
-          child: const Text('Export JSON'),
-        ),
+        if (widget.initialTransfer == null && widget.uploadSettings == null)
+          TextButton(
+            onPressed: busy ? null : _import,
+            child: const Text('Import JSON'),
+          ),
+        if (widget.initialTransfer == null && widget.uploadSettings == null)
+          TextButton(
+            onPressed: busy || selected.isEmpty ? null : _export,
+            child: const Text('Export JSON'),
+          ),
         if (imported != null)
           FilledButton(
             onPressed: busy || selected.isEmpty ? null : _apply,
             child: const Text('Apply selected'),
           ),
+        if (widget.uploadSettings != null)
+          FilledButton(
+            onPressed: busy || selected.isEmpty ? null : _upload,
+            child: const Text('Back up selected settings'),
+          ),
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: busy ? null : () => Navigator.pop(context),
           child: const Text('Close'),
         ),
       ],

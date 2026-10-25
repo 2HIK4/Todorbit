@@ -31,6 +31,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      expect(find.text('Backups'), findsNothing);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
       await database.close();
@@ -85,6 +86,14 @@ void main() {
       await tester.tap(find.text('Task Preferences').last);
       await tester.pumpAndSettle();
       expect(find.text('Task display and defaults'), findsOneWidget);
+      await tester.tap(sectionPicker);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Backups & Cloud').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Backups & Cloud').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Local Backups'), findsOneWidget);
+      expect(find.text('Google Drive is disconnected.'), findsOneWidget);
       expect(tester.takeException(), isNull);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());

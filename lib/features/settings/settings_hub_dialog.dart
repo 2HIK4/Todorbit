@@ -9,7 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_controller.dart';
 import '../../domain/appearance.dart';
 import '../widget/native_widget_service.dart';
-import 'backup_dialog.dart';
+import 'backups_cloud_page.dart';
 import 'settings_transfer_dialog.dart';
 import 'hotkeys_dialog.dart';
 import 'notification_dialog.dart';
@@ -27,6 +27,7 @@ enum _SettingsPage {
   notifications('Notifications', Icons.notifications_outlined),
   widget('Widget', Icons.widgets_outlined),
   privacy('Privacy & Data', Icons.lock_outline),
+  backups('Backups & Cloud', Icons.backup_outlined),
   updates('Software Updates', Icons.system_update_outlined);
 
   const _SettingsPage(this.title, this.icon);
@@ -39,9 +40,11 @@ class SettingsHubDialog extends ConsumerStatefulWidget {
     super.key,
     required this.nativeWidget,
     required this.showDataProfile,
+    this.openBackups = false,
   });
   final NativeWidgetService nativeWidget;
   final VoidCallback showDataProfile;
+  final bool openBackups;
 
   @override
   ConsumerState<SettingsHubDialog> createState() => _SettingsHubDialogState();
@@ -57,6 +60,7 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
   @override
   void initState() {
     super.initState();
+    if (widget.openBackups) page = _SettingsPage.backups;
     if (widget.nativeWidget.isAvailable) {
       widget.nativeWidget
           .readSettings()
@@ -115,8 +119,8 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
     final narrow = size.width < 650;
     return Dialog(
       child: SizedBox(
-        width: math.min(720, size.width - 48),
-        height: math.min(550, size.height - 48),
+        width: math.min(920, size.width - 48),
+        height: math.min(720, size.height - 48),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -381,18 +385,6 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
               Icons.lock_outline,
               () => _open(const PrivacyDialog()),
             ),
-            if (controller.backupService case final service?)
-              _action(
-                'Backups',
-                'Review and restore local backups',
-                Icons.backup_outlined,
-                () => _open(
-                  BackupDialog(
-                    service: service,
-                    automaticError: controller.backupError,
-                  ),
-                ),
-              ),
             if (Platform.isWindows)
               _action(
                 'Data profile and location',
@@ -405,6 +397,7 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
         _SettingsPage.updates => SoftwareUpdatesPage(
           nativeWidget: widget.nativeWidget,
         ),
+        _SettingsPage.backups => const BackupsCloudPage(),
       },
     ],
   );

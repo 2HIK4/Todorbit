@@ -291,6 +291,17 @@ class BackupService {
     );
   }
 
+  /// Personalization from a cloud restore is applied only after the replaced
+  /// database has opened and migrated. Credentials and privacy stay local.
+  Future<String?> restoredPortableSettings() async {
+    if (!await _restoreStatus.exists()) return null;
+    final data = jsonDecode(await _restoreStatus.readAsString());
+    if (data is Map && data['state'] == 'applied') {
+      return data['portableSettings'] as String?;
+    }
+    return null;
+  }
+
   Future<BackupSummary> summarize(BackupRecord selected) async {
     final filePath = selected.file.path;
     return Isolate.run(() => _summarizeSnapshot(filePath));
@@ -299,6 +310,7 @@ class BackupService {
   Future<void> scheduleRestore(
     BackupRecord selected, {
     required int appSchemaVersion,
+    String? portableSettings,
   }) async {
     if (await _restoreMarker.exists()) {
       throw StateError('A restore is already scheduled. Cancel it first.');
@@ -337,6 +349,7 @@ class BackupService {
         'modified_us': stat.modified.toUtc().microsecondsSinceEpoch,
         'schema': verifiedSchema,
         'sha256': digest,
+        'portableSettings': ?portableSettings,
       }),
       flush: true,
     );
@@ -391,15 +404,16 @@ class BackupService {
     if (restoredSchema != sourceSchema) {
       throw StateError('Restored database failed schema verification');
     }
+    await _restoreStatus.writeAsString(
+      jsonEncode({
+        'state': 'applied',
+        'backup': filename,
+        if (marker['portableSettings'] != null)
+          'portableSettings': marker['portableSettings'],
+      }),
+      flush: true,
+    );
     await _restoreMarker.delete();
-    try {
-      await _restoreStatus.writeAsString(
-        jsonEncode({'state': 'applied', 'backup': filename}),
-        flush: true,
-      );
-    } catch (_) {
-      // The verified restore is already complete; a status write is optional.
-    }
     return rollback;
   }
 }

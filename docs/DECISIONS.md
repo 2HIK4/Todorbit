@@ -1,5 +1,13 @@
 # Decisions
 
+## Opt-in encrypted Google Drive snapshots (2026-10-25)
+
+- Move backup access into Settings > Backups & Cloud, reuse the local BackupDialog and BackupService, and keep automatic local backups independent of network state. Cloud is an explicit user action, not record synchronization.
+- Separate a provider interface, Google desktop OAuth/secure token store, Drive operations, portable authenticated encryption, and orchestration. Request only `drive.appdata`; use PKCE and system-browser loopback on Windows. Public OAuth client IDs are build defines; credentials and grants require owner setup. Future Android needs its own native authorization implementation in the same Google project.
+- Package the verified SQLite snapshot plus existing allowlisted settings, encrypt with a user-held passphrase, and verify uploaded bytes by remote readback before success. Never overwrite or automatically prune cloud snapshots. Do not bundle arbitrary task-resource files; retain their references and disclose the portability limit. Bound package sizes explicitly rather than reading unbounded remote content.
+- Keep full restore on the reviewed next-launch pipeline with the native companion closed and a verified Before Restore database snapshot. Stage portable settings in the restore marker/receipt and apply them only after database open/migration. Save target personalization separately before scheduling; mark success only after actual opening and settings application. Settings-only restore uses existing category selection and hotkey merge without replacing the database.
+- Real Google sign-in/upload/download/restore passed on isolated Windows profiles with owner configuration and account consent. The tested Desktop client required `client_secret` despite Google's optional-field documentation: accept a matching Desktop JSON import into per-profile platform-secure storage, never compile or back up that configuration, and retain PKCE. Mock failure cases and physical/Android acceptance remain separate evidence. Setup and acceptance instructions are in GOOGLE_DRIVE_BACKUP.md.
+
 ## Update handoff gate (2026-10-24)
 
 - Hold a named Windows mutex from helper preflight through the helper's restart check. A normal Todorbit launch exits promptly when the mutex exists, releasing its executable file; the helper restart uses `--update-restart` to enter first. Continue to reject a same-path app that was already running before handoff and report its PID. The v1.0.9 installed binary cannot honor this new gate, so a failed update from that version may still require a manual installer run.

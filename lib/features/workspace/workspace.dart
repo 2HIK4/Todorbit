@@ -217,7 +217,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           'per-user data folder. Updating or reinstalling the app keeps this '
           'profile. A different Windows user starts with an empty profile.\n\n'
           'Database: ${file.path}\n\n'
-          'To move data to another computer, use Backups and Export. '
+          'To move data to another computer, use Settings > Backups & Cloud and Export. '
           'This screen does not change any records.',
         ),
         actions: [
@@ -1016,27 +1016,6 @@ class _WorkspaceState extends ConsumerState<Workspace> {
               ),
             ),
           ),
-          if (controller.backupService case final backupService?)
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: ListTile(
-                dense: true,
-                leading: Icon(
-                  controller.backupError == null
-                      ? Icons.backup_outlined
-                      : Icons.warning_amber_outlined,
-                ),
-                title: const Text('Backups'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => showDialog<void>(
-                  context: context,
-                  builder: (_) => BackupDialog(
-                    service: backupService,
-                    automaticError: controller.backupError,
-                  ),
-                ),
-              ),
-            ),
           Padding(
             padding: const EdgeInsets.all(8),
             child: ListTile(

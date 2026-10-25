@@ -49,6 +49,7 @@ class _TransferService extends BackupService {
   Future<void> scheduleRestore(
     BackupRecord selected, {
     required int appSchemaVersion,
+    String? portableSettings,
   }) async {
     scheduleCalls++;
   }

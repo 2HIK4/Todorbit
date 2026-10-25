@@ -23,6 +23,7 @@ import 'data/software_update_service.dart';
 import 'domain/appearance.dart';
 import 'features/workspace/workspace.dart';
 import 'features/settings/privacy_dialog.dart';
+import 'features/settings/settings_transfer.dart';
 import 'features/widget/desktop_widget.dart';
 import 'features/widget/native_widget_service.dart';
 
@@ -105,6 +106,31 @@ Future<void> _startApplication(
     backupService: backupService,
   );
   await controller.initialize();
+  try {
+    final restoredSettings = await backupService.restoredPortableSettings();
+    if (restoredSettings != null) {
+      final transfer = SettingsTransfer.decode(restoredSettings);
+      await transfer.applyTo(controller, transfer.categories.keys.toSet());
+      // Do not open the app with a replayable personalization receipt. If
+      // finalization fails, startup stops before the user can make new edits.
+      await backupService.markRestoreOpened();
+    }
+  } catch (failure) {
+    controller.dispose();
+    await database.close();
+    privacy.dispose();
+    runApp(
+      _StartupFailureApp(
+        backupService: backupService,
+        hasPendingRestore: await backupService.hasScheduledRestore(),
+        arguments: args,
+        failure:
+            'Database opened, but restored personalization could not be finalized: $failure',
+        databaseOpened: true,
+      ),
+    );
+    return;
+  }
   try {
     await backupService.markRestoreOpened();
   } catch (_) {
@@ -258,11 +284,13 @@ class _StartupFailureApp extends StatefulWidget {
     required this.hasPendingRestore,
     required this.arguments,
     required this.failure,
+    this.databaseOpened = false,
   });
   final BackupService backupService;
   final bool hasPendingRestore;
   final List<String> arguments;
   final String failure;
+  final bool databaseOpened;
 
   @override
   State<_StartupFailureApp> createState() => _StartupFailureAppState();
@@ -299,8 +327,10 @@ class _StartupFailureAppState extends State<_StartupFailureApp> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Todorbit could not prepare its database. The main app was not started and no migration was run.',
+              Text(
+                widget.databaseOpened
+                    ? 'The database opened, but restored personalization could not be applied. The main app was not started. Your Before Restore database and settings recovery files remain available.'
+                    : 'Todorbit could not prepare its database. The main app was not started. Review the error below before retrying.',
               ),
               const SizedBox(height: 12),
               SelectableText(widget.failure),

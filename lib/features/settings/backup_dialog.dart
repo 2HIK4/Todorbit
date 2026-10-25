@@ -14,11 +14,13 @@ class BackupDialog extends StatefulWidget {
     this.automaticError,
     this.chooseImport,
     this.chooseExport,
+    this.embedded = false,
   });
   final BackupService service;
   final String? automaticError;
   final Future<File?> Function()? chooseImport;
   final Future<File?> Function()? chooseExport;
+  final bool embedded;
 
   @override
   State<BackupDialog> createState() => _BackupDialogState();
@@ -190,15 +192,17 @@ class _BackupDialogState extends State<BackupDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => Dialog(
-    child: SizedBox(
+  Widget build(BuildContext context) {
+    final content = SizedBox(
       width: 700,
-      height: math.min(
-        MediaQuery.sizeOf(context).height * 0.85,
-        records != null && records!.length < 3 && pendingName == null
-            ? 480.0
-            : 620.0,
-      ),
+      height: widget.embedded
+          ? 720
+          : math.min(
+              MediaQuery.sizeOf(context).height * 0.85,
+              records != null && records!.length < 3 && pendingName == null
+                  ? 480.0
+                  : 620.0,
+            ),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -212,11 +216,12 @@ class _BackupDialogState extends State<BackupDialog> {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
-                IconButton(
-                  tooltip: 'Close backups',
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
-                ),
+                if (!widget.embedded)
+                  IconButton(
+                    tooltip: 'Close backups',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
               ],
             ),
             const Text(
@@ -367,8 +372,9 @@ class _BackupDialogState extends State<BackupDialog> {
           ],
         ),
       ),
-    ),
-  );
+    );
+    return widget.embedded ? content : Dialog(child: content);
+  }
 }
 
 String _date(BuildContext context, DateTime instant) {

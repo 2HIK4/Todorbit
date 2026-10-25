@@ -1,5 +1,23 @@
 # Windows v1.0 final acceptance record
 
+## Google Drive backups feature (2026-10-25)
+
+| Boundary | Status | Evidence and limits |
+| --- | --- | --- |
+| Settings > Backups & Cloud / local backups | PASS | Existing local panel embedded, main-sidebar entry removed; isolated live create/verify, recovery receipt, light/dark inspection and narrow 440 px / 1.3x widget checks. |
+| Google Desktop sign-in, refresh and secure persistence | PASS | Owner completed real system-browser PKCE consent; forced refresh and profile restart succeeded. Client-secret requirement was discovered against Google and handled by a validated device-local secure configuration import. Credentials stay out of snapshots/binaries/source. |
+| Full cloud round trip | PASS | Real upload/readback/download/decryption; wrong-passphrase rejection; explicit preview and confirmation; actual app close/reopen; all 44 SQLite tables matched the uploaded snapshot with IDs/relationships intact, personalization restored and actual opened receipt. Before Restore and settings recovery files verified. |
+| Settings cloud round trip | PASS | Real separate upload/download; category preview, canceled confirmation, selected calendar/hotkeys application and conflict merging; complete database digest and unrelated appearance unchanged. |
+| History, disconnect/reconnect, deletion | PASS | Both real objects remained after disconnect and reconnection; explicit deletion cancellation/confirmation exercised, then only the two generated disposable objects removed. Both test profiles' tokens and client configuration were cleared. |
+| Error cases and profile isolation | PASS (automated) | Final analysis clean and all 262 serial Flutter tests passed. Mocked OAuth cancellation/state errors, expiration/revocation/401 refresh, account switching, paging, offline/quota/interrupted transfer errors; encryption tamper/format/schema gates and isolated profile round trips. Real quota/revocation/account switching/interruption remain UNVERIFIED. |
+| Packaging / platform acceptance | PARTIAL | Final configured Windows Release and native build passed; packaged widget self-test exited 0 on an isolated profile. Release bundle and staged source/profile scans excluded the real client secret, disposable passphrase and database/credential files. Real Release GUI, installer/portable packaging, physical DPI/resizing, Android and production OAuth publishing remain UNVERIFIED. |
+
+Setup, format/attachment limits, exact procedure and current evidence are in
+[GOOGLE_DRIVE_BACKUP.md](GOOGLE_DRIVE_BACKUP.md). Several Flutter Driver timing
+and serialization failures required scoped retries/restarting a disposable
+driver; final application runtime inspections were clear. The installed app and
+production profile were not changed. This feature branch is not published.
+
 ## v1.0.12 UI polish pre-release (2026-10-25)
 
 - Release commit/tag: `ebba16e` / `v1.0.12`, version 1.0.12+13. Feature branch pushed and fast-forwarded into main. Main Windows CI passed analysis, all 245 tests, Release build, and packaged native self-test; duplicate feature CI for the identical SHA was canceled. Tag Windows CI also passed the same gates. [Published v1.0.12](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.12). CI: [main](https://github.com/2HIK4/Todorbit/actions/runs/40194712436), [tag](https://github.com/2HIK4/Todorbit/actions/runs/40195355512).
