@@ -15,7 +15,7 @@ package startup, portable helper update/rollback and
 [passing CI](https://github.com/2HIK4/Todorbit/actions/runs/40342429612).
 Do not repeat those completed checks for documentation/website-only changes.
 
-Publish the exact enabled packages from
+Published the exact enabled packages from
 `.buildlog/private-engineering-final-20261026-174228/packages/`. CI candidates
 are disabled and must not be substituted. The source-tree default config stays
 disabled/empty; enabled parameters are supplied during the reviewed local build.
@@ -60,9 +60,37 @@ Cloud settings remain untouched. See the release notes for backup limitations.
 
 ## Publication verification
 
-Pending publication: verify the public release is non-draft/pre-release,
-download all five assets anonymously, compare SHA-256/sidecars/manifest and the
-enabled receipt, check real updater selection from 1.0.12 for both package
-types without launching an update, then deploy and verify Pages content/links.
-Final bounded evidence is kept under ignored
-`.buildlog/release-1.0.13-20261026/`.
+- [GitHub release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.13)
+  published **2026-10-26 19:03:49 Asia/Amman** (16:03:49 UTC): non-draft,
+  **pre-release**, not promoted to latest stable. All five expected assets are
+  uploaded; GitHub digests match the local files and published notes match.
+- Annotated tag `v1.0.13` targets release-preparation commit
+  **83fad4b85320deccab5f2fae460e4df81250e3ad** on main. Its app/build/config
+  sources are unchanged from tested **8d667df**. Main was fast-forwarded from
+  `3f3f1cf`; no forced update. Later documentation receipts do not move the tag.
+- Anonymous downloads of both binaries, both sidecars and the manifest PASS.
+  Downloaded packages match the exact accepted bytes/hashes above. Portable
+  CRC/full extracted-file equality, private-file guards and enabled
+  config/runner/AOT receipt PASS again on the public download.
+- The unchanged production `SoftwareUpdateService` (also unchanged from
+  v1.0.12) queries the real public feed with explicit `currentVersion: 1.0.12`:
+  **Pre-release selects v1.0.13 for installer and portable; Stable excludes it**.
+  Both real downloads verify size/SHA-256/allowed HTTPS hosts and progress.
+  This invokes service APIs without changing any profile/channel or executing
+  a package; the painted update controls and registered install stay untested.
+- The new harness initially rejected a relative path at its isolation guard,
+  before requests. Passing the resolved absolute evidence path corrected the
+  invocation; no application fix or repeated engineering suite was needed.
+- [Pages deployment](https://github.com/2HIK4/Todorbit/actions/runs/40355725550)
+  PASS at **83fad4b**. Static website checks PASS. Anonymous canonical homepage,
+  all eight deployed files and all nine external links PASS; published bytes
+  match source after Git line-ending normalization. Both download links belong
+  to actual v1.0.13 assets. Homepage/privacy/terms label Drive experimental and
+  disclose unresolved branding/policy/account limits. Rendered browser QA
+  remains unverified. [Official site](https://2hik4.github.io/Todorbit/).
+
+Final bounded evidence is under ignored `.buildlog/release-1.0.13-20261026/`:
+`local-integrity.json`, `public-release.json`, `public-updater.json`,
+`public-integrity.json`, `public-updater.log`, `website-live.json` and the five public downloads in
+`public-assets/`. Completed 287-test/build/Google/helper evidence was reused;
+it was not repeated. There was no personal installation or Cloud mutation.

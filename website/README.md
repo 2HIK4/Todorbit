@@ -9,12 +9,23 @@ Application releases and Google Cloud configuration are outside this deployment.
 - Terms of Service: `dist/terms.html`
 - Shared responsive light/dark CSS, existing brand and screenshot: `dist/assets/`
 
-The site is prepared to link **v1.0.13**, the owner-approved experimental
+The site links **v1.0.13**, the published owner-approved experimental
 Windows x64 pre-release. Google Drive is enabled; branding verification, full
 public OAuth policy compliance and broad account eligibility remain unresolved.
-Publish the matching GitHub release before deploying these download links.
 Update pinned version/download URLs only after a later release is published.
 No analytics, external fonts, forms, JavaScript or cookies are added.
+
+## v1.0.13 deployment (2026-10-26)
+
+- [Deployment 40355725550](https://github.com/2HIK4/Todorbit/actions/runs/40355725550)
+  passed validation and deployment at **83fad4b** on main after GitHub publication.
+- Anonymous canonical homepage/all eight files match source; all nine external
+  links pass. Both download links match actual v1.0.13 release assets.
+- Homepage, privacy and terms describe enabled experimental Drive with no
+  Google approval or universal account claim. Screenshot remains accurately
+  captioned v1.0.12. CSS/layout/assets are unchanged. Rendered QA is unverified.
+- See [publication record](../docs/TODORBIT_1_0_13_PUBLICATION.md). Earlier
+  deployment/domain investigation below remains historical evidence.
 
 ## Validation
 

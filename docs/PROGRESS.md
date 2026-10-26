@@ -1,6 +1,6 @@
 # Progress
 
-## v1.0.13 experimental pre-release preparation (2026-10-26)
+## v1.0.13 experimental pre-release published (2026-10-26)
 
 - Owner explicitly approves main merge, tag, GitHub pre-release publication
   and official Pages download updates. This supersedes earlier publication
@@ -15,9 +15,21 @@
   guidance does not establish a branding-only prohibition; full production
   policy/domain compliance and broad account eligibility remain unresolved.
   Clean-user/VM remains skipped, registered/manual GUI/trust unverified.
-- Publication/public updater/Pages verification pending. See
-  [publication record](TODORBIT_1_0_13_PUBLICATION.md) for exact artifacts,
-  policy sources, remaining limits and bounded evidence.
+- [v1.0.13](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.13) is now
+  published as a non-draft **pre-release**, not latest stable. Tag targets
+  **83fad4b** on main; app/config/build sources equal **8d667df**. Both public
+  binaries and three checksum files pass anonymous download/digest checks;
+  downloaded ZIP retains the enabled config/runner/AOT receipt and exact bundle.
+- Real production updater service from explicit version **1.0.12** detects
+  v1.0.13 on Pre-release for installer and portable, verifies both transfers,
+  and excludes it on Stable. No package was run and no personal channel changed.
+- [Pages deployment](https://github.com/2HIK4/Todorbit/actions/runs/40355725550)
+  PASS; anonymous homepage/all eight deployed files match source and all nine
+  external links pass. Download links point to v1.0.13, with experimental Drive
+  wording in homepage/privacy/terms. Rendered browser QA remains unverified.
+- See [publication record](TODORBIT_1_0_13_PUBLICATION.md) for exact artifacts,
+  policy sources, remaining limits and bounded evidence under ignored
+  `.buildlog/release-1.0.13-20261026/`. Personal app/profile and Cloud unchanged.
 
 ## Initialization reliability and engineering acceptance (2026-10-26)
 

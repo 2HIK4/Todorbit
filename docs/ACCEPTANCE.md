@@ -1,7 +1,8 @@
 # Windows v1.0 final acceptance record
 
-> **2026-10-26 release update:** the owner has now approved an enabled
-> v1.0.13 **experimental pre-release**, main merge and website updates.
+> **2026-10-26 release update:** enabled v1.0.13 is now published as an
+> owner-approved **experimental pre-release**, merged to main with website
+> download updates. Public asset/updater/Pages verification passes.
 > This supersedes the earlier publication hold below, while preserving
 > every skipped/unverified test and unresolved policy limitation. See
 > [the publication record](TODORBIT_1_0_13_PUBLICATION.md) and

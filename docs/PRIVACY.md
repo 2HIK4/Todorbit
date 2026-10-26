@@ -3,7 +3,8 @@
 Prepared 2026-10-26 for owner review and hosting on the verified production
 application domain. The owner-approved public website policy is now at
 https://2hik4.github.io/Todorbit/privacy.html; its OAuth domain eligibility is
-unresolved. This repository document is not evidence of Google approval. Google Drive is enabled as an experimental feature in the owner-approved
+unresolved. This repository document is not evidence of Google approval.
+Google Drive is enabled as an experimental feature in the owner-approved
 v1.0.13 pre-release. Branding verification and full public OAuth policy compliance
 remain unresolved; compatibility with every account is not promised.
 
