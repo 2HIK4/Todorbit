@@ -1,5 +1,27 @@
 # Progress
 
+## v1.0.15 widget redesign pre-release published (2026-10-27)
+
+- Owner-authorized implementation **ae649f1** and preparation **a116069**
+  fast-forwarded to main. Version **1.0.15+16**, tag **v1.0.15** targets a116069.
+  [Release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.15),
+  [publication record](TODORBIT_1_0_15_PUBLICATION.md).
+- [Exact-source Windows CI](https://github.com/2HIK4/Todorbit/actions/runs/40399386479)
+  passes: clean analysis, **329 tests passed/one opt-in skip**, config/package
+  gates, Windows Release, native self-test, portable, installer and checksums.
+  Prior local implementation verification reused without another local full suite.
+- Published installer/ZIP retain the prior enabled Drive configuration; audited
+  receipts, complete bundle equality, ZIP CRC/private-file guards, native checks
+  and all five public assets/digests pass. Tracked config restored disabled/empty.
+- Production updater detects/downloads/verifies v1.0.15 from **v1.0.14** for both
+  installer and portable; Stable excludes it. Disposable actual portable rollback,
+  swap/restart preserves all 44 tables/settings; widget compatibility/independent
+  visibility checks pass in one companion. Personal install/profile/registration
+  and update channel untouched; no website/Cloud changes.
+- Real-user physical Windows acceptance, registered installer execution, DPI,
+  focus/input, Win+D, Explorer restart, multi-monitor and screen readers remain
+  pending. Packages are unsigned. Owner will test after upgrading.
+
 ## Widget redesign and application UI audit (2026-10-26)
 
 - Branch `feature/widget-redesign-live-preview`, from main `ce535e4`; no
