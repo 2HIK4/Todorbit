@@ -1,5 +1,32 @@
 # Progress
 
+## Repository workflow maintenance (2026-10-27)
+
+- Clean baseline `main` at `6592b2b`; remote main matches. GitHub releases API
+  confirms latest public pre-release v1.0.16, source/tag `6e3b64b`; source app
+  and companion metadata remain 1.0.16+17. Local tags had not included v1.0.15/16;
+  remote inspection avoided treating the local tag list as public release state.
+- Root AGENTS now routes tasks to architecture/setup/testing/workflow/release
+  owners, preserves data/native safety, clarifies existing optional Drive support
+  and selective skills. Contributor and PR guidance use checks matched to risk.
+- Added TESTING; expanded Architecture with verified paths/dependencies/tests;
+  Workflow includes safe branches, interrupted work, a reusable prompt and all
+  three routing examples (Calendar widget resize, persisted setting, pre-release).
+- Corrected stale public v1.0.7/v1.0.13 pointers and source-vs-published Drive
+  wording. Release owns draft/gates/hashes/publication; Updates owns protocol and
+  recovery. Dated acceptance/publication evidence remains intact and contextualized.
+- Lightweight code assessment: AppController.refresh loads a broad shared snapshot
+  and notifies all listeners; main.dart's database/WAL watcher already debounces
+  events by 250 ms. Profile before proposing narrower refresh/rebuild boundaries;
+  no measured performance defect or safe verified code optimization established.
+  Windows CMake already publishes the companion, so separate native builds are
+  diagnostic checks rather than an additional packaging prerequisite.
+- Documentation-only: no app code, version, assets, CI behavior or data changed.
+  Local Markdown link targets and referenced implementation paths checked;
+  final diff/whitespace reviewed. No Flutter suite or distribution rebuild needed.
+  No measured token-savings claim. Remaining product/manual acceptance limits
+  continue to live in the release receipts, not this maintenance checkpoint.
+
 ## v1.0.16 refinement pre-release published (2026-10-27)
 
 - [Public Windows x64 pre-release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.16),

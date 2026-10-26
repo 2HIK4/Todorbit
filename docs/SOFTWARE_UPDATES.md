@@ -1,5 +1,10 @@
 # Windows software updates
 
+> Current release navigation (2026-10-27): [v1.0.16 publication](TODORBIT_1_0_16_PUBLICATION.md)
+> records the latest published candidate and verification limits. Earlier dated
+> release status below is historical. [Release](RELEASE.md) owns the current
+> preparation sequence; no historical receipt authorizes future publication.
+
 > **2026-10-26 release update:** enabled v1.0.13 is now published as an
 > owner-approved **experimental pre-release**, merged to main with website
 > download updates. Public asset/updater/Pages verification passes.
@@ -89,25 +94,19 @@ or profile.
 
 ## Publishing a compatible release
 
-1. Set the same version in `pubspec.yaml` and the standalone native widget
-   project. Build the Windows Release bundle and run the native widget
-   self-test and the checks in `docs/windows-widget.md`.
-2. Run `./installer/build-installer.ps1` and `./tools/build-portable.ps1`.
-   Keep the bundle together. Inspect both packages for personal data, settings,
-   databases, logs, and secrets.
-3. Create a **published GitHub Release** tagged `vX.Y.Z` or a valid semantic
-   pre-release tag such as `vX.Y.Z-rc.1`. Use the exact asset names
-   `Todorbit-X.Y.Z-win-x64-setup.exe` and
-   `Todorbit-X.Y.Z-win-x64-portable.zip` (with the pre-release suffix in each
-   filename when present). Upload complete files and confirm GitHub displays a
-   SHA-256 digest for each asset. Mark pre-releases appropriately and include
-   release notes.
-4. Sign both packages with an approved publisher certificate when available.
-   Until then, retain the explicit unsigned warning and do not describe the
-   GitHub digest as a signature.
-5. On isolated Windows profiles, exercise installed and portable updates,
-   restart, widget shutdown, profile identity, database migration and recovery,
-   and repeated attempts. Do not test against a personal profile.
+[Release preparation](RELEASE.md) owns the ordered gates, draft review,
+publication authorization and public verification. Keep this updater contract:
+
+- Use `vX.Y.Z` or a valid semantic pre-release tag such as `vX.Y.Z-rc.1`.
+- Exact updater assets are `Todorbit-X.Y.Z-win-x64-setup.exe` and
+  `Todorbit-X.Y.Z-win-x64-portable.zip`, including any pre-release suffix.
+- Assets must be complete and uploaded with GitHub SHA-256 metadata; missing
+  metadata blocks installation. Sidecars/manifest are additional public checks.
+- Mark pre-releases correctly; retain unsigned warnings until an approved
+  publisher certificate is used. A GitHub digest is not a publisher signature.
+- Verify isolated installer/portable recovery, restart, companion shutdown,
+  profile identity, migration and repeat attempts. Public discovery/download
+  checks after publication do not prove installer execution or physical GUI use.
 
 If an update fails, inspect `last-install-result.txt`, keep the staged package
 and rollback folder, and retry after resolving file locks or install

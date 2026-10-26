@@ -2,29 +2,64 @@
 
 ## Current status
 
-**[v1.0.13 (1.0.13+14)](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.13)**
-is published as an experimental Windows x64 pre-release with Google Drive enabled
-in both published packages. Ordinary users
-do not configure OAuth or import JSON. The tracked source default remains
-disabled/empty; publish only the exact enabled engineering packages. See the
-[publication record](TODORBIT_1_0_13_PUBLICATION.md) for checksums and evidence.
-Branding verification and full public OAuth policy compliance remain unresolved.
-This supersedes the earlier publication hold, not the skipped manual tests.
+As checked on 2026-10-27, the latest public release is the Windows x64
+**v1.0.16 pre-release (1.0.16+17)**, tag/source `6e3b64b`.
+[Publication receipt](TODORBIT_1_0_16_PUBLICATION.md) records the exact-source
+340 passing tests/one opt-in skip, CI, asset hashes and updater checks; this is
+historical evidence, not verification of subsequent changes. Source defaults
+keep Drive disabled/empty; the published packages retain the approved enabled
+configuration. Google branding/policy limitations remain unresolved.
 
-The Windows Release bundle contains `Todorbit.exe`,
-`TodorbitWidget.exe`, Flutter assets, `flutter_windows.dll`, and
-`sqlite3.dll`. Inno Setup 7.1.0 compiles the installer at
-`release/Todorbit-1.0.13-win-x64-setup.exe`. A portable ZIP is built at
-`release/Todorbit-1.0.13-win-x64-portable.zip`. This is a Windows x64
-**pre-release** with limited installed upgrade/uninstall and native widget
-manual acceptance. Windows 11 is the main development/test platform; Windows
-10 acceptance is limited. The creator approved Todorbit and the MIT license;
-formal name clearance remains open. See `ACCEPTANCE.md`.
+Windows 11 is the primary test platform; Windows 10 acceptance is limited.
+Packages are unsigned. Physical DPI/input, Explorer behavior and registered
+installer execution remain unverified as detailed in that receipt. Never infer
+these passed from compilation, self-tests or a previous release.
+
+## Release sequence (only when explicitly requested)
+
+1. Confirm a clean candidate branch and intended base. Inspect remote releases
+   and tags (`gh api repos/2HIK4/Todorbit/releases` and `git ls-remote --tags origin`)
+   before selecting the next semantic version/build number. Do not move tags.
+2. Synchronize `pubspec.yaml` with `Version`, `FileVersion` and
+   `InformationalVersion` in `experiments/widget-shell-probe/widget-shell-probe.csproj`.
+   Update `CHANGELOG.md` and candidate release notes. Package scripts derive names
+   from the source version; documentation-only maintenance needs no version bump.
+3. Resolve dependencies and pass full analysis, serial Flutter tests, OAuth/config
+   gates, native/Windows builds and packaged self-test. Commands and focused
+   diagnostics are in [Testing](TESTING.md); [Windows CI](../.github/workflows/windows-ci.yml)
+   must pass on the exact candidate source. Retain evidence, do not bypass gates.
+4. Build the complete bundle and packages using the commands below. Preserve the
+   reviewed Drive configuration/runner/AOT consistency receipt. A disabled CI
+   artifact does not verify an enabled local artifact. Do not copy credentials
+   from prior work or change tracked configuration without authorization; restore
+   authorized temporary configuration after packaging. See [Drive readiness](GOOGLE_DRIVE_RELEASE_READINESS.md)
+   and the latest publication receipt for configuration/acceptance limits.
+5. Audit executable identity/version, full portable bundle equality/ZIP integrity,
+   installer contents and private-file exclusions. Generate checksums only after
+   final packaging; compare `Get-FileHash -Algorithm SHA256 <artifact>` with both
+   sidecars and the manifest. Stale packages must fail, not be reused.
+6. Stage a private draft with the exact source tag, notes and all five assets:
+   setup EXE, portable ZIP, their two `.sha256` sidecars and versioned
+   `SHA256SUMS.txt`. For example, after substituting version/source:
+   `gh release create vX.Y.Z --draft --prerelease --target <full-source-sha> --notes-file docs/<candidate-notes>.md <five-explicit-asset-paths>`.
+   Check draft source, classification, sizes and GitHub SHA-256 metadata. Do not
+   mark a pre-release as latest Stable. Inspect assets before publication.
+7. Complete applicable isolated upgrade/recovery and manual acceptance from
+   [Updates](SOFTWARE_UPDATES.md), [widget checklist](windows-widget.md) and
+   [clean Windows acceptance](WINDOWS_CLEAN_ACCEPTANCE.md). Preserve all data and
+   profile identity. Keep unresolved tests explicit; historical skipped tests
+   never become passes. Do not repeat prior release exceptions implicitly.
+8. Only within explicit publication authorization, publish the reviewed draft
+   (`gh release edit vX.Y.Z --draft=false`). Verify anonymous release/assets,
+   all public hashes and production updater discovery/download from the previous
+   version for installer and portable modes; Stable must exclude pre-releases.
+   Record source, CI, artifacts, acceptance and limits in a publication receipt
+   linked from [Progress](PROGRESS.md). Never execute setup on the owner's account.
 
 ## Build and install
 
 For in-app update package naming, verification, installed/portable recovery,
-and publishing requirements, see `SOFTWARE_UPDATES.md`.
+and publishing requirements, see [Software updates](SOFTWARE_UPDATES.md).
 
 Run `./tools/build-windows-release.ps1` to compile the reviewed public OAuth
 configuration and create the package consistency receipt. The bundle is under
@@ -63,6 +98,8 @@ replacement occurs on the next launch after a `Before restore` snapshot.
 
 ## Privacy
 
+See [privacy policy](PRIVACY.md) for the public disclosure.
+
 App lock is disabled by default. When enabled, it uses a 6–12 digit PIN with
 a random 16-byte salt, PBKDF2-HMAC-SHA256 (210,000 iterations), constant-time
 comparison, and a persisted delay after repeated wrong attempts. The app and
@@ -98,9 +135,6 @@ acceptance on an isolated profile.
 
 ## Release notes
 
-Todorbit v1.0.13 preserves schema 21, the existing installer identity, and
-TodoPilot data paths. It adds experimental Google Drive backups, atomic database
-initialization/recovery and stricter malformed-backup validation. Older
-databases require an approved, verified backup before migration.
-Packages include MIT and third-party notices. Native GUI and installed
-upgrade/uninstall acceptance remain limited; see `ACCEPTANCE.md`.
+Use [v1.0.16 notes](TODORBIT_1_0_16_RELEASE_NOTES.md) and its publication receipt
+for that release. Older notes and acceptance reports retain their dated context;
+they do not define the next release's version, assets or permission to publish.
