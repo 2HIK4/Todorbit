@@ -1,5 +1,20 @@
 # Decisions
 
+## Approved website deployment, separate from app release (2026-10-26)
+
+- Publish only the prepared static website and Pages workflow on `main`,
+  leaving the v1.0.13 candidate on its feature branch. Retain manually approved
+  deployment from `main`; push/PR validation never publishes. Deploy only
+  `website/dist/`, with no credentials or application bundle.
+- Pin downloads to actual public v1.0.12 assets until another release is
+  published. Keep public Google Drive access labeled unavailable.
+- Treat Search Console URL-prefix site verification separately from OAuth
+  domain acceptance. Google's specific current domain-verification guidance
+  requires DNS-level Domain verification; default Pages does not provide
+  control of the required DNS TXT record. Do not advertise `2hik4.github.io` as
+  verified or accepted by Google. No Google settings or new domain are changed
+  by website publication. Deployment evidence is in `website/README.md`.
+
 ## Update handoff gate (2026-10-24)
 
 - Hold a named Windows mutex from helper preflight through the helper's restart check. A normal Todorbit launch exits promptly when the mutex exists, releasing its executable file; the helper restart uses `--update-restart` to enter first. Continue to reject a same-path app that was already running before handoff and report its PID. The v1.0.9 installed binary cannot honor this new gate, so a failed update from that version may still require a manual installer run.

@@ -23,7 +23,11 @@ def request(url, method="GET"):
 def check_file(path):
     relative = path.relative_to(ROOT).as_posix()
     public = request(urljoin(BASE, relative))
-    assert public == path.read_bytes(), f"Published bytes differ: {relative}"
+    expected = path.read_bytes()
+    # Git normalizes text line endings on the Linux Actions checkout.
+    if path.suffix != ".png":
+        expected = expected.replace(b"\r\n", b"\n")
+    assert public == expected, f"Published bytes differ: {relative}"
     return {"file": relative, "sha256": sha256(public).hexdigest()}
 
 
@@ -39,7 +43,7 @@ class Links(HTMLParser):
 
 
 def main():
-    assert request(BASE) == (ROOT / "index.html").read_bytes()
+    assert request(BASE) == (ROOT / "index.html").read_bytes().replace(b"\r\n", b"\n")
     files = sorted(p for p in ROOT.rglob("*") if p.is_file())
     links = Links()
     for page in ROOT.glob("*.html"):

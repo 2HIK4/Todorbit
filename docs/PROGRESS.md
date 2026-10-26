@@ -1,5 +1,28 @@
 # Progress
 
+## Official website publication (2026-10-26)
+
+- Owner explicitly approved GitHub Pages publication in `2HIK4/Todorbit`.
+  Website-only commit `5d77f37` fast-forwarded `main` from `7965205`; app/native
+  source, version, packaging and existing Windows workflow were unchanged.
+- Configured Pages for Actions with HTTPS enforced. [Deployment](https://github.com/2HIK4/Todorbit/actions/runs/40317545954)
+  passed. Homepage `https://2hik4.github.io/Todorbit/`, Privacy Policy
+  `https://2hik4.github.io/Todorbit/privacy.html` and Terms of Service
+  `https://2hik4.github.io/Todorbit/terms.html` are publicly accessible over HTTPS.
+- Anonymous live checks passed canonical homepage/all eight dist files with
+  source equality after Git line-ending normalization, plus all nine external
+  links. Downloads match v1.0.12, the latest actual public release. Local/CI
+  static navigation, responsive/accessibility CSS and contrast checks pass.
+  Rendered desktop/mobile/zoom/screen-reader checks remain UNVERIFIED because
+  browser infrastructure is unavailable. See `website/README.md` and reusable
+  `website/verify_live.py`.
+- More specific current Google [OAuth domain guidance](https://support.google.com/cloud/answer/13804266?hl=en)
+  requires DNS-level Domain verification, not URL-prefix verification. HTML-tag
+  verification of the project site is possible in Search Console but does not
+  satisfy that documented OAuth requirement. `2hik4.github.io` is only a
+  conditional hostname, not a Google-accepted Authorized Domain. Public OAuth
+  remains BLOCKED. No Google settings, domain/DNS or app release changed.
+
 ## v1.0.12 publication (2026-10-25)
 
 - Pushed and fast-forwarded `feature/app-ui-layout-audit` into main and published [v1.0.12](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.12) at `ebba16e` as a Windows x64 pre-release, version 1.0.12+13. Reused the clean local 245-test run and visual evidence from `100d10f`. Both [main CI](https://github.com/2HIK4/Todorbit/actions/runs/40194712436) and [tag CI](https://github.com/2HIK4/Todorbit/actions/runs/40195355512) passed analysis, 245 Flutter tests, Windows Release build, and packaged widget self-test. Canceled only the duplicate feature CI for the identical SHA.

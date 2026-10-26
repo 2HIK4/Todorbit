@@ -24,7 +24,8 @@ python website/verify_live.py
 Static checks cover local links/anchors, headings, image metadata, theme
 contrast, static content, responsive breakpoints and keyboard-focus rules.
 The live check anonymously fetches all deployed files over HTTPS, compares
-their bytes with `dist/`, checks external links and download URLs, and confirms
+their bytes with `dist/` (normalizing Windows text line endings as Git does),
+checks external links and download URLs, and confirms
 the download version against the latest actual public release, including
 pre-releases. It requires internet access and no credentials.
 
@@ -44,8 +45,26 @@ gh workflow run pages.yml --repo 2HIK4/Todorbit --ref main -f publish_approved=t
 ```
 
 Review and validate source before dispatch. No application packaging or release
-publication is part of this workflow. Deployment verification is recorded below
-after the first successful public HTTPS check.
+publication is part of this workflow.
+
+### Verified deployment (2026-10-26)
+
+- Published source: `5d77f37fdf3aed746ff223dab824f71da2841e71`, website-only
+  fast-forward of `main` from `7965205`. Application source, native code,
+  packaging, version and existing Windows workflow are unchanged.
+- [Approved deployment run](https://github.com/2HIK4/Todorbit/actions/runs/40317545954)
+  passed validation and deployment. Pages API confirms public Actions hosting
+  at `https://2hik4.github.io/Todorbit/`, with HTTPS enforced.
+- Anonymous HTTPS GET checks passed for the canonical homepage, all three
+  HTML files, four assets and `.nojekyll`. Their public bytes match the deployed
+  source (Git text line endings normalized). All nine external HTTPS links
+  returned 200 on HEAD, including installer and ZIP, without GitHub credentials.
+- Public release metadata confirmed v1.0.12 and both download URLs matched its
+  actual published assets. No app release/tag was created or edited.
+- Static navigation/anchor, responsive/accessibility CSS and theme-contrast
+  checks passed locally and in Actions. Rendered browser checks remain
+  unverified because no browser is connected. The successful HTTP checks do
+  not establish visual layout or screen-reader behavior.
 
 ## Google OAuth domain investigation (2026-10-26)
 
