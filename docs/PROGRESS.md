@@ -53,8 +53,16 @@
 - Owner must approve website/policy/terms and target domain, then satisfy the
   exact Cloud steps in `GOOGLE_DRIVE_RELEASE_READINESS.md` and participate in
   outside-test-user clean packaged acceptance. No main merge, tag, public
-  website/app release or updater entry has been created. Candidate branch CI
-  remains to be checked after pushing the prepared source.
+  website/app release or updater entry has been created.
+- Pushed candidate `afbb187`. Website validation CI passed and deployment was
+  skipped. Initial Windows CI `40291855078` passed analysis, the full Flutter
+  suite, config gates, Windows Release, portable packaging and packaged widget
+  self-test, then failed because Chocolatey's feed lacks Inno Setup 7.1.0.
+  Replaced that bootstrap with the official immutable vendor x64 release,
+  pinned its SHA-256 and used an explicit runner-local compiler path. Local
+  download-only integrity verification passed without modifying the installed
+  compiler; corrected CI remains to be checked. Policy wording now explicitly
+  discloses plaintext local snapshot staging even if restore is canceled.
 
 ## Google Drive backup implementation (2026-10-25)
 

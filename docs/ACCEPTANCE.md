@@ -20,7 +20,16 @@ Google production change, personal installation or production profile change.
 | Isolated startup/restart | PASS | Installer-layout bundle and extracted portable at paths with spaces each opened/reopened their intended empty 44-table SQLite profile, integrity OK. Native startup disabled in disposable profiles; actual Windows Run registration unchanged. Not a registered setup/upgrade/uninstall or strict clean Windows-user test. |
 | Backups & Cloud visuals | PARTIAL | Narrow 440 px/1.3x dark/light widget checks pass. Physical Release GUI, DPI and native input/Explorer acceptance remain UNVERIFIED; Computer Use native pipe and browser unavailable. |
 | Website | PARTIAL | Prepared three-page responsive static site and manual-only Pages deployment; local links/anchors, semantic structure, image metadata, static-only resources and theme contrast pass. Rendered browser/zoom/screen-reader checks and publication/domain verification remain UNVERIFIED. |
-| Public release/updater | BLOCKED | No v1.0.13 tag/release/deployment exists. Latest published remains v1.0.12; no new update to discover. Final source CI still pending branch push. |
+| Public release/updater | BLOCKED | No v1.0.13 tag/release/deployment exists. Latest published remains v1.0.12; no new update to discover. |
+
+Initial [Windows CI](https://github.com/2HIK4/Todorbit/actions/runs/40291855078)
+passed all app checks through packaged self-test, then **FAIL** at compiler
+bootstrap because Chocolatey does not carry Inno Setup 7.1.0. Corrected bootstrap
+uses the official vendor x64 asset, pinned SHA-256 and explicit compiler path;
+local download-only integrity verification passes. Corrected CI is pending.
+[Website validation CI](https://github.com/2HIK4/Todorbit/actions/runs/40291855103)
+passed; deploy was skipped. Local HTTP checks returned 200 for all pages/assets
+and HEAD checks returned 200 for both actual public v1.0.12 download targets.
 
 Unpublished local artifacts:
 

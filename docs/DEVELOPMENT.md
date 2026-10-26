@@ -12,6 +12,12 @@ Release builds synchronize the native widget's per-user Windows Run entry after 
 
 The Inno Setup project is `installer/life_manager.iss` and retains its existing AppId and install path for upgrades. Run `installer/build-installer.ps1 -Compiler '<ISCC.exe path>'` only after a Release build. Portable packaging uses `tools/build-portable.ps1`. Packages and generated files under `release/` are ignored by Git.
 
+CI obtains Inno Setup 7.1.0 x64 directly from the official vendor GitHub release,
+verifies its pinned SHA-256, and installs it only in the hosted runner through
+`tools/install-inno-setup-ci.ps1`. Chocolatey's `innosetup` feed did not contain
+the 7.1.0 package. Local `-VerifyDownloadOnly` checks the compiler download
+without installing or changing the existing compiler.
+
 Google Drive is opt-in and gated by the reviewed public `config/google-drive.json`.
 Use `tools/build-windows-release.ps1` for distribution: it compiles the Desktop
 client ID and required public client-secret parameter and writes a consistency

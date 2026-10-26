@@ -46,10 +46,10 @@ jobs:
           if ($selfTest.ExitCode -ne 0) { exit $selfTest.ExitCode }
       - name: Install Inno Setup 7
         shell: pwsh
-        run: choco install innosetup --version=7.1.0 --yes --no-progress --allow-downgrade
+        run: ./tools/install-inno-setup-ci.ps1
       - name: Compile installer
         shell: pwsh
-        run: ./installer/build-installer.ps1
+        run: ./installer/build-installer.ps1 -Compiler $env:TODORBIT_ISCC
       - name: Release candidate checksums
         shell: pwsh
         run: ./tools/write-release-checksums.ps1

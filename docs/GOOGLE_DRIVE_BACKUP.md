@@ -132,6 +132,10 @@ uses the existing integrity/application-schema validation and safe managed
 snapshot staging. Unsupported future database schemas and package versions are
 rejected. Supported older database schemas migrate forward on startup.
 
+Opening a full backup for review imports a decrypted SQLite snapshot into
+managed local backups, even if replacement is canceled. It is not protected by
+the cloud passphrase envelope once stored locally.
+
 Full restore previews source/target profiles, counts, app version and replaced
 settings. Explicit confirmation schedules replacement; **scheduled is not
 success**. Current personalization is exported next to the staged snapshot as

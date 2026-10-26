@@ -1,5 +1,20 @@
 # Decisions
 
+## Website preparation without deployment (2026-10-26)
+
+- Use a dependency-free static GitHub Pages site in `website/dist`, reusing
+  Todorbit's established palette, orbit mark and real public v1.0.12 screenshot.
+  Link only actual published downloads and explicitly mark Google Drive as
+  not generally available. No analytics, external fonts, scripts or accounts.
+- Source preparation and push/PR validation do not authorize deployment.
+  Pages requires a separate manual dispatch after the owner's explicit
+  approval of content and target domain. Google production changes and app
+  publication also require the approval requested by the owner in this session.
+- GitHub hosting verification and Google OAuth domain/brand verification are
+  separate. Default shared Pages-domain acceptance is unverified; an owned
+  domain can use free Pages hosting. Do not purchase domains, alter DNS, add
+  fake ownership tokens or treat a successful site deployment as Google approval.
+
 ## Public Desktop OAuth distribution gate (2026-10-26)
 
 - Supersedes the 2026-10-25 device-import-only distribution choice below.

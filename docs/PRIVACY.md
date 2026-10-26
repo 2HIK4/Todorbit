@@ -40,8 +40,10 @@ additional settings payload. See [backup contents](GOOGLE_DRIVE_BACKUP.md).
 Backups are encrypted on your device using AES-256-GCM and a key derived from
 your recovery passphrase. Todorbit does not save or upload that passphrase
 or derived key. Keep it separately: losing it makes the backup unrecoverable.
-Downloaded backups are decrypted locally; approved database restores and
-local recovery snapshots are stored locally without backup-envelope encryption.
+Downloaded backups are decrypted locally. Opening a full backup for review
+creates an unencrypted local SQLite snapshot even if you cancel replacement.
+That staged snapshot, approved database restores and local recovery copies
+remain on the device separately from the encrypted cloud object.
 
 The app transfers Google user data directly between your device and Google's
 API. It does not send backup content or Google account data to a Todorbit
