@@ -1,5 +1,23 @@
 # Progress
 
+## v1.0.14 widget pre-release published (2026-10-26)
+
+- Owner-approved feature **d355ee2** fast-forwarded to main; release source/tag
+  **b599396**, version **1.0.14+15**. [Publication record](TODORBIT_1_0_14_PUBLICATION.md).
+- Final Windows CI passes: clean analysis, 303 tests/one opt-in skip, Windows
+  build, native self-test, configuration gates, portable and Inno Setup/checksums.
+- Both published packages keep Drive enabled with the exact v1.0.13 configuration.
+  Full bundle/receipt/CRC/checksums and all five public assets verified.
+- Production Pre-release updater selects/downloads v1.0.14 from v1.0.13 for
+  installer and portable; Stable excludes it. Isolated actual portable rollback,
+  swap/restart and legacy widget migration pass; all 44 tables/preferences and
+  personal Run/uninstall fingerprints preserved. Calendar enables independently
+  in one companion process. Personal installed app/profile remains untouched.
+- Official Pages deployment/live HTTPS files/download links pass. Physical DPI,
+  Win+D, screen-reader, manual native input and registered installer acceptance
+  remain unverified; owner will test after upgrading. No Sandbox/VM required,
+  Cloud change, general UI audit or Google branding verification claim.
+
 ## Widget customization and Calendar Widget development (2026-10-26)
 
 - Resumed after VS Code interruption on `feature/widget-customization-calendar`

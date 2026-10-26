@@ -1,4 +1,4 @@
-# Todorbit website
+﻿# Todorbit website
 
 Dependency-free static site in `dist/`, hosted by GitHub Pages from this
 repository. The owner explicitly approved website publication on 2026-10-26.
@@ -9,11 +9,20 @@ Application releases and Google Cloud configuration are outside this deployment.
 - Terms of Service: `dist/terms.html`
 - Shared responsive light/dark CSS, existing brand and screenshot: `dist/assets/`
 
-The prepared site links **v1.0.14**, the published owner-approved experimental
+The published site links **v1.0.14**, the owner-approved experimental
 Windows x64 pre-release. Google Drive is enabled; branding verification, full
 public OAuth policy compliance and broad account eligibility remain unresolved.
-Publish these pinned version/download URLs only after v1.0.14 and its assets are public.
 No analytics, external fonts, forms, JavaScript or cookies are added.
+
+## v1.0.14 deployment (2026-10-26)
+
+- [Deployment 40382531966](https://github.com/2HIK4/Todorbit/actions/runs/40382531966)
+  passed at **b599396** after the complete GitHub pre-release was public.
+- Static checks and anonymous HTTPS checks pass: all eight files match source,
+  all nine external links respond, and both downloads match actual v1.0.14 assets.
+- Feature copy covers independent Tasks/Calendar widgets and customization.
+  Screenshot remains accurately captioned v1.0.12; rendered browser QA unverified.
+- See [publication record](../docs/TODORBIT_1_0_14_PUBLICATION.md).
 
 ## v1.0.13 deployment (2026-10-26)
 
@@ -119,3 +128,4 @@ The domain/brand verification route remains unresolved. The owner subsequently
 approved an enabled **experimental v1.0.13 pre-release** under the more specific
 non-sensitive-scope guidance; see [publication record](../docs/TODORBIT_1_0_13_PUBLICATION.md).
 Neither release publication nor these URLs establish full public policy compliance.
+
