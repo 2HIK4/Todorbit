@@ -495,20 +495,10 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
                       () => draft = draft.copyWith(reducedMotion: value),
                     ),
                   ),
-                  ListTile(
-                    title: Text(
-                      'Widget Background Opacity · ${draft.widgetOpacity}%',
-                    ),
-                    subtitle: Slider(
-                      value: draft.widgetOpacity.toDouble(),
-                      min: 0,
-                      max: 100,
-                      divisions: 20,
-                      onChanged: (value) => setState(
-                        () => draft = draft.copyWith(
-                          widgetOpacity: value.round(),
-                        ),
-                      ),
+                  const ListTile(
+                    title: Text('Widget appearance'),
+                    subtitle: Text(
+                      'Configure each widget’s surfaces, opacity and borders in Settings > Widget.',
                     ),
                   ),
                 ],

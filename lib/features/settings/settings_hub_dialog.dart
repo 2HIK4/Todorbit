@@ -18,6 +18,8 @@ import 'task_view_settings_dialog.dart';
 import 'theme_dialog.dart';
 import 'sidebar_order_dialog.dart';
 import 'software_updates_page.dart';
+import 'widget_settings_page.dart';
+import '../../domain/widget_configuration.dart';
 
 enum _SettingsPage {
   appearance('Appearance & Themes', Icons.palette_outlined),
@@ -41,10 +43,14 @@ class SettingsHubDialog extends ConsumerStatefulWidget {
     required this.nativeWidget,
     required this.showDataProfile,
     this.openBackups = false,
+    this.editWidget,
+    this.widgetController,
   });
   final NativeWidgetService nativeWidget;
   final VoidCallback showDataProfile;
   final bool openBackups;
+  final DesktopWidgetKind? editWidget;
+  final WidgetSettingsController? widgetController;
 
   @override
   ConsumerState<SettingsHubDialog> createState() => _SettingsHubDialogState();
@@ -52,47 +58,22 @@ class SettingsHubDialog extends ConsumerStatefulWidget {
 
 class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
   _SettingsPage page = _SettingsPage.appearance;
-  bool _layoutLocked = false;
-  bool _launchAtSignIn = true;
-  double _opacity = 100;
-  String? _widgetError;
-
   @override
   void initState() {
     super.initState();
     if (widget.openBackups) page = _SettingsPage.backups;
-    if (widget.nativeWidget.isAvailable) {
-      widget.nativeWidget
-          .readSettings()
-          .then((settings) {
-            if (!mounted) return;
-            setState(() {
-              _layoutLocked = settings.layoutLocked;
-              _launchAtSignIn = settings.launchAtSignIn;
-              _opacity = settings.backgroundOpacity.toDouble();
-            });
-          })
-          .catchError((Object error) {
-            if (mounted) setState(() => _widgetError = '$error');
-          });
-    }
+    if (widget.editWidget != null) page = _SettingsPage.widget;
+    widget.widgetController?.addListener(_widgetRequest);
   }
 
-  Future<void> _widgetChange(
-    Future<void> Function() change,
-    VoidCallback apply,
-  ) async {
-    try {
-      await change();
-      if (mounted) {
-        setState(() {
-          apply();
-          _widgetError = null;
-        });
-      }
-    } catch (error) {
-      if (mounted) setState(() => _widgetError = '$error');
-    }
+  void _widgetRequest() {
+    if (mounted) setState(() => page = _SettingsPage.widget);
+  }
+
+  @override
+  void dispose() {
+    widget.widgetController?.removeListener(_widgetRequest);
+    super.dispose();
   }
 
   Future<void> _open(Widget dialog) =>
@@ -296,86 +277,10 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
           Icons.notifications_outlined,
           () => _open(const NotificationDialog()),
         ),
-        _SettingsPage.widget => Column(
-          children: [
-            if (!widget.nativeWidget.isAvailable)
-              const Padding(
-                padding: EdgeInsets.all(8),
-                child: Text(
-                  'The Windows widget companion is unavailable in this build.',
-                ),
-              ),
-            _action(
-              'Show widget',
-              'Display the desktop task widget',
-              Icons.visibility_outlined,
-              widget.nativeWidget.isAvailable
-                  ? () => widget.nativeWidget.show()
-                  : null,
-            ),
-            _action(
-              'Hide widget',
-              'Keep it running without showing it',
-              Icons.visibility_off_outlined,
-              widget.nativeWidget.isAvailable
-                  ? () => widget.nativeWidget.hide()
-                  : null,
-            ),
-            _action(
-              'Widget appearance',
-              'Colors and theme customization',
-              Icons.palette_outlined,
-              () => _open(const ThemeDialog()),
-            ),
-            if (widget.nativeWidget.isAvailable) ...[
-              SwitchListTile(
-                title: const Text('Lock layout'),
-                subtitle: const Text('Prevent widget movement and resizing'),
-                value: _layoutLocked,
-                onChanged: (value) => _widgetChange(
-                  () => widget.nativeWidget.setLayoutLocked(value),
-                  () => _layoutLocked = value,
-                ),
-              ),
-              SwitchListTile(
-                title: const Text('Launch widget at Windows startup'),
-                value: _launchAtSignIn,
-                onChanged: (value) => _widgetChange(
-                  () => widget.nativeWidget.setLaunchAtSignIn(value),
-                  () => _launchAtSignIn = value,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Background opacity · ${_opacity.round()}%'),
-                    Slider(
-                      value: _opacity,
-                      min: 0,
-                      max: 100,
-                      divisions: 20,
-                      label: '${_opacity.round()}%',
-                      onChanged: (value) => setState(() => _opacity = value),
-                      onChangeEnd: (value) => _widgetChange(
-                        () => widget.nativeWidget.setOpacity(value.round()),
-                        () => _opacity = value,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            if (_widgetError != null)
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Text(
-                  _widgetError!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ),
-          ],
+        _SettingsPage.widget => WidgetSettingsPage(
+          service: widget.nativeWidget,
+          initialKind: widget.widgetController?.kind ?? widget.editWidget,
+          requestRevision: widget.widgetController?.revision ?? 0,
         ),
         _SettingsPage.privacy => Column(
           children: [

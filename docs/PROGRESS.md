@@ -1,5 +1,29 @@
 # Progress
 
+## Widget customization and Calendar Widget development (2026-10-26)
+
+- Resumed after VS Code interruption on `feature/widget-customization-calendar`
+  from main `3d499fb`; retained all source/test edits and saved evidence. No
+  reset, personal install/profile change, Cloud change or publication.
+- Scoped update/backup/calendar presentation fixes and the two-widget model,
+  native hosts and Settings editor are implemented. Both widgets reuse one
+  companion/startup/IPC identity and keep separate visibility/configuration and
+  geometry. Apply/confirmed shared Apply/Cancel preserve widget-specific state.
+- Final full-source suite: **304 cases, 303 passed, one opt-in native test
+  skipped**, zero error events, 379.966s. The opt-in first-launch/reload test also
+  passes separately against the final packaged companion on a fresh isolated
+  profile. Complete analysis clean (16.7s); Windows Release passes (33.7s), then
+  the final native CMake target and repeated packaged native checks pass.
+- Packaged native self-test, actual disposable-profile two-HWND lifecycle and
+  offscreen renders pass; Windows Run fingerprint unchanged. Isolated debug
+  Flutter MCP restart/reload reports no runtime errors, and separate-process
+  activation selects either editor without duplicates. Cross-widget edit
+  requests preserve/cancel dirty drafts; first companion launch no longer waits
+  on the persistent process. No personal app/profile/registration operation.
+- [Development record](WIDGET_CUSTOMIZATION_UPDATE.md) tracks exact evidence,
+  interruption limits and remaining manual input/DPI/Win+D/screen-reader checks.
+  No general UI audit or Sandbox/VM requirement is added.
+
 ## v1.0.13 experimental pre-release published (2026-10-26)
 
 - Owner explicitly approves main merge, tag, GitHub pre-release publication

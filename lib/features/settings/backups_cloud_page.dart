@@ -473,8 +473,16 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
           )
         else
           const Text('Local backup service is unavailable in this session.'),
-        const Text(
-          'Automatic backups run locally once a day on launch; the latest 14 automatic snapshots are retained. Manual and recovery backups are retained.',
+        const ExpansionTile(
+          title: Text('Local backup retention'),
+          children: [
+            Padding(
+              padding: EdgeInsets.all(12),
+              child: Text(
+                'Automatic backups run locally once a day on launch; the latest 14 automatic snapshots are retained. Manual and recovery backups are retained.',
+              ),
+            ),
+          ],
         ),
         _heading('Google Drive'),
         Text(
@@ -561,11 +569,7 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
         ),
         _heading('Cloud Backups'),
         const Text(
-          'Encrypted snapshots, created only when you choose. This does not synchronize or merge edits across devices. Includes every SQLite table plus portable personalization. External linked file contents, PINs, device credentials, widget position/startup policy and other device-local controls are excluded.',
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Backups stay in your Google account’s hidden app storage. Google receives encrypted contents and backup metadata. Todorbit also reads your account identity to show the connected account. Delete snapshots here before disconnecting; disconnect keeps cloud files. Keep your recovery passphrase separately: it cannot be recovered. Full cloud backups are limited to a 50 MiB database.',
+          'Encrypted snapshots on demand. Backups do not sync or merge devices.',
         ),
         const SizedBox(height: 10),
         Text(
@@ -663,10 +667,23 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
               ),
             ),
           ),
-        _heading('Settings & Preferences Backup'),
-        const Text(
-          'Select appearance and themes (including widget palette/opacity), hotkey presets, calendar, sidebar order and task display. Restore selected categories without changing tasks or events. Named hotkey presets can merge.',
+        const ExpansionTile(
+          title: Text('How cloud backups work'),
+          children: [
+            Padding(
+              padding: EdgeInsets.all(12),
+              child: Text(
+                'Includes every SQLite table and portable personalization. External linked files, PINs, credentials, per-widget customization, window position/startup and device-local controls are excluded. '
+                'Backups stay in your Google account’s hidden app storage. Google receives encrypted contents and backup metadata. Todorbit reads account identity to show the connected account. '
+                'Delete snapshots before disconnecting; disconnect keeps cloud files. Full backups are limited to a 50 MiB database.',
+              ),
+            ),
+          ],
         ),
+        const Text(
+          'Keep your recovery passphrase separately: it cannot be recovered.',
+        ),
+        _heading('Settings & Preferences Backup'),
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,
@@ -688,6 +705,14 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
                       builder: (_) => const SettingsTransferDialog(),
                     ),
               child: const Text('Import / Export Settings JSON'),
+            ),
+          ],
+        ),
+        ExpansionTile(
+          title: const Text('About settings backups'),
+          children: [
+            const Text(
+              'Select appearance and themes (including shared widget theme colors), hotkey presets, calendar, sidebar order and task display. Per-widget customization stays on this device. Restore selected categories without changing tasks or events. Named hotkey presets can merge.',
             ),
           ],
         ),

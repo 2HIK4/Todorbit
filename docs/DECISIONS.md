@@ -1,5 +1,19 @@
 # Decisions
 
+- **Independent widgets in one companion (2026-10-26):** keep the established
+  Explorer host, one profile-scoped process/IPC channel and one startup entry.
+  Tasks and Calendar own separate HWNDs, visibility, geometry and versioned
+  configurations. Reuse the native repository and reminder date matcher for the
+  calendar projection; do not add a second calendar database or bulk-generate
+  events. Keep new per-widget configuration device-local without changing the
+  cloud payload/encryption or shareable-settings format. Existing shared theme
+  colors remain portable. Apply to All copies only title/Open visibility,
+  typography/readability and shell/header/content surfaces; it preserves each
+  enabled state, geometry, layout lock, navigation, input, agenda and indicators.
+  Stage edits until Apply, confirm shared overwrite, and restore the first
+  configuration if saving the second fails. Transparent layers retain opaque
+  content; optional tight text backplates protect contrast against wallpaper.
+
 ## Owner-approved experimental pre-release (2026-10-26)
 
 - Publish v1.0.13 as a GitHub pre-release using the exact enabled packages

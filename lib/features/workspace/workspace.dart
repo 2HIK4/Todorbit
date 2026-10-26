@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_controller.dart';
 import '../../data/app_database.dart';
 import '../../domain/models.dart';
+import '../../domain/widget_configuration.dart';
 import '../../domain/recurrence.dart';
 import '../../domain/time_tracking.dart';
 import '../../domain/saved_views.dart';
@@ -27,6 +28,7 @@ import '../settings/backup_dialog.dart';
 import '../settings/notification_dialog.dart';
 import '../settings/theme_dialog.dart';
 import '../settings/settings_hub_dialog.dart';
+import '../settings/widget_settings_page.dart';
 import '../scheduling/smart_reschedule.dart';
 import '../shared/icon_picker.dart';
 import '../shared/event_color_picker.dart';
@@ -41,10 +43,12 @@ class Workspace extends ConsumerStatefulWidget {
   const Workspace({
     super.key,
     this.openAppearance = false,
+    this.editWidget,
     this.legacyImportFile,
   });
 
   final bool openAppearance;
+  final DesktopWidgetKind? editWidget;
   final File? legacyImportFile;
 
   @override
@@ -112,6 +116,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   static const _activationChannel = MethodChannel('life_manager/activation');
   bool _appearanceDialogOpen = false;
+  bool _widgetSettingsOpen = false;
+  final _widgetSettingsController = WidgetSettingsController();
   bool creating = false;
   DateTime? newTaskInitialDate;
   final nativeWidget = NativeWidgetService();
@@ -128,12 +134,23 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         final command = call.arguments;
         if (command == 'appearance') {
           _openAppearanceDialog();
+        } else if (command is String && command.startsWith('widget:')) {
+          _openWidgetSettings(
+            command.endsWith('calendar')
+                ? DesktopWidgetKind.calendar
+                : DesktopWidgetKind.tasks,
+          );
         } else if (command is String && command.startsWith('task:')) {
           ref.read(appControllerProvider).select(command.substring(5));
         }
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _activationChannel.invokeMethod<void>('ready');
+      });
+    }
+    if (widget.editWidget != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openWidgetSettings(widget.editWidget!);
       });
     }
     if (widget.openAppearance) {
@@ -184,6 +201,26 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     });
   }
 
+  Future<void> _openWidgetSettings(DesktopWidgetKind kind) async {
+    if (!mounted) return;
+    _widgetSettingsController.open(kind);
+    if (_widgetSettingsOpen) return;
+    _widgetSettingsOpen = true;
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (_) => SettingsHubDialog(
+          nativeWidget: nativeWidget,
+          showDataProfile: _showDataProfile,
+          editWidget: kind,
+          widgetController: _widgetSettingsController,
+        ),
+      );
+    } finally {
+      _widgetSettingsOpen = false;
+    }
+  }
+
   Future<void> _openAppearanceDialog() async {
     if (!mounted || _appearanceDialogOpen) return;
     _appearanceDialogOpen = true;
@@ -199,6 +236,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   @override
   void dispose() {
+    _widgetSettingsController.dispose();
     HardwareKeyboard.instance.removeHandler(_handleHotkey);
     _clock?.cancel();
     if (Platform.isWindows) _activationChannel.setMethodCallHandler(null);

@@ -1,7 +1,6 @@
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
@@ -11,7 +10,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
-import 'package:markdown/markdown.dart' as md;
+
+import '../shared/download_size.dart';
+
 import 'package:path/path.dart' as path;
 
 import '../../data/profile_paths.dart';
@@ -394,16 +395,12 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
             title: const Text('Available update'),
             subtitle: Text('Todorbit ${release.tag}'),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Text(_releaseSummary(release.notes)),
-          ),
           if (_status == UpdateStatus.downloading)
             LinearProgressIndicator(
-              value: total == 0 ? null : _received / total,
+              value: total <= 0 ? null : (_received / total).clamp(0.0, 1.0),
             ),
           if (_status == UpdateStatus.downloading)
-            Text('$_received of $total bytes'),
+            Text(formatDownloadSize(_received, total: total)),
         ],
         ListTile(
           title: const Text('Last checked'),
@@ -539,22 +536,6 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
       ],
     );
   }
-}
-
-String _releaseSummary(String notes) {
-  final blocks = md.Document(extensionSet: md.ExtensionSet.gitHubFlavored)
-      .parseLines(const LineSplitter().convert(notes));
-  for (final block in blocks) {
-    if (block is md.Element && block.tag == 'p') {
-      final summary = block.textContent.replaceAll(RegExp(r'\s+'), ' ').trim();
-      if (summary.isNotEmpty) {
-        return summary.length <= 180
-            ? summary
-            : '${summary.substring(0, 180).trimRight()}…';
-      }
-    }
-  }
-  return 'Review the release notes in Details.';
 }
 
 void _extractPortable(String archivePath, String containerPath) {

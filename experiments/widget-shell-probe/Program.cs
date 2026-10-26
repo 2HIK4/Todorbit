@@ -8,7 +8,7 @@ if (args.Length >= 1 && args[0] is "--widget" or "--widget-command") {
   var initialCommand = args[0] == "--widget-command"
     ? ArgumentValue(args, "--widget-command") ?? "show"
     : args.Contains("--background", StringComparer.OrdinalIgnoreCase)
-      ? "background" : "show";
+      ? "background" : appExe == null ? "restore" : "show";
   using var instance = new Mutex(initiallyOwned: true,
     name: "Local\\LifeManagerDesktopWidget-Native-" + AppDataPaths.ChannelSuffix,
     out var ownsMutex);
@@ -19,7 +19,12 @@ if (args.Length >= 1 && args[0] is "--widget" or "--widget-command") {
     }
     return;
   }
-  if (args[0] == "--widget-command" && initialCommand is "hide" or "exit") {
+  if (args[0] == "--widget-command" && initialCommand is "hide" or "calendar-hide" or "exit") {
+    if(initialCommand != "exit") {
+      var calendar=initialCommand=="calendar-hide";
+      var store=new WidgetSettingsStore(calendar?Path.Combine(AppDataPaths.ActiveDirectory,"calendar-widget-settings.json"):null);
+      WidgetConfiguration.Update(calendar,store.Load(),c=>c.Enabled=false);
+    }
     return;
   }
   if (args[0] == "--widget-command" && (
@@ -31,6 +36,7 @@ if (args.Length >= 1 && args[0] is "--widget" or "--widget-command") {
     var settings = settingsStore.Load();
     if (initialCommand is "layout-lock" or "layout-unlock") {
       settings.LayoutLocked = initialCommand == "layout-lock";
+      WidgetConfiguration.Update(false,settings,c=>c.LayoutLocked=settings.LayoutLocked);
       settingsStore.Save(settings);
     } else if (initialCommand is "startup-on" or "startup-off") {
       var enabled = initialCommand == "startup-on";
@@ -41,6 +47,7 @@ if (args.Length >= 1 && args[0] is "--widget" or "--widget-command") {
                int.TryParse(initialCommand.AsSpan(8), out var opacity) &&
                opacity is >= 0 and <= 100) {
       settings.BackgroundOpacity = opacity;
+      WidgetConfiguration.Update(false,settings,c=>c.Surface("shell").Opacity=opacity);
       settingsStore.Save(settings);
       var appearanceStore = new AppearanceSettingsStore();
       var appearance = appearanceStore.Load();
@@ -63,7 +70,7 @@ if (args.Length >= 1 && args[0] is "--widget" or "--widget-command") {
     using var repository = LifeManagerWidgetRepository.OpenDefault();
     Application.Run(new NativeWidgetApplicationContext(
       repository, appExe, diagnostics,
-      initialCommand == "toggle" ? "show" : initialCommand));
+      initialCommand == "toggle" ? "show" : initialCommand == "calendar-toggle" ? "calendar-show" : initialCommand));
   } catch (Exception error) {
     Console.Error.WriteLine(error);
     MessageBox.Show(error.Message, "Todorbit widget",
@@ -92,6 +99,17 @@ if (args.Length >= 1 && args[0] is
   using var repository = LifeManagerWidgetRepository.OpenDefault();
   Application.Run(new LifeManagerWidget(
     repository, appExe, lightTheme, hostMode, diagnostics));
+  return;
+}
+if (args is ["--lifecycle-self-test"]) {
+  ApplicationConfiguration.Initialize();
+  try { if(!LifeManagerWidgetSelfTest.TestWidgetLifecycle()) Environment.ExitCode=3; }
+  catch(Exception error) { Console.Error.WriteLine(error);Environment.ExitCode=1; }
+  return;
+}
+if (args is ["--capture-widgets",var previewDirectory]) {
+  ApplicationConfiguration.Initialize();
+  LifeManagerWidgetSelfTest.CaptureWidgetPreviews(previewDirectory);
   return;
 }
 if (args is ["--self-test"]) {
@@ -302,6 +320,8 @@ internal static class Native {
 
   [DllImport("user32.dll")]
   internal static extern nint GetFocus();
+  [DllImport("user32.dll")]
+  internal static extern nint SetFocus(nint window);
 
   [DllImport("user32.dll")]
   internal static extern nint GetActiveWindow();

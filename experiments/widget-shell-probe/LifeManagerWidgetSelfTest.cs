@@ -1,7 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.Win32;
 
-internal static class LifeManagerWidgetSelfTest {
+internal static partial class LifeManagerWidgetSelfTest {
   private static void TestStartupRegistration(string directory) {
     var keyPath = @"Software\Todorbit\StartupSelfTest\" + Guid.NewGuid().ToString("N");
     try {
@@ -111,6 +111,8 @@ internal static class LifeManagerWidgetSelfTest {
     Directory.CreateDirectory(directory);
     var databasePath = Path.Combine(directory, "test.sqlite");
     try {
+      TestWidgetConfiguration(directory);
+      TestCalendarProjection(directory);
       TestEditorControlGeometry();
       using (var menu = new ContextMenuStrip()) {
         menu.Items.Add("Open Todorbit");

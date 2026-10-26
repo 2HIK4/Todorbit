@@ -24,7 +24,7 @@ internal sealed class DependencyReviewRequiredException(
   internal IReadOnlyList<WidgetDependencyConflict> Conflicts { get; } = conflicts;
 }
 
-internal sealed class LifeManagerWidgetRepository : IDisposable {
+internal sealed partial class LifeManagerWidgetRepository : IDisposable {
   private const int MinimumSchemaVersion = 4;
   private const int MaximumSchemaVersion = 21;
   private const string ActiveTaskClause = """

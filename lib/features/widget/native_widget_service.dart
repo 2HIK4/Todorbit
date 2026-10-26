@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../data/app_database.dart';
+import '../../domain/widget_configuration.dart';
 
 class WidgetControlState {
   const WidgetControlState({
@@ -44,6 +45,14 @@ class NativeWidgetService {
 
   Future<void> ensureRemindersRunning() =>
       _run(['--widget', '--background', '--app-exe', appExecutablePath]);
+
+  Future<void> reloadConfiguration() => _command('reload-configuration');
+  Future<void> setWidgetVisible(
+    DesktopWidgetKind kind,
+    bool visible,
+  ) => _command(
+    '${kind == DesktopWidgetKind.calendar ? 'calendar-' : ''}${visible ? 'show' : 'hide'}',
+  );
 
   Future<void> hide() => _command('hide');
   Future<void> toggle() => _command('toggle');
@@ -111,7 +120,28 @@ class NativeWidgetService {
     String executable,
     List<String> arguments,
   ) async {
-    if (arguments.isNotEmpty && arguments.first == '--widget-command') {
+    final command =
+        arguments.length > 1 && arguments.first == '--widget-command'
+        ? arguments[1]
+        : null;
+    // Show/reload/view commands can become the long-lived companion when no
+    // instance exists. Waiting for their process would leave Settings busy until
+    // the user exits both widgets. One-shot commands still report exit failures.
+    final oneShot =
+        const {
+          'hide',
+          'calendar-hide',
+          'exit',
+          'layout-lock',
+          'layout-unlock',
+          'startup-on',
+          'startup-off',
+          'theme-system',
+          'theme-light',
+          'theme-dark',
+        }.contains(command) ||
+        command?.startsWith('opacity-') == true;
+    if (oneShot) {
       final result = await Process.run(executable, arguments);
       return result.exitCode;
     }

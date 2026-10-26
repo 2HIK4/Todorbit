@@ -111,6 +111,28 @@ void main() {
             find.textContaining('while public access is being prepared'),
             findsOneWidget,
           );
+          expect(
+            find.textContaining('Google receives encrypted'),
+            findsNothing,
+          );
+          expect(
+            find.textContaining('Keep your recovery passphrase'),
+            findsOneWidget,
+          );
+          await tester.ensureVisible(find.text('How cloud backups work'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('How cloud backups work'));
+          await tester.pumpAndSettle();
+          expect(
+            find.textContaining('Google receives encrypted'),
+            findsOneWidget,
+          );
+          await tester.tap(find.text('How cloud backups work'));
+          await tester.pumpAndSettle();
+          await tester.ensureVisible(
+            find.text('Local backup actions & history'),
+          );
+          await tester.pumpAndSettle();
           await tester.tap(find.text('Local backup actions & history'));
           await tester.pumpAndSettle();
           final create = find.text('Create backup now');

@@ -6,10 +6,17 @@ internal sealed class InlineQuickAddForm : Form {
   private readonly Label feedback = new();
   private readonly Action<string> submit;
   private readonly WidgetPalette palette;
+  private readonly WidgetSurface surface;
 
   internal InlineQuickAddForm(
       WidgetPalette palette, Rectangle bounds, string destination,
-      Action<string> submit) {
+      Action<string> submit, WidgetSurface? surface = null, float textScale = 1) {
+    this.surface = surface ?? new WidgetSurface { Border = true, Radius = 7 };
+    var fill = this.surface.Resolve(palette.Panel);
+    // Native TextBox input stays opaque while active so glyphs/selection remain clear.
+    var background = Color.FromArgb(255,fill);
+    var ink = ParseColor(this.surface.TextColor,palette.Foreground);
+    if(WidgetEditorStyle.Contrast(ink,background)<4.5) ink = WidgetEditorStyle.Contrast(Color.Black,background)>WidgetEditorStyle.Contrast(Color.White,background)?Color.Black:Color.White;
     this.palette = palette;
     this.submit = submit;
     Text = "Quick Add - Todorbit";
@@ -18,9 +25,11 @@ internal sealed class InlineQuickAddForm : Form {
     ShowInTaskbar = false;
     TopMost = false;
     Bounds = bounds;
-    BackColor = palette.Panel;
-    ForeColor = palette.Foreground;
-    Font = new Font("Segoe UI", 9.5f);
+    BackColor = background;
+    ForeColor = ink;
+    // The transient WinForms input uses native point/DPI scaling; only the
+    // owner-drawn layered surface applies its own logical-pixel transform.
+    Font = new Font("Segoe UI", 9.75f * textScale, FontStyle.Regular,GraphicsUnit.Point);
     Padding = new Padding(1);
     SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
       ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
@@ -36,8 +45,8 @@ internal sealed class InlineQuickAddForm : Form {
     };
     editor.BorderStyle = BorderStyle.None;
     editor.PlaceholderText = "Add a task...";
-    editor.BackColor = palette.Panel;
-    editor.ForeColor = palette.Foreground;
+    editor.BackColor = background;
+    editor.ForeColor = ink;
     editor.Location = new Point(38, 10);
     editor.Size = new Size(Math.Max(80, Width - 132), 24);
     editor.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
@@ -69,7 +78,7 @@ internal sealed class InlineQuickAddForm : Form {
     base.OnResize(e);
     if (Width < 2 || Height < 2) return;
     using var path = WidgetEditorStyle.RoundedPath(
-      new Rectangle(0, 0, Width, Height), WidgetEditorStyle.Corner);
+      new Rectangle(0, 0, Width, Height), (int)Math.Max(1,surface?.Radius ?? 7));
     var old = Region;
     Region = new Region(path);
     old?.Dispose();
@@ -77,10 +86,16 @@ internal sealed class InlineQuickAddForm : Form {
 
   protected override void OnPaint(PaintEventArgs e) {
     base.OnPaint(e);
-    WidgetEditorStyle.PaintSurface(e.Graphics,
-      new Rectangle(1, 1, Math.Max(1, Width - 3), Math.Max(1, Height - 3)),
-      palette, ContainsFocus);
+    var bounds = new Rectangle(2,2,Math.Max(1,Width-5),Math.Max(1,Height-5));
+    using var path=WidgetEditorStyle.RoundedPath(bounds,(int)Math.Max(1,surface.Radius));
+    using var brush=new SolidBrush(BackColor);e.Graphics.FillPath(brush,path);
+    if(surface.Border || ContainsFocus) {
+      using var pen=new Pen(ContainsFocus?palette.Accent:surface.Resolve(palette.Border,true),ContainsFocus?2:Math.Max(0.5f,surface.Thickness));
+      e.Graphics.DrawPath(pen,path);
+    }
   }
+
+  private static Color ParseColor(string? value,Color fallback) => value!=null && System.Text.RegularExpressions.Regex.IsMatch(value,"^#[0-9a-fA-F]{6}$")?ColorTranslator.FromHtml(value):fallback;
 
   private void EditorKeyDown(object? sender, KeyEventArgs eventArgs) {
     if (eventArgs.KeyCode == Keys.Escape) {

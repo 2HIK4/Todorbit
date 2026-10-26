@@ -1,9 +1,35 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:life_manager/domain/widget_configuration.dart';
 import 'package:life_manager/features/widget/native_widget_service.dart';
 
 void main() {
+  test('calendar visibility and configuration commands share the existing companion', () async {
+    if (!Platform.isWindows) return;
+    final dir = await Directory.systemTemp.createTemp(
+      'todorbit-widget-routing-',
+    );
+    addTearDown(() => dir.delete(recursive: true));
+    final exe = File('${dir.path}/TodorbitWidget.exe');
+    await exe.writeAsBytes([]);
+    final commands = <String>[];
+    final service = NativeWidgetService(
+      widgetExecutable: exe.path,
+      launcher: (_, args) async {
+        commands.add(args[1]);
+        return 0;
+      },
+    );
+    await service.setWidgetVisible(DesktopWidgetKind.calendar, true);
+    await service.setWidgetVisible(DesktopWidgetKind.calendar, false);
+    await service.reloadConfiguration();
+    expect(commands, [
+      'calendar-show',
+      'calendar-hide',
+      'reload-configuration',
+    ]);
+  });
   test(
     'native widget commands use the packaged sibling and app path',
     () async {

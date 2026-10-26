@@ -1,5 +1,25 @@
 # Architecture
 
+The Tasks Widget and Calendar Widget share the existing native companion,
+profile-scoped mutex/pipe, reminder service and startup registration. Each is
+an independently visible Explorer child HWND. Flutter edits the typed,
+version-1 `WidgetConfiguration` model through profile-local
+`widget-tasks-configuration.json` and `widget-calendar-configuration.json`.
+Atomic file replacement keeps each saved configuration complete. Task geometry,
+view and legacy startup preference remain in `widget-settings.json`; Calendar
+geometry uses `calendar-widget-settings.json`. Legacy opacity and layout lock are
+read deterministically without rewriting existing geometry or startup choices.
+These new per-widget files are device-local and excluded from shareable settings
+and cloud backup payloads; shared theme colors remain portable.
+
+Native calendar projection reads the existing repository/schema without migration
+or new calendar tables. Planned dates, work sessions and fixed-event occurrences
+remain separate item types. Event dates reuse the native reminder recurrence
+matcher, including nominal-date exceptions and generation boundaries. Calendar
+content and week-start preferences come from the existing profile preferences.
+`--edit-widget tasks|calendar` goes through the runner's existing single-window
+activation channel to Settings > Widget and the correct draft editor.
+
 Google Drive backups are an optional layer under `lib/data/cloud/` and Settings > Backups & Cloud. `CloudStorageProvider` abstracts remote objects; Google OAuth and secure token storage are separate from Drive HTTP operations. `CloudBackupService` reuses `BackupService` for SQLite-safe snapshots and staged restore, while `CloudBackupCodec` encrypts a versioned portable manifest with AES-256-GCM and a passphrase-derived key. The manifest includes the existing shareable settings JSON; OAuth tokens, PIN policy and device-only controls remain local. Full restore applies portable personalization after the database opens/migrates and before the opened receipt. Settings-only restore reuses selective settings transfer. There is no background synchronization or cloud retention. See `GOOGLE_DRIVE_BACKUP.md` for format limits, setup, portability and verification boundaries.
 
 - Flutter Material 3 UI with a compact Fluent-inspired desktop layout.

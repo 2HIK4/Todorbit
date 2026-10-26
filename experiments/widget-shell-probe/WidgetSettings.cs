@@ -143,6 +143,9 @@ internal static class WidgetGeometry {
     return edge;
   }
 
+  internal static Size MinimumSize(bool calendar,float textScale) => new(
+    calendar?300:260,(calendar?360:230)+(int)Math.Ceiling(Math.Max(0,textScale-1)*(calendar?120:40)));
+
   internal static Size LogicalSize(int width, int height) => new(
     Math.Max(width, 260), Math.Max(height, 230));
 

@@ -26,6 +26,7 @@ import 'features/settings/privacy_dialog.dart';
 import 'features/settings/settings_transfer.dart';
 import 'features/widget/desktop_widget.dart';
 import 'features/widget/native_widget_service.dart';
+import 'domain/widget_configuration.dart';
 
 Future<void> main(List<String> args) => _startApplication(args);
 
@@ -188,6 +189,11 @@ Future<void> _startApplication(
               databaseFile: databaseFile,
               appearanceFile: appearanceStore.file,
               openAppearance: args.contains('--appearance'),
+              editWidget: args.contains('--edit-widget')
+                  ? (args.contains('calendar')
+                        ? DesktopWidgetKind.calendar
+                        : DesktopWidgetKind.tasks)
+                  : null,
               legacyImportFile: offerLegacyImport ? legacyDatabase : null,
             ),
     ),
@@ -368,12 +374,14 @@ class LifeManagerApp extends ConsumerStatefulWidget {
     this.databaseFile,
     this.appearanceFile,
     this.openAppearance = false,
+    this.editWidget,
     this.legacyImportFile,
   });
 
   final File? databaseFile;
   final File? appearanceFile;
   final bool openAppearance;
+  final DesktopWidgetKind? editWidget;
   final File? legacyImportFile;
 
   @override
@@ -531,6 +539,7 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
                 },
                 child: Workspace(
                   openAppearance: widget.openAppearance,
+                  editWidget: widget.editWidget,
                   legacyImportFile: widget.legacyImportFile,
                 ),
               ),

@@ -771,7 +771,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                   ? Color.lerp(
                       scheme.surface,
                       accent,
-                      event.cancelled ? 0.07 : 0.17,
+                      event.cancelled ? 0.12 : 0.17,
                     )
                   : entry.session != null
                   ? scheme.tertiaryContainer.withValues(alpha: 0.55)
@@ -809,7 +809,11 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                           style: TextStyle(
                             fontSize: 11,
                             color: event?.cancelled == true
-                                ? scheme.onSurfaceVariant
+                                ? Color.lerp(
+                                    scheme.onSurfaceVariant,
+                                    scheme.onSurface,
+                                    0.45,
+                                  )
                                 : scheme.onSurface,
                             decoration: event?.cancelled == true
                                 ? TextDecoration.lineThrough
@@ -863,7 +867,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
     return Card(
       color: event == null
           ? null
-          : Color.lerp(scheme.surface, accent, event.cancelled ? 0.07 : 0.17),
+          : Color.lerp(scheme.surface, accent, event.cancelled ? 0.12 : 0.17),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
         side: event == null
@@ -907,7 +911,11 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                                 fontSize: compact ? 11 : 14,
                                 fontWeight: FontWeight.w600,
                                 color: event.cancelled
-                                    ? scheme.onSurfaceVariant
+                                    ? Color.lerp(
+                                        scheme.onSurfaceVariant,
+                                        scheme.onSurface,
+                                        0.45,
+                                      )
                                     : scheme.onSurface,
                                 decoration: event.cancelled
                                     ? TextDecoration.lineThrough

@@ -1,5 +1,63 @@
 # Integrated Windows widget
 
+## Two-widget customization update
+
+Settings > Widget has independent Tasks Widget and Calendar Widget controls.
+Enable either widget, then use its Configure action. Right-click any part of a
+widget and choose **Edit This Widget** to open its editor directly, including
+when its header or task navigation is hidden. An unlocked widget can be dragged
+from its outer margin; the context menu also provides centering and layout lock.
+
+The draft editor has per-surface color, opacity, border and radius controls,
+title/Open button visibility, text size and transparent-text protection. Tasks
+also has independent view visibility, four navigation positions and text/icon
+modes. Calendar has month navigation, today/selection styles, date indicators and
+an independently styled selected-date agenda. Month grid dots indicate existing
+planned tasks, work sessions or events according to the saved calendar filter.
+Agenda task/session entries open their task in Todorbit; event entries are
+currently read-only. Week start follows the application's calendar preference.
+
+**Apply** saves the selected widget. **Apply to All Widgets** confirms copying
+shared title/Open visibility, text size/readability and shell/header/content
+appearance. Each widget keeps its visibility, geometry, layout lock, task
+navigation/input and calendar agenda/cell/indicator settings. **Cancel** discards
+the draft; previews do not write saved files or change another widget.
+Reset customization restores defaults while preserving enabled state/layout lock.
+New widget configuration is profile-local and survives ordinary bundle updates;
+it is not included in shareable settings/cloud snapshots. Shared theme colors
+continue to use `appearance-settings.json`.
+
+Both HWNDs use one companion, tray icon, IPC channel and startup entry. Tasks
+retains its legacy geometry/view/startup file; Calendar stores its own geometry.
+At larger text sizes the minimum window height grows to keep controls readable.
+The focused native TextBox stays opaque so selection, caret and keyboard entry
+remain clear. A nominally transparent shell retains one alpha step for reliable
+management hit testing. No content-wide window opacity is applied.
+
+Additional commands on the same executable/profile:
+
+```powershell
+TodorbitWidget.exe --widget-command calendar-show
+TodorbitWidget.exe --widget-command calendar-hide
+TodorbitWidget.exe --widget-command calendar-toggle
+TodorbitWidget.exe --widget-command reload-configuration
+TodorbitWidget.exe --lifecycle-self-test
+TodorbitWidget.exe --capture-widgets <output-directory>
+```
+
+`--self-test` now includes configuration migration, per-widget routing, calendar
+projection, moved/cancelled occurrences, chronology, opacity, compact layout and
+offscreen scaling checks. `--lifecycle-self-test` uses a disposable profile and
+actual Explorer child windows to check simultaneous visibility, independent
+hide/show and restart. It does not drive physical input. `--capture-widgets`
+renders synthetic fixtures offscreen; its images are not desktop screenshots.
+
+Repeat the manual checklist below for **both** widgets, including hidden headers,
+all task navigation modes/positions, calendar month/date selection, transparent
+surfaces and concurrent operation. Physical DPI, Win+D, Explorer restart,
+keyboard/screen-reader interaction and input focus still require manual checks.
+See [development record](WIDGET_CUSTOMIZATION_UPDATE.md) for current evidence.
+
 The Release app now registers the widget for Windows sign-in by default after the active profile opens. Settings > Widget can disable it. Registration uses one per-user Run value per profile, points directly to `TodorbitWidget.exe --widget`, and is refreshed on a later Release app launch after an update or folder move. The main app is not in the startup command. The native self-test checks toggle, persistence, stale-path repair, and duplicate registry values using a private test key; actual login, Explorer attachment, and physical input remain manual checks on an isolated Windows account.
 
 Feedback round 4 movement fix: the layered paint path must use the current
