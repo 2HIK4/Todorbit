@@ -3,6 +3,8 @@ param([string]$OutputDirectory = '')
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $bundle = Join-Path $repo 'build\windows\x64\runner\Release'
+. (Join-Path $PSScriptRoot 'google-drive-release-config.ps1')
+Assert-GoogleDriveReleaseBundle $bundle $repo
 $releaseRoot = if ($OutputDirectory) { [IO.Path]::GetFullPath($OutputDirectory) } else { Join-Path $repo 'release' }
 $versionText = Get-Content -Raw (Join-Path $repo 'pubspec.yaml')
 if ($versionText -notmatch '(?m)^version:\s*(\d+\.\d+\.\d+)') {

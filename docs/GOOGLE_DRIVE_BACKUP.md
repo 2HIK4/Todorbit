@@ -1,96 +1,74 @@
 # Google Drive backup and restore
 
-Status: **PASS — real Google sign-in, token refresh, full/settings upload,
-download, restore, reconnect and deletion verified on 2026-10-25** in isolated
-Windows debug profiles with an owner-configured Desktop OAuth client. This
-does not cover Android or production OAuth publishing. A profile without a
-build client ID or imported Desktop configuration explicitly disables Google
-connection. Local backups remain available offline under Settings >
-Backups & Cloud. No OneDrive provider or automatic synchronization is implemented.
+Public release status: **BLOCKED — held at the production OAuth gate**.
+The 2026-10-25 owner-configured debug acceptance below remains valid historical
+evidence for the unchanged backup format and recovery flows. It does not prove
+ordinary-user access from a distributed application.
 
-## Configure Google Cloud
+The release candidate supports bundled public Desktop client configuration.
+Ordinary users will only click **Connect Google Drive**, complete Google's
+system-browser authorization, and return to Todorbit; they do not create Cloud
+projects, enter IDs or import JSON. Release builds hide developer configuration
+controls. Until production access and packaged acceptance pass, connection is
+explicitly unavailable; local backup and settings JSON transfer remain usable.
 
-1. Open [Google Cloud Console](https://console.cloud.google.com/), create a
-   project for Todorbit testing, and select it. Keep a separate production
-   project when publishing. Preserve the production project and its OAuth
-   clients across releases: a different project cannot be assumed to see the
-   same application's hidden Drive data.
-2. APIs & Services > Library > Google Drive API > Enable.
-3. Google Auth Platform > Branding > Get started. Enter Todorbit, a monitored
-   support email and developer contact. Configure Audience as External for
-   consumer Google accounts (Internal is only for an eligible Workspace
-   organization). Keep the test project in Testing and add each test account
-   under Audience > Test users.
-4. Data Access > Add or remove scopes: select only
-   `https://www.googleapis.com/auth/drive.appdata`. Do not add full Drive,
-   profile or email scopes. The connected identity uses Drive's `about.user`
-   information when available, with its stable permission ID for account checks.
-5. Clients > Create client > **Desktop app**, name it Todorbit Windows.
-   Copy the public client ID ending in `.apps.googleusercontent.com`. Do not
-   choose Web application or Universal Windows Platform. Do not commit a
-   downloaded credentials JSON or embed a client secret in the application.
-   Download the Desktop credentials JSON and retain it securely outside the
-   repository. If this client requires desktop client authentication, import
-   it through Settings > Backups & Cloud > Import Google Desktop configuration.
-   Todorbit accepts only the `installed` client ID/optional secret, ignores
-   supplied endpoints and tokens, validates a configured build ID matches,
-   and saves the minimal configuration in platform-secure storage per profile.
-   Disconnect before changing it; Remove OAuth configuration deletes it locally.
-6. Desktop authorization uses an ephemeral loopback listener at
-   `http://127.0.0.1:<ephemeral-port>/oauth2callback`. Desktop clients support
-   this method without registering a fixed port or web JavaScript origin.
-   Todorbit generates a fresh state and S256 PKCE challenge for each attempt,
-   opens the system browser, and asks Google to select an account and grant
-   offline access. It never receives a Google password. The desktop
-   client-secret parameter is supplied only when imported into secure storage.
-   Google returned `invalid_request` requiring `client_secret` for the real
-   test client despite documenting this field as optional; PKCE remains enabled
-   in both cases. No client secret is compiled into the binary or logged.
-7. Build or run with the public client ID:
+## Production setup — publisher only
 
-   ```powershell
-   flutter run -d windows --dart-define=GOOGLE_DRIVE_CLIENT_ID=YOUR_DESKTOP_CLIENT_ID.apps.googleusercontent.com
-   flutter build windows --release --dart-define=GOOGLE_DRIVE_CLIENT_ID=YOUR_DESKTOP_CLIENT_ID.apps.googleusercontent.com
-   ```
+Follow the [public release gate and exact Google Cloud owner steps](GOOGLE_DRIVE_RELEASE_READINESS.md).
+The reviewed `config/google-drive.json` currently has public access disabled and
+empty Desktop client fields. Once the production project is ready, maintainers
+supply its public client ID and Desktop client-secret parameter and build with:
 
-   Supply the define for every relevant build. This is public configuration,
-   not a credential. A build can also start without the define and accept a
-   Desktop configuration import. Keep using the same Google project/client
-   configuration when restoring after reinstall or on a fresh profile; import
-   the matching Desktop JSON again if client authentication is required. Device
-   configuration and tokens intentionally do not travel with backups.
-   Test GUI runs must use isolated APPDATA/LOCALAPPDATA as
-   described in DEVELOPMENT.md. Windows plugin builds require Developer Mode
-   symlink support or administrator-created project-local plugin links; do not
-   change machine settings silently.
-8. Connect using an allowlisted test account. Check the account identity before
-   uploading. Cancel/deny once, reconnect, and exercise the full acceptance
-   procedure below. A Testing project can issue short-lived refresh grants;
-   revoked/expired grants require reconnecting. Workspace administrator policy
-   can also block access.
-9. Before production, configure truthful app branding, support/developer
-   contacts, your owned and verified domains, app home page, privacy policy and
-   terms as required by Google Auth Platform. Change the production audience to
-   In production and complete the verification Google requests. `drive.appdata`
-   is currently non-sensitive; this does not waive basic branding, consent,
-   verification or Google API user-data policy requirements. Do not add
-   sensitive/restricted scopes to avoid setup problems. Publishing the OAuth
-   app and publishing a Todorbit release are separate owner actions.
+```powershell
+./tools/build-windows-release.ps1
+./installer/build-installer.ps1
+./tools/build-portable.ps1
+```
 
-For a future Android build, create an **Android** OAuth client in the same
-Google Cloud project, with the actual Android application ID and signing
-certificate SHA-1 (separate debug/release clients as needed). Replace the
-desktop authorization-flow implementation with supported native Android
-authorization; Google does not support this loopback method for Android
-clients. The Android scaffold is retained, but Android sign-in/UI is not
-implemented or verified in this phase. Validate cross-client visibility in
-the same project before promising Windows/Android interoperability.
+The wrapper compiles the public fields with `--dart-define-from-file`. Both
+packages use that same Release bundle and reject a stale/missing OAuth build
+receipt. No source-project path or device-imported JSON is needed at runtime.
+Never put user tokens, refresh grants, private keys, passphrases, or downloaded
+credentials JSON into the configuration or distribution.
 
+Google documents Desktop clients as **public clients**, unable to keep an
+embedded client secret confidential. Its native-app token documentation lists
+`client_secret` as optional, but the real test client required it for exchange;
+the build now supplies it for both exchange and refresh. It is an application
+parameter, not a security boundary. PKCE S256 and fresh state remain required.
 Official references: [desktop OAuth](https://developers.google.com/identity/protocols/oauth2/native-app),
 [loopback support](https://developers.google.com/identity/protocols/oauth2/resources/loopback-migration),
 [hidden application data](https://developers.google.com/workspace/drive/api/guides/appdata),
 [Drive scopes](https://developers.google.com/workspace/drive/api/guides/api-specific-auth),
 [production policy](https://developers.google.com/identity/protocols/oauth2/production-readiness/policy-compliance).
+
+The prepared [privacy disclosure](PRIVACY.md) describes data, deletion and
+revocation. It still needs owner review/hosting on the verified app domain and
+entry in Google Auth Platform. No Google project publishing or verification is
+claimed. Android authorization, OneDrive and automatic synchronization remain
+unimplemented.
+
+## Developer-only isolated testing
+
+For an authorized development client, run with `GOOGLE_DRIVE_ENABLED=true`, the
+public client-ID define, and, if needed, the Desktop client-secret define via a
+strictly public three-field define file outside Git. A debug build also retains
+the existing secure Desktop JSON import for testing. Release builds cannot use
+that import. It accepts only the installed client ID/optional parameter, ignores
+arbitrary endpoints/tokens, validates a configured ID match, and requires
+disconnection before changes. Use only disposable profiles and authorized
+accounts; preserve the same intended project/client when testing recovery.
+
+Windows authorization uses `http://127.0.0.1:<ephemeral-port>/oauth2callback`, a
+fresh random state and S256 PKCE challenge, and the external system browser.
+Only a matching GET callback completes the flow. Tokens persist in
+profile-keyed Windows-protected storage, never backup payloads. Desktop clients
+support variable loopback ports; no web JavaScript origin is needed.
+
+Testing-mode projects restrict users and expire Drive/offline grants after seven
+days. Production status, branding verification and account/admin policy are
+separate checks. A developer/test-user login is not public-access proof.
+See [clean packaged acceptance](GOOGLE_DRIVE_RELEASE_READINESS.md#required-packaged-acceptance--unverified).
 
 ## Contents and safeguards
 

@@ -22,7 +22,7 @@ Todorbit v1.0.12 is a free, MIT-licensed Windows x64 pre-release. Windows 11 is 
 
 The portable ZIP does **not** store data beside the executable. Each extracted portable location uses its own `%APPDATA%\TodoPilot\portable-<location-id>` profile; copying or moving the extracted folder selects a new empty profile. An installer fresh profile uses `%APPDATA%\TodoPilot\life_manager.sqlite`. This legacy path remains stable through the rename. An older `%APPDATA%\Life Manager` database is never selected just because it exists; on first launch Todorbit offers a reviewed, explicit import. Upgrading an installed TodoPilot retains its existing profile and settings. Export/import data through Settings > Backups & Cloud before moving a portable folder, and do not delete either profile folder.
 
-Google Drive backup is an optional, encrypted snapshot feature that requires Desktop OAuth configuration; it is not automatic synchronization. Local backup/restore and settings JSON transfer remain available offline. Real Windows Google sign-in and full/settings backup/restore have been verified on isolated profiles. See [Google Drive setup, limits and verification](docs/GOOGLE_DRIVE_BACKUP.md).
+Google Drive encrypted backup/restore is implemented, with prior isolated-profile full/settings recovery verification. **Public access is not released yet:** production OAuth and packaged clean-install acceptance are still required. The release candidate bundles public application configuration so users will not need Google Cloud setup or a credentials JSON. Current candidate builds explicitly disable connection while those gates are open. This is snapshot backup/restore, not automatic synchronization; linked external file contents are excluded. Local backups and settings JSON transfer remain available offline. See [backup contents and recovery](docs/GOOGLE_DRIVE_BACKUP.md), [release readiness](docs/GOOGLE_DRIVE_RELEASE_READINESS.md), and the [prepared privacy disclosure](docs/PRIVACY.md).
 
 The native widget can be shown from the app sidebar. By default, it launches at Windows sign-in after Todorbit's first launch; Settings > Widget can turn this off. Right-click it for Refresh, appearance, layout lock, and Close Widget. The widget can run while the main window is closed. The optional PIN locks the UI; it does not encrypt the SQLite database. See [installation and portable upgrade instructions](docs/INSTALLATION.md).
 
@@ -34,7 +34,7 @@ Install Flutter with Windows desktop support, Visual Studio C++ desktop tools, a
 flutter pub get
 flutter analyze
 flutter test
-flutter build windows --release
+./tools/build-windows-release.ps1
 ```
 
 The Release bundle is `build\windows\x64\runner\Release`. Build instructions and architecture are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).

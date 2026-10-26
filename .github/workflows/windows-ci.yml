@@ -27,8 +27,15 @@ jobs:
         run: flutter analyze
       - name: Run Flutter tests
         run: flutter test --concurrency=1
+      - name: Check public OAuth configuration and packaging gates
+        shell: pwsh
+        run: ./tools/test-google-drive-release-config.ps1
       - name: Build Windows Release
-        run: flutter build windows --release
+        shell: pwsh
+        run: ./tools/build-windows-release.ps1
+      - name: Build portable package with audited OAuth configuration
+        shell: pwsh
+        run: ./tools/build-portable.ps1
       - name: Native widget self-test in disposable profile
         shell: pwsh
         run: |
@@ -37,3 +44,17 @@ jobs:
           New-Item -ItemType Directory -Force -Path $env:APPDATA,$env:LOCALAPPDATA | Out-Null
           $selfTest = Start-Process -FilePath (Resolve-Path 'build\windows\x64\runner\Release\TodorbitWidget.exe').Path -ArgumentList '--self-test' -PassThru -Wait -WindowStyle Hidden
           if ($selfTest.ExitCode -ne 0) { exit $selfTest.ExitCode }
+      - name: Install Inno Setup 7
+        shell: pwsh
+        run: choco install innosetup --version=7.1.0 --yes --no-progress --allow-downgrade
+      - name: Compile installer
+        shell: pwsh
+        run: ./installer/build-installer.ps1
+      - name: Release candidate checksums
+        shell: pwsh
+        run: ./tools/write-release-checksums.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-candidate
+          path: release/*
+          if-no-files-found: error

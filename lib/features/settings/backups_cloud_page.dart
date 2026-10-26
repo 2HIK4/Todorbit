@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -51,12 +52,16 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
         GoogleDriveAuth(
           client: client!,
           store: SecureCloudTokenStore(local.databaseFile.absolute.path),
-          configurationStore: SecureCloudTokenStore(
-            local.databaseFile.absolute.path,
-            purpose: 'oauth-client',
-          ),
+          configurationStore: kDebugMode
+              ? SecureCloudTokenStore(
+                  local.databaseFile.absolute.path,
+                  purpose: 'oauth-client',
+                )
+              : null,
           flow: LoopbackGoogleAuthorization(),
           clientId: GoogleDriveAuth.configuredClientId,
+          clientSecret: GoogleDriveAuth.configuredClientSecret,
+          enabled: GoogleDriveAuth.publicConnectionEnabled,
         );
     service =
         widget.service ??
@@ -436,7 +441,7 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
   Widget build(BuildContext context) {
     final controller = ref.watch(appControllerProvider);
     final connected = auth?.account != null;
-    final configured = auth?.clientId.isNotEmpty == true;
+    final configured = auth?.canConnect == true;
     final ready = connected && !busy;
     final full =
         objects
@@ -481,7 +486,7 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
           const Text('Session needs reconnecting.'),
         if (!configured)
           const Text(
-            'Google Drive is not configured in this build. See the Google Drive setup guide to enable connection.',
+            'Google Drive connection is unavailable in this build while public access is being prepared. Local backups and settings JSON transfer remain available. No Google Cloud setup is needed by users.',
           ),
         const SizedBox(height: 10),
         Wrap(
@@ -557,6 +562,10 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
         _heading('Cloud Backups'),
         const Text(
           'Encrypted snapshots, created only when you choose. This does not synchronize or merge edits across devices. Includes every SQLite table plus portable personalization. External linked file contents, PINs, device credentials, widget position/startup policy and other device-local controls are excluded.',
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Backups stay in your Google account’s hidden app storage. Google receives encrypted contents and backup metadata. Todorbit also reads your account identity to show the connected account. Delete snapshots here before disconnecting; disconnect keeps cloud files. Keep your recovery passphrase separately: it cannot be recovered. Full cloud backups are limited to a 50 MiB database.',
         ),
         const SizedBox(height: 10),
         Text(

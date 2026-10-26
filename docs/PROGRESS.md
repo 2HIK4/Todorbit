@@ -1,5 +1,61 @@
 # Progress
 
+## Google Drive public distribution candidate (2026-10-26)
+
+- Baseline `198da07`; clean start on `feature/google-drive-backups`, then
+  `feature/google-drive-production-readiness`. Latest public release checked
+  through GitHub CLI is v1.0.12; selected unused candidate 1.0.13+14. No personal
+  installation/profile was opened or changed.
+- Added bundled public Desktop client ID/client-secret parameters for exchange
+  and refresh, with the existing PKCE/state flow unchanged. Release builds
+  remove developer configuration import. Strict `config/google-drive.json`
+  remains disabled/empty until production access is confirmed. Disabled
+  builds do not load saved Google sessions or start login. Ordinary-user
+  usability is still PARTIAL, not public-login PASS.
+- Added one Release wrapper and a public configuration/AOT/runner hash receipt
+  checked by both packaging scripts, private-file guards, candidate checksums
+  and CI installer/portable packaging. Prepared truthful privacy disclosure,
+  candidate release notes, and current Google Auth Platform owner actions in
+  `docs/GOOGLE_DRIVE_RELEASE_READINESS.md`. The receipt is a consistency check,
+  not a signature or evidence of Google approval.
+- Focused auth/UI checks passed 15/15; public configuration/package gates passed
+  11/11. Analysis passed with no issues. The one final serial full Flutter suite
+  passed **264/264**, zero JSON error events, in 07:54. Native .NET Release built
+  with zero warnings/errors and isolated source widget self-test exited 0.
+  Gated Windows Release, Inno Setup 7.1.0 installer and portable ZIP passed.
+  Extracted portable widget self-test, ZIP CRC (37 entries), complete bundle byte
+  equality, config/AOT receipt and checksum manifest/sidecars passed. Both
+  installer-layout and extracted portable copies started/restarted on disposable
+  profiles with SQLite integrity OK, 44 tables and no tasks/events. Windows Run
+  registration was unchanged. This is not an actual registered installer test.
+- Reused the historical real Google 44-table full restore and selective settings
+  recovery evidence for unchanged codec/service/recovery boundaries only.
+  Bundled production-client login and fresh packaged recovery are UNVERIFIED.
+  No connected browser/Cloud Console is available; Computer Use initialization
+  succeeded but listing apps failed because its native pipe is absent. Physical
+  Release GUI, DPI/resizing and strict clean installer acceptance need an
+  authorized account and disposable Windows user/VM.
+- **Public OAuth BLOCKED:** owner confirms project Todorbit is Testing,
+  Branding lacks homepage/privacy/terms URLs, and Data Access lists no scopes.
+  External status is unconfirmed. Found a valid installed Desktop JSON outside
+  Git with both client fields; no values were printed or copied into the gated
+  config. Exact-value scans of 337 source files and every portable entry found
+  none of that private input parameter. The original JSON was left untouched.
+- At the owner's request, prepared a responsive static GitHub Pages site with
+  product information, actual v1.0.12 download links/screenshot, support, privacy
+  and terms. Three-page static link/anchor/landmark/image/contrast checks pass;
+  rendered browser, zoom and screen-reader behavior remain UNVERIFIED because
+  browser/native UI infrastructure is unavailable. No telemetry/third-party
+  scripts or fonts are added. Pages deployment is manual-only and requires
+  explicit owner approval; push/PR only validates. Google's owned/verified-domain
+  requirements and the uncertainty of default shared Pages OAuth acceptance are
+  documented; no domain purchase, DNS, Pages or Google Console setting changed.
+- Owner must approve website/policy/terms and target domain, then satisfy the
+  exact Cloud steps in `GOOGLE_DRIVE_RELEASE_READINESS.md` and participate in
+  outside-test-user clean packaged acceptance. No main merge, tag, public
+  website/app release or updater entry has been created. Candidate branch CI
+  remains to be checked after pushing the prepared source.
+
 ## Google Drive backup implementation (2026-10-25)
 
 - On `feature/google-drive-backups`, moved the main-sidebar Backups entry into Settings > Backups & Cloud. The embedded existing local panel retains manual/automatic history, create/export/import, reviewed next-launch restore, cancellation and recovery status. Added independent full/settings cloud flows, account-bound history/deletion, system-browser loopback OAuth with PKCE, profile-specific secure tokens, refresh/reconnect, a provider interface, versioned authenticated passphrase encryption, chunk progress and remote readback verification. SQLite snapshots and migrations still use the existing service; no sync engine, Android UI, OneDrive or cloud retention was added.

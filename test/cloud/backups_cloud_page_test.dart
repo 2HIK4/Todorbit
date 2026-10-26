@@ -59,7 +59,10 @@ void main() {
           client: client,
           store: MemoryTokenStore(),
           flow: TestGoogleFlow(),
-          clientId: '',
+          // A known client must not bypass the unpublished build gate.
+          clientId: 'public.apps.googleusercontent.com',
+          clientSecret: 'public-desktop-parameter',
+          enabled: false,
         );
         final service = CloudBackupService(
           local: local,
@@ -100,6 +103,14 @@ void main() {
             'Connect Google Drive',
           );
           expect(tester.widget<FilledButton>(connect).onPressed, isNull);
+          expect(
+            find.text('Import Google Desktop configuration'),
+            findsNothing,
+          );
+          expect(
+            find.textContaining('while public access is being prepared'),
+            findsOneWidget,
+          );
           await tester.tap(find.text('Local backup actions & history'));
           await tester.pumpAndSettle();
           final create = find.text('Create backup now');

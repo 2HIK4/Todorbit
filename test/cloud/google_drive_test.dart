@@ -149,6 +149,59 @@ class DriveFixture {
 }
 
 void main() {
+  test('bundled public Desktop parameters connect and refresh after restart without a configuration import', () async {
+    final fixture = DriveFixture();
+    fixture.expectedClientSecret = 'public-desktop-parameter';
+    GoogleDriveAuth publicAuth() => GoogleDriveAuth(
+      client: fixture.client,
+      store: fixture.store,
+      flow: fixture.flow,
+      clientId: fixture.auth.clientId,
+      clientSecret: fixture.expectedClientSecret!,
+    );
+    final auth = publicAuth();
+    await auth.load();
+    expect(auth.configurationStore, isNull);
+    expect(auth.canConnect, isTrue);
+    await auth.connect();
+    expect(fixture.configurationStore.value, isNull);
+    expect(fixture.store.value, isNot(contains(fixture.expectedClientSecret!)));
+    final restarted = publicAuth();
+    await restarted.load();
+    expect(restarted.account!.id, 'account-a');
+    await restarted.accessToken(forceRefresh: true);
+    expect(fixture.refreshes, 1);
+    await restarted.disconnect();
+    expect(fixture.store.value, isNull);
+    await restarted.connect();
+    expect(restarted.account!.id, 'account-a');
+  });
+
+  test(
+    'disabled public access never loads saved tokens or opens the browser',
+    () async {
+      final fixture = DriveFixture();
+      await fixture.auth.connect();
+      final saved = fixture.store.value;
+      final flow = TestGoogleFlow();
+      final auth = GoogleDriveAuth(
+        client: fixture.client,
+        store: fixture.store,
+        flow: flow,
+        clientId: fixture.auth.clientId,
+        clientSecret: 'public-desktop-parameter',
+        enabled: false,
+      );
+      await auth.load();
+      expect(auth.account, isNull);
+      expect(auth.canConnect, isFalse);
+      await expectLater(auth.connect(), throwsA(isA<CloudFailure>()));
+      await expectLater(auth.accessToken(), throwsA(isA<CloudFailure>()));
+      expect(flow.authorization, isNull);
+      expect(fixture.store.value, saved);
+    },
+  );
+
   test('Desktop configuration stays in secure storage, is allowlisted, survives restart and supports client authentication', () async {
     final fixture = DriveFixture();
     fixture.expectedClientSecret = 'fixture-only-client-secret';

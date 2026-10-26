@@ -2,6 +2,11 @@
 
 ## Current status
 
+The latest published pre-release is v1.0.12. The **unpublished 1.0.13+14
+candidate** is held at the [Google Drive production gate](GOOGLE_DRIVE_RELEASE_READINESS.md).
+Its public OAuth configuration remains disabled; do not claim ordinary-user
+Google Drive availability. Candidate packages are prepared for review only.
+
 The Windows Release bundle contains `Todorbit.exe`,
 `TodorbitWidget.exe`, Flutter assets, `flutter_windows.dll`, and
 `sqlite3.dll`. Inno Setup 7.1.0 compiles the installer at
@@ -17,14 +22,15 @@ formal name clearance remains open. See `ACCEPTANCE.md`.
 For in-app update package naming, verification, installed/portable recovery,
 and publishing requirements, see `SOFTWARE_UPDATES.md`.
 
-Run `flutter build windows --release`. The bundle is under
+Run `./tools/build-windows-release.ps1` to compile the reviewed public OAuth
+configuration and create the package consistency receipt. The bundle is under
 `build/windows/x64/runner/Release`; keep the entire directory together. To
 compile the per-user installer with Inno Setup 7, run
 `./installer/build-installer.ps1` (or pass `-Compiler` with an `ISCC.exe` path).
 The script verifies the Release executables and prints the installer SHA-256.
 Run `./tools/build-portable.ps1` for the portable ZIP. Both packages are
 unsigned; a signing certificate and distribution decision remain open. Use
-`release/SHA256SUMS.txt` for the current artifact checksums.
+`./tools/write-release-checksums.ps1` for versioned checksums and updater sidecars.
 
 The installer is configured to use `%LOCALAPPDATA%\Programs\Life Manager`, adds a
 Start menu shortcut, and offers an optional desktop shortcut. It does not

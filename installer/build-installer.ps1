@@ -10,6 +10,8 @@ if ($versionText -notmatch '(?m)^version:\s*(\d+\.\d+\.\d+)') {
 }
 $version = $Matches[1]
 $bundle = Join-Path $repo 'build\windows\x64\runner\Release'
+. (Join-Path $repo 'tools\google-drive-release-config.ps1')
+Assert-GoogleDriveReleaseBundle $bundle $repo
 $mainExe = Join-Path $bundle 'Todorbit.exe'
 $widgetExe = Join-Path $bundle 'TodorbitWidget.exe'
 if (-not (Test-Path -LiteralPath $mainExe) -or -not (Test-Path -LiteralPath $widgetExe)) {

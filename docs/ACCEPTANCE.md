@@ -1,5 +1,36 @@
 # Windows v1.0 final acceptance record
 
+## Google Drive production candidate (2026-10-26)
+
+Candidate **1.0.13+14**, on `feature/google-drive-production-readiness` from
+`198da07`. Public OAuth is **BLOCKED**, not a release PASS. Owner reports
+project Todorbit is Testing, Branding URLs are missing, Data Access is empty,
+and External status is not independently confirmed. A valid Desktop JSON was
+found outside Git, read only for validation, and not bundled. Public config is
+disabled/empty; Release hides developer import. No website/app publication,
+Google production change, personal installation or production profile change.
+
+| Boundary | Status | Evidence and limits |
+| --- | --- | --- |
+| Public-client distribution | PARTIAL | Bundled ID/parameter exchange and refresh/restart/reconnect pass mocked tests without a config store. Package gates bind reviewed config to runner/AOT hashes. Actual public client remains disabled pending Google production and clean packaged acceptance. |
+| Security/data recovery | PASS (source/automated; historical real evidence retained) | Existing PKCE/state, secure tokens, appdata-only transfers and authenticated encryption retained. Historical real full/settings recovery from 198da07 remains evidence for unchanged service/format, including all 44 tables. New packaged production-client recovery is UNVERIFIED. |
+| Consolidated checks | PASS | Focused auth/UI 15/15, config/package gates 11/11, analysis clean, one final serial Flutter suite 264/264 (07:54), zero JSON error events. Existing nonfatal scroll hit-test warnings remain. |
+| Native/Windows builds | PASS | Native Release zero warnings/errors, isolated source self-test exit 0; gated Windows Release passed. |
+| Candidate packages | PASS | Inno Setup 7.1.0 compile; 37-entry portable CRC and full Release-bundle byte equality; extracted widget self-test; configuration receipt; manifest and per-package SHA-256 checks. Exact-value source/package scan found no owner Desktop parameter. |
+| Isolated startup/restart | PASS | Installer-layout bundle and extracted portable at paths with spaces each opened/reopened their intended empty 44-table SQLite profile, integrity OK. Native startup disabled in disposable profiles; actual Windows Run registration unchanged. Not a registered setup/upgrade/uninstall or strict clean Windows-user test. |
+| Backups & Cloud visuals | PARTIAL | Narrow 440 px/1.3x dark/light widget checks pass. Physical Release GUI, DPI and native input/Explorer acceptance remain UNVERIFIED; Computer Use native pipe and browser unavailable. |
+| Website | PARTIAL | Prepared three-page responsive static site and manual-only Pages deployment; local links/anchors, semantic structure, image metadata, static-only resources and theme contrast pass. Rendered browser/zoom/screen-reader checks and publication/domain verification remain UNVERIFIED. |
+| Public release/updater | BLOCKED | No v1.0.13 tag/release/deployment exists. Latest published remains v1.0.12; no new update to discover. Final source CI still pending branch push. |
+
+Unpublished local artifacts:
+
+- Installer: 47,009,648 bytes; SHA-256 `ed1e4001c79b364e9eaf316c35c83777a36f67c69cef165bd6dcf6cadae02e30`.
+- Portable: 62,102,671 bytes; SHA-256 `604f8d02faf61fae011cd8769e296b4c24ef02dc535a75c48f84da376a8b7450`.
+
+Exact Cloud actions and strict packaged reproduction are in
+[GOOGLE_DRIVE_RELEASE_READINESS.md](GOOGLE_DRIVE_RELEASE_READINESS.md).
+Website review/publication instructions are in [website/README.md](../website/README.md).
+
 ## Google Drive backups feature (2026-10-25)
 
 | Boundary | Status | Evidence and limits |

@@ -118,20 +118,35 @@ class GoogleDriveAuth {
     required this.store,
     required this.flow,
     required String clientId,
+    String clientSecret = '',
+    this.enabled = true,
     this.configurationStore,
-  }) : _buildClientId = clientId;
+  }) : _buildClientId = clientId,
+       _buildClientSecret = clientSecret;
   static const scope = 'https://www.googleapis.com/auth/drive.appdata';
   static const configuredClientId = String.fromEnvironment(
     'GOOGLE_DRIVE_CLIENT_ID',
+  );
+  // Desktop clients are public clients. This parameter is not a security
+  // boundary; PKCE and the user's grant protect the session.
+  static const configuredClientSecret = String.fromEnvironment(
+    'GOOGLE_DRIVE_CLIENT_SECRET',
+  );
+  static const publicConnectionEnabled = bool.fromEnvironment(
+    'GOOGLE_DRIVE_ENABLED',
+    defaultValue: false,
   );
   final http.Client client;
   final CloudTokenStore store;
   final GoogleAuthorizationFlow flow;
   final String _buildClientId;
+  final String _buildClientSecret;
+  final bool enabled;
   final CloudTokenStore? configurationStore;
   String? _configuredClientId, _clientSecret;
   String get clientId => _configuredClientId ?? _buildClientId;
   bool get hasClientConfiguration => _configuredClientId != null;
+  bool get canConnect => enabled && clientId.isNotEmpty;
   Map<String, dynamic>? _tokens;
   CloudAccount? account;
   bool needsReconnect = false;
@@ -142,6 +157,7 @@ class GoogleDriveAuth {
   ).replaceAll('=', '');
 
   Future<void> load() async {
+    if (!enabled) return;
     final configuration = await configurationStore?.read();
     if (configuration != null) {
       final parsed = _parseConfiguration(configuration);
@@ -247,7 +263,8 @@ class GoogleDriveAuth {
           Uri.https('oauth2.googleapis.com', '/token'),
           body: {
             'client_id': clientId,
-            'client_secret': ?_clientSecret,
+            if ((_clientSecret ?? _buildClientSecret).isNotEmpty)
+              'client_secret': _clientSecret ?? _buildClientSecret,
             ...fields,
           },
         )
@@ -280,7 +297,7 @@ class GoogleDriveAuth {
         /* Keep the fixed HTTP status diagnostic. */
       }
       throw CloudFailure(
-        'Google authorization failed ($reason). Check Desktop OAuth configuration or reconnect after revoked access.',
+        'Google authorization failed ($reason). Reconnect Google Drive. If this continues, contact the Todorbit publisher.',
       );
     }
     final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -323,9 +340,9 @@ class GoogleDriveAuth {
   }
 
   Future<void> connect() async {
-    if (clientId.isEmpty) {
+    if (!canConnect) {
       throw const CloudFailure(
-        'Google Drive is not configured in this build. See docs/GOOGLE_DRIVE_BACKUP.md.',
+        'Google Drive connection is unavailable in this build. Local backups remain available.',
       );
     }
     final verifier = _random();
@@ -391,6 +408,11 @@ class GoogleDriveAuth {
   }
 
   Future<String> accessToken({bool forceRefresh = false}) async {
+    if (!enabled) {
+      throw const CloudFailure(
+        'Google Drive connection is unavailable in this build.',
+      );
+    }
     final data = _tokens;
     if (data == null || account == null) {
       throw const CloudFailure('Connect Google Drive first.');

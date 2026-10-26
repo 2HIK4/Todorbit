@@ -1,5 +1,25 @@
 # Decisions
 
+## Public Desktop OAuth distribution gate (2026-10-26)
+
+- Supersedes the 2026-10-25 device-import-only distribution choice below.
+  Desktop OAuth clients are public clients; compile the required client ID
+  and client-secret parameter as reviewed public application configuration,
+  retain PKCE/state and protected user tokens, and never treat that parameter
+  as a security boundary. No user tokens, passphrases, private keys or complete
+  downloaded credentials JSON may enter source or packages.
+- `config/google-drive.json` stays disabled/empty until production project
+  access is confirmed. Release removes developer JSON-import controls; debug
+  retains them for authorized testing. The Release wrapper and both package
+  gates bind the reviewed config to runner/AOT hashes. This consistency
+  receipt is not a signature or proof of production approval.
+- Keep the candidate on its feature branch until Cloud Console evidence and
+  clean installer/portable login plus recovery pass. Prepared privacy and
+  exact owner actions are in `GOOGLE_DRIVE_RELEASE_READINESS.md`. No claim of
+  Google approval or ordinary-user availability follows from old test-user
+  acceptance. Strict clean testing requires a disposable Windows user/VM,
+  because redirecting APPDATA does not isolate Windows Credential Manager.
+
 ## Opt-in encrypted Google Drive snapshots (2026-10-25)
 
 - Move backup access into Settings > Backups & Cloud, reuse the local BackupDialog and BackupService, and keep automatic local backups independent of network state. Cloud is an explicit user action, not record synchronization.

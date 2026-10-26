@@ -46,6 +46,8 @@ migrate_working_dir/
 *.key
 .env
 .env.*
+client_secret*.json
+*.desktop-oauth.json
 **/backups/
 
 # Symbolication related
