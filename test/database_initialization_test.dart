@@ -15,7 +15,7 @@ import 'support/initialization_database.dart';
 List<Map<String, Object?>> schema(sqlite.Database db) => db
     .select(
       "SELECT type,name,tbl_name,sql FROM sqlite_schema "
-      "WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name",
+      "WHERE name NOT GLOB 'sqlite_*' ORDER BY type,name",
     )
     .map((row) => Map<String, Object?>.from(row))
     .toList();
@@ -60,7 +60,7 @@ Future<void> openAndVerify(File file, {bool legacy = false}) async {
       (await db
               .customSelect(
                 "SELECT name FROM sqlite_schema WHERE type='table' "
-                "AND name NOT LIKE 'sqlite_%'",
+                "AND name NOT GLOB 'sqlite_*'",
               )
               .get())
           .length,
@@ -159,6 +159,7 @@ void main() {
 
   for (final extra in [
     'CREATE TABLE unexpected(id TEXT)',
+    'CREATE TABLE sqlitecustom(id TEXT)',
     'CREATE VIEW unexpected AS SELECT 1',
     'CREATE TRIGGER unexpected AFTER INSERT ON categories BEGIN SELECT 1; END',
     'ALTER TABLE categories ADD COLUMN unexpected TEXT',
@@ -184,6 +185,32 @@ void main() {
       }
     });
   }
+
+  test(
+    'sqlite-like user table cannot bypass populated schema detection',
+    () async {
+      final raw = sqlite.sqlite3.open(file.path);
+      raw.execute('CREATE TABLE sqlitecustom(payload TEXT)');
+      raw.execute("INSERT INTO sqlitecustom VALUES('preserve synthetic data')");
+      raw.close();
+      final db = AppDatabase(NativeDatabase(file));
+      try {
+        await expectLater(db.customSelect('SELECT 1').get(), throwsStateError);
+      } finally {
+        await db.close();
+      }
+      final verify = sqlite.sqlite3.open(file.path);
+      try {
+        expect(verify.userVersion, 0);
+        expect(
+          verify.select('SELECT payload FROM sqlitecustom').single['payload'],
+          'preserve synthetic data',
+        );
+      } finally {
+        verify.close();
+      }
+    },
+  );
 
   test('corrupt and future schemas are never reset', () async {
     file.writeAsStringSync('not a SQLite database');

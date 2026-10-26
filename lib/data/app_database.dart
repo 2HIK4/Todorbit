@@ -72,7 +72,7 @@ class AppDatabase extends GeneratedDatabase {
         // infer that version 0 means disposable: reject any populated table.
         final tables = await customSelect(
           "SELECT name FROM sqlite_schema WHERE type='table' "
-          "AND name NOT LIKE 'sqlite_%'",
+          "AND name NOT GLOB 'sqlite_*'",
         ).get();
         for (final table in tables) {
           final name = table.read<String>('name').replaceAll('"', '""');
@@ -229,10 +229,11 @@ class AppDatabase extends GeneratedDatabase {
     }),
   );
 
+  // GLOB treats '_' literally; LIKE would also hide user names like sqlitecustom.
   Future<List<Map<String, Object?>>> _schemaDefinition() async =>
       (await customSelect(
         "SELECT type, name, tbl_name, sql FROM sqlite_schema "
-        "WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name",
+        "WHERE name NOT GLOB 'sqlite_*' ORDER BY type, name",
       ).get()).map((row) => row.data).toList();
 
   Future<void> _createEventDetails() async {

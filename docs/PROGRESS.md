@@ -2,6 +2,12 @@
 
 ## Initialization reliability and engineering acceptance (2026-10-26)
 
+- Final audit also reproduced and fixed SQL LIKE's underscore-prefix issue:
+  GLOB now excludes only the literal reserved `sqlite_` prefix, never user
+  tables such as `sqlitecustom`. Added empty/populated name regressions and
+  repeating final suite/build/Google recheck/CI; first engineering CI cancelled
+  as superseded. The counts below describe the preceding validation checkpoint.
+
 - Root cause: creation and upgrades autocommitted DDL before Drift recorded the
   version. Both now transact DDL plus version together. Version-0 recovery only
   completes empty, compatible schemas and verifies the exact fresh schema

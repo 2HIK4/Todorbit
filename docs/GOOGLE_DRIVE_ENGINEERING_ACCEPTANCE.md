@@ -21,6 +21,9 @@ the same gap between DDL commits and version recording.
   Before commit, the resulting schema must match a freshly built current
   database exactly, including tables, columns, indexes and triggers. Unknown or
   incompatible objects cause rollback; errors instruct preservation/recovery.
+  The final audit reproduced and fixed SQL LIKE's underscore-wildcard edge
+  case: literal-prefix GLOB checks ensure `sqlitecustom` and similar user tables
+  cannot disappear from validation. Added empty/populated name regressions.
 - Initialization opens inside the startup error boundary, before the controller
   and native companion. Controller-load failures also stop with the startup
   error page instead of escaping startup. Existing schema upgrades retain the
@@ -78,6 +81,18 @@ data. Both new local synthetic profiles remain for review; all test processes
 were closed. Tracked public config is disabled/empty, website/updater/auth/
 crypto sources unchanged, no token record copied and no app release created.
 
+Reviewed source/test/tool/documentation commit **`9a2b964`** was fast-forwarded
+only to the existing feature branch. Two normal pushes hit GitHub internal
+server errors; the supported Git Data API recreated the exact local tree and
+commit SHA and updated the feature ref with `force=false`. Main remains
+`3f3f1cf`; latest public release remains v1.0.12. The
+[new Windows CI run](https://github.com/2HIK4/Todorbit/actions/runs/40340320929)
+was superseded/cancelled after the additional schema-prefix regression was
+found. Final source validation/CI is being repeated; enabled artifacts stay
+local and CI uses disabled public config. Earlier 285-test/package/Google
+results above describe the initial engineering candidate, not final acceptance
+of the subsequent prefix fix.
+
 ## Clean Windows identity and GUI boundary
 
 **PARTIAL / owner environment action required.** The supported Computer Use
@@ -125,6 +140,14 @@ PBKDF2-HMAC-SHA256/600,000 and AES-256-GCM; bounded downloads; remote size/MD5 a
 SHA-256 readback; wrong-phrase/tamper rejection; verified snapshots, Before Restore
 and settings allowlist. This is a source/regression review, not an independent
 cryptographic assessment. APPDATA redirection is not a separate Windows identity.
+
+Dependency advisory recheck: OSV querybatch reported no listed vulnerabilities
+for all **115 locked hosted Pub packages**; `dotnet list package --vulnerable
+--include-transitive --format json` completed successfully with no vulnerable
+packages reported by configured NuGet sources. Raw bounded summaries remain in
+the ignored run. This checks published advisories, not unknown vulnerabilities,
+Windows/SDK/runtime coverage or exploitability. Installer Authenticode status is
+**NotSigned**; clean-machine trust/SmartScreen behavior remains unobserved.
 
 Owner-reported External/In production/Drive API/Data Access state remains
 unobserved in Console. Branding/domain ownership remains unverified. Google's
