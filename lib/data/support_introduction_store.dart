@@ -11,7 +11,7 @@ class SupportIntroductionStore {
     // Never replace an unreadable or newer preference with defaults.
     if (await file.exists()) return false;
     await file.parent.create(recursive: true);
-    final temporary = File('${file.path}.${pid}.tmp');
+    final temporary = File('${file.path}.$pid.tmp');
     try {
       await temporary.writeAsString(
         jsonEncode({

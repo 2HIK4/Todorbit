@@ -106,11 +106,12 @@ class _SupportDialogState extends State<SupportDialog> {
     try {
       await widget.open();
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => error =
               'Could not open your browser. Try again or visit $officialSupportUrl.',
         );
+      }
     } finally {
       if (mounted) setState(() => opening = false);
     }
