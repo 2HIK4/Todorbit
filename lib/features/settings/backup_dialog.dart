@@ -205,8 +205,7 @@ class _BackupDialogState extends State<BackupDialog> {
             ),
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: ListView(
           children: [
             Row(
               children: [
@@ -311,64 +310,64 @@ class _BackupDialogState extends State<BackupDialog> {
               'Backup history',
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            Expanded(
-              child: records == null
-                  ? const Center(child: CircularProgressIndicator())
-                  : records!.isEmpty
-                  ? const Center(child: Text('No backups yet.'))
-                  : ListView(
-                      children: [
-                        for (final record in records!) ...[
-                          ListTile(
-                            dense: true,
-                            leading: Icon(
-                              record.schemaVersion < 0
-                                  ? Icons.warning_amber_outlined
-                                  : Icons.storage_outlined,
-                            ),
-                            title: Text(
-                              '${_kind(record.kind)} · ${_date(context, record.createdAt)}',
-                            ),
-                            subtitle: Text(
-                              record.schemaVersion < 0
-                                  ? 'Integrity check failed'
-                                  : '${_size(record.bytes)} · ${record.schemaVersion > AppDatabase.currentSchemaVersion ? 'Newer version, cannot restore' : 'Ready to restore'}',
-                            ),
-                            trailing:
-                                record.schemaVersion < 1 ||
-                                    record.schemaVersion >
-                                        AppDatabase.currentSchemaVersion ||
-                                    pendingName != null ||
-                                    busy
-                                ? null
-                                : TextButton(
-                                    onPressed: () => _schedule(record),
-                                    child: const Text('Restore'),
-                                  ),
+            records == null
+                ? const Center(child: CircularProgressIndicator())
+                : records!.isEmpty
+                ? const Center(child: Text('No backups yet.'))
+                : ListView(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      for (final record in records!) ...[
+                        ListTile(
+                          dense: true,
+                          leading: Icon(
+                            record.schemaVersion < 0
+                                ? Icons.warning_amber_outlined
+                                : Icons.storage_outlined,
                           ),
-                          Padding(
-                            padding: const EdgeInsets.only(
-                              left: 48,
-                              right: 8,
-                              bottom: 4,
-                            ),
-                            child: ExpansionTile(
-                              title: const Text('Details'),
-                              tilePadding: EdgeInsets.zero,
-                              children: [
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: SelectableText(
-                                    'Schema ${record.schemaVersion}\n${record.file.path}',
-                                  ),
+                          title: Text(
+                            '${_kind(record.kind)} · ${_date(context, record.createdAt)}',
+                          ),
+                          subtitle: Text(
+                            record.schemaVersion < 0
+                                ? 'Integrity check failed'
+                                : '${_size(record.bytes)} · ${record.schemaVersion > AppDatabase.currentSchemaVersion ? 'Newer version, cannot restore' : 'Ready to restore'}',
+                          ),
+                          trailing:
+                              record.schemaVersion < 1 ||
+                                  record.schemaVersion >
+                                      AppDatabase.currentSchemaVersion ||
+                                  pendingName != null ||
+                                  busy
+                              ? null
+                              : TextButton(
+                                  onPressed: () => _schedule(record),
+                                  child: const Text('Restore'),
                                 ),
-                              ],
-                            ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            left: 48,
+                            right: 8,
+                            bottom: 4,
                           ),
-                        ],
+                          child: ExpansionTile(
+                            title: const Text('Details'),
+                            tilePadding: EdgeInsets.zero,
+                            children: [
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: SelectableText(
+                                  'Schema ${record.schemaVersion}\n${record.file.path}',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
-                    ),
-            ),
+                    ],
+                  ),
           ],
         ),
       ),

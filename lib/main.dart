@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
 import 'features/shared/week_start_localizations.dart';
+import 'features/shared/desktop_tooltip_theme.dart';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -569,6 +570,7 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
           ? VisualDensity.compact
           : VisualDensity.standard,
       colorScheme: scheme,
+      tooltipTheme: desktopTooltipTheme(scheme),
       scaffoldBackgroundColor: palette['background'],
       textTheme: text.copyWith(
         headlineMedium: text.headlineMedium?.copyWith(

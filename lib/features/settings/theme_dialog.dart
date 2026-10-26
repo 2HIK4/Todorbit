@@ -4,7 +4,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flex_color_picker/flex_color_picker.dart';
+
+import '../shared/color_picker_dialog.dart';
+import '../shared/text_prompt_dialog.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/appearance.dart';
@@ -37,140 +39,23 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
   });
 
   Future<void> editColor(String key) async {
-    Color preview = palette[key];
-    String hex(Color color) =>
-        '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
-    final controller = TextEditingController(text: hex(preview));
-    bool validHex = true;
     final chosen = await showDialog<Color>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setPickerState) => AlertDialog(
-          title: Text(_label(key)),
-          content: SizedBox(
-            width: 340,
-            height: 390,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Semantics(
-                  label: 'Live color preview',
-                  child: Container(
-                    width: double.infinity,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: preview,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: ColorPicker(
-                      color: preview,
-                      onColorChanged: (color) {
-                        setPickerState(() {
-                          preview = color;
-                          validHex = true;
-                          controller.value = TextEditingValue(
-                            text: hex(color),
-                            selection: const TextSelection.collapsed(offset: 7),
-                          );
-                        });
-                      },
-                      pickersEnabled: const {
-                        ColorPickerType.primary: false,
-                        ColorPickerType.accent: false,
-                        ColorPickerType.bw: false,
-                        ColorPickerType.custom: false,
-                        ColorPickerType.customSecondary: false,
-                        ColorPickerType.wheel: true,
-                      },
-                      enableShadesSelection: false,
-                      wheelDiameter: 190,
-                      wheelWidth: 18,
-                      showColorCode: false,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                    ),
-                  ),
-                ),
-                TextField(
-                  controller: controller,
-                  maxLength: 7,
-                  decoration: InputDecoration(
-                    labelText: 'HEX color',
-                    hintText: '#RRGGBB',
-                    errorText: validHex ? null : 'Enter a six-digit HEX color',
-                  ),
-                  onChanged: (value) {
-                    final valid = RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(value);
-                    setPickerState(() {
-                      validHex = valid;
-                      if (valid) {
-                        preview = Color(
-                          int.parse('FF${value.substring(1)}', radix: 16),
-                        );
-                      }
-                    });
-                  },
-                  onSubmitted: (_) {
-                    if (validHex) Navigator.pop(context, preview);
-                  },
-                ),
-                const Text(
-                  'Use the hue ring and saturation/value square, or edit HEX with the keyboard.',
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, defaults[key]),
-              child: const Text('Reset'),
-            ),
-            FilledButton(
-              onPressed: validHex
-                  ? () => Navigator.pop(context, preview)
-                  : null,
-              child: const Text('Confirm'),
-            ),
-          ],
-        ),
+      builder: (_) => ColorPickerDialog(
+        title: _label(key),
+        initialColor: palette[key],
+        defaultColor: defaults[key],
       ),
     );
-    controller.dispose();
-    if (chosen != null) update(palette.withColor(key, chosen));
+    if (chosen != null && mounted) update(palette.withColor(key, chosen));
   }
 
   Future<String?> askText(String title, {String initial = ''}) async {
-    final input = TextEditingController(text: initial);
     final result = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: TextField(controller: input, autofocus: true, maxLength: 60),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, input.text.trim()),
-            child: const Text('Continue'),
-          ),
-        ],
-      ),
+      builder: (_) => TextPromptDialog(title: title, initial: initial),
     );
-    input.dispose();
-    return result;
+    return result?.trim();
   }
 
   Future<void> savePreset() async {
@@ -232,18 +117,39 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
         height: 560,
         child: Column(
           children: [
-            SegmentedButton<bool>(
-              showSelectedIcon: false,
-              segments: const [
-                ButtonSegment(value: false, label: Text('Light Mode')),
-                ButtonSegment(value: true, label: Text('Dark Mode')),
-              ],
-              selected: {dark},
-              onSelectionChanged: (value) => setState(() => dark = value.first),
+            LayoutBuilder(
+              builder: (context, constraints) =>
+                  constraints.maxWidth <
+                      360 * MediaQuery.textScalerOf(context).scale(1)
+                  ? AnchoredSelectField<bool>(
+                      initialValue: dark,
+                      decoration: const InputDecoration(labelText: 'Palette'),
+                      items: const [
+                        DropdownMenuItem(
+                          value: false,
+                          child: Text('Light Mode'),
+                        ),
+                        DropdownMenuItem(value: true, child: Text('Dark Mode')),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) setState(() => dark = value);
+                      },
+                    )
+                  : SegmentedButton<bool>(
+                      showSelectedIcon: false,
+                      segments: const [
+                        ButtonSegment(value: false, label: Text('Light Mode')),
+                        ButtonSegment(value: true, label: Text('Dark Mode')),
+                      ],
+                      selected: {dark},
+                      onSelectionChanged: (value) =>
+                          setState(() => dark = value.first),
+                    ),
             ),
             const SizedBox(height: 12),
             Expanded(
               child: ListView(
+                padding: const EdgeInsets.only(top: 8, right: 8, bottom: 16),
                 children: [
                   for (final key in ThemePalette.keys)
                     ListTile(
@@ -420,71 +326,64 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
                       ),
                     ),
                   ),
-                  ListTile(
-                    title: const Text('Opening screen'),
-                    trailing: SizedBox(
-                      width: 160,
-                      child: AnchoredSelectField<String>(
-                        key: ValueKey(draft.openingScreen),
-                        initialValue: draft.openingScreen,
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'today',
-                            child: Text('Today'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'inbox',
-                            child: Text('Inbox'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'calendar',
-                            child: Text('Calendar'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'habits',
-                            child: Text('Habits'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'goals',
-                            child: Text('Goals'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(
-                              () =>
-                                  draft = draft.copyWith(openingScreen: value),
-                            );
-                          }
-                        },
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    child: AnchoredSelectField<String>(
+                      decoration: const InputDecoration(
+                        labelText: 'Opening screen',
                       ),
+                      key: ValueKey(draft.openingScreen),
+                      initialValue: draft.openingScreen,
+                      items: const [
+                        DropdownMenuItem(value: 'today', child: Text('Today')),
+                        DropdownMenuItem(value: 'inbox', child: Text('Inbox')),
+                        DropdownMenuItem(
+                          value: 'calendar',
+                          child: Text('Calendar'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'habits',
+                          child: Text('Habits'),
+                        ),
+                        DropdownMenuItem(value: 'goals', child: Text('Goals')),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(
+                            () => draft = draft.copyWith(openingScreen: value),
+                          );
+                        }
+                      },
                     ),
                   ),
-                  ListTile(
-                    title: const Text('Default calendar view'),
-                    trailing: SizedBox(
-                      width: 135,
-                      child: AnchoredSelectField<String>(
-                        key: ValueKey(draft.calendarDefaultView),
-                        initialValue: draft.calendarDefaultView,
-                        items: const [
-                          DropdownMenuItem(value: 'day', child: Text('Day')),
-                          DropdownMenuItem(value: 'week', child: Text('Week')),
-                          DropdownMenuItem(
-                            value: 'month',
-                            child: Text('Month'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(
-                              () => draft = draft.copyWith(
-                                calendarDefaultView: value,
-                              ),
-                            );
-                          }
-                        },
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    child: AnchoredSelectField<String>(
+                      decoration: const InputDecoration(
+                        labelText: 'Default calendar view',
                       ),
+                      key: ValueKey(draft.calendarDefaultView),
+                      initialValue: draft.calendarDefaultView,
+                      items: const [
+                        DropdownMenuItem(value: 'day', child: Text('Day')),
+                        DropdownMenuItem(value: 'week', child: Text('Week')),
+                        DropdownMenuItem(value: 'month', child: Text('Month')),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(
+                            () => draft = draft.copyWith(
+                              calendarDefaultView: value,
+                            ),
+                          );
+                        }
+                      },
                     ),
                   ),
                   SwitchListTile(

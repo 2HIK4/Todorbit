@@ -9,6 +9,9 @@ internal static class WidgetMenuStyle {
     menu.ForeColor = palette.Foreground;
     menu.Font = new Font("Segoe UI", 9.5f);
     menu.ShowImageMargin = false;
+    // Check glyphs have their own column; hiding the image margin used to hide
+    // the native checked state as well.
+    menu.ShowCheckMargin = true;
     menu.Padding = new Padding(4);
     foreach (ToolStripItem item in menu.Items) ApplyItem(item, palette);
   }
@@ -20,6 +23,10 @@ internal static class WidgetMenuStyle {
       menuItem.Padding = new Padding(8, 5, 8, 5);
       menuItem.DropDown.BackColor = palette.Panel;
       menuItem.DropDown.ForeColor = palette.Foreground;
+      if (menuItem.DropDown is ToolStripDropDownMenu childMenu) {
+        childMenu.ShowImageMargin = false;
+        childMenu.ShowCheckMargin = true;
+      }
       foreach (ToolStripItem child in menuItem.DropDownItems) {
         ApplyItem(child, palette);
       }

@@ -6,7 +6,8 @@ Settings > Widget has independent Tasks Widget and Calendar Widget controls.
 Enable either widget, then use its Configure action. Right-click any part of a
 widget and choose **Edit This Widget** to open its editor directly, including
 when its header or task navigation is hidden. An unlocked widget can be dragged
-from its outer margin; the context menu also provides centering and layout lock.
+from its header/grip and unoccupied background; controls keep their normal input.
+The context menu provides centering, checked saved settings and layout lock.
 
 The draft editor has per-surface color, opacity, border and radius controls,
 title/Open button visibility, text size and transparent-text protection. Tasks
@@ -17,7 +18,11 @@ planned tasks, work sessions or events according to the saved calendar filter.
 Agenda task/session entries open their task in Todorbit; event entries are
 currently read-only. Week start follows the application's calendar preference.
 
-**Apply** saves the selected widget. **Apply to All Widgets** confirms copying
+**Apply** saves the selected widget and keeps its editor open. Changes preview
+on the enabled desktop widget over the existing IPC channel without disk writes.
+Cancel restores the latest saved baseline; Close/Escape offers Save Changes,
+Discard Changes or Continue Editing when dirty. A lost application connection
+expires its preview within eight seconds. **Apply to All Widgets** confirms copying
 shared title/Open visibility, text size/readability and shell/header/content
 appearance. Each widget keeps its visibility, geometry, layout lock, task
 navigation/input and calendar agenda/cell/indicator settings. **Cancel** discards
@@ -33,6 +38,18 @@ At larger text sizes the minimum window height grows to keep controls readable.
 The focused native TextBox stays opaque so selection, caret and keyboard entry
 remain clear. A nominally transparent shell retains one alpha step for reliable
 management hit testing. No content-wide window opacity is applied.
+
+Calendar presentation selects **Compact Calendar + Agenda** or **Full Month
+Grid**. Compact limits the grid's width; wide windows put the agenda beside it.
+Full Month separates days and reveals scheduled titles and overflow counts as
+cells grow. Selecting any day shows all its items in the paged/scrollable agenda;
+click an agenda row for native full text/details without opening Todorbit.
+Both modes share week-start/content preferences and repository projection.
+Text protection now adds a restrained glyph shadow, with no opaque per-label
+rectangles. Theme-aware rounded tooltips wait 600 ms and never activate.
+Minimum sizes stay 300×360 for Calendar and 260×230 for Tasks at 100% text;
+the existing text-scale-aware minimum grows for larger text. Below 340 logical
+pixels a side task navigation becomes an icon rail while retaining its setting.
 
 Additional commands on the same executable/profile:
 

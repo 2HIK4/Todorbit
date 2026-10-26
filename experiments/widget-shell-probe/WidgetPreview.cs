@@ -32,7 +32,8 @@ internal sealed partial class NativeDesktopWidgetHost
         var client = new RectangleF(0, 0, LogicalClientWidth, LogicalClientHeight);
         if (calendar)
         {
-            if (MonthToday.Bottom > CalendarGrid.Top - 20 || !client.Contains(AgendaRect))
+            if (MonthToday.Bottom > CalendarGrid.Top - 20 || !client.Contains(AgendaRect) || !client.Contains(CalendarGrid)
+                || CalendarGrid.IntersectsWith(AgendaRect) || !AgendaRect.Contains(AgendaRowBounds(0)))
                 throw new InvalidOperationException("Calendar controls overlap or leave the widget.");
         }
         else

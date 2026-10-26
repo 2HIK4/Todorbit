@@ -7,6 +7,28 @@ import 'package:life_manager/domain/widget_configuration.dart';
 import 'package:life_manager/features/shared/download_size.dart';
 
 void main() {
+  test('calendar presentation defaults safely and remains independent', () {
+    expect(
+      WidgetConfiguration.fromJson({}).calendarPresentation,
+      WidgetCalendarPresentation.compactAgenda,
+    );
+    expect(
+      WidgetConfiguration.fromJson({'calendarPresentation': 'unknown'})
+          .calendarPresentation,
+      WidgetCalendarPresentation.compactAgenda,
+    );
+    final full = WidgetConfiguration().copyWith(
+      calendarPresentation: WidgetCalendarPresentation.fullMonth,
+    );
+    expect(
+      WidgetConfiguration.fromJson(full.toJson()).calendarPresentation,
+      WidgetCalendarPresentation.fullMonth,
+    );
+    expect(
+      full.withSharedAppearance(WidgetConfiguration()).calendarPresentation,
+      WidgetCalendarPresentation.fullMonth,
+    );
+  });
   test('partial appearance maps retain additive indicator defaults', () {
     final config = WidgetConfiguration(
       surfaces: {'shell': const WidgetSurface(opacity: 30)},

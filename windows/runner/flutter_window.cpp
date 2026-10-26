@@ -18,6 +18,38 @@
 
 namespace {
 
+// Use the existing companion pipe directly. Preview never launches a process
+// or writes a file. Bound waits so a stopped companion cannot freeze settings.
+bool SendWidgetPreview(const std::string& suffix, const std::string& message) {
+  if (suffix.size() != 16 ||
+      suffix.find_first_not_of("0123456789abcdef") != std::string::npos ||
+      message.size() > 65536 ||
+      message.rfind("preview-configuration ", 0) != 0 ||
+      message.find_first_of("\r\n") != std::string::npos) return false;
+  const std::string pipe_name =
+      "\\\\.\\pipe\\LifeManager.NativeWidget.Commands.v2." + suffix;
+  if (!WaitNamedPipeA(pipe_name.c_str(), 50)) return false;
+  HANDLE pipe = CreateFileA(pipe_name.c_str(), GENERIC_WRITE, 0, nullptr,
+      OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr);
+  if (pipe == INVALID_HANDLE_VALUE) return false;
+  OVERLAPPED operation{};
+  operation.hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+  if (!operation.hEvent) { CloseHandle(pipe); return false; }
+  const std::string payload = message + "\n";
+  DWORD written = 0;
+  BOOL sent = WriteFile(pipe, payload.data(), static_cast<DWORD>(payload.size()),
+                       &written, &operation);
+  if (!sent && GetLastError() == ERROR_IO_PENDING) {
+    if (WaitForSingleObject(operation.hEvent, 100) != WAIT_OBJECT_0) {
+      CancelIoEx(pipe, &operation);
+    }
+    sent = GetOverlappedResult(pipe, &operation, &written, TRUE);
+  }
+  CloseHandle(operation.hEvent);
+  CloseHandle(pipe);
+  return sent && written == payload.size();
+}
+
 class ExplorerFileDropTarget final : public IDropTarget {
  public:
   using Callback = std::function<void(const char*, POINT,
@@ -278,6 +310,23 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  widget_preview_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(),
+          "life_manager/widget_preview", &flutter::StandardMethodCodec::GetInstance());
+  widget_preview_channel_->SetMethodCallHandler(
+      [](const flutter::MethodCall<flutter::EncodableValue>& call,
+         std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+        if (call.method_name() != "send") { result->NotImplemented(); return; }
+        const auto* values = std::get_if<flutter::EncodableList>(call.arguments());
+        if (!values || values->size() != 2) {
+          result->Error("invalid_preview", "Invalid preview message"); return;
+        }
+        const auto* suffix = std::get_if<std::string>(&(*values)[0]);
+        const auto* message = std::get_if<std::string>(&(*values)[1]);
+        result->Success(flutter::EncodableValue(
+            suffix && message && SendWidgetPreview(*suffix, *message)));
+      });
   activation_channel_ =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
           flutter_controller_->engine()->messenger(),
@@ -456,6 +505,7 @@ void FlutterWindow::OnDestroy() {
     activation_channel_.reset();
     spell_check_channel_.reset();
     file_drop_channel_.reset();
+    widget_preview_channel_.reset();
     flutter_controller_ = nullptr;
   }
 

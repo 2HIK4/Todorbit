@@ -6,6 +6,7 @@ internal sealed partial class NativeDesktopWidgetHost
     internal void ReloadConfiguration()
     {
         configuration = WidgetConfiguration.Load(calendar, settings);
+        RestorePreviewIfActive();
         quickAdd?.Close();
         Reposition();
         RefreshTasks();

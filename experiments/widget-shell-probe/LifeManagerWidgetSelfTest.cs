@@ -112,7 +112,9 @@ internal static partial class LifeManagerWidgetSelfTest {
     var databasePath = Path.Combine(directory, "test.sqlite");
     try {
       TestWidgetConfiguration(directory);
+      TestWidgetPreview();
       TestCalendarProjection(directory);
+      TestWidgetInteractions(directory);
       TestEditorControlGeometry();
       using (var menu = new ContextMenuStrip()) {
         menu.Items.Add("Open Todorbit");

@@ -1,7 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
+import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
+
 import '../../data/app_database.dart';
+import '../../data/profile_paths.dart';
 import '../../domain/widget_configuration.dart';
 
 class WidgetControlState {
@@ -47,6 +52,30 @@ class NativeWidgetService {
       _run(['--widget', '--background', '--app-exe', appExecutablePath]);
 
   Future<void> reloadConfiguration() => _command('reload-configuration');
+
+  /// Sends transient ordered state directly to the existing profile pipe.
+  Future<bool> previewConfiguration({
+    required DesktopWidgetKind kind,
+    required String session,
+    required int sequence,
+    required WidgetConfiguration baseline,
+    required WidgetConfiguration configuration,
+    bool end = false,
+  }) async {
+    final directory = ProfilePaths.activeDirectory().path;
+    final suffix = sha256
+        .convert(utf8.encode(p.normalize(p.absolute(directory)).toLowerCase()))
+        .toString()
+        .substring(0, 16);
+    return await const MethodChannel(
+          'life_manager/widget_preview',
+        ).invokeMethod<bool>('send', [
+          suffix,
+          'preview-configuration ${jsonEncode({'kind': kind.name, 'session': session, 'sequence': sequence, 'baseline': baseline.toJson(), 'configuration': configuration.toJson(), 'end': end})}',
+        ]) ??
+        false;
+  }
+
   Future<void> setWidgetVisible(
     DesktopWidgetKind kind,
     bool visible,

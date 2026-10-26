@@ -42,6 +42,8 @@ class FlutterWindow : public Win32Window {
       spell_check_channel_;
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       file_drop_channel_;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+      widget_preview_channel_;
   IDropTarget* file_drop_target_ = nullptr;
   HWND file_drop_window_ = nullptr;
   bool file_drop_available_ = false;

@@ -5,6 +5,7 @@ import '../../app/app_controller.dart';
 import '../../data/life_repository.dart';
 import '../../domain/notifications.dart';
 import '../widget/native_widget_service.dart';
+import '../shared/settings_section.dart';
 
 class NotificationDialog extends ConsumerStatefulWidget {
   const NotificationDialog({super.key, this.service});
@@ -80,6 +81,7 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
     );
     return AlertDialog(
       title: const Text('Notifications'),
+      scrollable: true,
       content: SizedBox(
         width: 420,
         child: loading
@@ -88,7 +90,7 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  const SettingsHelperText(
                     'Off by default. The Windows tray companion delivers reminders while it is running, even when the main window is closed.',
                   ),
                   const SizedBox(height: 12),
@@ -143,7 +145,7 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
                     icon: const Icon(Icons.schedule_outlined),
                     label: Text('Local delivery time: ${time.format(context)}'),
                   ),
-                  const Text(
+                  const SettingsHelperText(
                     'Each type is sent at most once per local day, within an hour of the selected time. Windows notification settings may affect visibility.',
                   ),
                   if (!companion.isAvailable)

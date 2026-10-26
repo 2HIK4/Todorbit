@@ -12,6 +12,18 @@ read deterministically without rewriting existing geometry or startup choices.
 These new per-widget files are device-local and excluded from shareable settings
 and cloud backup payloads; shared theme colors remain portable.
 
+Widget customization now keeps a committed baseline and an unsaved draft.
+`life_manager/widget_preview` sends bounded, ordered JSON envelopes directly to
+the established native pipe; preview never starts a process or saves files.
+Native per-host leases expire after eight seconds without a heartbeat and restore
+the current saved file. Both sides reconcile properties against the baseline so
+independent native-menu saves survive; a newer same-property saved edit wins.
+Apply advances the baseline without closing, Cancel ends the lease, and normal
+dirty closure offers Save/Discard/Continue. Shared Apply rolls back its first
+file if the second save fails; it is not a crash-atomic two-file transaction.
+The optional `calendarPresentation` field defaults old version-1 files to the
+compact grid/agenda and selects full-month cells without duplicating projection.
+
 Native calendar projection reads the existing repository/schema without migration
 or new calendar tables. Planned dates, work sessions and fixed-event occurrences
 remain separate item types. Event dates reuse the native reminder recurrence
@@ -31,8 +43,8 @@ Google Drive backups are an optional layer under `lib/data/cloud/` and Settings 
 
 The integrated Windows widget is a separately packaged .NET companion,
 implemented in `experiments/widget-shell-probe` and published beside
-`Todorbit.exe` as `TodorbitWidget.exe`. Its persistent display is one owner-drawn
-native HWND created directly as an Explorer `SHELLDLL_DefView` child, while
+`Todorbit.exe` as `TodorbitWidget.exe`. Its persistent displays are owner-drawn
+native HWNDs created directly as Explorer `SHELLDLL_DefView` children, while
 keyboard entry uses short-lived activated WinForms top-level surfaces. This avoids
 both shell-child Flutter focus and post-paint WinForms reparenting. A
 narrow native repository reads and writes only task fields already owned by

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../app/privacy_manager.dart';
+import '../shared/settings_section.dart';
 
 final privacyManagerProvider = ChangeNotifierProvider<PrivacyManager>((ref) {
   throw StateError('PrivacyManager must be provided by the application');
@@ -60,42 +61,45 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     body: Center(
-      child: SizedBox(
-        width: 340,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.lock_outline, size: 42),
-            const SizedBox(height: 16),
-            Text(
-              'Todorbit is locked',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: pin,
-              autofocus: true,
-              obscureText: true,
-              keyboardType: TextInputType.number,
-              maxLength: 12,
-              decoration: const InputDecoration(labelText: 'PIN'),
-              onSubmitted: (_) => unlock(),
-            ),
-            if (error != null)
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: SizedBox(
+          width: 340,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.lock_outline, size: 42),
+              const SizedBox(height: 16),
               Text(
-                error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                'Todorbit is locked',
+                style: Theme.of(context).textTheme.headlineSmall,
               ),
-            const SizedBox(height: 8),
-            FilledButton(
-              onPressed: busy ? null : unlock,
-              child: const Text('Unlock'),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Forgot your PIN? Close Todorbit, then use Settings > Data profile to locate privacy-settings.json and rename that file. This resets only app lock; your database remains intact. App lock protects the UI, not files accessible through your Windows account.',
-            ),
-          ],
+              const SizedBox(height: 16),
+              TextField(
+                controller: pin,
+                autofocus: true,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                maxLength: 12,
+                decoration: const InputDecoration(labelText: 'PIN'),
+                onSubmitted: (_) => unlock(),
+              ),
+              if (error != null)
+                Text(
+                  error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              const SizedBox(height: 8),
+              FilledButton(
+                onPressed: busy ? null : unlock,
+                child: const Text('Unlock'),
+              ),
+              const SizedBox(height: 16),
+              const SettingsHelperText(
+                'Forgot your PIN? Close Todorbit, then use Settings > Data profile to locate privacy-settings.json and rename that file. This resets only app lock; your database remains intact. App lock protects the UI, not files accessible through your Windows account.',
+              ),
+            ],
+          ),
         ),
       ),
     ),
@@ -155,7 +159,7 @@ class _PrivacyDialogState extends ConsumerState<PrivacyDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              const SettingsHelperText(
                 'App lock hides Todorbit content in the app and native widget. It does not encrypt the SQLite database or protect files from someone with access to your Windows account.',
               ),
               const SizedBox(height: 12),

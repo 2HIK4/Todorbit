@@ -1,5 +1,35 @@
 # Progress
 
+## Widget redesign and application UI audit (2026-10-26)
+
+- Branch `feature/widget-redesign-live-preview`, from main `ce535e4`; no
+  publication, profile migration, personal install or cloud configuration change.
+- Native Calendar now offers compact/agenda and full-month presentations with
+  shared geometry, item previews/overflow, complete selected-day inspection and
+  compatible preferences. Tasks, drag regions, checked menus, transparent text
+  and delayed themed/DPI-aware tooltips receive a coordinated polish pass.
+- Actual-widget preview uses the established scoped pipe with ordered leased
+  drafts, recoverable timeout and explicit rollback. Apply stays open; dirty
+  Close/Escape offers Save/Discard/Continue. Shared Apply preserves independent
+  settings. Visibility/menu edits merge safely; continuous slider movement
+  previews before release without preference writes.
+- Shared settings/helper controls, scrollable validated color/prompt dialogs,
+  disabled-choice keyboard traversal and narrow settings/privacy/backup fixes
+  address the [concrete audit findings](WIDGET_REDESIGN_UI_AUDIT.md).
+- Full integration: **327 passed, one opt-in skip**, zero errors, 374.505 s.
+  Final preview refinements also pass **11 editor tests**; opt-in packaged native
+  launch/reload passes separately. Analysis clean (17.2 s); final Windows Release
+  passes (102.6 s). Native Release has zero warnings/errors; bundled self-test,
+  two-HWND lifecycle/preview/rollback/restart and offscreen review pass.
+- Isolated debug build/live Flutter MCP passes: actual pipe preview leaves saved
+  bytes unchanged, Apply stays open, Cancel/reopen preserve the saved Calendar
+  mode, dirty Close offers choices, and hot reload reports no runtime errors.
+  The single companion survives main-app closure and restarts with saved settings.
+  Test processes closed cleanly; live screenshots/evidence remain ignored.
+  Physical input, Win+D, Explorer restart, multi-monitor,
+  screen-reader and actual Windows DPI checks remain unverified.
+  [Implementation and evidence](WIDGET_REDESIGN_IMPLEMENTATION.md).
+
 ## v1.0.14 widget pre-release published (2026-10-26)
 
 - Owner-approved feature **d355ee2** fast-forwarded to main; release source/tag

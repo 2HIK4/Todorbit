@@ -17,6 +17,7 @@ import 'backup_dialog.dart';
 import 'settings_transfer.dart';
 import 'settings_transfer_dialog.dart';
 import 'windows_settings_file_dialog.dart';
+import '../shared/settings_section.dart';
 
 class BackupsCloudPage extends ConsumerStatefulWidget {
   const BackupsCloudPage({super.key, this.auth, this.service});
@@ -457,11 +458,10 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
       children: [
         _heading('Local Backups'),
         if (controller.backupService case final local?)
-          ExpansionTile(
-            title: const Text('Local backup actions & history'),
-            subtitle: const Text(
-              'Create, import, export, restore, and recovery',
-            ),
+          SettingsSection(
+            title: 'Local backup actions & history',
+            description: 'Create, import, export, restore, and recovery',
+            contentPadding: EdgeInsets.zero,
             children: [
               BackupDialog(
                 key: ValueKey(message),
@@ -473,14 +473,11 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
           )
         else
           const Text('Local backup service is unavailable in this session.'),
-        const ExpansionTile(
-          title: Text('Local backup retention'),
+        const SettingsSection(
+          title: 'Local backup retention',
           children: [
-            Padding(
-              padding: EdgeInsets.all(12),
-              child: Text(
-                'Automatic backups run locally once a day on launch; the latest 14 automatic snapshots are retained. Manual and recovery backups are retained.',
-              ),
+            SettingsHelperText(
+              'Automatic backups run locally once a day on launch; the latest 14 automatic snapshots are retained. Manual and recovery backups are retained.',
             ),
           ],
         ),
@@ -667,16 +664,13 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
               ),
             ),
           ),
-        const ExpansionTile(
-          title: Text('How cloud backups work'),
+        const SettingsSection(
+          title: 'How cloud backups work',
           children: [
-            Padding(
-              padding: EdgeInsets.all(12),
-              child: Text(
-                'Includes every SQLite table and portable personalization. External linked files, PINs, credentials, per-widget customization, window position/startup and device-local controls are excluded. '
-                'Backups stay in your Google account’s hidden app storage. Google receives encrypted contents and backup metadata. Todorbit reads account identity to show the connected account. '
-                'Delete snapshots before disconnecting; disconnect keeps cloud files. Full backups are limited to a 50 MiB database.',
-              ),
+            SettingsHelperText(
+              'Includes every SQLite table and portable personalization. External linked files, PINs, credentials, per-widget customization, window position/startup and device-local controls are excluded. '
+              'Backups stay in your Google account’s hidden app storage. Google receives encrypted contents and backup metadata. Todorbit reads account identity to show the connected account. '
+              'Delete snapshots before disconnecting; disconnect keeps cloud files. Full backups are limited to a 50 MiB database.',
             ),
           ],
         ),
@@ -708,10 +702,10 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
             ),
           ],
         ),
-        ExpansionTile(
-          title: const Text('About settings backups'),
+        const SettingsSection(
+          title: 'About settings backups',
           children: [
-            const Text(
+            SettingsHelperText(
               'Select appearance and themes (including shared widget theme colors), hotkey presets, calendar, sidebar order and task display. Per-widget customization stays on this device. Restore selected categories without changing tasks or events. Named hotkey presets can merge.',
             ),
           ],

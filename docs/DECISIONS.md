@@ -1,5 +1,22 @@
 # Decisions
 
+- **Widget live editing and responsive calendar (2026-10-26):** keep the two
+  Explorer HWNDs and one companion. Add an optional version-1
+  `calendarPresentation` field (`compactAgenda` default, `fullMonth` opt-in),
+  leaving old preferences/geometry intact. Both modes use the same repository
+  projection, week-start preference, selection and native agenda detail dialog.
+  Send ordered draft/baseline messages directly through the existing scoped
+  pipe from a bounded Windows method channel; never launch a process or write
+  settings for slider updates. An eight-second renewable lease restores saved
+  settings after app loss. Apply advances the baseline without closing; Cancel
+  ends the lease. Three-way property reconciliation keeps independent menu
+  changes and lets newer same-property saved edits win. Shared Apply confirms,
+  copies compatible appearance only and rolls back the first save on a second
+  failure; it is not a crash-atomic transaction across two JSON files.
+  Replace opaque label backplates with optional glyph shadows, preserving
+  every configured surface opacity. Settings groups and helper text now use
+  shared themed components across the editor and application settings.
+
 - **Independent widgets in one companion (2026-10-26):** keep the established
   Explorer host, one profile-scoped process/IPC channel and one startup entry.
   Tasks and Calendar own separate HWNDs, visibility, geometry and versioned

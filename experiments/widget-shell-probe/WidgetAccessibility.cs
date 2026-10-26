@@ -21,13 +21,16 @@ internal sealed partial class NativeDesktopWidgetHost
                 var count = calendarItems.Count(x => x.Day == date);
                 items.Add(new($"{date:D}, {count} scheduled items", cell, () => CalendarClick(Center(cell)), date == selectedDate));
             }
-            var visible = Math.Max(0,(int)((AgendaRect.Height-27)/26));
-            var agenda = calendarItems.Where(item=>item.Day==selectedDate).Skip(agendaOffset).Take(visible).ToArray();
+            if (SelectedAgenda.Length > AgendaVisibleRows)
+            {
+                items.Add(new("Earlier agenda items", AgendaPrevious, () => Scroll(-1)));
+                items.Add(new("Later agenda items", AgendaNext, () => Scroll(1)));
+            }
+            var agenda = SelectedAgenda.Skip(agendaOffset).Take(AgendaVisibleRows).ToArray();
             for(var i=0;i<agenda.Length;i++) {
                 var item=agenda[i];
-                if(item.TaskId is not {} taskId) continue;
-                var bounds=new RectangleF(AgendaRect.X+6,AgendaRect.Y+25+i*26,AgendaRect.Width-12,24);
-                items.Add(new($"Open {item.Kind}: {item.Title}",bounds,()=>OpenMainApp(taskId)));
+                var bounds=AgendaRowBounds(i);
+                items.Add(new($"Inspect {item.Title}, {AgendaMetadata(item)}",bounds,()=>ShowCalendarItem(item)));
             }
         }
         else

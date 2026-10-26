@@ -25,6 +25,7 @@ internal static partial class LifeManagerWidgetSelfTest
                     Console.WriteLine("Lifecycle check unavailable: this session could not attach both Explorer child windows.");
                     return false;
                 }
+                TestLivePreviewRouting(context);
                 context.ExecuteCommand("hide");
                 Require(context.VisibleWidgets == (false, true), "Hiding Tasks also hid Calendar.");
                 context.ExecuteCommand("calendar-hide");
@@ -49,5 +50,44 @@ internal static partial class LifeManagerWidgetSelfTest
             SqliteConnection.ClearAllPools();
             Directory.Delete(root, true);
         }
+    }
+
+    private static void TestLivePreviewRouting(NativeWidgetApplicationContext context)
+    {
+        var options = new System.Text.Json.JsonSerializerOptions {
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+        };
+        var path = WidgetConfiguration.PathFor(true);
+        var savedBytes = File.ReadAllBytes(path);
+        var saved = WidgetConfiguration.Load(true, new WidgetSettings());
+        var draft = WidgetConfiguration.Parse(System.Text.Json.JsonSerializer.Serialize(saved, options));
+        draft.CalendarPresentation = "fullMonth";
+        draft.ShowTitle = !saved.ShowTitle;
+        draft.Surface("shell").Opacity = 36;
+        var session = Guid.NewGuid().ToString();
+        string Command(long sequence, bool end = false) => "preview-configuration " +
+            System.Text.Json.JsonSerializer.Serialize(new {
+                session, sequence, end, kind = "calendar", baseline = saved, configuration = draft,
+            }, options);
+        WidgetConfiguration Displayed(string field)
+        {
+            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            var host = typeof(NativeWidgetApplicationContext).GetField(field, flags)!.GetValue(context)!;
+            return (WidgetConfiguration)typeof(NativeDesktopWidgetHost).GetField("configuration", flags)!.GetValue(host)!;
+        }
+        var tasksTitle = Displayed("host").ShowTitle;
+        context.ExecuteCommand(Command(1));
+        Require(Displayed("calendarHost").CalendarPresentation == "fullMonth" &&
+            Displayed("calendarHost").Surface("shell").Opacity == 36,
+            "Live draft did not reach the actual Calendar HWND");
+        Require(Displayed("host").ShowTitle == tasksTitle, "Calendar preview changed Tasks");
+        Require(File.ReadAllBytes(path).SequenceEqual(savedBytes), "Preview wrote saved configuration");
+        context.ExecuteCommand(Command(2, true));
+        Require(Displayed("calendarHost").ShowTitle == saved.ShowTitle &&
+            Displayed("calendarHost").CalendarPresentation == saved.CalendarPresentation,
+            "Rollback did not restore actual Calendar HWND settings");
+        context.ExecuteCommand(Command(3));
+        Require(Displayed("calendarHost").CalendarPresentation == saved.CalendarPresentation,
+            "Delayed preview revived a cancelled session");
     }
 }

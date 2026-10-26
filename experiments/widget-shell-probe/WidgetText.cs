@@ -39,20 +39,18 @@ internal sealed partial class NativeDesktopWidgetHost
             else graphics.DrawString(text, font, ink, bounds, format);
             return;
         }
-        // A tight, opaque label backing provides contrast against unknown wallpaper.
-        // It changes neither the configured surface alpha nor the content alpha.
+        // A restrained halo follows the glyphs instead of painting opaque label
+        // rectangles. Surface opacity stays exactly as configured.
         using var defaultFormat = new StringFormat();
         var actual = format ?? defaultFormat;
-        var size = graphics.MeasureString(text, font, bounds.Size, actual);
-        var width = Math.Min(bounds.Width, size.Width); var height = Math.Min(bounds.Height, size.Height);
-        var x = bounds.X + (actual.Alignment == StringAlignment.Center ? (bounds.Width - width) / 2 : actual.Alignment == StringAlignment.Far ? bounds.Width - width : 0);
-        var y = bounds.Y + (actual.LineAlignment == StringAlignment.Center ? (bounds.Height - height) / 2 : actual.LineAlignment == StringAlignment.Far ? bounds.Height - height : 0);
-        var backing = RectangleF.Intersect(bounds, new RectangleF(x - 2, y - 1, width + 4, height + 2));
-        using var background = new SolidBrush(palette.Panel);
-        FillRoundedRectangle(graphics, background, backing, 2);
         var foreground = ink is SolidBrush brush ? brush.Color : palette.Foreground;
-        if (WidgetEditorStyle.Contrast(foreground, palette.Panel) < 4.5)
-            foreground = WidgetEditorStyle.Contrast(Color.White, palette.Panel) > WidgetEditorStyle.Contrast(Color.Black, palette.Panel) ? Color.White : Color.Black;
+        var haloColor = WidgetEditorStyle.Contrast(foreground, Color.Black) >= WidgetEditorStyle.Contrast(foreground, Color.White) ? Color.Black : Color.White;
+        using var halo = new SolidBrush(Color.FromArgb(180, haloColor));
+        foreach (var offset in new[] { new PointF(-1, 0), new PointF(1, 0), new PointF(0, -1), new PointF(0, 1) })
+        {
+            var shadow = bounds; shadow.Offset(offset);
+            graphics.DrawString(text, font, halo, shadow, actual);
+        }
         using var readable = new SolidBrush(foreground);
         graphics.DrawString(text, font, readable, bounds, actual);
     }

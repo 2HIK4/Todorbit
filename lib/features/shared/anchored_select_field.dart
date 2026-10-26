@@ -120,11 +120,21 @@ class _AnchoredSelectBodyState<T> extends State<_AnchoredSelectBody<T>> {
                   final current = _itemFocusNodes.indexWhere(
                     (item) => item.hasFocus,
                   );
-                  final next = (current + direction).clamp(
-                    0,
-                    _itemFocusNodes.length - 1,
-                  );
-                  _itemFocusNodes[next].requestFocus();
+                  var next = current + direction;
+                  while (next >= 0 && next < widget.items.length) {
+                    if (widget.items[next].enabled) {
+                      final target = _itemFocusNodes[next];
+                      target.requestFocus();
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        final targetContext = target.context;
+                        if (mounted && targetContext != null) {
+                          Scrollable.ensureVisible(targetContext);
+                        }
+                      });
+                      break;
+                    }
+                    next += direction;
+                  }
                   return KeyEventResult.handled;
                 },
                 child: Scrollbar(
@@ -142,7 +152,9 @@ class _AnchoredSelectBodyState<T> extends State<_AnchoredSelectBody<T>> {
                         )
                           MenuItemButton(
                             focusNode: _itemFocusNodes[index],
-                            autofocus: index == 0,
+                            autofocus:
+                                index ==
+                                widget.items.indexWhere((item) => item.enabled),
                             onPressed: enabled && widget.items[index].enabled
                                 ? () {
                                     widget.field.didChange(

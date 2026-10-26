@@ -26,6 +26,7 @@ class TaskViewSettingsDialog extends ConsumerWidget {
 
     return AlertDialog(
       title: const Text('Task display and defaults'),
+      scrollable: true,
       content: SizedBox(
         width: 430,
         child: Column(

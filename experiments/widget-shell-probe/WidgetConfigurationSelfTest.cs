@@ -5,6 +5,7 @@ internal static partial class LifeManagerWidgetSelfTest
     internal static void CaptureWidgetPreviews(string output)
     {
         output = Path.GetFullPath(output); Directory.CreateDirectory(output);
+        CaptureTooltipPreviews(output);
         var profile = Path.Combine(Path.GetTempPath(), "todorbit-render-" + Guid.NewGuid());
         Directory.CreateDirectory(profile);
         var previous = Environment.GetEnvironmentVariable("APPDATA");
@@ -35,6 +36,14 @@ internal static partial class LifeManagerWidgetSelfTest
                 using var image = NativeDesktopWidgetHost.RenderPreview(repo, transparent, calendar, new Size(376, 460), WidgetPalette.Dark);
                 image.Save(Path.Combine(output, $"{(calendar ? "calendar" : "tasks")}-transparent.png"));
             }
+            foreach (var mode in new[] { "compactAgenda", "fullMonth" })
+            foreach (var light in new[] { false, true })
+            foreach (var size in new[] { new Size(300, 360), new Size(560, 640), new Size(980, 620), new Size(420, 800) })
+            {
+                var config = new WidgetConfiguration { CalendarPresentation = mode };
+                using var image = NativeDesktopWidgetHost.RenderPreview(repo, config, true, size, light ? WidgetPalette.Light : WidgetPalette.Dark);
+                image.Save(Path.Combine(output, $"calendar-{mode}-{(light ? "light" : "dark")}-{size.Width}x{size.Height}.png"));
+            }
         }
         finally
         {
@@ -59,11 +68,14 @@ internal static partial class LifeManagerWidgetSelfTest
             Require(!calendar.Enabled && !calendar.LayoutLocked, "Calendar must start independently disabled.");
             tasks.ShowTitle = false; tasks.ShowOpenButton = false; tasks.Views = []; tasks.NavigationPosition = "right"; tasks.NavigationDisplay = "icons";
             tasks.Surface("shell").BorderOpacity = 25; tasks.Save(false);
-            calendar.Enabled = true; calendar.Save(true);
+            calendar.Enabled = true; calendar.CalendarPresentation = "fullMonth"; calendar.Save(true);
             var loaded = WidgetConfiguration.Load(false, legacy);
             Require(!loaded.HasHeader && loaded.Views.Count == 0 && loaded.NavigationPosition == "right" && loaded.NavigationDisplay == "icons", "Hidden header/navigation did not round trip.");
             Require(loaded.Surface("shell").BorderOpacity == 25 && WidgetConfiguration.Load(true, legacy).Enabled, "Independent widget settings were overwritten.");
             Require(legacy.Width == 432, "Configuration migration changed device geometry.");
+            Require(WidgetConfiguration.Load(true, legacy).CalendarPresentation == "fullMonth", "Calendar presentation did not persist independently.");
+            Require(WidgetConfiguration.Parse("{\"version\":1}").CalendarPresentation == "compactAgenda", "Legacy calendar presentation default changed.");
+            Require(WidgetConfiguration.Parse("{\"version\":1,\"calendarPresentation\":\"invalid\"}").CalendarPresentation == "compactAgenda", "Unknown presentation was not defaulted safely.");
             Require(NativeDesktopWidgetHost.WidgetSettingsActivation("Todorbit.exe", true).ArgumentList.SequenceEqual(new[] { "--edit-widget", "calendar" }), "Calendar edit route selected the wrong widget.");
             Require(NativeDesktopWidgetHost.WidgetSettingsActivation("Todorbit.exe", false).ArgumentList.SequenceEqual(new[] { "--edit-widget", "tasks" }), "Tasks edit route selected the wrong widget.");
             foreach (var scale in new[] { 1f, 1.25f, 1.5f, 2f }) Require(WidgetGeometry.Scale(new Size(300, 360), scale).Width == (int)(300 * scale), "DPI geometry changed.");
@@ -166,6 +178,7 @@ internal static partial class LifeManagerWidgetSelfTest
             {
                 using var image = NativeDesktopWidgetHost.RenderPreview(repo, new WidgetConfiguration(), true, new Size(300, 360), light ? WidgetPalette.Light : WidgetPalette.Dark, scale);
             }
+            NativeDesktopWidgetHost.VerifyCalendarBehavior(repo);
 
         }
     }

@@ -8,17 +8,24 @@ internal sealed partial class NativeDesktopWidgetHost
     private IReadOnlyList<WidgetCalendarItem> calendarItems = [];
     private int calendarWeekStart = 7;
     private int agendaOffset;
+    private Form? calendarDetail;
+    private bool FullMonth => configuration.CalendarPresentation == "fullMonth";
     private float CalendarTop => ContentTop;
-    private float CalendarGridHeight => Math.Clamp((LogicalClientHeight - CalendarTop - 100) * 0.68f, 112, 258);
-    private RectangleF CalendarGrid => new(16, CalendarTop + 78, LogicalClientWidth - 32, CalendarGridHeight);
+    private CalendarWidgetLayout CalendarLayout => CalendarWidgetLayout.Create(
+        new SizeF(LogicalClientWidth, LogicalClientHeight), CalendarTop, configuration.TextScale, FullMonth);
+    private RectangleF CalendarGrid => CalendarLayout.Grid;
+    private RectangleF AgendaRect => CalendarLayout.Agenda;
+    private RectangleF CalendarCell(int index) => CalendarLayout.Cell(index);
+    private int AgendaVisibleRows => CalendarLayout.VisibleAgendaRows;
+    private RectangleF AgendaRowBounds(int index) => CalendarLayout.AgendaRow(index);
     private DateTime CalendarGridStart => CalendarWidgetDates.GridStart(calendarMonth, calendarWeekStart);
-    private RectangleF CalendarCell(int i) => new(CalendarGrid.X + i % 7 * CalendarGrid.Width / 7,
-      CalendarGrid.Y + i / 7 * CalendarGrid.Height / 6, CalendarGrid.Width / 7, CalendarGrid.Height / 6);
-    private RectangleF AgendaRect => new(16, CalendarGrid.Bottom + 8, LogicalClientWidth - 32,
-      Math.Max(24, LogicalClientHeight - CalendarGrid.Bottom - 24));
-    private RectangleF MonthPrevious => new(16, CalendarTop, 30, 30);
-    private RectangleF MonthNext => new(LogicalClientWidth - 46, CalendarTop, 30, 30);
-    private RectangleF MonthToday => new(LogicalClientWidth / 2f - 45, CalendarTop + 30, 90, 26);
+    private RectangleF MonthPrevious => new(16, CalendarTop, 32, 32);
+    private RectangleF MonthNext => new(LogicalClientWidth - 48, CalendarTop, 32, 32);
+    private RectangleF MonthToday => new(LogicalClientWidth / 2f - 42, CalendarTop + 34, 84, 28);
+    private RectangleF AgendaPrevious => new(AgendaRect.Right - 64, AgendaRect.Y + 2, 28, 28);
+    private RectangleF AgendaNext => new(AgendaRect.Right - 34, AgendaRect.Y + 2, 28, 28);
+    private WidgetCalendarItem[] SelectedAgenda => calendarItems.Where(item => item.Day == selectedDate).ToArray();
+
     internal void AdvanceToday(DateTime previous)
     {
         if (!calendar || selectedDate != previous) return;
@@ -27,32 +34,40 @@ internal sealed partial class NativeDesktopWidgetHost
             calendarMonth = new(selectedDate.Year, selectedDate.Month, 1);
         agendaOffset = 0;
     }
+    private RectangleF CalendarControl(int index) => index switch
+    {
+        0 => MonthPrevious, 1 => MonthNext, 2 => MonthToday,
+        3 => AgendaPrevious, _ => AgendaNext,
+    };
     private (HitTarget Target, int Index) CalendarHitTest(PointF point)
     {
-        if (MonthPrevious.Contains(point)) return (HitTarget.CalendarControl, 0);
-        if (MonthNext.Contains(point)) return (HitTarget.CalendarControl, 1);
-        if (MonthToday.Contains(point)) return (HitTarget.CalendarControl, 2);
+        for (var i = 0; i < 3; i++) if (CalendarControl(i).Contains(point)) return (HitTarget.CalendarControl, i);
+        if (SelectedAgenda.Length > AgendaVisibleRows)
+            for (var i = 3; i < 5; i++) if (CalendarControl(i).Contains(point)) return (HitTarget.CalendarControl, i);
         for (var i = 0; i < 42; i++) if (CalendarCell(i).Contains(point)) return (HitTarget.CalendarDate, i);
-        if(AgendaRect.Contains(point) && point.Y>=AgendaRect.Y+25) {
-            var index=(int)((point.Y-AgendaRect.Y-25)/26)+agendaOffset;
-            var items=calendarItems.Where(item=>item.Day==selectedDate).ToArray();
-            if(index>=0 && index<items.Length && items[index].TaskId!=null)
-                return (HitTarget.CalendarAgenda,index);
-        }
-        return (HitTarget.None,-1);
+        var agenda = SelectedAgenda;
+        for (var i = 0; i < AgendaVisibleRows; i++)
+            if (AgendaRowBounds(i).Contains(point) && i + agendaOffset < agenda.Length)
+                return (HitTarget.CalendarAgenda, i + agendaOffset);
+        return (HitTarget.None, -1);
     }
     private void ShowCalendarTooltip(HitTarget target, int index)
     {
         RectangleF bounds; string label;
         if (target == HitTarget.CalendarControl)
         {
-            bounds = index == 0 ? MonthPrevious : index == 1 ? MonthNext : MonthToday;
-            label = index == 0 ? "Previous month" : index == 1 ? "Next month" : "Return to today";
+            bounds = CalendarControl(index);
+            label = index switch { 0 => "Previous month", 1 => "Next month", 2 => "Return to today", 3 => "Earlier agenda items", _ => "Later agenda items" };
         }
         else if (target == HitTarget.CalendarDate && index >= 0 && index < 42)
         {
             bounds = CalendarCell(index); var date = CalendarGridStart.AddDays(index);
-            label = $"{date:D} · {calendarItems.Count(item => item.Day == date)} scheduled items";
+            label = $"{date:D} · {calendarItems.Count(item => item.Day == date)} scheduled items. Select to inspect the agenda.";
+        }
+        else if (target == HitTarget.CalendarAgenda && index >= 0 && index < SelectedAgenda.Length)
+        {
+            var item = SelectedAgenda[index]; bounds = AgendaRowBounds(index - agendaOffset);
+            label = $"{item.Title}\n{AgendaMetadata(item)}";
         }
         else return;
         openTooltip.Show(label, this, new Point(Pixel((int)bounds.X), Pixel((int)bounds.Bottom + 4)), 3000);
@@ -76,75 +91,145 @@ internal sealed partial class NativeDesktopWidgetHost
         }
         catch (Exception error) when (error is IOException or JsonException)
         {
-            // Match the Flutter preference store's safe default. A subsequent
-            // debounced file change retries a partially copied preference file.
+            // Optional preference files may be observed while being copied.
         }
+    }
+    private static string ItemTime(WidgetCalendarItem item) => item.Time.Trim().TrimEnd('·').Trim();
+    private static string AgendaMetadata(WidgetCalendarItem item)
+    {
+        var time = ItemTime(item);
+        var kind = item.Kind == "Task" ? "Planned task" : item.Kind == "Session" ? "Work session" : "Event";
+        return $"{kind}{(time.Length > 0 ? " · " + time : "")}{(item.Cancelled ? " · Cancelled" : "")}";
     }
     private void DrawCalendar(Graphics g, Font font, Font small)
     {
         using var text = new SolidBrush(SurfaceText("shell"));
         using var muted = new SolidBrush(SurfaceText("shell", true));
         using var center = CenterFormat();
-        DrawText(g, calendarMonth.ToString("MMMM yyyy"), font, text, new RectangleF(50, CalendarTop, LogicalClientWidth - 100, 30), center, "shell");
+        using var ellipsis = new StringFormat { Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap, LineAlignment = StringAlignment.Center };
+        using var monthFont = new Font("Segoe UI Semibold", 14 * configuration.TextScale, FontStyle.Regular, GraphicsUnit.Pixel);
+        DrawText(g, calendarMonth.ToString("MMMM yyyy"), monthFont, text, new RectangleF(52, CalendarTop, LogicalClientWidth - 104, 32), center, "shell");
+        using (var todayFill = new SolidBrush(Color.FromArgb(32, palette.Accent))) FillRoundedRectangle(g, todayFill, MonthToday, 8);
         DrawText(g, "Today", small, text, MonthToday, center, "shell");
+        DrawCalendarArrow(g, MonthPrevious, -1, false, text.Color);
+        DrawCalendarArrow(g, MonthNext, 1, false, text.Color);
         if (hoverTarget == HitTarget.CalendarControl)
         {
-            var bounds = hoverTask == 0 ? MonthPrevious : hoverTask == 1 ? MonthNext : MonthToday;
-            using var outline = new Pen(palette.Accent, pressedTarget == HitTarget.CalendarControl ? 2 : 1); DrawRoundedRectangle(g, outline, bounds, 4);
-        }
-        var controlInk = SurfaceText("shell");
-        if (configuration.ProtectText && NeedsTextBacking("shell", controlInk))
-        {
-            using var backing = new SolidBrush(palette.Panel);
-            FillRoundedRectangle(g, backing, MonthPrevious, 4); FillRoundedRectangle(g, backing, MonthNext, 4);
-            controlInk = palette.Foreground;
-        }
-        using (var p = new Pen(controlInk, 1.6f))
-        {
-            foreach (var direction in new[] { -1, 1 })
-            {
-                var r = direction < 0 ? MonthPrevious : MonthNext; var x = r.X + r.Width / 2; var y = r.Y + r.Height / 2;
-                g.DrawLines(p, new PointF[] { new(x - direction * 3, y - 5), new(x + direction * 3, y), new(x - direction * 3, y + 5) });
-            }
+            using var outline = new Pen(palette.Accent, pressedTarget == HitTarget.CalendarControl ? 2 : 1);
+            DrawRoundedRectangle(g, outline, CalendarControl(hoverTask), 6);
         }
         PaintSurface(g, "content", CalendarGrid, palette.Panel);
         for (var col = 0; col < 7; col++)
         {
             var day = (DayOfWeek)((calendarWeekStart + col) % 7);
-            DrawText(g, CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedDayName(day), small, muted,
-              new RectangleF(CalendarGrid.X + col * CalendarGrid.Width / 7, CalendarGrid.Y - 20, CalendarGrid.Width / 7, 20), center, "shell");
+            var label = configuration.TextScale > 1.2f || CalendarGrid.Width < 340
+                ? CultureInfo.CurrentCulture.DateTimeFormat.GetShortestDayName(day)
+                : CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedDayName(day);
+            DrawText(g, label, small, muted, new RectangleF(CalendarGrid.X + col * CalendarGrid.Width / 7, CalendarGrid.Y - 20, CalendarGrid.Width / 7, 20), center, "shell");
         }
+        var byDay = calendarItems.GroupBy(item => item.Day).ToDictionary(group => group.Key, group => group.ToArray());
         for (var i = 0; i < 42; i++)
         {
-            var date = CalendarGridStart.AddDays(i); var r = CalendarCell(i); r.Inflate(-2, -2);
+            var date = CalendarGridStart.AddDays(i); var r = CalendarCell(i); r.Inflate(FullMonth ? -2 : -1, -1);
             PaintSurface(g, "calendarCell", r, palette.Panel);
+            if (FullMonth)
+            {
+                // Quiet dividers preserve separate days without overriding saved opacity.
+                using var border = new Pen(Color.FromArgb(85, palette.Border), 1);
+                var inset = r; inset.Inflate(-.5f, -.5f); DrawRoundedRectangle(g, border, inset, 6);
+            }
             if (date == selectedDate) PaintSurface(g, "selectedDate", r, palette.Accent, palette.Accent);
             if (date == DateTime.Today) PaintSurface(g, "today", r, palette.Accent, palette.Accent);
-            var cellSurface = date == selectedDate ? (date == DateTime.Today ? "selectedToday" : "selectedDate") : date == DateTime.Today ? "today" : "calendarCell";
-            using var ink = new SolidBrush(SurfaceText(cellSurface, date.Month != calendarMonth.Month));
-            if (hoverTarget == HitTarget.CalendarDate && hoverTask == i) { using var pen = new Pen(palette.Accent, 1); DrawRoundedRectangle(g, pen, r, 4); }
-            if (date == selectedDate) { using var mark = new SolidBrush(ink.Color); g.FillEllipse(mark, r.X + 3, r.Y + 3, 3, 3); }
-            if (date == DateTime.Today) { using var marker = new Pen(palette.Accent, 2); g.DrawLine(marker, r.X + r.Width / 2 - 4, r.Bottom - 2, r.X + r.Width / 2 + 4, r.Bottom - 2); }
-            DrawText(g, date.Day.ToString(), font, ink, r, center, cellSurface);
-            if (calendarItems.Any(item => item.Day == date)) g.FillEllipse(ink, r.X + r.Width / 2 - 2, r.Bottom - 5, 4, 3);
+            var surface = date == selectedDate ? (date == DateTime.Today ? "selectedToday" : "selectedDate") : date == DateTime.Today ? "today" : "calendarCell";
+            using var ink = new SolidBrush(SurfaceText(surface, date.Month != calendarMonth.Month));
+            if (hoverTarget == HitTarget.CalendarDate && hoverTask == i)
+            {
+                using var pen = new Pen(palette.Accent, 1); var hover = r; hover.Inflate(-1, -1); DrawRoundedRectangle(g, pen, hover, 6);
+            }
+            var items = byDay.GetValueOrDefault(date) ?? [];
+            var capacity = CalendarLayout.CellPreviewCapacity(FullMonth);
+            var dates = capacity > 0 ? new RectangleF(r.X + 5, r.Y + 2, r.Width - 10, 25 * configuration.TextScale) : r;
+            DrawText(g, date.Day.ToString(), font, ink, dates, capacity > 0 ? ellipsis : center, surface);
+            if (date == selectedDate)
+            {
+                using var mark = new SolidBrush(ink.Color); g.FillEllipse(mark, r.Right - 6, r.Y + 3, 3, 3);
+            }
+            if (date == DateTime.Today)
+            {
+                using var marker = new Pen(ink.Color, 2); g.DrawLine(marker, r.X + 5, r.Bottom - 3, r.X + 13, r.Bottom - 3);
+            }
+            if (capacity == 0)
+            {
+                if (items.Length > 0) g.FillEllipse(ink, r.X + r.Width / 2 - 1.5f, r.Bottom - 4, 3, 3);
+                continue;
+            }
+            var counts = CalendarWidgetLayout.PreviewCount(items.Length, capacity);
+            var lineHeight = 18 * configuration.TextScale;
+            for (var entry = 0; entry < counts.Entries; entry++)
+            {
+                var item = items[entry];
+                var bounds = new RectangleF(r.X + 5, r.Y + 27 * configuration.TextScale + entry * lineHeight, r.Width - 10, lineHeight);
+                DrawItemMarker(g, item, new RectangleF(bounds.X, bounds.Y + (lineHeight - 9) / 2, 9, 9), ink.Color);
+                bounds.X += 13; bounds.Width -= 13;
+                var time = ItemTime(item);
+                // A short cell must still identify the item. Its time is always
+                // available in the selected-day agenda and full detail view.
+                var label = time.Length > 0 && bounds.Width >= 145 * configuration.TextScale
+                    ? time + "  " + item.Title : item.Title;
+                using var entryFont = new Font(small, item.Cancelled ? FontStyle.Strikeout : FontStyle.Regular);
+                DrawText(g, label, entryFont, ink, bounds, ellipsis, surface);
+            }
+            if (counts.Remaining > 0)
+                DrawText(g, $"+{counts.Remaining} more", small, ink,
+                    new RectangleF(r.X + 5, r.Y + 27 * configuration.TextScale + counts.Entries * lineHeight, r.Width - 10, lineHeight), ellipsis, surface);
         }
+        DrawCalendarAgenda(g, font, small, ellipsis);
+    }
+    private static void DrawCalendarArrow(Graphics g, RectangleF bounds, int direction, bool vertical, Color color)
+    {
+        var x = bounds.X + bounds.Width / 2; var y = bounds.Y + bounds.Height / 2;
+        using var pen = new Pen(color, 1.6f);
+        PointF[] points = vertical ? [new(x - 4, y - direction * 2), new(x, y + direction * 2), new(x + 4, y - direction * 2)]
+            : [new(x - direction * 3, y - 5), new(x + direction * 3, y), new(x - direction * 3, y + 5)];
+        g.DrawLines(pen, points);
+    }
+    private static void DrawItemMarker(Graphics g, WidgetCalendarItem item, RectangleF bounds, Color color)
+    {
+        using var pen = new Pen(color, 1.2f);
+        if (item.Kind == "Task") g.DrawRectangle(pen, bounds.X, bounds.Y, bounds.Width, bounds.Height);
+        else if (item.Kind == "Session") { g.DrawEllipse(pen, bounds); g.DrawLine(pen, bounds.X + bounds.Width / 2, bounds.Y + 2, bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2); }
+        else { using var brush = new SolidBrush(color); g.FillEllipse(brush, bounds); }
+    }
+    private void DrawCalendarAgenda(Graphics g, Font font, Font small, StringFormat ellipsis)
+    {
         PaintSurface(g, "agenda", AgendaRect, palette.Panel);
-        using var agendaText = new SolidBrush(SurfaceText("agenda"));
-        using var agendaMuted = new SolidBrush(SurfaceText("agenda", true));
-        DrawText(g, selectedDate.ToString("ddd, d MMM"), small, agendaText, new RectangleF(AgendaRect.X + 6, AgendaRect.Y + 4, AgendaRect.Width - 12, 20), surface: "agenda");
-        var items = calendarItems.Where(i => i.Day == selectedDate).ToList();
-        var visible = Math.Max(0, (int)((AgendaRect.Height - 27) / 26));
-        agendaOffset = Math.Clamp(agendaOffset, 0, Math.Max(0, items.Count - visible));
-        using var ellipsis = new StringFormat { Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
-        for (var i = 0; i < Math.Min(visible, items.Count - agendaOffset); i++)
+        using var text = new SolidBrush(SurfaceText("agenda"));
+        using var muted = new SolidBrush(SurfaceText("agenda", true));
+        var items = SelectedAgenda;
+        agendaOffset = Math.Clamp(agendaOffset, 0, Math.Max(0, items.Length - AgendaVisibleRows));
+        var overflow = items.Length > AgendaVisibleRows;
+        DrawText(g, selectedDate.ToString("ddd, d MMM"), small, text,
+            new RectangleF(AgendaRect.X + 8, AgendaRect.Y + 4, AgendaRect.Width - (overflow ? 76 : 16), 26), ellipsis, "agenda");
+        if (overflow)
         {
-            var item = items[i + agendaOffset];
-            using var itemFont = new Font(font, item.Cancelled ? FontStyle.Strikeout : FontStyle.Regular);
-            DrawText(g, $"{item.Kind} · {item.Time}{item.Title}{(item.Cancelled ? " (Cancelled)" : "")}", itemFont, agendaText,
-              new RectangleF(AgendaRect.X + 6, AgendaRect.Y + 25 + i * 26, AgendaRect.Width - 12, 24), ellipsis, "agenda");
+            DrawCalendarArrow(g, AgendaPrevious, -1, true, agendaOffset > 0 ? text.Color : muted.Color);
+            DrawCalendarArrow(g, AgendaNext, 1, true, agendaOffset + AgendaVisibleRows < items.Length ? text.Color : muted.Color);
         }
-        if (items.Count == 0) DrawText(g, "Nothing scheduled.", small, agendaMuted, new RectangleF(AgendaRect.X + 6, AgendaRect.Y + 25, AgendaRect.Width - 12, 24), surface: "agenda");
-        if (items.Count > visible) DrawText(g, "Scroll for more", small, agendaMuted, new RectangleF(AgendaRect.Right - 100, AgendaRect.Y + 4, 94, 20), surface: "agenda");
+        using (var divider = new Pen(Color.FromArgb(90, palette.Border)))
+            g.DrawLine(divider, AgendaRect.X + 8, AgendaRect.Y + 32, AgendaRect.Right - 8, AgendaRect.Y + 32);
+        for (var i = 0; i < Math.Min(AgendaVisibleRows, items.Length - agendaOffset); i++)
+        {
+            var item = items[i + agendaOffset]; var row = AgendaRowBounds(i);
+            if (hoverTarget == HitTarget.CalendarAgenda && hoverTask == i + agendaOffset)
+            {
+                using var fill = new SolidBrush(Color.FromArgb(28, palette.Accent)); var hit = row; hit.Inflate(0, -1); FillRoundedRectangle(g, fill, hit, 6);
+            }
+            DrawItemMarker(g, item, new RectangleF(row.X + 3, row.Y + 7, 10, 10), item.Cancelled ? muted.Color : text.Color);
+            using var itemFont = new Font(font, item.Cancelled ? FontStyle.Strikeout : FontStyle.Regular);
+            DrawText(g, item.Title, itemFont, text, new RectangleF(row.X + 21, row.Y, row.Width - 24, row.Height * .55f), ellipsis, "agenda");
+            DrawText(g, AgendaMetadata(item), small, muted, new RectangleF(row.X + 21, row.Y + row.Height * .52f, row.Width - 24, row.Height * .45f), ellipsis, "agenda");
+        }
+        if (items.Length == 0) DrawText(g, "Nothing scheduled", small, muted, AgendaRowBounds(0), ellipsis, "agenda");
     }
     private bool CalendarClick(PointF point)
     {
@@ -155,15 +240,44 @@ internal sealed partial class NativeDesktopWidgetHost
             calendarMonth = calendarMonth.AddMonths(MonthPrevious.Contains(point) ? -1 : 1); selectedDate = calendarMonth; agendaOffset = 0; RefreshTasks(); return true;
         }
         if (MonthToday.Contains(point)) { selectedDate = DateTime.Today; calendarMonth = new(selectedDate.Year, selectedDate.Month, 1); agendaOffset = 0; RefreshTasks(); return true; }
-        for (var i = 0; i < 42; i++) if (CalendarCell(i).Contains(point)) { selectedDate = CalendarGridStart.AddDays(i); agendaOffset = 0; Present("calendar-date"); return true; }
-        if (AgendaRect.Contains(point))
+        if (SelectedAgenda.Length > AgendaVisibleRows && (AgendaPrevious.Contains(point) || AgendaNext.Contains(point)))
         {
-            var index = (int)((point.Y - AgendaRect.Y - 25) / 26) + agendaOffset;
-            var items = calendarItems.Where(i => i.Day == selectedDate).ToList();
-            if (point.Y >= AgendaRect.Y + 25 && index >= 0 && index < items.Count && items[index].TaskId is { } taskId) OpenMainApp(taskId);
-            return true;
+            Scroll(AgendaPrevious.Contains(point) ? -1 : 1); return true;
+        }
+        for (var i = 0; i < 42; i++) if (CalendarCell(i).Contains(point))
+        {
+            selectedDate = CalendarGridStart.AddDays(i); agendaOffset = 0; Present("calendar-date"); return true;
+        }
+        var hit = CalendarHitTest(point);
+        if (hit.Target == HitTarget.CalendarAgenda)
+        {
+            ShowCalendarItem(SelectedAgenda[hit.Index]); return true;
         }
         return false;
+    }
+    private void ShowCalendarItem(WidgetCalendarItem item)
+    {
+        if (privacy.IsLocked()) return;
+        if (calendarDetail is { IsDisposed: false }) { calendarDetail.Activate(); return; }
+        // Complete schedule details remain inspectable inside the companion.
+        using var dialog = new Form { Text = "Scheduled item", AutoScaleMode = AutoScaleMode.Dpi,
+            ClientSize = new Size(420, 240), MinimumSize = new Size(320, 220), StartPosition = FormStartPosition.CenterScreen,
+            BackColor = palette.Background, ForeColor = palette.Foreground, Font = new Font("Segoe UI", 10), MinimizeBox = false, MaximizeBox = false };
+        var footer = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 56, FlowDirection = FlowDirection.RightToLeft, Padding = new Padding(8) };
+        var close = WidgetEditorStyle.Button("Close", palette, true); close.Width = 88; close.DialogResult = DialogResult.Cancel; footer.Controls.Add(close);
+        if (item.TaskId is { } taskId)
+        {
+            var open = WidgetEditorStyle.Button("Open task", palette); open.Width = 110;
+            open.Click += (_, _) => { OpenMainApp(taskId); dialog.Close(); }; footer.Controls.Add(open);
+        }
+        var body = new TextBox { Dock = DockStyle.Fill, Multiline = true, ReadOnly = true, BorderStyle = BorderStyle.None, ScrollBars = ScrollBars.Vertical,
+            BackColor = palette.Background, ForeColor = palette.Foreground, Text = $"{item.Title}\r\n\r\n{item.Day:D}\r\n{AgendaMetadata(item)}" };
+        var content = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20) }; content.Controls.Add(body);
+        dialog.Controls.Add(content); dialog.Controls.Add(footer); dialog.CancelButton = close;
+        dialog.Shown += (_, _) => WidgetEditorStyle.ApplyCaption(dialog, palette);
+        calendarDetail = dialog;
+        try { dialog.ShowDialog(); }
+        finally { calendarDetail = null; }
     }
 }
 
@@ -172,6 +286,7 @@ internal static class CalendarWidgetDates
     internal static DateTime GridStart(DateTime month, int firstWeekday)
     {
         var first = new DateTime(month.Year, month.Month, 1);
-        return first.AddDays(-(((int)first.DayOfWeek - firstWeekday + 7) % 7));
+        var offset = ((int)first.DayOfWeek - firstWeekday + 7) % 7;
+        return first.Ticks < offset * TimeSpan.TicksPerDay ? DateTime.MinValue : first.AddDays(-offset);
     }
 }
