@@ -1,15 +1,21 @@
 # Private clean Windows acceptance
 
+**Current release decision (2026-10-26): owner explicitly skips clean
+Windows-user/VM testing. No Sandbox enablement or launch is required.** The
+procedures below are optional future reference, not outstanding owner actions.
+Current local/CI evidence and known unverified areas are in
+[engineering acceptance](GOOGLE_DRIVE_ENGINEERING_ACCEPTANCE.md).
+
 Use a disposable Windows user/VM. Never install this test setup on the owner's
 normal account. APPDATA redirection is useful for local smoke but does not
 isolate the Windows secure-storage identity or installer registration.
 
-## Prepared Windows Sandbox path
+## Optional future Windows Sandbox path
 
-On the current host Sandbox is disabled and the session is not elevated. The
-owner action is: open **Turn Windows features on or off**, enable **Windows
-Sandbox**, approve Windows elevation and restart when requested. This does not
-require buying a domain or changing Google Cloud. The agent has not enabled it.
+If the owner later chooses this optional workflow, a working Windows Sandbox
+installation is needed. Windows feature/elevation/restart actions belong to the
+owner; the agent has not enabled features or rebooted. This procedure does not
+require buying a domain or changing Google Cloud.
 
 Prepare a fresh handoff from the reviewed private packages:
 

@@ -9,8 +9,10 @@ Application releases and Google Cloud configuration are outside this deployment.
 - Terms of Service: `dist/terms.html`
 - Shared responsive light/dark CSS, existing brand and screenshot: `dist/assets/`
 
-The site links **v1.0.12**, the latest actual public Windows x64 pre-release
-checked on 2026-10-26. It clearly labels public Google Drive access as pending.
+The site is prepared to link **v1.0.13**, the owner-approved experimental
+Windows x64 pre-release. Google Drive is enabled; branding verification, full
+public OAuth policy compliance and broad account eligibility remain unresolved.
+Publish the matching GitHub release before deploying these download links.
 Update pinned version/download URLs only after a later release is published.
 No analytics, external fonts, forms, JavaScript or cookies are added.
 
@@ -102,5 +104,7 @@ Pages hosting can remain free; an already-owned suitable domain avoids a new
 purchase. No domain purchase, DNS change or account-root site edit is authorized
 by this website deployment.
 
-Public OAuth remains **BLOCKED**. These URLs are live content inputs for a
-future Branding configuration only after domain eligibility is resolved.
+The domain/brand verification route remains unresolved. The owner subsequently
+approved an enabled **experimental v1.0.13 pre-release** under the more specific
+non-sensitive-scope guidance; see [publication record](../docs/TODORBIT_1_0_13_PUBLICATION.md).
+Neither release publication nor these URLs establish full public policy compliance.

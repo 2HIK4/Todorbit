@@ -1,5 +1,13 @@
 # Google Drive public release gate
 
+> **2026-10-26 release update:** the owner has now approved an enabled
+> v1.0.13 **experimental pre-release**, main merge and website updates.
+> This supersedes the earlier publication hold below, while preserving
+> every skipped/unverified test and unresolved policy limitation. See
+> [the publication record](TODORBIT_1_0_13_PUBLICATION.md) and
+> [release notes](TODORBIT_1_0_13_RELEASE_NOTES.md). Historical blocked
+> conclusions below describe their earlier checkpoints.
+
 Candidate: **1.0.13+14**, prepared on `feature/google-drive-production-readiness`.
 Latest published pre-release checked on 2026-10-26: **v1.0.12**. Candidate
 version/tag was unused when selected. This document does not authorize
@@ -131,14 +139,22 @@ compile and checksums, then retains an unpublished candidate artifact.
 owner-observed sign-in/reconnect, real service/API encrypted backup and settings
 recovery, and original Release full-restore startup/restart (all 44 tables and
 allowed preferences). See the [final private report](GOOGLE_DRIVE_PRIVATE_ACCEPTANCE.md).
-Fresh Windows-user/VM, registered installer and rendered backup/settings UI
-acceptance below remain open. The interrupted schema-0 initialization defect
-is now fixed: creation/upgrades/version commit atomically and only empty,
-compatible partial initialization can be completed. Twenty new regression
+The owner explicitly skips clean Windows-user/VM testing for this release.
+Fresh credential identity, registered installer and rendered backup/settings UI
+acceptance below remain known unverified areas; no Sandbox action is required.
+The interrupted schema-0 initialization defect is now fixed:
+creation/upgrades/version commit atomically and only empty,
+compatible partial initialization can be completed. Twenty-two new regression
 cases and disposable recovery of both original fixtures pass. See the
 [engineering follow-up](GOOGLE_DRIVE_ENGINEERING_ACCEPTANCE.md) for current
-build, real-Google recheck, CI and clean-VM limits. Historical disabled-candidate
-evidence follows and does not replace these gates.
+build, real-Google recheck, CI and clean-VM limits. Final **8d667df** passes
+287 tests, clean analysis, enabled local packaging/recovery and
+[Windows CI](https://github.com/2HIK4/Todorbit/actions/runs/40342429612);
+downloaded CI artifacts pass independent integrity checks. The clean VM/manual
+GUI areas are skipped/unverified under the owner's local-only scope; Google
+policy review and publication approval remain unresolved. Real local portable
+update/rollback and live public feed/download checks also pass; see the follow-up.
+Historical disabled-candidate evidence follows; its limits remain explicit.
 
 The disabled candidate has passed Windows Release, installer compile, portable
 CRC/byte equality and isolated installer-layout/portable startup and restart.

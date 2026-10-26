@@ -1,5 +1,23 @@
 # Windows software updates
 
+> **2026-10-26 release update:** the owner has now approved an enabled
+> v1.0.13 **experimental pre-release**, main merge and website updates.
+> This supersedes the earlier publication hold below, while preserving
+> every skipped/unverified test and unresolved policy limitation. See
+> [the publication record](TODORBIT_1_0_13_PUBLICATION.md) and
+> [release notes](TODORBIT_1_0_13_RELEASE_NOTES.md). Historical blocked
+> conclusions below describe their earlier checkpoints.
+
+2026-10-26 private engineering checkpoint: real production-service GitHub
+checks/downloads validated both actual public v1.0.12 assets and correctly offer
+no newer release to v1.0.13. The actual bundled portable helper passed isolated
+readiness/parent-exit, injected version-mismatch rollback/reopen and a complete
+local v1.0.12 -> private v1.0.13 swap/restart, preserving all 44 tables, selected
+preferences and exact profile path. No setup was run; personal installation
+registration and Run entries were unchanged. Registered installed-mode execution
+and physical in-app update GUI remain unverified. The owner skips clean-user/VM
+acceptance for this release. See [evidence and limits](GOOGLE_DRIVE_ENGINEERING_ACCEPTANCE.md).
+
 Settings > Software Updates checks published releases from `2HIK4/Todorbit`.
 Stable ignores pre-releases; Pre-release may choose either. The checker compares
 semantic versions and requires the exact Windows x64 setup or portable asset,

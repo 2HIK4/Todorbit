@@ -1,14 +1,36 @@
 # Windows v1.0 final acceptance record
 
+> **2026-10-26 release update:** the owner has now approved an enabled
+> v1.0.13 **experimental pre-release**, main merge and website updates.
+> This supersedes the earlier publication hold below, while preserving
+> every skipped/unverified test and unresolved policy limitation. See
+> [the publication record](TODORBIT_1_0_13_PUBLICATION.md) and
+> [release notes](TODORBIT_1_0_13_RELEASE_NOTES.md). Historical blocked
+> conclusions below describe their earlier checkpoints.
+
 ## Initialization engineering follow-up (2026-10-26)
 
 The schema-0 interruption defect in the private checkpoint below is now fixed
 with atomic creation/upgrades/version recording and conservative empty-schema
-recovery. **285/285** full-suite tests, clean analysis, original fixture-copy
+recovery. **287/287** full-suite tests, clean analysis, original fixture-copy
 recovery, native Release, private Windows Release/packages, widget self-test and
-configuration guards pass. Strict fresh-user/VM and manual GUI acceptance remain
-open; Google branding/policy remains unverified. Current evidence and CI status:
+configuration guards pass. The owner explicitly skips fresh-user/VM acceptance
+for this release; retain registered install and physical GUI checks as known
+unverified areas, without requiring Sandbox. Google branding/policy remains unverified.
+[Final Windows CI](https://github.com/2HIK4/Todorbit/actions/runs/40342429612)
+passes at **8d667df**, including 287 tests and all packaging checks; downloaded
+CI artifacts pass independent integrity/receipt checks. Final-source real Google
+recheck passes 40 requests/three refreshes, with all 44 restored tables/preferences
+matched and exactly two new cloud objects cleaned up. Current evidence:
 [engineering follow-up](GOOGLE_DRIVE_ENGINEERING_ACCEPTANCE.md).
+
+Real updater service live feed/download checks pass for both public v1.0.12
+assets. Actual bundled portable helper passes readiness/parent-exit,
+wrong-version rollback/reopen and a local v1.0.12 -> private v1.0.13 swap/restart;
+all 44 tables, selected settings and exact portable path persist. Personal
+installation registration and Windows Run unchanged; no setup run. Actual
+registered install execution, in-app update GUI and public v1.0.13 updater
+advertisement remain unverified.
 
 ## Enabled private Google Drive checkpoint (2026-10-26)
 

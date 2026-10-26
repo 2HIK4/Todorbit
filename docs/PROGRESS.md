@@ -1,12 +1,31 @@
 # Progress
 
+## v1.0.13 experimental pre-release preparation (2026-10-26)
+
+- Owner explicitly approves main merge, tag, GitHub pre-release publication
+  and official Pages download updates. This supersedes earlier publication
+  holds below; Cloud settings and the personal installed app stay untouched.
+- Reuse app source **8d667df**, its 287 tests, successful Windows CI and real
+  Google/recovery/updater evidence. No app/build/config changes or repeated
+  suite/build/Google tests. Release prep changes only docs and website copy.
+- Exact enabled private installer/ZIP pass final size/SHA-256/sidecar/manifest,
+  portable CRC/full bundle equality, version and config/runner/AOT receipt
+  checks. Disabled-config CI artifacts will not be published.
+- Google Drive is explicitly experimental. Non-sensitive-only verification
+  guidance does not establish a branding-only prohibition; full production
+  policy/domain compliance and broad account eligibility remain unresolved.
+  Clean-user/VM remains skipped, registered/manual GUI/trust unverified.
+- Publication/public updater/Pages verification pending. See
+  [publication record](TODORBIT_1_0_13_PUBLICATION.md) for exact artifacts,
+  policy sources, remaining limits and bounded evidence.
+
 ## Initialization reliability and engineering acceptance (2026-10-26)
 
 - Final audit also reproduced and fixed SQL LIKE's underscore-prefix issue:
   GLOB now excludes only the literal reserved `sqlite_` prefix, never user
-  tables such as `sqlitecustom`. Added empty/populated name regressions and
-  repeating final suite/build/Google recheck/CI; first engineering CI cancelled
-  as superseded. The counts below describe the preceding validation checkpoint.
+  tables such as `sqlitecustom`. Added empty/populated name regressions; final
+  suite/build/Google recheck/CI pass at **8d667df**. First engineering CI was
+  cancelled as superseded. Counts below describe the corrected final candidate.
 
 - Root cause: creation and upgrades autocommitted DDL before Drift recorded the
   version. Both now transact DDL plus version together. Version-0 recovery only
@@ -16,8 +35,8 @@
   companion/main workspace use. Existing schema version 21, upgrade approval
   and verified Before upgrade snapshots stay compatible. Fixed the backup
   validator's v20+ reminder-table check order; malformed snapshots are rejected.
-- **285/285** Flutter tests, zero JSON errors, 485.500 seconds; clean analysis
-  (69.0 seconds). Twenty new initialization tests include real process death
+- **287/287** Flutter tests, zero JSON errors, 423.259 seconds; clean analysis
+  (54.8 seconds). Twenty-two new initialization tests include real process death
   during create/upgrade and after version write before commit. The added backup
   test covers missing reminder tables. Both original interrupted fixtures
   recovered in disposable copies; originals retained. Native Release has zero
@@ -31,12 +50,25 @@
   selective recovery, original Release full restore/restart with all 44 tables
   and preferences matching, Before Restore and finalized receipt. Exactly two
   new test objects deleted; pre-existing objects retained. Earlier authorized
-  session reused in place, no token copying/new consent claim. CI pending; see
+  session reused in place, no token copying/new consent claim.
+  [Final CI](https://github.com/2HIK4/Todorbit/actions/runs/40342429612) passes at
+  8d667df with disabled public configuration. Downloaded packages independently
+  pass SHA-256/CRC/config/runner/AOT checks; no public release created. See
   [engineering acceptance](GOOGLE_DRIVE_ENGINEERING_ACCEPTANCE.md).
-- Strict clean Windows identity/manual GUI acceptance remains open: native
-  Computer Use pipe unavailable, no app/browser surface; Sandbox/Hyper-V
-  disabled, no installed VM runner, current token non-elevated. Prepared
-  allowlisted Sandbox payload and host-refusing runner, not executed in a VM.
+- Owner explicitly **skips clean Windows-user/VM testing for this release**.
+  Record it as known unverified coverage, not a required Sandbox action. No VM
+  was launched or OS features changed by the agent. Native GUI controls remain
+  unavailable; physical dialogs/input/DPI, registered install/upgrade/uninstall,
+  fresh credential identity and machine prerequisites/trust remain unverified.
+- Production updater live checks/downloads pass against real GitHub: current
+  1.0.13 sees no unpublished update; an explicitly simulated older selector
+  finds actual public v1.0.12 and verifies both asset transfers/digests/progress.
+  Actual bundled portable helper tested public v1.0.12 -> private v1.0.13 at a
+  disposable path with spaces: readiness/parent exit, injected wrong-version
+  rollback/reopen, then successful complete swap/restart. All 44 tables, selected
+  preferences and exact profile path preserved; personal install registration
+  and Windows Run unchanged. No setup executable was run. Evidence in final
+  ignored run's `updater-live-result.json` / `updater-local/acceptance*.json`.
   Personal installation/profile, official website and Cloud settings untouched.
 - Keep v1.0.13 unpublished, no main merge. Google branding/policy compliance is
   unresolved regardless of real account access.

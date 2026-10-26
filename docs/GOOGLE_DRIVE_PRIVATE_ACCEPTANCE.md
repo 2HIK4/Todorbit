@@ -1,5 +1,13 @@
 # Google Drive private v1.0.13 acceptance
 
+> **2026-10-26 release update:** the owner has now approved an enabled
+> v1.0.13 **experimental pre-release**, main merge and website updates.
+> This supersedes the earlier publication hold below, while preserving
+> every skipped/unverified test and unresolved policy limitation. See
+> [the publication record](TODORBIT_1_0_13_PUBLICATION.md) and
+> [release notes](TODORBIT_1_0_13_RELEASE_NOTES.md). Historical blocked
+> conclusions below describe their earlier checkpoints.
+
 **Engineering follow-up:** the initialization defect recorded below is now
 fixed and regression-tested; see the newer
 [engineering acceptance report](GOOGLE_DRIVE_ENGINEERING_ACCEPTANCE.md).

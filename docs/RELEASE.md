@@ -2,10 +2,13 @@
 
 ## Current status
 
-The latest published pre-release is v1.0.12. The **unpublished 1.0.13+14
-candidate** is held at the [Google Drive production gate](GOOGLE_DRIVE_RELEASE_READINESS.md).
-Its public OAuth configuration remains disabled; do not claim ordinary-user
-Google Drive availability. Candidate packages are prepared for review only.
+The owner has approved **v1.0.13 (1.0.13+14)** as an experimental Windows x64
+pre-release with Google Drive enabled in both published packages. Ordinary users
+do not configure OAuth or import JSON. The tracked source default remains
+disabled/empty; publish only the exact enabled engineering packages. See the
+[publication record](TODORBIT_1_0_13_PUBLICATION.md) for checksums and evidence.
+Branding verification and full public OAuth policy compliance remain unresolved.
+This supersedes the earlier publication hold, not the skipped manual tests.
 
 The Windows Release bundle contains `Todorbit.exe`,
 `TodorbitWidget.exe`, Flutter assets, `flutter_windows.dll`, and

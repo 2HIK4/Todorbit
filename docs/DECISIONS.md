@@ -1,5 +1,21 @@
 # Decisions
 
+## Owner-approved experimental pre-release (2026-10-26)
+
+- Publish v1.0.13 as a GitHub pre-release using the exact enabled packages
+  accepted at **8d667df**. Merge the source fixes plus updated documentation;
+  retain the disabled/empty source default and never substitute CI artifacts.
+- Reuse completed engineering evidence. Add only exact artifact/version/config
+  checks, public download/checksum verification, real updater discovery from
+  1.0.12 and Pages content/link verification. Do not touch the personal install.
+- Label Google Drive experimental in release/website text. Specific Google
+  non-sensitive-scope verification guidance does not establish a blanket
+  branding-only distribution block. Full public policy/domain compliance
+  remains unresolved; this is no Google approval or stable-readiness claim.
+  Leave Cloud/client/project, scopes, profile paths and installer identity alone.
+- Preserve skipped fresh-user/VM and unobserved registered/manual GUI/trust
+  checks. See [publication record](TODORBIT_1_0_13_PUBLICATION.md).
+
 ## Atomic initialization and conservative version-0 recovery (2026-10-26)
 
 - Commit creation/upgrade DDL and the schema version in the same SQLite
@@ -9,6 +25,9 @@
   every user table is empty and the completed schema exactly matches a fresh
   current schema. Roll back populated/incompatible files; never drop, replace,
   reset or delete a user's database to make startup succeed.
+- Exclude only SQLite's literal reserved `sqlite_` prefix with GLOB during
+  recovery validation. LIKE's underscore wildcard would hide user tables such
+  as `sqlitecustom`; empty and populated lookalike names have regression tests.
 - Open initialization inside startup's failure boundary before controller/native
   use. Keep controller-load failures in that boundary as well. Preserve old
   interrupted fixtures and test disposable copies, plus actual WAL process
@@ -17,6 +36,11 @@
   allowlisted Sandbox payload/guarded runner when this non-elevated host has no
   enabled VM facility. Do not claim VM/GUI acceptance from scripts or APPDATA
   redirection. Google policy review remains separate from engineering results.
+- The owner subsequently explicitly skips clean Windows-user/VM testing for
+  this release. Do not require Sandbox enablement or launch. Preserve this as
+  known unverified coverage and finish local isolated/API/helper/CI checks.
+  Registered installer execution and physical GUI/trust checks stay unverified;
+  they are not silently marked passed or used to request the same owner action.
 
 ## Owner-authorized private production-client test (2026-10-26)
 
