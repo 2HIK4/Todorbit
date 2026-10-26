@@ -1,5 +1,7 @@
 # Todorbit
 
+[Official website](https://2hik4.github.io/Todorbit/) · [Privacy Policy](https://2hik4.github.io/Todorbit/privacy.html) · [Terms of Service](https://2hik4.github.io/Todorbit/terms.html)
+
 ![Todorbit icon](assets/app_icon.png)
 
 ![Todorbit Today view](docs/screenshots/todorbit-today.png)

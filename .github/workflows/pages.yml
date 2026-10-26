@@ -1,0 +1,50 @@
+name: Website preview checks and approved deployment
+
+on:
+  push:
+    paths: ['website/**', '.github/workflows/pages.yml']
+  pull_request:
+    paths: ['website/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+    inputs:
+      publish_approved:
+        description: 'Publish only after the owner has explicitly approved these pages and the target domain.'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: website-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python website/verify.py
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_approved == true && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/dist
+      - name: Deploy approved website
+        id: deployment
+        uses: actions/deploy-pages@v4
