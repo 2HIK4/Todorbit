@@ -77,11 +77,17 @@ checksums are not publisher signatures. No repository protection is weakened.
   to an older RID output; it was corrected to the current build output and rerun.
 - Fresh native offscreen renders reviewed at minimum and tall sizes, light/dark,
   plus generated 100/125/150/200% raster scales. These are synthetic fixtures.
-- Live debug screenshots inspected the support popup in both themes. Other
-  actual app observations and final release results are recorded in publication.
+- Live debug screenshots inspected the support popup in both themes and light
+  Habits, Goals, Backups and Software Updates. The app reported no runtime errors
+  and the isolated debug process closed normally. Its version metadata predates
+  the final version bump; final built binaries separately report 1.0.16+17.
+- Final local full analysis passes. Initial CI stopped on two style infos omitted
+  by the targeted error-only diagnostics; the mechanical corrections are in
+  `6e3b64b`. Exact-source final CI passes **340 tests, one opt-in skip**, analysis,
+  build, native test and packaging gates. No extra local full suite was run.
 - Physical narrow-window/DPI, mouse-wheel/drag snapping feel, Win+D, Explorer
   restart, multiple monitors, screen reader and registered installer execution
   remain **UNVERIFIED**. Automated geometry/lifecycle checks do not prove them.
 
-Final exact-commit full analysis/tests, Windows packaging and public verification
-belong in `TODORBIT_1_0_16_PUBLICATION.md`; no historical pass substitutes for CI.
+Final exact-commit build, publication and updater receipts are recorded in
+`TODORBIT_1_0_16_PUBLICATION.md`.

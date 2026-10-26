@@ -1,5 +1,24 @@
 # Progress
 
+## v1.0.16 refinement pre-release published (2026-10-27)
+
+- [Public Windows x64 pre-release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.16),
+  **1.0.16+17**, source/tag **6e3b64b** (implementation **23526bf** plus lint fix).
+  Recovered interrupted changes are included; no review artifacts were committed.
+- [Exact-source Windows CI](https://github.com/2HIK4/Todorbit/actions/runs/40418348308)
+  passes: clean analysis, **340 passed/one opt-in skip**, config gates, Windows
+  build, native test, installer, portable and checksums. Published enabled bundle
+  retains the approved previous Drive configuration; tracked config restored.
+- All five public assets/digests, anonymous binary equality/CRC and production
+  updater discovery/download from v1.0.15 pass for both package modes; Stable
+  excludes it. Actual isolated portable rollback/swap/restart preserves all 44
+  tables/settings and creates the once-only support receipt. Legacy widget mode
+  compatibility, independent visibility and one companion pass.
+- Personal installation/profile/Run entries remain unchanged. Physical scrolling,
+  snapping/input, DPI, Win+D, Explorer restart, multi-monitor, screen readers and
+  registered installer execution remain unverified. Packages remain unsigned.
+  [Publication and upgrade instructions](TODORBIT_1_0_16_PUBLICATION.md).
+
 ## Unified widget refinements and optional support (2026-10-27)
 
 - Recovered all four tracked interrupted UI fixes and tests without resetting

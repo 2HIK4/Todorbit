@@ -21,8 +21,17 @@ independent native-menu saves survive; a newer same-property saved edit wins.
 Apply advances the baseline without closing, Cancel ends the lease, and normal
 dirty closure offers Save/Discard/Continue. Shared Apply rolls back its first
 file if the second save fails; it is not a crash-atomic two-file transaction.
-The optional `calendarPresentation` field defaults old version-1 files to the
-compact grid/agenda and selects full-month cells without duplicating projection.
+Calendar now has one bounded month grid above a continuously scrollable agenda.
+Legacy `calendarPresentation` fields are ignored without resetting other values.
+Date geometry follows the month's 4/5/6-week shape; extra height expands the
+agenda. Companion snapping uses physical screen bounds, with same-DPI physical
+dimensions and logical fallback stored only in each widget's local geometry file.
+
+Optional support opens one source-defined PayPal.Me destination through the
+existing Windows resource channel. The repository claims a profile-local
+`support-introduction.json` receipt for the brief first-use highlight. This
+device-local receipt is not a settings-transfer/cloud field; payment URLs are
+never read from theme metadata, preferences, backups or remote configuration.
 
 Native calendar projection reads the existing repository/schema without migration
 or new calendar tables. Planned dates, work sessions and fixed-event occurrences

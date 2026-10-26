@@ -16,3 +16,9 @@ Version 1 accepts exactly these color keys in each palette: `background`, `surfa
 ```
 
 This example is the lavender default. Theme import/export currently asks for an absolute JSON path. The in-app warning checks primary text against surface at 4.5:1; inspect other pairings and the widget against actual wallpapers before distributing a theme. Imported themes never change `assets/contributors.json`.
+
+Flutter derives black/white text for custom accent and error backgrounds from
+the stronger contrast pairing, providing at least 4.5:1 for the opaque palette
+colors. Explicit primary/secondary text tokens and native widget customization
+remain independent. Shared select focus and scroll-edge hints follow the active
+theme; fixed dialog actions are outside the faded scrolling region.
