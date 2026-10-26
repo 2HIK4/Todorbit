@@ -1,5 +1,47 @@
 # Windows v1.0 final acceptance record
 
+## Initialization engineering follow-up (2026-10-26)
+
+The schema-0 interruption defect in the private checkpoint below is now fixed
+with atomic creation/upgrades/version recording and conservative empty-schema
+recovery. **285/285** full-suite tests, clean analysis, original fixture-copy
+recovery, native Release, private Windows Release/packages, widget self-test and
+configuration guards pass. Strict fresh-user/VM and manual GUI acceptance remain
+open; Google branding/policy remains unverified. Current evidence and CI status:
+[engineering follow-up](GOOGLE_DRIVE_ENGINEERING_ACCEPTANCE.md).
+
+## Enabled private Google Drive checkpoint (2026-10-26)
+
+**Private core tests PASS; complete packaged acceptance PARTIAL; public release
+BLOCKED.** This checkpoint supersedes the older Google configuration and
+production-client evidence below. Owner reports project `todorbit` is External /
+In production with Drive API enabled, sole drive.appdata scope and unverified
+branding. Console state is owner-reported.
+
+- Owner-observed private Release sign-in and reconnect using the same account
+  outside the former test-user list passed, with no warning or block reported.
+- Real Google service tests passed encrypted full/settings upload, verified
+  readback, listing/download, wrong-passphrase rejection, selective settings
+  recovery, secure-session persistence, refresh and disconnect/reconnect. The
+  original private Release applied full recovery and survived another restart;
+  all 44 tables, supported preferences and Before Restore contents matched.
+- Six separate harness runs made 50 real Google requests and six refresh
+  exchanges. Actual granted scope was exactly drive.appdata. Only the two
+  test-created snapshots were deleted after reconnect; pre-existing objects
+  were retained. Backup/settings dialog interactions remain unobserved.
+- Fresh analysis clean, 264/264 Flutter tests, 11/11 config/package checks,
+  native/Windows Release, installer compile, portable integrity/receipts and
+  widget self-test passed. Mocked failures are not real Google failure tests.
+- Remaining gates: unfixed partial schema-0 recovery after interrupted first
+  initialization, fresh Windows-user/registered installer/manual UI acceptance,
+  public branding/policy review and explicit owner release approval. Broader
+  account eligibility, quota/user limits and long-term grants are unmeasured.
+
+v1.0.13 stays unpublished; public config is disabled/empty. No app source,
+personal installation/profile, website, main branch or Cloud setting changed
+for this private test. Details, evidence boundaries and private artifact hashes:
+[final private verification report](GOOGLE_DRIVE_PRIVATE_ACCEPTANCE.md).
+
 ## Google Drive production candidate (2026-10-26)
 
 Candidate **1.0.13+14**, on `feature/google-drive-production-readiness` from

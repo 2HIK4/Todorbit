@@ -1,5 +1,124 @@
 # Progress
 
+## Initialization reliability and engineering acceptance (2026-10-26)
+
+- Root cause: creation and upgrades autocommitted DDL before Drift recorded the
+  version. Both now transact DDL plus version together. Version-0 recovery only
+  completes empty, compatible schemas and verifies the exact fresh schema
+  before commit; populated/incompatible files roll back without a reset.
+- Initialization/controller-load failures are handled by startup before native
+  companion/main workspace use. Existing schema version 21, upgrade approval
+  and verified Before upgrade snapshots stay compatible. Fixed the backup
+  validator's v20+ reminder-table check order; malformed snapshots are rejected.
+- **285/285** Flutter tests, zero JSON errors, 485.500 seconds; clean analysis
+  (69.0 seconds). Twenty new initialization tests include real process death
+  during create/upgrade and after version write before commit. The added backup
+  test covers missing reminder tables. Both original interrupted fixtures
+  recovered in disposable copies; originals retained. Native Release has zero
+  warnings/errors and all 11 configuration/package guards pass.
+- Enabled private Release and installer compile passed. New private packages,
+  separate Source/Restore/layout startup/restart, 37-entry portable integrity,
+  receipts, hashes and packaged widget self-test pass; Windows Run unchanged.
+  Tracked configuration is restored disabled/empty. Post-change real Google
+  recheck passed three independent runs (40 requests, three refreshes, sole
+  appdata grant): full/settings encrypted transfer, wrong phrase/cancel,
+  selective recovery, original Release full restore/restart with all 44 tables
+  and preferences matching, Before Restore and finalized receipt. Exactly two
+  new test objects deleted; pre-existing objects retained. Earlier authorized
+  session reused in place, no token copying/new consent claim. CI pending; see
+  [engineering acceptance](GOOGLE_DRIVE_ENGINEERING_ACCEPTANCE.md).
+- Strict clean Windows identity/manual GUI acceptance remains open: native
+  Computer Use pipe unavailable, no app/browser surface; Sandbox/Hyper-V
+  disabled, no installed VM runner, current token non-elevated. Prepared
+  allowlisted Sandbox payload and host-refusing runner, not executed in a VM.
+  Personal installation/profile, official website and Cloud settings untouched.
+- Keep v1.0.13 unpublished, no main merge. Google branding/policy compliance is
+  unresolved regardless of real account access.
+
+## Enabled private Google Drive candidate (2026-10-26)
+
+- Owner now reports project Todorbit / `todorbit` is External/In production,
+  Drive API enabled and only drive.appdata configured; branding remains
+  unverified. Console state is owner-reported. The existing external installed
+  Desktop JSON exists and its project ID matches; no client/project created.
+- Source inspection confirms an appdata-only PKCE/loopback authorization flow,
+  appDataFolder storage, bundled Release parameters and no Release developer
+  JSON import. Ordinary users do not supply client fields. No app source or
+  official website change is part of this test.
+- Fresh analysis clean; full serial Flutter suite **264/264**, zero JSON error
+  events, 466.371 seconds. Includes auth/Drive mocks and actual local SQLite/
+  encryption/settings recovery round trips. Existing OAuth configuration and
+  stale/private-package gates **11/11**. Native Release has zero warnings/errors.
+- Enabled private Windows Release and Inno Setup 7.1.0 compile passed. Portable
+  packaging/sidecars are prepared under an ignored private run folder. The
+  existing wrapper/receipt and packaging sources are reused; two Desktop
+  parameters are supplied temporarily and tracked configuration is restored
+  byte-for-byte to disabled/empty after packaging. Log scans found neither
+  Desktop parameter value. Missing generated plugin links were recreated as
+  local NTFS directory junctions; no SDK/security setting/OAuth control changed.
+- Private package integrity passed: 37-entry ZIP CRC/full bundle equality,
+  enabled receipt, private-file guards and SHA-256 manifest/sidecars. Source,
+  Restore and copied installer-layout startup/restart schema checks pass with
+  integrity OK, schema v21, 44 tables and no task/event rows. Extracted widget
+  self-test passed; Windows Run registry was unchanged. The installer is not run against
+  the personal Windows account; launchers redirect APPDATA/LOCALAPPDATA and
+  seed widget sign-in launch off. APPDATA isolation is not a fresh Windows
+  Credential Manager identity; strict fresh-user/VM acceptance remains open.
+- Initial fixed-seven-second smoke force-killed initialization, leaving two
+  empty schema-0 test fixtures rejected by the migration gate. Preserved them
+  under the ignored run's `interrupted-startup/`, used fresh profiles and
+  replaced fixed delay with bounded schema readiness. Interrupted first-start
+  recovery remains a documented usability/reliability limit. Also drained the
+  normal engine stderr notice directly to avoid PS 5 aborting a redirected
+  parent pipeline. These are smoke-harness changes, not app fixes.
+- **Owner-observed real sign-in PASS:** owner confirmed the private Source
+  profile and an account outside the former test list; packaged v1.0.13
+  connected with no unverified-app warning or authorization block. This does
+  not measure project-wide caps or prove universal account eligibility.
+- No app-control surface is available; the supported Computer Use plugin also
+  reports its native pipe unavailable. A separate ignored Windows test harness
+  invokes production cloud/repository/secure-storage APIs without UI automation.
+  Its real Google probe passed secure session load after packaged process exit,
+  one real refresh exchange, account identity and appDataFolder listing (three
+  actual Google requests). Full/settings encrypted upload, verified readback,
+  listing/download, wrong-phrase rejection, preview/schedule cancellation and
+  selective settings/hotkey recovery then passed against real Google (27
+  requests). All target SQLite tables/unrelated settings were preserved by
+  settings-only recovery.
+- Original private Release applied the real downloaded full backup on Restore
+  startup, then started normally once more. Two independent post-startup
+  verifications each passed all 44-table equality, full allowed personalization,
+  exact Before Restore rows/settings, finalized receipt, retained source account
+  and cloud history (4 real requests each). The actual refreshed grant contains
+  **only drive.appdata**. These are service/API and packaged startup results;
+  backup/settings confirmation-dialog interactions remain unobserved.
+- Production Source disconnect and empty secure-record reload passed (3 real
+  requests before local disconnect; no Google grant/cloud object deletion).
+  Owner then confirmed same-account packaged reconnect with no warning/block
+  and the connected account displayed. An independent process loaded the
+  reconnected session, refreshed against Google, confirmed the sole appdata
+  grant/same account and listed both retained snapshots. Scoped cleanup deleted
+  exactly those two test-created objects; every pre-existing cloud object was
+  retained (9 real requests, one refresh). Private app closed, local synthetic
+  fixtures and the Source session retained. Total real harness evidence:
+  50 Google requests, six refresh exchanges; consent behavior is owner-observed.
+- Locked Windows secure-storage 4.2.2 primary backend is DPAPI encrypted JSON,
+  with legacy AES-GCM/Credential Manager fallback/migration. Corrected the
+  narrower internal security description; website Windows-protected-storage
+  wording remains accurate and unchanged. Logical profile keys do not create
+  a separate Windows vault identity. Original Release packages remain intact.
+  Public release remains **BLOCKED**; see
+  `docs/GOOGLE_DRIVE_PRIVATE_ACCEPTANCE.md`.
+- Private artifacts are in `.buildlog/private-drive-20261026-151411/packages`;
+  checksums and restart launch command are in the private acceptance report.
+  Private core Google Drive tests **PASS**. Complete packaged acceptance is
+  **PARTIAL**; public release is **BLOCKED** by unresolved first-start
+  interruption recovery, fresh-user/manual packaged acceptance, policy review
+  and the owner's publication hold. Branding remains unverified. No remaining
+  owner consent action is needed for this private test.
+- No main merge, Git push, app publication, public release edit, website deploy
+  or Google Cloud change was performed for this private test.
+
 ## Official website publication (2026-10-26)
 
 - Owner explicitly approved GitHub Pages publication in `2HIK4/Todorbit`.

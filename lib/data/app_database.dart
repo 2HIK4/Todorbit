@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/drift.dart';
@@ -33,7 +34,7 @@ class AppDatabase extends GeneratedDatabase {
 
   static Future<AppDatabase> openDefault() async {
     final file = await defaultFile();
-    return AppDatabase(
+    final database = AppDatabase(
       NativeDatabase.createInBackground(
         file,
         setup: (database) {
@@ -42,6 +43,15 @@ class AppDatabase extends GeneratedDatabase {
         },
       ),
     );
+    try {
+      // Open eagerly so startup can present a recoverable failure before the
+      // controller or native companion starts using a partial database.
+      await database.customSelect('SELECT 1').get();
+      return database;
+    } catch (_) {
+      await database.close();
+      rethrow;
+    }
   }
 
   @override
@@ -55,9 +65,29 @@ class AppDatabase extends GeneratedDatabase {
     beforeOpen: (_) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },
-    onCreate: (migrator) async {
+    onCreate: (migrator) => transaction(() async {
+      final existing = await _schemaDefinition();
+      if (existing.isNotEmpty) {
+        // Older builds could commit only part of first initialization. Never
+        // infer that version 0 means disposable: reject any populated table.
+        final tables = await customSelect(
+          "SELECT name FROM sqlite_schema WHERE type='table' "
+          "AND name NOT LIKE 'sqlite_%'",
+        ).get();
+        for (final table in tables) {
+          final name = table.read<String>('name').replaceAll('"', '""');
+          if ((await customSelect(
+            'SELECT 1 FROM "$name" LIMIT 1',
+          ).get()).isNotEmpty) {
+            throw StateError(
+              'Incomplete database contains data; no changes were committed. '
+              'Preserve this profile and recover from a trusted backup.',
+            );
+          }
+        }
+      }
       await customStatement('''
-        CREATE TABLE categories (
+        CREATE TABLE IF NOT EXISTS categories (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL COLLATE NOCASE UNIQUE,
           created_at TEXT NOT NULL,
@@ -65,7 +95,7 @@ class AppDatabase extends GeneratedDatabase {
         )
       ''');
       await customStatement('''
-        CREATE TABLE projects (
+        CREATE TABLE IF NOT EXISTS projects (
           id TEXT PRIMARY KEY,
           category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
           name TEXT NOT NULL,
@@ -75,7 +105,7 @@ class AppDatabase extends GeneratedDatabase {
         )
       ''');
       await customStatement('''
-        CREATE TABLE tasks (
+        CREATE TABLE IF NOT EXISTS tasks (
           id TEXT PRIMARY KEY,
           title TEXT NOT NULL CHECK(length(trim(title)) > 0),
           notes TEXT NOT NULL DEFAULT '',
@@ -94,17 +124,19 @@ class AppDatabase extends GeneratedDatabase {
         )
       ''');
       await customStatement(
-        'CREATE INDEX tasks_status_schedule ON tasks(status, scheduled_date)',
+        'CREATE INDEX IF NOT EXISTS tasks_status_schedule ON tasks(status, scheduled_date)',
       );
       await customStatement(
-        'CREATE INDEX tasks_deadline ON tasks(deadline_date)',
-      );
-      await customStatement('CREATE INDEX tasks_project ON tasks(project_id)');
-      await customStatement(
-        'CREATE INDEX tasks_category ON tasks(category_id)',
+        'CREATE INDEX IF NOT EXISTS tasks_deadline ON tasks(deadline_date)',
       );
       await customStatement(
-        'CREATE INDEX projects_category ON projects(category_id)',
+        'CREATE INDEX IF NOT EXISTS tasks_project ON tasks(project_id)',
+      );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS tasks_category ON tasks(category_id)',
+      );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS projects_category ON projects(category_id)',
       );
       await _createEvents();
       await _createSessions();
@@ -127,8 +159,25 @@ class AppDatabase extends GeneratedDatabase {
       await _createProgressivePlans();
       await _createEventReminderDeliveries();
       await _createEventDetails();
-    },
-    onUpgrade: (migrator, from, to) async {
+      if (existing.isNotEmpty) {
+        final reference = AppDatabase(NativeDatabase.memory());
+        try {
+          final expected = await reference._schemaDefinition();
+          if (jsonEncode(await _schemaDefinition()) != jsonEncode(expected)) {
+            throw StateError(
+              'Incomplete database has an incompatible schema; '
+              'no changes were committed. Preserve this profile.',
+            );
+          }
+        } finally {
+          await reference.close();
+        }
+      }
+      // Drift normally writes this after the callback. Include it in the same
+      // transaction as DDL, so a killed process cannot leave a stale version.
+      await customStatement('PRAGMA user_version = $currentSchemaVersion');
+    }),
+    onUpgrade: (migrator, from, to) => transaction(() async {
       if (from < 1 || from > 20 || to != 21) {
         throw StateError('No migration registered from schema $from to $to');
       }
@@ -176,8 +225,15 @@ class AppDatabase extends GeneratedDatabase {
       await _createProgressivePlans();
       await _createEventReminderDeliveries();
       await _createEventDetails();
-    },
+      await customStatement('PRAGMA user_version = $currentSchemaVersion');
+    }),
   );
+
+  Future<List<Map<String, Object?>>> _schemaDefinition() async =>
+      (await customSelect(
+        "SELECT type, name, tbl_name, sql FROM sqlite_schema "
+        "WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name",
+      ).get()).map((row) => row.data).toList();
 
   Future<void> _createEventDetails() async {
     await _addColumnIfMissing('categories', 'event_color', 'INTEGER');
@@ -314,13 +370,13 @@ class AppDatabase extends GeneratedDatabase {
       'UPDATE recurrence_series SET family_id=id, active_from_date=start_date',
     );
     await customStatement(
-      'CREATE INDEX recurrence_series_family ON recurrence_series(family_id,active_from_date)',
+      'CREATE INDEX IF NOT EXISTS recurrence_series_family ON recurrence_series(family_id,active_from_date)',
     );
   }
 
   Future<void> _createSeriesEditHistory() async {
     await customStatement('''
-      CREATE TABLE series_edit_history (
+      CREATE TABLE IF NOT EXISTS series_edit_history (
         id TEXT PRIMARY KEY,
         family_id TEXT NOT NULL,
         source_task_id TEXT NOT NULL,
@@ -332,13 +388,13 @@ class AppDatabase extends GeneratedDatabase {
       )
     ''');
     await customStatement(
-      'CREATE INDEX series_edit_history_family ON series_edit_history(family_id,created_at)',
+      'CREATE INDEX IF NOT EXISTS series_edit_history_family ON series_edit_history(family_id,created_at)',
     );
   }
 
   Future<void> _createRecurrenceCollisionHistory() async {
     await customStatement('''
-      CREATE TABLE recurrence_collision_history (
+      CREATE TABLE IF NOT EXISTS recurrence_collision_history (
         id TEXT PRIMARY KEY,
         operation_id TEXT NOT NULL REFERENCES scheduling_operations(id),
         moved_task_id TEXT NOT NULL,
@@ -352,7 +408,7 @@ class AppDatabase extends GeneratedDatabase {
 
   Future<void> _createHabits() async {
     await customStatement('''
-      CREATE TABLE habits (
+      CREATE TABLE IF NOT EXISTS habits (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL CHECK(length(trim(title)) > 0),
         notes TEXT NOT NULL DEFAULT '',
@@ -373,7 +429,7 @@ class AppDatabase extends GeneratedDatabase {
       )
     ''');
     await customStatement('''
-      CREATE TABLE habit_entries (
+      CREATE TABLE IF NOT EXISTS habit_entries (
         id TEXT PRIMARY KEY,
         habit_id TEXT NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
         local_date TEXT NOT NULL,
@@ -385,10 +441,10 @@ class AppDatabase extends GeneratedDatabase {
       )
     ''');
     await customStatement(
-      'CREATE INDEX habit_entries_date ON habit_entries(local_date,habit_id)',
+      'CREATE INDEX IF NOT EXISTS habit_entries_date ON habit_entries(local_date,habit_id)',
     );
     await customStatement('''
-      CREATE TABLE habit_rest_days (
+      CREATE TABLE IF NOT EXISTS habit_rest_days (
         id TEXT PRIMARY KEY,
         habit_id TEXT NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
         local_date TEXT NOT NULL,
@@ -398,7 +454,7 @@ class AppDatabase extends GeneratedDatabase {
       )
     ''');
     await customStatement('''
-      CREATE TABLE habit_entry_history (
+      CREATE TABLE IF NOT EXISTS habit_entry_history (
         id TEXT PRIMARY KEY,
         habit_id TEXT NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
         local_date TEXT NOT NULL,
@@ -413,7 +469,7 @@ class AppDatabase extends GeneratedDatabase {
 
   Future<void> _createGoals() async {
     await customStatement('''
-      CREATE TABLE goals (
+      CREATE TABLE IF NOT EXISTS goals (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL CHECK(length(trim(title)) > 0),
         description TEXT NOT NULL DEFAULT '',
@@ -428,7 +484,7 @@ class AppDatabase extends GeneratedDatabase {
       )
     ''');
     await customStatement('''
-      CREATE TABLE goal_milestones (
+      CREATE TABLE IF NOT EXISTS goal_milestones (
         id TEXT PRIMARY KEY,
         goal_id TEXT NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
         title TEXT NOT NULL CHECK(length(trim(title)) > 0),
@@ -440,7 +496,7 @@ class AppDatabase extends GeneratedDatabase {
       )
     ''');
     await customStatement('''
-      CREATE TABLE goal_progress_entries (
+      CREATE TABLE IF NOT EXISTS goal_progress_entries (
         id TEXT PRIMARY KEY,
         goal_id TEXT NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
         delta REAL NOT NULL CHECK(delta != 0),
@@ -449,10 +505,10 @@ class AppDatabase extends GeneratedDatabase {
       )
     ''');
     await customStatement(
-      'CREATE INDEX goal_progress_entries_goal ON goal_progress_entries(goal_id,created_at)',
+      'CREATE INDEX IF NOT EXISTS goal_progress_entries_goal ON goal_progress_entries(goal_id,created_at)',
     );
     await customStatement(
-      'CREATE INDEX goal_milestones_goal ON goal_milestones(goal_id,threshold)',
+      'CREATE INDEX IF NOT EXISTS goal_milestones_goal ON goal_milestones(goal_id,threshold)',
     );
     for (final pair in [
       ('task', 'tasks'),
@@ -460,7 +516,7 @@ class AppDatabase extends GeneratedDatabase {
       ('habit', 'habits'),
     ]) {
       await customStatement('''
-        CREATE TABLE goal_${pair.$1}_links (
+        CREATE TABLE IF NOT EXISTS goal_${pair.$1}_links (
           goal_id TEXT NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
           ${pair.$1}_id TEXT NOT NULL REFERENCES ${pair.$2}(id) ON DELETE CASCADE,
           units REAL NOT NULL CHECK(units > 0),
@@ -472,7 +528,7 @@ class AppDatabase extends GeneratedDatabase {
 
   Future<void> _createTimeTracking() async {
     await customStatement('''
-      CREATE TABLE timer_runs (
+      CREATE TABLE IF NOT EXISTS timer_runs (
         id TEXT PRIMARY KEY,
         task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL,
         state TEXT NOT NULL CHECK(state IN ('running','paused','stopped')),
@@ -484,10 +540,10 @@ class AppDatabase extends GeneratedDatabase {
       )
     ''');
     await customStatement(
-      "CREATE UNIQUE INDEX one_active_timer ON timer_runs((1)) WHERE state!='stopped'",
+      "CREATE UNIQUE INDEX IF NOT EXISTS one_active_timer ON timer_runs((1)) WHERE state!='stopped'",
     );
     await customStatement('''
-      CREATE TABLE time_entries (
+      CREATE TABLE IF NOT EXISTS time_entries (
         id TEXT PRIMARY KEY,
         task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL,
         session_id TEXT REFERENCES work_sessions(id) ON DELETE SET NULL,
@@ -504,13 +560,13 @@ class AppDatabase extends GeneratedDatabase {
       )
     ''');
     await customStatement(
-      'CREATE INDEX time_entries_task ON time_entries(task_id,starts_at)',
+      'CREATE INDEX IF NOT EXISTS time_entries_task ON time_entries(task_id,starts_at)',
     );
     await customStatement(
-      'CREATE UNIQUE INDEX time_entries_open_run ON time_entries(timer_run_id) WHERE ends_at IS NULL',
+      'CREATE UNIQUE INDEX IF NOT EXISTS time_entries_open_run ON time_entries(timer_run_id) WHERE ends_at IS NULL',
     );
     await customStatement('''
-      CREATE TABLE time_entry_history (
+      CREATE TABLE IF NOT EXISTS time_entry_history (
         id TEXT PRIMARY KEY,
         entry_id TEXT NOT NULL,
         task_id TEXT,
@@ -591,7 +647,7 @@ class AppDatabase extends GeneratedDatabase {
 
   Future<void> _createRecurrence() async {
     await customStatement('''
-      CREATE TABLE recurrence_series (
+      CREATE TABLE IF NOT EXISTS recurrence_series (
         id TEXT PRIMARY KEY,
         family_id TEXT NOT NULL,
         active_from_date TEXT NOT NULL,
@@ -616,10 +672,10 @@ class AppDatabase extends GeneratedDatabase {
       )
     ''');
     await customStatement(
-      'CREATE INDEX recurrence_series_family ON recurrence_series(family_id,active_from_date)',
+      'CREATE INDEX IF NOT EXISTS recurrence_series_family ON recurrence_series(family_id,active_from_date)',
     );
     await customStatement('''
-      CREATE TABLE recurrence_occurrences (
+      CREATE TABLE IF NOT EXISTS recurrence_occurrences (
         id TEXT PRIMARY KEY,
         series_id TEXT NOT NULL REFERENCES recurrence_series(id) ON DELETE CASCADE,
         ordinal INTEGER NOT NULL CHECK(ordinal >= 0),
@@ -635,10 +691,10 @@ class AppDatabase extends GeneratedDatabase {
       )
     ''');
     await customStatement(
-      'CREATE INDEX recurrence_occurrences_series_date ON recurrence_occurrences(series_id, nominal_date)',
+      'CREATE INDEX IF NOT EXISTS recurrence_occurrences_series_date ON recurrence_occurrences(series_id, nominal_date)',
     );
     await customStatement('''
-      CREATE TRIGGER recurrence_task_schedule_updated
+      CREATE TRIGGER IF NOT EXISTS recurrence_task_schedule_updated
       AFTER UPDATE OF scheduled_date ON tasks
       WHEN OLD.scheduled_date IS NOT NEW.scheduled_date
       BEGIN
@@ -649,7 +705,7 @@ class AppDatabase extends GeneratedDatabase {
       END
     ''');
     await customStatement('''
-      CREATE TRIGGER recurrence_task_content_updated
+      CREATE TRIGGER IF NOT EXISTS recurrence_task_content_updated
       AFTER UPDATE OF title,notes,priority,category_id,project_id,
         deadline_date,planned_duration_minutes,remaining_work_minutes,
         scheduling_locked ON tasks
@@ -668,7 +724,7 @@ class AppDatabase extends GeneratedDatabase {
       END
     ''');
     await customStatement('''
-      CREATE TRIGGER recurrence_task_cancelled
+      CREATE TRIGGER IF NOT EXISTS recurrence_task_cancelled
       AFTER UPDATE OF status ON tasks
       WHEN OLD.status IS NOT NEW.status AND
         (OLD.status='cancelled' OR NEW.status='cancelled')
@@ -684,7 +740,7 @@ class AppDatabase extends GeneratedDatabase {
 
   Future<void> _createRelationships() async {
     await customStatement('''
-      CREATE TABLE task_sequences (
+      CREATE TABLE IF NOT EXISTS task_sequences (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL CHECK(length(trim(name)) > 0),
         created_at TEXT NOT NULL,
@@ -692,7 +748,7 @@ class AppDatabase extends GeneratedDatabase {
       )
     ''');
     await customStatement('''
-      CREATE TABLE sequence_tasks (
+      CREATE TABLE IF NOT EXISTS sequence_tasks (
         sequence_id TEXT NOT NULL REFERENCES task_sequences(id) ON DELETE CASCADE,
         task_id TEXT NOT NULL UNIQUE REFERENCES tasks(id) ON DELETE CASCADE,
         position INTEGER NOT NULL CHECK(position >= 0),
@@ -701,7 +757,7 @@ class AppDatabase extends GeneratedDatabase {
       )
     ''');
     await customStatement('''
-      CREATE TABLE task_dependencies (
+      CREATE TABLE IF NOT EXISTS task_dependencies (
         task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
         prerequisite_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
         created_at TEXT NOT NULL,
@@ -710,13 +766,13 @@ class AppDatabase extends GeneratedDatabase {
       )
     ''');
     await customStatement(
-      'CREATE INDEX task_dependencies_prerequisite ON task_dependencies(prerequisite_id)',
+      'CREATE INDEX IF NOT EXISTS task_dependencies_prerequisite ON task_dependencies(prerequisite_id)',
     );
   }
 
   Future<void> _createEvents() async {
     await customStatement('''
-      CREATE TABLE fixed_events (
+      CREATE TABLE IF NOT EXISTS fixed_events (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL CHECK(length(trim(title)) > 0),
         notes TEXT NOT NULL DEFAULT '',
@@ -728,7 +784,7 @@ class AppDatabase extends GeneratedDatabase {
       )
     ''');
     await customStatement(
-      'CREATE INDEX fixed_events_start ON fixed_events(starts_at)',
+      'CREATE INDEX IF NOT EXISTS fixed_events_start ON fixed_events(starts_at)',
     );
   }
 
@@ -815,7 +871,7 @@ class AppDatabase extends GeneratedDatabase {
 
   Future<void> _createSessions() async {
     await customStatement('''
-      CREATE TABLE work_sessions (
+      CREATE TABLE IF NOT EXISTS work_sessions (
         id TEXT PRIMARY KEY,
         task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
         starts_at TEXT NOT NULL,
@@ -828,16 +884,16 @@ class AppDatabase extends GeneratedDatabase {
       )
     ''');
     await customStatement(
-      'CREATE INDEX work_sessions_start ON work_sessions(starts_at)',
+      'CREATE INDEX IF NOT EXISTS work_sessions_start ON work_sessions(starts_at)',
     );
     await customStatement(
-      'CREATE INDEX work_sessions_task ON work_sessions(task_id)',
+      'CREATE INDEX IF NOT EXISTS work_sessions_task ON work_sessions(task_id)',
     );
   }
 
   Future<void> _createScheduling() async {
     await customStatement('''
-      CREATE TABLE availability_windows (
+      CREATE TABLE IF NOT EXISTS availability_windows (
         id TEXT PRIMARY KEY,
         weekday INTEGER NOT NULL CHECK(weekday BETWEEN 1 AND 7),
         start_minute INTEGER NOT NULL CHECK(start_minute BETWEEN 0 AND 1439),
@@ -848,10 +904,10 @@ class AppDatabase extends GeneratedDatabase {
       )
     ''');
     await customStatement(
-      'CREATE INDEX availability_windows_day ON availability_windows(weekday,start_minute)',
+      'CREATE INDEX IF NOT EXISTS availability_windows_day ON availability_windows(weekday,start_minute)',
     );
     await customStatement('''
-      CREATE TABLE availability_exceptions (
+      CREATE TABLE IF NOT EXISTS availability_exceptions (
         id TEXT PRIMARY KEY,
         local_date TEXT NOT NULL,
         start_minute INTEGER,
@@ -863,10 +919,10 @@ class AppDatabase extends GeneratedDatabase {
       )
     ''');
     await customStatement(
-      'CREATE INDEX availability_exceptions_date ON availability_exceptions(local_date,start_minute)',
+      'CREATE INDEX IF NOT EXISTS availability_exceptions_date ON availability_exceptions(local_date,start_minute)',
     );
     await customStatement('''
-      CREATE TABLE scheduling_operations (
+      CREATE TABLE IF NOT EXISTS scheduling_operations (
         id TEXT PRIMARY KEY,
         operation_type TEXT NOT NULL,
         source TEXT NOT NULL CHECK(source IN ('manual','smartReschedule')),
@@ -876,10 +932,10 @@ class AppDatabase extends GeneratedDatabase {
       )
     ''');
     await customStatement(
-      'CREATE INDEX scheduling_operations_created ON scheduling_operations(created_at DESC)',
+      'CREATE INDEX IF NOT EXISTS scheduling_operations_created ON scheduling_operations(created_at DESC)',
     );
     await customStatement('''
-      CREATE TABLE scheduling_changes (
+      CREATE TABLE IF NOT EXISTS scheduling_changes (
         id TEXT PRIMARY KEY,
         operation_id TEXT NOT NULL REFERENCES scheduling_operations(id) ON DELETE CASCADE,
         target_kind TEXT NOT NULL CHECK(target_kind IN ('task','session')),
@@ -895,10 +951,10 @@ class AppDatabase extends GeneratedDatabase {
       )
     ''');
     await customStatement(
-      'CREATE INDEX scheduling_changes_operation ON scheduling_changes(operation_id)',
+      'CREATE INDEX IF NOT EXISTS scheduling_changes_operation ON scheduling_changes(operation_id)',
     );
     await customStatement(
-      'CREATE INDEX scheduling_changes_target ON scheduling_changes(target_kind,target_id)',
+      'CREATE INDEX IF NOT EXISTS scheduling_changes_target ON scheduling_changes(target_kind,target_id)',
     );
   }
 }

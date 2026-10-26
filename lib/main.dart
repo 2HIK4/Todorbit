@@ -64,6 +64,7 @@ Future<void> _startApplication(
       await legacyDatabase.exists();
   final databaseFile = await AppDatabase.defaultFile();
   final backupService = BackupService(databaseFile);
+  late final AppDatabase database;
   try {
     if (await backupService.pendingRestoreName() != null) {
       final companion = NativeWidgetService();
@@ -76,13 +77,18 @@ Future<void> _startApplication(
       );
     }
     final olderSchema = await MigrationGate.olderSchema(databaseFile);
-    if (olderSchema != null && !migrationApproved) {
+    if (olderSchema != null && olderSchema > 0 && !migrationApproved) {
       runApp(_MigrationApprovalApp(arguments: args, olderSchema: olderSchema));
       return;
     }
-    await backupService.ensureAutomaticBackup(
-      appSchemaVersion: AppDatabase.currentSchemaVersion,
-    );
+    // A schema-0 file is not a valid managed backup. Its creation transaction
+    // must validate/recover it first, without deleting or replacing the file.
+    if (olderSchema != 0) {
+      await backupService.ensureAutomaticBackup(
+        appSchemaVersion: AppDatabase.currentSchemaVersion,
+      );
+    }
+    database = await AppDatabase.openDefault();
   } catch (failure) {
     runApp(
       _StartupFailureApp(
@@ -94,7 +100,6 @@ Future<void> _startApplication(
     );
     return;
   }
-  final database = await AppDatabase.openDefault();
   final privacy = PrivacyManager(privacyStore, privacySettings);
   privacy.startInactivityCheck();
   final appearanceStore = await AppearancePreferenceStore.openDefault();
@@ -105,8 +110,10 @@ Future<void> _startApplication(
     calendarPreferenceStore: calendarPreferenceStore,
     backupService: backupService,
   );
-  await controller.initialize();
+  var controllerInitialized = false;
   try {
+    await controller.initialize();
+    controllerInitialized = true;
     final restoredSettings = await backupService.restoredPortableSettings();
     if (restoredSettings != null) {
       final transfer = SettingsTransfer.decode(restoredSettings);
@@ -124,9 +131,10 @@ Future<void> _startApplication(
         backupService: backupService,
         hasPendingRestore: await backupService.hasScheduledRestore(),
         arguments: args,
-        failure:
-            'Database opened, but restored personalization could not be finalized: $failure',
-        databaseOpened: true,
+        failure: controllerInitialized
+            ? 'Database opened, but restored personalization could not be finalized: $failure'
+            : 'Database or profile settings could not be loaded: $failure',
+        databaseOpened: controllerInitialized,
       ),
     );
     return;

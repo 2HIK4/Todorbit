@@ -1,5 +1,49 @@
 # Decisions
 
+## Atomic initialization and conservative version-0 recovery (2026-10-26)
+
+- Commit creation/upgrade DDL and the schema version in the same SQLite
+  transaction; Drift's later identical version write is harmless. Keep schema
+  v21 and existing upgrade approval/verified snapshot requirements.
+- Recover legacy autocommitted version-0 initialization in place only when
+  every user table is empty and the completed schema exactly matches a fresh
+  current schema. Roll back populated/incompatible files; never drop, replace,
+  reset or delete a user's database to make startup succeed.
+- Open initialization inside startup's failure boundary before controller/native
+  use. Keep controller-load failures in that boundary as well. Preserve old
+  interrupted fixtures and test disposable copies, plus actual WAL process
+  termination during creation/upgrade/version recording.
+- Strict clean-user acceptance requires a real Windows identity. Prepare an
+  allowlisted Sandbox payload/guarded runner when this non-elevated host has no
+  enabled VM facility. Do not claim VM/GUI acceptance from scripts or APPDATA
+  redirection. Google policy review remains separate from engineering results.
+
+## Owner-authorized private production-client test (2026-10-26)
+
+- When supported app-control inventory and the Computer Use native pipe are
+  unavailable, use an ignored Windows service-test entry point against the
+  production classes and only authorized disposable profiles. Preserve the
+  original Release package and validate its actual startup restore separately.
+  Label owner-observed consent, direct real-Google service results, packaged
+  startup evidence and unobserved GUI actions separately. No token/code/phrase
+  diagnostics or cross-profile session copying are used.
+
+- Test the existing project/client with only non-sensitive drive.appdata while
+  branding remains unverified. External/In production is owner-reported, not
+  independently observed. Brand verification and actual technical authorization
+  are distinct; neither the docs nor mocked login establish a real user grant.
+- Temporarily enable the existing three-field build configuration for local
+  private packaging, then restore the tracked disabled/empty file byte-for-byte.
+  Keep enabled configuration/artifacts/profiles ignored and local. Do not
+  publish v1.0.13, merge into main, edit the website or change Google settings.
+- Use disposable APPDATA/LOCALAPPDATA roots with startup disabled; keep the
+  registered installer and personal data untouched. Require owner completion of
+  normal Google consent with an account outside the old test-user list. Stop
+  on Google blocks/security interstitials; no restriction bypass is permitted.
+- A successful account test would establish only that observed account/flow.
+  Scope user-cap claims to observed evidence and keep public release gated on
+  real packaged recovery, policy/branding review and remaining manual checks.
+
 ## Approved website deployment, separate from app release (2026-10-26)
 
 - Publish only the prepared static website and Pages workflow on `main`,

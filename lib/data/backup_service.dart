@@ -538,6 +538,7 @@ void _validateLifeManagerSnapshot(String filePath) {
         'progressive_plan_assignments',
       });
     }
+    if (schema >= 20) required.add('event_reminder_deliveries');
     if (!names.containsAll(required)) {
       throw StateError('Snapshot is not a Todorbit database');
     }
@@ -552,7 +553,6 @@ void _validateLifeManagerSnapshot(String filePath) {
           .isNotEmpty) {
         throw StateError('Snapshot has an oversized managed attachment');
       }
-      if (schema >= 20) required.add('event_reminder_deliveries');
       final statement = connection.prepare(
         "SELECT id, byte_size, sha256, original_name, content FROM task_resources WHERE kind='managed'",
       );

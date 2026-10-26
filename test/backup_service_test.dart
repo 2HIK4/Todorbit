@@ -10,6 +10,47 @@ import 'package:life_manager/domain/models.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {
+  test(
+    'incomplete v20/v21 reminder schema is rejected without replacement',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'todorbit-incomplete-',
+      );
+      final file = File('${directory.path}/life.sqlite');
+      try {
+        final database = AppDatabase(NativeDatabase(file));
+        await LifeRepository(database)
+            .addTask(const TaskDraft(title: 'Keep me'));
+        await database.close();
+        final raw = sqlite.sqlite3.open(file.path);
+        raw.execute('DROP TABLE event_reminder_deliveries');
+        raw.close();
+        for (final version in [20, 21]) {
+          final source = sqlite.sqlite3.open(file.path);
+          source.execute('PRAGMA user_version=$version');
+          source.close();
+          await expectLater(
+            BackupService(file).createBackup(BackupKind.manual),
+            throwsStateError,
+          );
+          final verify = sqlite.sqlite3.open(file.path);
+          try {
+            expect(
+              verify.select('SELECT title FROM tasks').single['title'],
+              'Keep me',
+            );
+            expect(verify.userVersion, version);
+          } finally {
+            verify.close();
+          }
+          expect(await BackupService(file).list(), isEmpty);
+        }
+      } finally {
+        await directory.delete(recursive: true);
+      }
+    },
+  );
+
   test('snapshot includes event detail catalog and inherited colors', () async {
     final directory = await Directory.systemTemp.createTemp(
       'todorbit-event-backup-',

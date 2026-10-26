@@ -29,3 +29,23 @@ pass. Debug-only imports remain available for authorized isolated testing with
 or a downloaded Desktop credentials JSON in Git or packages. APPDATA redirection
 does not create a fresh Windows Credential Manager identity; strict clean-install
 acceptance needs a disposable Windows user/VM. See [format and recovery](GOOGLE_DRIVE_BACKUP.md).
+
+The owner-authorized private v1.0.13 exception enables the same build parameters
+temporarily for isolated acceptance without branding verification, then restores
+the tracked configuration to disabled/empty. Private artifacts/configuration
+remain ignored; this is not public enablement or release approval. See
+[private acceptance](GOOGLE_DRIVE_PRIVATE_ACCEPTANCE.md).
+
+Database creation and upgrades commit schema DDL and `user_version` in one
+transaction. Startup recognizes version 0 as unfinished initialization, but
+automatically completes it only when every user table is empty and the final
+schema exactly matches a fresh current database. Populated/incompatible files
+are preserved and rejected; no reset/delete fallback exists. Schema v21 and
+approved upgrade/Before upgrade gates remain unchanged. Regression includes
+real child-process termination before commit; see
+[engineering acceptance](GOOGLE_DRIVE_ENGINEERING_ACCEPTANCE.md).
+
+For strict fresh-user installer/portable acceptance, prepare a guarded Windows
+Sandbox payload with `tools/prepare-windows-sandbox-acceptance.ps1`. Follow
+[clean Windows acceptance](WINDOWS_CLEAN_ACCEPTANCE.md); never run the installer
+on the owner's normal account. Preparing a Sandbox script is not VM acceptance.

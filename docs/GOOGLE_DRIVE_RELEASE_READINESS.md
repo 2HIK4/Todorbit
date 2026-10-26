@@ -10,16 +10,29 @@ advertising public Google access before the gates below pass.
 **BLOCKED — public OAuth release held.** The implementation can compile the public
 Desktop client ID and its required client-secret parameter into both Windows
 packages. No developer JSON import is exposed in Release builds. The reviewed
-configuration is currently disabled and empty. The owner reports the **Todorbit**
-project is **Testing**, with app name/logo/contact emails set, missing
-homepage/privacy/terms URLs, and no scopes listed under Data Access. External
-audience status is not independently confirmed. A valid installed Desktop JSON
-was located outside the repository; its source path is not used at runtime and
-its fields were not copied into public configuration while this gate is open.
+public configuration remains disabled and empty outside the owner-authorized
+private test. The owner now reports project **Todorbit** (ID **todorbit**) is
+**External / In production**, Drive API enabled, with only `drive.appdata`
+configured under Data Access. Branding remains unverified because domain
+ownership cannot be verified. Console state is owner-reported, not independently
+observed. The existing installed Desktop JSON outside the repository has the
+matching project ID and is authorized for the enabled private build. Its source
+path is not used at runtime. See the [private verification report](GOOGLE_DRIVE_PRIVATE_ACCEPTANCE.md).
 The owner-approved website is now published; see its verified URLs below.
 No Cloud Console changes or Google approval is claimed.
 The prior `198da07` owner-configured debug acceptance remains historical
 evidence for encryption/Drive/recovery, not public packaged login acceptance.
+
+New private evidence: the owner confirms an outside-old-test-list account
+connected in the enabled package without a warning or block. Real production
+service refresh, exact appdata grant, encrypted full/settings upload/download
+and recovery passed; the original Release package applied the full restore and
+preserved all 44 tables/preferences across restart. Local disconnect passed;
+the owner confirmed same-account reconnect without warning/block. A separate
+real refresh/list verified account identity and retained history, then cleanup
+removed only the two test-created snapshots. These results demonstrate technical
+access for the tested account without verified branding, not Google approval or general public
+acceptance. No new domain purchase or Cloud setting change was performed.
 
 ## Owner actions in the current Google Cloud interface
 
@@ -77,20 +90,23 @@ documentation reviewed 2026-10-26. Actual project state remains unobserved.
 | Boundary | Result | Evidence and limits |
 | --- | --- | --- |
 | Browser authorization | PASS (source/focused tests) | External system browser, ephemeral IPv4 loopback, fresh 256-bit state/verifier, PKCE S256, exact callback path/GET/state validation, bounded waits and listener cleanup. |
-| Tokens and reconnection | PASS (source/mocks; historical real test) | Windows secure-storage plugin encrypts token files with an AES-GCM key held in Windows Credential Manager. Profile-path hash isolates records. Bundled public parameters work in mock exchange, restart, refresh and reconnect without imported configuration. Fresh real packaged acceptance remains open. |
+| Tokens and reconnection | PASS (source/mocks + real private load/refresh/disconnect/reconnect) | Locked flutter_secure_storage_windows 4.2.2 uses a DPAPI-encrypted JSON primary store, with native AES-GCM/Credential Manager backward compatibility. Profile-path hashes isolate records, not Windows vault identities. Owner-observed packaged reconnect passed without warning/block; an independent Windows harness verified real refresh, same account and retained cloud history. Strict clean Windows-user acceptance remains open. |
 | Diagnostics/exports | PASS (source) | No cloud logging of token/code/passphrase fields; provider error diagnostics use fixed messages. Exported settings use the existing category allowlist; session/client configuration stays outside snapshots. Package gates reject known credential/session/database/backup filenames. This is not a guarantee against arbitrary disguised private data. |
 | Account safety | PASS (existing mocked tests) | Identity is checked on connect/refresh; account changes require disconnect; stale remote-object operations fail. Real account switching remains UNVERIFIED. |
-| Encryption | PASS (source/automated round trips) | Existing random 16-byte salt, PBKDF2-HMAC-SHA256/600,000, AES-256-GCM, random 12-byte nonce/16-byte tag and fixed authenticated header retained. Wrong key/tamper/format/checksum rejection already covered. No concrete crypto defect identified; this is not an independent cryptographic audit. |
-| Storage/transfer | PASS (source/existing mocks) | Only appDataFolder with drive.appdata; encrypted upload, bounded download, unique objects, chunk progress, remote MD5/size and SHA-256 readback before verified success. No automatic deletion. Real quota/interruption remain UNVERIFIED. |
-| Recovery | PASS (historical real + automated) | Existing Before Restore, managed snapshot/digest/schema checks, SQLite backup transaction, migration/open receipt and selective settings recovery are unchanged. Prior real restoration matched all 44 tables. New packaged production-client recovery remains UNVERIFIED. |
-| Public production authorization | BLOCKED | Owner confirms Testing, incomplete branding URLs and empty configured Data Access. External status/production approval and outside-test-list account acceptance remain unverified. Desktop JSON exists outside Git; public config remains disabled. |
+| Encryption | PASS (source/automated + private real Google transfer) | Existing random 16-byte salt, PBKDF2-HMAC-SHA256/600,000, AES-256-GCM, random 12-byte nonce/16-byte tag and fixed authenticated header retained. Real uploaded/downloaded full and settings ciphertext decrypted successfully; wrong phrase rejected without target changes. Tamper/format/checksum rejection covered by automation. This is not an independent cryptographic audit. |
+| Storage/transfer | PASS (source/mocks + private real Google service harness) | Only appDataFolder with drive.appdata; full/settings encrypted uploads, list/download and remote MD5/size/SHA-256 readback verified against real Google. Only test-created objects downloaded. No automatic retention deletion. Real quota/interruption remain UNVERIFIED. |
+| Recovery | PASS (private real Google download + packaged startup; dialogs unobserved) | New private production-client full snapshot was downloaded and staged through production services, then applied by the original Release package. All 44 tables and allowed personalization matched; Before Restore preserved target rows/settings and receipt finalized. Selective settings recovery/hotkey merge preserved all target tables. Strict fresh-user installer and physical dialog acceptance remain UNVERIFIED. |
+| Public production authorization | BLOCKED for release; private technical test succeeds | Owner reports project todorbit External/In production, Drive API enabled and only drive.appdata configured, branding unverified. Owner confirms an account outside the old test list connected in the private package without warning/block. Real service refresh/identity/list/upload/download and packaged startup recovery also pass. This is one account's technical result, not branding approval, a quota measurement or complete public acceptance. Tracked public config stays disabled. |
 
 ## Build and package
 
 `config/google-drive.json` is a strict three-field public build configuration.
 Disabled builds must have empty client fields; enabled builds require both.
-Never set the flag simply because the client ID is available. Maintainers
-review production evidence before enabling it; ordinary users never do this.
+The owner explicitly authorizes an enabled **private** v1.0.13 test without
+verified branding. This is separate from public distribution approval. Its
+temporary configuration is restored to disabled after packaging; ordinary
+users never provide build parameters or a JSON file. Public enablement still
+requires review of the real acceptance and remaining release gates.
 
 ```powershell
 flutter pub get
@@ -110,6 +126,19 @@ analysis/tests, Windows Release, portable packaging, native self-test, installer
 compile and checksums, then retains an unpublished candidate artifact.
 
 ## Required packaged acceptance — UNVERIFIED
+
+**Current private checkpoint: PARTIAL.** The enabled private candidate passed
+owner-observed sign-in/reconnect, real service/API encrypted backup and settings
+recovery, and original Release full-restore startup/restart (all 44 tables and
+allowed preferences). See the [final private report](GOOGLE_DRIVE_PRIVATE_ACCEPTANCE.md).
+Fresh Windows-user/VM, registered installer and rendered backup/settings UI
+acceptance below remain open. The interrupted schema-0 initialization defect
+is now fixed: creation/upgrades/version commit atomically and only empty,
+compatible partial initialization can be completed. Twenty new regression
+cases and disposable recovery of both original fixtures pass. See the
+[engineering follow-up](GOOGLE_DRIVE_ENGINEERING_ACCEPTANCE.md) for current
+build, real-Google recheck, CI and clean-VM limits. Historical disabled-candidate
+evidence follows and does not replace these gates.
 
 The disabled candidate has passed Windows Release, installer compile, portable
 CRC/byte equality and isolated installer-layout/portable startup and restart.
