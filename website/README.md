@@ -9,10 +9,10 @@ Application releases and Google Cloud configuration are outside this deployment.
 - Terms of Service: `dist/terms.html`
 - Shared responsive light/dark CSS, existing brand and screenshot: `dist/assets/`
 
-The site links **v1.0.13**, the published owner-approved experimental
+The prepared site links **v1.0.14**, the published owner-approved experimental
 Windows x64 pre-release. Google Drive is enabled; branding verification, full
 public OAuth policy compliance and broad account eligibility remain unresolved.
-Update pinned version/download URLs only after a later release is published.
+Publish these pinned version/download URLs only after v1.0.14 and its assets are public.
 No analytics, external fonts, forms, JavaScript or cookies are added.
 
 ## v1.0.13 deployment (2026-10-26)
