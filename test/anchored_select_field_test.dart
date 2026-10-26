@@ -5,6 +5,59 @@ import 'package:life_manager/features/shared/anchored_select_field.dart';
 
 void main() {
   for (final brightness in Brightness.values) {
+    testWidgets('select shows keyboard focus before opening ($brightness)', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(360, 600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(brightness: brightness),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: const TextScaler.linear(1.5)),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  AnchoredSelectField<int>(
+                    initialValue: 1,
+                    decoration: const InputDecoration(labelText: 'Category'),
+                    items: const [
+                      DropdownMenuItem(value: 1, child: Text('Personal')),
+                    ],
+                    onChanged: (_) {},
+                  ),
+                  TextButton(onPressed: () {}, child: const Text('Next')),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      final decorator = find.byType(InputDecorator);
+      expect(tester.widget<InputDecorator>(decorator).isFocused, isFalse);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+      expect(tester.widget<InputDecorator>(decorator).isFocused, isTrue);
+      expect(find.byType(MenuItemButton), findsNothing);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(find.byType(MenuItemButton), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(tester.widget<InputDecorator>(decorator).isFocused, isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+      expect(tester.widget<InputDecorator>(decorator).isFocused, isFalse);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final brightness in Brightness.values) {
     testWidgets(
       'select menu anchors below field and keeps it visible ($brightness)',
       (tester) async {

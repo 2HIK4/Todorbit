@@ -49,6 +49,8 @@ class _AnchoredSelectBody<T> extends StatefulWidget {
 
 class _AnchoredSelectBodyState<T> extends State<_AnchoredSelectBody<T>> {
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _triggerFocusNode = FocusNode();
+  bool _triggerFocused = false;
   late List<FocusNode> _itemFocusNodes = _newFocusNodes();
 
   List<FocusNode> _newFocusNodes() => [
@@ -72,6 +74,7 @@ class _AnchoredSelectBodyState<T> extends State<_AnchoredSelectBody<T>> {
       node.dispose();
     }
     _scrollController.dispose();
+    _triggerFocusNode.dispose();
     super.dispose();
   }
 
@@ -90,6 +93,7 @@ class _AnchoredSelectBodyState<T> extends State<_AnchoredSelectBody<T>> {
             ? constraints.maxWidth
             : math.min(viewport.width - 32, 320.0);
         return MenuAnchor(
+          childFocusNode: _triggerFocusNode,
           style: MenuStyle(
             minimumSize: WidgetStatePropertyAll(Size(width, 0)),
             maximumSize: WidgetStatePropertyAll(
@@ -194,6 +198,9 @@ class _AnchoredSelectBodyState<T> extends State<_AnchoredSelectBody<T>> {
               expanded: controller.isOpen,
               enabled: enabled,
               child: InkWell(
+                focusNode: _triggerFocusNode,
+                onFocusChange: (focused) =>
+                    setState(() => _triggerFocused = focused),
                 onTap: enabled
                     ? () => controller.isOpen
                           ? controller.close()
@@ -202,7 +209,7 @@ class _AnchoredSelectBodyState<T> extends State<_AnchoredSelectBody<T>> {
                 borderRadius: BorderRadius.circular(10),
                 child: InputDecorator(
                   isEmpty: false,
-                  isFocused: controller.isOpen,
+                  isFocused: enabled && (_triggerFocused || controller.isOpen),
                   decoration: widget.decoration.copyWith(
                     enabled: enabled,
                     errorText: widget.field.errorText,

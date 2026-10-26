@@ -15,6 +15,7 @@ internal static partial class LifeManagerWidgetSelfTest
 
     private static void TestWidgetInteractions(string directory)
     {
+        WidgetEdgeSnapSelfTest.Run();
         using var profile = new WidgetTestProfile(Path.Combine(directory, "interaction-profile"));
         var path = Path.Combine(directory, "interaction.sqlite");
         CreateDatabase(path);

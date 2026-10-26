@@ -17,6 +17,8 @@ internal static partial class LifeManagerWidgetSelfTest
             using var repository = LifeManagerWidgetRepository.OpenForTest(target);
             using (var context = new NativeWidgetApplicationContext(repository, null, false, "background"))
             {
+                var tray = (NotifyIcon)typeof(NativeWidgetApplicationContext).GetField("trayIcon", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(context)!;
+                Require(!tray.ContextMenuStrip!.Items.OfType<ToolStripMenuItem>().Any(item => item.Text == "Quick Add"), "Redundant tray Quick Add action remains.");
                 Require(context.VisibleWidgets == (false, false), "Background startup unexpectedly showed a widget.");
                 context.ExecuteCommand("show");
                 context.ExecuteCommand("calendar-show");
@@ -61,7 +63,6 @@ internal static partial class LifeManagerWidgetSelfTest
         var savedBytes = File.ReadAllBytes(path);
         var saved = WidgetConfiguration.Load(true, new WidgetSettings());
         var draft = WidgetConfiguration.Parse(System.Text.Json.JsonSerializer.Serialize(saved, options));
-        draft.CalendarPresentation = "fullMonth";
         draft.ShowTitle = !saved.ShowTitle;
         draft.Surface("shell").Opacity = 36;
         var session = Guid.NewGuid().ToString();
@@ -77,17 +78,17 @@ internal static partial class LifeManagerWidgetSelfTest
         }
         var tasksTitle = Displayed("host").ShowTitle;
         context.ExecuteCommand(Command(1));
-        Require(Displayed("calendarHost").CalendarPresentation == "fullMonth" &&
+        Require(Displayed("calendarHost").ShowTitle == draft.ShowTitle &&
             Displayed("calendarHost").Surface("shell").Opacity == 36,
             "Live draft did not reach the actual Calendar HWND");
         Require(Displayed("host").ShowTitle == tasksTitle, "Calendar preview changed Tasks");
         Require(File.ReadAllBytes(path).SequenceEqual(savedBytes), "Preview wrote saved configuration");
         context.ExecuteCommand(Command(2, true));
         Require(Displayed("calendarHost").ShowTitle == saved.ShowTitle &&
-            Displayed("calendarHost").CalendarPresentation == saved.CalendarPresentation,
+            Displayed("calendarHost").Surface("shell").Opacity == saved.Surface("shell").Opacity,
             "Rollback did not restore actual Calendar HWND settings");
         context.ExecuteCommand(Command(3));
-        Require(Displayed("calendarHost").CalendarPresentation == saved.CalendarPresentation,
+        Require(Displayed("calendarHost").ShowTitle == saved.ShowTitle,
             "Delayed preview revived a cancelled session");
     }
 }

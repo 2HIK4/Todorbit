@@ -1,3 +1,5 @@
+import '../shared/scroll_edge_fade.dart';
+
 import 'dart:async';
 import 'dart:io';
 
@@ -662,7 +664,7 @@ class _WidgetConfigurationEditorState extends State<WidgetConfigurationEditor> {
                 key: formKey,
                 child: SizedBox(
                   width: 560,
-                  child: SingleChildScrollView(
+                  child: FadingScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -690,41 +692,6 @@ class _WidgetConfigurationEditorState extends State<WidgetConfigurationEditor> {
                           style: Theme.of(context).textTheme.labelMedium,
                         ),
                         const SizedBox(height: 12),
-                        if (!tasks)
-                          SettingsSection(
-                            title: 'Calendar presentation',
-                            initiallyExpanded: true,
-                            children: [
-                              DropdownButtonFormField<
-                                WidgetCalendarPresentation
-                              >(
-                                key: ValueKey(draft.calendarPresentation),
-                                initialValue: draft.calendarPresentation,
-                                isExpanded: true,
-                                decoration: const InputDecoration(
-                                  labelText: 'Calendar presentation',
-                                ),
-                                items: const [
-                                  DropdownMenuItem(
-                                    value: WidgetCalendarPresentation
-                                        .compactAgenda,
-                                    child: Text('Compact Calendar + Agenda'),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: WidgetCalendarPresentation.fullMonth,
-                                    child: Text('Full Month Grid'),
-                                  ),
-                                ],
-                                onChanged: (v) {
-                                  if (v != null) {
-                                    change(
-                                      draft.copyWith(calendarPresentation: v),
-                                    );
-                                  }
-                                },
-                              ),
-                            ],
-                          ),
                         SettingsSection(
                           title: 'General & visibility',
                           initiallyExpanded: true,

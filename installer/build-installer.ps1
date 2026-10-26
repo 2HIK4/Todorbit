@@ -22,7 +22,7 @@ if ($widgetVersion -notmatch ('^' + [regex]::Escape($version) + '(?:\.|$)')) {
   throw "Widget version $widgetVersion does not match application version $version. Rebuild Windows Release."
 }
 $privateData = Get-ChildItem -LiteralPath $bundle -Recurse -File | Where-Object {
-  $_.Name -match '(?i)\.(sqlite|db)(-(wal|shm))?$|\.log$|\.(pfx|p12|pem|key)$|(-settings|privacy-session|pending-restore|restore-status)\.json$' -or
+  $_.Name -match '(?i)\.(sqlite|db)(-(wal|shm))?$|\.log$|\.(pfx|p12|pem|key)$|(-settings|privacy-session|pending-restore|restore-status|support-introduction)\.json$' -or
   $_.FullName -match '(?i)[\\/]backups[\\/]'
 }
 if ($privateData) {

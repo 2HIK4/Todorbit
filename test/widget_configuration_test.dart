@@ -7,27 +7,22 @@ import 'package:life_manager/domain/widget_configuration.dart';
 import 'package:life_manager/features/shared/download_size.dart';
 
 void main() {
-  test('calendar presentation defaults safely and remains independent', () {
-    expect(
-      WidgetConfiguration.fromJson({}).calendarPresentation,
-      WidgetCalendarPresentation.compactAgenda,
-    );
-    expect(
-      WidgetConfiguration.fromJson({'calendarPresentation': 'unknown'})
-          .calendarPresentation,
-      WidgetCalendarPresentation.compactAgenda,
-    );
-    final full = WidgetConfiguration().copyWith(
-      calendarPresentation: WidgetCalendarPresentation.fullMonth,
-    );
-    expect(
-      WidgetConfiguration.fromJson(full.toJson()).calendarPresentation,
-      WidgetCalendarPresentation.fullMonth,
-    );
-    expect(
-      full.withSharedAppearance(WidgetConfiguration()).calendarPresentation,
-      WidgetCalendarPresentation.fullMonth,
-    );
+  test('legacy calendar modes load as the unified design without resetting settings', () {
+    for (final mode in ['compactAgenda', 'fullMonth', 'unknown', null]) {
+      final old = WidgetConfiguration(
+        enabled: true,
+        textScale: 1.3,
+        layoutLocked: true,
+        surfaces: {'shell': const WidgetSurface(opacity: 35)},
+      ).toJson();
+      old['calendarPresentation'] = mode;
+      final loaded = WidgetConfiguration.fromJson(old);
+      expect(loaded.enabled, isTrue);
+      expect(loaded.layoutLocked, isTrue);
+      expect(loaded.textScale, 1.3);
+      expect(loaded.surfaces['shell']!.opacity, 35);
+      expect(loaded.toJson().containsKey('calendarPresentation'), isFalse);
+    }
   });
   test('partial appearance maps retain additive indicator defaults', () {
     final config = WidgetConfiguration(

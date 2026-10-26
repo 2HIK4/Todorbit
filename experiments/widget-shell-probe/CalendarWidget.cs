@@ -9,10 +9,11 @@ internal sealed partial class NativeDesktopWidgetHost
     private int calendarWeekStart = 7;
     private int agendaOffset;
     private Form? calendarDetail;
-    private bool FullMonth => configuration.CalendarPresentation == "fullMonth";
+    private int CalendarWeeks => Math.Max(4, (int)Math.Ceiling(((calendarMonth - CalendarGridStart).Days + DateTime.DaysInMonth(calendarMonth.Year, calendarMonth.Month)) / 7d));
+    private int CalendarDays => CalendarWeeks * 7;
     private float CalendarTop => ContentTop;
     private CalendarWidgetLayout CalendarLayout => CalendarWidgetLayout.Create(
-        new SizeF(LogicalClientWidth, LogicalClientHeight), CalendarTop, configuration.TextScale, FullMonth);
+        new SizeF(LogicalClientWidth, LogicalClientHeight), CalendarTop, configuration.TextScale, CalendarWeeks);
     private RectangleF CalendarGrid => CalendarLayout.Grid;
     private RectangleF AgendaRect => CalendarLayout.Agenda;
     private RectangleF CalendarCell(int index) => CalendarLayout.Cell(index);
@@ -22,8 +23,6 @@ internal sealed partial class NativeDesktopWidgetHost
     private RectangleF MonthPrevious => new(16, CalendarTop, 32, 32);
     private RectangleF MonthNext => new(LogicalClientWidth - 48, CalendarTop, 32, 32);
     private RectangleF MonthToday => new(LogicalClientWidth / 2f - 42, CalendarTop + 34, 84, 28);
-    private RectangleF AgendaPrevious => new(AgendaRect.Right - 64, AgendaRect.Y + 2, 28, 28);
-    private RectangleF AgendaNext => new(AgendaRect.Right - 34, AgendaRect.Y + 2, 28, 28);
     private WidgetCalendarItem[] SelectedAgenda => calendarItems.Where(item => item.Day == selectedDate).ToArray();
 
     internal void AdvanceToday(DateTime previous)
@@ -36,15 +35,12 @@ internal sealed partial class NativeDesktopWidgetHost
     }
     private RectangleF CalendarControl(int index) => index switch
     {
-        0 => MonthPrevious, 1 => MonthNext, 2 => MonthToday,
-        3 => AgendaPrevious, _ => AgendaNext,
+        0 => MonthPrevious, 1 => MonthNext, _ => MonthToday,
     };
     private (HitTarget Target, int Index) CalendarHitTest(PointF point)
     {
         for (var i = 0; i < 3; i++) if (CalendarControl(i).Contains(point)) return (HitTarget.CalendarControl, i);
-        if (SelectedAgenda.Length > AgendaVisibleRows)
-            for (var i = 3; i < 5; i++) if (CalendarControl(i).Contains(point)) return (HitTarget.CalendarControl, i);
-        for (var i = 0; i < 42; i++) if (CalendarCell(i).Contains(point)) return (HitTarget.CalendarDate, i);
+        for (var i = 0; i < CalendarDays; i++) if (CalendarCell(i).Contains(point)) return (HitTarget.CalendarDate, i);
         var agenda = SelectedAgenda;
         for (var i = 0; i < AgendaVisibleRows; i++)
             if (AgendaRowBounds(i).Contains(point) && i + agendaOffset < agenda.Length)
@@ -57,9 +53,9 @@ internal sealed partial class NativeDesktopWidgetHost
         if (target == HitTarget.CalendarControl)
         {
             bounds = CalendarControl(index);
-            label = index switch { 0 => "Previous month", 1 => "Next month", 2 => "Return to today", 3 => "Earlier agenda items", _ => "Later agenda items" };
+            label = index switch { 0 => "Previous month", 1 => "Next month", _ => "Return to today" };
         }
-        else if (target == HitTarget.CalendarDate && index >= 0 && index < 42)
+        else if (target == HitTarget.CalendarDate && index >= 0 && index < CalendarDays)
         {
             bounds = CalendarCell(index); var date = CalendarGridStart.AddDays(index);
             label = $"{date:D} · {calendarItems.Count(item => item.Day == date)} scheduled items. Select to inspect the agenda.";
@@ -128,11 +124,10 @@ internal sealed partial class NativeDesktopWidgetHost
             DrawText(g, label, small, muted, new RectangleF(CalendarGrid.X + col * CalendarGrid.Width / 7, CalendarGrid.Y - 20, CalendarGrid.Width / 7, 20), center, "shell");
         }
         var byDay = calendarItems.GroupBy(item => item.Day).ToDictionary(group => group.Key, group => group.ToArray());
-        for (var i = 0; i < 42; i++)
+        for (var i = 0; i < CalendarDays; i++)
         {
-            var date = CalendarGridStart.AddDays(i); var r = CalendarCell(i); r.Inflate(FullMonth ? -2 : -1, -1);
+            var date = CalendarGridStart.AddDays(i); var r = CalendarCell(i); r.Inflate(-2, -2);
             PaintSurface(g, "calendarCell", r, palette.Panel);
-            if (FullMonth)
             {
                 // Quiet dividers preserve separate days without overriding saved opacity.
                 using var border = new Pen(Color.FromArgb(85, palette.Border), 1);
@@ -147,41 +142,15 @@ internal sealed partial class NativeDesktopWidgetHost
                 using var pen = new Pen(palette.Accent, 1); var hover = r; hover.Inflate(-1, -1); DrawRoundedRectangle(g, pen, hover, 6);
             }
             var items = byDay.GetValueOrDefault(date) ?? [];
-            var capacity = CalendarLayout.CellPreviewCapacity(FullMonth);
-            var dates = capacity > 0 ? new RectangleF(r.X + 5, r.Y + 2, r.Width - 10, 25 * configuration.TextScale) : r;
-            DrawText(g, date.Day.ToString(), font, ink, dates, capacity > 0 ? ellipsis : center, surface);
-            if (date == selectedDate)
+            DrawText(g, date.Day.ToString(CultureInfo.CurrentCulture), font, ink,
+                new RectangleF(r.X, r.Y, r.Width, r.Height - (items.Length > 0 ? 7 : 0)), center, surface);
+            // Small non-text markers retain meaning at compact widths.
+            foreach (var (kind, markerIndex) in items.Select(item => item.Kind).Distinct().Take(3).Select((kind, index) => (kind, index)))
             {
-                using var mark = new SolidBrush(ink.Color); g.FillEllipse(mark, r.Right - 6, r.Y + 3, 3, 3);
+                var marker = items.First(item => item.Kind == kind);
+                DrawItemMarker(g, marker, new RectangleF(r.X + r.Width / 2 - 9 + markerIndex * 6, r.Bottom - 7, 4, 4), ink.Color);
             }
-            if (date == DateTime.Today)
-            {
-                using var marker = new Pen(ink.Color, 2); g.DrawLine(marker, r.X + 5, r.Bottom - 3, r.X + 13, r.Bottom - 3);
-            }
-            if (capacity == 0)
-            {
-                if (items.Length > 0) g.FillEllipse(ink, r.X + r.Width / 2 - 1.5f, r.Bottom - 4, 3, 3);
-                continue;
-            }
-            var counts = CalendarWidgetLayout.PreviewCount(items.Length, capacity);
-            var lineHeight = 18 * configuration.TextScale;
-            for (var entry = 0; entry < counts.Entries; entry++)
-            {
-                var item = items[entry];
-                var bounds = new RectangleF(r.X + 5, r.Y + 27 * configuration.TextScale + entry * lineHeight, r.Width - 10, lineHeight);
-                DrawItemMarker(g, item, new RectangleF(bounds.X, bounds.Y + (lineHeight - 9) / 2, 9, 9), ink.Color);
-                bounds.X += 13; bounds.Width -= 13;
-                var time = ItemTime(item);
-                // A short cell must still identify the item. Its time is always
-                // available in the selected-day agenda and full detail view.
-                var label = time.Length > 0 && bounds.Width >= 145 * configuration.TextScale
-                    ? time + "  " + item.Title : item.Title;
-                using var entryFont = new Font(small, item.Cancelled ? FontStyle.Strikeout : FontStyle.Regular);
-                DrawText(g, label, entryFont, ink, bounds, ellipsis, surface);
-            }
-            if (counts.Remaining > 0)
-                DrawText(g, $"+{counts.Remaining} more", small, ink,
-                    new RectangleF(r.X + 5, r.Y + 27 * configuration.TextScale + counts.Entries * lineHeight, r.Width - 10, lineHeight), ellipsis, surface);
+
         }
         DrawCalendarAgenda(g, font, small, ellipsis);
     }
@@ -209,11 +178,16 @@ internal sealed partial class NativeDesktopWidgetHost
         agendaOffset = Math.Clamp(agendaOffset, 0, Math.Max(0, items.Length - AgendaVisibleRows));
         var overflow = items.Length > AgendaVisibleRows;
         DrawText(g, selectedDate.ToString("ddd, d MMM"), small, text,
-            new RectangleF(AgendaRect.X + 8, AgendaRect.Y + 4, AgendaRect.Width - (overflow ? 76 : 16), 26), ellipsis, "agenda");
+            new RectangleF(AgendaRect.X + 8, AgendaRect.Y + 4, AgendaRect.Width - 16, 26), ellipsis, "agenda");
         if (overflow)
         {
-            DrawCalendarArrow(g, AgendaPrevious, -1, true, agendaOffset > 0 ? text.Color : muted.Color);
-            DrawCalendarArrow(g, AgendaNext, 1, true, agendaOffset + AgendaVisibleRows < items.Length ? text.Color : muted.Color);
+            var track = new RectangleF(AgendaRect.Right - 7, AgendaRect.Y + 38, 3, AgendaRect.Height - 44);
+            using var rail = new SolidBrush(Color.FromArgb(80, palette.Border));
+            FillRoundedRectangle(g, rail, track, 2);
+            var thumbHeight = Math.Max(14, track.Height * AgendaVisibleRows / items.Length);
+            var offset = (track.Height - thumbHeight) * agendaOffset / Math.Max(1, items.Length - AgendaVisibleRows);
+            using var thumb = new SolidBrush(SurfaceText("agenda", true));
+            FillRoundedRectangle(g, thumb, new RectangleF(track.X, track.Y + offset, 3, thumbHeight), 2);
         }
         using (var divider = new Pen(Color.FromArgb(90, palette.Border)))
             g.DrawLine(divider, AgendaRect.X + 8, AgendaRect.Y + 32, AgendaRect.Right - 8, AgendaRect.Y + 32);
@@ -240,11 +214,7 @@ internal sealed partial class NativeDesktopWidgetHost
             calendarMonth = calendarMonth.AddMonths(MonthPrevious.Contains(point) ? -1 : 1); selectedDate = calendarMonth; agendaOffset = 0; RefreshTasks(); return true;
         }
         if (MonthToday.Contains(point)) { selectedDate = DateTime.Today; calendarMonth = new(selectedDate.Year, selectedDate.Month, 1); agendaOffset = 0; RefreshTasks(); return true; }
-        if (SelectedAgenda.Length > AgendaVisibleRows && (AgendaPrevious.Contains(point) || AgendaNext.Contains(point)))
-        {
-            Scroll(AgendaPrevious.Contains(point) ? -1 : 1); return true;
-        }
-        for (var i = 0; i < 42; i++) if (CalendarCell(i).Contains(point))
+        for (var i = 0; i < CalendarDays; i++) if (CalendarCell(i).Contains(point))
         {
             selectedDate = CalendarGridStart.AddDays(i); agendaOffset = 0; Present("calendar-date"); return true;
         }

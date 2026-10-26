@@ -39,17 +39,26 @@ The focused native TextBox stays opaque so selection, caret and keyboard entry
 remain clear. A nominally transparent shell retains one alpha step for reliable
 management hit testing. No content-wide window opacity is applied.
 
-Calendar presentation selects **Compact Calendar + Agenda** or **Full Month
-Grid**. Compact limits the grid's width; wide windows put the agenda beside it.
-Full Month separates days and reveals scheduled titles and overflow counts as
-cells grow. Selecting any day shows all its items in the paged/scrollable agenda;
-click an agenda row for native full text/details without opening Todorbit.
-Both modes share week-start/content preferences and repository projection.
+Calendar uses one rounded month grid above a dedicated selected-day agenda.
+Date-cell height is bounded; extra height expands the agenda. Four-, five- and
+six-week months use the same geometry. All selected-day items remain available
+through continuous row scrolling, with a fixed date heading and scroll cue.
+Mouse-wheel input over the grid does not scroll the agenda. Click an agenda row
+for native full text/details without opening Todorbit. Legacy presentation keys
+are ignored without resetting other settings. Week-start/content preferences
+and repository projection remain shared with the application.
 Text protection now adds a restrained glyph shadow, with no opaque per-label
 rectangles. Theme-aware rounded tooltips wait 600 ms and never activate.
 Minimum sizes stay 300×360 for Calendar and 260×230 for Tasks at 100% text;
 the existing text-scale-aware minimum grows for larger text. Below 340 logical
 pixels a side task navigation becomes an icon rail while retaining its setting.
+
+Unlocked companion widgets snap nearby moving/resized edges within 10 physical
+screen pixels, retaining alignment until 16 pixels away. Only the manipulated
+widget changes. Exact same-DPI pixel dimensions survive restart; other display
+scales use saved logical dimensions. Work-area/minimum constraints still apply.
+The redundant tray/main-app widget Quick Add entries are removed; the actual
+task-entry bar, keyboard shortcuts and compatibility command remain available.
 
 Additional commands on the same executable/profile:
 

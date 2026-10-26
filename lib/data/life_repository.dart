@@ -21,6 +21,7 @@ import '../domain/task_composition.dart';
 import '../domain/progressive_plan.dart';
 import '../domain/scheduling_models.dart';
 import 'app_database.dart';
+import 'support_introduction_store.dart';
 
 part 'series_edit_repository.dart';
 part 'habit_repository.dart';
@@ -41,6 +42,9 @@ class LifeRepository {
   LifeRepository(this.db);
   final AppDatabase db;
   final _uuid = const Uuid();
+
+  Future<bool> claimSupportIntroduction(File file) =>
+      SupportIntroductionStore(file).claim();
 
   Future<List<Category>> categories() async {
     final rows = await db

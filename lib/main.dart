@@ -549,6 +549,15 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
   }
 
   ThemeData _theme(Brightness brightness, ThemePalette palette) {
+    // Custom colors replace the seed's tonal backgrounds. Select the stronger
+    // black/white contrast for their foregrounds as well (at least 4.5:1).
+    Color foregroundOn(Color background) {
+      final luminance = background.computeLuminance();
+      return (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05)
+          ? Colors.black
+          : Colors.white;
+    }
+
     final scheme =
         ColorScheme.fromSeed(
           seedColor: palette['accent'],
@@ -558,9 +567,11 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
           onSurface: palette['primaryText'],
           onSurfaceVariant: palette['secondaryText'],
           primary: palette['accent'],
+          onPrimary: foregroundOn(palette['accent']),
           outline: palette['border'],
           outlineVariant: palette['border'],
           error: palette['error'],
+          onError: foregroundOn(palette['error']),
         );
     final base = ThemeData(useMaterial3: true, colorScheme: scheme);
     final text = base.textTheme;

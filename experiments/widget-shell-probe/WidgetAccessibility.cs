@@ -15,16 +15,11 @@ internal sealed partial class NativeDesktopWidgetHost
             items.Add(new("Previous month", MonthPrevious, () => CalendarClick(Center(MonthPrevious))));
             items.Add(new("Next month", MonthNext, () => CalendarClick(Center(MonthNext))));
             items.Add(new("Return to today", MonthToday, () => CalendarClick(Center(MonthToday))));
-            for (var i = 0; i < 42; i++)
+            for (var i = 0; i < CalendarDays; i++)
             {
                 var cell = CalendarCell(i); var date = CalendarGridStart.AddDays(i);
                 var count = calendarItems.Count(x => x.Day == date);
                 items.Add(new($"{date:D}, {count} scheduled items", cell, () => CalendarClick(Center(cell)), date == selectedDate));
-            }
-            if (SelectedAgenda.Length > AgendaVisibleRows)
-            {
-                items.Add(new("Earlier agenda items", AgendaPrevious, () => Scroll(-1)));
-                items.Add(new("Later agenda items", AgendaNext, () => Scroll(1)));
             }
             var agenda = SelectedAgenda.Skip(agendaOffset).Take(AgendaVisibleRows).ToArray();
             for(var i=0;i<agenda.Length;i++) {

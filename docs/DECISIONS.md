@@ -1,5 +1,15 @@
 # Decisions
 
+- **Unified calendar, geometry and optional support (2026-10-27):** supersede
+  the two presentation modes with one native grid/agenda. Ignore legacy mode
+  keys without resetting other settings. Bound date-cell height independently
+  of the agenda; use actual physical screen bounds for companion-only edge
+  snapping. Persist exact physical dimensions only for the saved DPI, retaining
+  logical fallback across displays. Keep support optional and its PayPal identity
+  constant in source; discovery is a local receipt, excluded from settings
+  transfers. Preserve the established offline/profile/IPC boundaries. See
+  [implementation and verification](WIDGET_REFINEMENTS_SUPPORT.md).
+
 - **Widget live editing and responsive calendar (2026-10-26):** keep the two
   Explorer HWNDs and one companion. Add an optional version-1
   `calendarPresentation` field (`compactAgenda` default, `fullMonth` opt-in),

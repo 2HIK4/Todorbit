@@ -1,5 +1,17 @@
 # Progress
 
+## Unified widget refinements and optional support (2026-10-27)
+
+- Recovered all four tracked interrupted UI fixes and tests without resetting
+  the working tree. Continued on `feature/widget-refinements-support`.
+- Unified native Calendar with bounded 4/5/6-row dates and scrollable agenda;
+  companion edge snapping, exact same-DPI geometry persistence, cleaner menus,
+  shared settings scroll fades and optional fixed-destination PayPal support.
+- Existing UI UX Pro Max installation actively used; theme/branding retained.
+  Focused Flutter **42 passed**, targeted analysis clean; current native Release
+  build, self-test and actual-HWND lifecycle pass. Release gates/publication
+  remain pending. [Evidence and limits](WIDGET_REFINEMENTS_SUPPORT.md).
+
 ## v1.0.15 widget redesign pre-release published (2026-10-27)
 
 - Owner-authorized implementation **ae649f1** and preparation **a116069**

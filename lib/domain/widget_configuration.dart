@@ -4,8 +4,6 @@ enum WidgetNavigationPosition { top, left, right, bottom }
 
 enum WidgetNavigationDisplay { text, icons, both }
 
-enum WidgetCalendarPresentation { compactAgenda, fullMonth }
-
 /// Theme-relative surfaces. Null colors follow the active light/dark palette.
 class WidgetSurface {
   const WidgetSurface({
@@ -66,7 +64,6 @@ class WidgetConfiguration {
     this.protectText = true,
     this.navigationPosition = WidgetNavigationPosition.top,
     this.navigationDisplay = WidgetNavigationDisplay.text,
-    this.calendarPresentation = WidgetCalendarPresentation.compactAgenda,
     this.textScale = 1,
     List<String>? views,
     Map<String, WidgetSurface>? surfaces,
@@ -89,7 +86,6 @@ class WidgetConfiguration {
   final bool enabled, showTitle, showOpenButton, layoutLocked, protectText;
   final WidgetNavigationPosition navigationPosition;
   final WidgetNavigationDisplay navigationDisplay;
-  final WidgetCalendarPresentation calendarPresentation;
   final double textScale;
   final List<String> views;
   final Map<String, WidgetSurface> surfaces;
@@ -102,7 +98,6 @@ class WidgetConfiguration {
     bool? protectText,
     WidgetNavigationPosition? navigationPosition,
     WidgetNavigationDisplay? navigationDisplay,
-    WidgetCalendarPresentation? calendarPresentation,
     double? textScale,
     List<String>? views,
     Map<String, WidgetSurface>? surfaces,
@@ -114,7 +109,6 @@ class WidgetConfiguration {
     protectText: protectText ?? this.protectText,
     navigationPosition: navigationPosition ?? this.navigationPosition,
     navigationDisplay: navigationDisplay ?? this.navigationDisplay,
-    calendarPresentation: calendarPresentation ?? this.calendarPresentation,
     textScale: textScale ?? this.textScale,
     views: views ?? this.views,
     surfaces: surfaces ?? this.surfaces,
@@ -142,7 +136,6 @@ class WidgetConfiguration {
     'protectText': protectText,
     'navigationPosition': navigationPosition.name,
     'navigationDisplay': navigationDisplay.name,
-    'calendarPresentation': calendarPresentation.name,
     'textScale': textScale,
     'views': views,
     'surfaces': surfaces.map((k, v) => MapEntry(k, v.toJson())),
@@ -163,10 +156,6 @@ class WidgetConfiguration {
       navigationDisplay: choice(
         WidgetNavigationDisplay.values,
         m['navigationDisplay'],
-      ),
-      calendarPresentation: choice(
-        WidgetCalendarPresentation.values,
-        m['calendarPresentation'],
       ),
       textScale: m['textScale'] is num && (m['textScale'] as num).isFinite
           ? (m['textScale'] as num).toDouble().clamp(1, 1.6)

@@ -1,3 +1,5 @@
+import '../shared/scroll_edge_fade.dart';
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -148,7 +150,7 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: ListView(
+              child: FadingListView(
                 padding: const EdgeInsets.only(top: 8, right: 8, bottom: 16),
                 children: [
                   for (final key in ThemePalette.keys)

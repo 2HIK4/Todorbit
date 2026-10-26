@@ -32,7 +32,6 @@ internal sealed class WidgetConfiguration
     public bool ProtectText { get; set; } = true;
     public string NavigationPosition { get; set; } = "top";
     public string NavigationDisplay { get; set; } = "text";
-    public string CalendarPresentation { get; set; } = "compactAgenda";
     public float TextScale { get; set; } = 1;
     public List<string> Views { get; set; } = ["today", "inbox", "all", "upcoming"];
     public Dictionary<string, WidgetSurface> Surfaces { get; set; } = new()
@@ -90,7 +89,6 @@ internal sealed class WidgetConfiguration
         }
         config.NavigationPosition = config.NavigationPosition is "top" or "left" or "right" or "bottom" ? config.NavigationPosition : "top";
         config.NavigationDisplay = config.NavigationDisplay is "text" or "icons" or "both" ? config.NavigationDisplay : "text";
-        config.CalendarPresentation = config.CalendarPresentation == "fullMonth" ? "fullMonth" : "compactAgenda";
         config.Views = config.Views.Where(v => v is "today" or "inbox" or "all" or "upcoming").Distinct().ToList();
         return config;
     }

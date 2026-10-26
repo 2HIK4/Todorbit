@@ -9,6 +9,11 @@ internal sealed class WidgetSettings {
   public int Y { get; set; } = int.MinValue;
   public int Width { get; set; } = 376;
   public int Height { get; set; } = 460;
+  // Preserve exact snapped physical edges at the same DPI; logical sizes remain
+  // the fallback when a profile moves to a display with another scale.
+  public int? PhysicalWidth { get; set; }
+  public int? PhysicalHeight { get; set; }
+  public int? BoundsDpi { get; set; }
   public string? MonitorDeviceName { get; set; }
   // Retained only to migrate releases that stored appearance in this file.
   public WidgetThemePreference? Theme { get; set; }
@@ -189,4 +194,15 @@ internal static class WidgetGeometry {
   internal static Size Scale(Size logical, float dpiScale) => new(
     (int)Math.Round(logical.Width * dpiScale),
     (int)Math.Round(logical.Height * dpiScale));
+
+  internal static Size RestoreSize(WidgetSettings settings, Size logical, float dpiScale) {
+    var fallback = Scale(logical, dpiScale);
+    if (settings.BoundsDpi != (int)Math.Round(dpiScale * 96)) return fallback;
+    // Rounding a saved physical dimension to logical units can lose one pixel.
+    var width = settings.PhysicalWidth is > 0 and < 100000 && Math.Abs(settings.PhysicalWidth.Value-fallback.Width) <= 1
+      ? settings.PhysicalWidth.Value : fallback.Width;
+    var height = settings.PhysicalHeight is > 0 and < 100000 && Math.Abs(settings.PhysicalHeight.Value-fallback.Height) <= 1
+      ? settings.PhysicalHeight.Value : fallback.Height;
+    return new(width, height);
+  }
 }

@@ -119,7 +119,6 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
     menu.Items.Add("Open Todorbit", null, (_, _) => OpenMainApp());
     menu.Items.Add("Show / hide widget", null, (_, _) => ExecuteCommand("toggle"));
     menu.Items.Add("Show / hide calendar widget", null, (_, _) => ExecuteCommand("calendar-toggle"));
-    menu.Items.Add("Quick Add", null, (_, _) => ExecuteCommand("quick-add"));
     var view = new ToolStripMenuItem("Task view");
     view.DropDownItems.Add("Today", null, (_, _) => ExecuteCommand("view-today"));
     view.DropDownItems.Add("Inbox", null, (_, _) => ExecuteCommand("view-inbox"));
@@ -317,6 +316,7 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
       host = new NativeDesktopWidgetHost(repository, appExe,
         ResolvePalette(appearance.Theme), settings, settingsStore, diagnostics,
         HostDestroyed, ExitThread);
+      host.NeighborBounds = () => calendarHost?.SnapBounds() ?? [];
       var opacity = appearance.WidgetOpacity ?? appearance.Customization?.WidgetOpacity;
       if (!File.Exists(WidgetConfiguration.PathFor(false)) && opacity is >= 0 and <= 100) host.SetBackgroundOpacity(opacity.Value);
 
@@ -332,6 +332,7 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
         ResolvePalette(appearance.Theme), calendarSettings, calendarSettingsStore, diagnostics,
         () => { calendarHost = null; ScheduleExplorerRecovery(); },
         () => { calendarHost = null; }, calendar: true);
+      calendarHost.NeighborBounds = () => host?.SnapBounds() ?? [];
     } catch (InvalidOperationException) { ScheduleExplorerRecovery(); }
   }
 
@@ -507,8 +508,8 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
       Parent = parent,
       X = position.X,
       Y = position.Y,
-      Width = Pixel(logicalSize.Width),
-      Height = Pixel(logicalSize.Height),
+      Width = WidgetGeometry.RestoreSize(settings, logicalSize, scale).Width,
+      Height = WidgetGeometry.RestoreSize(settings, logicalSize, scale).Height,
       Style = WsChild | (configuration.Enabled ? WsVisible : 0) | WsClipChildren | WsClipSiblings | 0x00010000,
       ExStyle = WsExLayered,
     };
@@ -571,7 +572,9 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
         break;
       case WmMouseWheel:
         var delta = unchecked((short)((message.WParam.ToInt64() >> 16) & 0xFFFF));
-        Scroll(delta > 0 ? -1 : 1);
+        var wheelPoint = new Native.Point { X = unchecked((short)(message.LParam.ToInt64() & 0xFFFF)), Y = unchecked((short)((message.LParam.ToInt64() >> 16) & 0xFFFF)) };
+        Native.ScreenToClient(Handle, ref wheelPoint);
+        ScrollAt(new PointF(wheelPoint.X / scale, wheelPoint.Y / scale), delta > 0 ? -1 : 1);
         message.Result = 0;
         return;
       case WmDisplayChange:
@@ -912,6 +915,7 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
   }
 
   private void BeginMoveOrResize(PointF point) {
+    edgeSnap = new WidgetEdgeSnap();
     openTooltip.Hide(this);
     (pressedTarget, pressedIndex) = HitTest(point);
     Present("pressed");
@@ -926,6 +930,13 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     Native.SetCapture(Handle);
   }
 
+  private WidgetEdgeSnap edgeSnap = new();
+  internal Func<IEnumerable<Rectangle>> NeighborBounds = () => [];
+  internal IEnumerable<Rectangle> SnapBounds() {
+    if (Handle != 0 && Native.IsWindowVisible(Handle) && Native.GetWindowRect(Handle, out var r))
+      yield return Rectangle.FromLTRB(r.Left, r.Top, r.Right, r.Bottom);
+  }
+
   private void ContinueMoveOrResize() {
     if (!Native.GetCursorPos(out var cursor)) return;
     var dx = cursor.X - dragStart.X;
@@ -934,6 +945,8 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
       Rectangle.FromLTRB(dragBounds.Left, dragBounds.Top,
         dragBounds.Right, dragBounds.Bottom),
       dx, dy, dragging, resizeEdge, Pixel(MinimumSize.Width), Pixel(MinimumSize.Height));
+    proposed = edgeSnap.Apply(proposed, dragging, resizeEdge,
+      new Size(Pixel(MinimumSize.Width), Pixel(MinimumSize.Height)), NeighborBounds());
     var width = proposed.Width;
     var height = proposed.Height;
     var screenPoint = new Native.Point {
@@ -963,15 +976,18 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     if (!Native.GetWindowRect(Handle, out var bounds)) return;
     settings.X = bounds.Left;
     settings.Y = bounds.Top;
-    settings.Width = Math.Max(260,
-      (int)Math.Round((bounds.Right - bounds.Left) / scale));
-    settings.Height = Math.Max(230,
-      (int)Math.Round((bounds.Bottom - bounds.Top) / scale));
     var screen = Screen.FromRectangle(new Rectangle(
       bounds.Left, bounds.Top, bounds.Right - bounds.Left,
       bounds.Bottom - bounds.Top));
     settings.MonitorDeviceName = screen.DeviceName;
     scale = ScaleForScreen(screen);
+    settings.Width = Math.Max(260,
+      (int)Math.Round((bounds.Right - bounds.Left) / scale));
+    settings.Height = Math.Max(230,
+      (int)Math.Round((bounds.Bottom - bounds.Top) / scale));
+    settings.PhysicalWidth = bounds.Right - bounds.Left;
+    settings.PhysicalHeight = bounds.Bottom - bounds.Top;
+    settings.BoundsDpi = (int)Math.Round(scale * 96);
     settingsStore.Save(settings);
     Reposition();
   }
@@ -1072,13 +1088,17 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
   }
 
   private void Scroll(int direction) {
-    if (calendar) { agendaOffset = Math.Max(0,agendaOffset+direction); Present("agenda-scroll"); return; }
+    if (calendar) { agendaOffset = Math.Clamp(agendaOffset+direction, 0, Math.Max(0, SelectedAgenda.Length-AgendaVisibleRows)); Present("agenda-scroll"); return; }
     if (tasks.Count <= VisibleTaskRows) return;
     var maximum = Math.Max(0, tasks.Count - VisibleTaskRows);
     var next = Math.Clamp(scrollOffset + direction, 0, maximum);
     if (next == scrollOffset) return;
     scrollOffset = next;
     Present("task-scroll", updateNow: false);
+  }
+
+  private void ScrollAt(PointF point, int direction) {
+    if (!calendar || AgendaRect.Contains(point)) Scroll(direction);
   }
 
   internal void RefreshFromDatabase() => RefreshTasks();
@@ -1283,8 +1303,9 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     if (screen is null) return;
     scale = ScaleForScreen(screen);
     var logicalSize = WidgetGeometry.LogicalSize(Math.Max(MinimumSize.Width,settings.Width),Math.Max(MinimumSize.Height,settings.Height));
-    var width = Pixel(logicalSize.Width);
-    var height = Pixel(logicalSize.Height);
+    var restored = WidgetGeometry.RestoreSize(settings, logicalSize, scale);
+    var width = restored.Width;
+    var height = restored.Height;
     var clamped = WidgetGeometry.ClampToWorkingArea(
       new Rectangle(settings.X, settings.Y, width, height), screen.WorkingArea);
     var x = clamped.X;
@@ -1342,7 +1363,7 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     var scale = ScaleForScreen(screen!);
     var minimumSize = WidgetGeometry.MinimumSize(calendar,textScale);
     var logicalSize = WidgetGeometry.LogicalSize(Math.Max(minimumSize.Width,settings.Width),Math.Max(minimumSize.Height,settings.Height));
-    var scaledSize = WidgetGeometry.Scale(logicalSize, scale);
+    var scaledSize = WidgetGeometry.RestoreSize(settings, logicalSize, scale);
     var width = scaledSize.Width;
     var height = scaledSize.Height;
     var defaultX = working.Value.Right - width - 24;

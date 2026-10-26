@@ -25,7 +25,7 @@ import '../time_tracking/time_tracking_dialog.dart';
 import '../templates/templates_dialog.dart';
 import '../search/advanced_search_dialog.dart';
 import '../settings/backup_dialog.dart';
-import '../settings/notification_dialog.dart';
+import '../support/support_button.dart';
 import '../settings/theme_dialog.dart';
 import '../settings/settings_hub_dialog.dart';
 import '../settings/widget_settings_page.dart';
@@ -696,13 +696,17 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
                   ),
                 ),
-                IconButton(
-                  tooltip: 'Notifications',
-                  onPressed: () => showDialog<void>(
-                    context: context,
-                    builder: (_) => const NotificationDialog(),
-                  ),
-                  icon: const Icon(Icons.notifications_outlined, size: 20),
+                SupportButton(
+                  reducedMotion: controller.customization.reducedMotion,
+                  claimIntroduction: controller.appearanceStore == null
+                      ? null
+                      : () => controller.repository.claimSupportIntroduction(
+                          File.fromUri(
+                            controller.appearanceStore!.file.parent.uri.resolve(
+                              'support-introduction.json',
+                            ),
+                          ),
+                        ),
                 ),
                 IconButton(
                   tooltip: 'Archive and Trash',
@@ -1013,9 +1017,6 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   case 'hide':
                     await nativeWidget.hide();
                     return;
-                  case 'quick-add':
-                    await nativeWidget.quickAdd();
-                    return;
                   case 'today':
                     await nativeWidget.setView('today');
                     return;
@@ -1036,7 +1037,6 @@ class _WorkspaceState extends ConsumerState<Workspace> {
               itemBuilder: (_) => const [
                 PopupMenuItem(value: 'show', child: Text('Show widget')),
                 PopupMenuItem(value: 'hide', child: Text('Hide widget')),
-                PopupMenuItem(value: 'quick-add', child: Text('Quick Add')),
                 PopupMenuDivider(),
                 PopupMenuItem(value: 'today', child: Text('Show Today')),
                 PopupMenuItem(value: 'inbox', child: Text('Show Inbox')),

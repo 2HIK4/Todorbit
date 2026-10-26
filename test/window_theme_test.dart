@@ -18,6 +18,64 @@ import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:life_manager/features/shared/checklist_entry.dart';
 
 void main() {
+  testWidgets('custom action backgrounds retain readable foregrounds', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final controller = AppController(LifeRepository(database));
+    await controller.refresh();
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appControllerProvider.overrideWith((ref) => controller),
+            privacyOverride,
+          ],
+          child: const LifeManagerApp(),
+        ),
+      );
+      for (final color in [
+        Colors.white,
+        Colors.black,
+        Colors.yellow,
+        const Color(0xFF777777),
+        ThemePalette.light['accent'],
+        ThemePalette.dark['accent'],
+      ]) {
+        await controller.saveCustomization(
+          controller.customization.copyWith(
+            light: ThemePalette.light
+                .withColor('accent', color)
+                .withColor('error', color),
+            dark: ThemePalette.dark
+                .withColor('accent', color)
+                .withColor('error', color),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
+        for (final theme in [app.theme!, app.darkTheme!]) {
+          final scheme = theme.colorScheme;
+          for (final pair in [
+            (scheme.primary, scheme.onPrimary),
+            (scheme.error, scheme.onError),
+          ]) {
+            final a = pair.$1.computeLuminance();
+            final b = pair.$2.computeLuminance();
+            final contrast = a > b
+                ? (a + .05) / (b + .05)
+                : (b + .05) / (a + .05);
+            expect(contrast, greaterThanOrEqualTo(4.5));
+            expect(pair.$1, color);
+          }
+        }
+      }
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await database.close();
+    }
+  });
+
   testWidgets('new and edit forms clear headings and expanded section labels', (
     tester,
   ) async {

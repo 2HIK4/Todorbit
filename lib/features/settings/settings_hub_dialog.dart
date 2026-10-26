@@ -1,3 +1,5 @@
+import '../shared/scroll_edge_fade.dart';
+
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 
 import 'dart:io';
@@ -185,7 +187,7 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
     );
   }
 
-  Widget _content(AppController controller) => ListView(
+  Widget _content(AppController controller) => FadingListView(
     padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
     children: [
       Text(page.title, style: Theme.of(context).textTheme.titleLarge),
