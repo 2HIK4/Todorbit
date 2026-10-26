@@ -13,6 +13,9 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+      - name: Install and verify pinned Inno Setup before app checks
+        shell: pwsh
+        run: ./tools/install-inno-setup-ci.ps1
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
@@ -44,9 +47,6 @@ jobs:
           New-Item -ItemType Directory -Force -Path $env:APPDATA,$env:LOCALAPPDATA | Out-Null
           $selfTest = Start-Process -FilePath (Resolve-Path 'build\windows\x64\runner\Release\TodorbitWidget.exe').Path -ArgumentList '--self-test' -PassThru -Wait -WindowStyle Hidden
           if ($selfTest.ExitCode -ne 0) { exit $selfTest.ExitCode }
-      - name: Install Inno Setup 7
-        shell: pwsh
-        run: ./tools/install-inno-setup-ci.ps1
       - name: Compile installer
         shell: pwsh
         run: ./installer/build-installer.ps1 -Compiler $env:TODORBIT_ISCC

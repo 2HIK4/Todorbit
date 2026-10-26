@@ -1,7 +1,31 @@
-param([switch]$VerifyDownloadOnly)
+param([switch]$VerifyDownloadOnly, [string]$VerifyCompilerPath = '')
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
+function Assert-InnoCompilerVersion([string]$Path) {
+  # Read the complete response before checking exit status. A native command
+  # piped into Select-Object -First can be terminated early by PowerShell 7.
+  $info = [Diagnostics.ProcessStartInfo]::new($Path, '--version')
+  $info.UseShellExecute = $false
+  $info.CreateNoWindow = $true
+  $info.WindowStyle = 'Hidden'
+  $info.RedirectStandardOutput = $true
+  $info.RedirectStandardError = $true
+  $probe = [Diagnostics.Process]::Start($info)
+  try {
+    $version = $probe.StandardOutput.ReadToEnd().Trim()
+    $diagnostic = $probe.StandardError.ReadToEnd().Trim()
+    $probe.WaitForExit()
+    if ($probe.ExitCode -ne 0 -or $version -ne '7.1.0') {
+      throw "Compiler version mismatch: exit $($probe.ExitCode), version [$version], stderr [$diagnostic]."
+    }
+    Write-Host "PASS: compiler reports $version with exit 0."
+  } finally { $probe.Dispose() }
+}
+if ($VerifyCompilerPath) {
+  Assert-InnoCompilerVersion $VerifyCompilerPath
+  return
+}
 if (-not $env:RUNNER_TEMP -and -not $VerifyDownloadOnly) {
   throw 'Compiler installation is CI-only. Use -VerifyDownloadOnly for a local integrity check.'
 }
@@ -28,7 +52,6 @@ $process = Start-Process -FilePath $setup -ArgumentList @(
 if ($process.ExitCode -ne 0) { throw "Inno Setup installation failed ($($process.ExitCode))." }
 $compiler = Join-Path $destination 'ISCC.exe'
 if (-not (Test-Path -LiteralPath $compiler)) { throw 'Installed compiler is missing.' }
-$version = (& $compiler --version | Select-Object -First 1).Trim()
-if ($LASTEXITCODE -ne 0 -or $version -ne '7.1.0') { throw 'Installed compiler version mismatch.' }
+Assert-InnoCompilerVersion $compiler
 if (-not $env:GITHUB_ENV) { throw 'GitHub Actions environment file is unavailable.' }
 "TODORBIT_ISCC=$compiler" | Out-File -LiteralPath $env:GITHUB_ENV -Encoding utf8 -Append
