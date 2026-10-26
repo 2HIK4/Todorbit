@@ -61,8 +61,21 @@
   Replaced that bootstrap with the official immutable vendor x64 release,
   pinned its SHA-256 and used an explicit runner-local compiler path. Local
   download-only integrity verification passed without modifying the installed
-  compiler; corrected CI remains to be checked. Policy wording now explicitly
-  discloses plaintext local snapshot staging even if restore is canceled.
+  compiler. A second CI attempt installed the official compiler but failed the
+  capped native version-output probe. Replaced it with complete process output/
+  exit capture and moved toolchain verification before the app checks. Policy
+  wording explicitly discloses plaintext local snapshot staging even if restore
+  is canceled.
+- **Final Windows CI PASS:** `40296394097` at source `63b8bc6` passed compiler
+  hash/install/exact version, analysis, **264 Flutter tests**, 11 config gates,
+  Windows Release, portable packaging, packaged native self-test, installer,
+  checksums and unpublished candidate upload. Downloaded all five CI files and
+  verified both package hashes/sidecars, 37-entry ZIP CRC, disabled OAuth receipt
+  and runner/AOT hashes. Website validation `40293992419` passed with deploy
+  skipped. Local/CI artifact sizes and hashes are separately recorded in
+  ACCEPTANCE.md. The handoff receipt changes documentation only and reuses this
+  successful source verification. Main and public release/website remain
+  unchanged; working tree is finalized on the feature branch.
 
 ## Google Drive backup implementation (2026-10-25)
 

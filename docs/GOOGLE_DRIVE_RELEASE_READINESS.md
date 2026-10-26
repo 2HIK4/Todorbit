@@ -117,6 +117,11 @@ extracted widget self-test passed and the Windows Run registry was unchanged.
 This is package startup evidence only. It does not replace the enabled-client
 clean Windows-user sign-in/backup/recovery procedure below. Full automated
 verification passed 264/264 Flutter tests and clean analysis; see ACCEPTANCE.md.
+The final [Windows CI](https://github.com/2HIK4/Todorbit/actions/runs/40296394097)
+at `63b8bc6` also passed complete tests/builds/installer/portable checks and
+retained an unpublished candidate. Downloaded CI package checksums, portable
+CRC and config/runner/AOT hashes were verified. This does not unblock public
+OAuth or authorize publishing.
 
 Use a disposable Windows user/VM with no Todorbit installation or saved Google
 tokens. APPDATA redirection isolates SQLite but does not create a new Windows

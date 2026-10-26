@@ -26,8 +26,19 @@ Initial [Windows CI](https://github.com/2HIK4/Todorbit/actions/runs/40291855078)
 passed all app checks through packaged self-test, then **FAIL** at compiler
 bootstrap because Chocolatey does not carry Inno Setup 7.1.0. Corrected bootstrap
 uses the official vendor x64 asset, pinned SHA-256 and explicit compiler path;
-local download-only integrity verification passes. Corrected CI is pending.
-[Website validation CI](https://github.com/2HIK4/Todorbit/actions/runs/40291855103)
+local download-only integrity verification passes. A second attempt installed
+the official compiler but failed its capped PowerShell version probe. The probe
+now captures complete native output and the actual process exit code, retains
+the exact 7.1.0 requirement, and runs before expensive app checks.
+
+**Final [Windows CI](https://github.com/2HIK4/Todorbit/actions/runs/40296394097)
+PASS at `63b8bc6`:** official compiler integrity/install/version, analysis,
+**264 tests**, 11 config gates, Windows Release, portable package, native
+self-test, installer compile, checksums and candidate artifact upload. The
+downloaded five-file CI artifact passed both package SHA-256 sidecars/manifest,
+37-entry portable CRC, disabled OAuth receipt and runner/AOT hash checks.
+
+[Website validation CI](https://github.com/2HIK4/Todorbit/actions/runs/40293992419)
 passed; deploy was skipped. Local HTTP checks returned 200 for all pages/assets
 and HEAD checks returned 200 for both actual public v1.0.12 download targets.
 
@@ -35,6 +46,12 @@ Unpublished local artifacts:
 
 - Installer: 47,009,648 bytes; SHA-256 `ed1e4001c79b364e9eaf316c35c83777a36f67c69cef165bd6dcf6cadae02e30`.
 - Portable: 62,102,671 bytes; SHA-256 `604f8d02faf61fae011cd8769e296b4c24ef02dc535a75c48f84da376a8b7450`.
+
+Downloaded unpublished CI artifacts (separate builds, not claimed byte-identical
+to local output), under `.buildlog/ci-release-candidate/`:
+
+- Installer: 47,042,780 bytes; SHA-256 `38b0cbe74b01ccddb6d57263435a9a41e94f66caf7641b027ff3de4fe24976fc`.
+- Portable: 63,978,846 bytes; SHA-256 `2a1834426d99df2616b56bc6221e6ecbc91c4470bdb3ba6090bf4b5b471d31b4`.
 
 Exact Cloud actions and strict packaged reproduction are in
 [GOOGLE_DRIVE_RELEASE_READINESS.md](GOOGLE_DRIVE_RELEASE_READINESS.md).
