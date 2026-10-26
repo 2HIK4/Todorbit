@@ -1,5 +1,20 @@
 # Decisions
 
+## Approved website deployment, separate from app release (2026-10-26)
+
+- Publish only the prepared static website and Pages workflow on `main`,
+  leaving the v1.0.13 candidate on its feature branch. Retain manually approved
+  deployment from `main`; push/PR validation never publishes. Deploy only
+  `website/dist/`, with no credentials or application bundle.
+- Pin downloads to actual public v1.0.12 assets until another release is
+  published. Keep public Google Drive access labeled unavailable.
+- Treat Search Console URL-prefix site verification separately from OAuth
+  domain acceptance. Google's specific current domain-verification guidance
+  requires DNS-level Domain verification; default Pages does not provide
+  control of the required DNS TXT record. Do not advertise `2hik4.github.io` as
+  verified or accepted by Google. No Google settings or new domain are changed
+  by website publication. Deployment evidence is in `website/README.md`.
+
 ## Website preparation without deployment (2026-10-26)
 
 - Use a dependency-free static GitHub Pages site in `website/dist`, reusing

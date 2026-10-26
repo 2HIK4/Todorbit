@@ -16,6 +16,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: website-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -26,7 +30,7 @@ jobs:
           python-version: '3.13'
       - run: python website/verify.py
   deploy:
-    if: github.event_name == 'workflow_dispatch' && inputs.publish_approved == true
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_approved == true && github.ref == 'refs/heads/main'
     needs: validate
     runs-on: ubuntu-latest
     permissions:

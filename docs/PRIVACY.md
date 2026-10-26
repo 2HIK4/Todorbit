@@ -1,8 +1,9 @@
 # Todorbit privacy disclosure — release candidate
 
 Prepared 2026-10-26 for owner review and hosting on the verified production
-application domain. This repository document is not evidence of a published
-privacy URL or Google approval. Public Google Drive login remains disabled
+application domain. The owner-approved public website policy is now at
+https://2hik4.github.io/Todorbit/privacy.html; its OAuth domain eligibility is
+unresolved. This repository document is not evidence of Google approval. Public Google Drive login remains disabled
 until the production deployment and packaged acceptance gates are satisfied.
 
 ## Local information

@@ -1,5 +1,28 @@
 # Progress
 
+## Official website publication (2026-10-26)
+
+- Owner explicitly approved GitHub Pages publication in `2HIK4/Todorbit`.
+  Website-only commit `5d77f37` fast-forwarded `main` from `7965205`; app/native
+  source, version, packaging and existing Windows workflow were unchanged.
+- Configured Pages for Actions with HTTPS enforced. [Deployment](https://github.com/2HIK4/Todorbit/actions/runs/40317545954)
+  passed. Homepage `https://2hik4.github.io/Todorbit/`, Privacy Policy
+  `https://2hik4.github.io/Todorbit/privacy.html` and Terms of Service
+  `https://2hik4.github.io/Todorbit/terms.html` are publicly accessible over HTTPS.
+- Anonymous live checks passed canonical homepage/all eight dist files with
+  source equality after Git line-ending normalization, plus all nine external
+  links. Downloads match v1.0.12, the latest actual public release. Local/CI
+  static navigation, responsive/accessibility CSS and contrast checks pass.
+  Rendered desktop/mobile/zoom/screen-reader checks remain UNVERIFIED because
+  browser infrastructure is unavailable. See `website/README.md` and reusable
+  `website/verify_live.py`.
+- More specific current Google [OAuth domain guidance](https://support.google.com/cloud/answer/13804266?hl=en)
+  requires DNS-level Domain verification, not URL-prefix verification. HTML-tag
+  verification of the project site is possible in Search Console but does not
+  satisfy that documented OAuth requirement. `2hik4.github.io` is only a
+  conditional hostname, not a Google-accepted Authorized Domain. Public OAuth
+  remains BLOCKED. No Google settings, domain/DNS or app release changed.
+
 ## Google Drive public distribution candidate (2026-10-26)
 
 - Baseline `198da07`; clean start on `feature/google-drive-backups`, then
@@ -48,12 +71,13 @@
   browser/native UI infrastructure is unavailable. No telemetry/third-party
   scripts or fonts are added. Pages deployment is manual-only and requires
   explicit owner approval; push/PR only validates. Google's owned/verified-domain
-  requirements and the uncertainty of default shared Pages OAuth acceptance are
-  documented; no domain purchase, DNS, Pages or Google Console setting changed.
-- Owner must approve website/policy/terms and target domain, then satisfy the
-  exact Cloud steps in `GOOGLE_DRIVE_RELEASE_READINESS.md` and participate in
-  outside-test-user clean packaged acceptance. No main merge, tag, public
-  website/app release or updater entry has been created.
+  requirements were documented at preparation time. The later owner-approved
+  Pages publication and updated DNS-verification finding are recorded above;
+  no domain purchase, DNS or Google Console setting changed.
+- Website/policy/terms publication is now approved and complete. The remaining
+  Cloud steps in `GOOGLE_DRIVE_RELEASE_READINESS.md` and outside-test-user clean
+  packaged acceptance still need completion. The app candidate remains on its
+  feature branch; no v1.0.13 release/tag or updater entry has been created.
 - Pushed candidate `afbb187`. Website validation CI passed and deployment was
   skipped. Initial Windows CI `40291855078` passed analysis, the full Flutter
   suite, config gates, Windows Release, portable packaging and packaged widget

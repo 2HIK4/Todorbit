@@ -16,7 +16,8 @@ homepage/privacy/terms URLs, and no scopes listed under Data Access. External
 audience status is not independently confirmed. A valid installed Desktop JSON
 was located outside the repository; its source path is not used at runtime and
 its fields were not copied into public configuration while this gate is open.
-No Cloud Console changes, website publication or Google approval is claimed.
+The owner-approved website is now published; see its verified URLs below.
+No Cloud Console changes or Google approval is claimed.
 The prior `198da07` owner-configured debug acceptance remains historical
 evidence for encryption/Drive/recovery, not public packaged login acceptance.
 
@@ -36,8 +37,8 @@ evidence for encryption/Drive/recovery, not public packaged login acceptance.
    and current developer contact information. Host an accurate homepage and
    the reviewed [privacy disclosure](PRIVACY.md) on an owned domain. Set the
    application homepage, privacy policy and applicable terms URLs. Add its
-   authorized domain and verify ownership in Google Search Console when
-   requested. Do not claim ownership of `github.com` or use a repository README
+   authorized domain and complete the required DNS-level Domain verification in Google
+   Search Console. The free Pages hostname is not verified for OAuth. Do not claim ownership of `github.com` or use a repository README
    as proof of a verified application domain.
 5. **Audience**: select **External** for general Google accounts. If the status
    is **Testing**, use **Publish app** to request **In production** when ready.
@@ -167,54 +168,67 @@ sidecars. Download every public asset and verify its digest, then exercise the
 actual updater service on the Pre-release channel. Do not alter the personal
 installation to do so.
 
-## Website and domain plan — requires owner approval
+## Website publication and Google domain gate (2026-10-26)
 
-The complete static site is prepared in `website/dist/`, with product/download/
-support information, Privacy Policy and Terms of Service. It reuses the actual
-public v1.0.12 screenshot and only links the published v1.0.12 assets. The site
-clearly labels Google Drive as not generally available. No hosting was changed.
-The proposed free project-site URLs, **not yet live or Google-approved**, are:
+The owner explicitly approved publication to the existing repository. The complete
+static site is live on GitHub Pages with homepage, product/download/support,
+Privacy Policy and Terms of Service. It reuses the actual public v1.0.12
+screenshot, links only published v1.0.12 assets, and labels Google Drive as not
+generally available. These exact URLs passed anonymous HTTPS checks:
 
-- Home: `https://2hik4.github.io/Todorbit/`
-- Privacy: `https://2hik4.github.io/Todorbit/privacy.html`
-- Terms: `https://2hik4.github.io/Todorbit/terms.html`
+- Homepage: `https://2hik4.github.io/Todorbit/`
+- Privacy Policy: `https://2hik4.github.io/Todorbit/privacy.html`
+- Terms of Service: `https://2hik4.github.io/Todorbit/terms.html`
 
-The repository Pages API returned 404 during inspection. A separate account
-homepage exists in the README; it has not been edited or treated as proof of
-domain ownership. The prepared Pages workflow only deploys through a manual
-dispatch with `publish_approved=true`; push/PR runs validate without deploying.
-Do not trigger deployment, configure Pages/DNS, change Google Cloud production
-settings or create a public app release until the owner approves those actions.
+Website-only source `5d77f37` was fast-forwarded to `main` from `7965205`.
+[Deployment 40317545954](https://github.com/2HIK4/Todorbit/actions/runs/40317545954)
+passed validation and deployment. Pages is public, uses Actions and enforces
+HTTPS. Anonymous GET verified the canonical homepage and all eight dist files;
+public content matches source after Git text line-ending normalization. All nine
+external links returned HTTP 200 on HEAD, including both downloads. Release API
+metadata confirmed v1.0.12 as the latest actual public release and both download
+URLs as its assets. Static navigation/anchor, contrast and responsive/accessibility
+checks pass. No connected browser is available; rendered desktop/mobile layout,
+zoom and screen-reader interaction remain UNVERIFIED.
 
-**Domain conclusion:** Google's official rule is a publicly accessible homepage
-on a verified domain under the publisher's ownership. It does not phrase that
-as a universal requirement to buy a new custom domain. It recommends mapping
-an owned domain when using shared hosting. Google Search Console supports
-HTML-file/meta-tag verification for URL-prefix properties; that proves the
-selected website property, and is not evidence Google OAuth will accept the
-shared `github.io` domain/project-path arrangement. Default GitHub Pages OAuth
-eligibility remains **UNVERIFIED**, not guaranteed or categorically rejected.
+Only the website and its documentation/workflow were put on `main`. App source,
+version, native code, installer/packaging and existing Windows workflow were
+preserved. No new app release/tag, Google Cloud setting, OAuth grant, domain/DNS
+or account-root website changed. Pages deployment remains manual on `main` with
+`publish_approved=true`; push/PR checks only validate. See `website/README.md`
+and `website/verify_live.py` for the repeatable deployment/check procedure.
 
-After website approval, a project owner/editor can try Search Console's
-URL-prefix property for the exact published site. Obtain the actual HTML
-verification file/tag from Google, add it at Google's specified location, publish
-only with approval, and click Verify. Then check whether Google Auth Platform
-accepts the appropriate owned/verified authorized domain and completes branding
-verification. Do not enter `github.com` or claim ownership of `github.io`.
-No fake verification token has been added. A request to verify the account-root
-homepage would require work in a different repository and explicit scope.
+**Domain conclusion: public OAuth remains BLOCKED.** Search Console can verify
+this exact project-site URL-prefix property using a real HTML verification tag
+or file, without purchasing a domain. An authorized account must obtain the
+actual tag/file, publish it at Google's requested location and click Verify.
+No such token was supplied and no property was created or verified.
 
-For the more predictable production path, use an owned custom domain with free
-GitHub Pages hosting. The domain registration may have a separate cost. The
-owner chooses the domain and approves DNS/hosting changes. Verify it in Google
-Search Console through its real DNS TXT record, add it to Google Auth Platform's
-authorized domains, use matching HTTPS homepage/privacy/terms URLs, and complete
-Branding verification. GitHub has a separate domain-verification TXT process;
-GitHub verification does not substitute for Google's. Do not buy a domain or
-edit DNS as part of unapproved preparation.
+However, Google's more specific current [OAuth Domain Verification guide](https://support.google.com/cloud/answer/13804266?hl=en)
+requires a **DNS-level Domain property**, rather than a URL-prefix property,
+when resolving unverified authorized domains. This supersedes the earlier
+preparation's tentative HTML-verification route as a sufficient OAuth plan.
+We cannot set DNS TXT records for GitHub's `2hik4.github.io` hostname. Therefore
+successful project-site HTML verification alone would not satisfy that
+documented OAuth requirement; no default Pages OAuth eligibility is claimed.
 
-References: [Google verified-domain policy](https://developers.google.com/identity/protocols/oauth2/production-readiness/policy-compliance),
+The conditional Authorized Domain hostname is **`2hik4.github.io`**, only if
+Google explicitly accepts this arrangement. There is **no verified/accepted
+Authorized Domain to enter yet**. Do not enter `github.io`, `github.com`, a full
+URL or `/Todorbit/`. The live URLs above are content inputs for future Google
+Branding, subject to resolving domain eligibility; this publication did not
+enter them in Cloud Console or obtain Google's approval.
+
+The supported ownership route is an owned domain with DNS verification, using
+free GitHub Pages hosting. A suitable already-owned domain would avoid a new
+registration purchase; otherwise registration may cost money. The owner chooses
+and approves any domain/DNS change separately. Google Search Console verification
+and GitHub's separate domain-verification TXT process are distinct. No domain
+purchase or DNS mutation is part of this task. Any account-root website change
+would involve a different repository and remains outside this deployment.
+
+References: [Google Branding](https://support.google.com/cloud/answer/15549049?hl=en),
+[Google domain verification](https://support.google.com/cloud/answer/13804266?hl=en),
 [Google verification requirements](https://support.google.com/cloud/answer/13464321?hl=en),
 [Search Console methods](https://support.google.com/webmasters/answer/9008080?hl=en),
-[GitHub Pages setup](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site),
-[GitHub custom domains](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/verifying-your-custom-domain-for-github-pages).
+[GitHub Pages setup](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site).
