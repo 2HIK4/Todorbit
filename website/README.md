@@ -1,4 +1,4 @@
-﻿# Todorbit website
+# Todorbit website
 
 Dependency-free static site in `dist/`, hosted by GitHub Pages from this
 repository. The owner explicitly approved website publication on 2026-10-26.
@@ -128,4 +128,3 @@ The domain/brand verification route remains unresolved. The owner subsequently
 approved an enabled **experimental v1.0.13 pre-release** under the more specific
 non-sensitive-scope guidance; see [publication record](../docs/TODORBIT_1_0_13_PUBLICATION.md).
 Neither release publication nor these URLs establish full public policy compliance.
-
