@@ -1,5 +1,52 @@
 # Architecture
 
+## Start here
+
+Current source is schema **21**. This map owns subsystem discovery; commands
+live in [Testing](TESTING.md), setup in [Development](DEVELOPMENT.md), and
+packaging/publication in [Release](RELEASE.md). Paths below are repository-relative.
+
+Flutter startup (`lib/main.dart`) applies pending restores and the explicit
+migration/verified-backup gate before opening Drift, then provides the shared
+Riverpod `AppController` to feature UI. `lib/driver_main.dart` enables the debug
+Driver extension only. `windows/runner/` owns native activation, resource/file
+channels and the compatibility `--widget` launcher.
+
+```text
+features + shared controls -> AppController -> LifeRepository + part files -> Drift/SQLite
+        |                         |                 |
+        +-> profile JSON stores --+                 +-> pure domain calculations
+        +-> NativeWidgetService -> Windows runner / profile-scoped pipe
+                                      -> one .NET companion -> Tasks + Calendar HWNDs
+```
+
+`LifeRepository` is one Dart library split with `part` files, not a set of
+independent repositories. The native writer is a separate, restricted boundary.
+Check both readers/writers when changing a shared model, schema or profile format.
+
+| Subsystem / purpose | Main implementation and dependencies | Tests / constraints |
+| --- | --- | --- |
+| Shell, tasks, projects, categories | `lib/features/workspace/`, `lib/app/app_controller.dart`, `lib/domain/models.dart`, `lib/data/life_repository.dart` | `test/workspace_test.dart`, `test/repository_test.dart`; controller is shared across feature views. |
+| Shared controls and themes | `lib/features/shared/`, `lib/main.dart` theme construction, `lib/domain/appearance.dart`, `lib/data/appearance_preference_store.dart`; native `WidgetSurfaces.cs` and `WidgetSettings.cs` under `experiments/widget-shell-probe/` | `test/theme_customization_test.dart`, `test/window_theme_test.dart`; validated palette roles must work in light/dark/native paths. [Theming](THEMING.md). |
+| SQLite, migrations and profile identity | `lib/data/app_database.dart`, `lib/data/profile_paths.dart`, `lib/data/migration_gate.dart`, repository part files | `test/database_initialization_test.dart`, `test/migration_gate_test.dart`, `test/profile_isolation_test.dart`; Drift background isolate, explicit transactional SQL, WAL/foreign keys. No reset fallback. |
+| Calendar and scheduling | `lib/features/calendar/`, `lib/features/scheduling/`, `lib/domain/scheduling_engine.dart`, `lib/domain/recurrence.dart`, `lib/data/event_repository.dart`, `lib/data/series_edit_repository.dart` | `test/calendar_improvements_test.dart`, `test/event_recurrence_test.dart`, `test/series_edit_repository_test.dart`, `test/scheduling_repository_test.dart`; date-only plans differ from UTC intervals. [Scheduling](features/scheduling.md). |
+| Habits, goals, actual time, reports | Matching directories in `lib/features/`, models in `lib/domain/`, `habit_repository.dart`, `goal_repository.dart`, `time_repository.dart`, `reports_repository.dart` in `lib/data/` | Matching `test/habits_repository_test.dart`, `test/goals_repository_test.dart`, `test/time_tracking_repository_test.dart`, `test/reports_test.dart`; actual work never implies task completion. |
+| Composition, resources, templates, saved views, Trash | `lib/features/workspace/`, `lib/features/templates/`, `lib/features/search/`; `task_composition_repository.dart`, `task_resource_repository.dart`, `template_repository.dart`, `saved_view_repository.dart`, `trash_repository.dart` in `lib/data/` | Matching `test/task_composition_test.dart`, `test/task_resources_test.dart`, `test/template_repository_test.dart`, `test/saved_views_test.dart`, `test/trash_repository_test.dart`; preserve identities, stale-edit checks and links. |
+| Settings and portability | `lib/features/settings/settings_hub_dialog.dart`, `lib/features/settings/settings_transfer.dart`, `lib/data/*_store.dart`, `lib/domain/task_view_preferences.dart` | `test/settings_hub_test.dart`, `test/settings_transfer_test.dart`; choose SQLite vs profile JSON from neighboring settings, define portable/device-only behavior explicitly. [Customization](CUSTOMIZATION.md). |
+| Desktop widgets and preview IPC | `lib/features/widget/native_widget_service.dart`, `widget_edit_session.dart`, `lib/features/settings/widget_settings_page.dart`, `lib/domain/widget_configuration.dart`, `lib/data/widget_configuration_store.dart`; companion `Program.cs`, `WidgetCommandServer.cs`, `NativeWidgetPreview.cs` | `test/native_widget_service_test.dart`, `test/widget_edit_session_test.dart`, `test/widget_configuration_test.dart`; one profile-scoped process/pipe, two independent HWNDs. [Native checklist](windows-widget.md). |
+| Native rendering and calendar data | `experiments/widget-shell-probe/`: `LifeManagerWidget.cs`, `CalendarWidget.cs`, `CalendarWidgetLayout.cs`, `WidgetCalendarRepository.cs`, `LifeManagerWidgetRepository.cs`, `WidgetEdgeSnap.cs` | Native `*SelfTest.cs`, `--self-test`, `--lifecycle-self-test`; never migrate/create SQLite. Bounded date grid, extra height goes to agenda; preserve saved geometry and legacy settings. |
+| Privacy, notifications and startup | `lib/app/privacy_manager.dart`, `lib/data/privacy_store.dart`, `lib/data/notification_repository.dart`; native `PrivacyState.cs`, `StartupRegistration.cs`, reminder code in `LifeManagerWidget.cs` | `test/privacy_test.dart`, `test/notification_repository_test.dart`, native self-test; UI lock is not encryption; claims record attempted display, not receipt. |
+| Local backup/restore and import/export | `lib/data/backup_service.dart`, `lib/data/life_repository.dart`, `lib/features/settings/backup_dialog.dart` | `test/backup_service_test.dart`, `test/import_export_test.dart`; verified SQLite snapshots, staged restore before Drift, Before restore snapshot and no silent replacement. |
+| Optional Drive snapshots | `lib/data/cloud/`: `cloud_backup_service.dart`, `cloud_backup_codec.dart`, `cloud_storage_provider.dart`, `google_drive_auth.dart`, `google_drive_provider.dart`; `lib/features/settings/backups_cloud_page.dart` | `test/cloud/`; reuses local backup, encrypted portable manifest; tokens/PIN/device controls stay local. No synchronization. [Drive format/setup](GOOGLE_DRIVE_BACKUP.md). |
+| Updates and distribution | `lib/data/software_update_service.dart`, `update_helper_launcher.dart`, `lib/features/settings/software_updates_page.dart`, `tools/update-helper.ps1`, `tools/build-*.ps1`, `installer/`, `.github/workflows/windows-ci.yml` | `test/software_update_service_test.dart`, `test/update_helper_launcher_test.dart`, PowerShell harnesses in [Testing](TESTING.md); keep AppId, paths, version/asset names, hash and rollback checks. |
+
+## Cross-boundary constraints and schema history
+
+The following details retain implementation rationale and migration history.
+Version-specific statements describe that migration, not the current maximum
+supported schema. Current schema/version checks live in `app_database.dart` and
+the native repository; consult source before changing compatibility ranges.
+
 The Tasks Widget and Calendar Widget share the existing native companion,
 profile-scoped mutex/pipe, reminder service and startup registration. Each is
 an independently visible Explorer child HWND. Flutter edits the typed,
@@ -57,7 +104,7 @@ native HWNDs created directly as Explorer `SHELLDLL_DefView` children, while
 keyboard entry uses short-lived activated WinForms top-level surfaces. This avoids
 both shell-child Flutter focus and post-paint WinForms reparenting. A
 narrow native repository reads and writes only task fields already owned by
-schemas v4 through v20, validates the schema before opening, uses UUIDs/UTC timestamps and
+schemas v4 through v21, validates the schema before opening, uses UUIDs/UTC timestamps and
 transactions, rejects stale edits, and never creates or migrates the database.
 A named-pipe command boundary lets Flutter show, hide, toggle, refresh, open
 Quick Add, select Today/Inbox/All Tasks/Upcoming, or close the single native
@@ -68,8 +115,8 @@ the shared appearance preference, clamps placement to connected monitors, and
 makes bounded recreation attempts if Explorer destroys its child HWND. Manual
 acceptance on an earlier widget build observed visibility, `Win+D`, input,
 editing, resizing, icons, views, theme synchronization, and independent
-main-app lifecycle. The Todorbit 1.0.3 package needs direct repetition of
-these checks. Explorer hosting remains an undocumented compatibility dependency
+main-app lifecycle. Every candidate needs relevant direct acceptance; earlier observations do not
+verify the current package. Explorer hosting remains an undocumented compatibility dependency
 and its diagnostics are retained.
 
 `Todorbit.exe --widget` is a compatibility entry point that launches the
@@ -139,7 +186,8 @@ Sequences persist explicit positions; dependencies persist directed prerequisite
 edges. Repository transactions validate cycles and keep sequence reorders
 atomic. Smart Reschedule's reviewed dependency warnings are checked again at
 Apply, so a newly conflicting prerequisite cannot silently bypass the preview.
-The native widget accepts v4 through v12 and never migrates the database.
+The native widget never migrates the database; consult its current schema guard
+rather than inferring compatibility from this historical migration.
 
 Schema v6 separates recurring rule templates from independent task occurrences.
 Schema v7 links rule generations with a family ID and active date boundaries.

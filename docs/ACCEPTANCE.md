@@ -1,5 +1,10 @@
 # Windows v1.0 final acceptance record
 
+> Current release navigation (2026-10-27): [v1.0.16 publication](TODORBIT_1_0_16_PUBLICATION.md)
+> records the latest published candidate and verification limits. Earlier dated
+> release status below is historical. [Release](RELEASE.md) owns the current
+> preparation sequence; no historical receipt authorizes future publication.
+
 > **2026-10-26 release update:** enabled v1.0.13 is now published as an
 > owner-approved **experimental pre-release**, merged to main with website
 > download updates. Public asset/updater/Pages verification passes.
