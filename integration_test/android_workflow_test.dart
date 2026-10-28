@@ -174,7 +174,6 @@ void main() {
         }
       } finally {
         await tester.pumpWidget(const SizedBox.shrink());
-        controller.dispose();
         if (!databaseClosed) await database.close();
         await root.delete(recursive: true);
       }

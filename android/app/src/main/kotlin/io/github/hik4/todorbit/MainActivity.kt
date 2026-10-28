@@ -54,6 +54,7 @@ class MainActivity : FlutterActivity() {
                 "initialLink" -> result.success(initialLink)
                 "ackLink" -> { if(initialLink == call.arguments) {initialLink = null; intent.data = null}; result.success(null) }
                 "notificationsAllowed" -> result.success(notificationsAllowed())
+                "reminderReceipts" -> result.success(AndroidSurfaces.reminderReceipts(this))
                 "requestNotifications" -> {
                     if (Build.VERSION.SDK_INT < 33 || notificationsAllowed()) result.success(notificationsAllowed())
                     else if (permissionResult != null) result.error("busy", "Permission request already open", null)

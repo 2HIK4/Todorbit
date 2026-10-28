@@ -203,6 +203,9 @@ void main() {
         events: [],
         now: now,
         preferences: const MobilePreferences(quietHours: true),
+        pendingReceipts: {
+          'task:late:custom:${original.millisecondsSinceEpoch}',
+        },
       );
       expect(plans.single['occurrenceAt'], original.millisecondsSinceEpoch);
       expect(
@@ -211,6 +214,121 @@ void main() {
       );
     },
   );
+  test('refresh preserves pending late reminders but drops delivered, changed and stale occurrences', () {
+    final now = DateTime.utc(2026, 10, 28, 8);
+    final late = now.subtract(const Duration(minutes: 2));
+    final stale = now.subtract(const Duration(hours: 24));
+    final plans = androidReminderPlan(
+      tasks: [
+        for (final id in ['pending', 'delivered', 'changed', 'imported'])
+          task(
+            id,
+            notification: TaskNotification(mode: 'custom', at: late),
+          ),
+        task(
+          'stale',
+          notification: TaskNotification(mode: 'custom', at: stale),
+        ),
+        task(
+          'completed',
+          status: TaskStatus.completed,
+          notification: TaskNotification(mode: 'custom', at: late),
+        ),
+      ],
+      sessions: [],
+      events: [],
+      now: now,
+      preferences: const MobilePreferences(),
+      pendingReceipts: {
+        'task:pending:custom:${late.millisecondsSinceEpoch}',
+        'task:delivered:custom:${late.millisecondsSinceEpoch}',
+        'task:changed:custom:${late.subtract(const Duration(minutes: 1)).millisecondsSinceEpoch}',
+        'task:stale:custom:${stale.millisecondsSinceEpoch}',
+        'task:completed:custom:${late.millisecondsSinceEpoch}',
+      },
+      deliveredReceipts: {
+        'task:delivered:custom:${late.millisecondsSinceEpoch}',
+      },
+    );
+    expect(plans.single['key'], 'task:pending:custom');
+    expect(plans.single['occurrenceAt'], late.millisecondsSinceEpoch);
+  });
+  test('late session and previous-day reminder survive midnight refresh', () {
+    final now = DateTime(2026, 10, 29, 0, 5);
+    final start = now.subtract(const Duration(minutes: 10));
+    final at = start.subtract(const Duration(minutes: 15));
+    final plans = androidReminderPlan(
+      tasks: [
+        task(
+          'session',
+          notification: const TaskNotification(
+            mode: 'session',
+            minutesBefore: 15,
+          ),
+        ),
+      ],
+      sessions: [
+        WorkSession(
+          id: 'late-session',
+          taskId: 'session',
+          startsAt: start,
+          endsAt: start.add(const Duration(hours: 1)),
+          outcome: SessionOutcome.upcoming,
+          createdAt: now,
+          updatedAt: now,
+        ),
+        WorkSession(
+          id: 'next-session',
+          taskId: 'session',
+          startsAt: now.add(const Duration(hours: 2)),
+          endsAt: now.add(const Duration(hours: 3)),
+          outcome: SessionOutcome.upcoming,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ],
+      events: [],
+      now: now,
+      preferences: const MobilePreferences(),
+      settings: const NotificationSettings(dailySummary: true),
+      pendingReceipts: {
+        'task:session:session:late-session:${at.millisecondsSinceEpoch}',
+        'summary:2026-10-28',
+      },
+    );
+    expect(
+      plans.map((p) => p['key']),
+      containsAll([
+        'task:session:session:late-session',
+        'task:session:session:next-session',
+        'summary:2026-10-28',
+      ]),
+    );
+  });
+  test('delivered reminders cannot fill the native pending alarm limit', () {
+    final now = DateTime.utc(2026, 10, 28, 8);
+    final at = now.add(const Duration(hours: 1));
+    final plans = androidReminderPlan(
+      tasks: [
+        for (var i = 0; i < 70; i++)
+          task(
+            '$i',
+            notification: TaskNotification(mode: 'custom', at: at),
+          ),
+      ],
+      sessions: [],
+      events: [],
+      now: now,
+      preferences: const MobilePreferences(),
+      deliveredReceipts: {
+        for (var i = 0; i < 65; i++)
+          'task:$i:custom:${at.millisecondsSinceEpoch}',
+      },
+    );
+    expect(plans.map((p) => p['key']), [
+      for (var i = 65; i < 70; i++) 'task:$i:custom',
+    ]);
+  });
   test(
     'daily reminders include overdue work and summaries use real task counts',
     () {

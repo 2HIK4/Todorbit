@@ -45,6 +45,11 @@ object AndroidSurfaces {
         val file=File(context.filesDir,"TodoPilot/privacy-settings.json")
         if(file.exists()) JSONObject(file.readText()) else JSONObject().put("enabled",false)
     } catch (_: Exception) {JSONObject().put("enabled",true).put("hideNotifications",true)}
+    fun reminderReceipts(context: Context): Map<String, List<String>> {
+        val plans=snapshot(context).optJSONArray("reminders") ?: JSONArray()
+        return mapOf("pending" to (0 until plans.length()).map {receipt(plans.getJSONObject(it))},
+            "delivered" to delivered(context).toList())
+    }
     fun publish(context: Context, source: String) {
         val next = JSONObject(source)
         require(next.getInt("version") == 1)
@@ -72,8 +77,9 @@ object AndroidSurfaces {
         for(i in 0 until plans.length()) {
             val item = plans.getJSONObject(i)
             val receipt = receipt(item)
-            if(item.getLong("at") > System.currentTimeMillis() && !receipts.contains(receipt))
-                alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,item.getLong("at"),alarmIntent(context,item.getString("key")))
+            val now=System.currentTimeMillis()
+            if(now-item.getLong("at") < 24L*60*60*1000 && !receipts.contains(receipt))
+                alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,maxOf(item.getLong("at"),now+1000),alarmIntent(context,item.getString("key")))
         }
     }
     fun open(context: Context, link: String): PendingIntent = PendingIntent.getActivity(context,0,

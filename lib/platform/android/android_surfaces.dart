@@ -49,18 +49,32 @@ List<Map<String, Object>> androidReminderPlan({
   required DateTime now,
   required MobilePreferences preferences,
   NotificationSettings settings = const NotificationSettings(),
+  Set<String> pendingReceipts = const {},
+  Set<String> deliveredReceipts = const {},
 }) {
   final plans = <Map<String, Object>>[];
   void add(String key, DateTime at, String title, String link, String body) {
+    final receipt = key.startsWith('due:') || key.startsWith('summary:')
+        ? key
+        : '$key:${at.millisecondsSinceEpoch}';
+    if (deliveredReceipts.contains(receipt)) return;
     var delivery = outsideQuietHours(at, preferences);
     // Keep a bounded quiet-hour deferral when Doze delivered an earlier alarm
     // late. Native receipts use the original occurrence time to prevent repeats.
     if (!delivery.isAfter(now) &&
+        pendingReceipts.contains(receipt) &&
         preferences.quietHours &&
         now.difference(at) < const Duration(hours: 24)) {
       delivery = outsideQuietHours(now, preferences);
     }
-    if (!delivery.isAfter(now)) return;
+    // An inexact alarm may still be pending after its requested time. Keep
+    // that known occurrence through refresh/resume, without reviving arbitrary
+    // past reminders from an imported backup or replaying a delivered one.
+    if (!delivery.isAfter(now) &&
+        (!pendingReceipts.contains(receipt) ||
+            now.difference(at) >= const Duration(hours: 24))) {
+      return;
+    }
     plans.add({
       'key': key,
       'at': delivery.millisecondsSinceEpoch,
@@ -108,6 +122,31 @@ List<Map<String, Object>> androidReminderPlan({
           'Scheduled work session',
         );
       }
+      for (final session in sessions.where(
+        (s) =>
+            s.taskId == task.id &&
+            s.outcome == SessionOutcome.upcoming &&
+            !s.startsAt.isAfter(now),
+      )) {
+        final at = session.startsAt.subtract(
+          Duration(minutes: notification.minutesBefore),
+        );
+        final key = 'task:${task.id}:session:${session.id}';
+        if (!pendingReceipts.contains('$key:${at.millisecondsSinceEpoch}')) {
+          continue;
+        }
+        add(
+          key,
+          at,
+          task.title,
+          mobileLink(
+            'session',
+            id: session.id,
+            day: localDate(session.startsAt.toLocal()),
+          ),
+          'Scheduled work session',
+        );
+      }
     }
   }
   for (final e in events.where(
@@ -127,7 +166,7 @@ List<Map<String, Object>> androidReminderPlan({
     );
   }
   final local = now.toLocal();
-  for (var n = 0; n < 7; n++) {
+  for (var n = -1; n < 7; n++) {
     final time = DateTime(
       local.year,
       local.month,
@@ -176,10 +215,19 @@ Future<void> publishAndroidRepository(
   final through = localDate(DateTime(now.year, now.month, now.day + 90));
   final tasks = await repository.tasks();
   final sessions = await repository.sessions();
-  final events = await repository.eventOccurrences(today, through);
+  final events = await repository.eventOccurrences(
+    localDate(DateTime(now.year, now.month, now.day - 1)),
+    through,
+  );
   final settings = await repository.notificationSettings();
+  final receipts = await AndroidPlatform.channel
+      .invokeMapMethod<String, dynamic>('reminderReceipts');
   final agenda = <Map<String, Object>>[
-    for (final e in events.where((e) => !e.cancelled))
+    for (final e in events.where(
+      (e) =>
+          !e.cancelled &&
+          e.endsAt.isAfter(DateTime(now.year, now.month, now.day)),
+    ))
       {
         'title': e.title,
         'day': localDate(e.startsAt.toLocal()),
@@ -250,6 +298,12 @@ Future<void> publishAndroidRepository(
         now: now,
         preferences: preferences,
         settings: settings,
+        pendingReceipts: ((receipts?['pending'] as List?) ?? [])
+            .cast<String>()
+            .toSet(),
+        deliveredReceipts: ((receipts?['delivered'] as List?) ?? [])
+            .cast<String>()
+            .toSet(),
       ),
     }),
   );
