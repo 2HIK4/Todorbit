@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
 import '../data/privacy_store.dart';
+import '../platform/android/android_platform.dart';
 
 class PrivacyManager extends ChangeNotifier {
   PrivacyManager(this.store, this.settings)
@@ -58,6 +60,19 @@ class PrivacyManager extends ChangeNotifier {
 
   Future<bool> unlock(String pin) async {
     if (!await verify(pin)) return false;
+    locked = false;
+    _inactiveSince = null;
+    _lastActivity = DateTime.now();
+    _startSession();
+    notifyListeners();
+    return true;
+  }
+
+  Future<bool> unlockWithAndroidCredential() async {
+    if (!Platform.isAndroid || !enabled || !locked || retryDelay != null) {
+      return false;
+    }
+    if (!await AndroidPlatform.authenticate()) return false;
     locked = false;
     _inactiveSince = null;
     _lastActivity = DateTime.now();
@@ -161,6 +176,7 @@ class PrivacyManager extends ChangeNotifier {
     _heartbeat?.cancel();
     if (!enabled || locked || _shutDown) return;
     unawaited(_writeSession(true));
+    if (Platform.isAndroid) return;
     _heartbeat = Timer.periodic(const Duration(seconds: 1), (_) {
       unawaited(_writeSession(true));
     });

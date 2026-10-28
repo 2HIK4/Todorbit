@@ -5,6 +5,7 @@ import 'dart:math' as math;
 
 import '../../data/backup_service.dart';
 import '../../data/app_database.dart';
+import '../../platform/android/android_platform.dart';
 import 'windows_database_file_dialog.dart';
 
 class BackupDialog extends StatefulWidget {
@@ -81,6 +82,28 @@ class _BackupDialogState extends State<BackupDialog> {
       success = null;
     });
     try {
+      if (Platform.isAndroid && widget.chooseExport == null) {
+        final temporary = await Directory.systemTemp.createTemp(
+          'todorbit-export-',
+        );
+        try {
+          final snapshot = await widget.service.exportTo(
+            File('${temporary.path}/todorbit.sqlite'),
+          );
+          final exported = await AndroidPlatform.exportDocument(
+            snapshot,
+            name: 'Todorbit-backup.sqlite',
+          );
+          if (mounted && exported) {
+            setState(
+              () => success = 'Exported a verified SQLite snapshot. Keep this unencrypted file private.',
+            );
+          }
+        } finally {
+          await temporary.delete(recursive: true);
+        }
+        return;
+      }
       final destination =
           await (widget.chooseExport ??
               const WindowsDatabaseFileDialog().chooseExport)();

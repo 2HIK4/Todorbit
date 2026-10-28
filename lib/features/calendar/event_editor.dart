@@ -1,4 +1,5 @@
 import 'package:life_manager/features/shared/anchored_select_field.dart';
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
+import '../../platform/android/android_platform.dart';
 import '../shared/icon_picker.dart';
 import '../shared/event_color_picker.dart';
 import '../shared/weekdays.dart';
@@ -431,7 +433,13 @@ class _EventEditorState extends ConsumerState<EventEditor> {
               ),
       );
       final controller = ref.read(appControllerProvider);
-      if (reminderMinutes != null) {
+      if (reminderMinutes != null && Platform.isAndroid) {
+        if (!await AndroidPlatform.requestNotifications()) {
+          throw StateError(
+            'Allow notifications in Android Settings or turn this reminder off.',
+          );
+        }
+      } else if (reminderMinutes != null) {
         final companion = NativeWidgetService();
         if (!Platform.isWindows || !companion.isAvailable) {
           throw StateError(
@@ -912,8 +920,9 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                 initialValue: reminderMinutes,
                 decoration: InputDecoration(
                   labelText: 'Reminder notifications',
-                  helperText:
-                      Platform.isWindows && NativeWidgetService().isAvailable
+                  helperText: Platform.isAndroid
+                      ? 'Android reminders may be delayed by battery restrictions.'
+                      : Platform.isWindows && NativeWidgetService().isAvailable
                       ? 'Delivered by the Todorbit tray companion while it runs.'
                       : 'Requires the packaged Windows tray companion.',
                 ),
@@ -926,7 +935,9 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                   DropdownMenuItem(value: 60, child: Text('1 hour before')),
                 ],
                 onChanged:
-                    Platform.isWindows && NativeWidgetService().isAvailable
+                    Platform.isAndroid ||
+                        (Platform.isWindows &&
+                            NativeWidgetService().isAvailable)
                     ? (value) => setState(() => reminderMinutes = value)
                     : null,
               ),

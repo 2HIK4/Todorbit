@@ -15,6 +15,7 @@ import '../../domain/appearance.dart';
 import '../../domain/settings_history.dart';
 import '../shared/settings_history_scope.dart';
 import '../workspace/windows_resource_dialog.dart';
+import '../../platform/android/android_platform.dart';
 
 class ThemeDialog extends ConsumerStatefulWidget {
   const ThemeDialog({super.key});
@@ -94,6 +95,48 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
   }
 
   Future<void> transfer(bool import) async {
+    if (Platform.isAndroid) {
+      Directory? temporary;
+      try {
+        if (import) {
+          final file = await AndroidPlatform.importDocument(
+            mime: 'application/json',
+          );
+          if (file == null) return;
+          try {
+            if (await file.length() > 65536) {
+              throw const FormatException('Theme file is too large');
+            }
+            final value = ThemeCustomization.fromJson(
+              jsonDecode(await file.readAsString()),
+            );
+            if (mounted) {
+              setState(() {
+                draft = value;
+                message = 'Theme imported. Save changes to apply it.';
+              });
+            }
+          } finally {
+            await file.delete();
+          }
+        } else {
+          temporary = await Directory.systemTemp.createTemp('todorbit-theme-');
+          final file = File('${temporary.path}/theme.json');
+          await file.writeAsString(jsonEncode(draft.toJson()), flush: true);
+          final exported = await AndroidPlatform.exportDocument(
+            file,
+            name: 'Todorbit-theme.json',
+            mime: 'application/json',
+          );
+          if (mounted && exported) setState(() => message = 'Theme exported.');
+        }
+      } catch (error) {
+        if (mounted) setState(() => message = 'Theme file: $error');
+      } finally {
+        await temporary?.delete(recursive: true);
+      }
+      return;
+    }
     final path = await askText(
       import ? 'Import theme JSON path' : 'Export theme JSON path',
     );
@@ -332,13 +375,14 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
                               },
                       ),
                     const Divider(),
-                    SwitchListTile(
-                      title: const Text('Compact task and control spacing'),
-                      value: draft.compact,
-                      onChanged: (value) => setState(
-                        () => draft = draft.copyWith(compact: value),
+                    if (!Platform.isAndroid)
+                      SwitchListTile(
+                        title: const Text('Compact task and control spacing'),
+                        value: draft.compact,
+                        onChanged: (value) => setState(
+                          () => draft = draft.copyWith(compact: value),
+                        ),
                       ),
-                    ),
                     ListTile(
                       title: Text(
                         'Text scale · ${(draft.textScale * 100).round()}%',
@@ -355,65 +399,69 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
                         ),
                       ),
                     ),
-                    ListTile(
-                      title: Text('Sidebar width · ${draft.sidebarWidth}px'),
-                      subtitle: Slider(
-                        onChangeStart: (_) => history.begin(draft),
-                        onChangeEnd: (_) => setState(() => history.end(draft)),
-                        value: draft.sidebarWidth.toDouble(),
-                        min: 190,
-                        max: 330,
-                        divisions: 14,
-                        onChanged: (value) => setState(
-                          () => draft = draft.copyWith(
-                            sidebarWidth: value.round(),
+                    if (!Platform.isAndroid)
+                      ListTile(
+                        title: Text('Sidebar width · ${draft.sidebarWidth}px'),
+                        subtitle: Slider(
+                          onChangeStart: (_) => history.begin(draft),
+                          onChangeEnd: (_) =>
+                              setState(() => history.end(draft)),
+                          value: draft.sidebarWidth.toDouble(),
+                          min: 190,
+                          max: 330,
+                          divisions: 14,
+                          onChanged: (value) => setState(
+                            () => draft = draft.copyWith(
+                              sidebarWidth: value.round(),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      child: AnchoredSelectField<String>(
-                        decoration: const InputDecoration(
-                          labelText: 'Opening screen',
+                    if (!Platform.isAndroid)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
                         ),
-                        key: ValueKey(draft.openingScreen),
-                        initialValue: draft.openingScreen,
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'today',
-                            child: Text('Today'),
+                        child: AnchoredSelectField<String>(
+                          decoration: const InputDecoration(
+                            labelText: 'Opening screen',
                           ),
-                          DropdownMenuItem(
-                            value: 'inbox',
-                            child: Text('Inbox'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'calendar',
-                            child: Text('Calendar'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'habits',
-                            child: Text('Habits'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'goals',
-                            child: Text('Goals'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(
-                              () =>
-                                  draft = draft.copyWith(openingScreen: value),
-                            );
-                          }
-                        },
+                          key: ValueKey(draft.openingScreen),
+                          initialValue: draft.openingScreen,
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'today',
+                              child: Text('Today'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'inbox',
+                              child: Text('Inbox'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'calendar',
+                              child: Text('Calendar'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'habits',
+                              child: Text('Habits'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'goals',
+                              child: Text('Goals'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(
+                                () => draft = draft.copyWith(
+                                  openingScreen: value,
+                                ),
+                              );
+                            }
+                          },
+                        ),
                       ),
-                    ),
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -452,12 +500,13 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
                         () => draft = draft.copyWith(reducedMotion: value),
                       ),
                     ),
-                    const ListTile(
-                      title: Text('Widget appearance'),
-                      subtitle: Text(
-                        'Configure each widget’s surfaces, opacity and borders in Settings > Widget.',
+                    if (!Platform.isAndroid)
+                      const ListTile(
+                        title: Text('Widget appearance'),
+                        subtitle: Text(
+                          'Configure each widget’s surfaces, opacity and borders in Settings > Widget.',
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),

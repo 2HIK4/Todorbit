@@ -7,11 +7,24 @@ import 'package:path/path.dart' as path;
 /// A fresh TodoPilot profile never selects Life Manager data by its presence.
 /// The installer writes this marker only when upgrading an installed TodoPilot.
 class ProfilePaths {
+  static String? _androidRoot;
+
+  static void configureAndroidRoot(String root) {
+    if (!path.isAbsolute(root)) {
+      throw StateError('Android private storage is unavailable');
+    }
+    _androidRoot = root;
+  }
+
   static const markerName = 'legacy-profile.json';
   static const markerValue = 'todopilot-upgrade-v1';
   static const portableMarkerName = 'PORTABLE-MODE';
 
   static String dataRoot() {
+    if (Platform.isAndroid) {
+      return _androidRoot ??
+          (throw StateError('Android profile has not been initialized'));
+    }
     if (Platform.isWindows) {
       return Platform.environment['APPDATA'] ??
           (throw StateError('Windows APPDATA directory is unavailable'));

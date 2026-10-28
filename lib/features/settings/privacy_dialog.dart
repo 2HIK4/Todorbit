@@ -1,5 +1,8 @@
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:flutter/material.dart';
+
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
@@ -94,9 +97,33 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                 onPressed: busy ? null : unlock,
                 child: const Text('Unlock'),
               ),
+              if (Platform.isAndroid)
+                TextButton.icon(
+                  onPressed: busy
+                      ? null
+                      : () async {
+                          setState(() => busy = true);
+                          try {
+                            final success = await ref
+                                .read(privacyManagerProvider)
+                                .unlockWithAndroidCredential();
+                            if (mounted && !success) {
+                              setState(
+                                () => error = 'Device authentication unavailable or canceled. Use your PIN.',
+                              );
+                            }
+                          } finally {
+                            if (mounted) setState(() => busy = false);
+                          }
+                        },
+                  icon: const Icon(Icons.fingerprint),
+                  label: const Text('Use device authentication'),
+                ),
               const SizedBox(height: 16),
-              const SettingsHelperText(
-                'Forgot your PIN? Close Todorbit, then use Settings > Data profile to locate privacy-settings.json and rename that file. This resets only app lock; your database remains intact. App lock protects the UI, not files accessible through your Windows account.',
+              SettingsHelperText(
+                Platform.isAndroid
+                    ? 'App lock protects the interface. The local database is not encrypted. Keep a recoverable backup and remember your PIN; Android private storage cannot be edited from Settings.'
+                    : 'Forgot your PIN? Close Todorbit, then use Settings > Data profile to locate privacy-settings.json and rename that file. This resets only app lock; your database remains intact. App lock protects the UI, not files accessible through your Windows account.',
               ),
             ],
           ),

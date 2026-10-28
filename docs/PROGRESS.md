@@ -1,5 +1,25 @@
 # Progress
 
+## Android mobile implementation in progress (2026-10-28)
+
+- `feature/android-mobile` shares schema 22 and the existing repository/controller.
+  Added touch shell, customizable independent navigation, Today/tasks, compact
+  calendar/agenda and full-screen editors with task Back protection. Existing
+  productivity views, search, templates, scheduling and Trash remain reachable.
+- Android private paths, document transfer, reminder projections, privacy and
+  Google Identity adapters are in source. Native Android widgets/background jobs
+  and build validation are still being integrated; this is not release acceptance.
+- Initial broad run: 355 pass, one intentional native-service skip, two database
+  worker timeouts traced to a Flutter import in a standalone-Dart dependency.
+  Boundary corrected; all 22 database initialization tests pass. Expanded mobile
+  UI plus cross-profile snapshot tests: 14 pass; reminder/preferences tests: 3 pass.
+  MCP analysis reports no errors; isolated Windows debug mobile preview runs,
+  hot reload succeeds, no runtime errors observed.
+- Normal Windows Release output is locked by existing running widget processes.
+  Preserve those sessions; validate Release in a separate worktree. API 36 and
+  JDK 21 selected; Android dependency downloads/build and emulator acceptance are
+  ongoing. See [Android](ANDROID.md) for parity and outstanding device evidence.
+
 ## v1.0.18 widget hotfix published (2026-10-28)
 
 - [Public Windows x64 pre-release v1.0.18](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.18),

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_controller.dart';
 import 'settings_transfer.dart';
 import 'windows_settings_file_dialog.dart';
+import '../../platform/android/android_platform.dart';
 
 class SettingsTransferDialog extends ConsumerStatefulWidget {
   const SettingsTransferDialog({
@@ -117,6 +118,27 @@ class _SettingsTransferDialogState
       message = null;
     });
     try {
+      if (Platform.isAndroid && widget.chooseExport == null) {
+        final temporary = await Directory.systemTemp.createTemp(
+          'todorbit-settings-',
+        );
+        try {
+          final file = File('${temporary.path}/settings.json');
+          await SettingsTransfer.fromController(ref.read(appControllerProvider))
+              .exportTo(file, selected);
+          final exported = await AndroidPlatform.exportDocument(
+            file,
+            name: 'Todorbit-settings.json',
+            mime: 'application/json',
+          );
+          if (mounted && exported) {
+            setState(() => message = 'Settings exported.');
+          }
+        } finally {
+          await temporary.delete(recursive: true);
+        }
+        return;
+      }
       final file =
           await (widget.chooseExport ??
               const WindowsSettingsFileDialog().chooseExport)();

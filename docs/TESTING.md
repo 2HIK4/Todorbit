@@ -24,6 +24,15 @@ changes invalidate prior evidence; do not blindly repeat passing gates.
 
 ## Commands
 
+Android additions: `test/mobile_workspace_test.dart` checks compact/tablet,
+text scaling, RTL/dark layout, task CRUD and unsaved Back protection;
+`test/android_platform_test.dart` covers navigation preferences and reminder
+planning; `test/cross_platform_backup_test.dart` moves a verified snapshot
+between two isolated profiles in both directions. These host tests do not prove
+native Android behavior. Run `flutter test integration_test/android_workflow_test.dart
+-d <isolated-emulator-id>` for the on-device SQLite/UI workflow, then the manual
+matrix in [Android](ANDROID.md). Never reset a personal app profile to run tests.
+
 ```powershell
 # Substitute the actual changed Dart files; formatting check does not rewrite.
 dart format --output=none --set-exit-if-changed lib/features/settings/widget_settings_page.dart

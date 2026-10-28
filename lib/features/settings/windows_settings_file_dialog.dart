@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
+import '../../platform/android/android_platform.dart';
+
 class WindowsSettingsFileDialog {
   const WindowsSettingsFileDialog();
 
@@ -11,6 +13,9 @@ class WindowsSettingsFileDialog {
   Future<File?> chooseExport() => _choose('saveSettings');
 
   Future<File?> _choose(String method) async {
+    if (Platform.isAndroid && method == 'openSettings') {
+      return AndroidPlatform.importDocument(mime: 'application/json');
+    }
     if (!Platform.isWindows) {
       throw UnsupportedError('Settings file dialogs are Windows only.');
     }

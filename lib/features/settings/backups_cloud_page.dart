@@ -13,6 +13,7 @@ import '../../data/cloud/cloud_backup_service.dart';
 import '../../data/cloud/cloud_storage_provider.dart';
 import '../../data/cloud/google_drive_auth.dart';
 import '../../data/cloud/google_drive_provider.dart';
+import '../../platform/android/android_google_drive_auth.dart';
 import 'backup_dialog.dart';
 import 'settings_transfer.dart';
 import 'settings_transfer_dialog.dart';
@@ -50,20 +51,25 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
     client = widget.auth == null ? http.Client() : null;
     auth =
         widget.auth ??
-        GoogleDriveAuth(
-          client: client!,
-          store: SecureCloudTokenStore(local.databaseFile.absolute.path),
-          configurationStore: kDebugMode
-              ? SecureCloudTokenStore(
-                  local.databaseFile.absolute.path,
-                  purpose: 'oauth-client',
-                )
-              : null,
-          flow: LoopbackGoogleAuthorization(),
-          clientId: GoogleDriveAuth.configuredClientId,
-          clientSecret: GoogleDriveAuth.configuredClientSecret,
-          enabled: GoogleDriveAuth.publicConnectionEnabled,
-        );
+        (Platform.isAndroid
+            ? AndroidGoogleDriveAuth(
+                client: client!,
+                store: SecureCloudTokenStore(local.databaseFile.absolute.path),
+              )
+            : GoogleDriveAuth(
+                client: client!,
+                store: SecureCloudTokenStore(local.databaseFile.absolute.path),
+                configurationStore: kDebugMode
+                    ? SecureCloudTokenStore(
+                        local.databaseFile.absolute.path,
+                        purpose: 'oauth-client',
+                      )
+                    : null,
+                flow: LoopbackGoogleAuthorization(),
+                clientId: GoogleDriveAuth.configuredClientId,
+                clientSecret: GoogleDriveAuth.configuredClientSecret,
+                enabled: GoogleDriveAuth.publicConnectionEnabled,
+              ));
     service =
         widget.service ??
         CloudBackupService(

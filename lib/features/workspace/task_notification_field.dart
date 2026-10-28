@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'dart:io';
+
 import '../../domain/notifications.dart';
 import '../shared/anchored_select_field.dart';
 
@@ -99,10 +101,10 @@ class TaskNotificationField extends StatelessWidget {
           },
         ),
       if (value.enabled)
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
           child: Text(
-            'Off unless explicitly enabled. Relative timing uses the next upcoming work session; a planned day or deadline has no time. Recurring task reminders apply to this occurrence only. Windows delivery requires the companion.',
+            'Off unless explicitly enabled. Relative timing uses the next upcoming work session; a planned day or deadline has no time. Recurring task reminders apply to this occurrence only. ${Platform.isAndroid ? 'Android may delay delivery while idle or battery restricted.' : 'Windows delivery requires the companion.'}',
           ),
         ),
     ],

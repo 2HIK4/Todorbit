@@ -23,20 +23,65 @@ import 'data/privacy_store.dart';
 import 'data/profile_paths.dart';
 import 'data/software_update_service.dart';
 import 'domain/appearance.dart';
+import 'domain/models.dart';
 import 'features/workspace/workspace.dart';
 import 'features/settings/privacy_dialog.dart';
 import 'features/settings/settings_transfer.dart';
 import 'features/widget/desktop_widget.dart';
 import 'features/widget/native_widget_service.dart';
 import 'domain/widget_configuration.dart';
+import 'features/mobile/mobile_workspace.dart';
+import 'platform/android/android_surfaces.dart';
+import 'platform/android/android_platform.dart';
 
 Future<void> main(List<String> args) => _startApplication(args);
+
+/// Bounded JobScheduler entry point. UI owns restores and schema upgrades.
+@pragma('vm:entry-point')
+Future<void> androidBackgroundMain() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  AppDatabase? database;
+  try {
+    final root = await AndroidPlatform.channel.invokeMethod<String>('dataRoot');
+    if (root == null) return;
+    ProfilePaths.configureAndroidRoot(root);
+    final file = AppDatabase.fileInDataRoot(root);
+    if (!await file.exists() ||
+        await MigrationGate.olderSchema(file) != null ||
+        await BackupService(file).hasScheduledRestore()) {
+      return;
+    }
+    final privacy = await (await PrivacyStore.openDefault()).load();
+    database = await AppDatabase.openDefault();
+    final repository = LifeRepository(database);
+    final today = DateTime.now();
+    await repository.ensureRecurringTasks(
+      localDate(today),
+      localDate(DateTime(today.year, today.month, today.day + 90)),
+    );
+    await publishAndroidRepository(repository, privacy);
+  } catch (_) {
+    debugPrint(
+      'Background reminders could not refresh. Open Todorbit to review.',
+    );
+  } finally {
+    await database?.close();
+    await AndroidPlatform.channel.invokeMethod<void>('backgroundComplete');
+  }
+}
 
 Future<void> _startApplication(
   List<String> args, {
   bool migrationApproved = false,
 }) async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (Platform.isAndroid) {
+    final root = await AndroidPlatform.channel.invokeMethod<String>('dataRoot');
+    if (root == null) {
+      throw StateError('Android private storage is unavailable');
+    }
+    ProfilePaths.configureAndroidRoot(root);
+  }
   final privacyStore = await PrivacyStore.openDefault();
   late final PrivacySettings privacySettings;
   try {
@@ -209,6 +254,7 @@ Future<void> _startApplication(
                         : DesktopWidgetKind.tasks)
                   : null,
               legacyImportFile: offerLegacyImport ? legacyDatabase : null,
+              mobileLayout: kDebugMode && args.contains('--mobile-preview'),
             ),
     ),
   );
@@ -391,6 +437,7 @@ class LifeManagerApp extends ConsumerStatefulWidget {
     this.editWidget,
     this.initialNavigation,
     this.legacyImportFile,
+    this.mobileLayout = false,
   });
 
   final File? databaseFile;
@@ -399,6 +446,7 @@ class LifeManagerApp extends ConsumerStatefulWidget {
   final DesktopWidgetKind? editWidget;
   final String? initialNavigation;
   final File? legacyImportFile;
+  final bool mobileLayout;
 
   @override
   ConsumerState<LifeManagerApp> createState() => _LifeManagerAppState();
@@ -412,6 +460,7 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
   bool _databaseRefreshPending = false;
   bool _appearanceRefreshPending = false;
   String? _lastCaptionTheme;
+  AndroidSurfaceCoordinator? _androidSurfaces;
 
   void _syncCaptionTheme(ThemeData theme) {
     if (!Platform.isWindows) return;
@@ -446,6 +495,12 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (Platform.isAndroid) {
+      _androidSurfaces = AndroidSurfaceCoordinator(
+        ref.read(appControllerProvider),
+        ref.read(privacyManagerProvider),
+      );
+    }
     if (ref.read(appControllerProvider).backupService != null) {
       _backupTimer = Timer.periodic(const Duration(hours: 6), (_) {
         ref.read(appControllerProvider).checkAutomaticBackup();
@@ -497,6 +552,7 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
     _refreshDebounce?.cancel();
     _backupTimer?.cancel();
     _databaseChanges?.cancel();
+    _androidSurfaces?.dispose();
     super.dispose();
   }
 
@@ -534,6 +590,12 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
             .read(appControllerProvider)
             .customization
             .textScale;
+        if (widget.mobileLayout && !Platform.isAndroid) {
+          return Center(child: SizedBox(width: 390, child: MediaQuery(
+            data: existing.copyWith(size: Size(390,existing.size.height),
+              textScaler: TextScaler.linear(systemScale * preferenceScale)),
+            child: child ?? const SizedBox.shrink())));
+        }
         return MediaQuery(
           data: existing.copyWith(
             textScaler: TextScaler.linear(systemScale * preferenceScale),
@@ -541,10 +603,26 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
                 ref.read(appControllerProvider).customization.reducedMotion ||
                 existing.disableAnimations,
           ),
-          child: child ?? const SizedBox.shrink(),
+          child: Platform.isAndroid
+              ? Stack(
+                  children: [
+                    ExcludeSemantics(
+                      excluding: privacy.locked,
+                      child: AbsorbPointer(
+                        absorbing: privacy.locked,
+                        child: child ?? const SizedBox.shrink(),
+                      ),
+                    ),
+                    if (privacy.locked)
+                      const Positioned.fill(
+                        child: PopScope(canPop: false, child: LockScreen()),
+                      ),
+                  ],
+                )
+              : child ?? const SizedBox.shrink(),
         );
       },
-      home: privacy.locked
+      home: privacy.locked && !Platform.isAndroid
           ? const LockScreen()
           : Listener(
               onPointerDown: (_) => privacy.activity(),
@@ -553,12 +631,14 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
                   privacy.activity();
                   return KeyEventResult.ignored;
                 },
-                child: Workspace(
-                  openAppearance: widget.openAppearance,
-                  editWidget: widget.editWidget,
-                  initialNavigation: widget.initialNavigation,
-                  legacyImportFile: widget.legacyImportFile,
-                ),
+                child: Platform.isAndroid || widget.mobileLayout
+                    ? const MobileWorkspace()
+                    : Workspace(
+                        openAppearance: widget.openAppearance,
+                        editWidget: widget.editWidget,
+                        initialNavigation: widget.initialNavigation,
+                        legacyImportFile: widget.legacyImportFile,
+                      ),
               ),
             ),
     );
@@ -593,7 +673,9 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
     final text = base.textTheme;
     return ThemeData(
       useMaterial3: true,
-      visualDensity: ref.read(appControllerProvider).customization.compact
+      visualDensity:
+          !Platform.isAndroid &&
+              ref.read(appControllerProvider).customization.compact
           ? VisualDensity.compact
           : VisualDensity.standard,
       colorScheme: scheme,

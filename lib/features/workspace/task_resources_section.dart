@@ -402,7 +402,7 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
             ),
             IconButton.outlined(
               tooltip: 'Link an existing file',
-              onPressed: busy
+              onPressed: busy || Platform.isAndroid
                   ? null
                   : () => _run(() async {
                       final file = await widget.dialog.chooseFile();
@@ -418,7 +418,7 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
             ),
             IconButton.outlined(
               tooltip: 'Link an existing folder',
-              onPressed: busy
+              onPressed: busy || Platform.isAndroid
                   ? null
                   : () => _run(() async {
                       final folder = await widget.dialog.chooseFolder();
@@ -439,6 +439,7 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
             ),
           ],
         ),
+        if (Platform.isAndroid) const Text('Attach a portable copy or add a URL. Windows file and folder links must be relinked on this device.'),
         if (error != null)
           Text(
             error!,

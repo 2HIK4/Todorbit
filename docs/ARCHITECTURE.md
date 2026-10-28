@@ -2,6 +2,12 @@
 
 ## Start here
 
+Android uses the same schema/repository/controller with a separate touch shell
+under `lib/features/mobile/` and device adapters under `lib/platform/android/`.
+The native Android surfaces consume bounded projections; they never write or
+migrate SQLite. [Android parity, setup and acceptance](ANDROID.md) tracks device
+evidence separately from Windows and widget-test results.
+
 Current source is schema **22**. This map owns subsystem discovery; commands
 live in [Testing](TESTING.md), setup in [Development](DEVELOPMENT.md), and
 packaging/publication in [Release](RELEASE.md). Paths below are repository-relative.

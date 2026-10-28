@@ -2,7 +2,7 @@
 
 ## Scope and safety
 
-- Todorbit is a local-first Flutter productivity app targeting Windows 10/11; Windows 11 is the primary test platform. Keep the Android scaffold intact; no Android UI now.
+- Todorbit is a local-first Flutter productivity app targeting Windows 10/11 and Android. Windows 11 remains the primary desktop test platform. Preserve the Windows release while developing Android; see [Android acceptance and parity](docs/ANDROID.md). Keep the iOS scaffold outside this task.
 - Optional Google Drive snapshot backup/restore already exists. Preserve it; do not introduce synchronization, new cloud services, accounts or telemetry without a product decision.
 - Preserve tasks, events, preferences, backups and widget configurations. Never reset/delete data as an error fallback. Use compatible forward migrations and transactions for multi-record edits.
 - Keep planned dates, deadlines, sessions, actual work and fixed events separate. Never auto-complete or silently reschedule tasks.
