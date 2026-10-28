@@ -186,8 +186,10 @@ class _PrivacyDialogState extends ConsumerState<PrivacyDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SettingsHelperText(
-                'App lock hides Todorbit content in the app and native widget. It does not encrypt the SQLite database or protect files from someone with access to your Windows account.',
+              SettingsHelperText(
+                Platform.isAndroid
+                    ? 'App lock hides Todorbit content in the app and home-screen widgets. It does not encrypt the local database. Keep a recoverable backup and remember your PIN.'
+                    : 'App lock hides Todorbit content in the app and native widget. It does not encrypt the SQLite database or protect files from someone with access to your Windows account.',
               ),
               const SizedBox(height: 12),
               Text(settings.enabled ? 'App lock enabled' : 'App lock disabled'),

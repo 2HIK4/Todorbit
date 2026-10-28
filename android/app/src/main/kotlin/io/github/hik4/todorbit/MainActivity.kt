@@ -116,8 +116,11 @@ class MainActivity : FlutterActivity() {
         if (documentResult != null) { result.error("busy", "A document picker is already open", null); return }
         if (source != null) {
             val candidate = File(source).canonicalFile
-            if (!candidate.path.startsWith(filesDir.canonicalPath + File.separator) &&
-                !candidate.path.startsWith(cacheDir.canonicalPath + File.separator)) {
+            // Flutter's Directory.systemTemp uses getCodeCacheDir(), which is
+            // app-private too. Keep canonical, separator-bounded checks for all
+            // three roots so temporary SQLite/settings exports reach SAF.
+            val privateRoots = listOf(filesDir, cacheDir, codeCacheDir)
+            if (privateRoots.none { candidate.path.startsWith(it.canonicalPath + File.separator) }) {
                 result.error("path", "Only app-private exports are supported", null); return
             }
         }
