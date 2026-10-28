@@ -330,6 +330,46 @@ void main() {
     ]);
   });
   test(
+    'event alarms retain recurring occurrence identity through quiet hours',
+    () {
+      final now = DateTime(2026, 10, 28, 20);
+      final plans = androidReminderPlan(
+        tasks: [],
+        sessions: [],
+        now: now,
+        preferences: const MobilePreferences(quietHours: true),
+        events: [
+          for (final day in [28, 29, 30])
+            FixedEvent(
+              id: 'series',
+              title: 'Recurring event',
+              notes: '',
+              startsAt: DateTime(2026, 10, day, 23),
+              endsAt: DateTime(2026, 10, day + 1),
+              createdAt: now,
+              updatedAt: now,
+              reminderMinutes: 30,
+              nominalDate: '2026-10-$day',
+              cancelled: day == 30,
+            ),
+        ],
+      );
+      expect(plans.map((p) => p['key']), [
+        'event:series:2026-10-28',
+        'event:series:2026-10-29',
+      ]);
+      expect(
+        plans.first['at'],
+        DateTime(2026, 10, 29, 7).millisecondsSinceEpoch,
+      );
+      expect(Uri.parse(plans.first['link'] as String).queryParameters, {
+        'id': 'series',
+        'day': '2026-10-28',
+        'nominal': '2026-10-28',
+      });
+    },
+  );
+  test(
     'daily reminders include overdue work and summaries use real task counts',
     () {
       final now = DateTime(2026, 10, 28, 8);
