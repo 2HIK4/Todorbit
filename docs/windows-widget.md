@@ -1,5 +1,14 @@
 # Integrated Windows widget
 
+## Customization, presets and direct navigation
+
+The [upgrade guide](WIDGET_SETTINGS_UPGRADE.md) covers reordering (drag or Up/Down),
+per-widget built-in/custom presets, settings Undo/Redo, independent task/selected
+navigation colors, the Calendar divider, count indicators and task reminders.
+Preset/library edits are drafts until Apply; Cancel discards them. Ctrl+Z,
+Ctrl+Shift+Z and Ctrl+Y operate within the editor, with one slider drag per step.
+Focused text inputs keep text Undo/Redo. Built-ins remain available.
+
 ## Two-widget customization update
 
 Settings > Widget has independent Tasks Widget and Calendar Widget controls.
@@ -15,8 +24,8 @@ also has independent view visibility, four navigation positions and text/icon
 modes. Calendar has month navigation, today/selection styles, date indicators and
 an independently styled selected-date agenda. Month grid dots indicate existing
 planned tasks, work sessions or events according to the saved calendar filter.
-Agenda task/session entries open their task in Todorbit; event entries are
-currently read-only. Week start follows the application's calendar preference.
+Agenda task, session and event entries open their corresponding existing
+editors in Todorbit, including recurring occurrence identity. Week start follows the application's calendar preference.
 
 **Apply** saves the selected widget and keeps its editor open. Changes preview
 on the enabled desktop widget over the existing IPC channel without disk writes.
@@ -28,9 +37,10 @@ appearance. Each widget keeps its visibility, geometry, layout lock, task
 navigation/input and calendar agenda/cell/indicator settings. **Cancel** discards
 the draft; previews do not write saved files or change another widget.
 Reset customization restores defaults while preserving enabled state/layout lock.
-New widget configuration is profile-local and survives ordinary bundle updates;
-it is not included in shareable settings/cloud snapshots. Shared theme colors
-continue to use `appearance-settings.json`.
+Widget appearance/layout, navigation order and custom presets now travel in
+settings transfer, local snapshots and Drive backups. Visibility, geometry,
+startup and layout lock remain device-local. Shared theme colors continue to
+use `appearance-settings.json`.
 
 Both HWNDs use one companion, tray icon, IPC channel and startup entry. Tasks
 retains its legacy geometry/view/startup file; Calendar stores its own geometry.
@@ -40,16 +50,17 @@ remain clear. A nominally transparent shell retains one alpha step for reliable
 management hit testing. No content-wide window opacity is applied.
 
 Calendar uses one rounded month grid above a dedicated selected-day agenda.
-Date-cell height is bounded; extra height expands the agenda. Four-, five- and
+By default, date-cell height is bounded; extra height expands the agenda. A
+draggable divider or Calendar share slider sets an explicit saved proportion. Four-, five- and
 six-week months use the same geometry. All selected-day items remain available
 through continuous row scrolling, with a fixed date heading and scroll cue.
 Mouse-wheel input over the grid does not scroll the agenda. Click an agenda row
-for native full text/details without opening Todorbit. Legacy presentation keys
+to open the actual task/event/session editor in Todorbit. Legacy presentation keys
 are ignored without resetting other settings. Week-start/content preferences
 and repository projection remain shared with the application.
 Text protection now adds a restrained glyph shadow, with no opaque per-label
 rectangles. Theme-aware rounded tooltips wait 600 ms and never activate.
-Minimum sizes stay 300×360 for Calendar and 260×230 for Tasks at 100% text;
+Minimum sizes are 300×420 for Calendar and 260×230 for Tasks at 100% text;
 the existing text-scale-aware minimum grows for larger text. Below 340 logical
 pixels a side task navigation becomes an icon rail while retaining its setting.
 

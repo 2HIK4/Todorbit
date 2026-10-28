@@ -80,7 +80,8 @@ See [clean packaged acceptance](GOOGLE_DRIVE_RELEASE_READINESS.md#required-packa
   templates, timers/time entries, archive/trash and notification records.
 - The package also includes the existing shareable-settings allowlist:
   appearance/themes and widget palette/opacity, hotkey presets, calendar,
-  sidebar order and task display. Settings-only backups use exactly this
+  sidebar order, task display, per-widget appearance/navigation/split and custom
+  widget presets. Settings-only backups use exactly this
   versioned JSON and have no database content. Selective import and named
   hotkey merging reuse SettingsTransferDialog.
 - Task-resource references are database records. **External linked file contents

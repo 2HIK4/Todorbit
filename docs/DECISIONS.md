@@ -1,5 +1,18 @@
 # Decisions
 
+- **Widget settings and task notifications (2026-10-28):** keep format-1 widget
+  fields additive, with per-kind presets and bounded settings history. Portable
+  settings include appearance/order/split/presets, excluding enabled state,
+  geometry, lock and startup. Local SQLite snapshots carry a validated envelope
+  that is applied and removed from the live schema during restore. Schema 22
+  stores explicit Off/custom/session task notification data and a unique claim
+  ledger; reuse the companion timer/privacy rules. A planned day is never a
+  notification time. Reminders belong to individual recurring task occurrences.
+  Typed activation reuses single-instance readiness, stable IDs and nominal
+  event dates; defer requests during active editors/modals rather than replacing
+  unsaved state. [Implementation/acceptance](WIDGET_SETTINGS_UPGRADE.md).
+
+
 - **Unified calendar, geometry and optional support (2026-10-27):** supersede
   the two presentation modes with one native grid/agenda. Ignore legacy mode
   keys without resetting other settings. Bound date-cell height independently

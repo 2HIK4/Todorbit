@@ -84,7 +84,7 @@ These behaviors still require an actual installer acceptance test.
 Fresh installer database and settings are under `%APPDATA%\TodoPilot`, outside the
 installation directory. Portable copies use separate location-keyed folders
 under that directory; moving a portable copy selects a new profile, so use
-Export/Import to move data. A database below schema v21 prompts for approval
+Export/Import to move data. A database below the running app's schema prompts for approval
 before backup or migration. Approval creates and checks a `Before upgrade`
 SQLite backup before opening the newer schema. If preparation fails, the
 workspace remains closed. Do not use the personal database for development or

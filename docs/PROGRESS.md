@@ -1,5 +1,46 @@
 # Progress
 
+## Widget settings, reminders and direct navigation (2026-10-28)
+
+- Implementation **d8f2bc8** on `feature/widget-settings-navigation-upgrade`,
+  based on main `d6a1620`. [Behavior, migration and manual checklist](WIDGET_SETTINGS_UPGRADE.md).
+  Production app/native version remains **1.0.16+17**; no publication, installer
+  execution, dependency/OAuth-config change or personal-profile migration.
+- Implemented ordered/hidden widget navigation, per-kind built-in/custom presets,
+  bounded/coalesced settings Undo/Redo, independent row/selection colors/alpha,
+  Calendar divider/proportions and event-count indicators. Settings transfer,
+  local snapshots and encrypted Drive restore apply portable configuration and
+  preset libraries while keeping visibility/geometry/startup/lock device-local.
+- Schema **22** adds explicit-Off task notification JSON, enabled-reminder index
+  and delivery ledger, reusing the existing companion timer/privacy boundary.
+  Custom UTC timing stays separate from planned dates; relative timing uses
+  upcoming work sessions. Future recurring occurrences are not silently enabled.
+- Typed activation opens existing task/event/session editors by stable IDs and
+  occurrence dates; pending requests preserve active edits/modals. The native
+  Scheduled item popup and native row-edit detour are retired for these clicks;
+  completion checkboxes keep their direct behavior.
+- Verification: full serial Flutter suite **353 passed / one opt-in skip**;
+  final targeted drag/history/preset/text-focus checks **4 passed**. Final whole
+  analysis clean; changed-Dart formatting and `git diff --check` pass.
+  Windows Release and native Release build pass (native zero warnings/errors),
+  final packaged self-test and two-widget actual-HWND lifecycle pass. Native
+  offscreen light/dark/DPI fixtures inspected; physical DPI/input is not implied.
+- Isolated debug runtime: preset select/save/Apply; actual second-process task
+  activation and cold executable startup open the exact editor with one main
+  process. An unsaved title stays intact during a queued missing-item request,
+  then the missing-item message appears after closing the editor. Successful
+  hot reload and clean subsequent runtime diagnostics. Disposable apps closed;
+  the already-running installed companion was not stopped.
+- Restore tests include real encryption/staging/file application through a fake
+  Drive provider; real-account OAuth was not rerun. Physical notifications,
+  Win+D/Explorer restart, multi-monitor/DPI transitions, screen readers and real
+  event/session clicks remain manual acceptance items. Initial failing snapshot
+  envelope expectations, schema table-count expectations, narrow preset layout
+  and a date-dependent Calendar fixture were corrected before final verification.
+- Evidence remains ignored under `.buildlog/widget-*`; screenshots mentioned in
+  the request were not attached, so written requirements and rendered UI were
+  used. No installer/portable/release assets were modified.
+
 ## Repository workflow maintenance (2026-10-27)
 
 - Clean baseline `main` at `6592b2b`; remote main matches. GitHub releases API

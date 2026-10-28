@@ -2,7 +2,7 @@
 
 ## Start here
 
-Current source is schema **21**. This map owns subsystem discovery; commands
+Current source is schema **22**. This map owns subsystem discovery; commands
 live in [Testing](TESTING.md), setup in [Development](DEVELOPMENT.md), and
 packaging/publication in [Release](RELEASE.md). Paths below are repository-relative.
 
@@ -56,8 +56,9 @@ Atomic file replacement keeps each saved configuration complete. Task geometry,
 view and legacy startup preference remain in `widget-settings.json`; Calendar
 geometry uses `calendar-widget-settings.json`. Legacy opacity and layout lock are
 read deterministically without rewriting existing geometry or startup choices.
-These new per-widget files are device-local and excluded from shareable settings
-and cloud backup payloads; shared theme colors remain portable.
+Widget appearance/layout and per-kind preset libraries are portable through
+settings transfer and backups. Enabled state, layout lock, geometry and startup
+remain device-local. See [widget upgrade](WIDGET_SETTINGS_UPGRADE.md).
 
 Widget customization now keeps a committed baseline and an unsaved draft.
 `life_manager/widget_preview` sends bounded, ordered JSON envelopes directly to
@@ -104,7 +105,7 @@ native HWNDs created directly as Explorer `SHELLDLL_DefView` children, while
 keyboard entry uses short-lived activated WinForms top-level surfaces. This avoids
 both shell-child Flutter focus and post-paint WinForms reparenting. A
 narrow native repository reads and writes only task fields already owned by
-schemas v4 through v21, validates the schema before opening, uses UUIDs/UTC timestamps and
+schemas v4 through v22, validates the schema before opening, uses UUIDs/UTC timestamps and
 transactions, rejects stale edits, and never creates or migrates the database.
 A named-pipe command boundary lets Flutter show, hide, toggle, refresh, open
 Quick Add, select Today/Inbox/All Tasks/Upcoming, or close the single native
@@ -273,3 +274,27 @@ and daylight-saving boundaries. The repository remains the only Flutter writer.
 Schema v2 adds `fixed_events` with UTC start/end instants and a start-time index. The v1→v2 migration preserves task rows.
 
 Schema v3 adds `work_sessions` with separate outcome and optional recorded start. Both v1→v3 and v2→v3 upgrade paths are supported. Session status does not drive parent task completion.
+
+## Schema 22 and widget customization upgrade
+
+`tasks.notification_json` defaults to explicit Off. Per-task custom UTC instants
+or offsets from the next upcoming work session are claimed once in
+`task_reminder_deliveries` by the existing native timer. Planned days/deadlines
+still have no clock time; recurrence reminders belong to individual task IDs.
+Existing global due-date/event reminders are preserved. Native schema support
+extends to 22; the main app alone migrates databases.
+
+`WidgetConfiguration` format 1 gains additive navigation order, optional Calendar
+split, preset name and independent row/selected-navigation surfaces/text alpha.
+`WidgetPresets` has a bounded version-1 library per widget. `SettingsHistory` and
+`SettingsHistoryScope` serve widget/theme drafts and immediate task-display/sidebar
+contexts, preserving focused text editing. Geometry remains in legacy native files.
+Local SQLite snapshots carry a `backup_widget_personalization` envelope table;
+restore validates/applies its files and removes the snapshot-only table from the
+live database. Settings-only/Drive transfer uses the widgets allowlist category.
+
+`NavigationRequest` and native `NavigationActivation` send versioned stable IDs,
+item kind, action, actual day and recurring nominal day over the existing
+single-instance activation readiness channel. Workspace opens existing task,
+event or session editors. Requests wait while another editor/modal is active;
+a banner lets the user finish/dismiss them. No intermediate schedule popup.
