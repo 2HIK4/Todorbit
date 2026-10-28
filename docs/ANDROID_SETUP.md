@@ -114,9 +114,34 @@ owns platform token acquisition; this is optional backup, not synchronization.
 
 ## Install and exercise
 
+The verified continuation artifacts are in the ignored local directory
+`.buildlog/android-deliverables/`. Use **Todorbit-1.0.18-19-debug.apk** for a phone;
+the AAB is not directly installable. These contain app source `e881a12` and use
+this workstation's development certificate. Artifact hashes and observed checks
+are in [the acceptance record](ANDROID_ACCEPTANCE.md); `SHA256SUMS.txt` is beside
+the files. Keep a copy of the APK outside build directories if needed later.
+
+On this workstation, from `D:\AI_Projects\life_manager`:
+
+```powershell
+$adb = "$env:LOCALAPPDATA\Android\sdk\platform-tools\adb.exe"
+& $adb devices
+$phone = 'YOUR_PHONE_SERIAL' # Use the USB phone's serial from the command above.
+& $adb -s $phone install -r '.buildlog\android-deliverables\Todorbit-1.0.18-19-debug.apk'
+& $adb -s $phone shell am start -n io.github.hik4.todorbit/.MainActivity
+```
+
+Enable Developer options/USB debugging and accept the phone's USB authorization
+first. The phone must support 64-bit ARM and Android 8 or later. Alternatively,
+transfer the APK by USB and open it in the phone's Files app, allowing that app
+to install it when Android asks. This is development signing; a signing-mismatch
+error must not be resolved by uninstalling an installation containing personal
+data before a verified backup is exported. The checked-in default keeps real
+Google Drive connection disabled until the owner completes the OAuth setup above.
+
 1. Enable Developer options and USB debugging on a test phone. Connect by USB,
    authorize the computer, and confirm `adb devices` lists the intended device.
-2. `adb -s <device> install -r build/app/outputs/flutter-apk/app-debug.apk`.
+2. `adb -s <device> install -r .buildlog/android-deliverables/Todorbit-1.0.18-19-debug.apk`.
    Launch Todorbit from the launcher. Do not uninstall a personal installation
    to resolve a signing mismatch; export a backup first and use a test device.
 3. Add categories/projects from the drawer, create/edit tasks and events, check
@@ -140,6 +165,20 @@ owns platform token acquisition; this is optional backup, not synchronization.
    settings JSON transfer separately or the encrypted full Drive package for
    portable personalization. Managed attachment bytes are in SQLite snapshots;
    external Windows file/folder links need relinking on Android.
+7. Enable a PIN you will remember, test wrong/correct PIN and device-authentication
+   cancellation/success, and enable focus-loss locking over an open editor. Check
+   both widgets hide details and the app-switcher preview is protected. App lock
+   protects the interface; it does not encrypt the database.
+8. Start the focus stopwatch, use Home, return, then test process/reboot recovery.
+   A gap over two minutes requires review. Choose Keep elapsed time or Stop at
+   last checkpoint explicitly; actual work must not complete or reschedule a task.
+9. Export a backup before broader testing. Check text scaling/TalkBack, rotation,
+   custom themes, attachments, battery/Doze behavior, and both launcher widgets'
+   resize/reconfiguration. Record the phone model, Android version and observations.
+
+Integration tests belong on a disposable emulator. The Flutter integration runner
+uninstalls its test app afterward, including that test installation's private
+data and launcher widgets. Do not run it against a personal phone/profile.
 
 An app update signed by the same key retains private data. Android uninstall
 removes private data, including local snapshots; keep a verified exported or

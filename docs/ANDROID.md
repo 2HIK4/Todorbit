@@ -16,33 +16,50 @@ installation and manual acceptance instructions are in [Android setup](ANDROID_S
 
 ## Feature inventory and acceptance matrix
 
-Status is implementation evidence, not a claim of device acceptance. Update
-the last column as checks complete. Existing desktop dialogs reused by mobile
-still need narrow-screen and touch acceptance.
+Complete means the feature is implemented with the checks listed below; it does
+not claim every phone/OEM behavior has been observed. Partial identifies an
+outstanding implementation or acceptance gate; Blocked needs an external owner
+dependency; Not Applicable is a justified Windows-only exclusion. No supported
+feature in this inventory is Not Started. Exact current artifact/device evidence
+and remaining acceptance are in [the continuation report](ANDROID_ACCEPTANCE.md).
 
 | Windows feature/source | Shared dependencies | Android surface/integration | Status / checks required |
 | --- | --- | --- | --- |
-| Today, All, Inbox, Anytime, Upcoming, Overdue, Waiting, Completed (`workspace`) | Controller task filters, repository | Mobile lists/dashboard, bottom navigation and drawer | Implemented; host layout/CRUD tests pass; device acceptance pending |
-| Task fields, priorities, statuses, planned dates, deadlines, estimates | TaskEditor, TaskDraft, repository | Full-screen task editor, safe Back | Implemented; mobile create/complete/Back tests pass |
-| Recurrence, progressive plans, series edits, dependencies, sequences | Domain recurrence, composition/series repositories | Existing editor sections and scheduling tools | Shared implementation exposed; host domain tests pass; touch workflow acceptance pending |
-| Subtasks, checklists, resource links and managed attachments | Composition/resource repositories | Editor sections; Android document/URL access and FileProvider | Implemented in source; external Windows paths require relinking; device document acceptance pending |
-| Calendar day/week/month, events, sessions, recurrence, conflicts | EventEditor, SessionEditor, occurrence identity | Touch month/week/day agenda, full-screen editors | Implemented; compact recurring-event/Back and shared calendar tests pass; device links pending |
-| Projects/categories, icons, event colors | Controller organization APIs | Drawer destinations and organization management | Implemented in source; device organization workflow pending |
-| Habits, daily logs, rest days, history | HabitsView, habit repository/domain | Shared responsive feature view | Implemented; compact host layout and existing behavior tests pass |
-| Goals, links, milestones, progress history | GoalsView, goal repository/domain | Shared responsive feature view | Implemented; compact host layout and existing behavior tests pass |
-| Actual time, manual entries, focus/timer recovery | TimeTrackingDialog, persisted timer runs | Editor timer access and active timer banner | Shared session model; lifecycle tests pending |
-| Statistics/reports | ReportsView, reports repository | Shared responsive reports view | Implemented; compact host layout and shared calculation tests pass |
-| Search, saved views, templates, routines | Search/template dialogs, filters | Drawer actions and mobile search | Implemented; compact search/template host tests pass; device workflows pending |
-| Smart Reschedule, availability and history | Scheduling engine, preview/apply APIs | Existing approval dialog | Implemented; shared approval tests pass; touch workflow acceptance pending |
-| Archive and Trash | TrashDialog, repository | Drawer action | Implemented; shared repository tests pass; mobile acceptance pending |
-| Appearance, custom palettes, task/calendar preferences | Theme/task preferences, profile stores | Mobile settings; independent navigation preferences | Implemented; compact theme/settings and preference round-trip tests pass |
-| Task and event reminders | Existing reminder models | Android notification channel, permission and alarm adapter | Native source implemented; planner tests pass; device delivery/permission checks pending |
-| Tasks and Calendar desktop widgets | Shared task/event data and tokens | Separate RemoteViews AppWidgetProviders | Native source implemented; launcher/device checks pending; no Windows geometry import |
-| App lock and privacy | PrivacyManager/PIN verifier | Android lifecycle, secure window, biometrics | Native adaptation implemented; device biometric/privacy checks pending |
-| Local snapshot backup, restore, recovery, import/export | BackupService, MigrationGate | Android Storage Access Framework | Two-profile snapshot round trip passes; device picker/restart acceptance pending |
-| Encrypted Google Drive snapshots | CloudBackupService/codec/provider | Android Google authorization | Code implemented; blocked for real acceptance by external OAuth package/certificate registration |
-| Settings import/export, contributor credits | SettingsTransfer, official registry | Mobile settings/About | Implemented; host tests pass; device document acceptance pending |
-| Tray, Explorer attachment, registry startup, Windows Hello, EXE updater | Windows runner/.NET | No Android equivalent; Android package manager owns updates | Justified Windows-only exclusions |
+| Today, All, Inbox, Anytime, Upcoming, Overdue, Waiting, Completed (`workspace`) | Controller task filters, repository | Mobile lists/dashboard, bottom navigation and drawer | Complete; host layout/CRUD tests and Android task workflow pass |
+| Task fields, priorities, statuses, planned dates, deadlines, estimates | TaskEditor, TaskDraft, repository | Full-screen task editor, safe Back | Complete; Android create/edit/complete/persistence and manual Back checks pass |
+| Recurrence, progressive plans, series edits, dependencies, sequences | Domain recurrence, composition/series repositories | Existing editor sections and scheduling tools | Complete shared implementation; domain and compact editor tests pass; extended phone workflows remain manual |
+| Subtasks, checklists, resource links and managed attachments | Composition/resource repositories | Editor sections; Android document/URL access and FileProvider | Complete; shared composition/resource tests pass; a managed PDF was imported through SAF and rendered by Android's viewer; Windows paths require relinking |
+| Calendar day/week/month, events, sessions, recurrence, conflicts | EventEditor, SessionEditor, occurrence identity | Touch month/week/day agenda, full-screen editors | Complete; host recurring editors/calendar tests and Android event workflow/widget event link pass; recurring native links remain manual |
+| Projects/categories, icons, event colors | Controller organization APIs | Drawer destinations and organization management | Complete; shared CRUD tests pass, Android workflow preserves category/project identity; full touch organization workflow remains manual |
+| Habits, daily logs, rest days, history | HabitsView, habit repository/domain | Shared responsive feature view | Complete; compact host layout and existing repository/widget behavior tests pass |
+| Goals, links, milestones, progress history | GoalsView, goal repository/domain | Shared responsive feature view | Complete; compact host layout and existing repository/widget behavior tests pass |
+| Actual time, manual entries, focus/timer recovery | TimeTrackingDialog, persisted timer runs | Editor timer access and active timer banner | Complete for scoped API 35 acceptance; start, short process interruption, reboot with a longer gap, explicit review and stopping at the last checkpoint observed; shared time-entry tests pass |
+| Statistics/reports | ReportsView, reports repository | Shared responsive reports view | Complete; compact host layout and shared calculation tests pass |
+| Search, saved views, templates, routines | Search/template dialogs, filters | Drawer actions and mobile search | Complete; narrow search/template UI and shared saved-view/routine tests pass; extended phone workflows remain manual |
+| Smart Reschedule, availability and history | Scheduling engine, preview/apply APIs | Existing approval dialog | Complete; shared approval/scheduling tests pass; extended phone workflows remain manual |
+| Archive and Trash | TrashDialog, repository | Drawer action | Complete; shared archive/Trash repository tests pass; extended phone workflow remains manual |
+| Appearance, custom palettes, task/calendar preferences | Theme/task preferences, profile stores | Mobile settings; independent navigation preferences | Complete; compact theme/settings and independent preference round-trip tests pass |
+| Task and event reminders | Existing reminder models | Android notification channel, permission and alarm adapter | Complete for scoped API 35 acceptance; deny/regrant, background task/event delivery, receipts/duplicate prevention, notification links and cold refresh job observed; physical Doze/time-zone/API coverage remains manual |
+| Tasks and Calendar desktop widgets | Shared task/event data and tokens | Separate RemoteViews AppWidgetProviders | Partial acceptance; both placed/configured with real data, task/event links, locked privacy, package update and reboot persistence observed on API 35; resize/OEM breadth tracked in acceptance |
+| App lock and privacy | PrivacyManager/PIN verifier | Android lifecycle, secure window, biometrics | Complete for scoped API 35 acceptance; PIN/cold restart, cancellation/success with Android credential, secure capture and locking over an editor observed; physical fingerprint/face remains manual |
+| Local snapshot backup, restore, recovery, import/export | BackupService, MigrationGate | Android Storage Access Framework | Complete; actual SAF Android export opens on Windows; Windows import/confirmation/Recent-apps restart retains IDs and a verified Before Restore copy; shared migrations/bidirectional tests pass |
+| Encrypted Google Drive snapshots | CloudBackupService/codec/provider | Android Google authorization | Blocked for real acceptance by external OAuth package/certificate registration; code, encrypted codec and account-boundary tests pass |
+| Settings import/export, contributor credits | SettingsTransfer, official registry | Mobile settings/About | Complete shared behavior; host portability/credits tests pass; document picker workflows remain manual |
+| Tray, Explorer attachment, registry startup, Windows Hello, EXE updater | Windows runner/.NET | No Android equivalent; Android package manager owns updates | Not Applicable; justified Windows-only exclusions |
+
+| Infrastructure area | Status | Evidence / remaining gate |
+| --- | --- | --- |
+| One repository and platform boundaries | Complete | Shared schema/controller/domain; separate native adapters, no Windows IPC on Android |
+| Android package/toolchain/API 36 setup | Complete | APK/AAB builds; minimum API 26, arm64/x86-64 development artifacts |
+| SQLite persistence, migrations and safe restore | Complete | Shared migration/backup suite and real Android reopen/staged-restore workflow |
+| Development packaging | Complete | Debug-signed APK/AAB and native alignment checks; exact evidence in acceptance report |
+| Production signing | Blocked | Owner's durable keystore required; release gate fails closed |
+| Deep links and lifecycle breadth | Partial acceptance | Cold task URI/notification, widget task/event links, queued event notification preserving an editor draft and locking over an editor observed; broader locked/recurring/API/low-memory coverage remains manual |
+| Performance and battery | Partial acceptance | Bounded native projections/jobs, no permanent service; physical startup/large database/Doze profiling unobserved |
+| Accessibility and locale coverage | Partial acceptance | Host RTL/dark/large-text/narrow/tablet checks pass; physical TalkBack/cutout/OEM coverage unobserved |
+| CI | Partial acceptance | Android jobs configured and local commands pass; remote Windows/Linux workflow has not been pushed or run |
+| Windows regression protection | Complete | Full shared suite, isolated Windows Release and packaged companion self-test pass; no Windows native behavior changed |
+| Documentation | Complete | Architecture/parity, setup/signing/OAuth, acceptance, future sync design and testing guide |
 
 ## Data and portability
 

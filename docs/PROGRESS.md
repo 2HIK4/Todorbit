@@ -1,27 +1,31 @@
 # Progress
 
-## Android mobile implementation in progress (2026-10-28)
+## Android continuation: installable development build verified (2026-10-28)
 
-- Branch `feature/android-mobile`; shared/UI checkpoints **8189c3d**, **c4b0218**.
-  Schema 22 and repository/controller behavior remain shared. Added touch shell,
-  independent configurable navigation, Today/tasks, day/week/month agenda,
-  full-screen editors with Back protection, existing productivity tools/settings,
-  document adapters, reminder planning and Android Google account boundary.
-- Final shared-source checks at c4b0218: **380 tests pass / one intentional
-  native-service skip**, clean analysis, Windows Release in the isolated
-  `.buildlog/android-windows-checkout`, packaged native self-test exit 0. Mobile
-  host tests cover compact/tablet, large text, RTL/dark, editors/settings; verified
-  SQLite snapshots round-trip between distinct profiles in both directions.
-- Isolated Windows mobile preview runs and hot reload succeeds with no runtime
-  errors observed. This is not Android device evidence. Normal Release binaries
-  are in use by existing widget sessions; those sessions were preserved.
-- Native Android widget/alarm/job/biometric source and API 36/JDK 21/NDK r28c
-  build setup are being validated. Task-local SDK/cache use `.buildlog` on D:;
-  build log `.buildlog/android-apk-build.log`. Emulator `emulator-5580` is an
-  isolated API 35 image. APK/AAB, emulator workflows and launcher checks remain
-  pending. Real Google authorization needs package/certificate registration;
-  production signing needs the owner's durable key. No Android release published.
-- [Parity/architecture](ANDROID.md), [setup/signing/OAuth/manual checks](ANDROID_SETUP.md),
+- Recovered clean `feature/android-mobile` at **4de8dff**, following committed
+  stages **8189c3d** and **c4b0218**. Continued existing work without resetting
+  data/history or changing public Windows releases. Schema 22 remains shared.
+- Continuation commits **7f11afc**, **fea4b89**, **e881a12**, **e58f57c** fix
+  notification permission recovery, asynchronous background startup, pending
+  inexact reminders across refresh/midnight, SAF private temporary exports and
+  regression coverage. Final app binaries use product source **e881a12**.
+- **385 Flutter tests pass / one intentional native-service skip**, clean
+  analysis of all product/test sources, one Android workflow passes. APK/AAB
+  builds and all seven packaged native-library alignment checks pass. Windows
+  Release at e881a12 and its isolated packaged companion self-test pass.
+- On isolated API 35 emulator `TodorbitAndroidTest`: task/event reminders and
+  notification links, permission recovery, actual Tasks/Calendar widgets,
+  package-update/reboot persistence, PIN/device credential/privacy, SAF exports,
+  Windows snapshot import with verified Before Restore copy, managed PDF opening,
+  cold headless refresh, and timer reboot review/explicit checkpoint recovery
+  were observed. Personal Windows profiles and running widgets were preserved.
+- Development-signed APK/AAB and checksums are in ignored
+  `.buildlog/android-deliverables/`. Real Drive OAuth registration and production
+  signing need owner configuration. Physical-device/API/OEM/TalkBack/Doze/16 KiB
+  runtime/performance acceptance and remote CI remain outstanding; emulator
+  System UI ANRs and slow host startup are recorded. No Android release published.
+- [Acceptance/evidence/artifacts](ANDROID_ACCEPTANCE.md),
+  [feature status matrix](ANDROID.md), [phone installation/signing/OAuth](ANDROID_SETUP.md),
   [future synchronization proposal](FUTURE_CROSS_DEVICE_SYNC.md).
 
 ## v1.0.18 widget hotfix published (2026-10-28)
