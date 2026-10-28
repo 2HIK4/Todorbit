@@ -45,8 +45,9 @@ dotnet build experiments/widget-shell-probe/widget-shell-probe.csproj -c Release
 ./tools/build-windows-release.ps1
 ```
 
-Unit and Flutter widget tests both use `flutter test`; there is no separate
-`integration_test/` suite. `lib/driver_main.dart` is a debug-only live-inspection
+Unit and Flutter widget tests both use `flutter test`. Android's separate
+`integration_test/android_workflow_test.dart` exercises real app-private SQLite,
+mobile editors and staged restore on an isolated emulator. `lib/driver_main.dart` is a debug-only live-inspection
 entry point, not a release target. The opt-in real companion test is
 `test/native_widget_launch_integration_test.dart`: it requires
 `TODORBIT_NATIVE_SERVICE_EXE` pointing to an absolute companion path and fresh

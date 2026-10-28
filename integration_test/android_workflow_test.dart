@@ -27,6 +27,7 @@ void main() {
       if (Platform.isAndroid) ProfilePaths.configureAndroidRoot(root.path);
       final file = File('${root.path}/life_manager.sqlite');
       var database = AppDatabase(NativeDatabase(file));
+      var databaseClosed = false;
       final repository = LifeRepository(database);
       final controller = AppController(repository);
       try {
@@ -119,7 +120,9 @@ void main() {
         expect(await snapshot.exists(), isTrue);
         await tester.pumpWidget(const SizedBox.shrink());
         await database.close();
+        databaseClosed = true;
         database = AppDatabase(NativeDatabase(file));
+        databaseClosed = false;
         final reopened = LifeRepository(database);
         final persisted = (await reopened.tasks()).single;
         expect(persisted.id, task.id);
@@ -131,6 +134,8 @@ void main() {
           (await reopened.events()).single.title,
           'Android integration event',
         );
+        await database.close();
+        databaseClosed = true;
         final targetFile = File('${root.path}/restored/life_manager.sqlite');
         await targetFile.parent.create();
         final emptyTarget = AppDatabase(NativeDatabase(targetFile));
@@ -169,7 +174,8 @@ void main() {
         }
       } finally {
         await tester.pumpWidget(const SizedBox.shrink());
-        await database.close();
+        controller.dispose();
+        if (!databaseClosed) await database.close();
         await root.delete(recursive: true);
       }
     },

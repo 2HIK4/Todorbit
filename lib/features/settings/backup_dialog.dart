@@ -317,8 +317,10 @@ class _BackupDialogState extends State<BackupDialog> {
                         'Pending restore',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      const Text(
-                        'Close Todorbit and its widget, then reopen Todorbit to apply the backup. Your current database will first be saved as a Before Restore backup. This restore has not happened yet.',
+                      Text(
+                        Platform.isAndroid
+                            ? 'Close Todorbit from Recent apps, then reopen it to apply the backup. Your current database will first be saved as a Before Restore backup. This restore has not happened yet.'
+                            : 'Close Todorbit and its widget, then reopen Todorbit to apply the backup. Your current database will first be saved as a Before Restore backup. This restore has not happened yet.',
                       ),
                       TextButton(
                         onPressed: busy ? null : _cancelRestore,

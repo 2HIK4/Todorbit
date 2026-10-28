@@ -48,6 +48,7 @@ keystore and is **not production signing**. The Android application ID is
 Do not change identity or reuse a disposable key for public distribution.
 `-Mode Profile` also uses development signing and enables profiling; it is not
 a production release. The default `Debug` build supports hot reload.
+The development artifacts do not include 32-bit ARM phones.
 
 For production, place `android/key.properties` locally (ignored by Git), pointing
 to a durable keystore outside the repository:
@@ -124,7 +125,9 @@ owns platform token acquisition; this is optional backup, not synchronization.
    views, templates, timer recovery, Trash and approval-based Smart Reschedule.
 4. To enable a reminder, choose a task/event notification time and grant Android
    notification permission. New tasks remain Off. Settings → notification
-   permission and Android's per-app notification settings control delivery.
+   permission and the **Android notification settings** entry control delivery.
+   Use the latter after repeated permission denial or to change channel settings;
+   permission status refreshes when returning to Todorbit.
    Alarms are inexact; Doze, force-stop and battery restrictions can delay them.
 5. Long press the launcher → Widgets → **Todorbit Tasks** or **Todorbit Calendar**.
    Choose theme, opacity and task filter. Resize, reconfigure, restart the

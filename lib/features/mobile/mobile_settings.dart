@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -30,14 +31,31 @@ class MobileSettings extends ConsumerStatefulWidget {
   ConsumerState<MobileSettings> createState() => _MobileSettingsState();
 }
 
-class _MobileSettingsState extends ConsumerState<MobileSettings> {
+class _MobileSettingsState extends ConsumerState<MobileSettings>
+    with WidgetsBindingObserver {
   late MobilePreferences preferences = widget.preferences;
   bool? notifications;
   bool saving = false;
   @override
   void initState() {
     super.initState();
-    if (Platform.isAndroid) refreshPermissions();
+    if (Platform.isAndroid) {
+      WidgetsBinding.instance.addObserver(this);
+      unawaited(run(refreshPermissions));
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(run(refreshPermissions));
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   Future<void> refreshPermissions() async {
@@ -271,6 +289,16 @@ class _MobileSettingsState extends ConsumerState<MobileSettings> {
                     })
                   : null,
             ),
+            if (Platform.isAndroid)
+              ListTile(
+                leading: const Icon(Icons.settings_outlined),
+                title: const Text('Android notification settings'),
+                subtitle: const Text(
+                  'Allow previously denied permission, or change channel sound and visibility.',
+                ),
+                trailing: const Icon(Icons.open_in_new),
+                onTap: () => run(AndroidPlatform.openNotificationSettings),
+              ),
             ListTile(
               leading: const Icon(Icons.event_available_outlined),
               title: const Text('Daily summary and due reminders'),

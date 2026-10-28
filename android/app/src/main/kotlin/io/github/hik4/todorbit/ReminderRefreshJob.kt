@@ -20,23 +20,31 @@ class ReminderRefreshJob : JobService() {
     private val handler=Handler(Looper.getMainLooper())
     private val timeout=Runnable {finish(true)}
     override fun onStartJob(params: JobParameters): Boolean {
-        if(engine!=null) return false
+        if(active!=null) return false
         active=params
+        handler.postDelayed(timeout,45000)
         try {
             val loader=FlutterInjector.instance().flutterLoader()
-            loader.startInitialization(this); loader.ensureInitializationComplete(this,null)
-            val worker=FlutterEngine(this); engine=worker
-            MethodChannel(worker.dartExecutor.binaryMessenger,"todorbit/android").setMethodCallHandler {call,result ->
-                when(call.method) {
-                    "dataRoot" -> result.success(filesDir.absolutePath)
-                    "publish" -> try {AndroidSurfaces.publish(this,call.arguments as String); result.success(null)}
-                        catch (_: Exception) {result.error("refresh","Could not refresh Android surfaces",null)}
-                    "backgroundComplete" -> {result.success(null); handler.post {finish(false)}}
-                    else -> result.notImplemented()
-                }
-            }
-            worker.dartExecutor.executeDartEntrypoint(DartExecutor.DartEntrypoint(loader.findAppBundlePath(),"androidBackgroundMain"))
-            handler.postDelayed(timeout,45000)
+            loader.startInitialization(this)
+            // Engine resource extraction can be slow after an APK update. The
+            // JobService callback must return promptly instead of blocking the
+            // main thread while Flutter initializes.
+            loader.ensureInitializationCompleteAsync(this,null,handler,Runnable {
+                if(active !== params) return@Runnable
+                try {
+                    val worker=FlutterEngine(this); engine=worker
+                    MethodChannel(worker.dartExecutor.binaryMessenger,"todorbit/android").setMethodCallHandler {call,result ->
+                        when(call.method) {
+                            "dataRoot" -> result.success(filesDir.absolutePath)
+                            "publish" -> try {AndroidSurfaces.publish(this,call.arguments as String); result.success(null)}
+                                catch (_: Exception) {result.error("refresh","Could not refresh Android surfaces",null)}
+                            "backgroundComplete" -> {result.success(null); handler.post {finish(false)}}
+                            else -> result.notImplemented()
+                        }
+                    }
+                    worker.dartExecutor.executeDartEntrypoint(DartExecutor.DartEntrypoint(loader.findAppBundlePath(),"androidBackgroundMain"))
+                } catch (_: Exception) {finish(true)}
+            })
             return true
         } catch (_: Exception) {finish(true); return false}
     }

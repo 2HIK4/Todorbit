@@ -12,6 +12,9 @@ class AndroidPlatform {
   static Future<bool> notificationsAllowed() async =>
       await channel.invokeMethod<bool>('notificationsAllowed') ?? false;
 
+  static Future<void> openNotificationSettings() =>
+      channel.invokeMethod<void>('notificationSettings');
+
   static Future<File?> importDocument({String mime = '*/*'}) async {
     final selected = await channel.invokeMethod<String>('importDocument', mime);
     return selected == null ? null : File(selected);

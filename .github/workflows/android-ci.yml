@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main, 'feature/android-*']
-    paths: ['lib/**', 'android/**', 'test/**', 'pubspec.*', '.github/workflows/android-ci.yml', 'tools/verify-android-artifact.py']
+    paths: ['lib/**', 'android/**', 'test/**', 'integration_test/**', 'test_driver/**', 'pubspec.*', '.github/workflows/android-ci.yml', 'tools/build-android.ps1', 'tools/verify-android-artifact.py']
   pull_request:
-    paths: ['lib/**', 'android/**', 'test/**', 'pubspec.*', '.github/workflows/android-ci.yml', 'tools/verify-android-artifact.py']
+    paths: ['lib/**', 'android/**', 'test/**', 'integration_test/**', 'test_driver/**', 'pubspec.*', '.github/workflows/android-ci.yml', 'tools/build-android.ps1', 'tools/verify-android-artifact.py']
 permissions:
   contents: read
 jobs:

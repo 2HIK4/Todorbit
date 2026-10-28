@@ -157,7 +157,7 @@ List<Map<String, Object>> androidReminderPlan({
           time,
           task.title,
           mobileLink('task', id: task.id),
-          'Task deadline today',
+          task.deadlineDate == day ? 'Task deadline today' : 'Overdue task',
         );
       }
     }
@@ -230,7 +230,14 @@ Future<void> publishAndroidRepository(
             'done': t.status == TaskStatus.completed,
             'inbox': t.categoryId == null && t.projectId == null,
             'detail': t.deadlineDate == null
-                ? t.status.name
+                ? switch (t.status) {
+                    TaskStatus.notStarted => 'Not started',
+                    TaskStatus.inProgress => 'In progress',
+                    TaskStatus.waiting => 'Waiting',
+                    TaskStatus.onHold => 'On hold',
+                    TaskStatus.completed => 'Completed',
+                    TaskStatus.cancelled => 'Cancelled',
+                  }
                 : 'Due ${t.deadlineDate}',
             'link': mobileLink('task', id: t.id),
           },

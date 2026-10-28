@@ -75,7 +75,12 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
         CloudBackupService(
           local: local,
           provider: GoogleDriveProvider(auth!, client!),
-          appVersion: 'Unknown',
+          appVersion: Platform.isAndroid
+              ? const String.fromEnvironment(
+                  'FLUTTER_BUILD_NAME',
+                  defaultValue: 'Unknown',
+                )
+              : 'Unknown',
         );
     unawaited(
       _run(() async {
