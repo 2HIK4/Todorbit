@@ -1,6 +1,6 @@
 # Windows v1.0 final acceptance record
 
-> Current release navigation (2026-10-28): [v1.0.17 publication](TODORBIT_1_0_17_PUBLICATION.md)
+> Current release navigation (2026-10-28): [v1.0.18 publication](TODORBIT_1_0_18_PUBLICATION.md)
 > records the latest published candidate and verification limits. Earlier dated
 > release status below is historical. [Release](RELEASE.md) owns the current
 > preparation sequence; no historical receipt authorizes future publication.

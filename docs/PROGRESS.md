@@ -1,22 +1,22 @@
 # Progress
 
-## Widget startup/appearance hotfix in verification (2026-10-28)
+## v1.0.18 widget hotfix published (2026-10-28)
 
-- Candidate **1.0.18+19**, branch `fix/widget-startup-and-appearance` from `5c55b55`.
-  [Findings and acceptance boundary](WIDGET_STARTUP_HOTFIX.md),
-  [candidate notes](TODORBIT_1_0_18_RELEASE_NOTES.md).
-- Temporary Close Widget no longer saves disabled; manual Release startup restores
-  saved enabled widgets. Explicit disabled values and profile identity remain.
-  Selected navigation uses one contrast decision; Calendar planned-task marker
-  becomes an inset circle, independent of event counts. No schema change.
-- Focused Flutter **26 pass**; local full serial suite **357 pass / one opt-in
-  skip**, plus the opt-in real companion check **1 pass** in its guarded profile.
-  Whole/targeted analysis, formatting, diff and **11 OAuth gates pass**. Native
-  Release/self-test and actual-HWND lifecycle pass, including preservation of an
-  active quick editor during restore; old foreground rule fails the new opacity
-  regression. Final packages, exact-source CI and updater acceptance are pending.
-  Publication is explicitly authorized once gates pass.
-
+- [Public Windows x64 pre-release v1.0.18](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.18),
+  **1.0.18+19**, source/tag **08eab9a**. [Publication receipt](TODORBIT_1_0_18_PUBLICATION.md),
+  [findings](WIDGET_STARTUP_HOTFIX.md), [notes](TODORBIT_1_0_18_RELEASE_NOTES.md).
+- Temporary Close Widget no longer persists disabled; main startup restores saved
+  enabled widgets without replacing hosts/active editors. Selected navigation uses
+  one contrast rule; the Calendar planned-task square becomes an inset circle.
+  Explicit disabled settings, personalization, profile identity and schema remain.
+- [Exact-source CI](https://github.com/2HIK4/Todorbit/actions/runs/40690309900) passes:
+  **357 tests / one opt-in skip**, analysis, native/Windows Release, packages and
+  checksums. Local opt-in real companion **1 pass**; packaged self-test/lifecycle,
+  actual main close/reopen/disabled/single-instance, portable swap/rollback/restart,
+  public assets/digests and v1.0.17 updater discovery/download pass for both modes.
+- Personal startup/installer registration fingerprints unchanged; no setup run.
+  Physical DPI/input, actual sign-in, registered installer/clean-user acceptance
+  remain unverified. All limits and exact asset hashes are in the receipt.
 
 ## v1.0.17 audited widget upgrade published (2026-10-28)
 

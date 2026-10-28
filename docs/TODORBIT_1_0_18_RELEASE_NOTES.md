@@ -1,4 +1,4 @@
-# Todorbit v1.0.18 ? widget startup and appearance fixes
+# Todorbit v1.0.18 - widget startup and appearance fixes
 
 Windows x64 public pre-release, version **1.0.18+19**.
 

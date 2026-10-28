@@ -30,7 +30,7 @@ Candidate **1.0.18+19**, branch `fix/widget-startup-and-appearance`, based on
 - **Calendar square:** this was the planned-task marker, not today or event count.
   Only its grid rendering becomes a filled background-derived darker circle with
   a subtle contrast edge, inset from the cell. Agenda task squares and the session
-  symbol remain meaningful. Event counts remain 0 none, 1?3 dots, 4+ a line;
+  symbol remain meaningful. Event counts remain 0 none, 1-3 dots, 4+ a line;
   today outlines and date-selection styling remain intact.
 
 An older saved false cannot be classified as accidental versus intentional.
@@ -49,7 +49,7 @@ profile path. Tests use disposable data only.
   startup and restart, unchanged host identity and active-editor preservation.
   Existing mutex/pipe tests plus opt-in real process
   forwarding/restart detect a second long-lived companion.
-- Native 0?100% opacity sweeps for shell/navigation/selection, both themes and
+- Native 0-100% opacity sweeps for shell/navigation/selection, both themes and
   custom selection colors: deterministic output, at most one transition,
   readable automatic contrast, explicit HEX colors and independent text alpha.
 - Native Calendar geometry, event counts, task-circle padding, theme-aware color
