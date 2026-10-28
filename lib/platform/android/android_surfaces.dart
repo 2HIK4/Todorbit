@@ -260,12 +260,21 @@ class AndroidSurfaceCoordinator {
   Future<void> writes = Future.value();
   bool disposed = false;
   void changed() {
+    // Lock/screenshot policy must reach the activity immediately, including
+    // when the user backgrounds the app before the projection debounce fires.
+    unawaited(
+      AndroidPlatform.protectScreen(privacy.enabled).catchError((Object _) {}),
+    );
+    unawaited(
+      AndroidPlatform.channel
+          .invokeMethod<void>('uiUnlocked', !privacy.locked)
+          .catchError((Object _) {}),
+    );
     debounce?.cancel();
     debounce = Timer(const Duration(milliseconds: 250), () {
       writes = writes.catchError((Object _) {}).then((_) async {
         if (disposed) return;
         try {
-          await AndroidPlatform.protectScreen(privacy.enabled);
           await publishAndroidRepository(
             controller.repository,
             privacy.settings,

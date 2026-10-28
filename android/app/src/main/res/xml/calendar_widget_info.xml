@@ -1,0 +1,4 @@
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp" android:minHeight="180dp" android:initialLayout="@layout/todorbit_widget"
+    android:configure="io.github.hik4.todorbit.WidgetConfigurationActivity" android:widgetFeatures="reconfigurable"
+    android:resizeMode="horizontal|vertical" android:updatePeriodMillis="0" android:widgetCategory="home_screen" />

@@ -1,5 +1,18 @@
 # Decisions
 
+- **Android in the same product (2026-10-28):** the explicit mobile expansion
+  supersedes the earlier scaffold-only scope. Share schema 22, repository,
+  controller, domain rules, verified snapshots and palette tokens. Keep touch UI
+  and mobile navigation independent of Windows geometry/sidebar/widget settings.
+  Android native widgets consume read-only projections; bounded Dart background
+  jobs own repository access and never approve schema upgrades or restores.
+  Use inexact Android alarms without a permanent service or exact-alarm grant.
+  Optional Android Drive authorization uses Google Identity, with no Desktop
+  secret or loopback flow. Public signing/OAuth/device acceptance remain explicit
+  gates, and snapshot restore remains separate from synchronization.
+  [Architecture/parity](ANDROID.md), [setup](ANDROID_SETUP.md),
+  [future sync proposal](FUTURE_CROSS_DEVICE_SYNC.md).
+
 - **Widget settings and task notifications (2026-10-28):** keep format-1 widget
   fields additive, with per-kind presets and bounded settings history. Portable
   settings include appearance/order/split/presets, excluding enabled state,

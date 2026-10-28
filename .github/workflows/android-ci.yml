@@ -1,0 +1,66 @@
+name: Android validation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, 'feature/android-*']
+    paths: ['lib/**', 'android/**', 'test/**', 'pubspec.*', '.github/workflows/android-ci.yml', 'tools/verify-android-artifact.py']
+  pull_request:
+    paths: ['lib/**', 'android/**', 'test/**', 'pubspec.*', '.github/workflows/android-ci.yml', 'tools/verify-android-artifact.py']
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
+      - run: flutter pub get
+      - run: flutter analyze --no-pub
+      - run: flutter test --no-pub --concurrency=1
+      - run: flutter build apk --debug --target-platform android-arm64,android-x64
+      - run: python tools/verify-android-artifact.py build/app/outputs/flutter-apk/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Todorbit-Android-development-only
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 14
+  android-workflow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
+      - run: flutter pub get
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: flutter test integration_test/android_workflow_test.dart -d emulator-5554

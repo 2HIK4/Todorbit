@@ -1,14 +1,61 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:drift/native.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_manager/app/app_controller.dart';
+import 'package:life_manager/app/privacy_manager.dart';
+import 'package:life_manager/data/app_database.dart';
+import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/data/mobile_preference_store.dart';
+import 'package:life_manager/data/privacy_store.dart';
 import 'package:life_manager/domain/models.dart';
 import 'package:life_manager/domain/notifications.dart';
 import 'package:life_manager/platform/android/android_surfaces.dart';
+import 'package:life_manager/platform/android/android_platform.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  test(
+    'screenshot and unlock policy do not wait for projection debounce',
+    () async {
+      final root = await Directory.systemTemp.createTemp(
+        'todorbit-android-policy-',
+      );
+      final database = AppDatabase(NativeDatabase.memory());
+      final controller = AppController(LifeRepository(database));
+      final privacy = PrivacyManager(
+        PrivacyStore(File('${root.path}/privacy.json')),
+        const PrivacySettings(enabled: true),
+      );
+      final calls = <MethodCall>[];
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(AndroidPlatform.channel, (call) async {
+        calls.add(call);
+        return null;
+      });
+      final surfaces = AndroidSurfaceCoordinator(controller, privacy);
+      try {
+        await Future<void>.delayed(Duration.zero);
+        expect(calls.map((call) => call.method), [
+          'protectScreen',
+          'uiUnlocked',
+        ]);
+        expect(calls.first.arguments, isTrue);
+        expect(calls.last.arguments, isFalse);
+      } finally {
+        surfaces.dispose();
+        controller.dispose();
+        await privacy.shutdown();
+        privacy.dispose();
+        messenger.setMockMethodCallHandler(AndroidPlatform.channel, null);
+        await database.close();
+        await root.delete(recursive: true);
+      }
+    },
+  );
   LifeTask task(
     String id, {
     TaskNotification notification = const TaskNotification(),

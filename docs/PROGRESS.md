@@ -2,23 +2,27 @@
 
 ## Android mobile implementation in progress (2026-10-28)
 
-- `feature/android-mobile` shares schema 22 and the existing repository/controller.
-  Added touch shell, customizable independent navigation, Today/tasks, compact
-  calendar/agenda and full-screen editors with task Back protection. Existing
-  productivity views, search, templates, scheduling and Trash remain reachable.
-- Android private paths, document transfer, reminder projections, privacy and
-  Google Identity adapters are in source. Native Android widgets/background jobs
-  and build validation are still being integrated; this is not release acceptance.
-- Initial broad run: 355 pass, one intentional native-service skip, two database
-  worker timeouts traced to a Flutter import in a standalone-Dart dependency.
-  Boundary corrected; all 22 database initialization tests pass. Expanded mobile
-  UI plus cross-profile snapshot tests: 14 pass; reminder/preferences tests: 3 pass.
-  MCP analysis reports no errors; isolated Windows debug mobile preview runs,
-  hot reload succeeds, no runtime errors observed.
-- Normal Windows Release output is locked by existing running widget processes.
-  Preserve those sessions; validate Release in a separate worktree. API 36 and
-  JDK 21 selected; Android dependency downloads/build and emulator acceptance are
-  ongoing. See [Android](ANDROID.md) for parity and outstanding device evidence.
+- Branch `feature/android-mobile`; shared/UI checkpoints **8189c3d**, **c4b0218**.
+  Schema 22 and repository/controller behavior remain shared. Added touch shell,
+  independent configurable navigation, Today/tasks, day/week/month agenda,
+  full-screen editors with Back protection, existing productivity tools/settings,
+  document adapters, reminder planning and Android Google account boundary.
+- Final shared-source checks at c4b0218: **380 tests pass / one intentional
+  native-service skip**, clean analysis, Windows Release in the isolated
+  `.buildlog/android-windows-checkout`, packaged native self-test exit 0. Mobile
+  host tests cover compact/tablet, large text, RTL/dark, editors/settings; verified
+  SQLite snapshots round-trip between distinct profiles in both directions.
+- Isolated Windows mobile preview runs and hot reload succeeds with no runtime
+  errors observed. This is not Android device evidence. Normal Release binaries
+  are in use by existing widget sessions; those sessions were preserved.
+- Native Android widget/alarm/job/biometric source and API 36/JDK 21/NDK r28c
+  build setup are being validated. Task-local SDK/cache use `.buildlog` on D:;
+  build log `.buildlog/android-apk-build.log`. Emulator `emulator-5580` is an
+  isolated API 35 image. APK/AAB, emulator workflows and launcher checks remain
+  pending. Real Google authorization needs package/certificate registration;
+  production signing needs the owner's durable key. No Android release published.
+- [Parity/architecture](ANDROID.md), [setup/signing/OAuth/manual checks](ANDROID_SETUP.md),
+  [future synchronization proposal](FUTURE_CROSS_DEVICE_SYNC.md).
 
 ## v1.0.18 widget hotfix published (2026-10-28)
 
