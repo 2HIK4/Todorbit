@@ -155,14 +155,26 @@ internal sealed partial class NativeDesktopWidgetHost
             // Task/session shapes retain their independent meaning at the cell edge.
             foreach(var kind in items.Where(item=>item.Kind != "Event").Select(item=>item.Kind).Distinct().Take(2)) {
               var marker = items.First(item=>item.Kind==kind);
-              DrawItemMarker(g,marker,CalendarAuxiliaryMarker(r,kind),ink.Color);
+              var bounds = CalendarAuxiliaryMarker(r,kind);
+              if (kind == "Task") {
+                // A planned-task marker, independent of today/selection/event counts.
+                var fill = ComposedSurface(surface);
+                var background = Blend(palette.Background, fill, fill.A / 255f);
+                using var markerInk = new SolidBrush(CalendarTaskMarkerColor(background));
+                g.FillEllipse(markerInk, bounds);
+                var edgeColor = WidgetEditorStyle.Contrast(Color.White, background) > WidgetEditorStyle.Contrast(Color.Black, background) ? Color.White : Color.Black;
+                using var edge = new Pen(Color.FromArgb(100, edgeColor), .6f);
+                g.DrawEllipse(edge, bounds);
+              } else DrawItemMarker(g,marker,bounds,ink.Color);
             }
 
         }
         using(var grip = new Pen(palette.Muted,2)) g.DrawLine(grip,CalendarDivider.X+CalendarDivider.Width/2-16,CalendarDivider.Y+6,CalendarDivider.X+CalendarDivider.Width/2+16,CalendarDivider.Y+6);
         DrawCalendarAgenda(g, font, small, ellipsis);
     }
-    internal static RectangleF CalendarAuxiliaryMarker(RectangleF cell,string kind) => new(kind=="Session" ? cell.Right-5 : cell.X+2,cell.Y+2,3,3);
+    internal static RectangleF CalendarAuxiliaryMarker(RectangleF cell,string kind) => kind == "Session"
+      ? new(cell.Right-5,cell.Y+2,3,3) : new(cell.X+5,cell.Y+5,4,4);
+    internal static Color CalendarTaskMarkerColor(Color background) => Blend(background, Color.Black, .22f);
     internal static int CountCalendarEvents(IEnumerable<WidgetCalendarItem> items) => items.Where(item=>item.Kind=="Event" && !item.Cancelled).Select(item=>$"{item.Id}:{item.NominalDate}").Distinct().Count();
     internal static int EventIndicator(int count) => count >= 4 ? -1 : Math.Max(0,count);
     private static void DrawEventCount(Graphics g,int count,RectangleF r,Color color) {

@@ -24,6 +24,7 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
   private NativeDesktopWidgetHost? host;
   private readonly ExplorerRecoveryPolicy recoveryPolicy = new();
 
+  private bool tasksClosedForSession, calendarClosedForSession;
   private NativeDesktopWidgetHost? calendarHost;
   private readonly WidgetSettingsStore calendarSettingsStore = new(Path.Combine(AppDataPaths.ActiveDirectory, "calendar-widget-settings.json"));
   private WidgetSettings calendarSettings = new();
@@ -38,7 +39,6 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
     settings = settingsStore.Load();
     appearance = appearanceStore.Load(settings.Theme);
     calendarSettings = calendarSettingsStore.Load();
-    var calendarConfiguration = WidgetConfiguration.Load(true, calendarSettings);
     if (settings.Theme != null) {
       settings.Theme = null;
       settingsStore.Save(settings);
@@ -106,8 +106,7 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
     ownedTrayIcon = LoadTrayIcon();
     trayIcon = BuildTrayIcon();
     trayIcon.Visible = true;
-    if (initialCommand != "background" && initialCommand != "reload-configuration" && !initialCommand.StartsWith("calendar-") && (initialCommand != "restore" || WidgetConfiguration.Load(false,settings).Enabled)) CreateHost();
-    if (calendarConfiguration.Enabled) CreateCalendarHost();
+    if (initialCommand is not ("background" or "restore" or "reload-configuration")) ExecuteCommand("restore");
     ExecuteCommand(initialCommand);
     notificationTimer.Start();
     privacyTimer.Start();
@@ -214,18 +213,27 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
 
   internal void ExecuteCommand(string command) {
     if (TryHandlePreviewCommand(command)) return;
+    if (command == "restore") {
+      tasksClosedForSession = calendarClosedForSession = false;
+      // Startup restoration must not reload layout or close an active editor.
+      if (WidgetConfiguration.Load(false, settings).Enabled) { EnsureHost(); host?.Show(); }
+      else host?.Hide(persist: false);
+      if (WidgetConfiguration.Load(true, calendarSettings).Enabled) { CreateCalendarHost(); calendarHost?.Show(); }
+      else calendarHost?.Hide(persist: false);
+      return;
+    }
     if (command == "reload-configuration") {
       var taskConfig = WidgetConfiguration.Load(false, settings);
       host?.ReloadConfiguration();
-      if (taskConfig.Enabled) { EnsureHost(); host?.Show(); } else host?.Hide();
+      if (taskConfig.Enabled && !tasksClosedForSession) { EnsureHost(); host?.Show(); } else host?.Hide(persist: false);
       var calendarConfiguration = WidgetConfiguration.Load(true, calendarSettings);
       calendarHost?.ReloadConfiguration();
-      if (calendarConfiguration.Enabled) { CreateCalendarHost(); calendarHost?.Show(); } else calendarHost?.Hide();
+      if (calendarConfiguration.Enabled && !calendarClosedForSession) { CreateCalendarHost(); calendarHost?.Show(); } else calendarHost?.Hide(persist: false);
       return;
     }
     if (command.StartsWith("calendar-")) {
       var action = command[9..];
-      if (action is "show" or "toggle") CreateCalendarHost();
+      if (action is "show" or "toggle") { calendarClosedForSession = false; CreateCalendarHost(); }
       if (action == "show") calendarHost?.Show();
       if (action == "hide") calendarHost?.Hide();
       if (action == "toggle") calendarHost?.Toggle();
@@ -243,15 +251,11 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
       return;
     }
     switch (command.ToLowerInvariant()) {
-      case "show": EnsureHost(); host?.Show(); break;
+      case "show": tasksClosedForSession = false; EnsureHost(); host?.Show(); break;
       case "hide": host?.Hide(); break;
-      case "toggle": EnsureHost(); host?.Toggle(); break;
+      case "toggle": tasksClosedForSession = false; EnsureHost(); host?.Toggle(); break;
       case "quick-add": EnsureHost(); host?.OpenQuickAddDialog(); break;
       case "refresh": host?.RefreshFromDatabase(); break;
-      case "restore":
-        if (WidgetConfiguration.Load(false,settings).Enabled) { EnsureHost(); host?.Show(); }
-        if (WidgetConfiguration.Load(true,calendarSettings).Enabled) { CreateCalendarHost(); calendarHost?.Show(); }
-        break;
       case "background": break;
       case "theme-system": SetTheme(WidgetThemePreference.System); break;
       case "theme-light": SetTheme(WidgetThemePreference.Light); break;
@@ -315,7 +319,7 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
     try {
       host = new NativeDesktopWidgetHost(repository, appExe,
         ResolvePalette(appearance.Theme), settings, settingsStore, diagnostics,
-        HostDestroyed, ExitThread);
+        HostDestroyed, () => CloseWidget(false));
       host.NeighborBounds = () => calendarHost?.SnapBounds() ?? [];
       var opacity = appearance.WidgetOpacity ?? appearance.Customization?.WidgetOpacity;
       if (!File.Exists(WidgetConfiguration.PathFor(false)) && opacity is >= 0 and <= 100) host.SetBackgroundOpacity(opacity.Value);
@@ -331,9 +335,15 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
       calendarHost = new NativeDesktopWidgetHost(repository, appExe,
         ResolvePalette(appearance.Theme), calendarSettings, calendarSettingsStore, diagnostics,
         () => { calendarHost = null; ScheduleExplorerRecovery(); },
-        () => { calendarHost = null; }, calendar: true);
+        () => CloseWidget(true), calendar: true);
       calendarHost.NeighborBounds = () => host?.SnapBounds() ?? [];
     } catch (InvalidOperationException) { ScheduleExplorerRecovery(); }
+  }
+
+  internal void CloseWidget(bool calendar) {
+    // Closing is temporary; only explicit show/hide settings commands persist enabled.
+    if (calendar) { calendarClosedForSession = true; calendarHost?.Hide(persist: false); }
+    else { tasksClosedForSession = true; host?.Hide(persist: false); }
   }
 
   private void EnsureHost() {
@@ -351,8 +361,8 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
 
   private void RecoverAfterExplorerRestart() {
     recoveryPolicy.RecordFailure();
-    var tasksEnabled = WidgetConfiguration.Load(false,settings).Enabled;
-    var calendarEnabled = WidgetConfiguration.Load(true,calendarSettings).Enabled;
+    var tasksEnabled = !tasksClosedForSession && WidgetConfiguration.Load(false,settings).Enabled;
+    var calendarEnabled = !calendarClosedForSession && WidgetConfiguration.Load(true,calendarSettings).Enabled;
     if (tasksEnabled && (host == null || host.Handle == 0)) CreateHost();
     if (calendarEnabled && (calendarHost == null || calendarHost.Handle == 0)) CreateCalendarHost();
     var recovered = (!tasksEnabled || host is { Handle: not 0 }) &&
@@ -909,7 +919,7 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     layoutLock.Click += (_, _) => RunAction(() => SetLayoutLocked(!WidgetConfiguration.Load(calendar, settings).LayoutLocked));
     menu.Items.Add(layoutLock);
     menu.Items.Add(new ToolStripSeparator());
-    menu.Items.Add("Close Widget", null, (_, _) => RunAction(Hide));
+    menu.Items.Add("Close Widget", null, (_, _) => RunAction(exit));
     WidgetMenuStyle.Apply(menu, palette);
     return menu;
   }
@@ -1007,7 +1017,7 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     if (calendar && !privacy.IsLocked() && CalendarClick(point)) return;
     if (privacy.IsLocked()) {
       if (target == HitTarget.Open || target == HitTarget.Add) OpenMainApp();
-      else if (target == HitTarget.Close) { Dispose(); exit(); }
+      else if (target == HitTarget.Close) { exit(); }
       else UpdatePrivacy();
       return;
     }
@@ -1019,7 +1029,6 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
         OpenMainApp();
         break;
       case HitTarget.Close:
-        Dispose();
         exit();
         break;
       case HitTarget.Add:
@@ -1170,10 +1179,10 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     if (Handle != 0) Native.ShowWindow(Handle, 5);
   }
 
-  internal void Hide() {
+  internal void Hide(bool persist = true) {
     openTooltip.Hide(this);
     configuration = WidgetConfiguration.Load(calendar,settings);
-    if(configuration.Enabled) { configuration.Enabled = false; configuration.Save(calendar); }
+    if(persist && configuration.Enabled) { configuration.Enabled = false; configuration.Save(calendar); }
     RestorePreviewIfActive();
     if (Handle != 0) Native.ShowWindow(Handle, 0);
   }

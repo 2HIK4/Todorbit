@@ -10,6 +10,9 @@ $profiles = @(1, 2 | ForEach-Object {
   $roaming = Join-Path $base 'Roaming'
   $local = Join-Path $base 'Local'
   New-Item -ItemType Directory -Path $roaming, $local -Force | Out-Null
+  $profileDirectory = Join-Path $roaming 'TodoPilot'
+  New-Item -ItemType Directory -Path $profileDirectory -Force | Out-Null
+  Set-Content -LiteralPath (Join-Path $profileDirectory 'widget-settings.json') -Value '{"launchAtSignIn":false}'
   [pscustomobject]@{ Roaming = $roaming; Local = $local }
 })
 $started = [System.Collections.Generic.List[System.Diagnostics.Process]]::new()
@@ -57,6 +60,20 @@ try {
   }
   Write-Output "Single-instance and profile-isolation checks passed. Disposable data: $root"
 } finally {
+  $widget = Join-Path (Split-Path $binary) 'TodorbitWidget.exe'
+  if (Test-Path -LiteralPath $widget) {
+    foreach ($profile in $profiles) {
+      $info = [Diagnostics.ProcessStartInfo]::new()
+      $info.FileName = $widget
+      $info.UseShellExecute = $false
+      $info.Arguments = '--widget-command exit'
+      $info.Environment['APPDATA'] = $profile.Roaming
+      $info.Environment['LOCALAPPDATA'] = $profile.Local
+      $stop = [Diagnostics.Process]::Start($info)
+      [void]$stop.WaitForExit(10000)
+      $stop.Dispose()
+    }
+  }
   foreach ($process in $started) {
     if (-not $process.HasExited) {
       [void]$process.CloseMainWindow()

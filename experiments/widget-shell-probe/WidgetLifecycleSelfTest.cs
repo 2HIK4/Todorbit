@@ -15,6 +15,7 @@ internal static partial class LifeManagerWidgetSelfTest
             var target = Path.Combine(AppDataPaths.ActiveDirectory, "life_manager.sqlite");
             File.Copy(Path.Combine(root, "calendar-projection.sqlite"), target);
             using var repository = LifeManagerWidgetRepository.OpenForTest(target);
+            WidgetConfiguration.Load(false, new WidgetSettings()).Save(false);
             using (var context = new NativeWidgetApplicationContext(repository, null, false, "background"))
             {
                 var tray = (NotifyIcon)typeof(NativeWidgetApplicationContext).GetField("trayIcon", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(context)!;
@@ -28,6 +29,31 @@ internal static partial class LifeManagerWidgetSelfTest
                     return false;
                 }
                 TestLivePreviewRouting(context);
+                var taskBytes = File.ReadAllBytes(WidgetConfiguration.PathFor(false));
+                var calendarBytes = File.ReadAllBytes(WidgetConfiguration.PathFor(true));
+                context.CloseWidget(false); context.CloseWidget(true);
+                Require(context.VisibleWidgets == (false, false), "Temporary close left widgets visible.");
+                Require(File.ReadAllBytes(WidgetConfiguration.PathFor(false)).SequenceEqual(taskBytes) &&
+                    File.ReadAllBytes(WidgetConfiguration.PathFor(true)).SequenceEqual(calendarBytes),
+                    "Temporary close changed saved configuration.");
+                context.ExecuteCommand("reload-configuration");
+                Require(context.VisibleWidgets == (false, false), "Appearance reload undid temporary closure.");
+                context.ExecuteCommand("restore");
+                Require(context.VisibleWidgets == (true, true), "Manual app reopen failed to restore enabled widgets.");
+                var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                var taskHost = (NativeDesktopWidgetHost)typeof(NativeWidgetApplicationContext).GetField("host", flags)!.GetValue(context)!;
+                var calendarHost = typeof(NativeWidgetApplicationContext).GetField("calendarHost", flags)!.GetValue(context);
+                taskHost.OpenQuickAddDialog();
+                var editor = (Form?)typeof(NativeDesktopWidgetHost).GetField("quickAdd", flags)!.GetValue(taskHost);
+                context.ExecuteCommand("restore");
+                Require(context.VisibleWidgets == (true, true) &&
+                    ReferenceEquals(taskHost, typeof(NativeWidgetApplicationContext).GetField("host", flags)!.GetValue(context)) &&
+                    ReferenceEquals(calendarHost, typeof(NativeWidgetApplicationContext).GetField("calendarHost", flags)!.GetValue(context)),
+                    "Repeated restore replaced a widget host.");
+                Require(editor is { IsDisposed: false } && ReferenceEquals(editor,
+                    typeof(NativeDesktopWidgetHost).GetField("quickAdd", flags)!.GetValue(taskHost)),
+                    "Main app startup closed an active widget editor.");
+                editor!.Close();
                 context.ExecuteCommand("hide");
                 Require(context.VisibleWidgets == (false, true), "Hiding Tasks also hid Calendar.");
                 context.ExecuteCommand("calendar-hide");
@@ -43,6 +69,14 @@ internal static partial class LifeManagerWidgetSelfTest
                 Require(reopened.VisibleWidgets == (false, true), "Restart did not restore independent visibility.");
                 reopened.ExecuteCommand("show");
                 Require(reopened.VisibleWidgets == (true, true), "Tasks could not be reopened beside Calendar.");
+            }
+            using (var background = new NativeWidgetApplicationContext(repository, null, false, "background")) {
+                Require(background.VisibleWidgets == (false, false), "Reminder startup bypassed startup policy.");
+                background.ExecuteCommand("restore");
+                Require(background.VisibleWidgets == (true, true), "Main restart with companion alive lost enabled widgets.");
+            }
+            using (var signIn = new NativeWidgetApplicationContext(repository, null, false, "restore")) {
+                Require(signIn.VisibleWidgets == (true, true), "Companion restart without main lost enabled widgets.");
             }
             Console.WriteLine("Two-widget native lifecycle passed: simultaneous HWNDs, independent hide/show, reload and restart. Physical input/Win+D/DPI are not tested.");
             return true;

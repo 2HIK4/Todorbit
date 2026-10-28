@@ -48,6 +48,8 @@ class NativeWidgetService {
 
   Future<void> show() => _run(['--widget', '--app-exe', appExecutablePath]);
 
+  Future<void> restoreEnabledWidgets() => _command('restore');
+
   Future<void> ensureRemindersRunning() =>
       _run(['--widget', '--background', '--app-exe', appExecutablePath]);
 

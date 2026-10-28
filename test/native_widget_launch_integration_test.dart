@@ -4,6 +4,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:life_manager/data/app_database.dart';
+import 'package:life_manager/data/widget_configuration_store.dart';
 import 'package:life_manager/domain/widget_configuration.dart';
 import 'package:life_manager/features/widget/native_widget_service.dart';
 
@@ -55,6 +56,48 @@ void main() {
           isTrue,
           reason: 'The detached companion must finish startup.',
         );
+        final store = WidgetConfigurationStore(file.parent);
+        await store.save(
+          DesktopWidgetKind.tasks,
+          WidgetConfiguration(enabled: true),
+        );
+        final tasksFile = File(
+          p.join(file.parent.path, 'widget-tasks-configuration.json'),
+        );
+        final tasksBytes = await tasksFile.readAsBytes();
+        final calendarBytes = await config.readAsBytes();
+        // Main app reopen/restart while the companion remains alive forwards
+        // restore through the same profile mutex/pipe and exits promptly.
+        for (var i = 0; i < 3; i++) {
+          final forwarded = await Process.run(companion!, [
+            '--widget-command',
+            'restore',
+            '--app-exe',
+            'unused-test-app.exe',
+          ]).timeout(const Duration(seconds: 8));
+          expect(forwarded.exitCode, 0);
+        }
+        await service.close().timeout(const Duration(seconds: 5));
+        await Future<void>.delayed(const Duration(seconds: 1));
+        expect(await tasksFile.readAsBytes(), tasksBytes);
+        expect(await config.readAsBytes(), calendarBytes);
+        await service.restoreEnabledWidgets().timeout(
+          const Duration(seconds: 5),
+        );
+        await Future<void>.delayed(const Duration(seconds: 1));
+        final forwarded = await Process.run(companion!, [
+          '--widget-command',
+          'restore',
+          '--app-exe',
+          'unused-test-app.exe',
+        ]).timeout(const Duration(seconds: 8));
+        expect(
+          forwarded.exitCode,
+          0,
+          reason: 'Restarted companion must own the shared mutex and accept forwarding.',
+        );
+        expect(await tasksFile.readAsBytes(), tasksBytes);
+        expect(await config.readAsBytes(), calendarBytes);
         await service.reloadConfiguration().timeout(const Duration(seconds: 5));
         await service
             .setWidgetVisible(DesktopWidgetKind.calendar, false)

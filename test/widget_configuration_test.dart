@@ -7,6 +7,42 @@ import 'package:life_manager/domain/widget_configuration.dart';
 import 'package:life_manager/features/shared/download_size.dart';
 
 void main() {
+  test(
+    'production widget enabled flags survive reload and additive migration',
+    () async {
+      final directory = await Directory.systemTemp.createTemp('widget-hotfix-');
+      addTearDown(() => directory.delete(recursive: true));
+      final store = WidgetConfigurationStore(directory);
+      for (final tasks in [true, false]) {
+        for (final calendar in [true, false]) {
+          for (final kind in DesktopWidgetKind.values) {
+            final config = WidgetConfiguration(
+              enabled: kind == DesktopWidgetKind.tasks ? tasks : calendar,
+              layoutLocked: true,
+              navigationOrder: const ['upcoming', 'all', 'today', 'inbox'],
+              surfaces: {'shell': const WidgetSurface(opacity: 65)},
+            );
+            await store.save(kind, config);
+            final file = File(
+              '${directory.path}/widget-${kind.name}-configuration.json',
+            );
+            final bytes = await file.readAsBytes();
+            final reopened = await WidgetConfigurationStore(directory)
+                .load(kind);
+            expect(reopened.toJson(), config.toJson());
+            expect(await file.readAsBytes(), bytes);
+            final older = config.toJson()..remove('enabled');
+            await file.writeAsString(jsonEncode(older));
+            final migrated = await store.load(kind);
+            expect(migrated.enabled, kind == DesktopWidgetKind.tasks);
+            expect(migrated.layoutLocked, isTrue);
+            expect(migrated.surfaces['shell']!.opacity, 65);
+            expect(jsonDecode(await file.readAsString()), older);
+          }
+        }
+      }
+    },
+  );
   test('legacy calendar modes load as the unified design without resetting settings', () {
     for (final mode in ['compactAgenda', 'fullMonth', 'unknown', null]) {
       final old = WidgetConfiguration(

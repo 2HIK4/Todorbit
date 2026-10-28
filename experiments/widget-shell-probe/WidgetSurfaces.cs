@@ -49,8 +49,11 @@ internal sealed partial class NativeDesktopWidgetHost
         var fill = ComposedSurface(name);
         var background = Blend(palette.Background, fill, fill.A / 255f);
         // Explicit text colors/alpha are independent from surface opacity.
-        if (hex == null && name == "selectedNavigation") candidate = WidgetEditorStyle.OnAccent(palette);
-        if (hex == null && WidgetEditorStyle.Contrast(candidate, background) < 4.5)
+        // Choose once against the composed surface, rather than first choosing
+        // against opaque accent and then conditionally correcting that choice.
+        if (hex == null && name == "selectedNavigation")
+          candidate = WidgetEditorStyle.Contrast(Color.Black, background) >= WidgetEditorStyle.Contrast(Color.White, background) ? Color.Black : Color.White;
+        else if (hex == null && WidgetEditorStyle.Contrast(candidate, background) < 4.5)
           candidate = WidgetEditorStyle.Contrast(Color.Black, background) > WidgetEditorStyle.Contrast(Color.White, background) ? Color.Black : Color.White;
         return Color.FromArgb((int)Math.Round(s.TextOpacity * 2.55), candidate);
     }

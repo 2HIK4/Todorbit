@@ -90,6 +90,7 @@ void main() {
         },
       );
       try {
+        await service.restoreEnabledWidgets();
         await service.show();
         await service.ensureRemindersRunning();
         await service.quickAdd();
@@ -99,6 +100,7 @@ void main() {
         await service.setOpacity(70);
         await service.setLaunchAtSignIn(false);
         await service.close();
+        expect(calls.removeAt(0).$2.take(2), ['--widget-command', 'restore']);
         expect(calls, hasLength(9));
         expect(calls.first.$1, widget.path);
         expect(calls.first.$2, [

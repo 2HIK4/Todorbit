@@ -73,6 +73,21 @@ internal static partial class LifeManagerWidgetSelfTest
             Require(!loaded.HasHeader && loaded.Views.Count == 0 && loaded.NavigationPosition == "right" && loaded.NavigationDisplay == "icons", "Hidden header/navigation did not round trip.");
             Require(loaded.Surface("shell").BorderOpacity == 25 && WidgetConfiguration.Load(true, legacy).Enabled, "Independent widget settings were overwritten.");
             Require(legacy.Width == 432, "Configuration migration changed device geometry.");
+            foreach (var kind in new[] { false, true }) {
+                var path = WidgetConfiguration.PathFor(kind);
+                foreach (var enabled in new[] { true, false }) {
+                    var config = WidgetConfiguration.Load(kind, legacy);
+                    config.Enabled = enabled; config.Save(kind);
+                    var bytes = File.ReadAllBytes(path);
+                    Require(WidgetConfiguration.Load(kind, legacy).Enabled == enabled && File.ReadAllBytes(path).SequenceEqual(bytes),
+                        "Production enabled flag was reset while loading.");
+                }
+                File.WriteAllText(path, "{\"version\":1,\"textScale\":1.3,\"layoutLocked\":true}");
+                var oldBytes = File.ReadAllBytes(path);
+                var migrated = WidgetConfiguration.Load(kind, legacy);
+                Require(migrated.Enabled == !kind && migrated.LayoutLocked && migrated.TextScale == 1.3f && File.ReadAllBytes(path).SequenceEqual(oldBytes),
+                    "Additive migration overwrote older preferences.");
+            }
             foreach (var mode in new[] { "compactAgenda", "fullMonth", "unknown" }) {
                 var migrated = WidgetConfiguration.Parse($"{{\"version\":1,\"calendarPresentation\":\"{mode}\",\"textScale\":1.3,\"layoutLocked\":true}}");
                 Require(migrated.TextScale == 1.3f && migrated.LayoutLocked, "Legacy mode reset unrelated settings.");

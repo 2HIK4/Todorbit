@@ -1,5 +1,23 @@
 # Progress
 
+## Widget startup/appearance hotfix in verification (2026-10-28)
+
+- Candidate **1.0.18+19**, branch `fix/widget-startup-and-appearance` from `5c55b55`.
+  [Findings and acceptance boundary](WIDGET_STARTUP_HOTFIX.md),
+  [candidate notes](TODORBIT_1_0_18_RELEASE_NOTES.md).
+- Temporary Close Widget no longer saves disabled; manual Release startup restores
+  saved enabled widgets. Explicit disabled values and profile identity remain.
+  Selected navigation uses one contrast decision; Calendar planned-task marker
+  becomes an inset circle, independent of event counts. No schema change.
+- Focused Flutter **26 pass**; local full serial suite **357 pass / one opt-in
+  skip**, plus the opt-in real companion check **1 pass** in its guarded profile.
+  Whole/targeted analysis, formatting, diff and **11 OAuth gates pass**. Native
+  Release/self-test and actual-HWND lifecycle pass, including preservation of an
+  active quick editor during restore; old foreground rule fails the new opacity
+  regression. Final packages, exact-source CI and updater acceptance are pending.
+  Publication is explicitly authorized once gates pass.
+
+
 ## v1.0.17 audited widget upgrade published (2026-10-28)
 
 - [Public Windows x64 pre-release v1.0.17](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.17),

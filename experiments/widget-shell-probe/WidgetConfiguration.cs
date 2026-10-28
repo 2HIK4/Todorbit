@@ -77,7 +77,11 @@ internal sealed class WidgetConfiguration
             return migrated;
         }
         if (new FileInfo(path).Length > 65536) throw new InvalidDataException("Widget configuration exceeds 64 KiB; original file preserved.");
-        return Parse(File.ReadAllText(path));
+        var json = File.ReadAllText(path);
+        var config = Parse(json);
+        using var document = JsonDocument.Parse(json);
+        if (!document.RootElement.TryGetProperty("enabled", out _)) config.Enabled = !calendar;
+        return config;
     }
     internal static WidgetConfiguration Parse(string json)
     {

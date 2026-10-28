@@ -74,6 +74,42 @@ internal sealed partial class NativeDesktopWidgetHost
           using var host=new NativeDesktopWidgetHost(repository,config,false,new Size(376,460),palette);
           if(host.SurfaceText("taskRow").A!=255 || host.SurfaceText("selectedNavigation").A!=255 || config.Surface("taskRow").Resolve(palette.Row).A!=89 || config.Surface("selectedNavigation").Resolve(palette.Accent).A!=191) throw new InvalidOperationException("Text/surface opacity inherited the shell alpha.");
         }
+        foreach (var palette in new[] { WidgetPalette.Dark, WidgetPalette.Light })
+        foreach (var layer in new[] { "shell", "navigation", "selectedNavigation" })
+        foreach (var color in new string?[] { null, "#8050B0", "#C0B0F0", "#246C80" }) {
+            var config = new WidgetConfiguration();
+            config.Surface("selectedNavigation").Color = color;
+            using var host = new NativeDesktopWidgetHost(repository, config, false, new Size(376,460), palette);
+            Color? previous = null; var changes = 0;
+            for (var opacity = 0; opacity <= 100; opacity++) {
+                config.Surface(layer).Opacity = opacity;
+                var ink = host.SurfaceText("selectedNavigation");
+                if (previous is { } last && ink.ToArgb() != last.ToArgb()) changes++;
+                previous = ink;
+                var fill = host.ComposedSurface("selectedNavigation");
+                var background = Blend(palette.Background, fill, fill.A / 255f);
+                if (WidgetEditorStyle.Contrast(ink, background) < 4.5)
+                    throw new InvalidOperationException("Automatic navigation foreground lost readable contrast.");
+                if (ink != host.SurfaceText("selectedNavigation"))
+                    throw new InvalidOperationException("Identical configuration changed foreground.");
+                config.Surface("selectedNavigation").TextColor = "#AABBCC";
+                config.Surface("selectedNavigation").TextOpacity = 65;
+                var custom = host.SurfaceText("selectedNavigation");
+                if (custom.R != 170 || custom.G != 187 || custom.B != 204 || custom.A != 166)
+                    throw new InvalidOperationException("Opacity changed explicit foreground or independent text alpha.");
+                config.Surface("selectedNavigation").TextColor = null;
+                config.Surface("selectedNavigation").TextOpacity = 100;
+                var marker = CalendarTaskMarkerColor(background);
+                if (marker.R > background.R || marker.G > background.G || marker.B > background.B || marker.A != 255)
+                    throw new InvalidOperationException("Task circle must darken the composed cell independently of alpha.");
+            }
+            if (changes > 1) throw new InvalidOperationException($"Navigation foreground oscillated: {layer}, {color}, {changes} changes.");
+        }
+        foreach (var dpi in new[] { 1f, 1.25f, 1.5f, 2f }) {
+            var marker = CalendarAuxiliaryMarker(compactCell, "Task");
+            if (marker.Left * dpi < 5 * dpi || marker.Top * dpi < 5 * dpi || marker.Width != marker.Height || !compactCell.Contains(marker))
+                throw new InvalidOperationException("Task circle overlaps cell border at DPI scale.");
+        }
         var sent=NavigationActivation("test.exe","event","event-id","2026-10-28","2026-10-20");
         if(sent.ArgumentList[0]!="--navigate" || !sent.ArgumentList[1].Contains("event-id") || !sent.ArgumentList[1].Contains("2026-10-20")) throw new InvalidOperationException("Typed navigation lost its occurrence identity.");
         calendar.Dispose();

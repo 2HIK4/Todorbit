@@ -55,6 +55,11 @@ try {
   New-Item -ItemType Directory -Path $profile -Force | Out-Null
   $settings = Join-Path $profile 'widget-settings.json'
   Set-Content -LiteralPath $settings -Value '{"launchAtSignIn":false}'
+  $widgetConfigurations = @('tasks', 'calendar') | ForEach-Object {
+    $path = Join-Path $profile "widget-$_-configuration.json"
+    Set-Content -LiteralPath $path -Value '{"version":1,"enabled":true,"layoutLocked":true,"surfaces":{"shell":{"opacity":65}},"navigationOrder":["upcoming","today","all","inbox"]}'
+    [pscustomobject]@{ Path = $path; Hash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash }
+  }
   $sentinel = Join-Path $profile 'update-test-sentinel.txt'
   Set-Content -LiteralPath $sentinel -Value 'preserve isolated profile'
   $sentinelHash = (Get-FileHash -LiteralPath $sentinel -Algorithm SHA256).Hash
@@ -84,7 +89,12 @@ db.close()
   $widgetBinary = Join-Path $target 'TodorbitWidget.exe'
   $widgetProcess = Start-Isolated $widgetBinary "--widget --app-exe $binary"
   Start-Sleep -Seconds 1
-  if ($widgetProcess.HasExited) { throw 'The disposable widget did not start.' }
+  if ($widgetProcess.HasExited -and $widgetProcess.ExitCode -ne 0) { throw 'The disposable widget command failed.' }
+  $companions = @(Get-Process -Name TodorbitWidget -ErrorAction SilentlyContinue | Where-Object {
+    try { $_.Path -and [IO.Path]::GetFullPath($_.Path) -ieq $widgetBinary } catch { $false }
+  })
+  if ($companions.Count -ne 1) { throw "Expected one companion after main startup and repeated launch; found $($companions.Count)." }
+  $widgetProcess = $companions[0]
   $packageCopy = Join-Path $root 'update.zip'
   Copy-Item -LiteralPath $zip -Destination $packageCopy
   $digest = (Get-FileHash -LiteralPath $packageCopy -Algorithm SHA256).Hash
@@ -130,6 +140,11 @@ db.close()
       -not (Test-Path -LiteralPath $database)) {
     throw 'The disposable profile changed or disappeared.'
   }
+  foreach ($configuration in $widgetConfigurations) {
+    if ((Get-FileHash -LiteralPath $configuration.Path -Algorithm SHA256).Hash -ne $configuration.Hash) {
+      throw 'Widget enabled/customization settings changed during update or rollback.'
+    }
+  }
   $verifyTask = @'
 import sqlite3, sys
 db = sqlite3.connect(sys.argv[1])
@@ -158,7 +173,7 @@ sys.exit(0 if task == 1 and integrity == 'ok' else 1)
   if ($app -and -not $app.HasExited) { $app.Kill() }
   if ($widgetProcess -and -not $widgetProcess.HasExited) { $widgetProcess.Kill() }
   if (Test-Path -LiteralPath $initial) {
-    Get-Process -Name Todorbit -ErrorAction SilentlyContinue | Where-Object {
+    Get-Process -Name Todorbit,TodorbitWidget -ErrorAction SilentlyContinue | Where-Object {
       try { $_.Path -and $_.Path.StartsWith($initial + '\', [StringComparison]::OrdinalIgnoreCase) } catch { $false }
     } | Stop-Process -Force
   }

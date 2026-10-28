@@ -25,7 +25,11 @@ class WidgetConfigurationStore {
           'Unsupported widget configuration. Original file preserved.',
         );
       }
-      return WidgetConfiguration.fromJson(value);
+      return WidgetConfiguration.fromJson({
+        ...value,
+        if (!value.containsKey('enabled'))
+          'enabled': kind == DesktopWidgetKind.tasks,
+      });
     }
     // Read legacy preferences without rewriting or discarding their geometry.
     final legacy = File(p.join(directory.path, 'widget-settings.json'));

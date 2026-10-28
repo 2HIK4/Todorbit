@@ -157,6 +157,11 @@ Future<void> _startApplication(
       } catch (failure) {
         debugPrint('Could not synchronize widget startup: $failure');
       }
+      try {
+        await companion.restoreEnabledWidgets();
+      } catch (failure) {
+        debugPrint('Could not restore enabled widgets: $failure');
+      }
     }
     if (companion.isAvailable &&
         ((await controller.repository.notificationSettings()).enabled ||

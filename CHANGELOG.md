@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.18+19
+
+- Restore enabled Tasks and Calendar widgets when opening Todorbit, including after updates and temporary widget closure. Closing a widget no longer disables its saved setting.
+- Keep explicit disabled preferences, customization, geometry and sign-in policy intact; safely default missing enabled fields by widget kind.
+- Use a single contrast decision for selected widget navigation text during opacity changes, preserving custom text colors and independent alpha.
+- Replace the Calendar grid's planned-task square with a padded, background-derived circle. Event dots/lines, session markers and date selection retain their meanings.
+
+
 ## 1.0.17 - Windows x64 pre-release
 
 - Reorder widget navigation, save per-widget presets, and undo/redo settings changes.
