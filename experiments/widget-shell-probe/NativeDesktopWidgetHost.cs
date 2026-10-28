@@ -175,7 +175,7 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
       if (privacy.IsLocked() && privacy.SuppressLockedNotifications()) return;
       var now = DateTime.Now;
       var messages = repository.ClaimDailyNotifications(now)
-        .Concat(repository.ClaimEventReminders(now)).ToList();
+        .Concat(repository.ClaimEventReminders(now)).Concat(repository.ClaimTaskReminders(now)).ToList();
       if (messages.Count == 0) return;
       if (privacy.IsLocked() && privacy.SuppressLockedNotifications()) return;
       var body = privacy.IsLocked()
@@ -475,7 +475,7 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
   private bool resizing;
   private WidgetResizeEdge resizeEdge;
   private InlineQuickAddForm? quickAdd;
-  private TaskEditorDialog? taskEditor;
+
   private ContextMenuStrip? contextMenu;
   private readonly WidgetTooltip openTooltip = new();
   private bool wasLocked;
@@ -563,12 +563,12 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
         var released = HitTest(LogicalPoint(message.LParam));
         var activate = released.Target == pressedTarget && released.TaskIndex == pressedIndex;
         pressedTarget = HitTarget.None;
-        if (dragging || resizing) EndMoveOrResize();
+        if (dragging || resizing || splittingCalendar) EndMoveOrResize();
         else if (activate) Click(LogicalPoint(message.LParam));
         message.Result = 0;
         return;
       case WmCaptureChanged:
-        if (dragging || resizing) EndMoveOrResize();
+        if (dragging || resizing || splittingCalendar) EndMoveOrResize();
         break;
       case WmMouseWheel:
         var delta = unchecked((short)((message.WParam.ToInt64() >> 16) & 0xFFFF));
@@ -739,12 +739,10 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
   private void DrawTask(Graphics graphics, WidgetTask task,
       int taskIndex, int visibleIndex, Font font) {
     var row = TaskRowRect(visibleIndex);
-    using var rowBrush = new SolidBrush(palette.Row);
-    FillRoundedRectangle(graphics, rowBrush, row, 6);
+    PaintSurface(graphics, "taskRow",row,palette.Row);
     if ((hoverTarget == HitTarget.TaskRow || hoverTarget == HitTarget.TaskCheckbox) &&
         hoverTask == taskIndex) {
-      using var hover = new SolidBrush(Color.FromArgb(
-        WidgetEditorStyle.IsDark(palette) ? 22 : 12, palette.Foreground));
+      using var hover = new SolidBrush(configuration.Surface("taskHover").Resolve(palette.Accent));
       FillRoundedRectangle(graphics, hover, row, 6);
     }
     var box = CheckboxRect(visibleIndex);
@@ -754,7 +752,7 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
       using var checkboxHover = new SolidBrush(Color.FromArgb(42, palette.Accent));
       graphics.FillRectangle(checkboxHover, box);
     }
-    using var textBrush = new SolidBrush(palette.Foreground);
+    using var textBrush = new SolidBrush(SurfaceText("taskRow"));
     using var format = new StringFormat {
       LineAlignment = StringAlignment.Center,
       Trimming = StringTrimming.EllipsisCharacter,
@@ -762,7 +760,7 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     };
     DrawText(graphics,task.Title, font, textBrush,
       new RectangleF(row.X + 38, row.Y + 3, row.Width - 48, row.Height - 6),
-      format,"opaque");
+      format,"taskRow");
   }
 
   private void DrawScrollIndicator(Graphics graphics) {
@@ -809,12 +807,12 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     foreach (var view in VisibleViews) {
       var bounds = ViewRect(view);
       var selected = settings.View == view;
-      PaintSurface(graphics, "navigationButton", bounds, palette.Panel);
+      if (!selected) PaintSurface(graphics, "navigationButton", bounds, palette.Panel);
       if (selected || hoverTarget == ViewTarget(view)) {
-        using var brush = new SolidBrush(selected ? palette.Accent : Blend(palette.Panel,palette.Accent,0.24f));
+        using var brush = new SolidBrush(selected ? configuration.Surface("selectedNavigation").Resolve(palette.Accent) : Blend(palette.Panel,palette.Accent,0.24f));
         FillRoundedRectangle(graphics, brush, bounds, configuration.Surface("navigationButton").Radius);
       }
-      using var text = new SolidBrush(selected ? WidgetEditorStyle.OnAccent(palette) : SurfaceText("navigationButton"));
+      using var text = new SolidBrush(selected ? SurfaceText("selectedNavigation") : SurfaceText("navigationButton"));
       using var format = CenterFormat();
       format.Trimming = StringTrimming.EllipsisCharacter;
       format.FormatFlags = StringFormatFlags.NoWrap;
@@ -822,7 +820,7 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
       if (icon) DrawViewIcon(graphics, view, new RectangleF(bounds.X + (EffectiveNavigationDisplay == "icons" ? (bounds.Width - 16)/2 : 6),bounds.Y + (bounds.Height-16)/2,16,16), text.Color);
       if (EffectiveNavigationDisplay != "icons") {
         if (icon) { bounds.X += 26; bounds.Width -= 26; }
-        DrawText(graphics,ViewLabel(view), font, text, bounds, format,surface:selected?"opaque":"navigationButton");
+        DrawText(graphics,ViewLabel(view), font, text, bounds, format,surface:selected?"selectedNavigation":"navigationButton");
       }
     }
   }
@@ -835,7 +833,8 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
   }
 
   private void MouseMove(PointF point) {
-    if (dragging || resizing) {
+    if (splittingCalendar) { UpdateCalendarSplit(point); return; }
+    if (dragging || resizing || splittingCalendar) {
       ContinueMoveOrResize();
       return;
     }
@@ -848,6 +847,7 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     Native.TrackMouseEvent(ref tracking);
     var (target, task) = HitTest(point);
     SetHover(target, task);
+    if (calendar && CalendarDivider.Contains(point) && !configuration.LayoutLocked) { Cursor.Current = Cursors.HSplit; return; }
     Cursor.Current = configuration.LayoutLocked ?
       (target == HitTarget.None ? Cursors.Default : Cursors.Hand) :
       CursorFor(GetResizeEdge(point), target);
@@ -917,6 +917,9 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
   private void BeginMoveOrResize(PointF point) {
     edgeSnap = new WidgetEdgeSnap();
     openTooltip.Hide(this);
+    if (calendar && CalendarDivider.Contains(point) && !configuration.LayoutLocked) {
+      splittingCalendar = true; Native.SetCapture(Handle); return;
+    }
     (pressedTarget, pressedIndex) = HitTest(point);
     Present("pressed");
     if (configuration.LayoutLocked) { Native.SetFocus(Handle); return; }
@@ -969,6 +972,13 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
   }
 
   private void EndMoveOrResize() {
+    if (splittingCalendar) {
+      splittingCalendar = false;
+      Native.ReleaseCapture();
+      var split = configuration.CalendarSplit;
+      WidgetConfiguration.Update(true, settings, saved => saved.CalendarSplit = split);
+      ReloadConfiguration(); return;
+    }
     dragging = false;
     resizing = false;
     resizeEdge = WidgetResizeEdge.None;
@@ -1112,8 +1122,6 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
       calendarItems = [];
       openTooltip.Hide(this);
       quickAdd?.Close();
-      taskEditor?.Close();
-      calendarDetail?.Close();
       statusText = "Locked";
       Present("privacy-locked");
     } else {
@@ -1221,36 +1229,18 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
 
   private void OpenTaskEditor(WidgetTask summary) {
     if (privacy.IsLocked()) { OpenMainApp(); return; }
-    var current = repository.LoadTask(summary.Id);
-    if (current == null) {
-      statusText = "Task no longer exists";
-      RefreshTasks();
-      return;
-    }
-    using var dialog = new TaskEditorDialog(repository, current, palette);
-    taskEditor = dialog;
-    Native.GetWindowRect(Handle, out var bounds);
-    var working = Screen.FromRectangle(new Rectangle(
-      bounds.Left, bounds.Top, bounds.Right - bounds.Left,
-      bounds.Bottom - bounds.Top)).WorkingArea;
-    dialog.Size = new Size(
-      Math.Min(dialog.Width, Math.Max(dialog.MinimumSize.Width, working.Width - 24)),
-      Math.Min(dialog.Height, Math.Max(dialog.MinimumSize.Height, working.Height - 24)));
-    dialog.Location = new Point(
-      Math.Clamp(bounds.Left + 20, working.Left,
-        Math.Max(working.Left, working.Right - dialog.Width)),
-      Math.Clamp(bounds.Top + 40, working.Top,
-        Math.Max(working.Top, working.Bottom - dialog.Height)));
-    var result = dialog.ShowDialog();
-    taskEditor = null;
-    if (dialog.OpenFullDetails) {
-      OpenMainApp(current.Id);
-      return;
-    }
-    if (result == DialogResult.OK) {
-      statusText = "Task saved";
-      RefreshTasks();
-    }
+    OpenNavigation("task",summary.Id);
+  }
+
+  internal static ProcessStartInfo NavigationActivation(string executable,string kind,string id,string? day = null,string? nominalDate = null) {
+    var start = new ProcessStartInfo(executable) { UseShellExecute = false };
+    start.ArgumentList.Add("--navigate");
+    start.ArgumentList.Add(System.Text.Json.JsonSerializer.Serialize(new { version=1,kind,id,day,nominalDate,action="edit" }));
+    return start;
+  }
+  internal Action<ProcessStartInfo>? NavigationLauncher { get; set; }
+  private void OpenNavigation(string kind,string id,string? day = null,string? nominalDate = null) {
+    RunAction(()=> { var start=NavigationActivation(ResolveMainApp(),kind,id,day,nominalDate); if(NavigationLauncher != null) NavigationLauncher(start); else Process.Start(start); });
   }
 
   private void OpenMainApp(string? taskId = null, bool appearanceSettings = false) {
@@ -1429,7 +1419,7 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
   private RectangleF OpenRect => new(LogicalClientWidth - 46, 14, 30, 30);
   private Size MinimumSize => WidgetGeometry.MinimumSize(calendar,configuration.TextScale);
   private float ContentTop => configuration.HasHeader ? Math.Max(50,20*configuration.TextScale+26) : 14;
-  private WidgetTaskView[] VisibleViews => Enum.GetValues<WidgetTaskView>().Where(v => configuration.Views.Contains(v.ToString().ToLowerInvariant())).ToArray();
+  private WidgetTaskView[] VisibleViews => configuration.OrderedViews.Select(v => Enum.Parse<WidgetTaskView>(v, true)).ToArray();
   private bool VerticalNavigation => configuration.NavigationPosition is "left" or "right";
   private string EffectiveNavigationDisplay => VerticalNavigation && LogicalClientWidth < 340 ? "icons" : configuration.NavigationDisplay;
   private float NavigationWidth => EffectiveNavigationDisplay == "icons" ? 38 : Math.Max(106, 90 * configuration.TextScale);
@@ -1560,7 +1550,6 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
   public void Dispose() {
     if (disposed) return;
     disposed = true;
-    calendarDetail?.Close();
     quickAdd?.Close();
     quickAdd?.Dispose();
     contextMenu?.Dispose();

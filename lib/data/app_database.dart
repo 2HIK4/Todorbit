@@ -10,7 +10,7 @@ import 'profile_paths.dart';
 class AppDatabase extends GeneratedDatabase {
   AppDatabase(super.executor);
 
-  static const currentSchemaVersion = 21;
+  static const currentSchemaVersion = 22;
 
   /// Resolve the database within a selected per-user data root. This also lets
   /// disposable profile tests exercise the same path as a packaged build.
@@ -159,6 +159,7 @@ class AppDatabase extends GeneratedDatabase {
       await _createProgressivePlans();
       await _createEventReminderDeliveries();
       await _createEventDetails();
+      await _createTaskNotifications();
       if (existing.isNotEmpty) {
         final reference = AppDatabase(NativeDatabase.memory());
         try {
@@ -178,7 +179,7 @@ class AppDatabase extends GeneratedDatabase {
       await customStatement('PRAGMA user_version = $currentSchemaVersion');
     }),
     onUpgrade: (migrator, from, to) => transaction(() async {
-      if (from < 1 || from > 20 || to != 21) {
+      if (from < 1 || from > 21 || to != 22) {
         throw StateError('No migration registered from schema $from to $to');
       }
       if (from == 1) {
@@ -225,6 +226,7 @@ class AppDatabase extends GeneratedDatabase {
       await _createProgressivePlans();
       await _createEventReminderDeliveries();
       await _createEventDetails();
+      await _createTaskNotifications();
       await customStatement('PRAGMA user_version = $currentSchemaVersion');
     }),
   );
@@ -235,6 +237,25 @@ class AppDatabase extends GeneratedDatabase {
         "SELECT type, name, tbl_name, sql FROM sqlite_schema "
         "WHERE name NOT GLOB 'sqlite_*' ORDER BY type, name",
       ).get()).map((row) => row.data).toList();
+
+  Future<void> _createTaskNotifications() async {
+    await _addColumnIfMissing(
+      'tasks',
+      'notification_json',
+      """TEXT NOT NULL DEFAULT '{"version":1,"mode":"off"}'""",
+    );
+    await customStatement(
+      r"CREATE INDEX IF NOT EXISTS task_notifications_enabled ON tasks(id) WHERE json_extract(notification_json,'$.mode') != 'off'",
+    );
+    await customStatement(
+      '''CREATE TABLE IF NOT EXISTS task_reminder_deliveries (
+      task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      trigger_at TEXT NOT NULL,
+      delivered_at TEXT NOT NULL,
+      PRIMARY KEY(task_id,trigger_at)
+    )''',
+    );
+  }
 
   Future<void> _createEventDetails() async {
     await _addColumnIfMissing('categories', 'event_color', 'INTEGER');

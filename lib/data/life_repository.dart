@@ -585,6 +585,12 @@ class LifeRepository {
     recurrenceEdited: r.read<int?>('recurrence_edited') == 1,
     recurrenceRescheduled: r.read<int?>('recurrence_rescheduled') == 1,
     recurrenceKindName: r.read<String?>('recurrence_kind'),
+    notification: r.data['notification_json'] is String
+        ? TaskNotification.fromJson(
+            jsonDecode(r.data['notification_json'] as String)
+                as Map<String, dynamic>,
+          )
+        : const TaskNotification(),
   );
 
   DateTime? _parseNullable(String? value) =>
@@ -706,6 +712,9 @@ class LifeRepository {
 
   Future<LifeTask> addTask(TaskDraft draft) async {
     _validate(draft);
+    if (draft.notification != null) {
+      TaskNotification.fromJson(draft.notification!.toJson());
+    }
     final now = DateTime.now().toUtc();
     final id = _uuid.v4();
     await db.transaction(() async {
@@ -723,6 +732,7 @@ class LifeRepository {
           draft.status == TaskStatus.completed ? now : null,
         ),
       );
+      await _writeTaskNotification(id, draft.notification);
     });
     return (await tasks()).firstWhere((task) => task.id == id);
   }
@@ -819,6 +829,21 @@ class LifeRepository {
           )
           .getSingle();
       await _insertOccurrence(series, first);
+      if (draft.notification != null) {
+        final task = await db
+            .customSelect(
+              'SELECT task_id FROM recurrence_occurrences WHERE series_id=? AND ordinal=?',
+              variables: [
+                Variable.withString(seriesId),
+                Variable.withInt(first.ordinal),
+              ],
+            )
+            .getSingle();
+        await _writeTaskNotification(
+          task.read<String>('task_id'),
+          draft.notification,
+        );
+      }
       if (progressiveSteps.isNotEmpty) {
         await _writeProgressivePlan(
           seriesId,
@@ -950,6 +975,9 @@ class LifeRepository {
     Set<String> reviewedPrerequisiteIds = const {},
   }) async {
     _validate(draft);
+    if (draft.notification != null) {
+      TaskNotification.fromJson(draft.notification!.toJson());
+    }
     final now = DateTime.now().toUtc();
     final completed = draft.status == TaskStatus.completed
         ? (previous.completedAt ?? now)
@@ -1016,6 +1044,7 @@ class LifeRepository {
           'This task changed elsewhere. Reopen it before saving.',
         );
       }
+      await _writeTaskNotification(previous.id, draft.notification);
       if (previous.scheduledDate != draft.scheduledDate) {
         await _recordOperation(
           type: ScheduleOperationType.move,

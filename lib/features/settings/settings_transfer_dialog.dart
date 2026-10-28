@@ -63,6 +63,8 @@ class _SettingsTransferDialogState
     final value = imported?.categories[category];
     if (value == null) return '';
     return switch (category) {
+      SettingsCategory.widgets =>
+        'Widget appearance, navigation order, layout and custom presets',
       SettingsCategory.appearance =>
         'Theme mode: ${value['mode'] ?? 'keep current'}; light and dark colors plus theme presets',
       SettingsCategory.hotkeys => () {

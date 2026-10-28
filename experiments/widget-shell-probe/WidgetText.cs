@@ -16,9 +16,9 @@ internal sealed partial class NativeDesktopWidgetHost
         if (name == "shell") return result;
         if (name is "calendarCell" or "selectedDate" or "selectedToday" or "today") Add("content", palette.Panel);
         if (name is "selectedDate" or "selectedToday" or "today") Add("calendarCell", palette.Panel);
-        if (name == "navigationButton") Add("navigation", palette.Background);
+        if (name is "navigationButton" or "selectedNavigation") Add("navigation", palette.Background);
         if (name == "selectedToday") { Add("selectedDate", palette.Accent); Add("today", palette.Accent); }
-        else Add(name, name is "selectedDate" or "today" ? palette.Accent : name is "header" or "navigation" ? palette.Background : palette.Panel);
+        else Add(name, name is "selectedDate" or "today" or "selectedNavigation" ? palette.Accent : name is "header" or "navigation" ? palette.Background : palette.Panel);
         return result;
     }
     private bool NeedsTextBacking(string surface, Color candidate)
@@ -45,7 +45,7 @@ internal sealed partial class NativeDesktopWidgetHost
         var actual = format ?? defaultFormat;
         var foreground = ink is SolidBrush brush ? brush.Color : palette.Foreground;
         var haloColor = WidgetEditorStyle.Contrast(foreground, Color.Black) >= WidgetEditorStyle.Contrast(foreground, Color.White) ? Color.Black : Color.White;
-        using var halo = new SolidBrush(Color.FromArgb(180, haloColor));
+        using var halo = new SolidBrush(Color.FromArgb((int)(180 * candidate.A / 255f), haloColor));
         foreach (var offset in new[] { new PointF(-1, 0), new PointF(1, 0), new PointF(0, -1), new PointF(0, 1) })
         {
             var shadow = bounds; shadow.Offset(offset);

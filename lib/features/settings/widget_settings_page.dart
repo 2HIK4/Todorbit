@@ -10,6 +10,11 @@ import 'package:uuid/uuid.dart';
 import '../../data/app_database.dart';
 import '../../data/widget_configuration_store.dart';
 import '../../domain/widget_configuration.dart';
+import '../../domain/widget_presets.dart';
+import '../../domain/settings_history.dart';
+import '../shared/settings_history_scope.dart';
+import '../shared/text_prompt_dialog.dart';
+import '../shared/anchored_select_field.dart';
 import '../widget/native_widget_service.dart';
 import '../widget/widget_edit_session.dart';
 import '../shared/settings_section.dart';
@@ -294,6 +299,215 @@ class WidgetConfigurationEditor extends StatefulWidget {
 class _WidgetConfigurationEditorState extends State<WidgetConfigurationEditor> {
   late final session = WidgetEditSession(widget.initial);
   WidgetConfiguration get draft => session.draft;
+  WidgetPresets presets = WidgetPresets(), committedPresets = WidgetPresets();
+  bool presetsLoaded = false;
+  final history = SettingsHistory<(WidgetConfiguration, WidgetPresets)>(
+    equal: (a, b) =>
+        WidgetEditSession.equivalent(a.$1.toJson(), b.$1.toJson()) &&
+        WidgetEditSession.equivalent(a.$2.toJson(), b.$2.toJson()),
+  );
+  (WidgetConfiguration, WidgetPresets) get snapshot => (draft, presets);
+  Future<void> loadPresets() async {
+    try {
+      final loaded =
+          await widget.store?.loadPresets(widget.kind) ?? WidgetPresets();
+      if (mounted) {
+        setState(() {
+          presets = committedPresets = loaded;
+          presetsLoaded = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => feedback = 'Could not load presets: $e');
+    }
+  }
+
+  void travel(bool redo) {
+    if (saving || closing) return;
+    final value = redo ? history.redo(snapshot) : history.undo(snapshot);
+    setState(() {
+      session.draft = value.$1;
+      presets = value.$2;
+    });
+    unawaited(_preview());
+  }
+
+  Future<void> namePreset({String? source, bool rename = false}) async {
+    final name = await showDialog<String>(
+      context: context,
+      builder: (_) => TextPromptDialog(
+        title: rename ? 'Rename preset' : 'Save as preset',
+        initial: rename ? source! : '',
+      ),
+    );
+    if (name == null || !mounted) return;
+    try {
+      var next = presets;
+      final config = source == null
+          ? draft
+          : {...WidgetPresets.builtIn(widget.kind), ...presets.custom}[source]!;
+      if (rename) next = next.remove(source!);
+      next = next.put(name, config, widget.kind);
+      change(draft.copyWith(presetName: name), library: next);
+    } catch (e) {
+      setState(() => feedback = '$e');
+    }
+  }
+
+  Widget presetControls() {
+    if (!presetsLoaded) {
+      return const SettingsHelperText(
+        'Preset library is loading or unavailable. Existing presets will be preserved.',
+      );
+    }
+    final options = {...WidgetPresets.builtIn(widget.kind), ...presets.custom};
+    bool matches(WidgetConfiguration value) {
+      final a = WidgetPresets.apply(value, draft).toJson()
+        ..remove('presetName');
+      final b = draft.toJson()..remove('presetName');
+      return WidgetEditSession.equivalent(a, b);
+    }
+
+    final selected =
+        options.containsKey(draft.presetName) &&
+            matches(options[draft.presetName]!)
+        ? draft.presetName
+        : options.entries.where((e) => matches(e.value)).firstOrNull?.key;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AnchoredSelectField<String>(
+          isExpanded: true,
+          key: ValueKey('preset-$selected'),
+          initialValue: selected ?? 'Custom',
+          decoration: const InputDecoration(labelText: 'Preset'),
+          items: [
+            const DropdownMenuItem(value: 'Custom', child: Text('Custom')),
+            for (final name in options.keys)
+              DropdownMenuItem(value: name, child: Text(name)),
+          ],
+          onChanged: (name) {
+            if (options[name] case final value?) {
+              change(
+                WidgetPresets.apply(value, draft).copyWith(presetName: name),
+              );
+            }
+          },
+        ),
+        Wrap(
+          spacing: 8,
+          children: [
+            TextButton.icon(
+              onPressed: () => namePreset(),
+              icon: const Icon(Icons.add),
+              label: const Text('Save as Preset'),
+            ),
+            if (selected != null)
+              PopupMenuButton<String>(
+                tooltip: 'Manage preset',
+                onSelected: (action) {
+                  if (action == 'delete') {
+                    change(draft, library: presets.remove(selected));
+                  } else {
+                    namePreset(source: selected, rename: action == 'rename');
+                  }
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: 'duplicate',
+                    child: Text('Duplicate preset'),
+                  ),
+                  if (presets.custom.containsKey(selected)) ...[
+                    const PopupMenuItem(
+                      value: 'rename',
+                      child: Text('Rename preset'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Text('Delete preset'),
+                    ),
+                  ],
+                ],
+              ),
+            IconButton(
+              tooltip: 'Undo setting (Ctrl+Z)',
+              onPressed: history.canUndo ? () => travel(false) : null,
+              icon: const Icon(Icons.undo),
+            ),
+            IconButton(
+              tooltip: 'Redo setting (Ctrl+Shift+Z)',
+              onPressed: history.canRedo ? () => travel(true) : null,
+              icon: const Icon(Icons.redo),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  void moveView(int oldIndex, int newIndex) {
+    final order = [...draft.navigationOrder];
+    if (newIndex > oldIndex) newIndex--;
+    order.insert(newIndex, order.removeAt(oldIndex));
+    change(draft.copyWith(navigationOrder: order));
+  }
+
+  Widget navigationOrder() => ReorderableListView.builder(
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    buildDefaultDragHandles: false,
+    itemCount: draft.navigationOrder.length,
+    onReorderItem: (oldIndex, newIndex) =>
+        moveView(oldIndex, newIndex > oldIndex ? newIndex + 1 : newIndex),
+    itemBuilder: (context, index) {
+      final view = draft.navigationOrder[index];
+      final label = {
+        'today': 'Today',
+        'inbox': 'Inbox',
+        'all': 'All Tasks',
+        'upcoming': 'Upcoming',
+      }[view]!;
+      return Row(
+        key: ValueKey('view-$view'),
+        children: [
+          ReorderableDragStartListener(
+            index: index,
+            child: Semantics(
+              label: 'Drag to reorder $label',
+              child: const Padding(
+                padding: EdgeInsets.all(8),
+                child: Icon(Icons.drag_handle),
+              ),
+            ),
+          ),
+          Expanded(
+            child: CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(label),
+              value: draft.views.contains(view),
+              onChanged: (v) => change(
+                draft.copyWith(
+                  views: v == true
+                      ? [...draft.views, view]
+                      : draft.views.where((x) => x != view).toList(),
+                ),
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Move $label up',
+            onPressed: index > 0 ? () => moveView(index, index - 1) : null,
+            icon: const Icon(Icons.arrow_upward, size: 18),
+          ),
+          IconButton(
+            tooltip: 'Move $label down',
+            onPressed: index < 3 ? () => moveView(index, index + 2) : null,
+            icon: const Icon(Icons.arrow_downward, size: 18),
+          ),
+        ],
+      );
+    },
+  );
   final formKey = GlobalKey<FormState>();
   final previewSession = const Uuid().v4();
   int sequence = 0;
@@ -303,11 +517,17 @@ class _WidgetConfigurationEditorState extends State<WidgetConfigurationEditor> {
   bool saving = false, closing = false, allowClose = false, prompting = false;
   String? feedback;
   bool get tasks => widget.kind == DesktopWidgetKind.tasks;
-  bool get hasChanges => session.dirty;
+  bool get hasChanges =>
+      session.dirty ||
+      !WidgetEditSession.equivalent(
+        presets.toJson(),
+        committedPresets.toJson(),
+      );
 
   @override
   void initState() {
     super.initState();
+    loadPresets();
     if (widget.service?.isAvailable == true) {
       heartbeat = Timer.periodic(const Duration(seconds: 2), (_) => _preview());
     }
@@ -338,6 +558,7 @@ class _WidgetConfigurationEditorState extends State<WidgetConfigurationEditor> {
       )) {
         setState(() {
           session.reconcile(current);
+          history.clear();
           feedback = 'Updated from the widget. Your other changes are kept.';
         });
         _preview();
@@ -349,9 +570,11 @@ class _WidgetConfigurationEditorState extends State<WidgetConfigurationEditor> {
     }
   }
 
-  void change(WidgetConfiguration next) {
+  void change(WidgetConfiguration next, {WidgetPresets? library}) {
     if (saving || closing) return;
+    history.record(snapshot, (next, library ?? presets));
     setState(() {
+      presets = library ?? presets;
       session.draft = next;
       feedback = null;
     });
@@ -408,19 +631,35 @@ class _WidgetConfigurationEditorState extends State<WidgetConfigurationEditor> {
       feedback = null;
     });
     try {
+      if (!WidgetEditSession.equivalent(
+        presets.toJson(),
+        committedPresets.toJson(),
+      )) {
+        await widget.store?.savePresets(widget.kind, presets);
+      }
       final saved = widget.onApply == null
           ? draft
           : await widget.onApply!(draft, session.committed, all);
       if (!mounted) return false;
       setState(() {
         session.acceptSaved(saved);
+        committedPresets = presets;
+        history.clear();
         feedback = 'Changes saved';
       });
       await _preview();
       return true;
     } catch (e) {
       if (mounted) {
-        setState(() => feedback = 'Could not save widget settings: $e');
+        if (!WidgetEditSession.equivalent(
+          presets.toJson(),
+          committedPresets.toJson(),
+        )) {
+          await widget.store?.savePresets(widget.kind, committedPresets);
+        }
+        if (mounted) {
+          setState(() => feedback = 'Could not save widget settings: $e');
+        }
       }
       return false;
     } finally {
@@ -498,7 +737,9 @@ class _WidgetConfigurationEditorState extends State<WidgetConfigurationEditor> {
     double min = 0,
     int? divisions,
   }) {
-    final valueText = label == 'Text size'
+    final valueText = label == 'Calendar share'
+        ? '${(value * 100).round()}%'
+        : label == 'Text size'
         ? '${(value * 100).round()}%'
         : label.contains('Opacity')
         ? '${value.round()}%'
@@ -514,6 +755,8 @@ class _WidgetConfigurationEditorState extends State<WidgetConfigurationEditor> {
           divisions: divisions ?? (max - min).round(),
           label: valueText,
           semanticFormatterCallback: (_) => '$label $valueText',
+          onChangeStart: (_) => history.begin(snapshot),
+          onChangeEnd: (_) => setState(() => history.end(snapshot)),
           onChanged: change,
         ),
       ],
@@ -544,17 +787,26 @@ class _WidgetConfigurationEditorState extends State<WidgetConfigurationEditor> {
                 value: s.color,
                 onChanged: (v) => update({'color': v}),
               ),
-              if (key == 'input') ...[
+              if (key == 'input' ||
+                  key == 'taskRow' ||
+                  key == 'selectedNavigation') ...[
                 _ColorField(
                   label: 'Text color',
                   value: s.textColor,
                   onChanged: (v) => update({'textColor': v}),
                 ),
-                _ColorField(
-                  label: 'Placeholder color',
-                  value: s.placeholderColor,
-                  onChanged: (v) => update({'placeholderColor': v}),
+                slider(
+                  'Text Opacity',
+                  s.textOpacity.toDouble(),
+                  100,
+                  (v) => update({'textOpacity': v.round()}),
                 ),
+                if (key == 'input')
+                  _ColorField(
+                    label: 'Placeholder color',
+                    value: s.placeholderColor,
+                    onChanged: (v) => update({'placeholderColor': v}),
+                  ),
               ],
               slider(
                 'Opacity',
@@ -632,275 +884,290 @@ class _WidgetConfigurationEditorState extends State<WidgetConfigurationEditor> {
     onPopInvokedWithResult: (didPop, result) {
       if (!didPop) unawaited(requestClose());
     },
-    child: CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.escape): () =>
-            unawaited(requestClose()),
-      },
-      child: AlertDialog(
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                tasks ? 'Customize Tasks Widget' : 'Customize Calendar Widget',
-                style: Theme.of(context).textTheme.titleMedium,
+    child: SettingsHistoryScope(
+      undo: () => travel(false),
+      redo: () => travel(true),
+      child: CallbackShortcuts(
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.escape): () =>
+              unawaited(requestClose()),
+        },
+        child: AlertDialog(
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 24,
+          ),
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  tasks
+                      ? 'Customize Tasks Widget'
+                      : 'Customize Calendar Widget',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ),
-            ),
-            IconButton(
-              tooltip: 'Close editor',
-              onPressed: saving ? null : requestClose,
-              icon: const Icon(Icons.close),
-            ),
-          ],
-        ),
-        content: AbsorbPointer(
-          absorbing: saving,
-          child: ExcludeFocus(
-            excluding: saving,
-            child: Opacity(
-              opacity: saving ? .6 : 1,
-              child: Form(
-                key: formKey,
-                child: SizedBox(
-                  width: 560,
-                  child: FadingScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SettingsHelperText(
-                          'Preview changes on your desktop. Apply saves and keeps this editor open. Empty colors follow your theme.',
-                        ),
-                        const SizedBox(height: 12),
-                        if (!draft.enabled)
+              IconButton(
+                tooltip: 'Close editor',
+                onPressed: saving ? null : requestClose,
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+          content: AbsorbPointer(
+            absorbing: saving,
+            child: ExcludeFocus(
+              excluding: saving,
+              child: Opacity(
+                opacity: saving ? .6 : 1,
+                child: Form(
+                  key: formKey,
+                  child: SizedBox(
+                    width: 560,
+                    child: FadingScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
                           const SettingsHelperText(
-                            'Enable this widget in Settings to see its live desktop preview.',
+                            'Preview changes on your desktop. Apply saves and keeps this editor open. Empty colors follow your theme.',
                           ),
-                        if (feedback != null)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Semantics(
-                              liveRegion: true,
-                              child: Text(
-                                feedback!,
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
+                          const SizedBox(height: 12),
+                          if (!draft.enabled)
+                            const SettingsHelperText(
+                              'Enable this widget in Settings to see its live desktop preview.',
                             ),
-                          ),
-                        Text(
-                          hasChanges ? 'Unsaved changes' : 'All changes saved',
-                          style: Theme.of(context).textTheme.labelMedium,
-                        ),
-                        const SizedBox(height: 12),
-                        SettingsSection(
-                          title: 'General & visibility',
-                          initiallyExpanded: true,
-                          children: [
-                            SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: const Text('Show widget title'),
-                              value: draft.showTitle,
-                              onChanged: (v) =>
-                                  change(draft.copyWith(showTitle: v)),
-                            ),
-                            SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: const Text('Show Open App button'),
-                              value: draft.showOpenButton,
-                              onChanged: (v) =>
-                                  change(draft.copyWith(showOpenButton: v)),
-                            ),
-                            SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: const Text('Lock layout'),
-                              value: draft.layoutLocked,
-                              onChanged: (v) =>
-                                  change(draft.copyWith(layoutLocked: v)),
-                            ),
-                            if (!draft.hasHeader)
-                              const Padding(
-                                padding: EdgeInsets.all(12),
-                                child: SettingsHelperText(
-                                  'Use the top grip to move. Right-click for widget actions.',
+                          if (feedback != null)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Semantics(
+                                liveRegion: true,
+                                child: Text(
+                                  feedback!,
+                                  style: Theme.of(context).textTheme.bodySmall,
                                 ),
                               ),
-                          ],
-                        ),
-                        if (tasks)
+                            ),
+                          Text(
+                            hasChanges
+                                ? 'Unsaved changes'
+                                : 'All changes saved',
+                            style: Theme.of(context).textTheme.labelMedium,
+                          ),
+                          const SizedBox(height: 12),
+                          presetControls(),
                           SettingsSection(
-                            title: 'Layout & navigation',
+                            title: 'General & visibility',
+                            initiallyExpanded: true,
                             children: [
-                              for (final view in const [
-                                'today',
-                                'inbox',
-                                'all',
-                                'upcoming',
-                              ])
-                                CheckboxListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: Text(
-                                    {
-                                      'today': 'Today',
-                                      'inbox': 'Inbox',
-                                      'all': 'All Tasks',
-                                      'upcoming': 'Upcoming',
-                                    }[view]!,
-                                  ),
-                                  value: draft.views.contains(view),
-                                  onChanged: (v) => change(
-                                    draft.copyWith(
-                                      views: v == true
-                                          ? [...draft.views, view]
-                                          : draft.views
-                                                .where((x) => x != view)
-                                                .toList(),
-                                    ),
-                                  ),
-                                ),
-                              if (draft.views.isEmpty)
-                                const Text(
-                                  'The active view stays available. Use the right-click Task view menu to navigate.',
-                                ),
-                              DropdownButtonFormField<WidgetNavigationPosition>(
-                                key: ValueKey(
-                                  'navigation-position-${draft.navigationPosition.name}',
-                                ),
-                                initialValue: draft.navigationPosition,
-                                decoration: const InputDecoration(
-                                  labelText: 'Navigation position',
-                                ),
-                                items: [
-                                  for (final v
-                                      in WidgetNavigationPosition.values)
-                                    DropdownMenuItem(
-                                      value: v,
-                                      child: Text(v.name),
-                                    ),
-                                ],
-                                onChanged: (v) {
-                                  if (v != null) {
-                                    change(
-                                      draft.copyWith(navigationPosition: v),
-                                    );
-                                  }
-                                },
+                              SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: const Text('Show widget title'),
+                                value: draft.showTitle,
+                                onChanged: (v) =>
+                                    change(draft.copyWith(showTitle: v)),
                               ),
-                              const SizedBox(height: 12),
-                              DropdownButtonFormField<WidgetNavigationDisplay>(
-                                key: ValueKey(
-                                  'navigation-display-${draft.navigationDisplay.name}',
+                              SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: const Text('Show Open App button'),
+                                value: draft.showOpenButton,
+                                onChanged: (v) =>
+                                    change(draft.copyWith(showOpenButton: v)),
+                              ),
+                              SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: const Text('Lock layout'),
+                                value: draft.layoutLocked,
+                                onChanged: (v) =>
+                                    change(draft.copyWith(layoutLocked: v)),
+                              ),
+                              if (!draft.hasHeader)
+                                const Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: SettingsHelperText(
+                                    'Use the top grip to move. Right-click for widget actions.',
+                                  ),
                                 ),
-                                initialValue: draft.navigationDisplay,
-                                decoration: const InputDecoration(
-                                  labelText: 'Navigation display',
+                            ],
+                          ),
+                          if (tasks)
+                            SettingsSection(
+                              title: 'Layout & navigation',
+                              children: [
+                                navigationOrder(),
+                                if (draft.views.isEmpty)
+                                  const Text(
+                                    'The active view stays available. Use the right-click Task view menu to navigate.',
+                                  ),
+                                DropdownButtonFormField<
+                                  WidgetNavigationPosition
+                                >(
+                                  key: ValueKey(
+                                    'navigation-position-${draft.navigationPosition.name}',
+                                  ),
+                                  initialValue: draft.navigationPosition,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Navigation position',
+                                  ),
+                                  items: [
+                                    for (final v
+                                        in WidgetNavigationPosition.values)
+                                      DropdownMenuItem(
+                                        value: v,
+                                        child: Text(v.name),
+                                      ),
+                                  ],
+                                  onChanged: (v) {
+                                    if (v != null) {
+                                      change(
+                                        draft.copyWith(navigationPosition: v),
+                                      );
+                                    }
+                                  },
                                 ),
-                                items: [
-                                  for (final v
-                                      in WidgetNavigationDisplay.values)
-                                    DropdownMenuItem(
-                                      value: v,
-                                      child: Text(switch (v) {
-                                        WidgetNavigationDisplay.text =>
-                                          'Text only',
-                                        WidgetNavigationDisplay.icons =>
-                                          'Icons only',
-                                        WidgetNavigationDisplay.both =>
-                                          'Icon + text',
-                                      }),
-                                    ),
-                                ],
-                                onChanged: (v) {
-                                  if (v != null) {
-                                    change(
-                                      draft.copyWith(navigationDisplay: v),
-                                    );
-                                  }
-                                },
+                                const SizedBox(height: 12),
+                                DropdownButtonFormField<
+                                  WidgetNavigationDisplay
+                                >(
+                                  key: ValueKey(
+                                    'navigation-display-${draft.navigationDisplay.name}',
+                                  ),
+                                  initialValue: draft.navigationDisplay,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Navigation display',
+                                  ),
+                                  items: [
+                                    for (final v
+                                        in WidgetNavigationDisplay.values)
+                                      DropdownMenuItem(
+                                        value: v,
+                                        child: Text(switch (v) {
+                                          WidgetNavigationDisplay.text =>
+                                            'Text only',
+                                          WidgetNavigationDisplay.icons =>
+                                            'Icons only',
+                                          WidgetNavigationDisplay.both =>
+                                            'Icon + text',
+                                        }),
+                                      ),
+                                  ],
+                                  onChanged: (v) {
+                                    if (v != null) {
+                                      change(
+                                        draft.copyWith(navigationDisplay: v),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text(
+                              'Protect text on transparent surfaces',
+                            ),
+                            subtitle: const Text(
+                              'Add a subtle text shadow on transparent surfaces. Surface opacity stays as configured.',
+                            ),
+                            value: draft.protectText,
+                            onChanged: (v) =>
+                                change(draft.copyWith(protectText: v)),
+                          ),
+                          SettingsSection(
+                            title: 'Typography',
+                            children: [
+                              slider(
+                                'Text size',
+                                draft.textScale,
+                                1.6,
+                                (v) => change(draft.copyWith(textScale: v)),
+                                min: 1,
+                                divisions: 6,
                               ),
                             ],
                           ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text(
-                            'Protect text on transparent surfaces',
-                          ),
-                          subtitle: const Text(
-                            'Add a subtle text shadow on transparent surfaces. Surface opacity stays as configured.',
-                          ),
-                          value: draft.protectText,
-                          onChanged: (v) =>
-                              change(draft.copyWith(protectText: v)),
-                        ),
-                        SettingsSection(
-                          title: 'Typography',
-                          children: [
-                            slider(
-                              'Text size',
-                              draft.textScale,
-                              1.6,
-                              (v) => change(draft.copyWith(textScale: v)),
-                              min: 1,
-                              divisions: 6,
+                          surface('shell', 'Main widget surface'),
+                          surface('header', 'Header surface'),
+                          surface('content', 'Main content panel'),
+                          if (tasks) ...[
+                            surface('navigation', 'Navigation container'),
+                            surface('navigationButton', 'Navigation buttons'),
+                            surface(
+                              'selectedNavigation',
+                              'Selected navigation item',
                             ),
+                            surface('taskRow', 'Task rows'),
+                            surface('taskHover', 'Task hover'),
+                            surface('input', 'Quick-add input'),
+                          ] else ...[
+                            SettingsSection(
+                              title: 'Calendar & agenda space',
+                              children: [
+                                slider(
+                                  'Calendar share',
+                                  draft.calendarSplit ?? .5,
+                                  .8,
+                                  (v) =>
+                                      change(draft.copyWith(calendarSplit: v)),
+                                  min: .2,
+                                  divisions: 60,
+                                ),
+                                const SettingsHelperText(
+                                  'Drag the divider on the desktop widget too. Minimum sizes keep both sections usable.',
+                                ),
+                              ],
+                            ),
+                            surface('calendarCell', 'Calendar cells'),
+                            surface('agenda', 'Selected date agenda'),
+                            surface('selectedDate', 'Selected date indicator'),
+                            surface('today', 'Today indicator'),
                           ],
-                        ),
-                        surface('shell', 'Main widget surface'),
-                        surface('header', 'Header surface'),
-                        surface('content', 'Main content panel'),
-                        if (tasks) ...[
-                          surface('navigation', 'Navigation container'),
-                          surface('navigationButton', 'Navigation buttons'),
-                          surface('input', 'Quick-add input'),
-                        ] else ...[
-                          surface('calendarCell', 'Calendar cells'),
-                          surface('agenda', 'Selected date agenda'),
-                          surface('selectedDate', 'Selected date indicator'),
-                          surface('today', 'Today indicator'),
-                        ],
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: SettingsHelperText(
-                            'Today and selection follow your accent. Focused text input stays opaque for clear typing.',
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () => change(
-                            WidgetConfiguration().copyWith(
-                              enabled: draft.enabled,
-                              layoutLocked: draft.layoutLocked,
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            child: SettingsHelperText(
+                              'Low opacity or similar text and background colors can reduce readability, especially over wallpaper. Keep text protection enabled and check both themes. Focused text input stays opaque.',
                             ),
                           ),
-                          child: const Text('Reset customization to defaults'),
-                        ),
-                      ],
+                          TextButton(
+                            onPressed: () => change(
+                              WidgetConfiguration().copyWith(
+                                enabled: draft.enabled,
+                                layoutLocked: draft.layoutLocked,
+                              ),
+                            ),
+                            child: const Text(
+                              'Reset customization to defaults',
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ),
+          actions: [
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton(
+                  onPressed: saving ? null : applyAll,
+                  child: const Text('Apply to All Widgets'),
+                ),
+                TextButton(
+                  onPressed: saving ? null : _close,
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: saving ? null : () => _apply(false),
+                  child: Text(saving ? 'Saving...' : 'Apply'),
+                ),
+              ],
+            ),
+          ],
         ),
-        actions: [
-          Wrap(
-            alignment: WrapAlignment.end,
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              OutlinedButton(
-                onPressed: saving ? null : applyAll,
-                child: const Text('Apply to All Widgets'),
-              ),
-              TextButton(
-                onPressed: saving ? null : _close,
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: saving ? null : () => _apply(false),
-                child: Text(saving ? 'Saving...' : 'Apply'),
-              ),
-            ],
-          ),
-        ],
       ),
     ),
   );

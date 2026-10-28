@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
 import '../shared/sidebar_items.dart';
+import '../../domain/settings_history.dart';
+import '../shared/settings_history_scope.dart';
 
 class SidebarOrderDialog extends ConsumerStatefulWidget {
   const SidebarOrderDialog({super.key});
@@ -13,6 +15,16 @@ class SidebarOrderDialog extends ConsumerStatefulWidget {
 
 class _SidebarOrderDialogState extends ConsumerState<SidebarOrderDialog> {
   late List<WorkspaceView> order;
+  final history = SettingsHistory<List<WorkspaceView>>(
+    equal: (a, b) =>
+        a.length == b.length &&
+        List.generate(a.length, (i) => a[i] == b[i]).every((v) => v),
+  );
+  bool busy = false;
+  void travel(bool redo) {
+    if (busy) return;
+    _save(redo ? history.redo(order) : history.undo(order), record: false);
+  }
 
   @override
   void initState() {
@@ -20,16 +32,23 @@ class _SidebarOrderDialogState extends ConsumerState<SidebarOrderDialog> {
     order = List.of(ref.read(appControllerProvider).sidebarOrder);
   }
 
-  Future<void> _save(List<WorkspaceView> next) async {
+  Future<void> _save(List<WorkspaceView> next, {bool record = true}) async {
+    if (busy) return;
+    busy = true;
+    final previous = List<WorkspaceView>.of(order);
     try {
       await ref.read(appControllerProvider).setSidebarOrder(next);
+      if (record) history.record(previous, List.unmodifiable(next));
       if (mounted) setState(() => order = next);
     } catch (error) {
+      history.clear();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not save sidebar order: $error')),
         );
       }
+    } finally {
+      busy = false;
     }
   }
 
@@ -41,86 +60,90 @@ class _SidebarOrderDialogState extends ConsumerState<SidebarOrderDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => Dialog(
-    child: ConstrainedBox(
-      constraints: BoxConstraints(
-        maxWidth: 460,
-        maxHeight: MediaQuery.sizeOf(context).height - 48,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Sidebar order',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Close',
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
-            ),
-            const Text('Drag a row, or use the arrow buttons to move it.'),
-            const SizedBox(height: 12),
-            Flexible(
-              child: ReorderableListView.builder(
-                shrinkWrap: true,
-                buildDefaultDragHandles: false,
-                itemCount: order.length,
-                onReorderItem: _move,
-                itemBuilder: (context, index) {
-                  final view = order[index];
-                  return ListTile(
-                    key: ValueKey(view),
-                    dense: true,
-                    leading: Icon(sidebarIcon(view)),
-                    title: Text(sidebarName(view)),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          tooltip: 'Move ${sidebarName(view)} up',
-                          onPressed: index == 0
-                              ? null
-                              : () => _move(index, index - 1),
-                          icon: const Icon(Icons.keyboard_arrow_up),
-                        ),
-                        IconButton(
-                          tooltip: 'Move ${sidebarName(view)} down',
-                          onPressed: index == order.length - 1
-                              ? null
-                              : () => _move(index, index + 1),
-                          icon: const Icon(Icons.keyboard_arrow_down),
-                        ),
-                        ReorderableDragStartListener(
-                          index: index,
-                          child: const Icon(
-                            Icons.drag_handle,
-                            semanticLabel: 'Drag to reorder',
-                          ),
-                        ),
-                      ],
+  Widget build(BuildContext context) => SettingsHistoryScope(
+    undo: () => travel(false),
+    redo: () => travel(true),
+    child: Dialog(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 460,
+          maxHeight: MediaQuery.sizeOf(context).height - 48,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Sidebar order',
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
-                  );
-                },
+                  ),
+                  IconButton(
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
               ),
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () =>
-                    _save(List.of(AppController.defaultSidebarOrder)),
-                child: const Text('Reset to default'),
+              const Text('Drag a row, or use the arrow buttons to move it.'),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ReorderableListView.builder(
+                  shrinkWrap: true,
+                  buildDefaultDragHandles: false,
+                  itemCount: order.length,
+                  onReorderItem: _move,
+                  itemBuilder: (context, index) {
+                    final view = order[index];
+                    return ListTile(
+                      key: ValueKey(view),
+                      dense: true,
+                      leading: Icon(sidebarIcon(view)),
+                      title: Text(sidebarName(view)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: 'Move ${sidebarName(view)} up',
+                            onPressed: index == 0
+                                ? null
+                                : () => _move(index, index - 1),
+                            icon: const Icon(Icons.keyboard_arrow_up),
+                          ),
+                          IconButton(
+                            tooltip: 'Move ${sidebarName(view)} down',
+                            onPressed: index == order.length - 1
+                                ? null
+                                : () => _move(index, index + 1),
+                            icon: const Icon(Icons.keyboard_arrow_down),
+                          ),
+                          ReorderableDragStartListener(
+                            index: index,
+                            child: const Icon(
+                              Icons.drag_handle,
+                              semanticLabel: 'Drag to reorder',
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () =>
+                      _save(List.of(AppController.defaultSidebarOrder)),
+                  child: const Text('Reset to default'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     ),

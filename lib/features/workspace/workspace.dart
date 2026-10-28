@@ -8,7 +8,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
 import '../../data/app_database.dart';
+import '../../data/life_repository.dart';
 import '../../domain/models.dart';
+import '../../domain/navigation_request.dart';
+import '../calendar/event_editor.dart';
+import '../calendar/session_editor.dart';
 import '../../domain/widget_configuration.dart';
 import '../../domain/recurrence.dart';
 import '../../domain/time_tracking.dart';
@@ -43,11 +47,13 @@ class Workspace extends ConsumerStatefulWidget {
   const Workspace({
     super.key,
     this.openAppearance = false,
+    this.initialNavigation,
     this.editWidget,
     this.legacyImportFile,
   });
 
   final bool openAppearance;
+  final String? initialNavigation;
   final DesktopWidgetKind? editWidget;
   final File? legacyImportFile;
 
@@ -118,6 +124,106 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   bool _appearanceDialogOpen = false;
   bool _widgetSettingsOpen = false;
   final _widgetSettingsController = WidgetSettingsController();
+  NavigationRequest? pendingNavigation;
+  DateTime? navigationDay;
+  bool navigating = false;
+  void receiveNavigation(String payload) {
+    try {
+      final request = NavigationRequest.decode(payload);
+      final current = ref.read(appControllerProvider).selectedTask;
+      if (request.kind == 'task' && current?.id == request.id) return;
+      setState(() => pendingNavigation = request);
+      unawaited(deliverNavigation());
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Cannot open widget item: $e')));
+    }
+  }
+
+  Future<void> deliverNavigation() async {
+    final request = pendingNavigation;
+    final controller = ref.read(appControllerProvider);
+    if (request == null ||
+        navigating ||
+        creating ||
+        controller.selectedTask != null ||
+        ModalRoute.of(context)?.isCurrent != true) {
+      return;
+    }
+    navigating = true;
+    setState(() => pendingNavigation = null);
+    try {
+      await controller.refresh();
+      if (!mounted) return;
+      if (request.kind == 'task') {
+        if (!controller.tasks.any((t) => t.id == request.id)) {
+          throw StateError('Task is no longer available');
+        }
+        controller.navigate(WorkspaceView.all);
+        controller.select(request.id);
+      } else {
+        final day = DateTime.parse(request.day ?? localDate(DateTime.now()));
+        setState(() => navigationDay = day);
+        controller.navigate(WorkspaceView.calendar);
+        Widget editor;
+        if (request.kind == 'event') {
+          final events = await controller.repository.eventOccurrences(
+            localDate(day),
+            localDate(day.add(const Duration(days: 1))),
+          );
+          final event = events
+              .where(
+                (e) =>
+                    e.id == request.id &&
+                    (request.nominalDate == null ||
+                        e.nominalDate == request.nominalDate),
+              )
+              .firstOrNull;
+          if (event == null) {
+            throw StateError('Event occurrence is no longer available');
+          }
+          if (!mounted) return;
+          editor = EventEditor(
+            event: event,
+            initialDay: day,
+            onClose: () => Navigator.of(context, rootNavigator: true).pop(),
+          );
+        } else {
+          final session = controller.sessions
+              .where((s) => s.id == request.id)
+              .firstOrNull;
+          if (session == null) {
+            throw StateError('Session is no longer available');
+          }
+          editor = SessionEditor(
+            session: session,
+            initialDay: day,
+            onClose: () => Navigator.of(context, rootNavigator: true).pop(),
+          );
+        }
+        if (!mounted) return;
+        await showDialog<void>(
+          context: context,
+          builder: (_) => Dialog(
+            child: SizedBox(
+              width: 520,
+              height: (MediaQuery.sizeOf(context).height - 64).clamp(240, 650),
+              child: editor,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Cannot open widget item: $e')));
+      }
+    } finally {
+      navigating = false;
+    }
+  }
+
   bool creating = false;
   DateTime? newTaskInitialDate;
   final nativeWidget = NativeWidgetService();
@@ -132,7 +238,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       _activationChannel.setMethodCallHandler((call) async {
         if (call.method != 'activate' || !mounted) return;
         final command = call.arguments;
-        if (command == 'appearance') {
+        if (command is String && command.startsWith('navigate:')) {
+          receiveNavigation(command.substring(9));
+        } else if (command == 'appearance') {
           _openAppearanceDialog();
         } else if (command is String && command.startsWith('widget:')) {
           _openWidgetSettings(
@@ -141,11 +249,18 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 : DesktopWidgetKind.tasks,
           );
         } else if (command is String && command.startsWith('task:')) {
-          ref.read(appControllerProvider).select(command.substring(5));
+          receiveNavigation(
+            NavigationRequest(kind: 'task', id: command.substring(5)).encode(),
+          );
         }
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _activationChannel.invokeMethod<void>('ready');
+      });
+    }
+    if (widget.initialNavigation != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) receiveNavigation(widget.initialNavigation!);
       });
     }
     if (widget.editWidget != null) {
@@ -318,6 +433,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   void _closeEditor() {
     ref.read(appControllerProvider).select(null);
     setState(() => creating = false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(deliverNavigation());
+    });
   }
 
   Future<void> _run(Future<void> Function() action) async {
@@ -572,6 +690,32 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       child: Focus(
         autofocus: true,
         child: Scaffold(
+          bottomNavigationBar: pendingNavigation == null
+              ? null
+              : SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Widget item waiting. Finish the current editor or dialog to open it.',
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => deliverNavigation(),
+                          child: const Text('Open requested item'),
+                        ),
+                        IconButton(
+                          tooltip: 'Dismiss navigation request',
+                          onPressed: () =>
+                              setState(() => pendingNavigation = null),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
           body: LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 1050;
@@ -1122,6 +1266,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     }
     if (controller.view == WorkspaceView.calendar) {
       return CalendarView(
+        key: ValueKey(navigationDay),
+        initialDate: navigationDay,
         onAddTask: _newTaskOn,
         onTaskTap: (task) {
           controller.select(task.id);

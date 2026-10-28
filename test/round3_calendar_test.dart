@@ -89,6 +89,7 @@ void main() {
           child: MaterialApp(
             home: Scaffold(
               body: CalendarView(
+                initialDate: DateTime(2026, 10, 15),
                 onTaskTap: (_) {},
                 onSmartReschedule: () {},
                 onAddTask: (date) => requestedTaskDate = date,
@@ -99,7 +100,7 @@ void main() {
       );
       await tester.tap(find.text('Month'));
       await tester.pumpAndSettle();
-      final cell = find.text('${DateTime.now().day}').first;
+      final cell = find.text('15');
       await tester.tapAt(
         tester.getCenter(cell),
         buttons: kSecondaryMouseButton,
@@ -108,7 +109,7 @@ void main() {
       expect(find.text('Add Event'), findsOneWidget);
       await tester.tap(find.text('Add Task'));
       await tester.pumpAndSettle();
-      expect(localDate(requestedTaskDate!), localDate(DateTime.now()));
+      expect(localDate(requestedTaskDate!), '2026-10-15');
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
       await db.close();

@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/app_controller.dart';
 import 'app/privacy_manager.dart';
 import 'data/app_database.dart';
+import 'data/widget_configuration_store.dart';
 import 'data/appearance_preference_store.dart';
 import 'data/calendar_preference_store.dart';
 import 'data/backup_service.dart';
@@ -111,6 +112,7 @@ Future<void> _startApplication(
     appearanceStore: appearanceStore,
     calendarPreferenceStore: calendarPreferenceStore,
     backupService: backupService,
+    widgetStore: WidgetConfigurationStore(databaseFile.parent),
   );
   var controllerInitialized = false;
   try {
@@ -158,7 +160,8 @@ Future<void> _startApplication(
     }
     if (companion.isAvailable &&
         ((await controller.repository.notificationSettings()).enabled ||
-            await controller.repository.hasEventReminders())) {
+            await controller.repository.hasEventReminders() ||
+            await controller.repository.hasTaskReminders())) {
       try {
         await companion.ensureRemindersRunning();
       } catch (failure) {
@@ -190,6 +193,11 @@ Future<void> _startApplication(
               databaseFile: databaseFile,
               appearanceFile: appearanceStore.file,
               openAppearance: args.contains('--appearance'),
+              initialNavigation:
+                  args.contains('--navigate') &&
+                      args.indexOf('--navigate') + 1 < args.length
+                  ? args[args.indexOf('--navigate') + 1]
+                  : null,
               editWidget: args.contains('--edit-widget')
                   ? (args.contains('calendar')
                         ? DesktopWidgetKind.calendar
@@ -376,6 +384,7 @@ class LifeManagerApp extends ConsumerStatefulWidget {
     this.appearanceFile,
     this.openAppearance = false,
     this.editWidget,
+    this.initialNavigation,
     this.legacyImportFile,
   });
 
@@ -383,6 +392,7 @@ class LifeManagerApp extends ConsumerStatefulWidget {
   final File? appearanceFile;
   final bool openAppearance;
   final DesktopWidgetKind? editWidget;
+  final String? initialNavigation;
   final File? legacyImportFile;
 
   @override
@@ -541,6 +551,7 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
                 child: Workspace(
                   openAppearance: widget.openAppearance,
                   editWidget: widget.editWidget,
+                  initialNavigation: widget.initialNavigation,
                   legacyImportFile: widget.legacyImportFile,
                 ),
               ),

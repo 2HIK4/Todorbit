@@ -6,6 +6,9 @@ import 'package:path/path.dart' as path;
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:crypto/crypto.dart';
 
+import 'widget_configuration_store.dart';
+import '../domain/notifications.dart';
+
 enum BackupKind { automatic, beforeUpgrade, beforeRestore, manual }
 
 class BackupRecord {
@@ -217,7 +220,7 @@ class BackupService {
       final sourcePath = source.path;
       final temporaryPath = temporary.path;
       final schema = await Isolate.run(
-        () => _writeSnapshot(sourcePath, temporaryPath),
+        () => _writeSnapshot(sourcePath, temporaryPath, includeWidgets: false),
       );
       if (schema < 1 || schema > appSchemaVersion) {
         throw StateError('Import schema $schema is unsupported');
@@ -395,6 +398,12 @@ class BackupService {
         sourceSchema > appSchemaVersion) {
       throw StateError('Scheduled backup schema is unsupported or changed');
     }
+    final widgetBundle = await Isolate.run(
+      () => _snapshotWidgets(snapshotPath),
+    );
+    if (widgetBundle != null) {
+      WidgetConfigurationStore.validateBundle(widgetBundle);
+    }
     final rollback = await createBackup(BackupKind.beforeRestore);
     final targetPath = databaseFile.path;
     await Isolate.run(() => _restoreSnapshot(snapshotPath, targetPath));
@@ -403,6 +412,10 @@ class BackupService {
     );
     if (restoredSchema != sourceSchema) {
       throw StateError('Restored database failed schema verification');
+    }
+    if (widgetBundle != null) {
+      await WidgetConfigurationStore(databaseFile.parent)
+          .importBundle(widgetBundle);
     }
     await _restoreStatus.writeAsString(
       jsonEncode({
@@ -463,6 +476,9 @@ void _validateLifeManagerSnapshot(String filePath) {
     final required = <String>{'tasks', 'categories', 'projects'};
     if (schema >= 2) {
       required.add('fixed_events');
+    }
+    if (schema >= 22) {
+      required.add('task_reminder_deliveries');
     }
     if (schema >= 21) {
       required.add('event_detail_types');
@@ -545,6 +561,22 @@ void _validateLifeManagerSnapshot(String filePath) {
     if (connection.select('PRAGMA foreign_key_check').isNotEmpty) {
       throw StateError('Snapshot has broken record relationships');
     }
+    if (schema >= 22) {
+      final columns = connection
+          .select('PRAGMA table_info(tasks)')
+          .map((r) => r['name']);
+      if (!columns.contains('notification_json')) {
+        throw StateError('Missing task notification configuration');
+      }
+      for (final row in connection.select(
+        'SELECT notification_json FROM tasks',
+      )) {
+        TaskNotification.fromJson(
+          jsonDecode(row['notification_json'] as String)
+              as Map<String, dynamic>,
+        );
+      }
+    }
     if (schema >= 15) {
       if (connection
           .select(
@@ -598,7 +630,11 @@ int _inspectSnapshot(String sourcePath) {
   }
 }
 
-int _writeSnapshot(String sourcePath, String destinationPath) {
+int _writeSnapshot(
+  String sourcePath,
+  String destinationPath, {
+  bool includeWidgets = true,
+}) {
   final source = sqlite.sqlite3.open(
     sourcePath,
     mode: sqlite.OpenMode.readOnly,
@@ -612,6 +648,21 @@ int _writeSnapshot(String sourcePath, String destinationPath) {
     source.execute("VACUUM INTO '$escaped'");
   } finally {
     source.close();
+  }
+  if (!includeWidgets) return _inspectSnapshot(destinationPath);
+  final bundle = WidgetConfigurationStore(Directory(path.dirname(sourcePath)))
+      .exportBundle();
+  final snapshot = sqlite.sqlite3.open(destinationPath);
+  try {
+    snapshot.execute(
+      'CREATE TABLE IF NOT EXISTS backup_widget_personalization (id INTEGER PRIMARY KEY CHECK(id=1),json TEXT NOT NULL)',
+    );
+    snapshot.execute(
+      'INSERT OR REPLACE INTO backup_widget_personalization VALUES(1,?)',
+      [jsonEncode(bundle)],
+    );
+  } finally {
+    snapshot.close();
   }
   return _inspectSnapshot(destinationPath);
 }
@@ -627,6 +678,8 @@ Future<void> _restoreSnapshot(String snapshotPath, String targetPath) async {
     target.execute('PRAGMA locking_mode=EXCLUSIVE');
     target.select('PRAGMA quick_check');
     await source.backup(target, nPage: -1).drain<void>();
+    // The envelope table belongs to the snapshot, not the planner schema.
+    target.execute('DROP TABLE IF EXISTS backup_widget_personalization');
   } finally {
     target.close();
     source.close();
@@ -671,3 +724,27 @@ BackupSummary _summarizeSnapshot(String snapshotPath) {
 
 Future<String> _hashFile(String filePath) async =>
     (await sha256.bind(File(filePath).openRead()).first).toString();
+
+Map<String, dynamic>? _snapshotWidgets(String filename) {
+  final db = sqlite.sqlite3.open(filename, mode: sqlite.OpenMode.readOnly);
+  try {
+    if (db
+        .select(
+          "SELECT name FROM sqlite_master WHERE name='backup_widget_personalization'",
+        )
+        .isEmpty) {
+      return null;
+    }
+    final rows = db.select(
+      'SELECT json FROM backup_widget_personalization WHERE id=1',
+    );
+    if (rows.isEmpty) return null;
+    final raw = rows.single['json'] as String;
+    if (utf8.encode(raw).length > 1200 * 1024) {
+      throw const FormatException('Widget personalization too large');
+    }
+    return jsonDecode(raw) as Map<String, dynamic>;
+  } finally {
+    db.close();
+  }
+}

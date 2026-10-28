@@ -12,6 +12,8 @@ import '../shared/text_prompt_dialog.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/appearance.dart';
+import '../../domain/settings_history.dart';
+import '../shared/settings_history_scope.dart';
 import '../workspace/windows_resource_dialog.dart';
 
 class ThemeDialog extends ConsumerStatefulWidget {
@@ -22,6 +24,25 @@ class ThemeDialog extends ConsumerStatefulWidget {
 }
 
 class _ThemeDialogState extends ConsumerState<ThemeDialog> {
+  final history = SettingsHistory<ThemeCustomization>(
+    equal: (a, b) => jsonEncode(a.toJson()) == jsonEncode(b.toJson()),
+  );
+  bool replaying = false;
+  void travel(bool redo) {
+    replaying = true;
+    setState(() => draft = redo ? history.redo(draft) : history.undo(draft));
+    replaying = false;
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    final before = draft;
+    super.setState(() {
+      fn();
+      if (!replaying) history.record(before, draft);
+    });
+  }
+
   bool dark = false;
   late ThemeCustomization draft;
   String? message;
@@ -112,319 +133,365 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
   @override
   Widget build(BuildContext context) {
     final contrast = palette.contrast('primaryText', 'surface');
-    return AlertDialog(
-      title: const Text('Customize Theme'),
-      content: SizedBox(
-        width: 560,
-        height: 560,
-        child: Column(
-          children: [
-            LayoutBuilder(
-              builder: (context, constraints) =>
-                  constraints.maxWidth <
-                      360 * MediaQuery.textScalerOf(context).scale(1)
-                  ? AnchoredSelectField<bool>(
-                      initialValue: dark,
-                      decoration: const InputDecoration(labelText: 'Palette'),
-                      items: const [
-                        DropdownMenuItem(
-                          value: false,
-                          child: Text('Light Mode'),
+    return SettingsHistoryScope(
+      undo: () => travel(false),
+      redo: () => travel(true),
+      child: AlertDialog(
+        title: const Text('Customize Theme'),
+        content: SizedBox(
+          width: 560,
+          height: 560,
+          child: Column(
+            children: [
+              LayoutBuilder(
+                builder: (context, constraints) =>
+                    constraints.maxWidth <
+                        360 * MediaQuery.textScalerOf(context).scale(1)
+                    ? AnchoredSelectField<bool>(
+                        initialValue: dark,
+                        decoration: const InputDecoration(labelText: 'Palette'),
+                        items: const [
+                          DropdownMenuItem(
+                            value: false,
+                            child: Text('Light Mode'),
+                          ),
+                          DropdownMenuItem(
+                            value: true,
+                            child: Text('Dark Mode'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) setState(() => dark = value);
+                        },
+                      )
+                    : SegmentedButton<bool>(
+                        showSelectedIcon: false,
+                        segments: const [
+                          ButtonSegment(
+                            value: false,
+                            label: Text('Light Mode'),
+                          ),
+                          ButtonSegment(value: true, label: Text('Dark Mode')),
+                        ],
+                        selected: {dark},
+                        onSelectionChanged: (value) =>
+                            setState(() => dark = value.first),
+                      ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: FadingListView(
+                  padding: const EdgeInsets.only(top: 8, right: 8, bottom: 16),
+                  children: [
+                    for (final key in ThemePalette.keys)
+                      ListTile(
+                        dense: true,
+                        title: Text(_label(key)),
+                        subtitle: Text(palette.toJson()[key]!),
+                        trailing: CircleAvatar(
+                          radius: 16,
+                          backgroundColor: palette[key],
                         ),
-                        DropdownMenuItem(value: true, child: Text('Dark Mode')),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) setState(() => dark = value);
-                      },
-                    )
-                  : SegmentedButton<bool>(
-                      showSelectedIcon: false,
-                      segments: const [
-                        ButtonSegment(value: false, label: Text('Light Mode')),
-                        ButtonSegment(value: true, label: Text('Dark Mode')),
-                      ],
-                      selected: {dark},
-                      onSelectionChanged: (value) =>
-                          setState(() => dark = value.first),
-                    ),
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: FadingListView(
-                padding: const EdgeInsets.only(top: 8, right: 8, bottom: 16),
-                children: [
-                  for (final key in ThemePalette.keys)
+                        onTap: () => editColor(key),
+                      ),
+                    const Divider(),
                     ListTile(
-                      dense: true,
-                      title: Text(_label(key)),
-                      subtitle: Text(palette.toJson()[key]!),
-                      trailing: CircleAvatar(
-                        radius: 16,
-                        backgroundColor: palette[key],
+                      title: const Text('Preview task'),
+                      subtitle: const Text(
+                        'Your colors update here before saving.',
                       ),
-                      onTap: () => editColor(key),
+                      tileColor: palette['surface'],
+                      textColor: palette['primaryText'],
+                      iconColor: palette['accent'],
+                      leading: const Icon(Icons.check_circle_outline),
                     ),
-                  const Divider(),
-                  ListTile(
-                    title: const Text('Preview task'),
-                    subtitle: const Text(
-                      'Your colors update here before saving.',
-                    ),
-                    tileColor: palette['surface'],
-                    textColor: palette['primaryText'],
-                    iconColor: palette['accent'],
-                    leading: const Icon(Icons.check_circle_outline),
-                  ),
-                  if (contrast < 4.5)
-                    Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Text(
-                        'Contrast warning: primary text on surface is ${contrast.toStringAsFixed(1)}:1; aim for at least 4.5:1.',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
+                    if (contrast < 4.5)
+                      Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Text(
+                          'Contrast warning: primary text on surface is ${contrast.toStringAsFixed(1)}:1; aim for at least 4.5:1.',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
                         ),
                       ),
-                    ),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      TextButton(
-                        onPressed: () => update(
-                          dark ? ThemePalette.dusk : ThemePalette.ocean,
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        TextButton(
+                          onPressed: () => update(
+                            dark ? ThemePalette.dusk : ThemePalette.ocean,
+                          ),
+                          child: Text(dark ? 'Try Dusk' : 'Try Ocean'),
                         ),
-                        child: Text(dark ? 'Try Dusk' : 'Try Ocean'),
-                      ),
-                      TextButton(
-                        onPressed: () => update(defaults),
-                        child: const Text('Reset this mode'),
-                      ),
-                      TextButton(
-                        onPressed: () =>
-                            setState(() => draft = const ThemeCustomization()),
-                        child: const Text('Reset all themes'),
-                      ),
-                      TextButton(
-                        onPressed: savePreset,
-                        child: const Text('Save as preset'),
-                      ),
-                    ],
-                  ),
-                  for (final entry in draft.presets.entries)
-                    ListTile(
-                      title: Text(entry.key),
-                      onTap: () => update(entry.value),
-                      trailing: PopupMenuButton<String>(
-                        onSelected: (action) async {
-                          if (action == 'delete') {
-                            setState(() {
-                              final next = {...draft.presets}
-                                ..remove(entry.key);
-                              draft = draft.copyWith(presets: next);
-                            });
-                          } else if (action == 'rename' ||
-                              action == 'duplicate') {
-                            final name = await askText(
-                              action == 'rename'
-                                  ? 'Rename preset'
-                                  : 'Duplicate preset',
-                              initial: action == 'rename'
-                                  ? entry.key
-                                  : '${entry.key} copy',
-                            );
-                            if (name == null ||
-                                name.isEmpty ||
-                                draft.presets.containsKey(name)) {
-                              return;
+                        TextButton(
+                          onPressed: () => update(defaults),
+                          child: const Text('Reset this mode'),
+                        ),
+                        TextButton(
+                          onPressed: () => setState(
+                            () => draft = const ThemeCustomization(),
+                          ),
+                          child: const Text('Reset all themes'),
+                        ),
+                        TextButton(
+                          onPressed: savePreset,
+                          child: const Text('Save as preset'),
+                        ),
+                      ],
+                    ),
+                    for (final entry in draft.presets.entries)
+                      ListTile(
+                        title: Text(entry.key),
+                        onTap: () => update(entry.value),
+                        trailing: PopupMenuButton<String>(
+                          onSelected: (action) async {
+                            if (action == 'delete') {
+                              setState(() {
+                                final next = {...draft.presets}
+                                  ..remove(entry.key);
+                                draft = draft.copyWith(presets: next);
+                              });
+                            } else if (action == 'rename' ||
+                                action == 'duplicate') {
+                              final name = await askText(
+                                action == 'rename'
+                                    ? 'Rename preset'
+                                    : 'Duplicate preset',
+                                initial: action == 'rename'
+                                    ? entry.key
+                                    : '${entry.key} copy',
+                              );
+                              if (name == null ||
+                                  name.isEmpty ||
+                                  draft.presets.containsKey(name)) {
+                                return;
+                              }
+                              setState(() {
+                                final next = {...draft.presets};
+                                if (action == 'rename') next.remove(entry.key);
+                                next[name] = entry.value;
+                                draft = draft.copyWith(presets: next);
+                              });
                             }
-                            setState(() {
-                              final next = {...draft.presets};
-                              if (action == 'rename') next.remove(entry.key);
-                              next[name] = entry.value;
-                              draft = draft.copyWith(presets: next);
-                            });
+                          },
+                          itemBuilder: (_) => const [
+                            PopupMenuItem(
+                              value: 'duplicate',
+                              child: Text('Duplicate'),
+                            ),
+                            PopupMenuItem(
+                              value: 'rename',
+                              child: Text('Rename'),
+                            ),
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Text('Delete'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        TextButton(
+                          onPressed: () => transfer(true),
+                          child: const Text('Import JSON'),
+                        ),
+                        TextButton(
+                          onPressed: () => transfer(false),
+                          child: const Text('Export JSON'),
+                        ),
+                      ],
+                    ),
+                    if (message != null)
+                      Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Text(message!),
+                      ),
+                    if (draft.author != null)
+                      ListTile(
+                        dense: true,
+                        title: Text('Theme by ${draft.author}'),
+                        trailing: draft.authorProfile == null
+                            ? null
+                            : const Icon(Icons.open_in_new),
+                        onTap: draft.authorProfile == null
+                            ? null
+                            : () async {
+                                try {
+                                  await const WindowsResourceDialog().open(
+                                    draft.authorProfile.toString(),
+                                  );
+                                } catch (error) {
+                                  setState(
+                                    () => message =
+                                        'Could not open profile: $error',
+                                  );
+                                }
+                              },
+                      ),
+                    const Divider(),
+                    SwitchListTile(
+                      title: const Text('Compact task and control spacing'),
+                      value: draft.compact,
+                      onChanged: (value) => setState(
+                        () => draft = draft.copyWith(compact: value),
+                      ),
+                    ),
+                    ListTile(
+                      title: Text(
+                        'Text scale · ${(draft.textScale * 100).round()}%',
+                      ),
+                      subtitle: Slider(
+                        onChangeStart: (_) => history.begin(draft),
+                        onChangeEnd: (_) => setState(() => history.end(draft)),
+                        value: draft.textScale,
+                        min: 0.85,
+                        max: 1.5,
+                        divisions: 13,
+                        onChanged: (value) => setState(
+                          () => draft = draft.copyWith(textScale: value),
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      title: Text('Sidebar width · ${draft.sidebarWidth}px'),
+                      subtitle: Slider(
+                        onChangeStart: (_) => history.begin(draft),
+                        onChangeEnd: (_) => setState(() => history.end(draft)),
+                        value: draft.sidebarWidth.toDouble(),
+                        min: 190,
+                        max: 330,
+                        divisions: 14,
+                        onChanged: (value) => setState(
+                          () => draft = draft.copyWith(
+                            sidebarWidth: value.round(),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      child: AnchoredSelectField<String>(
+                        decoration: const InputDecoration(
+                          labelText: 'Opening screen',
+                        ),
+                        key: ValueKey(draft.openingScreen),
+                        initialValue: draft.openingScreen,
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'today',
+                            child: Text('Today'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'inbox',
+                            child: Text('Inbox'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'calendar',
+                            child: Text('Calendar'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'habits',
+                            child: Text('Habits'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'goals',
+                            child: Text('Goals'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(
+                              () =>
+                                  draft = draft.copyWith(openingScreen: value),
+                            );
                           }
                         },
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(
-                            value: 'duplicate',
-                            child: Text('Duplicate'),
-                          ),
-                          PopupMenuItem(value: 'rename', child: Text('Rename')),
-                          PopupMenuItem(value: 'delete', child: Text('Delete')),
-                        ],
                       ),
                     ),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      TextButton(
-                        onPressed: () => transfer(true),
-                        child: const Text('Import JSON'),
-                      ),
-                      TextButton(
-                        onPressed: () => transfer(false),
-                        child: const Text('Export JSON'),
-                      ),
-                    ],
-                  ),
-                  if (message != null)
                     Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Text(message!),
-                    ),
-                  if (draft.author != null)
-                    ListTile(
-                      dense: true,
-                      title: Text('Theme by ${draft.author}'),
-                      trailing: draft.authorProfile == null
-                          ? null
-                          : const Icon(Icons.open_in_new),
-                      onTap: draft.authorProfile == null
-                          ? null
-                          : () async {
-                              try {
-                                await const WindowsResourceDialog().open(
-                                  draft.authorProfile.toString(),
-                                );
-                              } catch (error) {
-                                setState(
-                                  () => message =
-                                      'Could not open profile: $error',
-                                );
-                              }
-                            },
-                    ),
-                  const Divider(),
-                  SwitchListTile(
-                    title: const Text('Compact task and control spacing'),
-                    value: draft.compact,
-                    onChanged: (value) =>
-                        setState(() => draft = draft.copyWith(compact: value)),
-                  ),
-                  ListTile(
-                    title: Text(
-                      'Text scale · ${(draft.textScale * 100).round()}%',
-                    ),
-                    subtitle: Slider(
-                      value: draft.textScale,
-                      min: 0.85,
-                      max: 1.5,
-                      divisions: 13,
-                      onChanged: (value) => setState(
-                        () => draft = draft.copyWith(textScale: value),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
                       ),
-                    ),
-                  ),
-                  ListTile(
-                    title: Text('Sidebar width · ${draft.sidebarWidth}px'),
-                    subtitle: Slider(
-                      value: draft.sidebarWidth.toDouble(),
-                      min: 190,
-                      max: 330,
-                      divisions: 14,
-                      onChanged: (value) => setState(
-                        () =>
-                            draft = draft.copyWith(sidebarWidth: value.round()),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: AnchoredSelectField<String>(
-                      decoration: const InputDecoration(
-                        labelText: 'Opening screen',
-                      ),
-                      key: ValueKey(draft.openingScreen),
-                      initialValue: draft.openingScreen,
-                      items: const [
-                        DropdownMenuItem(value: 'today', child: Text('Today')),
-                        DropdownMenuItem(value: 'inbox', child: Text('Inbox')),
-                        DropdownMenuItem(
-                          value: 'calendar',
-                          child: Text('Calendar'),
+                      child: AnchoredSelectField<String>(
+                        decoration: const InputDecoration(
+                          labelText: 'Default calendar view',
                         ),
-                        DropdownMenuItem(
-                          value: 'habits',
-                          child: Text('Habits'),
-                        ),
-                        DropdownMenuItem(value: 'goals', child: Text('Goals')),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(
-                            () => draft = draft.copyWith(openingScreen: value),
-                          );
-                        }
-                      },
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: AnchoredSelectField<String>(
-                      decoration: const InputDecoration(
-                        labelText: 'Default calendar view',
+                        key: ValueKey(draft.calendarDefaultView),
+                        initialValue: draft.calendarDefaultView,
+                        items: const [
+                          DropdownMenuItem(value: 'day', child: Text('Day')),
+                          DropdownMenuItem(value: 'week', child: Text('Week')),
+                          DropdownMenuItem(
+                            value: 'month',
+                            child: Text('Month'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(
+                              () => draft = draft.copyWith(
+                                calendarDefaultView: value,
+                              ),
+                            );
+                          }
+                        },
                       ),
-                      key: ValueKey(draft.calendarDefaultView),
-                      initialValue: draft.calendarDefaultView,
-                      items: const [
-                        DropdownMenuItem(value: 'day', child: Text('Day')),
-                        DropdownMenuItem(value: 'week', child: Text('Week')),
-                        DropdownMenuItem(value: 'month', child: Text('Month')),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(
-                            () => draft = draft.copyWith(
-                              calendarDefaultView: value,
-                            ),
-                          );
-                        }
-                      },
                     ),
-                  ),
-                  SwitchListTile(
-                    title: const Text('Reduce motion'),
-                    subtitle: const Text('Use fewer interface animations'),
-                    value: draft.reducedMotion,
-                    onChanged: (value) => setState(
-                      () => draft = draft.copyWith(reducedMotion: value),
+                    SwitchListTile(
+                      title: const Text('Reduce motion'),
+                      subtitle: const Text('Use fewer interface animations'),
+                      value: draft.reducedMotion,
+                      onChanged: (value) => setState(
+                        () => draft = draft.copyWith(reducedMotion: value),
+                      ),
                     ),
-                  ),
-                  const ListTile(
-                    title: Text('Widget appearance'),
-                    subtitle: Text(
-                      'Configure each widget’s surfaces, opacity and borders in Settings > Widget.',
+                    const ListTile(
+                      title: Text('Widget appearance'),
+                      subtitle: Text(
+                        'Configure each widget’s surfaces, opacity and borders in Settings > Widget.',
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Undo setting (Ctrl+Z)',
+            onPressed: history.canUndo ? () => travel(false) : null,
+            icon: const Icon(Icons.undo),
+          ),
+          IconButton(
+            tooltip: 'Redo setting (Ctrl+Shift+Z)',
+            onPressed: history.canRedo ? () => travel(true) : null,
+            icon: const Icon(Icons.redo),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              try {
+                await ref.read(appControllerProvider).saveCustomization(draft);
+                if (context.mounted) Navigator.pop(context);
+              } catch (error) {
+                setState(() => message = 'Could not save theme: $error');
+              }
+            },
+            child: const Text('Save changes'),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () async {
-            try {
-              await ref.read(appControllerProvider).saveCustomization(draft);
-              if (context.mounted) Navigator.pop(context);
-            } catch (error) {
-              setState(() => message = 'Could not save theme: $error');
-            }
-          },
-          child: const Text('Save changes'),
-        ),
-      ],
     );
   }
 }

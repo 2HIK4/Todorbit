@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' hide Category;
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../data/life_repository.dart';
+import '../data/widget_configuration_store.dart';
 import '../data/app_database.dart';
 import '../data/appearance_preference_store.dart';
 import '../data/calendar_preference_store.dart';
@@ -56,11 +57,13 @@ class AppController extends ChangeNotifier {
     this.appearanceStore,
     this.calendarPreferenceStore,
     this.backupService,
+    this.widgetStore,
   });
   final LifeRepository repository;
   final AppearancePreferenceStore? appearanceStore;
   final CalendarPreferenceStore? calendarPreferenceStore;
   final BackupService? backupService;
+  final WidgetConfigurationStore? widgetStore;
   String? backupError;
 
   List<Category> categories = [];

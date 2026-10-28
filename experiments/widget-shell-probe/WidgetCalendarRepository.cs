@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 
 internal sealed record WidgetCalendarItem(DateTime Day, string Kind, string Title,
-  string? TaskId, string Time = "", bool Cancelled = false, DateTime? StartsAt = null);
+  string? TaskId, string Time = "", bool Cancelled = false, DateTime? StartsAt = null, string Id = "", string? NominalDate = null);
 
 internal sealed partial class LifeManagerWidgetRepository
 {
@@ -22,13 +22,13 @@ internal sealed partial class LifeManagerWidgetRepository
             command.Parameters.AddWithValue("$first", first.ToString("yyyy-MM-dd"));
             command.Parameters.AddWithValue("$end", through.ToString("yyyy-MM-dd"));
             using var r = command.ExecuteReader();
-            while (r.Read()) result.Add(new(DateTime.ParseExact(r.GetString(2), "yyyy-MM-dd", CultureInfo.InvariantCulture), "Task", r.GetString(1), r.GetString(0)));
+            while (r.Read()) result.Add(new(DateTime.ParseExact(r.GetString(2), "yyyy-MM-dd", CultureInfo.InvariantCulture), "Task", r.GetString(1), r.GetString(0), Id:r.GetString(0)));
         }
         if (schemaVersion < 20) return result;
         using (var command = connection.CreateCommand())
         {
             command.CommandText = """
-        SELECT w.task_id,t.title,w.starts_at,w.ends_at FROM work_sessions w JOIN tasks t ON t.id=w.task_id
+        SELECT w.task_id,t.title,w.starts_at,w.ends_at,w.id FROM work_sessions w JOIN tasks t ON t.id=w.task_id
         LEFT JOIN recurrence_occurrences o ON o.task_id=t.id
         LEFT JOIN recurrence_series s ON s.id=o.series_id
         LEFT JOIN categories c ON c.id=t.category_id LEFT JOIN projects p ON p.id=t.project_id
@@ -40,7 +40,7 @@ internal sealed partial class LifeManagerWidgetRepository
             command.Parameters.AddWithValue("$first", first.ToUniversalTime().ToString("O"));
             command.Parameters.AddWithValue("$end", through.ToUniversalTime().ToString("O"));
             using var r = command.ExecuteReader();
-            while (r.Read()) AddSpan(result, first, through, Local(r.GetString(2)), Local(r.GetString(3)), "Session", r.GetString(1), r.GetString(0));
+            while (r.Read()) AddSpan(result, first, through, Local(r.GetString(2)), Local(r.GetString(3)), "Session", r.GetString(1), r.GetString(0), id:r.GetString(4));
         }
         var changes = new Dictionary<(string, string), EventReminderChange>();
         using (var command = connection.CreateCommand())
@@ -73,11 +73,11 @@ internal sealed partial class LifeManagerWidgetRepository
                     var nominal = day.ToString("yyyy-MM-dd");
                     if (changes.TryGetValue((template.Id, nominal), out var change))
                     {
-                        if (change.Cancelled && change.Payload == null) AddSpan(result, first, through, day + start.TimeOfDay, day + start.TimeOfDay + duration, "Event", template.Title, null, allDay, true);
+                        if (change.Cancelled && change.Payload == null) AddSpan(result, first, through, day + start.TimeOfDay, day + start.TimeOfDay + duration, "Event", template.Title, null, allDay, true,id:template.Id,nominal:nominal);
                         // Overrides are evaluated separately, including moves into this range.
                         continue;
                     }
-                    AddSpan(result, first, through, day + start.TimeOfDay, day + start.TimeOfDay + duration, "Event", template.Title, null, allDay);
+                    AddSpan(result, first, through, day + start.TimeOfDay, day + start.TimeOfDay + duration, "Event", template.Title, null, allDay,id:template.Id,nominal:nominal);
                 }
                 foreach (var change in changes.Values.Where(c => c.EventId == template.Id && c.Payload != null))
                 {
@@ -87,7 +87,7 @@ internal sealed partial class LifeManagerWidgetRepository
                     var movedEnd = data.TryGetProperty("endsAt", out var ev) ? Local(ev.GetString()!) : movedStart + duration;
                     var title = data.TryGetProperty("title", out var tv) ? tv.GetString() ?? template.Title : template.Title;
                     var fullDay = data.TryGetProperty("allDay", out var av) ? av.GetBoolean() : allDay;
-                    AddSpan(result, first, through, movedStart, movedEnd, "Event", title, null, fullDay, change.Cancelled);
+                    AddSpan(result, first, through, movedStart, movedEnd, "Event", title, null, fullDay, change.Cancelled,id:template.Id,nominal:change.NominalDate);
                 }
             }
         }
@@ -95,9 +95,9 @@ internal sealed partial class LifeManagerWidgetRepository
     }
     private static DateTime Local(string date) => DateTimeOffset.Parse(date, CultureInfo.InvariantCulture).LocalDateTime;
     private static void AddSpan(List<WidgetCalendarItem> items, DateTime first, DateTime through,
-        DateTime start, DateTime end, string kind, string title, string? taskId, bool allDay = false, bool cancelled = false)
+        DateTime start, DateTime end, string kind, string title, string? taskId, bool allDay = false, bool cancelled = false, string id = "", string? nominal = null)
     {
         for (var day = start.Date < first ? first : start.Date; day < through && day < end; day = day.AddDays(1))
-            items.Add(new(day, kind, title, taskId, allDay ? "All day · " : start.ToString("t") + " · ", cancelled, start));
+            items.Add(new(day, kind, title, taskId, allDay ? "All day · " : start.ToString("t") + " · ", cancelled, start,id,nominal));
     }
 }

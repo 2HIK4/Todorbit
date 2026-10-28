@@ -1,3 +1,5 @@
+import 'notifications.dart';
+
 enum TaskStatus {
   notStarted,
   inProgress,
@@ -256,6 +258,7 @@ class LifeTask {
     this.recurrenceEdited = false,
     this.recurrenceRescheduled = false,
     this.recurrenceKindName,
+    this.notification = const TaskNotification(),
   });
 
   final String id;
@@ -280,6 +283,7 @@ class LifeTask {
   final bool recurrenceEdited;
   final bool recurrenceRescheduled;
   final String? recurrenceKindName;
+  final TaskNotification notification;
 
   bool get isOpen =>
       status != TaskStatus.completed && status != TaskStatus.cancelled;
@@ -298,6 +302,7 @@ class TaskDraft {
     this.plannedDurationMinutes,
     this.remainingWorkMinutes,
     this.schedulingLocked = false,
+    this.notification,
   });
 
   final String title;
@@ -311,6 +316,7 @@ class TaskDraft {
   final int? plannedDurationMinutes;
   final int? remainingWorkMinutes;
   final bool schedulingLocked;
+  final TaskNotification? notification;
 }
 
 String localDate(DateTime value) =>

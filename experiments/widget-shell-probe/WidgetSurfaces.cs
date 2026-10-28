@@ -48,7 +48,11 @@ internal sealed partial class NativeDesktopWidgetHost
         var candidate = hex != null && System.Text.RegularExpressions.Regex.IsMatch(hex, "^#[0-9a-fA-F]{6}$") ? ColorTranslator.FromHtml(hex) : secondary ? palette.Muted : palette.Foreground;
         var fill = ComposedSurface(name);
         var background = Blend(palette.Background, fill, fill.A / 255f);
-        return WidgetEditorStyle.Contrast(candidate, background) >= 4.5 ? candidate : WidgetEditorStyle.Contrast(Color.Black, background) > WidgetEditorStyle.Contrast(Color.White, background) ? Color.Black : Color.White;
+        // Explicit text colors/alpha are independent from surface opacity.
+        if (hex == null && name == "selectedNavigation") candidate = WidgetEditorStyle.OnAccent(palette);
+        if (hex == null && WidgetEditorStyle.Contrast(candidate, background) < 4.5)
+          candidate = WidgetEditorStyle.Contrast(Color.Black, background) > WidgetEditorStyle.Contrast(Color.White, background) ? Color.Black : Color.White;
+        return Color.FromArgb((int)Math.Round(s.TextOpacity * 2.55), candidate);
     }
     private static HitTarget ViewTarget(WidgetTaskView view) => view switch
     {

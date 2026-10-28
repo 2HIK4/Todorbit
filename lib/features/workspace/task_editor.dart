@@ -7,6 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
+import '../../domain/notifications.dart';
+import '../widget/native_widget_service.dart';
+import 'task_notification_field.dart';
 import '../../domain/task_view_preferences.dart';
 import '../shared/icon_picker.dart';
 import '../shared/checklist_entry.dart';
@@ -71,6 +74,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   RecurrenceKind? recurrenceKind;
   Set<int> recurrenceWeekdays = {};
   bool repeatPlanAtEnd = false;
+  TaskNotification notification = const TaskNotification();
   bool saving = false;
   bool schedulingLocked = false;
   String? iconKey;
@@ -83,6 +87,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     super.initState();
     final task = widget.task;
     currentTask = task;
+    notification = task?.notification ?? const TaskNotification();
     final workspace = ref.read(appControllerProvider);
     iconKey = task == null ? null : workspace.iconKeys['task:${task.id}'];
     prerequisiteIds = workspace.dependencies
@@ -500,6 +505,27 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     setState(() => saving = true);
     try {
       final controller = ref.read(appControllerProvider);
+      TaskNotification.fromJson(notification.toJson());
+      if (notification.enabled && !NativeWidgetService().isAvailable) {
+        throw StateError(
+          'The Windows companion is required for task notifications.',
+        );
+      }
+      if (notification.mode == 'custom' &&
+          !notification.at!.isAfter(DateTime.now().toUtc())) {
+        throw const FormatException('Choose a future notification time.');
+      }
+      if (notification.mode == 'session' &&
+          !controller.sessions.any(
+            (s) =>
+                s.taskId == currentTask?.id &&
+                s.outcome == SessionOutcome.upcoming &&
+                s.endsAt.isAfter(DateTime.now().toUtc()),
+          )) {
+        throw const FormatException(
+          'Add an upcoming work session or choose a custom notification time.',
+        );
+      }
       final plannedMinutes = _parseMinutes(
         plannedDuration.text,
         'Planned minutes',
@@ -510,6 +536,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         allowZero: true,
       );
       final draft = TaskDraft(
+        notification: notification,
         title: title.text,
         notes: notes.text,
         status: status,
@@ -654,6 +681,21 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
             : saved.id;
         if (iconKey != controller.iconKeys['$kind:$id']) {
           await controller.setIcon(kind, id, iconKey);
+        }
+      }
+      if (notification.enabled) {
+        try {
+          await NativeWidgetService().ensureRemindersRunning();
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Task saved; reminder companion could not start: $e',
+                ),
+              ),
+            );
+          }
         }
       }
       if (mounted) widget.onSaved?.call();
@@ -1272,6 +1314,14 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                     _draftCompositionSection(),
                   ],
                   const Divider(),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: TaskNotificationField(
+                      value: notification,
+                      onChanged: (value) =>
+                          setState(() => notification = value),
+                    ),
+                  ),
                   ExpansionTile(
                     tilePadding: const EdgeInsets.symmetric(vertical: 4),
                     initiallyExpanded:

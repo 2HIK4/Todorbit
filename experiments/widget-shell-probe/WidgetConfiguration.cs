@@ -7,6 +7,7 @@ internal sealed class WidgetSurface
     public string? TextColor { get; set; }
     public string? PlaceholderColor { get; set; }
     public int Opacity { get; set; } = 100;
+    public int TextOpacity { get; set; } = 100;
     public bool Border { get; set; }
     public string? BorderColor { get; set; }
     public int BorderOpacity { get; set; } = 100;
@@ -33,6 +34,9 @@ internal sealed class WidgetConfiguration
     public string NavigationPosition { get; set; } = "top";
     public string NavigationDisplay { get; set; } = "text";
     public float TextScale { get; set; } = 1;
+    public float? CalendarSplit { get; set; }
+    public string? PresetName { get; set; }
+    public List<string>? NavigationOrder { get; set; }
     public List<string> Views { get; set; } = ["today", "inbox", "all", "upcoming"];
     public Dictionary<string, WidgetSurface> Surfaces { get; set; } = new()
     {
@@ -42,11 +46,15 @@ internal sealed class WidgetConfiguration
         ["header"] = new() { Opacity = 0 },
         ["navigation"] = new() { Opacity = 0 },
         ["navigationButton"] = new() { Radius = 6 },
+        ["selectedNavigation"] = new() { Radius = 6 },
+        ["taskRow"] = new(),
+        ["taskHover"] = new() { Opacity = 24 },
         ["calendarCell"] = new() { Opacity = 0, Radius = 4 },
         ["agenda"] = new(),
         ["selectedDate"] = new() { Radius = 4 },
         ["today"] = new() { Opacity = 0, Border = true, Thickness = 2, Radius = 4 },
     };
+    internal IEnumerable<string> OrderedViews => (NavigationOrder ?? new List<string> { "today", "inbox", "all", "upcoming" }).Where(Views.Contains);
     internal bool HasHeader => ShowTitle || ShowOpenButton;
     internal WidgetSurface Surface(string name)
     {
@@ -83,12 +91,15 @@ internal sealed class WidgetConfiguration
         foreach (var surface in config.Surfaces.Values)
         {
             if (surface == null) throw new InvalidDataException("Invalid widget surface; original file preserved.");
+            surface.TextOpacity = Math.Clamp(surface.TextOpacity, 0, 100);
             surface.Opacity = Math.Clamp(surface.Opacity, 0, 100); surface.BorderOpacity = Math.Clamp(surface.BorderOpacity, 0, 100);
             surface.Thickness = float.IsFinite(surface.Thickness) ? Math.Clamp(surface.Thickness, 0, 8) : 1;
             surface.Radius = float.IsFinite(surface.Radius) ? Math.Clamp(surface.Radius, 0, 32) : 8;
         }
         config.NavigationPosition = config.NavigationPosition is "top" or "left" or "right" or "bottom" ? config.NavigationPosition : "top";
         config.NavigationDisplay = config.NavigationDisplay is "text" or "icons" or "both" ? config.NavigationDisplay : "text";
+        config.CalendarSplit = config.CalendarSplit is { } split && float.IsFinite(split) ? Math.Clamp(split, .2f, .8f) : null;
+        config.NavigationOrder = (config.NavigationOrder ?? config.Views).Concat(new[] { "today", "inbox", "all", "upcoming" }).Where(v => v is "today" or "inbox" or "all" or "upcoming").Distinct().ToList();
         config.Views = config.Views.Where(v => v is "today" or "inbox" or "all" or "upcoming").Distinct().ToList();
         return config;
     }

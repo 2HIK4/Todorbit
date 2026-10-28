@@ -62,6 +62,9 @@ HWND FindProfileWindow(const std::wstring& key) {
 }
 
 std::string ActivationCommand(const std::vector<std::string>& arguments) {
+  const auto navigation = std::find(arguments.begin(), arguments.end(), "--navigate");
+  if (navigation != arguments.end() && navigation + 1 != arguments.end() && (navigation+1)->size() <= 4096)
+    return "navigate:" + *(navigation+1);
   const auto widget = std::find(arguments.begin(), arguments.end(), "--edit-widget");
   if (widget != arguments.end() && widget + 1 != arguments.end() &&
       (*(widget + 1) == "tasks" || *(widget + 1) == "calendar"))

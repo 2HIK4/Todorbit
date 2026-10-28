@@ -38,7 +38,7 @@ internal static partial class LifeManagerWidgetSelfTest
             }
             foreach (var mode in new[] { "unified" })
             foreach (var light in new[] { false, true })
-            foreach (var size in new[] { new Size(300, 360), new Size(560, 640), new Size(980, 620), new Size(420, 800) })
+            foreach (var size in new[] { new Size(300, 420), new Size(560, 640), new Size(980, 620), new Size(420, 800) })
             {
                 var config = new WidgetConfiguration();
                 using var image = NativeDesktopWidgetHost.RenderPreview(repo, config, true, size, light ? WidgetPalette.Light : WidgetPalette.Dark);
@@ -79,7 +79,7 @@ internal static partial class LifeManagerWidgetSelfTest
             }
             Require(NativeDesktopWidgetHost.WidgetSettingsActivation("Todorbit.exe", true).ArgumentList.SequenceEqual(new[] { "--edit-widget", "calendar" }), "Calendar edit route selected the wrong widget.");
             Require(NativeDesktopWidgetHost.WidgetSettingsActivation("Todorbit.exe", false).ArgumentList.SequenceEqual(new[] { "--edit-widget", "tasks" }), "Tasks edit route selected the wrong widget.");
-            foreach (var scale in new[] { 1f, 1.25f, 1.5f, 2f }) Require(WidgetGeometry.Scale(new Size(300, 360), scale).Width == (int)(300 * scale), "DPI geometry changed.");
+            foreach (var scale in new[] { 1f, 1.25f, 1.5f, 2f }) Require(WidgetGeometry.Scale(new Size(300, 420), scale).Width == (int)(300 * scale), "DPI geometry changed.");
             Require(CalendarWidgetDates.GridStart(new DateTime(2026, 11, 1), 7) == new DateTime(2026, 11, 1), "Sunday week start failed.");
             Require(CalendarWidgetDates.GridStart(new DateTime(2026, 11, 1), 1) == new DateTime(2026, 10, 26), "Monday week start failed.");
             Require(CalendarWidgetDates.GridStart(new DateTime(2028, 2, 1), 7).AddDays(41) >= new DateTime(2028, 2, 29), "Leap month grid failed.");
@@ -102,7 +102,7 @@ internal static partial class LifeManagerWidgetSelfTest
         CREATE TABLE recurrence_series(id TEXT,deleted_at TEXT,archived_at TEXT);
         CREATE TABLE recurrence_occurrences(task_id TEXT,series_id TEXT);
         CREATE TABLE task_parent_links(child_id TEXT,parent_id TEXT);
-        CREATE TABLE work_sessions(task_id TEXT,starts_at TEXT,ends_at TEXT,deleted_at TEXT);
+        CREATE TABLE work_sessions(id TEXT,task_id TEXT,starts_at TEXT,ends_at TEXT,deleted_at TEXT);
         CREATE TABLE fixed_events(id TEXT,title TEXT,starts_at TEXT,ends_at TEXT,recurrence_kind TEXT,
           recurrence_interval INTEGER,recurrence_weekdays TEXT,recurrence_until TEXT,
           active_from_date TEXT,active_through_date TEXT,all_day INTEGER,deleted_at TEXT,category_id TEXT);
@@ -128,7 +128,7 @@ internal static partial class LifeManagerWidgetSelfTest
             {
                 connection.Open(); using var command = connection.CreateCommand();
                 var start = new DateTimeOffset(2026, 10, 26, 9, 0, 0, DateTimeOffset.Now.Offset).ToUniversalTime();
-                command.CommandText = "INSERT INTO work_sessions VALUES($task,$start,$end,NULL)";
+                command.CommandText = "INSERT INTO work_sessions VALUES('session-id',$task,$start,$end,NULL)";
                 command.Parameters.AddWithValue("$task", id); command.Parameters.AddWithValue("$start", start.ToString("O")); command.Parameters.AddWithValue("$end", start.AddMinutes(30).ToString("O"));
                 command.ExecuteNonQuery();
                 command.Parameters.Clear();
@@ -148,7 +148,7 @@ internal static partial class LifeManagerWidgetSelfTest
             Directory.CreateDirectory(AppDataPaths.ActiveDirectory);
             File.WriteAllText(Path.Combine(AppDataPaths.ActiveDirectory,"appearance-settings.json"),"{\"firstWeekday\":\"invalid\"}");
             File.WriteAllText(Path.Combine(AppDataPaths.ActiveDirectory,"calendar-settings.json"),"{interrupted");
-            using(var image=NativeDesktopWidgetHost.RenderPreview(repo,new WidgetConfiguration(),true,new Size(300,360),WidgetPalette.Dark)) {
+            using(var image=NativeDesktopWidgetHost.RenderPreview(repo,new WidgetConfiguration(),true,new Size(300,420),WidgetPalette.Dark)) {
                 Require(image.Width==300,"Invalid optional calendar preferences blocked rendering.");
             }
             var transparent = new WidgetConfiguration();
@@ -177,7 +177,7 @@ internal static partial class LifeManagerWidgetSelfTest
             }
             foreach (var scale in new[] { 1f, 1.25f, 1.5f, 2f }) foreach (var light in new[] { false, true })
             {
-                using var image = NativeDesktopWidgetHost.RenderPreview(repo, new WidgetConfiguration(), true, new Size(300, 360), light ? WidgetPalette.Light : WidgetPalette.Dark, scale);
+                using var image = NativeDesktopWidgetHost.RenderPreview(repo, new WidgetConfiguration(), true, new Size(300, 420), light ? WidgetPalette.Light : WidgetPalette.Dark, scale);
             }
             NativeDesktopWidgetHost.VerifyCalendarBehavior(repo);
 

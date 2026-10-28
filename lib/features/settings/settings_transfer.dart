@@ -8,8 +8,16 @@ import '../../domain/appearance.dart';
 import '../../domain/hotkeys.dart';
 import '../../domain/models.dart';
 import '../../domain/task_view_preferences.dart';
+import '../../data/widget_configuration_store.dart';
 
-enum SettingsCategory { appearance, hotkeys, calendar, navigation, taskDisplay }
+enum SettingsCategory {
+  appearance,
+  hotkeys,
+  calendar,
+  navigation,
+  taskDisplay,
+  widgets,
+}
 
 extension SettingsCategoryLabel on SettingsCategory {
   String get label => switch (this) {
@@ -18,6 +26,7 @@ extension SettingsCategoryLabel on SettingsCategory {
     SettingsCategory.calendar => 'Calendar display',
     SettingsCategory.navigation => 'Sidebar and navigation',
     SettingsCategory.taskDisplay => 'Task display',
+    SettingsCategory.widgets => 'Widget customization and presets',
   };
 }
 
@@ -26,7 +35,7 @@ extension SettingsCategoryLabel on SettingsCategory {
 class SettingsTransfer {
   SettingsTransfer._(this.categories);
 
-  static const maxBytes = 256 * 1024;
+  static const maxBytes = 1500 * 1024;
   final Map<SettingsCategory, Map<String, dynamic>> categories;
 
   factory SettingsTransfer.fromController(AppController controller) {
@@ -35,6 +44,8 @@ class SettingsTransfer {
           ..remove('author')
           ..remove('authorProfile');
     return SettingsTransfer._({
+      SettingsCategory.widgets:
+          controller.widgetStore?.exportBundle() ?? {'version': 1},
       SettingsCategory.appearance: {
         'mode': controller.theme.name,
         'customization': appearance,
@@ -144,6 +155,8 @@ class SettingsTransfer {
 
   static void _validate(SettingsCategory category, Map<String, dynamic> value) {
     switch (category) {
+      case SettingsCategory.widgets:
+        WidgetConfigurationStore.validateBundle(value);
       case SettingsCategory.appearance:
         if (value['mode'] != null &&
             !ThemeModePreference.values.any(
@@ -229,6 +242,12 @@ class SettingsTransfer {
       final value = categories[category];
       if (value == null) continue;
       switch (category) {
+        case SettingsCategory.widgets:
+          if (value.length == 1) break;
+          if (controller.widgetStore == null) {
+            throw StateError("Widget profile store unavailable");
+          }
+          await controller.widgetStore!.importBundle(value);
         case SettingsCategory.appearance:
           await controller.saveCustomization(
             ThemeCustomization.fromJson(value['customization']),

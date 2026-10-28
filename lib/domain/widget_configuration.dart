@@ -9,6 +9,7 @@ class WidgetSurface {
   const WidgetSurface({
     this.color,
     this.opacity = 100,
+    this.textOpacity = 100,
     this.border = false,
     this.borderColor,
     this.textColor,
@@ -18,12 +19,13 @@ class WidgetSurface {
     this.radius = 8,
   });
   final String? color, borderColor, textColor, placeholderColor;
-  final int opacity, borderOpacity;
+  final int opacity, borderOpacity, textOpacity;
   final bool border;
   final double thickness, radius;
   Map<String, dynamic> toJson() => {
     'color': color,
     'opacity': opacity,
+    'textOpacity': textOpacity,
     'border': border,
     'borderColor': borderColor,
     'textColor': textColor,
@@ -46,6 +48,7 @@ class WidgetSurface {
       textColor: color(m['textColor']),
       placeholderColor: color(m['placeholderColor']),
       opacity: number('opacity', 100, 100).round(),
+      textOpacity: number('textOpacity', 100, 100).round(),
       border: m['border'] == true,
       borderOpacity: number('borderOpacity', 100, 100).round(),
       thickness: number('thickness', 1, 8),
@@ -65,9 +68,13 @@ class WidgetConfiguration {
     this.navigationPosition = WidgetNavigationPosition.top,
     this.navigationDisplay = WidgetNavigationDisplay.text,
     this.textScale = 1,
+    this.calendarSplit,
+    this.presetName,
+    List<String>? navigationOrder,
     List<String>? views,
     Map<String, WidgetSurface>? surfaces,
-  }) : views = List.unmodifiable(
+  }) : navigationOrder = List.unmodifiable(normalizeOrder(navigationOrder)),
+       views = List.unmodifiable(
          views ?? const ['today', 'inbox', 'all', 'upcoming'],
        ),
        surfaces = Map.unmodifiable({...defaults, ...?surfaces});
@@ -78,6 +85,9 @@ class WidgetConfiguration {
     'header': WidgetSurface(opacity: 0),
     'navigation': WidgetSurface(opacity: 0),
     'navigationButton': WidgetSurface(radius: 6),
+    'selectedNavigation': WidgetSurface(radius: 6),
+    'taskRow': WidgetSurface(radius: 8),
+    'taskHover': WidgetSurface(opacity: 24, radius: 8),
     'calendarCell': WidgetSurface(opacity: 0, radius: 4),
     'agenda': WidgetSurface(),
     'selectedDate': WidgetSurface(radius: 4),
@@ -87,7 +97,15 @@ class WidgetConfiguration {
   final WidgetNavigationPosition navigationPosition;
   final WidgetNavigationDisplay navigationDisplay;
   final double textScale;
-  final List<String> views;
+  static const viewKeys = ['today', 'inbox', 'all', 'upcoming'];
+  static List<String> normalizeOrder(List<String>? values) => [
+    ...{...?values?.where(viewKeys.contains), ...viewKeys},
+  ];
+  final List<String> views, navigationOrder;
+  final double? calendarSplit;
+  final String? presetName;
+  List<String> get visibleViews =>
+      navigationOrder.where(views.contains).toList();
   final Map<String, WidgetSurface> surfaces;
   bool get hasHeader => showTitle || showOpenButton;
   WidgetConfiguration copyWith({
@@ -99,6 +117,9 @@ class WidgetConfiguration {
     WidgetNavigationPosition? navigationPosition,
     WidgetNavigationDisplay? navigationDisplay,
     double? textScale,
+    double? calendarSplit,
+    String? presetName,
+    List<String>? navigationOrder,
     List<String>? views,
     Map<String, WidgetSurface>? surfaces,
   }) => WidgetConfiguration(
@@ -110,6 +131,9 @@ class WidgetConfiguration {
     navigationPosition: navigationPosition ?? this.navigationPosition,
     navigationDisplay: navigationDisplay ?? this.navigationDisplay,
     textScale: textScale ?? this.textScale,
+    calendarSplit: calendarSplit ?? this.calendarSplit,
+    presetName: presetName ?? this.presetName,
+    navigationOrder: navigationOrder ?? this.navigationOrder,
     views: views ?? this.views,
     surfaces: surfaces ?? this.surfaces,
   );
@@ -137,6 +161,9 @@ class WidgetConfiguration {
     'navigationPosition': navigationPosition.name,
     'navigationDisplay': navigationDisplay.name,
     'textScale': textScale,
+    'calendarSplit': calendarSplit,
+    'presetName': presetName,
+    'navigationOrder': navigationOrder,
     'views': views,
     'surfaces': surfaces.map((k, v) => MapEntry(k, v.toJson())),
   };
@@ -144,6 +171,19 @@ class WidgetConfiguration {
     T choice<T extends Enum>(List<T> values, dynamic name) =>
         values.firstWhere((v) => v.name == name, orElse: () => values.first);
     return WidgetConfiguration(
+      presetName:
+          m['presetName'] is String && (m['presetName'] as String).length <= 60
+          ? m['presetName'] as String
+          : null,
+      calendarSplit:
+          m['calendarSplit'] is num && (m['calendarSplit'] as num).isFinite
+          ? (m['calendarSplit'] as num).toDouble().clamp(.2, .8)
+          : null,
+      navigationOrder: m['navigationOrder'] is List
+          ? (m['navigationOrder'] as List).whereType<String>().toList()
+          : (m['views'] is List
+                ? (m['views'] as List).whereType<String>().toList()
+                : null),
       enabled: m['enabled'] == true,
       showTitle: m['showTitle'] != false,
       showOpenButton: m['showOpenButton'] != false,

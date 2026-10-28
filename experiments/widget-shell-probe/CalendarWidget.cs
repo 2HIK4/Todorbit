@@ -8,12 +8,18 @@ internal sealed partial class NativeDesktopWidgetHost
     private IReadOnlyList<WidgetCalendarItem> calendarItems = [];
     private int calendarWeekStart = 7;
     private int agendaOffset;
-    private Form? calendarDetail;
+    private bool splittingCalendar;
+    private RectangleF CalendarDivider => new(CalendarGrid.X,CalendarGrid.Bottom,CalendarGrid.Width,CalendarWidgetLayout.Gap);
+    private void UpdateCalendarSplit(PointF point) {
+      var available = AgendaRect.Bottom - CalendarGrid.Top - CalendarWidgetLayout.Gap;
+      configuration.CalendarSplit = Math.Clamp((point.Y - CalendarGrid.Top) / Math.Max(1,available),.2f,.8f);
+      Present("calendar-split",updateNow:false);
+    }
     private int CalendarWeeks => Math.Max(4, (int)Math.Ceiling(((calendarMonth - CalendarGridStart).Days + DateTime.DaysInMonth(calendarMonth.Year, calendarMonth.Month)) / 7d));
     private int CalendarDays => CalendarWeeks * 7;
     private float CalendarTop => ContentTop;
     private CalendarWidgetLayout CalendarLayout => CalendarWidgetLayout.Create(
-        new SizeF(LogicalClientWidth, LogicalClientHeight), CalendarTop, configuration.TextScale, CalendarWeeks);
+        new SizeF(LogicalClientWidth, LogicalClientHeight), CalendarTop, configuration.TextScale, CalendarWeeks, configuration.CalendarSplit);
     private RectangleF CalendarGrid => CalendarLayout.Grid;
     private RectangleF AgendaRect => CalendarLayout.Agenda;
     private RectangleF CalendarCell(int index) => CalendarLayout.Cell(index);
@@ -144,15 +150,24 @@ internal sealed partial class NativeDesktopWidgetHost
             var items = byDay.GetValueOrDefault(date) ?? [];
             DrawText(g, date.Day.ToString(CultureInfo.CurrentCulture), font, ink,
                 new RectangleF(r.X, r.Y, r.Width, r.Height - (items.Length > 0 ? 7 : 0)), center, surface);
-            // Small non-text markers retain meaning at compact widths.
-            foreach (var (kind, markerIndex) in items.Select(item => item.Kind).Distinct().Take(3).Select((kind, index) => (kind, index)))
-            {
-                var marker = items.First(item => item.Kind == kind);
-                DrawItemMarker(g, marker, new RectangleF(r.X + r.Width / 2 - 9 + markerIndex * 6, r.Bottom - 7, 4, 4), ink.Color);
+            var eventCount = CountCalendarEvents(items);
+            DrawEventCount(g,eventCount,r,ink.Color);
+            // Task/session shapes retain their independent meaning at the cell edge.
+            foreach(var kind in items.Where(item=>item.Kind != "Event").Select(item=>item.Kind).Distinct().Take(2)) {
+              var marker = items.First(item=>item.Kind==kind);
+              DrawItemMarker(g,marker,new RectangleF(r.X+3+(kind=="Session"?6:0),r.Bottom-6,3,3),ink.Color);
             }
 
         }
+        using(var grip = new Pen(palette.Muted,2)) g.DrawLine(grip,CalendarDivider.X+CalendarDivider.Width/2-16,CalendarDivider.Y+6,CalendarDivider.X+CalendarDivider.Width/2+16,CalendarDivider.Y+6);
         DrawCalendarAgenda(g, font, small, ellipsis);
+    }
+    internal static int CountCalendarEvents(IEnumerable<WidgetCalendarItem> items) => items.Where(item=>item.Kind=="Event" && !item.Cancelled).Select(item=>$"{item.Id}:{item.NominalDate}").Distinct().Count();
+    internal static int EventIndicator(int count) => count >= 4 ? -1 : Math.Max(0,count);
+    private static void DrawEventCount(Graphics g,int count,RectangleF r,Color color) {
+      using var ink = new SolidBrush(color);
+      if(EventIndicator(count) == -1) g.FillRectangle(ink,r.X+r.Width/2-6,r.Bottom-6,12,2);
+      else for(var n=0;n<count;n++) g.FillEllipse(ink,r.X+r.Width/2-(count*6-2)/2f+n*6,r.Bottom-7,4,4);
     }
     private static void DrawCalendarArrow(Graphics g, RectangleF bounds, int direction, bool vertical, Color color)
     {
@@ -228,26 +243,7 @@ internal sealed partial class NativeDesktopWidgetHost
     private void ShowCalendarItem(WidgetCalendarItem item)
     {
         if (privacy.IsLocked()) return;
-        if (calendarDetail is { IsDisposed: false }) { calendarDetail.Activate(); return; }
-        // Complete schedule details remain inspectable inside the companion.
-        using var dialog = new Form { Text = "Scheduled item", AutoScaleMode = AutoScaleMode.Dpi,
-            ClientSize = new Size(420, 240), MinimumSize = new Size(320, 220), StartPosition = FormStartPosition.CenterScreen,
-            BackColor = palette.Background, ForeColor = palette.Foreground, Font = new Font("Segoe UI", 10), MinimizeBox = false, MaximizeBox = false };
-        var footer = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 56, FlowDirection = FlowDirection.RightToLeft, Padding = new Padding(8) };
-        var close = WidgetEditorStyle.Button("Close", palette, true); close.Width = 88; close.DialogResult = DialogResult.Cancel; footer.Controls.Add(close);
-        if (item.TaskId is { } taskId)
-        {
-            var open = WidgetEditorStyle.Button("Open task", palette); open.Width = 110;
-            open.Click += (_, _) => { OpenMainApp(taskId); dialog.Close(); }; footer.Controls.Add(open);
-        }
-        var body = new TextBox { Dock = DockStyle.Fill, Multiline = true, ReadOnly = true, BorderStyle = BorderStyle.None, ScrollBars = ScrollBars.Vertical,
-            BackColor = palette.Background, ForeColor = palette.Foreground, Text = $"{item.Title}\r\n\r\n{item.Day:D}\r\n{AgendaMetadata(item)}" };
-        var content = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20) }; content.Controls.Add(body);
-        dialog.Controls.Add(content); dialog.Controls.Add(footer); dialog.CancelButton = close;
-        dialog.Shown += (_, _) => WidgetEditorStyle.ApplyCaption(dialog, palette);
-        calendarDetail = dialog;
-        try { dialog.ShowDialog(); }
-        finally { calendarDetail = null; }
+        OpenNavigation(item.Kind.ToLowerInvariant(), item.Kind == "Task" ? item.TaskId! : item.Id, item.Day.ToString("yyyy-MM-dd"),item.NominalDate);
     }
 }
 

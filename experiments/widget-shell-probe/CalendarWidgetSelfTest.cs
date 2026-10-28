@@ -48,9 +48,31 @@ internal sealed partial class NativeDesktopWidgetHost
         if (calendar.CalendarWeeks != 4) throw new InvalidOperationException("Four-week month geometry failed.");
         calendar.calendarMonth = new DateTime(2026, 8, 1);
         if (calendar.CalendarWeeks != 6) throw new InvalidOperationException("Six-week month geometry failed.");
-        using var details = new Form();
-        calendar.calendarDetail = details;
+        for(var count=0;count<=6;count++) if(EventIndicator(count)!=(count>=4?-1:count)) throw new InvalidOperationException("Event count indicator failed");
+        var splitLayout=CalendarWidgetLayout.Create(new SizeF(400,700),30,1,6,.7f);
+        var agendaLayout=CalendarWidgetLayout.Create(new SizeF(400,700),30,1,6,.3f);
+        if(splitLayout.Grid.Height<=agendaLayout.Grid.Height || splitLayout.Agenda.Height<76) throw new InvalidOperationException("Calendar split constraints failed");
+        foreach(var scale in new[] {1f,1.3f,1.6f}) foreach(var weeks in new[] {4,5,6}) foreach(var split in new[] {.2f,.5f,.8f}) {
+          var layout=CalendarWidgetLayout.Create(WidgetGeometry.MinimumSize(true,scale),Math.Max(50,20*scale+26),scale,weeks,split);
+          if(layout.Grid.Height/weeks < 28*scale-.01f || layout.Agenda.Height < 36+layout.RowHeight-.01f) throw new InvalidOperationException("Divider clips a date or agenda row at minimum size.");
+        }
+        for(var count=0;count<=6;count++) {
+          var events=Enumerable.Range(0,count).Select(i=>new WidgetCalendarItem(DateTime.Today,"Event","Event",null,Id:$"event-{i}")).ToList();
+          if(events.Count>0) events.Add(events[0]);
+          events.Add(new(DateTime.Today,"Event","Cancelled",null,Cancelled:true,Id:"cancelled"));
+          events.Add(new(DateTime.Today,"Task","Task","task-id",Id:"task-id"));
+          if(CountCalendarEvents(events)!=count) throw new InvalidOperationException("Event counts included duplicates, cancelled events or tasks.");
+        }
+        foreach(var palette in new[] {WidgetPalette.Light,WidgetPalette.Dark}) {
+          var config=new WidgetConfiguration();
+          config.Surface("shell").Opacity=20;
+          config.Surface("taskRow").Opacity=35; config.Surface("taskRow").TextColor="#FFFFFF";
+          config.Surface("selectedNavigation").Opacity=75;config.Surface("selectedNavigation").TextColor="#000000";
+          using var host=new NativeDesktopWidgetHost(repository,config,false,new Size(376,460),palette);
+          if(host.SurfaceText("taskRow").A!=255 || host.SurfaceText("selectedNavigation").A!=255 || config.Surface("taskRow").Resolve(palette.Row).A!=89 || config.Surface("selectedNavigation").Resolve(palette.Accent).A!=191) throw new InvalidOperationException("Text/surface opacity inherited the shell alpha.");
+        }
+        var sent=NavigationActivation("test.exe","event","event-id","2026-10-28","2026-10-20");
+        if(sent.ArgumentList[0]!="--navigate" || !sent.ArgumentList[1].Contains("event-id") || !sent.ArgumentList[1].Contains("2026-10-20")) throw new InvalidOperationException("Typed navigation lost its occurrence identity.");
         calendar.Dispose();
-        if (!details.IsDisposed) throw new InvalidOperationException("Closing Calendar left schedule details open.");
     }
 }

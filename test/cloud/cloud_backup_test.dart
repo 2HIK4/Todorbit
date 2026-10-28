@@ -24,6 +24,10 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 import 'cloud_test_fakes.dart';
 
+import 'package:life_manager/data/widget_configuration_store.dart';
+import 'package:life_manager/domain/widget_configuration.dart';
+import 'package:life_manager/domain/widget_presets.dart';
+
 class _ManifestCodec extends CloudBackupCodec {
   _ManifestCodec(this.manifest);
   final Map<String, dynamic> manifest;
@@ -41,6 +45,7 @@ AppController controllerFor(
 ) => AppController(
   LifeRepository(db),
   backupService: service,
+  widgetStore: WidgetConfigurationStore(directory),
   appearanceStore: AppearancePreferenceStore(
     File('${directory.path}/appearance.json'),
   ),
@@ -53,7 +58,7 @@ Map<String, List<Map<String, Object?>>> databaseRows(File file) {
   final db = sqlite.sqlite3.open(file.path, mode: sqlite.OpenMode.readOnly);
   try {
     final names = db.select(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != 'backup_widget_personalization' ORDER BY name",
     );
     return {
       for (final row in names)
@@ -132,6 +137,18 @@ void main() {
     AppController? restored;
     try {
       await controller.initialize();
+      await controller.widgetStore!.save(
+        DesktopWidgetKind.calendar,
+        WidgetConfiguration(calendarSplit: .7, presetName: 'Lecture'),
+      );
+      await controller.widgetStore!.savePresets(
+        DesktopWidgetKind.calendar,
+        WidgetPresets().put(
+          'Lecture',
+          WidgetConfiguration(calendarSplit: .7),
+          DesktopWidgetKind.calendar,
+        ),
+      );
       final repo = controller.repository;
       final category = await repo.addCategory('Test category');
       final project = await repo.addProject(category.id, 'Test project');
@@ -250,6 +267,17 @@ void main() {
       restored = controllerFor(target, fresh, targetLocal);
       await restored.initialize();
       await transfer.applyTo(restored, transfer.categories.keys.toSet());
+      expect(
+        (await restored.widgetStore!.load(DesktopWidgetKind.calendar))
+            .calendarSplit,
+        .7,
+      );
+      expect(
+        (await restored.widgetStore!.loadPresets(DesktopWidgetKind.calendar))
+            .custom
+            .containsKey('Lecture'),
+        true,
+      );
       await targetLocal.markRestoreOpened();
       expect(
         await targetLocal.restoreStatus(),

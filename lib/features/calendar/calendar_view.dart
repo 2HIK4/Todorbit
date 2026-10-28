@@ -19,10 +19,12 @@ int monthEntryCapacity(double cellHeight, double textScale) {
 class CalendarView extends ConsumerStatefulWidget {
   const CalendarView({
     super.key,
+    this.initialDate,
     required this.onTaskTap,
     required this.onSmartReschedule,
     required this.onAddTask,
   });
+  final DateTime? initialDate;
   final void Function(LifeTask task) onTaskTap;
   final VoidCallback onSmartReschedule;
   final void Function(DateTime date) onAddTask;
@@ -38,6 +40,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
   @override
   void initState() {
     super.initState();
+    selected = widget.initialDate ?? selected;
     final controller = ref.read(appControllerProvider);
     mode = CalendarMode.values.byName(
       controller.lastCalendarMode ??

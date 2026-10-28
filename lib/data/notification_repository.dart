@@ -1,6 +1,29 @@
 part of 'life_repository.dart';
 
 extension NotificationRepository on LifeRepository {
+  Future<void> _writeTaskNotification(
+    String id,
+    TaskNotification? notification,
+  ) async {
+    if (notification == null) {
+      return; // callers editing unrelated fields preserve it
+    }
+    await db.customStatement(
+      'UPDATE tasks SET notification_json=? WHERE id=?',
+      [jsonEncode(notification.toJson()), id],
+    );
+  }
+
+  Future<bool> hasTaskReminders() async =>
+      (await db
+              .customSelect(
+                r"SELECT id FROM tasks WHERE json_extract(notification_json,'$.mode') != 'off' AND deleted_at IS NULL AND archived_at IS NULL AND status NOT IN ('completed','cancelled') LIMIT 1",
+              )
+              .get())
+          .isNotEmpty;
+}
+
+extension NotificationSettingsRepository on LifeRepository {
   Future<NotificationSettings> notificationSettings() async {
     final row = await db
         .customSelect(
