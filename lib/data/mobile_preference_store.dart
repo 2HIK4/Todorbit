@@ -104,6 +104,8 @@ class MobilePreferenceStore {
       : const MobilePreferences();
   Future<void> save(MobilePreferences value) async {
     MobilePreferences.fromJson(value.toJson());
+    // Never replace unreadable or future preferences with a default-based edit.
+    if (await file.exists()) await load();
     await file.parent.create(recursive: true);
     final staging = File('${file.path}.tmp');
     await staging.writeAsString(jsonEncode(value.toJson()), flush: true);

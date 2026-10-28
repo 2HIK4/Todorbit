@@ -9,6 +9,7 @@ import 'features/shared/desktop_tooltip_theme.dart';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'app/app_controller.dart';
 import 'app/privacy_manager.dart';
@@ -566,10 +567,33 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
       ThemeModePreference.system => ThemeMode.system,
     };
     return MaterialApp(
+      supportedLocales: Platform.isAndroid || widget.mobileLayout
+          ? const [
+              Locale('en'),
+              Locale('ar'),
+              Locale('he'),
+              Locale('fa'),
+              Locale('ur'),
+              Locale('fr'),
+              Locale('de'),
+              Locale('es'),
+              Locale('ru'),
+              Locale('ja'),
+              Locale('zh'),
+              Locale('ko'),
+              Locale('hi'),
+              Locale('tr'),
+              Locale('pt'),
+              Locale('it'),
+            ]
+          : const [Locale('en')],
       localizationsDelegates: [
-        WeekStartLocalizationsDelegate(
-          ref.watch(appControllerProvider).firstWeekday,
-        ),
+        if (!Platform.isAndroid && !widget.mobileLayout)
+          WeekStartLocalizationsDelegate(
+            ref.watch(appControllerProvider).firstWeekday,
+          ),
+        if (Platform.isAndroid || widget.mobileLayout)
+          ...GlobalMaterialLocalizations.delegates,
       ],
       title: 'Todorbit',
       debugShowCheckedModeBanner: false,
@@ -591,10 +615,18 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
             .customization
             .textScale;
         if (widget.mobileLayout && !Platform.isAndroid) {
-          return Center(child: SizedBox(width: 390, child: MediaQuery(
-            data: existing.copyWith(size: Size(390,existing.size.height),
-              textScaler: TextScaler.linear(systemScale * preferenceScale)),
-            child: child ?? const SizedBox.shrink())));
+          return Center(
+            child: SizedBox(
+              width: 390,
+              child: MediaQuery(
+                data: existing.copyWith(
+                  size: Size(390, existing.size.height),
+                  textScaler: TextScaler.linear(systemScale * preferenceScale),
+                ),
+                child: child ?? const SizedBox.shrink(),
+              ),
+            ),
+          );
         }
         return MediaQuery(
           data: existing.copyWith(

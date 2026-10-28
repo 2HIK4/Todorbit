@@ -1688,7 +1688,11 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                 onPressed: pick,
                 icon: const Icon(Icons.calendar_today_outlined, size: 18),
                 label: Text(
-                  date == null ? 'No date' : localDate(date),
+                  date == null
+                      ? 'No date'
+                      : Platform.isAndroid
+                      ? MaterialLocalizations.of(context).formatMediumDate(date)
+                      : localDate(date),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),

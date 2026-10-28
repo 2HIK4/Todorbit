@@ -52,12 +52,19 @@ List<Map<String, Object>> androidReminderPlan({
 }) {
   final plans = <Map<String, Object>>[];
   void add(String key, DateTime at, String title, String link, String body) {
-    // Do not resurrect expired custom reminders after a restore/reboot.
-    if (!at.isAfter(now)) return;
-    final delivery = outsideQuietHours(at, preferences);
+    var delivery = outsideQuietHours(at, preferences);
+    // Keep a bounded quiet-hour deferral when Doze delivered an earlier alarm
+    // late. Native receipts use the original occurrence time to prevent repeats.
+    if (!delivery.isAfter(now) &&
+        preferences.quietHours &&
+        now.difference(at) < const Duration(hours: 24)) {
+      delivery = outsideQuietHours(now, preferences);
+    }
+    if (!delivery.isAfter(now)) return;
     plans.add({
       'key': key,
       'at': delivery.millisecondsSinceEpoch,
+      'occurrenceAt': at.millisecondsSinceEpoch,
       'title': title,
       'body': body,
       'link': link,
@@ -135,12 +142,15 @@ List<Map<String, Object>> androidReminderPlan({
         time,
         'Your Todorbit day',
         mobileLink('tasks', day: day),
-        'Open your daily plan',
+        '${tasks.where((t) => t.isOpen && t.scheduledDate == day).length} planned · ${tasks.where((t) => t.isOpen && t.deadlineDate != null && t.deadlineDate!.compareTo(day) <= 0).length} due or overdue',
       );
     }
     if (settings.dueReminders) {
       for (final task in tasks.where(
-        (t) => t.isOpen && t.deadlineDate == day,
+        (t) =>
+            t.isOpen &&
+            t.deadlineDate != null &&
+            t.deadlineDate!.compareTo(day) <= 0,
       )) {
         add(
           'due:${task.id}:$day',
@@ -175,6 +185,7 @@ Future<void> publishAndroidRepository(
         'day': localDate(e.startsAt.toLocal()),
         'through': localDate(e.endsAt.toLocal()),
         'at': e.startsAt.millisecondsSinceEpoch,
+        'until': e.endsAt.millisecondsSinceEpoch,
         'detail':
             '${localDate(e.startsAt.toLocal())} · ${e.allDay ? 'All day' : '${e.startsAt.toLocal().hour.toString().padLeft(2, '0')}:${e.startsAt.toLocal().minute.toString().padLeft(2, '0')}'}',
         'link': mobileLink(
@@ -191,6 +202,7 @@ Future<void> publishAndroidRepository(
             'Work session',
         'day': localDate(s.startsAt.toLocal()),
         'at': s.startsAt.millisecondsSinceEpoch,
+        'until': s.endsAt.millisecondsSinceEpoch,
         'detail': '${localDate(s.startsAt.toLocal())} · Work session',
         'link': mobileLink(
           'session',

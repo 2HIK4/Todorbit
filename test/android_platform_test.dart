@@ -13,6 +13,8 @@ void main() {
     String id, {
     TaskNotification notification = const TaskNotification(),
     TaskStatus status = TaskStatus.notStarted,
+    String? deadline,
+    String? planned,
   }) => LifeTask(
     id: id,
     title: id,
@@ -22,6 +24,8 @@ void main() {
     createdAt: DateTime.utc(2026),
     updatedAt: DateTime.utc(2026),
     notification: notification,
+    deadlineDate: deadline,
+    scheduledDate: planned,
   );
   test('mobile preferences round trip independently and reject future/malformed values', () async {
     final root = await Directory.systemTemp.createTemp(
@@ -41,6 +45,7 @@ void main() {
       expect((await store.load()).toJson(), next.toJson());
       await store.file.writeAsString(jsonEncode({'version': 999}));
       await expectLater(store.load(), throwsFormatException);
+      await expectLater(store.save(next), throwsFormatException);
       expect(jsonDecode(await store.file.readAsString()), {'version': 999});
       expect(
         () => MobilePreferences.fromJson({
@@ -129,6 +134,64 @@ void main() {
       expect(
         outsideQuietHours(DateTime(2026, 10, 28, 12), preferences).toLocal(),
         DateTime(2026, 10, 28, 12),
+      );
+    },
+  );
+  test(
+    'quiet-hour replanning retains the original reminder receipt identity',
+    () {
+      final original = DateTime(2026, 10, 27, 21, 30);
+      final now = DateTime(2026, 10, 28, 2);
+      final plans = androidReminderPlan(
+        tasks: [
+          task(
+            'late',
+            notification: TaskNotification(
+              mode: 'custom',
+              at: original.toUtc(),
+            ),
+          ),
+        ],
+        sessions: [],
+        events: [],
+        now: now,
+        preferences: const MobilePreferences(quietHours: true),
+      );
+      expect(plans.single['occurrenceAt'], original.millisecondsSinceEpoch);
+      expect(
+        plans.single['at'],
+        DateTime(2026, 10, 28, 7).millisecondsSinceEpoch,
+      );
+    },
+  );
+  test(
+    'daily reminders include overdue work and summaries use real task counts',
+    () {
+      final now = DateTime(2026, 10, 28, 8);
+      final plans = androidReminderPlan(
+        tasks: [
+          task('overdue', deadline: '2026-10-27', planned: '2026-10-28'),
+          task('future', deadline: '2026-10-29'),
+          task('done', deadline: '2026-10-27', status: TaskStatus.completed),
+        ],
+        sessions: [],
+        events: [],
+        now: now,
+        preferences: const MobilePreferences(),
+        settings: const NotificationSettings(
+          dueReminders: true,
+          dailySummary: true,
+        ),
+      );
+      expect(plans.any((p) => p['key'] == 'due:overdue:2026-10-28'), isTrue);
+      expect(plans.any((p) => p['key'] == 'due:future:2026-10-28'), isFalse);
+      expect(
+        plans.any((p) => (p['key'] as String).startsWith('due:done:')),
+        isFalse,
+      );
+      expect(
+        plans.firstWhere((p) => p['key'] == 'summary:2026-10-28')['body'],
+        '1 planned · 1 due or overdue',
       );
     },
   );

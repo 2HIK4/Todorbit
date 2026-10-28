@@ -19,6 +19,8 @@ import '../scheduling/smart_reschedule.dart';
 import '../search/advanced_search_dialog.dart';
 import '../shared/sidebar_items.dart';
 import '../shared/text_prompt_dialog.dart';
+import '../shared/icon_picker.dart';
+import '../shared/event_color_picker.dart';
 import '../templates/templates_dialog.dart';
 import '../time_tracking/time_tracking_dialog.dart';
 import '../workspace/sequence_dialog.dart';
@@ -200,6 +202,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
             await openMobileEditor(
               context,
               (route) => EventEditor(
+                protectUnsavedEdits: true,
                 event: value,
                 initialDay: day,
                 onClose: () => Navigator.pop(route),
@@ -219,6 +222,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
             await openMobileEditor(
               context,
               (route) => SessionEditor(
+                protectUnsavedEdits: true,
                 session: value,
                 initialDay: day,
                 onClose: () => Navigator.pop(route),
@@ -254,6 +258,15 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
     search.clear();
     setState(() => searching = false);
     ref.read(appControllerProvider).navigate(view, id: id);
+    if (view == WorkspaceView.today) {
+      unawaited(
+        run(
+          () => ref
+              .read(appControllerProvider)
+              .ensureRecurringMonth(DateTime.now()),
+        ),
+      );
+    }
   }
 
   @override
@@ -267,6 +280,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
         initialDay: calendarDay,
         openTask: (t) => task(t),
         addTask: (d) => task(null, d),
+        onEditorClosed: deliverLink,
       ),
       WorkspaceView.habits => const HabitsView(),
       WorkspaceView.goals => const GoalsView(),
@@ -619,8 +633,10 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                 [
                   if (t.priority > 0) 'Priority ${t.priority}',
                   if (t.status != TaskStatus.notStarted) t.status.name,
-                  if (t.scheduledDate != null) 'Planned ${t.scheduledDate}',
-                  if (t.deadlineDate != null) 'Due ${t.deadlineDate}',
+                  if (t.scheduledDate != null)
+                    'Planned ${MaterialLocalizations.of(context).formatMediumDate(DateTime.parse(t.scheduledDate!))}',
+                  if (t.deadlineDate != null)
+                    'Due ${MaterialLocalizations.of(context).formatMediumDate(DateTime.parse(t.deadlineDate!))}',
                   ?category,
                   ?project,
                 ].join(' · '),
@@ -732,7 +748,12 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
           for (final category in c.categories)
             ExpansionTile(
               title: Text(category.name),
-              leading: const Icon(Icons.folder_outlined),
+              leading: Icon(
+                iconForKey(
+                  c.iconKeys['category:${category.id}'],
+                  Icons.folder_outlined,
+                ),
+              ),
               children: [
                 ListTile(
                   title: const Text('All category tasks'),
@@ -900,6 +921,51 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                     title: Text(category.name),
                     children: [
                       ListTile(
+                        title: const Text('Category icon'),
+                        leading: const Icon(Icons.interests_outlined),
+                        onTap: () async {
+                          final selected = await chooseBuiltInIcon(
+                            context,
+                            current:
+                                current.iconKeys['category:${category.id}'],
+                          );
+                          if (selected.$1) {
+                            await run(
+                              () => c.setIcon(
+                                'category',
+                                category.id,
+                                selected.$2,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                      ListTile(
+                        title: const Text('Category event color'),
+                        subtitle: Text(eventColorLabel(category.eventColor)),
+                        leading: const Icon(Icons.palette_outlined),
+                        onTap: () async {
+                          final color = await chooseEventColor(
+                            context,
+                            category.eventColor ??
+                                Theme.of(context).colorScheme.primary
+                                    .toARGB32(),
+                          );
+                          if (color != null) {
+                            await run(
+                              () => c.setCategoryEventColor(category.id, color),
+                            );
+                          }
+                        },
+                      ),
+                      if (category.eventColor != null)
+                        ListTile(
+                          title: const Text('Use default event color'),
+                          onTap: () => run(
+                            () => c.setCategoryEventColor(category.id, null),
+                          ),
+                        ),
+                      ListTile(
                         title: const Text('Rename category'),
                         onTap: () async {
                           final name = await showDialog<String>(
@@ -937,6 +1003,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                       ))
                         ListTile(
                           title: Text(p.name),
+                          subtitle: const Text('Tap to rename'),
                           onTap: () async {
                             final name = await showDialog<String>(
                               context: context,
@@ -949,10 +1016,50 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                               await run(() => c.renameProject(p.id, name));
                             }
                           },
-                          trailing: IconButton(
-                            tooltip: 'Delete empty project',
-                            icon: const Icon(Icons.delete_outline),
-                            onPressed: () => run(() => c.deleteProject(p.id)),
+                          trailing: PopupMenuButton<String>(
+                            tooltip: 'Project actions',
+                            itemBuilder: (_) => const [
+                              PopupMenuItem(
+                                value: 'icon',
+                                child: Text('Project icon'),
+                              ),
+                              PopupMenuItem(
+                                value: 'template',
+                                child: Text('Save project template'),
+                              ),
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Text('Delete empty project'),
+                              ),
+                            ],
+                            onSelected: (value) async {
+                              if (value == 'delete') {
+                                await run(() => c.deleteProject(p.id));
+                              }
+                              if (value == 'template') {
+                                if (context.mounted) {
+                                  await showSaveTemplateDialog(
+                                    context,
+                                    sourceName: p.name,
+                                    save: (name) =>
+                                        c.saveProjectTemplate(p, name),
+                                  );
+                                }
+                              }
+                              if (value == 'icon') {
+                                if (!context.mounted) return;
+                                final selected = await chooseBuiltInIcon(
+                                  context,
+                                  current: current.iconKeys['project:${p.id}'],
+                                );
+                                if (selected.$1) {
+                                  await run(
+                                    () =>
+                                        c.setIcon('project', p.id, selected.$2),
+                                  );
+                                }
+                              }
+                            },
                           ),
                         ),
                       ListTile(

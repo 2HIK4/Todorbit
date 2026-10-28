@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
@@ -6,6 +9,7 @@ import '../../data/life_repository.dart';
 import '../../domain/notifications.dart';
 import '../widget/native_widget_service.dart';
 import '../shared/settings_section.dart';
+import '../../platform/android/android_platform.dart';
 
 class NotificationDialog extends ConsumerStatefulWidget {
   const NotificationDialog({super.key, this.service});
@@ -21,6 +25,7 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
   NotificationSettings settings = const NotificationSettings();
   bool loading = true;
   bool saving = false;
+  bool get deliveryAvailable => Platform.isAndroid || companion.isAvailable;
   String? error;
 
   @override
@@ -57,11 +62,20 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
       error = null;
     });
     try {
-      if (settings.enabled) await companion.ensureRemindersRunning();
+      if (settings.enabled && Platform.isAndroid) {
+        if (!await AndroidPlatform.requestNotifications()) {
+          throw StateError(
+            'Allow Android notifications or turn reminders off.',
+          );
+        }
+      } else if (settings.enabled) {
+        await companion.ensureRemindersRunning();
+      }
       await ref
           .read(appControllerProvider)
           .repository
           .saveNotificationSettings(settings);
+      if (Platform.isAndroid) await ref.read(appControllerProvider).refresh();
       if (mounted) Navigator.pop(context);
     } catch (failure) {
       if (mounted) {
@@ -90,8 +104,10 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SettingsHelperText(
-                    'Off by default. The Windows tray companion delivers reminders while it is running, even when the main window is closed.',
+                  SettingsHelperText(
+                    Platform.isAndroid
+                        ? 'Off by default. Android delivers enabled reminders without keeping Todorbit open. Battery restrictions may delay delivery.'
+                        : 'Off by default. The Windows tray companion delivers reminders while it is running, even when the main window is closed.',
                   ),
                   const SizedBox(height: 12),
                   SwitchListTile(
@@ -99,7 +115,7 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
                     title: const Text('Due task reminders'),
                     subtitle: const Text('Open tasks due today or overdue.'),
                     value: settings.dueReminders,
-                    onChanged: companion.isAvailable && !saving
+                    onChanged: deliveryAvailable && !saving
                         ? (value) => setState(
                             () => settings = NotificationSettings(
                               dueReminders: value,
@@ -114,7 +130,7 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
                     title: const Text('Daily summary'),
                     subtitle: const Text('Counts of planned and due tasks.'),
                     value: settings.dailySummary,
-                    onChanged: companion.isAvailable && !saving
+                    onChanged: deliveryAvailable && !saving
                         ? (value) => setState(
                             () => settings = NotificationSettings(
                               dueReminders: settings.dueReminders,
@@ -125,7 +141,7 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
                         : null,
                   ),
                   TextButton.icon(
-                    onPressed: companion.isAvailable && !saving
+                    onPressed: deliveryAvailable && !saving
                         ? () async {
                             final picked = await showTimePicker(
                               context: context,
@@ -145,10 +161,12 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
                     icon: const Icon(Icons.schedule_outlined),
                     label: Text('Local delivery time: ${time.format(context)}'),
                   ),
-                  const SettingsHelperText(
-                    'Each type is sent at most once per local day, within an hour of the selected time. Windows notification settings may affect visibility.',
+                  SettingsHelperText(
+                    Platform.isAndroid
+                        ? 'Daily reminders are sent at most once per local date. Doze and battery restrictions can delay them; force-stop blocks background delivery until relaunch.'
+                        : 'Each type is sent at most once per local day, within an hour of the selected time. Windows notification settings may affect visibility.',
                   ),
-                  if (!companion.isAvailable)
+                  if (!deliveryAvailable)
                     const Text(
                       'The packaged Windows tray companion is unavailable.',
                     ),
@@ -169,7 +187,7 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
         ),
         FilledButton(
           onPressed:
-              loading || saving || (!companion.isAvailable && settings.enabled)
+              loading || saving || (!deliveryAvailable && settings.enabled)
               ? null
               : _save,
           child: const Text('Save'),

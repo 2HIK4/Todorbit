@@ -12,7 +12,9 @@ import '../settings/backups_cloud_page.dart';
 import '../settings/privacy_dialog.dart';
 import '../settings/task_view_settings_dialog.dart';
 import '../settings/theme_dialog.dart';
+import '../settings/notification_dialog.dart';
 import '../shared/sidebar_items.dart';
+import '../shared/weekdays.dart';
 
 class MobileSettings extends ConsumerStatefulWidget {
   const MobileSettings({
@@ -164,6 +166,7 @@ class _MobileSettingsState extends ConsumerState<MobileSettings> {
             Text('Appearance', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
             DropdownButtonFormField<ThemeModePreference>(
+              isExpanded: true,
               initialValue: c.theme,
               decoration: const InputDecoration(labelText: 'Theme'),
               items: [
@@ -199,6 +202,7 @@ class _MobileSettingsState extends ConsumerState<MobileSettings> {
               onTap: saving ? null : navigation,
             ),
             DropdownButtonFormField<WorkspaceView>(
+              isExpanded: true,
               initialValue: preferences.start,
               decoration: const InputDecoration(labelText: 'Open on launch'),
               items: [
@@ -215,6 +219,7 @@ class _MobileSettingsState extends ConsumerState<MobileSettings> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<CalendarContent>(
+              isExpanded: true,
               initialValue: c.calendarContent,
               decoration: const InputDecoration(labelText: 'Calendar content'),
               items: [
@@ -234,16 +239,12 @@ class _MobileSettingsState extends ConsumerState<MobileSettings> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<int>(
+              isExpanded: true,
               initialValue: c.firstWeekday,
               decoration: const InputDecoration(labelText: 'First day of week'),
               items: [
                 for (var i = 1; i <= 7; i++)
-                  DropdownMenuItem(
-                    value: i,
-                    child: Text(
-                      MaterialLocalizations.of(context).narrowWeekdays[i % 7],
-                    ),
-                  ),
+                  DropdownMenuItem(value: i, child: Text(weekdayNames[i - 1])),
               ],
               onChanged: (v) {
                 if (v != null) run(() => c.setFirstWeekday(v));
@@ -269,6 +270,14 @@ class _MobileSettingsState extends ConsumerState<MobileSettings> {
                       await refreshPermissions();
                     })
                   : null,
+            ),
+            ListTile(
+              leading: const Icon(Icons.event_available_outlined),
+              title: const Text('Daily summary and due reminders'),
+              subtitle: const Text(
+                'Optional daily reminders and delivery time',
+              ),
+              onTap: () => show(const NotificationDialog()),
             ),
             SwitchListTile(
               title: const Text('Quiet hours'),

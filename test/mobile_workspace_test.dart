@@ -10,6 +10,7 @@ import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/data/mobile_preference_store.dart';
 import 'package:life_manager/domain/models.dart';
 import 'package:life_manager/features/mobile/mobile_workspace.dart';
+import 'package:life_manager/features/mobile/mobile_settings.dart';
 import 'package:life_manager/features/workspace/task_editor.dart';
 import 'package:life_manager/features/settings/theme_dialog.dart';
 import 'package:life_manager/features/settings/task_view_settings_dialog.dart';
@@ -151,6 +152,42 @@ void main() {
       await tester.binding.setSurfaceSize(null);
     }
   });
+
+  testWidgets(
+    'mobile settings expose daily reminders and independent navigation',
+    (tester) async {
+      try {
+        await open(tester, size: const Size(320, 640), scale: 1.3);
+        final context = tester.element(find.byType(MobileWorkspace));
+        Navigator.of(context).push<void>(
+          MaterialPageRoute(
+            builder: (_) => MobileSettings(
+              store: MobilePreferenceStore(File('${root.path}/mobile.json')),
+              preferences: const MobilePreferences(),
+              onChanged: (_) {},
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final list = find
+            .descendant(
+              of: find.byType(MobileSettings),
+              matching: find.byType(Scrollable),
+            )
+            .first;
+        await tester.scrollUntilVisible(
+          find.text('Daily summary and due reminders'),
+          250,
+          scrollable: list,
+        );
+        expect(find.text('Daily summary and due reminders'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.binding.setSurfaceSize(null);
+      }
+    },
+  );
 
   for (final view in [
     WorkspaceView.habits,

@@ -11,6 +11,8 @@ include: package:flutter_lints/flutter.yaml
 
 analyzer:
   exclude:
+    - .buildlog/**
+    - .build/**
     - build/**
     - release/**
     - android/**

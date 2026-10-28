@@ -23,10 +23,12 @@ class MobileCalendar extends ConsumerStatefulWidget {
     required this.openTask,
     required this.addTask,
     this.initialDay,
+    this.onEditorClosed,
   });
   final ValueChanged<LifeTask> openTask;
   final ValueChanged<DateTime> addTask;
   final DateTime? initialDay;
+  final Future<void> Function()? onEditorClosed;
   @override
   ConsumerState<MobileCalendar> createState() => _MobileCalendarState();
 }
@@ -36,6 +38,20 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
     widget.initialDay ?? DateTime.now(),
   );
   String mode = 'month';
+
+  @override
+  void initState() {
+    super.initState();
+    final controller = ref.read(appControllerProvider);
+    mode =
+        controller.lastCalendarMode ??
+        controller.customization.calendarDefaultView;
+    if (widget.initialDay != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) move(0);
+      });
+    }
+  }
 
   Future<void> move(int delta) async {
     setState(() {
@@ -67,23 +83,31 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
     }
   }
 
-  Future<void> event([FixedEvent? value]) => openMobileEditor(
-    context,
-    (route) => EventEditor(
-      event: value,
-      initialDay: selected,
-      onClose: () => Navigator.pop(route),
-    ),
-  );
+  Future<void> event([FixedEvent? value]) async {
+    await openMobileEditor(
+      context,
+      (route) => EventEditor(
+        protectUnsavedEdits: true,
+        event: value,
+        initialDay: selected,
+        onClose: () => Navigator.pop(route),
+      ),
+    );
+    if (mounted) await widget.onEditorClosed?.call();
+  }
 
-  Future<void> session([WorkSession? value]) => openMobileEditor(
-    context,
-    (route) => SessionEditor(
-      session: value,
-      initialDay: selected,
-      onClose: () => Navigator.pop(route),
-    ),
-  );
+  Future<void> session([WorkSession? value]) async {
+    await openMobileEditor(
+      context,
+      (route) => SessionEditor(
+        protectUnsavedEdits: true,
+        session: value,
+        initialDay: selected,
+        onClose: () => Navigator.pop(route),
+      ),
+    );
+    if (mounted) await widget.onEditorClosed?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -136,7 +160,10 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
             ButtonSegment(value: 'month', label: Text('Month')),
           ],
           selected: {mode},
-          onSelectionChanged: (value) => setState(() => mode = value.first),
+          onSelectionChanged: (value) {
+            setState(() => mode = value.first);
+            ref.read(appControllerProvider).setLastCalendarMode(value.first);
+          },
         ),
         const SizedBox(height: 8),
         Row(

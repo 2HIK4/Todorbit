@@ -24,12 +24,11 @@ class _AndroidAuthorizationFlow implements GoogleAuthorizationFlow {
 /// Google Play services owns short-lived token acquisition. No Desktop OAuth
 /// client secret or refresh token is used on Android.
 class AndroidGoogleDriveAuth extends GoogleDriveAuth {
-  AndroidGoogleDriveAuth({required super.client, required super.store})
-    : super(
-        flow: _AndroidAuthorizationFlow(),
-        clientId: 'android-platform',
-        enabled: const bool.fromEnvironment('GOOGLE_DRIVE_ANDROID_ENABLED'),
-      );
+  AndroidGoogleDriveAuth({
+    required super.client,
+    required super.store,
+    super.enabled = const bool.fromEnvironment('GOOGLE_DRIVE_ANDROID_ENABLED'),
+  }) : super(flow: _AndroidAuthorizationFlow(), clientId: 'android-platform');
   String? token;
   DateTime? expires;
   Future<String>? acquiring;

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../shared/dialog_action_bar.dart';
+import '../shared/unsaved_editor_guard.dart';
 
 class SessionEditor extends ConsumerStatefulWidget {
   const SessionEditor({
@@ -13,11 +14,13 @@ class SessionEditor extends ConsumerStatefulWidget {
     this.initialTaskId,
     required this.initialDay,
     required this.onClose,
+    this.protectUnsavedEdits = false,
   });
   final WorkSession? session;
   final String? initialTaskId;
   final DateTime initialDay;
   final VoidCallback onClose;
+  final bool protectUnsavedEdits;
 
   @override
   ConsumerState<SessionEditor> createState() => _SessionEditorState();
@@ -29,6 +32,13 @@ class _SessionEditorState extends ConsumerState<SessionEditor> {
   late DateTime end;
   late SessionOutcome outcome;
   bool busy = false;
+  final exitGuard = GlobalKey<UnsavedEditorGuardState>();
+  late String initialDraft;
+  String get draftKey =>
+      '$taskId|${start.toIso8601String()}|${end.toIso8601String()}|${outcome.name}';
+  void finish() {
+    exitGuard.currentState?.close(saved: true);
+  }
 
   @override
   void initState() {
@@ -45,6 +55,7 @@ class _SessionEditorState extends ConsumerState<SessionEditor> {
     end =
         widget.session?.endsAt.toLocal() ?? start.add(const Duration(hours: 1));
     outcome = widget.session?.outcome ?? SessionOutcome.upcoming;
+    initialDraft = draftKey;
   }
 
   Future<void> _pick(bool isStart, bool dateOnly) async {
@@ -115,7 +126,7 @@ class _SessionEditorState extends ConsumerState<SessionEditor> {
       } else {
         await controller.updateSession(widget.session!, draft);
       }
-      if (mounted) widget.onClose();
+      if (mounted) finish();
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -155,7 +166,7 @@ class _SessionEditorState extends ConsumerState<SessionEditor> {
     setState(() => busy = true);
     try {
       await ref.read(appControllerProvider).deleteSession(session.id);
-      if (mounted) widget.onClose();
+      if (mounted) finish();
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -173,91 +184,100 @@ class _SessionEditorState extends ConsumerState<SessionEditor> {
     final candidates = controller.tasks
         .where((task) => task.isOpen || task.id == taskId)
         .toList();
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  widget.session == null ? 'Plan work session' : 'Work session',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-              IconButton(
-                tooltip: 'Close',
-                onPressed: widget.onClose,
-                icon: const Icon(Icons.close),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
+    return UnsavedEditorGuard(
+      key: exitGuard,
+      enabled: widget.protectUnsavedEdits,
+      dirty: draftKey != initialDraft,
+      busy: busy,
+      onClose: widget.onClose,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
               children: [
-                AnchoredSelectField<String>(
-                  initialValue: taskId,
-                  decoration: const InputDecoration(labelText: 'Task'),
-                  items: candidates
-                      .map(
-                        (task) => DropdownMenuItem(
-                          value: task.id,
-                          child: Text(
-                            task.title,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) => setState(() => taskId = value),
+                Expanded(
+                  child: Text(
+                    widget.session == null
+                        ? 'Plan work session'
+                        : 'Work session',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                 ),
-                const SizedBox(height: 15),
-                Text('Start', style: Theme.of(context).textTheme.titleSmall),
-                _dateTimeRow(start, true),
-                const SizedBox(height: 12),
-                Text('End', style: Theme.of(context).textTheme.titleSmall),
-                _dateTimeRow(end, false),
-                const SizedBox(height: 16),
-                AnchoredSelectField<SessionOutcome>(
-                  initialValue: outcome,
-                  decoration: const InputDecoration(labelText: 'Outcome'),
-                  items: SessionOutcome.values
-                      .map(
-                        (value) => DropdownMenuItem(
-                          value: value,
-                          child: Text(_outcomeName(value)),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) => setState(() => outcome = value!),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Session outcome is manual and does not complete the task.',
+                IconButton(
+                  tooltip: 'Close',
+                  onPressed: () => exitGuard.currentState?.close(),
+                  icon: const Icon(Icons.close),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 12),
-          DialogActionBar(
-            children: [
-              if (widget.session != null)
-                TextButton.icon(
-                  onPressed: busy ? null : _delete,
-                  icon: const Icon(Icons.delete_outline),
-                  label: const Text('Delete'),
-                ),
-              FilledButton.icon(
-                onPressed: busy ? null : _save,
-                icon: const Icon(Icons.save_outlined),
-                label: Text(busy ? 'Saving…' : 'Save session'),
+            const SizedBox(height: 14),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
+                children: [
+                  AnchoredSelectField<String>(
+                    initialValue: taskId,
+                    decoration: const InputDecoration(labelText: 'Task'),
+                    items: candidates
+                        .map(
+                          (task) => DropdownMenuItem(
+                            value: task.id,
+                            child: Text(
+                              task.title,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) => setState(() => taskId = value),
+                  ),
+                  const SizedBox(height: 15),
+                  Text('Start', style: Theme.of(context).textTheme.titleSmall),
+                  _dateTimeRow(start, true),
+                  const SizedBox(height: 12),
+                  Text('End', style: Theme.of(context).textTheme.titleSmall),
+                  _dateTimeRow(end, false),
+                  const SizedBox(height: 16),
+                  AnchoredSelectField<SessionOutcome>(
+                    initialValue: outcome,
+                    decoration: const InputDecoration(labelText: 'Outcome'),
+                    items: SessionOutcome.values
+                        .map(
+                          (value) => DropdownMenuItem(
+                            value: value,
+                            child: Text(_outcomeName(value)),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) => setState(() => outcome = value!),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Session outcome is manual and does not complete the task.',
+                  ),
+                ],
               ),
-            ],
-          ),
-        ],
+            ),
+            const SizedBox(height: 12),
+            DialogActionBar(
+              children: [
+                if (widget.session != null)
+                  TextButton.icon(
+                    onPressed: busy ? null : _delete,
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Delete'),
+                  ),
+                FilledButton.icon(
+                  onPressed: busy ? null : _save,
+                  icon: const Icon(Icons.save_outlined),
+                  label: Text(busy ? 'Saving…' : 'Save session'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
