@@ -56,6 +56,9 @@ internal sealed partial class NativeDesktopWidgetHost
           var layout=CalendarWidgetLayout.Create(WidgetGeometry.MinimumSize(true,scale),Math.Max(50,20*scale+26),scale,weeks,split);
           if(layout.Grid.Height/weeks < 28*scale-.01f || layout.Agenda.Height < 36+layout.RowHeight-.01f) throw new InvalidOperationException("Divider clips a date or agenda row at minimum size.");
         }
+        var compactCell=new RectangleF(0,0,34,24);
+        var eventMarkers=new RectangleF(9,compactCell.Bottom-7,16,4);
+        foreach(var kind in new[] {"Task","Session"}) if(CalendarAuxiliaryMarker(compactCell,kind).IntersectsWith(eventMarkers)) throw new InvalidOperationException("Task/session markers overlap the event count.");
         for(var count=0;count<=6;count++) {
           var events=Enumerable.Range(0,count).Select(i=>new WidgetCalendarItem(DateTime.Today,"Event","Event",null,Id:$"event-{i}")).ToList();
           if(events.Count>0) events.Add(events[0]);

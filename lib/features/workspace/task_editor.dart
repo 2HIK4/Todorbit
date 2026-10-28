@@ -506,16 +506,23 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     try {
       final controller = ref.read(appControllerProvider);
       TaskNotification.fromJson(notification.toJson());
-      if (notification.enabled && !NativeWidgetService().isAvailable) {
+      final notificationChanged = !notification.sameAs(
+        currentTask?.notification ?? const TaskNotification(),
+      );
+      if (notificationChanged &&
+          notification.enabled &&
+          !NativeWidgetService().isAvailable) {
         throw StateError(
           'The Windows companion is required for task notifications.',
         );
       }
-      if (notification.mode == 'custom' &&
+      if (notificationChanged &&
+          notification.mode == 'custom' &&
           !notification.at!.isAfter(DateTime.now().toUtc())) {
         throw const FormatException('Choose a future notification time.');
       }
-      if (notification.mode == 'session' &&
+      if (notificationChanged &&
+          notification.mode == 'session' &&
           !controller.sessions.any(
             (s) =>
                 s.taskId == currentTask?.id &&
@@ -683,7 +690,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
           await controller.setIcon(kind, id, iconKey);
         }
       }
-      if (notification.enabled) {
+      if (notificationChanged && notification.enabled) {
         try {
           await NativeWidgetService().ensureRemindersRunning();
         } catch (e) {

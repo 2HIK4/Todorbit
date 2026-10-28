@@ -140,6 +140,16 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     }
   }
 
+  bool get canOpenNavigation =>
+      !creating &&
+      ref.read(appControllerProvider).selectedTask == null &&
+      ModalRoute.of(context)?.isCurrent == true;
+  bool deferIfEditing(NavigationRequest request) {
+    if (canOpenNavigation) return false;
+    setState(() => pendingNavigation ??= request);
+    return true;
+  }
+
   Future<void> deliverNavigation() async {
     final request = pendingNavigation;
     final controller = ref.read(appControllerProvider);
@@ -154,7 +164,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     setState(() => pendingNavigation = null);
     try {
       await controller.refresh();
-      if (!mounted) return;
+      if (!mounted || deferIfEditing(request)) return;
       if (request.kind == 'task') {
         if (!controller.tasks.any((t) => t.id == request.id)) {
           throw StateError('Task is no longer available');
@@ -201,7 +211,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
             onClose: () => Navigator.of(context, rootNavigator: true).pop(),
           );
         }
-        if (!mounted) return;
+        if (!mounted || deferIfEditing(request)) return;
         await showDialog<void>(
           context: context,
           builder: (_) => Dialog(

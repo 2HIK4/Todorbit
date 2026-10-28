@@ -155,13 +155,14 @@ internal sealed partial class NativeDesktopWidgetHost
             // Task/session shapes retain their independent meaning at the cell edge.
             foreach(var kind in items.Where(item=>item.Kind != "Event").Select(item=>item.Kind).Distinct().Take(2)) {
               var marker = items.First(item=>item.Kind==kind);
-              DrawItemMarker(g,marker,new RectangleF(r.X+3+(kind=="Session"?6:0),r.Bottom-6,3,3),ink.Color);
+              DrawItemMarker(g,marker,CalendarAuxiliaryMarker(r,kind),ink.Color);
             }
 
         }
         using(var grip = new Pen(palette.Muted,2)) g.DrawLine(grip,CalendarDivider.X+CalendarDivider.Width/2-16,CalendarDivider.Y+6,CalendarDivider.X+CalendarDivider.Width/2+16,CalendarDivider.Y+6);
         DrawCalendarAgenda(g, font, small, ellipsis);
     }
+    internal static RectangleF CalendarAuxiliaryMarker(RectangleF cell,string kind) => new(kind=="Session" ? cell.Right-5 : cell.X+2,cell.Y+2,3,3);
     internal static int CountCalendarEvents(IEnumerable<WidgetCalendarItem> items) => items.Where(item=>item.Kind=="Event" && !item.Cancelled).Select(item=>$"{item.Id}:{item.NominalDate}").Distinct().Count();
     internal static int EventIndicator(int count) => count >= 4 ? -1 : Math.Max(0,count);
     private static void DrawEventCount(Graphics g,int count,RectangleF r,Color color) {

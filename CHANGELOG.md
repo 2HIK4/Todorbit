@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.17 - Windows x64 pre-release
+
+- Reorder widget navigation, save per-widget presets, and undo/redo settings changes.
+- Customize task-row and selected-navigation colors/opacity independently. Resize the Calendar/agenda split and see exact event-count indicators.
+- Add explicit, default-Off task reminders using custom times or work-session offsets; retain existing reminder behavior.
+- Open actual task/event/session editors directly from widgets, with single-instance readiness and protection for active drafts.
+- Include portable widget configurations/presets in settings transfers and local/Drive backups. Schema 22 migration requires approval and a verified backup.
+- Final audit fixes old-reminder editing, startup navigation races and overlapping compact Calendar markers.
+
 ## 1.0.9 — Windows x64 pre-release
 
 - Anchored form selection menus below their controls with viewport bounds, scrollbars, and consistent selection marks. Updated Software Updates and Backup & Restore spacing.

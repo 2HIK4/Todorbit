@@ -20,6 +20,10 @@ class TaskNotification {
   final DateTime? at;
   final int minutesBefore;
   bool get enabled => mode != 'off';
+  bool sameAs(TaskNotification other) =>
+      mode == other.mode &&
+      at?.toUtc() == other.at?.toUtc() &&
+      minutesBefore == other.minutesBefore;
   Map<String, dynamic> toJson() => {
     'version': 1,
     'mode': mode,
