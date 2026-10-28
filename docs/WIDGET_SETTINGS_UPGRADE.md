@@ -1,5 +1,8 @@
 # Widget settings, reminders and navigation upgrade
 
+> Published as [v1.0.17](TODORBIT_1_0_17_PUBLICATION.md) after the final audit.
+> Version/verification statements below describe the initial implementation checkpoint.
+
 Implemented on `feature/widget-settings-navigation-upgrade` from `main` at
 `d6a1620`. App/native production version remains **1.0.16+17**. No release,
 installer execution, OAuth configuration change or personal-profile migration.

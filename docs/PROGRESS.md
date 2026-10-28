@@ -1,5 +1,33 @@
 # Progress
 
+## v1.0.17 audited widget upgrade published (2026-10-28)
+
+- [Public Windows x64 pre-release v1.0.17](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.17),
+  **1.0.17+18**, source/tag **cae2b4b**. Implementation d8f2bc8, handoff 72b584e;
+  audit adds regression fixes for unchanged reminders, async navigation/draft races
+  and compact Calendar marker overlap. Main fast-forwarded; tags not moved.
+- [Exact-source Windows CI](https://github.com/2HIK4/Todorbit/actions/runs/40671604747)
+  passes: **356 tests / one opt-in skip**, clean analysis, config gates, Windows
+  Release, native self-test, installer/portable/checksums. Local focused **9 pass**,
+  formatting/diff checks pass; final packaged self-test and actual-HWND lifecycle
+  pass. Enabled packages retain the SHA-verified public v1.0.16 configuration;
+  tracked config restored disabled/empty. No credential values committed.
+- All five public assets/digests and anonymous downloads match local bytes;
+  production updater discovers/downloads/verifies v1.0.17 from v1.0.16 in both
+  package modes. Stable excludes the pre-release. Actual bundled helper rollback,
+  swap and restart pass at an isolated portable path with spaces. Core approved
+  backup/migration path preserves all 44 legacy tables/values, old event reminders,
+  sessions, project/category/task data, theme/calendar and custom widget presets;
+  schema 22 defaults task reminders Off. Verified schema-21 Before upgrade snapshot.
+- Live driver inspection verifies settings/control layout and applied navigation
+  order; hot reload/runtime diagnostics clean. Computer Use native pipe unavailable
+  after recovery, so physical release UI/approval/DPI/input and OS notification
+  receipt remain unverified. Debug install initially hit a disposable companion
+  file lock; closing that isolated companion resolved it. Personal installed
+  process/registration/data were not changed; no setup executable was run.
+- [Publication, exact hashes and remaining acceptance](TODORBIT_1_0_17_PUBLICATION.md).
+  Evidence: ignored `.buildlog/release-1.0.17-20261028/`.
+
 ## Widget settings, reminders and direct navigation (2026-10-28)
 
 - Implementation **d8f2bc8** on `feature/widget-settings-navigation-upgrade`,

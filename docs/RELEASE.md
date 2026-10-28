@@ -2,10 +2,10 @@
 
 ## Current status
 
-As checked on 2026-10-27, the latest public release is the Windows x64
-**v1.0.16 pre-release (1.0.16+17)**, tag/source `6e3b64b`.
-[Publication receipt](TODORBIT_1_0_16_PUBLICATION.md) records the exact-source
-340 passing tests/one opt-in skip, CI, asset hashes and updater checks; this is
+As checked on 2026-10-28, the latest public release is the Windows x64
+**v1.0.17 pre-release (1.0.17+18)**, tag/source `cae2b4b`.
+[Publication receipt](TODORBIT_1_0_17_PUBLICATION.md) records the exact-source
+356 passing tests/one opt-in skip, CI, asset hashes and updater checks; this is
 historical evidence, not verification of subsequent changes. Source defaults
 keep Drive disabled/empty; the published packages retain the approved enabled
 configuration. Google branding/policy limitations remain unresolved.
@@ -135,6 +135,6 @@ acceptance on an isolated profile.
 
 ## Release notes
 
-Use [v1.0.16 notes](TODORBIT_1_0_16_RELEASE_NOTES.md) and its publication receipt
+Use [v1.0.17 notes](TODORBIT_1_0_17_RELEASE_NOTES.md) and its publication receipt
 for that release. Older notes and acceptance reports retain their dated context;
 they do not define the next release's version, assets or permission to publish.
