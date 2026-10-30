@@ -10,18 +10,22 @@ $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 . (Join-Path $PSScriptRoot 'dev/native-command.ps1')
 if ($Device -notmatch '^emulator-\d+$') { throw 'Only an explicitly named disposable emulator is accepted. Never run this on a personal phone.' }
 $adb = Join-Path $AndroidSdk 'platform-tools/adb.exe'
+$version = (Select-String -Path (Join-Path $repo 'pubspec.yaml') -Pattern '^version: .+\+(\d+)$').Matches[0]
+$baselineCode = [int]$version.Groups[1].Value
+if ($baselineCode -lt 1 -or $baselineCode -ge 2100000000) { throw 'Invalid disposable baseline version code.' }
+$candidateCode = $baselineCode + 1
 if ((& $adb -s $Device shell getprop ro.kernel.qemu).Trim() -ne '1') { throw 'Device is not an Android emulator.' }
 $packageInfo = (& $adb -s $Device shell dumpsys package io.github.hik4.todorbit) -join "`n"
-if ($packageInfo -match 'versionCode=(\d+)' -and [int]$Matches[1] -gt 19 -and !$AllowDebugDowngrade) {
+if ($packageInfo -match 'versionCode=(\d+)' -and [int]$Matches[1] -gt $baselineCode -and !$AllowDebugDowngrade) {
   throw 'This disposable emulator has a newer test build. Archive its test profile first, then opt in with -AllowDebugDowngrade, or use a fresh isolated AVD. No app data was removed.'
 }
 Push-Location $repo
 try {
   # BuildNumber overrides only these development artifacts, not pubspec/Windows.
-  & ./tools/build-android.ps1 -Mode Debug -BuildNumber 20 -NoPub -AndroidSdk $AndroidSdk -JavaHome $JavaHome -GradleUserHome $GradleUserHome
+  & ./tools/build-android.ps1 -Mode Debug -BuildNumber $candidateCode -AndroidSdk $AndroidSdk -JavaHome $JavaHome -GradleUserHome $GradleUserHome
   $fixtures = Join-Path $repo '.buildlog/android-update-fixtures'
-  Invoke-TodorbitNative -Command python -ArgumentList @('tools/android-update-fixtures.py','--sdk',$AndroidSdk,'--candidate','build/app/outputs/flutter-apk/app-github-debug.apk','--debug-keystore',"$env:USERPROFILE/.android/debug.keystore",'--output',$fixtures) -FailureMessage 'Fixture preparation failed'
-  & ./tools/build-android.ps1 -Mode Debug -BuildNumber 19 -NoPub -AndroidSdk $AndroidSdk -JavaHome $JavaHome -GradleUserHome $GradleUserHome
+  Invoke-TodorbitNative -Command python -ArgumentList @('tools/android-update-fixtures.py','--sdk',$AndroidSdk,'--candidate','build/app/outputs/flutter-apk/app-github-debug.apk','--debug-keystore',"$env:USERPROFILE/.android/debug.keystore",'--baseline-version-code',"$baselineCode",'--output',$fixtures) -FailureMessage 'Fixture preparation failed'
+  & ./tools/build-android.ps1 -Mode Debug -BuildNumber $baselineCode -NoPub -AndroidSdk $AndroidSdk -JavaHome $JavaHome -GradleUserHome $GradleUserHome
   $installArguments = @('-s',$Device,'install','-r')
   if ($AllowDebugDowngrade) { $installArguments += '-d' }
   & $adb @installArguments build/app/outputs/flutter-apk/app-github-debug.apk

@@ -13,6 +13,9 @@ param(
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 . (Join-Path $PSScriptRoot 'dev/native-command.ps1')
+if ($Mode -eq 'Release' -and $NoPub) {
+  throw 'Release builds must regenerate mode-specific Flutter plugin tooling. Omit -NoPub; stale debug registrants can include development-only plugins.'
+}
 if ($AndroidSdk) {
   if (!(Test-Path -LiteralPath (Join-Path $AndroidSdk 'platforms/android-36/android.jar'))) { throw 'AndroidSdk must contain API 36.' }
   $env:ANDROID_HOME = (Resolve-Path -LiteralPath $AndroidSdk).Path

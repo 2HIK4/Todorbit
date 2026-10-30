@@ -9,7 +9,7 @@ import 'package:life_manager/platform/android/android_platform.dart';
 import 'package:life_manager/platform/android/android_update_service.dart';
 import 'package:path/path.dart' as path;
 
-/// Prepare same-key candidate.apk (code > 19) and negative signed fixtures under
+/// Prepare a same-key candidate.apk (installed code + 1) and negative fixtures under
 /// app-private files/update-fixtures on a disposable emulator before running.
 /// Flutter test and default Drive teardown uninstall; use --keep-app-running.
 /// Never use a phone.
@@ -38,15 +38,18 @@ void main() {
       final metadata = jsonDecode(
         await File(path.join(fixtures.path, 'candidate.json')).readAsString(),
       ) as Map<String, dynamic>;
+      final candidateCode = metadata['versionCode'] as int;
+      final candidateVersion = metadata['versionName'] as String;
+      expect(device.versionCode, candidateCode - 1);
       AndroidUpdateRelease release(
         File file, {
-        int code = 20,
-        String version = '1.0.18',
+        int? code,
+        String? version,
         String? digest,
       }) => AndroidUpdateRelease(
-        tag: 'v$version',
-        versionName: version,
-        versionCode: code,
+        tag: 'v${version ?? candidateVersion}',
+        versionName: version ?? candidateVersion,
+        versionCode: code ?? candidateCode,
         publishedAt: DateTime.utc(2026),
         notes: '',
         uri: Uri.parse('https://github.com'),
@@ -65,7 +68,7 @@ void main() {
         throwsA(isA<PlatformException>()),
       );
       await expectLater(
-        service.verify(release(apk, code: 21), apk),
+        service.verify(release(apk, code: candidateCode + 1), apk),
         throwsA(isA<PlatformException>()),
       );
       await expectLater(

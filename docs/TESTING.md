@@ -57,7 +57,9 @@ Run `flutter pub get` when lockfile/dependencies change. CI's independent full
 commands remain mandatory before publication. Host tests cannot establish real
 Google authorization, OEM delivery or physical native input behavior.
 
-The local Android harness refuses an installed version above its code-19 baseline.
+The debug Android harness uses the committed pubspec version code as its baseline
+and baseline + 1 for its unpublished candidate; fixture version names come from
+the APK metadata. It refuses an installed version above that baseline.
 Archive the disposable emulator profile first, then explicitly add
 `-AllowDebugDowngrade` to reuse it, or select a fresh AVD. This installs the
 same-source debug baseline with `adb install -r -d`; it never uninstalls data to
@@ -65,6 +67,10 @@ recover from an error. Its Flutter Drive runner retains the test installation.
 This requires the explicit `--keep-app-running` flag: default Drive teardown also
 uninstalls its app. Archive before deployment even when that flag is supplied.
 Negative fixtures are never installed. CI's ephemeral Android runner is separate.
+Release builds must regenerate mode-specific plugin tooling: omit `-NoPub` on
+`tools/build-android.ps1 -Mode Release`. Flutter's `--no-pub` also skips plugin
+regeneration and can leave a debug-only integration-test registrant in place.
+Keep Flutter commands that regenerate platform files sequential within a checkout.
 
 Android additions: `test/mobile_workspace_test.dart` checks compact/tablet,
 text scaling, RTL/dark layout, task CRUD and unsaved Back protection;

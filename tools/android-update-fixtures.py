@@ -21,8 +21,12 @@ def main():
     parser.add_argument('--sdk', type=Path, required=True)
     parser.add_argument('--candidate', type=Path, required=True)
     parser.add_argument('--debug-keystore', type=Path, required=True)
+    parser.add_argument('--baseline-version-code', type=int, default=19)
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
+    if not 1 <= args.baseline_version_code < 2100000000:
+        raise ValueError('Invalid disposable baseline version code')
+    candidate_code = args.baseline_version_code + 1
     if not args.debug_keystore.is_file():
         raise ValueError('Debug keystore is missing; use the Store path from the githubDebug signingReport')
     args.output.mkdir(parents=True, exist_ok=True)
@@ -37,19 +41,19 @@ def main():
     shutil.copyfile(args.candidate, args.output / 'candidate.apk')
     badging = subprocess.check_output([aapt, 'dump', 'badging', str(args.candidate)], text=True)
     identity = re.search(r"package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'", badging)
-    if not identity or identity[1] != 'io.github.hik4.todorbit' or int(identity[2]) != 20:
-        raise ValueError('Acceptance candidate must be Todorbit development version code 20')
+    if not identity or identity[1] != 'io.github.hik4.todorbit' or int(identity[2]) != candidate_code:
+        raise ValueError('Acceptance candidate must be Todorbit with baseline version code + 1')
     with args.candidate.open('rb') as stream:
         digest = hashlib.file_digest(stream, 'sha256').hexdigest()
-    (args.output / 'candidate.json').write_text(json.dumps({'versionName': identity[3], 'versionCode': 20,
+    (args.output / 'candidate.json').write_text(json.dumps({'versionName': identity[3], 'versionCode': candidate_code,
         'size': args.candidate.stat().st_size, 'sha256': digest}), encoding='utf-8')
     for name in ['wrong-package', 'wrong-signer', 'wrong-abi', 'newer-sdk', 'older']:
         package = 'io.github.hik4.wrong' if name == 'wrong-package' else 'io.github.hik4.todorbit'
-        code = 19 if name == 'older' else 20
+        code = args.baseline_version_code if name == 'older' else candidate_code
         sdk = 36 if name == 'newer-sdk' else 26
         abi = 'armeabi-v7a' if name == 'wrong-abi' else 'x86_64'
         manifest = args.output / 'AndroidManifest.xml'
-        manifest.write_text(f'<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="{package}" android:versionCode="{code}" android:versionName="1.0.18"><uses-sdk android:minSdkVersion="{sdk}" android:targetSdkVersion="36"/><application android:hasCode="false" android:label="Todorbit verification fixture"/></manifest>', encoding='utf-8')
+        manifest.write_text(f'<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="{package}" android:versionCode="{code}" android:versionName="{identity[3]}"><uses-sdk android:minSdkVersion="{sdk}" android:targetSdkVersion="36"/><application android:hasCode="false" android:label="Todorbit verification fixture"/></manifest>', encoding='utf-8')
         apk = args.output / f'{name}.apk'
         run(aapt, 'link', '-o', apk, '-I', args.sdk / 'platforms/android-36/android.jar', '--manifest', manifest)
         with zipfile.ZipFile(apk, 'a') as archive:
