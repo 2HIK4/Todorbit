@@ -61,7 +61,7 @@ def main():
         run(signer, 'sign', '--ks', untrusted if name == 'wrong-signer' else args.debug_keystore,
             '--ks-key-alias', 'untrusted' if name == 'wrong-signer' else 'androiddebugkey',
             '--ks-pass', 'pass:android', '--key-pass', 'pass:android', apk)
-    shutil.copyfile(args.output / 'older.apk', args.output / 'tampered.apk')
+    shutil.copyfile(args.output / 'candidate.apk', args.output / 'tampered.apk')
     # Alter signed bytes without resigning; the outer expected SHA will be
     # recomputed by the test, so only signature integrity can reject this case.
     with zipfile.ZipFile(args.output / 'tampered.apk', 'a') as archive:

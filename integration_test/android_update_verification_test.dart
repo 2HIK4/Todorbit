@@ -87,7 +87,15 @@ void main() {
             .copy(path.join(device.directory!, '$name.apk'));
         await expectLater(
           service.verify(release(file), file),
-          throwsA(isA<PlatformException>()),
+          throwsA(
+            name == 'tampered'
+                ? isA<PlatformException>().having(
+                    (error) => error.message,
+                    'message',
+                    contains('signature integrity'),
+                  )
+                : isA<PlatformException>(),
+          ),
           reason: name,
         );
       }
