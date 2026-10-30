@@ -439,7 +439,10 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
             ),
           ],
         ),
-        if (Platform.isAndroid) const Text('Attach a portable copy or add a URL. Windows file and folder links must be relinked on this device.'),
+        if (Platform.isAndroid)
+          const Text(
+            'Attach a portable copy or add a URL. Windows file and folder links must be relinked on this device.',
+          ),
         if (error != null)
           Text(
             error!,

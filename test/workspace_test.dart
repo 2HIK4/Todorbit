@@ -105,10 +105,9 @@ void main() {
         await tester.scrollUntilVisible(
           find.text('Combine compatible'),
           200,
-          scrollable: find.descendant(
-            of: dialogList,
-            matching: find.byType(Scrollable),
-          ).first,
+          scrollable: find
+              .descendant(of: dialogList, matching: find.byType(Scrollable))
+              .first,
         );
         await tester.pumpAndSettle();
         expect(find.textContaining('collisions'), findsOneWidget);

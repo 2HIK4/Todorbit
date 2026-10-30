@@ -33,7 +33,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('About this view'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('rest days without counting a miss'), findsOneWidget);
+      expect(
+        find.textContaining('rest days without counting a miss'),
+        findsOneWidget,
+      );
       await tester.tap(find.byTooltip('About this view'));
       await tester.pumpAndSettle();
       expect(

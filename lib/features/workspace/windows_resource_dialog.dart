@@ -27,7 +27,10 @@ class WindowsResourceDialog {
   Future<void> open(String target) async {
     if (Platform.isAndroid) {
       if (File(target).isAbsolute && await File(target).exists()) {
-        await AndroidPlatform.channel.invokeMethod<void>('openPrivateFile',target);
+        await AndroidPlatform.channel.invokeMethod<void>(
+          'openPrivateFile',
+          target,
+        );
         return;
       }
       final uri = Uri.tryParse(target);

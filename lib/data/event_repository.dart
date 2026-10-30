@@ -3,8 +3,9 @@ part of 'life_repository.dart';
 FixedEvent _eventFromRow(QueryRow row) {
   final kind = row.read<String?>('recurrence_kind');
   final weekdays = row.read<String?>('recurrence_weekdays');
-  final savedDetails = (jsonDecode(row.read<String>('details_json')) as List<dynamic>)
-      .map(EventDetail.fromJson).toList();
+  final savedDetails = (jsonDecode(
+    row.read<String>('details_json'),
+  ) as List<dynamic>).map(EventDetail.fromJson).toList();
   final location = row.read<String>('location');
   return FixedEvent(
     id: row.read<String>('id'),
