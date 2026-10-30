@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.19-beta.1+23 - Android candidate (unpublished)
+
+- Prepare the first production-signed Android beta with the permanent publisher
+  identity; retain Android 8+ and universal ARM64/x86-64 packaging.
+- Include the mobile UI, Tasks/Calendar widget routing and guarded completion
+  refinements recorded in `docs/ANDROID_UI_REDESIGN.md`.
+- Preserve encrypted snapshot recovery and optional Google Drive; production
+  account acceptance and same-signer installer acceptance gate publication.
+- Existing published Windows tags and assets remain unchanged. Native version
+  metadata stays synchronized with the candidate source for regression builds.
+
 ## 1.0.18+19
 
 - Restore enabled Tasks and Calendar widgets when opening Todorbit, including after updates and temporary widget closure. Closing a widget no longer disables its saved setting.
