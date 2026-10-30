@@ -11,7 +11,8 @@ import 'package:path/path.dart' as path;
 
 /// Prepare same-key candidate.apk (code > 19) and negative signed fixtures under
 /// app-private files/update-fixtures on a disposable emulator before running.
-/// The runner uninstalls its test application afterward. Never use a phone.
+/// Flutter test and default Drive teardown uninstall; use --keep-app-running.
+/// Never use a phone.
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   testWidgets('native Android APK publisher, package and integrity gates', (

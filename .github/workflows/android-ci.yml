@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main, 'feature/android-*']
-    paths: ['lib/**', 'android/**', 'test/**', 'integration_test/**', 'test_driver/**', 'pubspec.*', '.github/workflows/android-ci.yml', 'tools/build-android.ps1', 'tools/verify-android-artifact.py', 'tools/*android*', 'tools/VerifyAndroidBundle.java', 'tools/test_prepare_android_release.py', '.github/workflows/android-release.yml']
+    paths: ['lib/**', 'android/**', 'test/**', 'integration_test/**', 'test_driver/**', 'pubspec.*', '.github/workflows/android-ci.yml', 'tools/build-android.ps1', 'tools/verify-android-artifact.py', 'tools/*android*', 'tools/dev/**', 'tools/test_dev_verify.py', 'tools/VerifyAndroidBundle.java', 'tools/test_prepare_android_release.py', '.github/workflows/android-release.yml']
   pull_request:
-    paths: ['lib/**', 'android/**', 'test/**', 'integration_test/**', 'test_driver/**', 'pubspec.*', '.github/workflows/android-ci.yml', 'tools/build-android.ps1', 'tools/verify-android-artifact.py', 'tools/*android*', 'tools/VerifyAndroidBundle.java', 'tools/test_prepare_android_release.py', '.github/workflows/android-release.yml']
+    paths: ['lib/**', 'android/**', 'test/**', 'integration_test/**', 'test_driver/**', 'pubspec.*', '.github/workflows/android-ci.yml', 'tools/build-android.ps1', 'tools/verify-android-artifact.py', 'tools/*android*', 'tools/dev/**', 'tools/test_dev_verify.py', 'tools/VerifyAndroidBundle.java', 'tools/test_prepare_android_release.py', '.github/workflows/android-release.yml']
 permissions:
   contents: read
 jobs:
@@ -27,8 +27,10 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
       - run: flutter pub get
-      - run: flutter analyze --no-pub
-      - run: flutter test --no-pub --concurrency=1
+      # Windows CI remains the independent full-analysis/full-host-suite gate
+      # on every push/PR. Signed candidates require both workflows.
+      - run: flutter analyze --no-pub lib/platform/android lib/features/mobile integration_test test_driver/android_update_app.dart
+      - run: flutter test --no-pub --concurrency=1 test/android_platform_test.dart test/android_google_drive_auth_test.dart test/android_update_service_test.dart test/android_software_updates_page_test.dart test/mobile_workspace_test.dart test/mobile_editors_test.dart test/cross_platform_backup_test.dart
       - run: python -m unittest discover -s tools -p test_prepare_android_release.py
       - run: flutter build apk --debug --flavor github --target-platform android-arm64,android-x64
       - run: python tools/verify-android-artifact.py build/app/outputs/flutter-apk/app-github-debug.apk

@@ -6,11 +6,13 @@ param(
   [switch]$Bundle,
   [switch]$GoogleDrive,
   [switch]$DisableGoogleDrive,
+  [switch]$NoPub,
   [ValidateSet('github','play')][string]$Distribution = 'github',
   [int]$BuildNumber = 0
 )
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+. (Join-Path $PSScriptRoot 'dev/native-command.ps1')
 if ($AndroidSdk) {
   if (!(Test-Path -LiteralPath (Join-Path $AndroidSdk 'platforms/android-36/android.jar'))) { throw 'AndroidSdk must contain API 36.' }
   $env:ANDROID_HOME = (Resolve-Path -LiteralPath $AndroidSdk).Path
@@ -32,13 +34,13 @@ Push-Location $repo
 try {
   $kind = if ($Bundle) { 'appbundle' } else { 'apk' }
   $arguments = @('build',$kind,"--$($Mode.ToLowerInvariant())")
+  if ($NoPub) { $arguments += '--no-pub' }
   $arguments += @('--flavor', $Distribution)
   $arguments += @('--target-platform','android-arm64,android-x64')
   if ($GoogleDrive) { $arguments += '--dart-define=GOOGLE_DRIVE_ANDROID_ENABLED=true' }
   if ($DisableGoogleDrive) { $arguments += '--dart-define=GOOGLE_DRIVE_ANDROID_ENABLED=false' }
   if ($BuildNumber -gt 0) { $arguments += @('--build-number', "$BuildNumber") }
-  & flutter @arguments
-  if ($LASTEXITCODE -ne 0) { throw 'Android build failed.' }
+  Invoke-TodorbitNative -Command flutter -ArgumentList $arguments -FailureMessage 'Android build failed'
   $artifact = if ($Bundle) { "build/app/outputs/bundle/$Distribution$Mode/app-$Distribution-$($Mode.ToLowerInvariant()).aab" }
     else { "build/app/outputs/flutter-apk/app-$Distribution-$($Mode.ToLowerInvariant()).apk" }
   & python (Join-Path $PSScriptRoot 'verify-android-artifact.py') $artifact

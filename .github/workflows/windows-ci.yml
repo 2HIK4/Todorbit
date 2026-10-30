@@ -31,6 +31,8 @@ jobs:
         run: flutter analyze
       - name: Run Flutter tests
         run: flutter test --concurrency=1
+      - name: Validate developer routes and verification helper
+        run: python -m unittest discover -s tools -p test_dev_verify.py
       - name: Check public OAuth configuration and packaging gates
         shell: pwsh
         run: ./tools/test-google-drive-release-config.ps1

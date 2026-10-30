@@ -24,13 +24,55 @@ changes invalidate prior evidence; do not blindly repeat passing gates.
 
 ## Commands
 
+The optional helper preserves these commands and CI as the authority:
+
+```powershell
+# Preview only; explicit test groups are in tools/dev/features.json.
+./tools/dev/verify.ps1 -Mode Feature -Feature drive -Plan
+./tools/dev/verify.ps1 -Mode Quick -ChangedPaths lib/data/profile_fingerprint.dart -Tests test/cloud/cloud_transfer_history_test.dart
+./tools/dev/verify.ps1 -Mode Feature -Feature android-updates
+./tools/dev/verify.ps1 -Mode Full
+# Full host checks plus Windows Release and isolated packaged companion self-test:
+./tools/dev/verify.ps1 -Mode Full -Platform Windows
+# Requires a disposable AVD: existing harness installs test builds into that app.
+./tools/dev/verify.ps1 -Mode Feature -Feature android-updates -Platform Android -Device emulator-5580 -AndroidSdk '<SDK>' -JavaHome '<JDK 21>' -GradleUserHome '<existing cache>'
+python tools/dev/check-docs.py
+python -m unittest discover -s tools -p test_dev_verify.py
+```
+
+Quick checks formatting/analysis of explicit paths plus explicitly selected tests.
+Feature uses a reviewed group and any extra `-ChangedPaths`/`-Tests`. Full checks
+all source formatting/analysis, the complete serial host suite and release/helper
+Python tests. `-Platform Android`, `Windows` or `All` adds the existing platform
+harnesses/builds; `None` is the host-only default. Full with platform None does
+not satisfy device/build release gates. Android's harness covers native negative
+APK verification and mobile restore, not interactive system-installer approval.
+Run that approval/cancellation sequence from [Android release](ANDROID_RELEASE.md)
+separately. Logs, exit codes, revision/dirty flag and timings are retained under
+`.buildlog/verify/`; failures stop later steps and return nonzero. Test groups are
+starting points; add related tests when dependencies cross the listed boundary.
+
+The helper never resolves packages, cleans caches or guesses affected tests.
+Run `flutter pub get` when lockfile/dependencies change. CI's independent full
+commands remain mandatory before publication. Host tests cannot establish real
+Google authorization, OEM delivery or physical native input behavior.
+
+The local Android harness refuses an installed version above its code-19 baseline.
+Archive the disposable emulator profile first, then explicitly add
+`-AllowDebugDowngrade` to reuse it, or select a fresh AVD. This installs the
+same-source debug baseline with `adb install -r -d`; it never uninstalls data to
+recover from an error. Its Flutter Drive runner retains the test installation.
+This requires the explicit `--keep-app-running` flag: default Drive teardown also
+uninstalls its app. Archive before deployment even when that flag is supplied.
+Negative fixtures are never installed. CI's ephemeral Android runner is separate.
+
 Android additions: `test/mobile_workspace_test.dart` checks compact/tablet,
 text scaling, RTL/dark layout, task CRUD and unsaved Back protection;
 `test/android_platform_test.dart` covers navigation preferences and reminder
 planning; `test/cross_platform_backup_test.dart` moves a verified snapshot
 between two isolated profiles in both directions. These host tests do not prove
 native Android behavior. Run `flutter test integration_test/android_workflow_test.dart
--d <isolated-emulator-id>` for the on-device SQLite/UI workflow, then the manual
+--flavor github -d <isolated-emulator-id>` for the on-device SQLite/UI workflow, then the manual
 matrix in [Android](ANDROID.md). Never reset a personal app profile to run tests.
 
 ```powershell
@@ -82,3 +124,9 @@ tests, OAuth/package gates, Release, portable, packaged native self-test,
 installer and checksums; it retains an unpublished artifact. [Pages CI](../.github/workflows/pages.yml)
 owns website deployment. Record passed, failed, skipped and manually unverified
 checks separately, with source revision and profile context for release evidence.
+
+[Android CI](../.github/workflows/android-ci.yml) adds Android-focused host checks,
+APK/native-alignment gates and real emulator integration. Its duplicate Windows-host
+full suite is removed; Windows CI still runs full analysis/serial tests on every
+push/PR. The signed Android candidate requires **both** workflows. Keep both
+required before release; a green Android-only workflow is not full acceptance.

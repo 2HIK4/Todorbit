@@ -1,0 +1,12 @@
+{
+  "tasks": {"paths": ["lib/features/workspace/task_editor.dart", "lib/data/life_repository.dart"], "tests": ["test/repository_test.dart", "test/workspace_test.dart", "test/task_editor_schedule_layout_test.dart"]},
+  "calendar": {"paths": ["lib/features/calendar", "lib/data/event_repository.dart", "lib/domain/recurrence.dart"], "tests": ["test/calendar_test.dart", "test/calendar_improvements_test.dart", "test/event_recurrence_test.dart"]},
+  "notifications": {"paths": ["lib/platform/android/android_surfaces.dart", "lib/data/notification_repository.dart"], "tests": ["test/android_platform_test.dart", "test/notification_repository_test.dart"]},
+  "drive": {"paths": ["lib/data/cloud", "lib/platform/android/android_google_drive_auth.dart", "lib/features/settings/backups_cloud_page.dart"], "tests": ["test/cloud", "test/android_google_drive_auth_test.dart", "test/cross_platform_backup_test.dart", "test/backup_service_test.dart", "test/settings_transfer_test.dart"]},
+  "android-updates": {"paths": ["lib/platform/android/android_update_service.dart", "lib/features/settings/android_software_updates_page.dart"], "tests": ["test/android_update_service_test.dart", "test/android_software_updates_page_test.dart"]},
+  "windows-updates": {"paths": ["lib/data/software_update_service.dart", "lib/features/settings/software_updates_page.dart"], "tests": ["test/software_update_service_test.dart", "test/software_updates_page_test.dart", "test/update_helper_launcher_test.dart"]},
+  "database": {"paths": ["lib/data/app_database.dart", "lib/data/life_repository.dart", "lib/data/migration_gate.dart"], "tests": ["test/database_initialization_test.dart", "test/migration_gate_test.dart", "test/repository_test.dart", "test/backup_service_test.dart", "test/cross_platform_backup_test.dart"]},
+  "widgets": {"paths": ["lib/features/widget", "lib/data/widget_configuration_store.dart"], "tests": ["test/widget_configuration_test.dart", "test/widget_edit_session_test.dart", "test/native_widget_service_test.dart", "test/widget_settings_page_test.dart"]},
+  "settings": {"paths": ["lib/features/settings/settings_transfer.dart", "lib/features/settings/settings_hub_dialog.dart"], "tests": ["test/settings_hub_test.dart", "test/settings_transfer_test.dart", "test/appearance_preference_store_test.dart", "test/profile_isolation_test.dart"]},
+  "mobile": {"paths": ["lib/features/mobile"], "tests": ["test/mobile_workspace_test.dart", "test/mobile_editors_test.dart", "test/android_platform_test.dart"]}
+}

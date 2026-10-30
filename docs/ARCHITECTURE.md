@@ -2,6 +2,9 @@
 
 ## Start here
 
+For a specific change, begin with the compact [feature index](ARCHITECTURE_MAP.md).
+This document owns deeper subsystem boundaries and startup behavior.
+
 Android uses the same schema/repository/controller with a separate touch shell
 under `lib/features/mobile/` and device adapters under `lib/platform/android/`.
 The native Android surfaces consume bounded projections; they never write or

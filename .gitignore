@@ -65,6 +65,9 @@ app.*.map.json
 /android/key.properties
 *.jks
 *.keystore
+*.apk
+*.aab
+*.tdbackup
 
 # Widget Preview related
 .widget_preview/

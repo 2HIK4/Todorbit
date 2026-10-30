@@ -4,6 +4,15 @@ Todorbit is a Windows-first Flutter app. Flutter UI lives in `lib/features/`, do
 
 Install Flutter, Visual Studio Windows C++ desktop tools, and .NET 10 SDK. Run `flutter pub get` first. Use [Testing](TESTING.md) to select checks for the changed boundary; a small edit does not require all build/test commands. Distribution builds use `./tools/build-windows-release.ps1` after dependencies are resolved.
 
+If this machine cannot create Flutter plugin symlinks, the optional local
+`./tools/dev/prepare-windows-plugins.ps1` creates missing directory junctions in
+the ignored generated plugin directory from `.flutter-plugins-dependencies`.
+It does not replace existing paths, modify dependency sources or change Windows
+security settings. Re-run after dependency changes; a mismatched link fails for
+inspection. This avoids rebuilding an isolated checkout merely to work around
+local symlink permissions. Normal Developer Mode/symlink-enabled CI needs none
+of this workaround.
+
 The [Windows CI workflow](../.github/workflows/windows-ci.yml) runs analysis, serial Flutter tests, a Release build, and the packaged widget self-test on `windows-2022` with Flutter 3.47.7 and .NET 10. It also validates public OAuth configuration, packages the portable ZIP and installer, writes checksums, and retains an unpublished candidate artifact. It does not publish a GitHub release or replace manual Windows acceptance. Keep the widget version synchronized with `pubspec.yaml`; both package scripts reject a mismatched widget executable.
 
 For manual runs, set child-process `APPDATA` and `LOCALAPPDATA` to isolated temporary directories before launching. Verify those environment variables and the resulting SQLite path before interacting. Do not point development builds at a personal profile. Fresh installer profiles use `%APPDATA%\TodoPilot`; ZIP copies carry a `PORTABLE-MODE` marker and select a profile keyed by the extracted directory. The installer creates a `legacy-profile.json` marker only when upgrading a registered previous TodoPilot installation that used `%APPDATA%\Life Manager`; both executables honor it. Schema v22 is the current database format; old schemas require the reviewed Before upgrade backup gate.

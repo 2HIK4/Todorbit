@@ -21,6 +21,8 @@
 
 - Start with `git status --short` and the smallest relevant `rg` search. Exclude generated, build and dependency directories. Read only task-relevant documentation.
 - Preserve unrelated uncommitted work; use a focused branch. Never reset another task's changes or move release tags. See [Codex workflow](docs/CODEX_WORKFLOW.md).
+- Find the feature in [Architecture map](docs/ARCHITECTURE_MAP.md) before searching broadly. `tools/dev/verify.ps1` selects explicit Quick/Feature/Full checks; `-Plan` previews them. Never guess tests for an uncertain dependency.
+- On interrupted work, inspect the current diff and latest relevant Progress checkpoint; resume pending checks against current source. Historical artifacts are evidence only for their recorded source.
 - Use focused tests/analysis while editing. Broaden for integration, data safety, shared behavior or release risk; do not repeat full suites for small unrelated edits. [Testing](docs/TESTING.md) owns commands and scope.
 - Use connected Dart/Flutter MCP diagnostics and live inspection when relevant. Visually verify UI in an isolated profile when practical. Never test against personal data; verify child-process `APPDATA`, `LOCALAPPDATA` and resolved profile first.
 - Native painting, shell attachment, input, DPI or menu changes require native Release/self-test plus the relevant [manual widget checklist](docs/windows-widget.md). Automated tests do not prove physical Windows behavior; report unobserved behavior accurately.
@@ -32,7 +34,7 @@
 - Use `.agents/skills/todorbit-regression/SKILL.md` for code validation/release checkpoints and `.agents/skills/todorbit-ui-review/SKILL.md` for UI audits or cross-screen changes.
 - Use installed UI UX Pro Max for substantial interface design when helpful; use specialized Dart/Flutter or other skills only when they materially help. Do not load every skill. Windows guidance and Todorbit tokens remain authoritative for this app.
 - [README](README.md): public introduction; [CONTRIBUTING](CONTRIBUTING.md): onboarding.
-- [Architecture](docs/ARCHITECTURE.md): subsystem locations, relationships and constraints; [Development](docs/DEVELOPMENT.md): toolchain, build/profile setup; [Testing](docs/TESTING.md): checks by risk.
+- [Architecture map](docs/ARCHITECTURE_MAP.md): feature entry points; [Architecture](docs/ARCHITECTURE.md): relationships and constraints; [Development](docs/DEVELOPMENT.md): toolchain/profile setup; [Testing](docs/TESTING.md): checks by risk.
 - [Codex workflow](docs/CODEX_WORKFLOW.md): task execution and handoffs; [Release](docs/RELEASE.md): packaging/publishing; [Updates](docs/SOFTWARE_UPDATES.md): updater protocol/recovery.
 - Consult [Progress](docs/PROGRESS.md) when choosing the next product task or preparing a handoff; add a short checkpoint after meaningful work. Record major choices in [Decisions](docs/DECISIONS.md).
 - Feature-specific references are linked from Architecture. Dated audits, acceptance reports and publication receipts are historical evidence, not proof of the current checkout. No task requires reading the entire docs folder.

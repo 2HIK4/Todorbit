@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_driver/driver_extension.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_manager/app/app_controller.dart';
+import 'package:life_manager/data/backup_service.dart';
 import 'package:life_manager/data/software_update_service.dart';
 import 'package:life_manager/domain/appearance.dart';
 import 'package:life_manager/domain/models.dart';
@@ -68,25 +69,54 @@ Future<void> main(List<String> args) async {
         nav.context,
         listen: false,
       ).read(appControllerProvider);
+      String? snapshotPath;
       if (message == 'seed') {
-        final category = await controller.repository.addCategory(
-          'Update acceptance',
-        );
-        await controller.addTask(
-          TaskDraft(
-            title: 'Preserve through Android update',
-            categoryId: category.id,
-          ),
-        );
+        final category =
+            (await controller.repository.categories())
+                .where((value) => value.name == 'Update acceptance')
+                .firstOrNull ??
+            await controller.repository.addCategory('Update acceptance');
+        final project =
+            (await controller.repository.projects())
+                .where(
+                  (value) =>
+                      value.categoryId == category.id &&
+                      value.name == 'Update project',
+                )
+                .firstOrNull ??
+            await controller.repository.addProject(
+              category.id,
+              'Update project',
+            );
+        if (!(await controller.repository.tasks()).any(
+          (value) =>
+              value.projectId == project.id &&
+              value.title == 'Preserve through Android update',
+        )) {
+          await controller.addTask(
+            TaskDraft(
+              title: 'Preserve through Android update',
+              categoryId: category.id,
+              projectId: project.id,
+            ),
+          );
+        }
         final now = DateTime.now();
-        await controller.addEvent(
-          EventDraft(
-            title: 'Preserve update event',
-            startsAt: now,
-            endsAt: now.add(const Duration(hours: 1)),
-          ),
-        );
+        if (!(await controller.repository.events()).any(
+          (value) => value.title == 'Preserve update event',
+        )) {
+          await controller.addEvent(
+            EventDraft(
+              title: 'Preserve update event',
+              startsAt: now,
+              endsAt: now.add(const Duration(hours: 1)),
+            ),
+          );
+        }
         await controller.setTheme(ThemeModePreference.dark);
+        snapshotPath = (await controller.backupService!.createBackup(
+          BackupKind.manual,
+        )).file.path;
       }
       if (message == 'fixture-update') {
         final root = (await AndroidPlatform.channel.invokeMethod<String>(
@@ -121,6 +151,7 @@ Future<void> main(List<String> args) async {
       }
       final info = await AndroidUpdateDevice.load();
       return jsonEncode({
+        'snapshot': ?snapshotPath,
         'versionCode': info.versionCode,
         'theme': controller.theme.name,
         'tasks': [
