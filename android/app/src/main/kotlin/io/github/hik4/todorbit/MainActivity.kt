@@ -21,6 +21,10 @@ import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.ClearTokenRequest
 import com.google.android.gms.common.api.Scope
+import com.google.android.gms.common.GoogleApiAvailability
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.api.ApiException
+import android.accounts.Account
 
 class MainActivity : FlutterActivity() {
     private lateinit var bridge: MethodChannel
@@ -30,7 +34,9 @@ class MainActivity : FlutterActivity() {
     private var initialLink: String? = null
     private var googleResult: MethodChannel.Result? = null
     private var googleToken: String? = null
+    private var googleResolutionOpen = false
     private var activityVisible = false
+    private lateinit var updater: AndroidUpdater
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,7 +54,9 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         initialLink = intent?.dataString
         bridge = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "todorbit/android")
+        updater = AndroidUpdater(this)
         bridge.setMethodCallHandler { call, result ->
+            if (updater.handle(call, result)) return@setMethodCallHandler
             when (call.method) {
                 "dataRoot" -> result.success(filesDir.absolutePath)
                 "initialLink" -> result.success(initialLink)
@@ -67,7 +75,7 @@ class MainActivity : FlutterActivity() {
                 }
                 "uiUnlocked" -> {AndroidSurfaces.foregroundUnlocked=activityVisible && call.arguments == true; result.success(null)}
                 "authenticate" -> authenticate(result)
-                "googleAuthorize" -> googleAuthorize(result,call.argument<Boolean>("interactive") == true,call.argument<Boolean>("force") == true)
+                "googleAuthorize" -> googleAuthorize(result,call.argument<Boolean>("interactive") == true,call.argument<Boolean>("force") == true,call.argument<String>("account"))
                 "googleCancel" -> { googleResult?.error("canceled","Google authorization canceled",null); googleResult=null; result.success(null) }
                 "googleDisconnect" -> { googleToken?.let {Identity.getAuthorizationClient(this).clearToken(ClearTokenRequest.builder().setToken(it).build())}; googleToken=null; result.success(null) }
                 "importDocument" -> document(result, null, call.arguments as? String ?: "*/*", null)
@@ -136,14 +144,16 @@ class MainActivity : FlutterActivity() {
     @Deprecated("Android activity-result bridge")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (updater.onActivityResult(requestCode, resultCode)) return
         if(requestCode == 702) {
+            googleResolutionOpen = false
             val reply=googleResult ?: return
             googleResult=null
             try {
                 if(resultCode != Activity.RESULT_OK || data==null) throw IllegalStateException()
                 googleToken=Identity.getAuthorizationClient(this).getAuthorizationResultFromIntent(data).accessToken
                 reply.success(googleToken)
-            } catch (_: Exception) {reply.error("google","Google authorization was canceled or unavailable",null)}
+            } catch (_: Exception) {reply.error("canceled","Google authorization was canceled or permission was denied. Your existing backups are unchanged.",null)}
             return
         }
         if (requestCode != 701) return
@@ -197,22 +207,33 @@ class MainActivity : FlutterActivity() {
         } catch (_: Exception) { if(!answered) result.success(false) }
     }
 
-    private fun googleAuthorize(result: MethodChannel.Result, interactive: Boolean, force: Boolean) {
-        if(googleResult!=null) {result.error("busy","Google authorization is already open",null); return}
+    private fun googleAuthorize(result: MethodChannel.Result, interactive: Boolean, force: Boolean, account: String?) {
+        if(googleResult!=null || googleResolutionOpen) {result.error("busy","Google authorization is already open. Close the Google account screen before trying again.",null); return}
+        val availability = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(this)
+        if (availability != ConnectionResult.SUCCESS) {
+            result.error("services", "Google Drive needs installed and up-to-date Google Play services. Update Play services or use local backups on this device.", null); return
+        }
         googleResult=result
         val client=Identity.getAuthorizationClient(this)
         fun request() {
             val builder=AuthorizationRequest.builder().setRequestedScopes(listOf(Scope("https://www.googleapis.com/auth/drive.appdata")))
             if(interactive) builder.setPrompt(AuthorizationRequest.Prompt.SELECT_ACCOUNT)
+            else if (account != null && account.contains('@')) builder.setAccount(Account(account, "com.google"))
             client.authorize(builder.build()).addOnSuccessListener { authorization ->
                 if(googleResult !== result) return@addOnSuccessListener
                 if(authorization.hasResolution()) {
-                    if(!interactive) {googleResult=null; result.success(null)}
-                    else try {startIntentSenderForResult(authorization.pendingIntent!!.intentSender,702,null,0,0,0)}
-                    catch (_: Exception) {googleResult=null; result.error("google","Google sign-in could not open",null)}
+                    if(!interactive) {googleResult=null; result.error("reconnect","Google access expired or was revoked. Reconnect Google Drive to authorize again.",null)}
+                    else try {googleResolutionOpen=true; startIntentSenderForResult(authorization.pendingIntent!!.intentSender,702,null,0,0,0)}
+                    catch (_: Exception) {googleResolutionOpen=false; googleResult=null; result.error("google","Google sign-in could not open",null)}
                 } else {googleToken=authorization.accessToken; googleResult=null; result.success(googleToken)}
-            }.addOnFailureListener {
-                if(googleResult === result) {googleResult=null; result.error("google","Google authorization unavailable. Check Play services and the registered package/signing certificate.",null)}
+            }.addOnFailureListener { failure ->
+                if(googleResult === result) {
+                    googleResult=null
+                    val status=(failure as? ApiException)?.statusCode
+                    result.error(if(status == 7) "network" else "reconnect",
+                        if(status == 7) "No internet connection. Connect to the internet and try Google Drive again. Local backups remain available."
+                        else "Google authorization unavailable or denied. Reconnect; if this persists, the publisher must verify the registered package and signing certificate.",null)
+                }
             }
         }
         if(force && googleToken!=null) client.clearToken(ClearTokenRequest.builder().setToken(googleToken!!).build()).addOnCompleteListener {request()}

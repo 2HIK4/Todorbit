@@ -10,6 +10,7 @@ import '../../domain/appearance.dart';
 import '../../domain/models.dart';
 import '../../platform/android/android_platform.dart';
 import '../settings/backups_cloud_page.dart';
+import '../settings/android_software_updates_page.dart';
 import '../settings/privacy_dialog.dart';
 import '../settings/task_view_settings_dialog.dart';
 import '../settings/theme_dialog.dart';
@@ -388,6 +389,19 @@ class _MobileSettingsState extends ConsumerState<MobileSettings>
               ),
             ),
             ListTile(
+              leading: const Icon(Icons.system_update_outlined),
+              title: const Text('Software Updates'),
+              subtitle: const Text(
+                'Check Android releases, download and install updates.',
+              ),
+              onTap: () => Navigator.push<void>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AndroidSoftwareUpdatesPage(),
+                ),
+              ),
+            ),
+            ListTile(
               leading: const Icon(Icons.widgets_outlined),
               title: const Text('Home-screen widgets'),
               subtitle: const Text(
@@ -397,9 +411,12 @@ class _MobileSettingsState extends ConsumerState<MobileSettings>
             const Divider(),
             const ListTile(
               leading: Icon(Icons.info_outline),
-              title: Text('Todorbit 1.0.18 (19)'),
+              title: Text(
+                'Todorbit ${String.fromEnvironment('FLUTTER_BUILD_NAME', defaultValue: 'development')} '
+                '(${String.fromEnvironment('FLUTTER_BUILD_NUMBER', defaultValue: 'unknown')})',
+              ),
               subtitle: Text(
-                'Android development build · Local-first productivity\nUpdates use Android package installation.',
+                'Local-first productivity\nOpen Software Updates to check for Android releases.',
               ),
             ),
           ],

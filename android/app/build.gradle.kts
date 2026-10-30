@@ -45,6 +45,13 @@ android {
         }
     }
 
+    buildFeatures { buildConfig = true }
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("github") { dimension = "distribution" }
+        create("play") { dimension = "distribution" }
+    }
+
     val keyFile = rootProject.file("key.properties")
     val keys = Properties().apply {
         if (keyFile.exists()) keyFile.inputStream().use { load(it) }
@@ -67,13 +74,13 @@ android {
 
 // A release without credentials stays unsigned. Never silently use debug keys.
 tasks.configureEach {
-    if (name == "validateSigningRelease" && !rootProject.file("key.properties").exists()) {
+    if (name.startsWith("validateSigning") && name.endsWith("Release") && !rootProject.file("key.properties").exists()) {
         doFirst { throw GradleException("Release signing requires android/key.properties and a durable keystore outside Git.") }
     }
 }
 
 gradle.taskGraph.whenReady {
-    if (allTasks.any { it.name == "assembleRelease" || it.name == "bundleRelease" }) {
+    if (allTasks.any { (it.name.startsWith("assemble") || it.name.startsWith("bundle")) && it.name.endsWith("Release") }) {
         require(rootProject.file("key.properties").exists()) {
             "Production APK/AAB requires android/key.properties. Use a debug build for development."
         }
@@ -93,4 +100,5 @@ flutter {
 dependencies {
     implementation("com.google.android.gms:play-services-auth:22.0.0")
     implementation("androidx.core:core:1.17.0")
+    "githubImplementation"("com.android.tools.build:apksig:9.1.0")
 }

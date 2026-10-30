@@ -1,0 +1,85 @@
+name: Prepare signed Android candidate (no publication)
+on:
+  workflow_dispatch:
+    inputs:
+      notes_path:
+        description: Tracked Markdown release-notes path
+        required: true
+        default: docs/ANDROID_RELEASE_NOTES.md
+permissions:
+  contents: read
+concurrency:
+  group: android-signed-candidate
+  cancel-in-progress: false
+jobs:
+  validate:
+    uses: ./.github/workflows/android-ci.yml
+  windows-regression:
+    uses: ./.github/workflows/windows-ci.yml
+  candidate:
+    needs: [validate, windows-regression]
+    runs-on: windows-2022
+    environment: android-signing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
+      - name: Materialize protected signing credentials
+        shell: pwsh
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          foreach ($name in @('KEYSTORE_BASE64','STORE_PASSWORD','KEY_PASSWORD','KEY_ALIAS')) {
+            if (![Environment]::GetEnvironmentVariable($name)) { throw "Missing protected secret $name" }
+          }
+          $keystore = Join-Path $env:RUNNER_TEMP 'todorbit-production.jks'
+          [IO.File]::WriteAllBytes($keystore, [Convert]::FromBase64String($env:KEYSTORE_BASE64))
+          # java.util.Properties escaping, including non-ASCII passwords.
+          function EscapeProperty([string]$value) {
+            $builder = [Text.StringBuilder]::new()
+            foreach ($char in $value.ToCharArray()) {
+              if ([int]$char -gt 126 -or [int]$char -lt 32) { [void]$builder.Append(('\u{0:x4}' -f [int]$char)) }
+              elseif ('\:=#! '.Contains($char)) { [void]$builder.Append('\').Append($char) }
+              else { [void]$builder.Append($char) }
+            }
+            $builder.ToString()
+          }
+          @("storeFile=$(EscapeProperty $keystore)","storePassword=$(EscapeProperty $env:STORE_PASSWORD)","keyAlias=$(EscapeProperty $env:KEY_ALIAS)","keyPassword=$(EscapeProperty $env:KEY_PASSWORD)") | Set-Content android/key.properties -Encoding ascii
+      - run: flutter pub get
+      - run: ./tools/build-android.ps1 -Mode Release -Distribution github
+      - run: ./tools/build-android.ps1 -Mode Release -Distribution play -Bundle
+      - name: Verify identity, signer, alignment, monotonic version and checksums
+        shell: pwsh
+        env:
+          CERTIFICATE: ${{ vars.ANDROID_SIGNING_CERT_SHA256 }}
+          NOTES_PATH: ${{ inputs.notes_path }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $env:PATH = "$env:ANDROID_HOME/build-tools/36.0.0;$env:PATH"
+          $version = (Select-String -Path pubspec.yaml -Pattern '^version: (.+)\+(\d+)$').Matches[0]
+          python tools/prepare-android-release.py --apk build/app/outputs/flutter-apk/app-github-release.apk --aab build/app/outputs/bundle/playRelease/app-play-release.aab --version $version.Groups[1].Value --version-code $version.Groups[2].Value --certificate-sha256 $env:CERTIFICATE --notes $env:NOTES_PATH --output release/android-candidate
+          if ($LASTEXITCODE -ne 0) { throw 'Android candidate verification failed' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Todorbit-Android-signed-unpublished-candidate
+          path: release/android-candidate/
+          retention-days: 14
+      - name: Remove credentials
+        if: always()
+        shell: pwsh
+        run: |
+          Remove-Item -LiteralPath android/key.properties -Force -ErrorAction SilentlyContinue
+          Remove-Item -LiteralPath (Join-Path $env:RUNNER_TEMP 'todorbit-production.jks') -Force -ErrorAction SilentlyContinue

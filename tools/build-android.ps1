@@ -4,7 +4,10 @@ param(
   [string]$AndroidSdk = $env:ANDROID_HOME,
   [string]$GradleUserHome = $env:GRADLE_USER_HOME,
   [switch]$Bundle,
-  [switch]$GoogleDrive
+  [switch]$GoogleDrive,
+  [switch]$DisableGoogleDrive,
+  [ValidateSet('github','play')][string]$Distribution = 'github',
+  [int]$BuildNumber = 0
 )
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
@@ -29,12 +32,15 @@ Push-Location $repo
 try {
   $kind = if ($Bundle) { 'appbundle' } else { 'apk' }
   $arguments = @('build',$kind,"--$($Mode.ToLowerInvariant())")
+  $arguments += @('--flavor', $Distribution)
   $arguments += @('--target-platform','android-arm64,android-x64')
   if ($GoogleDrive) { $arguments += '--dart-define=GOOGLE_DRIVE_ANDROID_ENABLED=true' }
+  if ($DisableGoogleDrive) { $arguments += '--dart-define=GOOGLE_DRIVE_ANDROID_ENABLED=false' }
+  if ($BuildNumber -gt 0) { $arguments += @('--build-number', "$BuildNumber") }
   & flutter @arguments
   if ($LASTEXITCODE -ne 0) { throw 'Android build failed.' }
-  $artifact = if ($Bundle) { "build/app/outputs/bundle/$($Mode.ToLowerInvariant())/app-$($Mode.ToLowerInvariant()).aab" }
-    else { "build/app/outputs/flutter-apk/app-$($Mode.ToLowerInvariant()).apk" }
+  $artifact = if ($Bundle) { "build/app/outputs/bundle/$Distribution$Mode/app-$Distribution-$($Mode.ToLowerInvariant()).aab" }
+    else { "build/app/outputs/flutter-apk/app-$Distribution-$($Mode.ToLowerInvariant()).apk" }
   & python (Join-Path $PSScriptRoot 'verify-android-artifact.py') $artifact
   if ($LASTEXITCODE -ne 0) { throw 'Android native alignment validation failed.' }
 } finally { Pop-Location }

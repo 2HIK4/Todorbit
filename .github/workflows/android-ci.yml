@@ -1,11 +1,12 @@
 name: Android validation
 on:
+  workflow_call:
   workflow_dispatch:
   push:
     branches: [main, 'feature/android-*']
-    paths: ['lib/**', 'android/**', 'test/**', 'integration_test/**', 'test_driver/**', 'pubspec.*', '.github/workflows/android-ci.yml', 'tools/build-android.ps1', 'tools/verify-android-artifact.py']
+    paths: ['lib/**', 'android/**', 'test/**', 'integration_test/**', 'test_driver/**', 'pubspec.*', '.github/workflows/android-ci.yml', 'tools/build-android.ps1', 'tools/verify-android-artifact.py', 'tools/*android*', 'tools/VerifyAndroidBundle.java', 'tools/test_prepare_android_release.py', '.github/workflows/android-release.yml']
   pull_request:
-    paths: ['lib/**', 'android/**', 'test/**', 'integration_test/**', 'test_driver/**', 'pubspec.*', '.github/workflows/android-ci.yml', 'tools/build-android.ps1', 'tools/verify-android-artifact.py']
+    paths: ['lib/**', 'android/**', 'test/**', 'integration_test/**', 'test_driver/**', 'pubspec.*', '.github/workflows/android-ci.yml', 'tools/build-android.ps1', 'tools/verify-android-artifact.py', 'tools/*android*', 'tools/VerifyAndroidBundle.java', 'tools/test_prepare_android_release.py', '.github/workflows/android-release.yml']
 permissions:
   contents: read
 jobs:
@@ -28,12 +29,13 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze --no-pub
       - run: flutter test --no-pub --concurrency=1
-      - run: flutter build apk --debug --target-platform android-arm64,android-x64
-      - run: python tools/verify-android-artifact.py build/app/outputs/flutter-apk/app-debug.apk
+      - run: python -m unittest discover -s tools -p test_prepare_android_release.py
+      - run: flutter build apk --debug --flavor github --target-platform android-arm64,android-x64
+      - run: python tools/verify-android-artifact.py build/app/outputs/flutter-apk/app-github-debug.apk
       - uses: actions/upload-artifact@v4
         with:
           name: Todorbit-Android-development-only
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          path: build/app/outputs/flutter-apk/app-github-debug.apk
           retention-days: 14
   android-workflow:
     runs-on: ubuntu-latest
@@ -63,4 +65,4 @@ jobs:
           arch: x86_64
           target: google_apis
           disable-animations: true
-          script: flutter test integration_test/android_workflow_test.dart -d emulator-5554
+          script: bash tools/test-android-update-ci.sh

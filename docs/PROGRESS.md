@@ -1,5 +1,35 @@
 # Progress
 
+## Android Drive and updater continuation (2026-10-30; started 2026-10-29)
+
+- Continuing clean baseline `63965f5` on `feature/android-mobile`. Android Drive
+  now defaults enabled, with account pinning, refresh/reconnect, safe switching,
+  cancellation/Play-services/network messages and serialized identity removal.
+  The shared encrypted codec, database/restore gates and Windows OAuth config
+  are retained. Real OAuth and cross-client Drive discovery need owner setup.
+- Added Android Software Updates, official-repository metadata/ABI/code/channel
+  selection, bounded download/cancel/cache handling, native APK signature and
+  installed-signer/package/SDK/ABI verification, and user-approved system install.
+  GitHub/Play native flavors separate the installer from the official store flow.
+- Added a read-only signed-candidate CI workflow, durable-signing/checksum/AAB
+  gates, negative APK fixtures and disposable-emulator verification/installation
+  harnesses. No production key or public release was created. [Drive setup](ANDROID_GOOGLE_DRIVE.md),
+  [updates](ANDROID_UPDATES.md), [signing and releases](ANDROID_RELEASE.md).
+- Validation checkpoint: full Flutter suite **403 pass / one native-service skip**;
+  final focused account/updater suite **24 pass**; analysis clean; Python release
+  version gates **4 pass**. GitHub debug APKs code 19/20 build, APK v2 signature
+  and seven native-library alignment checks pass. Isolated Windows Release and
+  packaged native self-test pass. Play AAB builds, signature/alignment/16 KiB
+  configuration and installer exclusion pass. Mobile restore and native APK
+  positive/negative checks pass on the established disposable API 35 AVD; a
+  fresh AVD had Android service startup failures. Actual in-app build 19-to-20
+  update passes through source-permission denial, system-installer cancellation,
+  retry/approval and product relaunch. Installed APK hash matches; SQLite
+  integrity, all seeded/existing domain rows, dark appearance and both widget
+  configurations survive. Live diagnostics and attached hot reload pass.
+  [Current evidence](ANDROID_DRIVE_UPDATES_ACCEPTANCE.md). Real OAuth, cross-client
+  Drive access, production signing and physical-phone acceptance remain external.
+
 ## Android continuation: installable development build verified (2026-10-28)
 
 - Recovered clean `feature/android-mobile` at **4de8dff**, following committed

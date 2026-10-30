@@ -1,4 +1,22 @@
-# Android development acceptance — 2026-10-28
+# Android development acceptance
+
+## Current Drive/updater continuation — 2026-10-30
+
+The current implementation and verification are recorded in
+[Android Drive/update acceptance](ANDROID_DRIVE_UPDATES_ACCEPTANCE.md).
+Drive is enabled by default; the Google Cloud package/certificate registration
+and authorized real-account acceptance remain required. Software Updates now
+has separate GitHub/Play providers. Current development artifacts are in
+`.buildlog/android-update-deliverables/`; the code-20 GitHub APK is the phone
+candidate. No production signing identity or public release was created.
+The isolated API 35 in-app update from code 19 to 20 passes, including permission
+denial, installer cancellation/retry and relaunch with database/preferences/widget
+configuration preserved; see the current report for evidence and limits.
+
+The following 2026-10-28 record is historical evidence for e881a12 and does not
+describe the new updater or its current artifacts.
+
+## Previous Android continuation — 2026-10-28
 
 Status: installable development implementation verified on an isolated API 35
 emulator. Production signing, real Google authorization and the physical-device

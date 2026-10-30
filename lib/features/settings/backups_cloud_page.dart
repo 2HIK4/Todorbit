@@ -167,7 +167,9 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
   Future<void> _connect() => _run(() async {
     setState(() {
       signingIn = true;
-      stage = 'Waiting for Google sign-in in your browser';
+      stage = Platform.isAndroid
+          ? 'Select a Google account and allow backup access'
+          : 'Waiting for Google sign-in in your browser';
     });
     await auth!.connect();
     if (mounted) {
@@ -519,6 +521,38 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
               TextButton(
                 onPressed: () => auth!.flow.cancel(),
                 child: const Text('Cancel sign-in'),
+              ),
+            if (Platform.isAndroid && connected)
+              OutlinedButton(
+                onPressed: busy
+                    ? null
+                    : () async {
+                        if (await _confirm(
+                              'Switch Google account?',
+                              'Disconnect this device from the current account, then choose another. Existing cloud backups stay with their original Google account and local data is unchanged.',
+                              'Switch account',
+                            ) &&
+                            mounted) {
+                          await _run(() async {
+                            await auth!.disconnect();
+                            if (mounted) {
+                              setState(() {
+                                objects = [];
+                                historyLoaded = false;
+                                signingIn = true;
+                                stage = 'Choose another Google account';
+                              });
+                            }
+                            await auth!.connect();
+                            if (mounted) {
+                              setState(
+                                () => message = 'Google Drive connected. Refresh cloud backups to load this account’s history.',
+                              );
+                            }
+                          });
+                        }
+                      },
+                child: const Text('Switch Google account'),
               ),
             if (connected || auth?.needsReconnect == true)
               OutlinedButton(

@@ -32,14 +32,14 @@ directories, not committed SDK binaries or product data.
 ```powershell
 flutter pub get
 ./tools/build-android.ps1 -JavaHome '<JDK 21 directory>'
-# Development artifact: build/app/outputs/flutter-apk/app-debug.apk
+# Development artifact: build/app/outputs/flutter-apk/app-github-debug.apk
 ./tools/build-android.ps1 -JavaHome '<JDK 21 directory>' -Bundle
-# Development bundle: build/app/outputs/bundle/debug/app-debug.aab
+# Development bundle: build/app/outputs/bundle/githubDebug/app-github-debug.aab
 flutter analyze --no-pub
 flutter test --no-pub --concurrency=1
-flutter test integration_test/android_workflow_test.dart -d <isolated-emulator-id>
-flutter drive --profile --driver=test_driver/android_workflow_driver.dart --target=integration_test/android_workflow_test.dart -d <isolated-emulator-id>
-python tools/verify-android-artifact.py build/app/outputs/flutter-apk/app-debug.apk
+flutter test integration_test/android_workflow_test.dart --flavor github -d <isolated-emulator-id>
+flutter drive --profile --flavor github --driver=test_driver/android_workflow_driver.dart --target=integration_test/android_workflow_test.dart -d <isolated-emulator-id>
+python tools/verify-android-artifact.py build/app/outputs/flutter-apk/app-github-debug.apk
 ```
 
 The APK includes arm64 and x86-64. Debug signing uses the local Android debug
@@ -63,8 +63,9 @@ keyPassword=<local secret>
 Run `tools/build-android.ps1 -Mode Release` (or add `-Bundle`). Release builds
 fail closed without signing configuration. In CI, materialize these values from
 protected secrets, restrict artifact access, and remove temporary credentials
-afterward. The Android validation workflow only retains a development APK; the
-Windows release workflow remains separate. No workflow publishes Android.
+afterward. The Android validation workflow retains a development APK. The manual signed
+candidate workflow requires protected credentials and validation, and retains
+private artifacts only. No workflow publishes Android.
 
 The alignment script checks every packaged ELF PT_LOAD segment and applicable
 uncompressed APK ZIP offsets for 16 KiB alignment. It cannot establish runtime
@@ -73,53 +74,32 @@ For a production AAB also verify `bundletool dump config --bundle=<aab>` reports
 `PAGE_ALIGNMENT_16K`, then test the generated APK set. See
 [Android's native compatibility guidance](https://developer.android.com/guide/practices/page-sizes).
 
-## Google Cloud configuration
+## Google Drive and software updates
 
-Android uses Google Identity Services `AuthorizationClient`, with only
-`https://www.googleapis.com/auth/drive.appdata`. The existing Drive storage,
-encrypted codec, manifest validation, account checks and safe restore pipeline
-are shared. Google Play services obtains short-lived access tokens. Android
-does not use the Windows Desktop client secret or a loopback redirect, and does
-not persist a Desktop refresh token. Account identity uses profile-keyed secure
-storage. Local disconnect removes local identity/token state; Drive objects and
-the Google consent grant remain until explicitly removed by the user.
+Android Google Drive is enabled by default; publisher package/certificate
+registration is still required. See the exact [Cloud project/OAuth and portable
+backup guide](ANDROID_GOOGLE_DRIVE.md). Ordinary users enter no credentials.
+`-GoogleDrive` remains a compatible optional helper flag; `-DisableGoogleDrive`
+explicitly produces an offline/local-backup-only build.
 
-In the **same Google Cloud project** used for Windows backups:
-
-1. Enable **Google Drive API**. Keep the existing app branding/consent settings,
-   add the Drive app-data scope, and authorize test users if consent is Testing.
-2. Create an **OAuth 2.0 client ID → Android**. Package name:
-   **`io.github.hik4.todorbit`**. Register the signing certificate **SHA-1**.
-3. For this workstation's current debug key, SHA-1 is
-   **`64:91:E2:9F:4F:0A:0B:AB:3C:9E:48:36:11:93:F8:C5:E2:BD:E1:B7`**.
-   This is public certificate metadata, not a private key. Recheck it with
-   `keytool -list -v -keystore <debug.keystore> -alias androiddebugkey` when the
-   debug key changes. Other workstations have different debug certificates.
-4. Create a separate Android OAuth client for the **release certificate**. For
-   Google Play, register the **Play app-signing certificate**, rather than only
-   the upload certificate. A release fingerprint cannot be supplied until the
-   owner selects the durable signing identity. Keep these clients in the same
-   project so appDataFolder snapshots remain accessible across platforms.
-5. After registration, build with `-GoogleDrive` on the build helper (equivalent
-   to `--dart-define=GOOGLE_DRIVE_ANDROID_ENABLED=true`). No downloaded Desktop
-   credentials JSON, client secret, backend server or Firebase project is needed.
-6. Test real Connect, disconnect/reconnect, denied consent, expired/revoked access,
-   wrong-account rejection, upload/read-back, wrong-passphrase rejection and
-   restore into a fresh Android test profile. Until observed, OAuth is unverified.
-
-The tracked default keeps Android Drive connection unavailable while external
-configuration is incomplete. Core offline use and local backups remain available.
-[Google's authorization model](https://developer.android.com/identity/authorization)
-owns platform token acquisition; this is optional backup, not synchronization.
+[Android Software Updates](ANDROID_UPDATES.md) documents channels, discovery,
+verification, download/cancel/retry and Android installation permission.
+[Production signing and candidate workflow](ANDROID_RELEASE.md) covers durable
+keys, protected CI secrets, unpublished artifacts and debug-to-production recovery.
+The GitHub flavor includes the installer; the Play flavor excludes it and opens
+the official Play update flow. Add `--flavor github` to direct Flutter Android
+build/run/test/drive commands. The PowerShell build helper selects GitHub by
+default; `-Distribution play` selects the Play build.
 
 ## Install and exercise
 
-The verified continuation artifacts are in the ignored local directory
-`.buildlog/android-deliverables/`. Use **Todorbit-1.0.18-19-debug.apk** for a phone;
-the AAB is not directly installable. These contain app source `e881a12` and use
-this workstation's development certificate. Artifact hashes and observed checks
-are in [the acceptance record](ANDROID_ACCEPTANCE.md); `SHA256SUMS.txt` is beside
-the files. Keep a copy of the APK outside build directories if needed later.
+Current Drive/updater development artifacts are in the ignored local directory
+`.buildlog/android-update-deliverables/`. Use
+**Todorbit-1.0.18-20-github-debug.apk** for a phone; its higher development version
+code supports an in-place update from the earlier code-19 APK with the same
+debug certificate. The AAB is not directly installable. Exact verification and
+limitations are in [the acceptance record](ANDROID_ACCEPTANCE.md). The older
+`android-deliverables` directory contains historical e881a12 artifacts.
 
 On this workstation, from `D:\AI_Projects\life_manager`:
 
@@ -127,7 +107,7 @@ On this workstation, from `D:\AI_Projects\life_manager`:
 $adb = "$env:LOCALAPPDATA\Android\sdk\platform-tools\adb.exe"
 & $adb devices
 $phone = 'YOUR_PHONE_SERIAL' # Use the USB phone's serial from the command above.
-& $adb -s $phone install -r '.buildlog\android-deliverables\Todorbit-1.0.18-19-debug.apk'
+& $adb -s $phone install -r '.buildlog\android-update-deliverables\Todorbit-1.0.18-20-github-debug.apk'
 & $adb -s $phone shell am start -n io.github.hik4.todorbit/.MainActivity
 ```
 
@@ -136,12 +116,13 @@ first. The phone must support 64-bit ARM and Android 8 or later. Alternatively,
 transfer the APK by USB and open it in the phone's Files app, allowing that app
 to install it when Android asks. This is development signing; a signing-mismatch
 error must not be resolved by uninstalling an installation containing personal
-data before a verified backup is exported. The checked-in default keeps real
-Google Drive connection disabled until the owner completes the OAuth setup above.
+data before a verified backup is exported. Google Drive is enabled in current
+source; real connection requires the owner to register this package and signing
+certificate using the OAuth guide above.
 
 1. Enable Developer options and USB debugging on a test phone. Connect by USB,
    authorize the computer, and confirm `adb devices` lists the intended device.
-2. `adb -s <device> install -r .buildlog/android-deliverables/Todorbit-1.0.18-19-debug.apk`.
+2. `adb -s <device> install -r .buildlog/android-update-deliverables/Todorbit-1.0.18-20-github-debug.apk`.
    Launch Todorbit from the launcher. Do not uninstall a personal installation
    to resolve a signing mismatch; export a backup first and use a test device.
 3. Add categories/projects from the drawer, create/edit tasks and events, check

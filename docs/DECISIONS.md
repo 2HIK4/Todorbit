@@ -1,5 +1,16 @@
 # Decisions
 
+- **Android distribution updates (2026-10-29):** GitHub and Play are separate
+  native flavors with the same established package ID. GitHub verifies APK
+  integrity and the installed signer before user-approved system installation;
+  Play excludes installer permission/provider/dependency and opens the official
+  store flow. Android metadata/version codes are independently discoverable in
+  the shared release repository. Production signing remains owner controlled;
+  the new CI prepares private candidates and never publishes. Drive uses the
+  existing project/codec; actual cross-client discovery remains an authorized
+  acceptance gate. [Updates](ANDROID_UPDATES.md), [signing](ANDROID_RELEASE.md),
+  [Drive configuration](ANDROID_GOOGLE_DRIVE.md).
+
 - **Android in the same product (2026-10-28):** the explicit mobile expansion
   supersedes the earlier scaffold-only scope. Share schema 22, repository,
   controller, domain rules, verified snapshots and palette tokens. Keep touch UI

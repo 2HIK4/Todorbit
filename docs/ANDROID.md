@@ -4,7 +4,9 @@ Android work lives on `feature/android-mobile`. It shares schema 22, the
 repository, recurrence/scheduling rules, controller, backup codec and theme
 palettes with Windows. Android screens live under `lib/features/mobile/`;
 Android adapters under `lib/platform/android/`. Windows IPC, updater and native
-widget source remain independent.
+widget source remain independent. Android now has separate GitHub and Play
+update providers; see [Android updates](ANDROID_UPDATES.md), [Drive/OAuth](ANDROID_GOOGLE_DRIVE.md)
+and [signing/release preparation](ANDROID_RELEASE.md).
 
 The previous Android scaffold used the unpublished example identifier
 `com.example.life_manager`. The development application identity is
@@ -43,9 +45,10 @@ and remaining acceptance are in [the continuation report](ANDROID_ACCEPTANCE.md)
 | Tasks and Calendar desktop widgets | Shared task/event data and tokens | Separate RemoteViews AppWidgetProviders | Partial acceptance; both placed/configured with real data, task/event links, locked privacy, package update and reboot persistence observed on API 35; resize/OEM breadth tracked in acceptance |
 | App lock and privacy | PrivacyManager/PIN verifier | Android lifecycle, secure window, biometrics | Complete for scoped API 35 acceptance; PIN/cold restart, cancellation/success with Android credential, secure capture and locking over an editor observed; physical fingerprint/face remains manual |
 | Local snapshot backup, restore, recovery, import/export | BackupService, MigrationGate | Android Storage Access Framework | Complete; actual SAF Android export opens on Windows; Windows import/confirmation/Recent-apps restart retains IDs and a verified Before Restore copy; shared migrations/bidirectional tests pass |
-| Encrypted Google Drive snapshots | CloudBackupService/codec/provider | Android Google authorization | Blocked for real acceptance by external OAuth package/certificate registration; code, encrypted codec and account-boundary tests pass |
+| Encrypted Google Drive snapshots | CloudBackupService/codec/provider | Android Google authorization enabled by default | Code complete; real acceptance awaits OAuth package/certificate registration and authorized cross-client discovery |
 | Settings import/export, contributor credits | SettingsTransfer, official registry | Mobile settings/About | Complete shared behavior; host portability/credits tests pass; document picker workflows remain manual |
-| Tray, Explorer attachment, registry startup, Windows Hello, EXE updater | Windows runner/.NET | No Android equivalent; Android package manager owns updates | Not Applicable; justified Windows-only exclusions |
+| Software Updates | Shared channel/version/preferences; independent Android release metadata and native verification | GitHub APK installer or official Play flow, selected at build time | Implemented; exact automated/device evidence in acceptance record |
+| Tray, Explorer attachment, registry startup, Windows Hello, EXE updater | Windows runner/.NET | Android package manager owns updates; no Windows helper on Android | Not Applicable for Windows-only mechanisms |
 
 | Infrastructure area | Status | Evidence / remaining gate |
 | --- | --- | --- |
