@@ -1,14 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
+import '../workspace/windows_resource_dialog.dart';
 
 // Official maintainer destination. Preferences, themes and imports cannot set it.
 const officialSupportUrl = 'https://paypal.me/2hussam4';
 
 Future<void> openOfficialSupport() =>
-    const MethodChannel('life_manager/file_dialog')
-        .invokeMethod<void>('openResource', officialSupportUrl);
+    const WindowsResourceDialog().open(officialSupportUrl);
 
 class SupportButton extends StatefulWidget {
   const SupportButton({

@@ -1,5 +1,41 @@
 # Progress
 
+## Android widgets and mobile UI refinement (2026-10-30)
+
+- Started clean on `feature/android-mobile`, baseline `4c93b60`. Used installed
+  Apple Design/UI UX Pro Max plus the project UI/regression skills. Added shared
+  mobile section rhythm/48 dp controls, actionable empty states, clearer settings
+  and Support/Contributors discovery; retained the existing feature implementations.
+- Reworked RemoteViews with shared palettes, readable surfaces, measured row
+  capacity, date context, event/session rows and an expanded date strip. Native
+  publication/rendering uses a serialized worker and goAsync receivers. Widget
+  completion consumes an unguessable one-use capability, waits for unlock/editor
+  closure and uses the shared revision-checked completion rules. It opens the app.
+- Fixed Calendar Add Event routing and startup preference/navigation races;
+  preserved event occurrence IDs and drafts. GitHub Support uses the official
+  destination; Play/unknown builds offer feedback. Android Drive was already
+  enabled and remains unchanged; native authorization start/cancel observed,
+  no authenticated cloud acceptance claimed.
+- Full host gate: **426 pass / one intentional skip**, clean formatting/analysis,
+  Python release/helper gates pass. Focused mobile/action/support 42 pass; Android
+  update UI 13 pass after localized Last checked copy. Windows Release/config gate
+  and isolated packaged companion self-test pass. Device workflow passes on the
+  archived API 35 disposable AVD `TodorbitAndroidTest` / `emulator-5580`.
+- Added opt-in native render/capability harness and repeatable helper: **72 cases
+  pass** across three sizes, both themes, zero/one/twelve items and normal/200%
+  text. Representative corrected screenshots inspected. Actual same-title task
+  completion/reopen, process-kill cold reopen, task/event rows and Calendar Add
+  observed. Live hot reload succeeds; no Flutter runtime errors reported.
+- Final development APK: **1.0.18 (21)**, same debug signer as code 20, API 26+,
+  arm64/x86-64; installed SHA-256 matches
+  `3a864e4900b3964245c8397f3b8677eb68548c8936555e432ed7f3439816906c`.
+  Alignment/signature gates pass. All 45 isolated profile table counts and stable
+  task/event/organization IDs survive; schema 22, test tasks reopened, native
+  fixture keys removed. No personal data tested, release published or merge/push.
+- [Full report and APK instructions](ANDROID_UI_REDESIGN.md) records source-specific
+  receipts and remaining launcher-drag, physical/OEM, lock/recurring/session
+  breadth, reboot and authorized Drive/Play/production-signing acceptance.
+
 ## Android finalization checkpoint (2026-10-30)
 
 - Recovered implementation committed as `3b8dcce` on `feature/android-mobile`;

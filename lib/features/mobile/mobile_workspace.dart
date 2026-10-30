@@ -9,6 +9,7 @@ import '../../data/mobile_preference_store.dart';
 import '../../domain/models.dart';
 import '../../data/life_repository.dart';
 import '../../platform/android/android_platform.dart';
+import '../../platform/android/android_widget_action.dart';
 import '../calendar/event_editor.dart';
 import '../calendar/session_editor.dart';
 import '../contributors/contributors_view.dart';
@@ -28,10 +29,18 @@ import '../workspace/task_editor.dart';
 import '../workspace/trash_dialog.dart';
 import 'mobile_calendar.dart';
 import 'mobile_settings.dart';
+import 'mobile_ui.dart';
 
 class MobileWorkspace extends ConsumerStatefulWidget {
-  const MobileWorkspace({super.key, this.preferenceStore});
+  const MobileWorkspace({
+    super.key,
+    this.preferenceStore,
+    this.locked = false,
+    this.initialLink,
+  });
   final MobilePreferenceStore? preferenceStore;
+  final bool locked;
+  final String? initialLink;
   @override
   ConsumerState<MobileWorkspace> createState() => _MobileWorkspaceState();
 }
@@ -41,13 +50,15 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
   late final store =
       widget.preferenceStore ?? MobilePreferenceStore.forActiveProfile();
   final search = TextEditingController();
-  bool searching = false, editing = false;
+  bool searching = false, editing = false, delivering = false;
+  bool preferencesReady = false;
   String? pendingLink;
   DateTime? calendarDay;
 
   @override
   void initState() {
     super.initState();
+    pendingLink = widget.initialLink;
     unawaited(loadPreferences());
     if (Platform.isAndroid) {
       AndroidPlatform.channel.setMethodCallHandler((call) async {
@@ -57,11 +68,25 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
         }
       });
       WidgetsBinding.instance.addPostFrameCallback((_) async {
-        pendingLink = await AndroidPlatform.channel.invokeMethod<String>(
+        final initial = await AndroidPlatform.channel.invokeMethod<String>(
           'initialLink',
         );
+        pendingLink ??= initial;
         await deliverLink();
       });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant MobileWorkspace oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialLink != widget.initialLink &&
+        widget.initialLink != null) {
+      pendingLink = widget.initialLink;
+    }
+    if (oldWidget.initialLink != widget.initialLink ||
+        (oldWidget.locked && !widget.locked)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => deliverLink());
     }
   }
 
@@ -73,6 +98,9 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
       ref.read(appControllerProvider).navigate(loaded.start);
     } catch (error) {
       if (mounted) message('Mobile preferences could not be read: $error');
+    } finally {
+      preferencesReady = true;
+      if (mounted) await deliverLink();
     }
   }
 
@@ -136,106 +164,153 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
   Future<void> deliverLink() async {
     if (!mounted ||
         editing ||
+        delivering ||
+        widget.locked ||
+        !preferencesReady ||
         pendingLink == null ||
         ModalRoute.of(context)?.isCurrent != true) {
       return;
     }
     final raw = pendingLink!;
-    pendingLink = null;
-    await run(() async {
-      final uri = Uri.parse(raw);
-      if (raw.length > 4096 ||
-          uri.scheme != 'todorbit' ||
-          ![
-            'add',
-            'task',
-            'tasks',
-            'calendar',
-            'event',
-            'session',
-          ].contains(uri.host)) {
-        throw const FormatException('Unsupported link');
-      }
-      final controller = ref.read(appControllerProvider);
-      await controller.refresh();
-      if (!mounted) return;
-      if (uri.host == 'add') {
-        await task();
-        return;
-      }
-      if (uri.host == 'tasks') {
-        controller.navigate(WorkspaceView.today);
-        return;
-      }
-      if (uri.host == 'task') {
-        final value = controller.tasks
-            .where((t) => t.id == uri.queryParameters['id'])
-            .firstOrNull;
-        if (value == null) throw StateError('Task is no longer available');
-        await task(value);
-      } else {
-        final day = DateUtils.dateOnly(
-          DateTime.parse(
-            uri.queryParameters['day'] ?? localDate(DateTime.now()),
-          ),
-        );
-        setState(() => calendarDay = day);
-        controller.navigate(WorkspaceView.calendar);
-        if (uri.host == 'event') {
-          final events = await controller.repository.eventOccurrences(
-            localDate(day),
-            localDate(DateTime(day.year, day.month, day.day + 1)),
+    delivering = true;
+    setState(() => pendingLink = null);
+    try {
+      await run(() async {
+        final uri = Uri.parse(raw);
+        if (raw.length > 4096 ||
+            uri.scheme != 'todorbit' ||
+            ![
+              'add',
+              'task',
+              'tasks',
+              'calendar',
+              'event',
+              'session',
+              'add-event',
+              'widget-action',
+            ].contains(uri.host)) {
+          throw const FormatException('Unsupported link');
+        }
+        final controller = ref.read(appControllerProvider);
+        await controller.refresh();
+        if (!mounted) return;
+        if (uri.host == 'widget-action') {
+          final command = await AndroidPlatform.channel
+              .invokeMapMethod<String, dynamic>('claimWidgetAction', raw);
+          if (command == null) {
+            throw StateError(
+              'Widget action expired. Try again from the widget.',
+            );
+          }
+          if (widget.locked) throw StateError('Unlock Todorbit to continue');
+          await applyAndroidWidgetAction(controller, command);
+          if (mounted) {
+            message(
+              command['complete'] == true ? 'Task completed' : 'Task reopened',
+            );
+          }
+          return;
+        }
+        if (uri.host == 'add') {
+          await task();
+          return;
+        }
+        if (uri.host == 'tasks') {
+          controller.navigate(switch (uri.queryParameters['filter']) {
+            'all' => WorkspaceView.all,
+            'inbox' => WorkspaceView.inbox,
+            _ => WorkspaceView.today,
+          });
+          return;
+        }
+        if (uri.host == 'task') {
+          final value = controller.tasks
+              .where((t) => t.id == uri.queryParameters['id'])
+              .firstOrNull;
+          if (value == null) throw StateError('Task is no longer available');
+          await task(value);
+        } else {
+          final day = DateUtils.dateOnly(
+            DateTime.parse(
+              uri.queryParameters['day'] ?? localDate(DateTime.now()),
+            ),
           );
-          final value = events
-              .where(
-                (e) =>
-                    e.id == uri.queryParameters['id'] &&
-                    e.nominalDate == uri.queryParameters['nominal'],
-              )
-              .firstOrNull;
-          if (value == null) {
-            throw StateError('Event occurrence is no longer available');
-          }
-          if (!mounted) return;
-          editing = true;
-          try {
-            await openMobileEditor(
-              context,
-              (route) => EventEditor(
-                protectUnsavedEdits: true,
-                event: value,
-                initialDay: day,
-                onClose: () => Navigator.pop(route),
-              ),
+          setState(() => calendarDay = day);
+          controller.navigate(WorkspaceView.calendar);
+          if (uri.host == 'add-event') {
+            editing = true;
+            try {
+              await openMobileEditor(
+                context,
+                (route) => EventEditor(
+                  protectUnsavedEdits: true,
+                  initialDay: day,
+                  onClose: () => Navigator.pop(route),
+                ),
+              );
+            } finally {
+              editing = false;
+            }
+          } else if (uri.host == 'event') {
+            final events = await controller.repository.eventOccurrences(
+              localDate(day),
+              localDate(DateTime(day.year, day.month, day.day + 1)),
             );
-          } finally {
-            editing = false;
-          }
-        } else if (uri.host == 'session') {
-          final value = controller.sessions
-              .where((s) => s.id == uri.queryParameters['id'])
-              .firstOrNull;
-          if (value == null) throw StateError('Session is no longer available');
-          if (!mounted) return;
-          editing = true;
-          try {
-            await openMobileEditor(
-              context,
-              (route) => SessionEditor(
-                protectUnsavedEdits: true,
-                session: value,
-                initialDay: day,
-                onClose: () => Navigator.pop(route),
-              ),
-            );
-          } finally {
-            editing = false;
+            final value = events
+                .where(
+                  (e) =>
+                      e.id == uri.queryParameters['id'] &&
+                      e.nominalDate == uri.queryParameters['nominal'],
+                )
+                .firstOrNull;
+            if (value == null) {
+              throw StateError('Event occurrence is no longer available');
+            }
+            if (!mounted) return;
+            editing = true;
+            try {
+              await openMobileEditor(
+                context,
+                (route) => EventEditor(
+                  protectUnsavedEdits: true,
+                  event: value,
+                  initialDay: day,
+                  onClose: () => Navigator.pop(route),
+                ),
+              );
+            } finally {
+              editing = false;
+            }
+          } else if (uri.host == 'session') {
+            final value = controller.sessions
+                .where((s) => s.id == uri.queryParameters['id'])
+                .firstOrNull;
+            if (value == null) {
+              throw StateError('Session is no longer available');
+            }
+            if (!mounted) return;
+            editing = true;
+            try {
+              await openMobileEditor(
+                context,
+                (route) => SessionEditor(
+                  protectUnsavedEdits: true,
+                  session: value,
+                  initialDay: day,
+                  onClose: () => Navigator.pop(route),
+                ),
+              );
+            } finally {
+              editing = false;
+            }
           }
         }
+      });
+    } finally {
+      delivering = false;
+      if (Platform.isAndroid) {
+        await AndroidPlatform.channel.invokeMethod<void>('ackLink', raw);
       }
-    });
-    if (Platform.isAndroid) {
-      await AndroidPlatform.channel.invokeMethod<void>('ackLink', raw);
     }
     if (mounted && pendingLink != null) await deliverLink();
   }
@@ -428,11 +503,13 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                   ),
               ],
             ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'New task',
-        onPressed: () => task(),
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: c.view == WorkspaceView.calendar
+          ? null
+          : FloatingActionButton(
+              tooltip: 'New task',
+              onPressed: () => task(),
+              child: const Icon(Icons.add),
+            ),
     );
   }
 
@@ -503,7 +580,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Make room for what matters',
+                            'Your day, in focus',
                             style: Theme.of(context).textTheme.headlineSmall,
                           ),
                           const SizedBox(height: 12),
@@ -587,16 +664,39 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                       ),
                   ],
                 ],
+                if (c.view != WorkspaceView.today && tasks.isNotEmpty)
+                  MobileSectionTitle(
+                    '${tasks.length} ${tasks.length == 1 ? 'task' : 'tasks'}',
+                    subtitle: searching
+                        ? 'Matching your search'
+                        : 'Tap a task for details; check it off when finished',
+                  ),
                 if (tasks.isEmpty)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.symmetric(vertical: 40, horizontal: 16),
                     child: Column(
                       children: [
-                        Icon(Icons.check_circle_outline, size: 40),
-                        SizedBox(height: 12),
-                        Text('No tasks here yet'),
-                        SizedBox(height: 8),
-                        Text('Use + to add a task.'),
+                        const Icon(Icons.check_circle_outline, size: 40),
+                        const SizedBox(height: 12),
+                        Text(
+                          searching && search.text.isNotEmpty
+                              ? 'No matching tasks'
+                              : 'No tasks here yet',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          searching && search.text.isNotEmpty
+                              ? 'Try another title or clear your search.'
+                              : 'A little space for what comes next.',
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        OutlinedButton.icon(
+                          onPressed: () => task(),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add task'),
+                        ),
                       ],
                     ),
                   ),

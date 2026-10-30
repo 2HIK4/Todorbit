@@ -11,6 +11,14 @@ The native Android surfaces consume bounded projections; they never write or
 migrate SQLite. [Android parity, setup and acceptance](ANDROID.md) tracks device
 evidence separately from Windows and widget-test results.
 
+Android widget completion uses a one-use native capability carrying the task
+UUID, expected revision and desired state. The mobile shell waits for unlock
+and active editors before applying it through the shared controller/repository.
+It opens the app; the projection worker remains read-only. Native projection
+publication and widget rendering run on a serialized worker, with `goAsync`
+receiver lifetimes. [Android UI/widget acceptance](ANDROID_UI_REDESIGN.md)
+distinguishes launcher observations from native render-window checks.
+
 Current source is schema **22**. This map owns subsystem discovery; commands
 live in [Testing](TESTING.md), setup in [Development](DEVELOPMENT.md), and
 packaging/publication in [Release](RELEASE.md). Paths below are repository-relative.

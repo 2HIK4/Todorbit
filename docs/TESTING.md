@@ -75,6 +75,22 @@ native Android behavior. Run `flutter test integration_test/android_workflow_tes
 --flavor github -d <isolated-emulator-id>` for the on-device SQLite/UI workflow, then the manual
 matrix in [Android](ANDROID.md). Never reset a personal app profile to run tests.
 
+Android widget rendering/capabilities also have an opt-in native harness:
+
+```powershell
+./tools/test-android-widgets.ps1 -Device emulator-5580 -ApplicationApk build/app/outputs/flutter-apk/app-github-debug.apk -AndroidSdk '<SDK>' -JavaHome '<JDK 21>' -GradleUserHome '<existing cache>'
+```
+
+Use an archived disposable emulator with app lock disabled and the same-source,
+debug-signed APK. Retain the CMake/Ninja process PATH described in Android setup
+when using local toolchain overrides. The harness never opens SQLite: it restores
+its temporary projection and removes only its own test keys in `finally`.
+It captures real RemoteViews in a native test window at three sizes, both themes,
+zero/one/twelve items and normal/200% text, and verifies footer geometry and
+one-use capability identity. PNGs remain in app-private cache under
+`widget-render-acceptance`; copy them to ignored build logs for review.
+These renders do not establish launcher drag/OEM resizing or physical TalkBack.
+
 ```powershell
 # Substitute the actual changed Dart files; formatting check does not rewrite.
 dart format --output=none --set-exit-if-changed lib/features/settings/widget_settings_page.dart

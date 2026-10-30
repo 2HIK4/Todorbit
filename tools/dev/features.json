@@ -8,5 +8,5 @@
   "database": {"paths": ["lib/data/app_database.dart", "lib/data/life_repository.dart", "lib/data/migration_gate.dart"], "tests": ["test/database_initialization_test.dart", "test/migration_gate_test.dart", "test/repository_test.dart", "test/backup_service_test.dart", "test/cross_platform_backup_test.dart"]},
   "widgets": {"paths": ["lib/features/widget", "lib/data/widget_configuration_store.dart"], "tests": ["test/widget_configuration_test.dart", "test/widget_edit_session_test.dart", "test/native_widget_service_test.dart", "test/widget_settings_page_test.dart"]},
   "settings": {"paths": ["lib/features/settings/settings_transfer.dart", "lib/features/settings/settings_hub_dialog.dart"], "tests": ["test/settings_hub_test.dart", "test/settings_transfer_test.dart", "test/appearance_preference_store_test.dart", "test/profile_isolation_test.dart"]},
-  "mobile": {"paths": ["lib/features/mobile"], "tests": ["test/mobile_workspace_test.dart", "test/mobile_editors_test.dart", "test/android_platform_test.dart"]}
+  "mobile": {"paths": ["lib/features/mobile", "lib/platform/android/android_widget_action.dart"], "tests": ["test/mobile_workspace_test.dart", "test/mobile_editors_test.dart", "test/android_platform_test.dart", "test/android_widget_action_test.dart"]}
 }

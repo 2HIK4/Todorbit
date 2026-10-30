@@ -234,21 +234,28 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
                 first.day + i - (mode == 'week' ? 0 : offset),
               );
               final key = localDate(date);
-              final count =
-                  (showEvents ? eventsOn(date).length : 0) +
-                  (showTasks
-                      ? controller.tasks
-                                .where((t) => t.scheduledDate == key)
-                                .length +
-                            controller.sessions
-                                .where(
-                                  (s) => localDate(s.startsAt.toLocal()) == key,
-                                )
-                                .length
-                      : 0);
+              final eventCount = showEvents ? eventsOn(date).length : 0;
+              final daySessions = showTasks
+                  ? controller.sessions
+                        .where((s) => localDate(s.startsAt.toLocal()) == key)
+                        .toList()
+                  : <WorkSession>[];
+              // A task with a session on this day is represented by its session;
+              // do not present its plan as a second calendar commitment.
+              final taskCount = showTasks
+                  ? controller.tasks
+                        .where(
+                          (t) =>
+                              t.scheduledDate == key &&
+                              !daySessions.any((s) => s.taskId == t.id),
+                        )
+                        .length
+                  : 0;
+              final count = eventCount + taskCount + daySessions.length;
               return Semantics(
                 selected: key == dayKey,
-                label: '${local.formatFullDate(date)}, $count items',
+                label:
+                    '${local.formatFullDate(date)}, $eventCount events, $taskCount planned tasks, ${daySessions.length} sessions',
                 child: InkWell(
                   borderRadius: BorderRadius.circular(14),
                   onTap: () => setState(() => selected = date),

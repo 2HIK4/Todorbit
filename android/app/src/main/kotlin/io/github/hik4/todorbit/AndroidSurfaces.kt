@@ -17,14 +17,22 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.ZoneId
 import java.io.File
+import java.util.UUID
+import java.time.Instant
+import android.text.format.DateFormat
+import android.util.SizeF
+import android.os.Build
+import java.util.concurrent.Executors
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 
 /** Read-only projections from the shared Dart repository; never opens SQLite. */
 object AndroidSurfaces {
+    private val worker = Executors.newSingleThreadExecutor()
+    fun enqueue(action: () -> Unit) { worker.execute(action) }
     const val channelId = "todorbit_reminders"
     // Process-local: a crashed/killed app never leaves a persisted unlock grant.
-    var foregroundUnlocked = false
+    @Volatile var foregroundUnlocked = false
     fun preferences(context: Context) = context.getSharedPreferences("android-surfaces-v1", Context.MODE_PRIVATE)
     fun snapshot(context: Context): JSONObject = try { JSONObject(preferences(context).getString("snapshot", "{}")!!) } catch (_: Exception) { JSONObject() }
     fun receipt(item: JSONObject): String {
@@ -98,49 +106,204 @@ object AndroidSurfaces {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         context.getSystemService(AlarmManager::class.java).set(AlarmManager.RTC,midnight,intent)
     }
+    // Commands are capabilities issued only by our private widget projection. A
+    // public deep link cannot manufacture a completion operation or choose an ID.
+    fun claimWidgetAction(context: Context, raw: String): Map<String, Any>? {
+        if (privacy(context).optBoolean("enabled",true) && !foregroundUnlocked) return null
+        val uri = Uri.parse(raw)
+        if(uri.scheme != "todorbit" || uri.host != "widget-action") return null
+        val id = uri.getQueryParameter("widget")?.toIntOrNull() ?: return null
+        val token = uri.getQueryParameter("token") ?: return null
+        val prefs = preferences(context)
+        val actions = JSONObject(prefs.getString("actions-$id", "{}")!!)
+        val command = actions.optJSONObject(token) ?: return null
+        actions.remove(token)
+        check(prefs.edit().putString("actions-$id", actions.toString()).commit())
+        return mapOf("id" to command.getString("id"), "revision" to command.getString("revision"), "complete" to command.getBoolean("complete"))
+    }
+
     fun render(context: Context, manager: AppWidgetManager, id: Int, calendar: Boolean) {
+        val options = manager.getAppWidgetOptions(id)
+        // Exact responsive variants on Android 12+, both orientations on API 26-30.
+        if (Build.VERSION.SDK_INT >= 31) {
+            val sizes = options.getParcelableArrayList<SizeF>(AppWidgetManager.OPTION_APPWIDGET_SIZES)
+            if (!sizes.isNullOrEmpty()) {
+                val actions = widgetActions(context,id,calendar)
+                manager.updateAppWidget(id, RemoteViews(sizes.distinct().take(16).associateWith {
+                    widgetView(context,id,calendar,it.width.toInt(),it.height.toInt(),actions)
+                }))
+                return
+            }
+        }
+        val actions = widgetActions(context,id,calendar)
+        manager.updateAppWidget(id, RemoteViews(
+            widgetView(context,id,calendar,options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH,300),options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,180),actions),
+            widgetView(context,id,calendar,options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,180),options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT,300),actions)))
+    }
+
+    private fun widgetActions(context: Context, id: Int, calendar: Boolean): JSONObject {
+        val prefs = preferences(context)
+        val old = JSONObject(prefs.getString("actions-$id", "{}")!!)
+        val previous = old.keys().asSequence().associateBy { old.getJSONObject(it).toString() }
+        val next = JSONObject()
+        // Keep commands stable across redraw/resize, but expire obsolete revisions.
+        if(!calendar) {
+            val tasks = snapshot(context).optJSONArray("tasks") ?: JSONArray()
+            for(i in 0 until tasks.length()) {
+                val t = tasks.getJSONObject(i)
+                if(!t.has("revision")) continue // Old APK projection: open app to refresh.
+                val command = JSONObject().put("id",t.getString("id"))
+                    .put("revision",t.getString("revision")).put("complete",!t.optBoolean("done"))
+                val token = previous[command.toString()] ?: UUID.randomUUID().toString()
+                next.put(token,command)
+            }
+        }
+        prefs.edit().putString("actions-$id",next.toString()).apply()
+        return next
+    }
+
+    private fun rowDetail(context: Context, item: JSONObject, calendar: Boolean, today: LocalDate): String {
+        return if(calendar) {
+                val start=Instant.ofEpochMilli(item.getLong("at")).atZone(ZoneId.systemDefault())
+                val end=Instant.ofEpochMilli(item.getLong("until")).atZone(ZoneId.systemDefault())
+                val date=if(start.toLocalDate()==today) "Today" else start.format(DateTimeFormatter.ofPattern("EEE, MMM d"))
+                val time=if(item.optBoolean("allDay")) "All day" else DateFormat.getTimeFormat(context).format(java.util.Date(item.getLong("at")))+" \u2013 "+DateFormat.getTimeFormat(context).format(java.util.Date(item.getLong("until")))
+                date+" \u00b7 "+time+if(item.optString("kind")=="session") " \u00b7 Session" else if(end.toLocalDate()>start.toLocalDate()) " \u00b7 "+end.format(DateTimeFormatter.ofPattern("MMM d")) else ""
+            } else if(item.optBoolean("done")) "Completed" else if(item.optString("due").isNotEmpty()) {
+                val due=try {LocalDate.parse(item.getString("due")).format(DateTimeFormatter.ofPattern("MMM d"))} catch (_: Exception) {item.getString("due")}
+                "Due $due"
+            } else item.optString("detail")
+    }
+
+    private fun widgetView(context: Context, id: Int, calendar: Boolean, width: Int, height: Int, actions: JSONObject): RemoteViews {
         val prefs = preferences(context)
         val data = snapshot(context)
         val theme = prefs.getString("theme-$id","system")
         val dark = theme == "dark" || theme == "system" && (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        val foreground = if(dark) Color.rgb(244,240,252) else Color.rgb(33,27,53)
-        val background = if(dark) Color.rgb(37,33,49) else Color.WHITE
-        val opacity = prefs.getInt("opacity-$id", 95)
-        val remote = RemoteViews(context.packageName,R.layout.todorbit_widget)
-        remote.setInt(R.id.widget_root,"setBackgroundColor",Color.argb(opacity * 255 / 100,Color.red(background),Color.green(background),Color.blue(background)))
-        remote.setTextColor(R.id.widget_title,foreground)
-        val today = LocalDate.now().toString()
-        remote.setTextViewText(R.id.widget_title,if(calendar) "Todorbit · ${LocalDate.now().format(DateTimeFormatter.ofPattern("MMM d"))}" else "Todorbit Tasks")
-        remote.setOnClickPendingIntent(R.id.widget_title,open(context,"todorbit://${if(calendar) "calendar" else "tasks"}?day=$today"))
-        remote.setOnClickPendingIntent(R.id.widget_add,open(context,"todorbit://add"))
-        remote.setTextColor(R.id.widget_add,foreground)
-        remote.removeAllViews(R.id.widget_rows)
-        val hidden = privacy(context).optBoolean("enabled",true) || data.optBoolean("private", true)
-        val source = data.optJSONArray(if(calendar) "agenda" else "tasks") ?: JSONArray()
-        val filter = prefs.getString("filter-$id","today")
-        val options = manager.getAppWidgetOptions(id)
-        val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,180)
-        val rowHeight = kotlin.math.ceil(48 * context.resources.configuration.fontScale + 12.0).toInt()
-        val capacity = ((height-72)/rowHeight).coerceIn(0,10)
-        var count = 0
-        if(!hidden) for(i in 0 until source.length()) {
-            val item = source.getJSONObject(i)
-            val eligible = if(calendar) item.optLong("until",0L) > LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-                else when(filter) {"inbox" -> item.optBoolean("inbox"); "all" -> true; else -> item.optString("day") == today}
-            if(!eligible || count >= capacity) continue
-            val row = RemoteViews(context.packageName,R.layout.todorbit_widget_row)
-            row.setTextViewText(R.id.widget_row_title,item.getString("title"))
-            row.setTextViewText(R.id.widget_row_detail,if(calendar) item.optString("detail") else if(item.optBoolean("done")) "Completed" else item.optString("detail"))
-            row.setTextColor(R.id.widget_row_title,foreground); row.setTextColor(R.id.widget_row_detail,foreground)
-            row.setOnClickPendingIntent(R.id.widget_row,open(context,item.getString("link")))
-            remote.addView(R.id.widget_rows,row); count++
+        val palette = data.optJSONObject("palettes")?.optJSONObject(if(dark) "dark" else "light")
+        fun color(key: String, fallback: String) = try { Color.parseColor(palette?.optString(key,fallback) ?: fallback) } catch (_: Exception) { Color.parseColor(fallback) }
+        val surface = color("surface",if(dark) "#252131" else "#FFFFFF")
+        fun contrastText(candidate: Int): Int {
+            fun light(c: Int): Double {
+                fun channel(v: Int): Double { val n=v/255.0; return if(n<=0.04045) n/12.92 else Math.pow((n+0.055)/1.055,2.4) }
+                return .2126*channel(Color.red(c))+.7152*channel(Color.green(c))+.0722*channel(Color.blue(c))
+            }
+            val a=light(surface); val b=light(candidate)
+            return if((maxOf(a,b)+.05)/(minOf(a,b)+.05)>=4.5) candidate else if(a>.179) Color.BLACK else Color.WHITE
         }
-        remote.setViewVisibility(R.id.widget_empty,if(count == 0) View.VISIBLE else View.GONE)
-        remote.setTextColor(R.id.widget_empty,foreground)
-        remote.setTextViewText(R.id.widget_empty,if(capacity == 0) "Resize widget" else if(hidden) "Details hidden by app lock. Open Todorbit." else "No items. Open Todorbit to refresh.")
-        remote.setOnClickPendingIntent(R.id.widget_empty,open(context,"todorbit://${if(calendar) "calendar" else "tasks"}?day=$today"))
-        manager.updateAppWidget(id,remote)
+        val foreground = contrastText(color("primaryText",if(dark) "#F4F0FC" else "#211B35"))
+        val secondary = contrastText(color("secondaryText",if(dark) "#C8C0D5" else "#665F78"))
+        val accent = contrastText(color("accent",if(dark) "#B9A4F4" else "#6D56BD"))
+        val opacity = prefs.getInt("opacity-$id",95).coerceIn(40,100)
+        val remote = RemoteViews(context.packageName,R.layout.todorbit_widget)
+        // Opacity belongs to the outer shell; opaque content surfaces keep text
+        // readable on arbitrary launcher wallpapers, including custom colors.
+        remote.setInt(R.id.widget_shell,"setColorFilter",surface)
+        remote.setInt(R.id.widget_shell,"setImageAlpha",opacity*255/100)
+        remote.setInt(R.id.widget_surface,"setColorFilter",surface)
+        val today = LocalDate.now()
+        val day = today.toString()
+        val filter = prefs.getString("filter-$id","today")
+        fun link(kind: String) = "todorbit://$kind?day=$day&widget=$id"
+        val destination = if(calendar) link("calendar") else link("tasks")+"&filter=$filter"
+        remote.setTextViewText(R.id.widget_title,if(calendar) "Calendar" else when(filter) { "all" -> "Tasks"; "inbox" -> "Inbox"; else -> "Today" })
+        remote.setTextColor(R.id.widget_title,foreground)
+        remote.setOnClickPendingIntent(R.id.widget_heading,open(context,destination))
+        remote.setOnClickPendingIntent(R.id.widget_add,open(context,link(if(calendar) "add-event" else "add")))
+        remote.setContentDescription(R.id.widget_add,if(calendar) "Add event" else "Add task")
+        remote.setTextColor(R.id.widget_add,accent)
+        remote.removeAllViews(R.id.widget_rows)
+        remote.removeAllViews(R.id.widget_week)
+        val hidden = privacy(context).optBoolean("enabled",true) || data.optBoolean("private",true)
+        val source = data.optJSONArray(if(calendar) "agenda" else "tasks") ?: JSONArray()
+        val midnight = today.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val items = if(hidden) emptyList() else (0 until source.length()).map { source.getJSONObject(it) }.filter {
+            if(calendar) it.optLong("until",0L)>midnight
+            else when(filter) { "inbox" -> it.optBoolean("inbox"); "all" -> true; else -> it.optString("day")==day }
+        }
+        val expanded = calendar && height >= 330 && context.resources.configuration.fontScale <= 1.3f
+        remote.setViewVisibility(R.id.widget_week,if(expanded) View.VISIBLE else View.GONE)
+        if(expanded) {
+            val days = if(width >= 360) 7 else 3
+            for(n in 0 until days) {
+                val date=today.plusDays(n.toLong())
+                val cell=RemoteViews(context.packageName,R.layout.todorbit_widget_day)
+                val count=items.count { it.optString("kind")=="event" && it.optString("day")<=date.toString() && it.optString("through")>=date.toString() }
+                cell.setTextViewText(R.id.widget_day,date.format(DateTimeFormatter.ofPattern("EEE"))+"\n"+date.dayOfMonth+if(count>0) " \u00b7 $count" else "")
+                cell.setTextColor(R.id.widget_day,if(n==0) accent else secondary)
+                cell.setContentDescription(R.id.widget_day,"${date.format(DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.FULL))}, $count events")
+                cell.setOnClickPendingIntent(R.id.widget_day,open(context,"todorbit://calendar?day=$date&widget=$id"))
+                remote.addView(R.id.widget_week,cell)
+            }
+        }
+        val scale=context.resources.configuration.fontScale
+        val compact = height < 250
+        remote.setViewVisibility(R.id.widget_context,if(compact && scale>1.3f) View.GONE else View.VISIBLE)
+        remote.setInt(R.id.widget_empty,"setMaxLines",if(compact) 1 else 3)
+        if(compact) {
+            val padding=(4*context.resources.displayMetrics.density).toInt()
+            remote.setViewPadding(R.id.widget_empty,0,padding,0,padding)
+        }
+        // Measure bounded text layouts rather than reserving two lines for
+        // every row. Extra height can then show actual content at each font size.
+        val density=context.resources.displayMetrics.density
+        fun dp(value: Int)=(value*density).toInt()
+        fun textHeight(text: String, sp: Float, lines: Int, bold: Boolean, widthDp: Int): Int {
+            val paint=android.text.TextPaint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                textSize=android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,sp,context.resources.displayMetrics)
+                typeface=if(bold) android.graphics.Typeface.DEFAULT_BOLD else android.graphics.Typeface.DEFAULT
+            }
+            return android.text.StaticLayout.Builder.obtain(text,0,text.length,paint,dp(widthDp).coerceAtLeast(1))
+                .setIncludePad(true).setMaxLines(lines).setEllipsize(android.text.TextUtils.TruncateAt.END).build().height
+        }
+        val headerWidth=(width-72).coerceAtLeast(1)
+        val headerHeight=dp(24)+maxOf(dp(48),textHeight("Ag",18f,1,true,headerWidth)+
+            if(compact && scale>1.3f) 0 else textHeight("Ag",12f,1,false,headerWidth))
+        val footerHeight=maxOf(dp(48),textHeight("${items.size} more \u00b7 Open ${if(calendar) "calendar" else "tasks"}",12f,2,false,width-24))
+        var used=headerHeight+footerHeight+if(expanded) dp(64) else 0
+        var capacity=0
+        val bodyWidth=width-24-if(calendar) 15 else 48
+        for(item in items.take(16)) {
+            val rowHeight=maxOf(dp(60),dp(16)+textHeight(item.getString("title"),15f,if(compact) 1 else 2,true,bodyWidth)+
+                textHeight(rowDetail(context,item,calendar,today),12f,if(compact) 1 else 2,false,bodyWidth))
+            if(used+rowHeight>dp(height)) break
+            used+=rowHeight
+            capacity++
+        }
+        remote.setTextViewText(R.id.widget_context, today.format(DateTimeFormatter.ofPattern("EEE, MMM d")) + if(hidden) "" else if(calendar) " \u00b7 ${items.size} ${if(items.size==1) "item" else "items"}" else " \u00b7 ${items.count {!it.optBoolean("done")}} remaining")
+        remote.setTextColor(R.id.widget_context,secondary)
+        for(item in items.take(capacity)) {
+            val row=RemoteViews(context.packageName,R.layout.todorbit_widget_row)
+            row.setTextViewText(R.id.widget_row_title,item.getString("title"))
+            row.setInt(R.id.widget_row_title,"setMaxLines",if(!compact) 2 else 1)
+            row.setInt(R.id.widget_row_detail,"setMaxLines",if(compact) 1 else 2)
+            val detail = rowDetail(context,item,calendar,today)
+            row.setTextViewText(R.id.widget_row_detail,detail)
+            row.setTextColor(R.id.widget_row_title,foreground)
+            row.setTextColor(R.id.widget_row_detail,secondary)
+            row.setInt(R.id.widget_row_accent,"setBackgroundColor",if(item.has("color")) item.getLong("color").toInt() else accent)
+            row.setViewVisibility(R.id.widget_row_accent,if(calendar) View.VISIBLE else View.GONE)
+            row.setViewVisibility(R.id.widget_complete,if(calendar) View.GONE else View.VISIBLE)
+            // Text and completion are siblings: a parent click cannot steal the checkbox.
+            row.setOnClickPendingIntent(R.id.widget_row_body,open(context,item.getString("link")+"&widget=$id"))
+            if(!calendar) {
+                val token=actions.keys().asSequence().firstOrNull { actions.getJSONObject(it).optString("id")==item.optString("id") }
+                row.setTextViewText(R.id.widget_complete,if(item.optBoolean("done")) "\u2611" else "\u2610")
+                row.setTextColor(R.id.widget_complete,accent)
+                row.setContentDescription(R.id.widget_complete,(if(item.optBoolean("done")) "Reopen " else "Complete ")+item.getString("title")+". Opens Todorbit; unlock if required.")
+                row.setOnClickPendingIntent(R.id.widget_complete,open(context,if(token==null) item.getString("link") else "todorbit://widget-action?widget=$id&token=$token"))
+            }
+            remote.addView(R.id.widget_rows,row)
+        }
+        remote.setViewVisibility(R.id.widget_empty,if(items.isEmpty() || capacity==0) View.VISIBLE else View.GONE)
+        remote.setTextColor(R.id.widget_empty,secondary)
+        remote.setTextViewText(R.id.widget_empty,if(hidden) if(compact) "Locked" else "Details hidden by app lock. Open Todorbit to unlock." else if(capacity==0 && items.isNotEmpty()) "Resize" else if(calendar) if(compact) "No events" else "No upcoming events. Make room for what matters." else if(compact) "All clear." else "All clear here. Add a task when you are ready.")
+        remote.setTextColor(R.id.widget_footer,accent)
+        remote.setTextViewText(R.id.widget_footer,if(hidden) "Open Todorbit" else if(items.isEmpty()) if(calendar) "Add event  +" else "Add task  +" else if(items.size>capacity) "${items.size-capacity} more \u00b7 Open ${if(calendar) "calendar" else "tasks"}" else "Open ${if(calendar) "calendar" else "tasks"}  \u203a")
+        remote.setOnClickPendingIntent(R.id.widget_footer,open(context,if(!hidden && items.isEmpty()) link(if(calendar) "add-event" else "add") else destination))
+        return remote
     }
+
 }
 
 class ReminderReceiver : BroadcastReceiver() {
@@ -193,23 +356,40 @@ class ReminderReceiver : BroadcastReceiver() {
 
 class SurfaceRefreshReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        AndroidSurfaces.scheduleReminders(context)
-        AndroidSurfaces.updateWidgets(context)
-        AndroidSurfaces.scheduleRefresh(context)
-        ReminderRefreshJob.schedule(context)
-        ReminderRefreshJob.schedule(context,true)
+        val pending=goAsync()
+        AndroidSurfaces.enqueue {
+            try {
+                AndroidSurfaces.scheduleReminders(context)
+                AndroidSurfaces.updateWidgets(context)
+                AndroidSurfaces.scheduleRefresh(context)
+                ReminderRefreshJob.schedule(context)
+                ReminderRefreshJob.schedule(context,true)
+            } catch (error: Exception) { android.util.Log.w("TodorbitWidgets","Widget refresh failed",error) } finally { pending.finish() }
+        }
     }
 }
 
 class TasksWidget : AppWidgetProvider() {
-    override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) { for(id in ids) AndroidSurfaces.render(context,manager,id,false) }
-    override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) { AndroidSurfaces.render(context,manager,id,false) }
-    override fun onDeleted(context: Context, ids: IntArray) { for(id in ids) AndroidSurfaces.preferences(context).edit().remove("theme-$id").remove("filter-$id").remove("opacity-$id").apply() }
+    override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
+        val pending=goAsync()
+        AndroidSurfaces.enqueue { try { for(id in ids) AndroidSurfaces.render(context,manager,id,false) } catch (error: Exception) { android.util.Log.w("TodorbitWidgets","Widget refresh failed",error) } finally { pending.finish() } }
+    }
+    override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) {
+        val pending=goAsync()
+        AndroidSurfaces.enqueue { try { AndroidSurfaces.render(context,manager,id,false) } catch (error: Exception) { android.util.Log.w("TodorbitWidgets","Widget refresh failed",error) } finally { pending.finish() } }
+    }
+    override fun onDeleted(context: Context, ids: IntArray) { for(id in ids) AndroidSurfaces.preferences(context).edit().remove("theme-$id").remove("filter-$id").remove("opacity-$id").remove("actions-$id").apply() }
 }
 class CalendarWidget : AppWidgetProvider() {
-    override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) { for(id in ids) AndroidSurfaces.render(context,manager,id,true) }
-    override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) { AndroidSurfaces.render(context,manager,id,true) }
-    override fun onDeleted(context: Context, ids: IntArray) { for(id in ids) AndroidSurfaces.preferences(context).edit().remove("theme-$id").remove("filter-$id").remove("opacity-$id").apply() }
+    override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
+        val pending=goAsync()
+        AndroidSurfaces.enqueue { try { for(id in ids) AndroidSurfaces.render(context,manager,id,true) } catch (error: Exception) { android.util.Log.w("TodorbitWidgets","Widget refresh failed",error) } finally { pending.finish() } }
+    }
+    override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) {
+        val pending=goAsync()
+        AndroidSurfaces.enqueue { try { AndroidSurfaces.render(context,manager,id,true) } catch (error: Exception) { android.util.Log.w("TodorbitWidgets","Widget refresh failed",error) } finally { pending.finish() } }
+    }
+    override fun onDeleted(context: Context, ids: IntArray) { for(id in ids) AndroidSurfaces.preferences(context).edit().remove("theme-$id").remove("filter-$id").remove("opacity-$id").remove("actions-$id").apply() }
 }
 
 class WidgetConfigurationActivity : Activity() {
@@ -234,7 +414,7 @@ class WidgetConfigurationActivity : Activity() {
         layout.addView(Button(this).apply {text="Apply"; setOnClickListener {
             val edit=prefs.edit().putString("theme-$id",theme.selectedItem.toString()).putInt("opacity-$id",opacity.progress+40)
             filter?.let {edit.putString("filter-$id",it.selectedItem.toString())}; edit.apply()
-            AndroidSurfaces.updateWidgets(this@WidgetConfigurationActivity)
+            AndroidSurfaces.enqueue { AndroidSurfaces.updateWidgets(this@WidgetConfigurationActivity) }
             setResult(RESULT_OK,Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id)); finish()
         }})
         setContentView(ScrollView(this).apply {

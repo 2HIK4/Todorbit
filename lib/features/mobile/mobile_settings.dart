@@ -17,6 +17,10 @@ import '../settings/theme_dialog.dart';
 import '../settings/notification_dialog.dart';
 import '../shared/sidebar_items.dart';
 import '../shared/weekdays.dart';
+import '../support/support_button.dart';
+import '../contributors/contributors_view.dart';
+import 'mobile_ui.dart';
+import '../workspace/windows_resource_dialog.dart';
 
 class MobileSettings extends ConsumerStatefulWidget {
   const MobileSettings({
@@ -37,12 +41,27 @@ class _MobileSettingsState extends ConsumerState<MobileSettings>
   late MobilePreferences preferences = widget.preferences;
   bool? notifications;
   bool saving = false;
+  bool supportAvailable = !Platform.isAndroid;
+
+  Future<void> loadDistribution() async {
+    try {
+      final info = await AndroidPlatform.channel
+          .invokeMapMethod<String, dynamic>('updateInfo');
+      if (mounted) {
+        setState(() => supportAvailable = info?['distribution'] == 'github');
+      }
+    } catch (_) {
+      /* Unknown/store builds keep the non-payment support entry. */
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     if (Platform.isAndroid) {
       WidgetsBinding.instance.addObserver(this);
       unawaited(run(refreshPermissions));
+      unawaited(loadDistribution());
     }
   }
 
@@ -182,7 +201,10 @@ class _MobileSettingsState extends ConsumerState<MobileSettings>
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
-            Text('Appearance', style: Theme.of(context).textTheme.titleLarge),
+            const MobileSectionTitle(
+              'Appearance',
+              subtitle: 'Make Todorbit feel at home',
+            ),
             const SizedBox(height: 12),
             DropdownButtonFormField<ThemeModePreference>(
               isExpanded: true,
@@ -213,7 +235,7 @@ class _MobileSettingsState extends ConsumerState<MobileSettings>
               title: const Text('Task display and defaults'),
               onTap: () => show(const TaskViewSettingsDialog()),
             ),
-            const Divider(),
+            const MobileSectionTitle('Planning and navigation'),
             ListTile(
               leading: const Icon(Icons.navigation_outlined),
               title: const Text('Mobile navigation'),
@@ -270,10 +292,7 @@ class _MobileSettingsState extends ConsumerState<MobileSettings>
               },
             ),
             const Divider(height: 32),
-            Text(
-              'Notifications and privacy',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            const MobileSectionTitle('Notifications and privacy'),
             ListTile(
               leading: const Icon(Icons.notifications_outlined),
               title: const Text('Notification permission'),
@@ -365,7 +384,7 @@ class _MobileSettingsState extends ConsumerState<MobileSettings>
               title: const Text('PIN and app lock'),
               onTap: () => show(const PrivacyDialog()),
             ),
-            const Divider(),
+            const MobileSectionTitle('Data and app'),
             ListTile(
               leading: const Icon(Icons.backup_outlined),
               title: const Text('Backups and Google Drive'),
@@ -408,7 +427,36 @@ class _MobileSettingsState extends ConsumerState<MobileSettings>
                 'Long press your launcher, choose Widgets, then Todorbit Tasks or Calendar. Configure each widget when adding it.',
               ),
             ),
-            const Divider(),
+            const MobileSectionTitle('About and support'),
+            ListTile(
+              leading: const Icon(Icons.volunteer_activism_outlined),
+              title: const Text('Support Todorbit'),
+              subtitle: Text(
+                supportAvailable
+                    ? 'Optional support for the independent project'
+                    : 'Help with feedback and bug reports',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => show(
+                supportAvailable
+                    ? const SupportDialog()
+                    : const ProjectSupportDialog(),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.people_outline),
+              title: const Text('Contributors'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push<void>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => Scaffold(
+                    appBar: AppBar(title: const Text('Contributors')),
+                    body: const SafeArea(child: ContributorsView()),
+                  ),
+                ),
+              ),
+            ),
             const ListTile(
               leading: Icon(Icons.info_outline),
               title: Text(
@@ -424,4 +472,44 @@ class _MobileSettingsState extends ConsumerState<MobileSettings>
       ),
     );
   }
+}
+
+/// Store/unknown distributions offer non-payment ways to support the project.
+class ProjectSupportDialog extends StatelessWidget {
+  const ProjectSupportDialog({super.key});
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    scrollable: true,
+    title: const Text('Support Todorbit'),
+    content: const Text(
+      'Thank you for using Todorbit. Share feedback and report problems through the Todorbit GitHub project. All features remain free; support is always optional.',
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Close'),
+      ),
+      FilledButton.icon(
+        onPressed: () async {
+          try {
+            await const WindowsResourceDialog().open(
+              'https://github.com/2HIK4/Todorbit/issues',
+            );
+          } catch (_) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Could not open your browser. Try again later.',
+                  ),
+                ),
+              );
+            }
+          }
+        },
+        icon: const Icon(Icons.open_in_new),
+        label: const Text('Send feedback'),
+      ),
+    ],
+  );
 }

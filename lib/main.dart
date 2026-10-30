@@ -664,7 +664,7 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
                   return KeyEventResult.ignored;
                 },
                 child: Platform.isAndroid || widget.mobileLayout
-                    ? const MobileWorkspace()
+                    ? MobileWorkspace(locked: privacy.locked)
                     : Workspace(
                         openAppearance: widget.openAppearance,
                         editWidget: widget.editWidget,
@@ -711,6 +711,19 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
           ? VisualDensity.compact
           : VisualDensity.standard,
       colorScheme: scheme,
+      materialTapTargetSize: Platform.isAndroid
+          ? MaterialTapTargetSize.padded
+          : null,
+      iconButtonTheme: Platform.isAndroid
+          ? IconButtonThemeData(
+              style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+            )
+          : null,
+      textButtonTheme: Platform.isAndroid
+          ? TextButtonThemeData(
+              style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+            )
+          : null,
       tooltipTheme: desktopTooltipTheme(scheme),
       scaffoldBackgroundColor: palette['background'],
       textTheme: text.copyWith(
@@ -758,7 +771,7 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(0, 40),
+          minimumSize: Size(0, Platform.isAndroid ? 48 : 40),
           padding: const EdgeInsets.symmetric(horizontal: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
@@ -767,7 +780,7 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(0, 40),
+          minimumSize: Size(0, Platform.isAndroid ? 48 : 40),
           padding: const EdgeInsets.symmetric(horizontal: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),

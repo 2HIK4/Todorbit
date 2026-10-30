@@ -242,7 +242,7 @@ class _AndroidSoftwareUpdatesPageState
               Text(
                 preferences.lastChecked == null
                     ? 'Last checked: Never'
-                    : 'Last checked: ${preferences.lastChecked!.toLocal()}',
+                    : 'Last checked: ${MaterialLocalizations.of(context).formatMediumDate(preferences.lastChecked!.toLocal())} · ${TimeOfDay.fromDateTime(preferences.lastChecked!.toLocal()).format(context)}',
               ),
               const SizedBox(height: 12),
               FilledButton.icon(

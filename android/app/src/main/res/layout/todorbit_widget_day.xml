@@ -1,0 +1,1 @@
+<TextView xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_day" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="48dp" android:gravity="center" android:textSize="12sp" android:maxLines="2" android:background="?android:attr/selectableItemBackground" />

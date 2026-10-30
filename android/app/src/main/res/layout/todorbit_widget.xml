@@ -1,9 +1,18 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_root"
-    android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="12dp">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
-        <TextView android:id="@+id/widget_title" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" android:gravity="center_vertical" android:textSize="16sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" />
-        <TextView android:id="@+id/widget_add" android:layout_width="48dp" android:layout_height="48dp" android:gravity="center" android:text="+" android:textSize="26sp" android:contentDescription="@string/add_task" />
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent">
+    <ImageView android:id="@+id/widget_shell" android:layout_width="match_parent" android:layout_height="match_parent" android:src="@drawable/widget_surface" android:scaleType="fitXY" android:importantForAccessibility="no" />
+    <ImageView android:id="@+id/widget_surface" android:layout_width="match_parent" android:layout_height="match_parent" android:layout_margin="6dp" android:src="@drawable/widget_surface" android:scaleType="fitXY" android:importantForAccessibility="no" />
+    <LinearLayout android:id="@+id/widget_content" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="12dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
+            <LinearLayout android:id="@+id/widget_heading" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="48dp" android:orientation="vertical" android:gravity="center_vertical" android:background="?android:attr/selectableItemBackground">
+                <TextView android:id="@+id/widget_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="18sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" />
+                <TextView android:id="@+id/widget_context" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="12sp" android:maxLines="1" android:ellipsize="end" />
+            </LinearLayout>
+            <TextView android:id="@+id/widget_add" android:layout_width="48dp" android:layout_height="48dp" android:gravity="center" android:text="+" android:textSize="28sp" android:contentDescription="@string/add_task" android:background="?android:attr/selectableItemBackground" />
+        </LinearLayout>
+        <LinearLayout android:id="@+id/widget_week" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingVertical="8dp" />
+        <LinearLayout android:id="@+id/widget_rows" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+        <TextView android:id="@+id/widget_empty" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingVertical="12dp" android:textSize="14sp" android:maxLines="3" android:ellipsize="end" />
+        <TextView android:id="@+id/widget_footer" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp" android:gravity="center_vertical" android:textSize="12sp" android:maxLines="2" android:ellipsize="end" android:background="?android:attr/selectableItemBackground" />
     </LinearLayout>
-    <LinearLayout android:id="@+id/widget_rows" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
-    <TextView android:id="@+id/widget_empty" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="8dp" android:textSize="14sp" android:maxLines="2" android:ellipsize="end" />
-</LinearLayout>
+</FrameLayout>

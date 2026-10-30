@@ -37,8 +37,10 @@ class ReminderRefreshJob : JobService() {
                         when(call.method) {
                             "dataRoot" -> result.success(filesDir.absolutePath)
                             "reminderReceipts" -> result.success(AndroidSurfaces.reminderReceipts(this))
-                            "publish" -> try {AndroidSurfaces.publish(this,call.arguments as String); result.success(null)}
+                            "publish" -> AndroidSurfaces.enqueue {
+                                try {AndroidSurfaces.publish(this,call.arguments as String); result.success(null)}
                                 catch (_: Exception) {result.error("refresh","Could not refresh Android surfaces",null)}
+                            }
                             "backgroundComplete" -> {result.success(null); handler.post {finish(false)}}
                             else -> result.notImplemented()
                         }

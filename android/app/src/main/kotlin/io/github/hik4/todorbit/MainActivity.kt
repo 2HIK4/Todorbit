@@ -62,6 +62,12 @@ class MainActivity : FlutterActivity() {
                 "initialLink" -> result.success(initialLink)
                 "ackLink" -> { if(initialLink == call.arguments) {initialLink = null; intent.data = null}; result.success(null) }
                 "notificationsAllowed" -> result.success(notificationsAllowed())
+                "claimWidgetAction" -> {
+                    AndroidSurfaces.enqueue {
+                        try { result.success(AndroidSurfaces.claimWidgetAction(this,call.arguments as String)) }
+                        catch (_: Exception) { result.error("widget", "Widget action expired. Open Todorbit to refresh.", null) }
+                    }
+                }
                 "reminderReceipts" -> result.success(AndroidSurfaces.reminderReceipts(this))
                 "requestNotifications" -> {
                     if (Build.VERSION.SDK_INT < 33 || notificationsAllowed()) result.success(notificationsAllowed())
@@ -90,12 +96,14 @@ class MainActivity : FlutterActivity() {
                 }
                 "exportDocument" -> document(result, call.argument<String>("path"), call.argument<String>("mime") ?: "application/octet-stream", call.argument<String>("name"))
                 "publish" -> {
-                    try {
-                        val source = call.arguments as String
-                        require(source.length <= 2_000_000)
-                        AndroidSurfaces.publish(this, source)
-                        result.success(null)
-                    } catch (_: Exception) { result.error("publish", "Android surfaces could not be updated", null) }
+                    AndroidSurfaces.enqueue {
+                        try {
+                            val source = call.arguments as String
+                            require(source.length <= 2_000_000)
+                            AndroidSurfaces.publish(this,source)
+                            result.success(null)
+                        } catch (_: Exception) { result.error("publish", "Android surfaces could not be updated", null) }
+                    }
                 }
                 "notificationSettings" -> {
                     startActivity(Intent("android.settings.APP_NOTIFICATION_SETTINGS").putExtra("android.provider.extra.APP_PACKAGE", packageName)); result.success(null)

@@ -1,5 +1,13 @@
 # Decisions
 
+- **Android widget actions and support (2026-10-30):** keep native widgets as
+  bounded read-only projections. Complete/reopen through an authenticated,
+  revision-checked Flutter application action, rather than adding a second
+  native completion engine. Serialize native rendering off the main thread.
+  GitHub builds retain the optional official support destination; Play/unknown
+  builds expose non-payment feedback until contribution eligibility is reviewed.
+  [Implementation and acceptance](ANDROID_UI_REDESIGN.md).
+
 - **Manual cloud transfer safeguards (2026-10-30):** use logical database and
   portable-settings fingerprints to identify local edits, retain versioned
   encrypted snapshots and warn on changed/unknown local state. Refuse stale
