@@ -3,7 +3,13 @@ set -euo pipefail
 device="emulator-5554"
 test "$(adb -s "$device" shell getprop ro.kernel.qemu | tr -d '\r')" = 1
 flutter build apk --debug --flavor github --target-platform android-x64 --build-number 20
-python tools/android-update-fixtures.py --sdk "$ANDROID_HOME" --candidate build/app/outputs/flutter-apk/app-github-debug.apk --debug-keystore "$HOME/.android/debug.keystore" --output .buildlog/android-update-fixtures
+# Android Gradle may use ANDROID_USER_HOME/XDG rather than ~/.android. Ask
+# the same configuration that signed the candidate; never generate a second key.
+mkdir -p .buildlog/android-update-fixtures
+bash android/gradlew -p android --console=plain -q :app:signingReport > .buildlog/android-update-fixtures/signing-report.txt
+fixture_keystore="$(awk '/^Variant: githubDebug$/ { selected=1 } selected && /^Store: / { sub(/^Store: /, ""); print; exit }' .buildlog/android-update-fixtures/signing-report.txt)"
+test -n "$fixture_keystore" && test -f "$fixture_keystore"
+python tools/android-update-fixtures.py --sdk "$ANDROID_HOME" --candidate build/app/outputs/flutter-apk/app-github-debug.apk --debug-keystore "$fixture_keystore" --output .buildlog/android-update-fixtures
 flutter build apk --debug --flavor github --target-platform android-x64 --build-number 19
 adb -s "$device" install -r build/app/outputs/flutter-apk/app-github-debug.apk
 adb -s "$device" shell run-as io.github.hik4.todorbit mkdir -p files/update-fixtures

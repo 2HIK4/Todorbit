@@ -10,8 +10,10 @@ import re
 
 
 def run(*args):
-    subprocess.run([shutil.which(args[0]) or args[0], *map(str, args[1:])], check=True,
-                   stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    result = subprocess.run([shutil.which(args[0]) or args[0], *map(str, args[1:])],
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    if result.returncode:
+        raise RuntimeError(f'Test fixture tool failed ({args[0]}):\n{result.stdout}')
 
 
 def main():
@@ -21,6 +23,8 @@ def main():
     parser.add_argument('--debug-keystore', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
+    if not args.debug_keystore.is_file():
+        raise ValueError('Debug keystore is missing; use the Store path from the githubDebug signingReport')
     args.output.mkdir(parents=True, exist_ok=True)
     build_tools = args.sdk / 'build-tools/36.0.0'
     aapt = str(build_tools / ('aapt2.exe' if __import__('os').name == 'nt' else 'aapt2'))
