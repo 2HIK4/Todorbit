@@ -101,6 +101,33 @@ on reviewed restart and retains Before Restore through the existing recoverable
 restore transaction. It does not merge devices or implement synchronization.
 Keep the recovery passphrase outside Todorbit; no server can recover it.
 
+## Safe manual transfer
+
+Use **Back Up Now**, wait for verified upload, then **Refresh cloud backups** on
+the other device and review the selected backup before confirming replacement.
+The list shows source platform when recorded, timestamp, Todorbit version, size,
+encryption and compatibility; decrypted preview supplies verified content counts.
+Older packages without source metadata remain readable. Each upload creates a
+new UUID/version; a successful transfer never deletes the previous cloud copy.
+
+The page reports last successful full cloud backup and completed restore on this
+device. Logical SQLite contents and portable settings are compared with that
+checkpoint; a WAL checkpoint/VACUUM alone is not a local edit. Changes during
+upload remain marked as local changes. A missing baseline is explicitly unknown.
+Before restore, changed/unknown local state receives a warning. A service-level
+profile guard prevents simultaneous cloud backup/preview/scheduling, and a pending
+restore blocks uploads. Reviewed SQLite contents and preference files are checked
+again before scheduling and on restart; a changed profile is preserved and the
+restore is refused. SQLite replacement checks the database again under an exclusive
+connection lock. Cancel the pending restore in startup recovery and review again.
+Before Restore is retained even when a late edit prevents replacement. Successful
+restore is recorded only after the replaced database has opened successfully.
+
+These are conservative snapshot safeguards, not per-record synchronization or a
+guarantee that the other device has no offline edits. Portable preference files
+can also contain local metadata, so an unrelated preference-file write can require
+another review. Review both devices and back up local work before replacing it.
+
 Google authorization uses the
 [official AuthorizationClient flow](https://developer.android.com/identity/authorization).
 Missing/outdated Play services leaves local backups and offline productivity

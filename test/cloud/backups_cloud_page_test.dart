@@ -11,6 +11,7 @@ import 'package:life_manager/app/app_controller.dart';
 import 'package:life_manager/data/app_database.dart';
 import 'package:life_manager/data/backup_service.dart';
 import 'package:life_manager/data/cloud/cloud_backup_service.dart';
+import 'package:life_manager/data/cloud/cloud_storage_provider.dart';
 import 'package:life_manager/data/cloud/google_drive_auth.dart';
 import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/features/settings/backups_cloud_page.dart';
@@ -38,6 +39,41 @@ class _LocalFixture extends BackupService {
       bytes: 1,
       schemaVersion: 21,
     );
+  }
+}
+
+class _ConnectedAuth extends GoogleDriveAuth {
+  _ConnectedAuth(http.Client client)
+    : super(
+        client: client,
+        store: MemoryTokenStore(),
+        flow: TestGoogleFlow(),
+        clientId: 'fixture',
+      );
+  @override
+  Future<void> load() async {
+    account = const CloudAccount('test-account', 'Test account');
+  }
+}
+
+class _RestoreFixture extends CloudBackupService {
+  _RestoreFixture(BackupService local, MemoryCloud provider, this.settings)
+    : super(local: local, provider: provider, appVersion: 'test');
+  final String settings;
+  int schedules = 0;
+  @override
+  Future<CloudRestorePreview> preview(
+    CloudObject object,
+    String passphrase,
+    CloudProgress progress,
+  ) async => CloudRestorePreview(
+    {'appVersion': '1.0.18', 'profileId': 'other-device', 'settings': settings},
+    null,
+    const BackupSummary({'tasks': 4}),
+  );
+  @override
+  Future<void> scheduleRestore(CloudRestorePreview preview) async {
+    schedules++;
   }
 }
 
@@ -97,6 +133,10 @@ void main() {
               ),
             ),
           );
+          // The page now reads transfer-history availability from the filesystem.
+          await tester.runAsync(() async {
+            await Future<void>.delayed(const Duration(milliseconds: 100));
+          });
           await tester.pumpAndSettle();
           final connect = find.widgetWithText(
             FilledButton,
@@ -117,6 +157,10 @@ void main() {
           );
           expect(
             find.textContaining('Keep your recovery passphrase'),
+            findsOneWidget,
+          );
+          expect(
+            find.textContaining('Last successful restore on this device'),
             findsOneWidget,
           );
           await tester.ensureVisible(find.text('How cloud backups work'));
@@ -162,6 +206,110 @@ void main() {
       },
     );
   }
+
+  testWidgets(
+    'restore warns about unknown local baseline and cancel never schedules replacement',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(440, 800));
+      final database = AppDatabase(NativeDatabase.memory());
+      final local = _LocalFixture();
+      final controller = AppController(
+        LifeRepository(database),
+        backupService: local,
+      );
+      await controller.initialize();
+      final client = MockClient((_) async => http.Response('', 503));
+      final provider = MemoryCloud();
+      provider.objects.add(
+        CloudObject(
+          id: 'fixture',
+          accountId: 'test-account',
+          name: 'private-name',
+          bytes: 100,
+          createdAt: DateTime.utc(2026),
+          properties: const {
+            'kind': 'full',
+            'formatVersion': '1',
+            'encryption': 'aes256gcm-v1',
+            'schema': '22',
+            'appVersion': '1.0.18',
+            'sourcePlatform': 'windows',
+            'verified': 'true',
+          },
+          md5: 'unused',
+        ),
+      );
+      final service = _RestoreFixture(
+        local,
+        provider,
+        SettingsTransfer.fromController(controller)
+            .encode(SettingsCategory.values.toSet()),
+      );
+      try {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [appControllerProvider.overrideWith((_) => controller)],
+            child: MaterialApp(
+              home: Scaffold(
+                body: ListView(
+                  children: [
+                    BackupsCloudPage(
+                      auth: _ConnectedAuth(client),
+                      service: service,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.runAsync(() async {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+        });
+        await tester.pumpAndSettle();
+        final restore = find.text('Download & review restore');
+        await tester.ensureVisible(restore);
+        await tester.pumpAndSettle();
+        await tester.tap(restore);
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.byType(TextField),
+          'fixture recovery phrase',
+        );
+        await tester.pump();
+        await tester.tap(find.text('Download and unlock'));
+        // The busy indicator animates while real filesystem I/O completes.
+        // Advance frames and real I/O until the review modal appears.
+        for (
+          var attempt = 0;
+          attempt < 20 &&
+              find.text('Replace this local profile?').evaluate().isEmpty;
+          attempt++
+        ) {
+          await tester.pump(const Duration(milliseconds: 100));
+          await tester.runAsync(() async {
+            await Future<void>.delayed(const Duration(milliseconds: 20));
+          });
+        }
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(find.text('Replace this local profile?'), findsOneWidget);
+        expect(
+          find.textContaining('no verified transfer baseline'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('4 tasks'), findsOneWidget);
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+        expect(service.schedules, 0);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        client.close();
+        await database.close();
+        await tester.binding.setSurfaceSize(null);
+      }
+    },
+  );
 
   testWidgets(
     'cloud settings preview requires confirmation and keeps task records',

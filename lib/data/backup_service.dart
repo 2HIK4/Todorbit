@@ -7,6 +7,7 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:crypto/crypto.dart';
 
 import 'widget_configuration_store.dart';
+import 'profile_fingerprint.dart';
 import '../domain/notifications.dart';
 
 enum BackupKind { automatic, beforeUpgrade, beforeRestore, manual }
@@ -294,6 +295,20 @@ class BackupService {
     );
   }
 
+  Future<({String backup, DateTime openedAt})?> completedRestore() async {
+    if (!await _restoreStatus.exists()) return null;
+    final data = jsonDecode(await _restoreStatus.readAsString());
+    if (data is! Map ||
+        data['state'] != 'opened' ||
+        data['backup'] is! String) {
+      return null;
+    }
+    final time = DateTime.tryParse('${data['openedAt']}');
+    return time == null
+        ? null
+        : (backup: data['backup'] as String, openedAt: time);
+  }
+
   /// Personalization from a cloud restore is applied only after the replaced
   /// database has opened and migrated. Credentials and privacy stay local.
   Future<String?> restoredPortableSettings() async {
@@ -314,6 +329,8 @@ class BackupService {
     BackupRecord selected, {
     required int appSchemaVersion,
     String? portableSettings,
+    String? expectedLocalFingerprint,
+    String? expectedLocalPreferences,
   }) async {
     if (await _restoreMarker.exists()) {
       throw StateError('A restore is already scheduled. Cancel it first.');
@@ -343,6 +360,20 @@ class BackupService {
       throw StateError('Backup changed. Reload the list.');
     }
     final digest = await Isolate.run(() => _hashFile(selectedPath));
+    if (expectedLocalFingerprint != null &&
+        await databaseFingerprint(databaseFile.path) !=
+            expectedLocalFingerprint) {
+      throw StateError(
+        'Local data changed during review. Review the backup again before replacing it.',
+      );
+    }
+    if (expectedLocalPreferences != null &&
+        await profilePreferencesFingerprint(databaseFile.parent) !=
+            expectedLocalPreferences) {
+      throw StateError(
+        'Local preferences changed during review. Review the backup again.',
+      );
+    }
     final temporary = File('${_restoreMarker.path}.tmp');
     if (await temporary.exists()) await temporary.delete();
     await temporary.writeAsString(
@@ -353,6 +384,8 @@ class BackupService {
         'schema': verifiedSchema,
         'sha256': digest,
         'portableSettings': ?portableSettings,
+        'expectedLocalFingerprint': ?expectedLocalFingerprint,
+        'expectedLocalPreferences': ?expectedLocalPreferences,
       }),
       flush: true,
     );
@@ -405,8 +438,32 @@ class BackupService {
       WidgetConfigurationStore.validateBundle(widgetBundle);
     }
     final rollback = await createBackup(BackupKind.beforeRestore);
+    if (marker['expectedLocalPreferences'] case final String expected) {
+      if (await profilePreferencesFingerprint(databaseFile.parent) !=
+          expected) {
+        throw StateError(
+          'Local preferences changed after restore review. Nothing was replaced. Cancel the pending restore and review it again.',
+        );
+      }
+    }
+    // Check the consistent recovery snapshot, immediately before replacement.
+    // A write after confirmation must not be silently overwritten on restart.
+    if (marker['expectedLocalFingerprint'] case final String expected) {
+      if (await databaseFingerprint(rollback.file.path) != expected) {
+        throw StateError(
+          'Local data changed after restore review. Nothing was replaced. Cancel the pending restore and review it again.',
+        );
+      }
+    }
     final targetPath = databaseFile.path;
-    await Isolate.run(() => _restoreSnapshot(snapshotPath, targetPath));
+    final expectedFingerprint = marker['expectedLocalFingerprint'] as String?;
+    await Isolate.run(
+      () => _restoreSnapshot(
+        snapshotPath,
+        targetPath,
+        expectedFingerprint: expectedFingerprint,
+      ),
+    );
     final restoredSchema = await Isolate.run(
       () => _inspectSnapshot(targetPath),
     );
@@ -667,7 +724,11 @@ int _writeSnapshot(
   return _inspectSnapshot(destinationPath);
 }
 
-Future<void> _restoreSnapshot(String snapshotPath, String targetPath) async {
+Future<void> _restoreSnapshot(
+  String snapshotPath,
+  String targetPath, {
+  String? expectedFingerprint,
+}) async {
   final source = sqlite.sqlite3.open(
     snapshotPath,
     mode: sqlite.OpenMode.readOnly,
@@ -677,6 +738,17 @@ Future<void> _restoreSnapshot(String snapshotPath, String targetPath) async {
     target.execute('PRAGMA busy_timeout=0');
     target.execute('PRAGMA locking_mode=EXCLUSIVE');
     target.select('PRAGMA quick_check');
+    if (expectedFingerprint != null) {
+      // Exclusive locking mode retains this lock until close, spanning the
+      // fingerprint comparison and SQLite backup. Other writers cannot race it.
+      target.execute('BEGIN EXCLUSIVE');
+      target.execute('COMMIT');
+      if (databaseContentsFingerprint(target) != expectedFingerprint) {
+        throw StateError(
+          'Local data changed before replacement. Nothing was replaced; review the restore again.',
+        );
+      }
+    }
     await source.backup(target, nPage: -1).drain<void>();
     // The envelope table belongs to the snapshot, not the planner schema.
     target.execute('DROP TABLE IF EXISTS backup_widget_personalization');

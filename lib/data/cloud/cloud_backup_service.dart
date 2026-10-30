@@ -7,14 +7,24 @@ import 'package:uuid/uuid.dart';
 
 import '../app_database.dart';
 import '../backup_service.dart';
+import '../profile_fingerprint.dart';
 import 'cloud_backup_codec.dart';
 import 'cloud_storage_provider.dart';
+import 'cloud_transfer_history.dart';
 
 class CloudRestorePreview {
-  const CloudRestorePreview(this.manifest, this.snapshot, this.summary);
+  const CloudRestorePreview(
+    this.manifest,
+    this.snapshot,
+    this.summary, {
+    this.localFingerprint,
+    this.localPreferences,
+  });
   final Map<String, dynamic> manifest;
   final BackupRecord? snapshot;
   final BackupSummary? summary;
+  final String? localFingerprint;
+  final String? localPreferences;
 }
 
 class CloudBackupService {
@@ -28,6 +38,22 @@ class CloudBackupService {
   final CloudStorageProvider provider;
   final CloudBackupCodec codec;
   final String appVersion;
+  static final _activeProfiles = <String>{};
+  CloudTransferHistory get history => CloudTransferHistory(local);
+
+  Future<T> _exclusive<T>(Future<T> Function() action) async {
+    final key = path.normalize(local.databaseFile.absolute.path);
+    if (!_activeProfiles.add(key)) {
+      throw const CloudFailure(
+        'Another cloud backup or restore is running for this profile. Wait for it to finish.',
+      );
+    }
+    try {
+      return await action();
+    } finally {
+      _activeProfiles.remove(key);
+    }
+  }
 
   Future<String> _profileId() async {
     final file = File(
@@ -48,7 +74,12 @@ class CloudBackupService {
     required String settings,
     required String passphrase,
     required CloudProgress progress,
-  }) async {
+  }) => _exclusive(() async {
+    if (await local.hasScheduledRestore()) {
+      throw const CloudFailure(
+        'A restore is pending. Apply or cancel it before backing up.',
+      );
+    }
     if (provider.account == null) {
       throw const CloudFailure('Connect Google Drive first.');
     }
@@ -65,10 +96,15 @@ class CloudBackupService {
       'kind': kind.name,
       'schema': AppDatabase.currentSchemaVersion,
       'settings': settings,
+      'sourcePlatform': Platform.operatingSystem,
     };
+    String? fingerprint;
     if (kind == CloudBackupKind.full) {
       progress('Creating verified SQLite snapshot', 0, 0);
       final snapshot = await local.createBackup(BackupKind.manual);
+      fingerprint = await databaseFingerprint(snapshot.file.path);
+      final summary = await local.summarize(snapshot);
+      manifest['counts'] = summary.counts;
       // Bound memory before reading/base64 encoding; the codec enforces the
       // final JSON limit as well. External task-resource files are not bundled.
       if (snapshot.bytes > 50 * 1024 * 1024) {
@@ -89,21 +125,36 @@ class CloudBackupService {
     if (provider.account?.id != accountId) {
       throw const CloudFailure('Google account changed. Try again.');
     }
-    return provider.upload(encrypted, {
+    final uploaded = await provider.upload(encrypted, {
       'backupId': id,
       'kind': kind.name,
       'appVersion': appVersion,
       'schema': '${manifest['schema']}',
       'formatVersion': '1',
       'encryption': 'aes256gcm-v1',
+      'sourcePlatform': Platform.operatingSystem,
     }, progress);
-  }
+    if (fingerprint != null) {
+      await history.record('lastBackup', {
+        'at': DateTime.now().toUtc().toIso8601String(),
+        'database': fingerprint,
+        'settings': settingsFingerprint(settings),
+      });
+    }
+    return uploaded;
+  });
 
   Future<CloudRestorePreview> preview(
     CloudObject object,
     String passphrase,
     CloudProgress progress,
-  ) async {
+  ) => _exclusive(() async {
+    final fingerprint = await local.databaseFile.exists()
+        ? await databaseFingerprint(local.databaseFile.path)
+        : null;
+    final preferences = await profilePreferencesFingerprint(
+      local.databaseFile.parent,
+    );
     final bytes = await provider.download(object, progress);
     progress('Decrypting and validating backup', 0, 0);
     final manifest = await codec.decrypt(bytes, passphrase);
@@ -143,23 +194,38 @@ class CloudBackupService {
       final summary = await local.summarize(staged);
       // Do not keep a second in-memory base64 database after validation.
       manifest.remove('database');
-      return CloudRestorePreview(manifest, staged, summary);
+      return CloudRestorePreview(
+        manifest,
+        staged,
+        summary,
+        localFingerprint: fingerprint,
+        localPreferences: preferences,
+      );
     } finally {
       await directory.delete(recursive: true);
     }
-  }
+  });
 
-  Future<void> scheduleRestore(CloudRestorePreview preview) async {
-    final snapshot = preview.snapshot;
-    if (snapshot == null) {
-      throw const CloudFailure('Select a full database backup.');
-    }
-    // Reuses all managed-file, digest, integrity and schema gates. Startup
-    // creates Before Restore and closes native connections before applying.
-    await local.scheduleRestore(
-      snapshot,
-      appSchemaVersion: AppDatabase.currentSchemaVersion,
-      portableSettings: preview.manifest['settings'] as String,
-    );
-  }
+  Future<void> scheduleRestore(CloudRestorePreview preview) => _exclusive(
+    () async {
+      final snapshot = preview.snapshot;
+      if (snapshot == null) {
+        throw const CloudFailure('Select a full database backup.');
+      }
+      // Reuses all managed-file, digest, integrity and schema gates. Startup
+      // creates Before Restore and closes native connections before applying.
+      await local.scheduleRestore(
+        snapshot,
+        appSchemaVersion: AppDatabase.currentSchemaVersion,
+        portableSettings: preview.manifest['settings'] as String,
+        expectedLocalFingerprint: preview.localFingerprint,
+        expectedLocalPreferences: preview.localPreferences,
+      );
+      await history.record('pendingRestore', {
+        'backup': path.basename(snapshot.file.path),
+        'database': await databaseFingerprint(snapshot.file.path),
+        'settings': settingsFingerprint(preview.manifest['settings'] as String),
+      });
+    },
+  );
 }

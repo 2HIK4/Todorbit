@@ -11,6 +11,7 @@ import '../../app/app_controller.dart';
 import '../../data/app_database.dart';
 import '../../data/cloud/cloud_backup_service.dart';
 import '../../data/cloud/cloud_storage_provider.dart';
+import '../../data/cloud/cloud_transfer_history.dart';
 import '../../data/cloud/google_drive_auth.dart';
 import '../../data/cloud/google_drive_provider.dart';
 import '../../platform/android/android_google_drive_auth.dart';
@@ -35,6 +36,7 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
   List<CloudObject> objects = [];
   bool busy = false, signingIn = false;
   bool historyLoaded = false;
+  CloudTransferStatus? transferStatus;
   String? error, message;
   String stage = '';
   double? progress;
@@ -94,6 +96,7 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
           );
         }
         await auth!.load();
+        await _loadTransferStatus();
         if (auth!.account != null) await _list();
       }),
     );
@@ -162,6 +165,16 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
         historyLoaded = true;
       });
     }
+  }
+
+  String _portableSettings() =>
+      SettingsTransfer.fromController(ref.read(appControllerProvider))
+          .encode(SettingsCategory.values.toSet());
+
+  Future<void> _loadTransferStatus() async {
+    if (!await service!.local.databaseFile.exists()) return;
+    final loaded = await service!.history.status(_portableSettings());
+    if (mounted) setState(() => transferStatus = loaded);
   }
 
   Future<void> _connect() => _run(() async {
@@ -296,6 +309,7 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
         );
       }
       await _list();
+      await _loadTransferStatus();
     });
   }
 
@@ -345,6 +359,8 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
     final passphrase = await _passphrase(create: false);
     if (passphrase == null || !mounted) return;
     await _run(() async {
+      final reviewedSettings = _portableSettings();
+      await _loadTransferStatus();
       final preview = await service!.preview(object, passphrase, _progress);
       final settings = SettingsTransfer.decode(
         preview.manifest['settings'] as String,
@@ -362,6 +378,12 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
               'Source profile: ${preview.manifest['profileId']}\n'
               'Target profile: ${service!.local.databaseFile.parent.path}\n\n'
               '${preview.summary?.description}\n\n'
+              '${switch (transferStatus?.localChanges) {
+                true => 'Warning: this device has local changes since its last successful full backup or restore. Back up this device before replacing it.\n\n',
+                false => 'This device matches its last full transfer. Changes made on another device are not merged.\n\n',
+                null => 'This device has no verified transfer baseline. Back up any local work before replacing it.\n\n',
+              }}'
+              '${object.createdAt.isBefore(DateTime.now()) ? 'Check the backup date above; a remote backup can be older than your local work.\n\n' : ''}'
               'This replaces all database records and the included personalization after you close and reopen Todorbit. It does not merge tasks. '
               'A verified local Before Restore database backup is created first. '
               'Current personalization is saved separately as JSON. Credentials and privacy controls stay on this device. '
@@ -370,6 +392,12 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
           'Confirm replacement',
         );
         if (!approved || !mounted) return;
+        if (settingsFingerprint(reviewedSettings) !=
+            settingsFingerprint(_portableSettings())) {
+          throw const CloudFailure(
+            'Local settings changed during review. Review the backup again before replacing them.',
+          );
+        }
         final recovery = SettingsTransfer.fromController(
           ref.read(appControllerProvider),
         );
@@ -440,9 +468,12 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
                   AppDatabase.currentSchemaVersion));
 
   String _date(DateTime value) => value.toLocal().toString().split('.').first;
+  String _transferDate(DateTime? value) =>
+      value == null ? 'Not recorded' : _date(value);
   String _details(CloudObject item) =>
-      '${item.kind?.name ?? 'Unknown'} • Todorbit ${item.properties['appVersion']} • '
+      '${item.kind?.name ?? 'Unknown'} • ${item.properties['sourcePlatform'] ?? 'Source unknown'} • Todorbit ${item.properties['appVersion']} • '
       '${(item.bytes / 1024).toStringAsFixed(1)} KiB • '
+      'Encrypted • '
       '${item.properties['verified'] == 'true' ? 'Verified upload' : 'Unverified upload'} • '
       '${_compatible(item) ? 'Compatible' : 'Unsupported format/schema'}';
 
@@ -613,6 +644,17 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
         const Text(
           'Encrypted snapshots on demand. Backups do not sync or merge devices.',
         ),
+        Text(
+          'Last successful backup on this device: ${_transferDate(transferStatus?.lastBackup)}',
+        ),
+        Text(
+          'Last successful restore on this device: ${_transferDate(transferStatus?.lastRestore)}',
+        ),
+        Text(switch (transferStatus?.localChanges) {
+          true => 'Local changes since the last full transfer. Back up before switching devices.',
+          false => 'Local data matches the last full transfer.',
+          null => 'Local transfer baseline not recorded. Keep a backup before restoring.',
+        }),
         const SizedBox(height: 10),
         Text(
           !connected
@@ -643,7 +685,12 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
               child: const Text('Restore from Google Drive'),
             ),
             TextButton(
-              onPressed: ready ? () => _run(_list) : null,
+              onPressed: ready
+                  ? () => _run(() async {
+                      await _list();
+                      await _loadTransferStatus();
+                    })
+                  : null,
               child: const Text('Refresh cloud backups'),
             ),
           ],

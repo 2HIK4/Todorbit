@@ -1,12 +1,19 @@
 # Decisions
 
+- **Manual cloud transfer safeguards (2026-10-30):** use logical database and
+  portable-settings fingerprints to identify local edits, retain versioned
+  encrypted snapshots and warn on changed/unknown local state. Refuse stale
+  reviewed restores through startup, including a locked final SQLite check;
+  retain Before Restore. This adds no synchronization, schema migration or
+  remote overwrite policy. See [Drive recovery](ANDROID_GOOGLE_DRIVE.md).
+
 - **Android distribution updates (2026-10-29):** GitHub and Play are separate
   native flavors with the same established package ID. GitHub verifies APK
   integrity and the installed signer before user-approved system installation;
   Play excludes installer permission/provider/dependency and opens the official
   store flow. Android metadata/version codes are independently discoverable in
   the shared release repository. Production signing remains owner controlled;
-  the new CI prepares private candidates and never publishes. Drive uses the
+  the new CI prepares unpublished candidates and never publishes. Drive uses the
   existing project/codec; actual cross-client discovery remains an authorized
   acceptance gate. [Updates](ANDROID_UPDATES.md), [signing](ANDROID_RELEASE.md),
   [Drive configuration](ANDROID_GOOGLE_DRIVE.md).

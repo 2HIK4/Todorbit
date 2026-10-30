@@ -50,6 +50,8 @@ class _TransferService extends BackupService {
     BackupRecord selected, {
     required int appSchemaVersion,
     String? portableSettings,
+    String? expectedLocalFingerprint,
+    String? expectedLocalPreferences,
   }) async {
     scheduleCalls++;
   }
