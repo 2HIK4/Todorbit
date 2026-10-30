@@ -8,6 +8,22 @@ release = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(release)
 
 
+class MinimumSdkTests(unittest.TestCase):
+    def test_current_and_legacy_badging(self):
+        for label in ('minSdkVersion', 'sdkVersion'):
+            with self.subTest(label=label):
+                self.assertEqual(release.minimum_sdk(f"{label}:'26'\ntargetSdkVersion:'36'\n"), 26)
+
+    def test_preserves_other_minimum_for_policy_rejection(self):
+        self.assertEqual(release.minimum_sdk("minSdkVersion:'35'\n"), 35)
+
+    def test_missing_malformed_or_ambiguous_minimum_fails_closed(self):
+        for badging in ("targetSdkVersion:'36'\n", "minSdkVersion:'unknown'\n",
+                        "sdkVersion:'26'\nminSdkVersion:'35'\n"):
+            with self.subTest(badging=badging), self.assertRaises(ValueError):
+                release.minimum_sdk(badging)
+
+
 class VersionGateTests(unittest.TestCase):
     def test_no_android_releases_yet(self):
         with patch.object(release, 'request_json', return_value=[{'tag_name': 'v1.0.18', 'assets': []}]):

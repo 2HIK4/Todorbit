@@ -26,6 +26,14 @@ def sha256(file):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
+def minimum_sdk(badging):
+    # Recent aapt2 uses minSdkVersion; older builds emit sdkVersion.
+    values = re.findall(r"^(?:minSdkVersion|sdkVersion):'(\d+)'\s*$", badging, re.MULTILINE)
+    if len(values) != 1:
+        raise ValueError('Expected exactly one APK minimum SDK declaration')
+    return int(values[0])
+
+
 def verify_bundle(file, version, code):
     cache = Path(os.environ.get('GRADLE_USER_HOME', Path.home() / '.gradle')) / 'caches/modules-2/files-2.1'
     jars = []
@@ -102,7 +110,7 @@ def main():
         raise ValueError('APK package/version does not match requested release')
     if "application-debuggable" in badging:
         raise ValueError('Debuggable APK cannot be a production release')
-    minimum = int(re.search(r"sdkVersion:'(\d+)'", badging)[1])
+    minimum = minimum_sdk(badging)
     abis = re.findall(r"'([^']+)'", re.search(r'native-code: ([^\n]+)', badging)[1])
     if set(abis) != {'arm64-v8a', 'x86_64'} or minimum != 26:
         raise ValueError('Expected universal arm64/x64 APK with minimum API 26')
