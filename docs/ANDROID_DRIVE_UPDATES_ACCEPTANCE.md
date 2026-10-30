@@ -1,5 +1,8 @@
 # Android Drive and updater acceptance — 2026-10-30
 
+Historical continuation receipt. See [finalization acceptance](ANDROID_FINALIZATION.md)
+for the subsequent committed source, new artifacts and current remaining gates.
+
 Branch: `feature/android-mobile`, baseline `63965f5`. This continuation adds
 uncommitted implementation/tests/docs on that branch; it does not publish or
 move a release tag. Product version remains `1.0.18+19` in source. Development

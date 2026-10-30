@@ -50,6 +50,14 @@ Do not change identity or reuse a disposable key for public distribution.
 a production release. The default `Debug` build supports hot reload.
 The development artifacts do not include 32-bit ARM phones.
 
+For repeat builds after dependencies are resolved, add `-NoPub`. Retain the
+existing Flutter/Gradle/Pub caches and do not run `flutter clean` routinely.
+This workstation's ignored Gradle init override needs the existing Visual Studio
+CMake and Ninja directories on the **build process's** PATH; neither is a shared
+source setting. SDK CMake 3.22.1 remains the normal CI setup. Keep Kotlin
+incremental compilation disabled while checkout and Pub cache use different
+drives; moving the cache is a separate owner choice, not a build fix.
+
 For production, place `android/key.properties` locally (ignored by Git), pointing
 to a durable keystore outside the repository:
 
@@ -65,7 +73,8 @@ fail closed without signing configuration. In CI, materialize these values from
 protected secrets, restrict artifact access, and remove temporary credentials
 afterward. The Android validation workflow retains a development APK. The manual signed
 candidate workflow requires protected credentials and validation, and retains
-private artifacts only. No workflow publishes Android.
+unpublished Actions artifacts whose access follows repository permissions.
+No workflow publishes Android.
 
 The alignment script checks every packaged ELF PT_LOAD segment and applicable
 uncompressed APK ZIP offsets for 16 KiB alignment. It cannot establish runtime
@@ -94,12 +103,13 @@ default; `-Distribution play` selects the Play build.
 ## Install and exercise
 
 Current Drive/updater development artifacts are in the ignored local directory
-`.buildlog/android-update-deliverables/`. Use
+`.buildlog/finalize-deliverables/`. Use
 **Todorbit-1.0.18-20-github-debug.apk** for a phone; its higher development version
 code supports an in-place update from the earlier code-19 APK with the same
 debug certificate. The AAB is not directly installable. Exact verification and
 limitations are in [the acceptance record](ANDROID_ACCEPTANCE.md). The older
-`android-deliverables` directory contains historical e881a12 artifacts.
+`android-deliverables` and `android-update-deliverables` directories contain
+historical artifacts. See [finalization acceptance](ANDROID_FINALIZATION.md).
 
 On this workstation, from `D:\AI_Projects\life_manager`:
 
@@ -107,7 +117,7 @@ On this workstation, from `D:\AI_Projects\life_manager`:
 $adb = "$env:LOCALAPPDATA\Android\sdk\platform-tools\adb.exe"
 & $adb devices
 $phone = 'YOUR_PHONE_SERIAL' # Use the USB phone's serial from the command above.
-& $adb -s $phone install -r '.buildlog\android-update-deliverables\Todorbit-1.0.18-20-github-debug.apk'
+& $adb -s $phone install -r '.buildlog\finalize-deliverables\Todorbit-1.0.18-20-github-debug.apk'
 & $adb -s $phone shell am start -n io.github.hik4.todorbit/.MainActivity
 ```
 
@@ -122,7 +132,7 @@ certificate using the OAuth guide above.
 
 1. Enable Developer options and USB debugging on a test phone. Connect by USB,
    authorize the computer, and confirm `adb devices` lists the intended device.
-2. `adb -s <device> install -r .buildlog/android-update-deliverables/Todorbit-1.0.18-20-github-debug.apk`.
+2. `adb -s <device> install -r .buildlog/finalize-deliverables/Todorbit-1.0.18-20-github-debug.apk`.
    Launch Todorbit from the launcher. Do not uninstall a personal installation
    to resolve a signing mismatch; export a backup first and use a test device.
 3. Add categories/projects from the drawer, create/edit tasks and events, check

@@ -1,5 +1,33 @@
 # Progress
 
+## Android finalization checkpoint (2026-10-30)
+
+- Recovered implementation committed as `3b8dcce` on `feature/android-mobile`;
+  baseline analysis clean, focused auth/update/cloud checks 29 pass, release
+  preparation Python tests 4 pass. No secrets/artifacts staged or publication.
+- Follow-up commits: `e19e8ea` mechanical formatting, `d88161d` transfer safety,
+  `b2b264e` feature routing/verification and guarded platform harnesses.
+- Added feature routing and explicit Quick/Feature/Full helper with bounded logs,
+  timings and failure propagation. Developer-helper checks 8 pass; links/catalog
+  validate. Windows Release and isolated packaged native self-test pass on the
+  current source. Optional generated junctions resolve local symlink permissions.
+- Cloud transfer adds full-transfer history/local-edit warnings, per-profile
+  operation exclusion and stale database/preferences checks through startup.
+  Focused UI/local-safety checks 13 pass. Full host checks **416 pass / one skip**,
+  analysis/format clean, release Python tests 4 pass. Full receipt:
+  `.buildlog/verify/20261030-115022-1274/`.
+- Retained disposable AVD `TodorbitAndroidTest` (`emulator-5580`) archived to
+  `.buildlog/finalize-emulator-before.tar`. Final device integration passes; actual
+  permission deny/recover, cancel/retry/approve and product 19-to-20 relaunch pass.
+  Installed hash matches; all 45 SQLite tables, appearance/update JSON, retained
+  backups and widget IDs 5/6/settings survive. Live reload/restart and clean runtime
+  diagnostics observed. Drive teardown requires `--keep-app-running`; fixed after
+  it removed the archived disposable installation. No personal data was tested.
+- No authorized Google account (owner confirmed) or production key is available;
+  live official GitHub has no Android assets (15 releases). Exact external steps,
+  timings, artifacts and remaining phone/16 KiB/Play gates are in
+  [finalization acceptance](ANDROID_FINALIZATION.md). Nothing published/pushed.
+
 ## Android Drive and updater continuation (2026-10-30; started 2026-10-29)
 
 - Continuing clean baseline `63965f5` on `feature/android-mobile`. Android Drive

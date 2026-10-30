@@ -1,5 +1,9 @@
 # Android development acceptance
 
+The latest source, artifacts and checks are in [finalization acceptance](ANDROID_FINALIZATION.md).
+It adds safe manual cloud-transfer checkpoints and the Codex verification workflow.
+The records below remain evidence for their recorded source/artifacts.
+
 ## Current Drive/updater continuation — 2026-10-30
 
 The current implementation and verification are recorded in
