@@ -2,8 +2,10 @@
 
 ## Establish the production identity
 
-No production key is created by this task. Select the owner-controlled durable
-GitHub app-signing identity before public release. Keep its keystore outside Git,
+For the first beta, use the [owner setup and acceptance checklist](ANDROID_BETA_PREPARATION.md).
+No production key has been established at that checkpoint. Select the
+owner-controlled durable GitHub app-signing identity before public release.
+Keep its keystore outside Git,
 with at least two encrypted offline backups in separate locations. Store alias
 and passwords in the owner's password manager; test recovery using a copy.
 Losing the GitHub signing key can make in-place updates impossible. Do not

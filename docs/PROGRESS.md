@@ -1,5 +1,32 @@
 # Progress
 
+## First production-signed Android beta preparation (2026-10-30)
+
+- Clean implementation baseline `5fcd561`, `feature/android-mobile`. Owner
+  confirmed no existing production key and requested creation instructions.
+  Only the debug keystore was found in the standard local location; ignored
+  signing configuration is absent. No key/password was generated or exposed.
+- GitHub release inventory remains Windows-only through `v1.0.18`; no protected
+  `android-signing` environment exists. Proposed Android candidate is
+  `1.0.19-beta.1` / code 23, with unpublished same-signer baseline code 22;
+  recheck remote tags and version-code floor before building. No version bump,
+  push, tag, release modification or publication was performed.
+- [Owner setup and resume checklist](ANDROID_BETA_PREPARATION.md) gives interactive
+  RSA-4096 key creation, restricted local configuration, two separate encrypted
+  backups with recovery verification, production OAuth registration, future Play
+  app-signing/upload-key distinctions, and safe debug-to-production migration.
+  Default candidate notes now contain a reviewable Android beta draft with
+  installation, migration and explicit unverified production/Drive status.
+- Production build/signature/hash, real production OAuth and same-production-key
+  in-app installer/data-preservation acceptance remain pending owner setup. Prior
+  implementation checks remain source-specific evidence, not production passes.
+- Preparation checks: 25 updater/UI/backup/portable round-trip tests pass, four
+  release-validator tests pass, docs links and diff whitespace pass. Receipt:
+  `.buildlog/android-beta-preparation-tests.log`. Portable fixtures use distinct
+  temporary files/executors; Drift emits its multiple-database debug warning.
+  No application code changed, so prior static analysis and platform builds were
+  not repeated for this documentation checkpoint.
+
 ## Android widgets and mobile UI refinement (2026-10-30)
 
 - Started clean on `feature/android-mobile`, baseline `4c93b60`. Used installed
