@@ -1,5 +1,8 @@
 name: Android 16 KiB artifact runtime
 on:
+  push:
+    branches: [feature/android-mobile]
+    paths: ['.github/workflows/android-16k-runtime.yml']
   workflow_dispatch:
     inputs:
       asset_id:
@@ -12,6 +15,7 @@ permissions:
   contents: read
 jobs:
   runtime:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[16k-runtime]')
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -26,8 +30,8 @@ jobs:
       - name: Retrieve and verify existing artifact
         env:
           GH_TOKEN: ${{ github.token }}
-          ASSET_ID: ${{ inputs.asset_id }}
-          APK_SHA256: ${{ inputs.sha256 }}
+          ASSET_ID: ${{ inputs.asset_id || '695758240' }}
+          APK_SHA256: ${{ inputs.sha256 || '7c348bc0286eb9c9134698426a9569d9f9a264063c559c196da5a4a2fdd42d74' }}
         run: |
           [[ "$ASSET_ID" =~ ^[0-9]+$ ]]
           [[ "$APK_SHA256" =~ ^[a-f0-9]{64}$ ]]
@@ -41,7 +45,7 @@ jobs:
           sudo udevadm trigger --name-match=kvm
       - uses: reactivecircus/android-emulator-runner@v2
         env:
-          APK_SHA256: ${{ inputs.sha256 }}
+          APK_SHA256: ${{ inputs.sha256 || '7c348bc0286eb9c9134698426a9569d9f9a264063c559c196da5a4a2fdd42d74' }}
         with:
           api-level: 35
           arch: x86_64
