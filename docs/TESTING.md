@@ -61,6 +61,14 @@ schema, backup, data-preservation or release-integrity gates to save resources.
 
 ## Checks by functionality
 
+For an isolated 16 KiB artifact-only runtime gate, manually dispatch
+`.github/workflows/android-16k-runtime.yml` with the existing x64 release asset ID
+and validated SHA-256. It uses a fresh Linux/KVM official API-35 16 KiB guest,
+checks system stability before installation, then renders, creates/reopens and
+completes a synthetic task. It does not build the app or rerun host suites.
+Its evidence artifact records the exact APK hash and observed runtime behavior;
+it does not prove physical ARM64/OEM behavior or the installation approval UI.
+
 | Change | Focused checks and constraints |
 | --- | --- |
 | Markdown only | Validate changed links/paths and commands; review diff; `git diff --check`. No Flutter tests or builds. |

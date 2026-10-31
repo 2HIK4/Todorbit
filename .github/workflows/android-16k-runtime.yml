@@ -1,0 +1,64 @@
+name: Android 16 KiB artifact runtime
+on:
+  workflow_dispatch:
+    inputs:
+      asset_id:
+        description: Existing GitHub x64 APK asset ID (draft allowed)
+        required: true
+      sha256:
+        description: Expected APK SHA-256 from the validated candidate
+        required: true
+permissions:
+  contents: read
+jobs:
+  runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - name: Retrieve and verify existing artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ASSET_ID: ${{ inputs.asset_id }}
+          APK_SHA256: ${{ inputs.sha256 }}
+        run: |
+          [[ "$ASSET_ID" =~ ^[0-9]+$ ]]
+          [[ "$APK_SHA256" =~ ^[a-f0-9]{64}$ ]]
+          mkdir -p .buildlog/16k-runtime
+          gh api "repos/$GITHUB_REPOSITORY/releases/assets/$ASSET_ID" -H 'Accept: application/octet-stream' > .buildlog/16k-runtime/candidate.apk
+          echo "$APK_SHA256  .buildlog/16k-runtime/candidate.apk" | sha256sum -c -
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        env:
+          APK_SHA256: ${{ inputs.sha256 }}
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis_ps16k
+          emulator-build: '16740729'
+          ram-size: 4096M
+          cores: 4
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim
+          script: python tools/android-16k-runtime.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Android-16KiB-runtime-evidence
+          path: |
+            .buildlog/16k-runtime/*.json
+            .buildlog/16k-runtime/*.log
+            .buildlog/16k-runtime/*.xml
+            .buildlog/16k-runtime/*.png
+          retention-days: 14
