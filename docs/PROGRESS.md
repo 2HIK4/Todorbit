@@ -22,6 +22,12 @@
   [phone beta testing](ANDROID_PHONE_BETA_TESTING.md).
 - Publication is authorized only after this test passes and other mandatory
   gates remain satisfied. No signing, integrity, CI or migration gates are waived.
+- Updated the existing [unpublished draft](https://github.com/2HIK4/Todorbit/releases/tag/untagged-5d37eaf3644b4e6ac064)
+  (ID `429762923`) to source `01215d7`, with the completed OAuth result, owner
+  deferral and new CI hold. Refreshed notes/checksum assets; all four remote
+  sizes/digests match. APK/JSON unchanged; AAB stays private. Existing Windows
+  release identities/assets are unchanged. No public beta tag/download exists;
+  postpublication updater checks remain unrun. This receipt only changes docs.
 
 ## Production Android beta prepared; publication held (2026-10-31)
 

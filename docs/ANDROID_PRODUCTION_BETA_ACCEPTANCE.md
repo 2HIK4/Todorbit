@@ -65,6 +65,14 @@ failure. This is a new data-safety publication blocker under the owner's explici
 instruction to stop if another mandatory gate cannot be satisfied. The existing
 APK remains unpublished pending diagnosis and any required rebuild/reacceptance.
 
+The existing draft ID `429762923` was refreshed to source `01215d7` and remains
+unpublished at the [current draft URL](https://github.com/2HIK4/Todorbit/releases/tag/untagged-5d37eaf3644b4e6ac064).
+Updated notes and their checksum disclose OAuth success, owner deferral and this
+new hold; APK/update JSON are unchanged. All four remote asset sizes/digests match
+local staged files. Existing public release identities and complete asset
+inventories/digests/update timestamps match the pre-session snapshot. No public
+beta tag exists. Earlier draft URL/target below is the historical staging receipt.
+
 ## Identity and source
 
 - Owner-controlled keystore: `C:\Users\User\TodorbitSigning\todorbit-release.jks`,
