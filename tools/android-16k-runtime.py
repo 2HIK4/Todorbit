@@ -125,4 +125,18 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception as failure:
+        ROOT.mkdir(parents=True, exist_ok=True)
+        (ROOT / 'failure.json').write_text(json.dumps({'failure': str(failure)}, indent=2), encoding='utf-8')
+        for name, args in {
+            'failure-crash': ('logcat', '-d', '-b', 'crash'),
+            'failure-events': ('logcat', '-d', '-b', 'events'),
+            'failure-system': ('logcat', '-d', '-t', '1000'),
+        }.items():
+            try:
+                (ROOT / f'{name}.log').write_text(adb(*args), encoding='utf-8')
+            except (subprocess.SubprocessError, OSError):
+                pass
+        raise

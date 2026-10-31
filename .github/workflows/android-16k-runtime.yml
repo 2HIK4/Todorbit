@@ -49,7 +49,7 @@ jobs:
         env:
           APK_SHA256: ${{ inputs.sha256 || '7c348bc0286eb9c9134698426a9569d9f9a264063c559c196da5a4a2fdd42d74' }}
         with:
-          api-level: 35
+          api-level: 36
           arch: x86_64
           target: google_apis_ps16k
           emulator-build: '16740729'
