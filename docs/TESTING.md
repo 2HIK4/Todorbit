@@ -6,6 +6,61 @@ has succeeded. Toolchain/profile setup lives in [Development](DEVELOPMENT.md).
 
 ## Choose checks by changed boundary
 
+Before testing, read the repository instructions and relevant feature guidance,
+identify the affected functionality, then inspect its latest verification receipts
+and CI results. Check the command/assertions, validated commit or artifact hash,
+result, covered behavior and environment. A matching test name alone is not
+evidence that a previous pass applies.
+
+Reuse a pass when the relevant implementation, dependencies/behavior, assertions
+and equivalent environment are unchanged, and release policy permits reuse.
+Explain any invalidation before rerunning. Required exact-source release CI still
+applies; an existing pass on that exact candidate satisfies it. Documentation-only
+follow-ups do not invalidate packaged runtime evidence. Do not rebuild unchanged
+artifacts or repeat local full suites merely to refresh a receipt.
+
+| Verification level | Scope |
+| --- | --- |
+| Quick | Small text, cosmetic, layout or UI edits; relevant analysis/render checks only |
+| Feature | Targeted unit/widget/integration checks for modified functionality |
+| Critical | Data safety, concurrency, backups, signing, security and updater invariants; failure/recovery checks at affected boundaries |
+| Release | Every mandatory publication gate, reusing valid exact-source/artifact evidence where allowed |
+
+These are risk levels; the existing helper modes remain Quick/Feature/Full.
+Critical selects explicit affected checks; Release adds the required CI, artifact
+and platform acceptance gates. Full Flutter suites need a concrete integration or
+release reason, not an ordinary UI edit. Diagnose a failed environment before
+retrying it; change one relevant condition or collect new diagnostic evidence.
+
+## Verification ledger
+
+Record **every executed verification invocation**, including failed diagnostics
+and reruns, in the task's existing acceptance/checkpoint receipt linked from
+[Progress](PROGRESS.md). Keep one compact row per invocation (a receipt may link
+to its machine-readable per-command records). Include command/test identifier,
+purpose and covered functionality, commit/artifact hash, result, new/rerun status
+and the specific reason for a rerun. Record reused evidence separately with its
+source and why it remains valid; do not imply it was executed again.
+
+Detailed output belongs under ignored `.buildlog/`, normally `.buildlog/verify/`;
+never paste repetitive terminal progress into Markdown. `verify.ps1` already
+records command, source, exit code and log paths; the task receipt supplies purpose,
+coverage and reuse/invalidation decisions. Platform/manual checks need the same
+identity/result record. For example:
+
+| Invocation / purpose | Source / artifact | Result | New or rerun / reason |
+| --- | --- | --- | --- |
+| `verify.ps1 -Mode Feature -Feature android-updates`; updater regressions | commit and linked helper receipt | pass/fail and log | rerun: changed Range validation |
+| 16 KiB cold boot, render/write/reopen; runtime compatibility | APK SHA-256, emulator/image/page size | observed result and log | rerun: prior guest system failure; controlled environment change |
+
+Before a code, dependency, assertion, artifact or environment change, identify
+which recorded results it invalidates. Rerun those checks and preserve unaffected
+passes. Minimize simultaneous emulators/builds, repeated large downloads and
+unrelated platform rebuilds; never reduce meaningful coverage or bypass signing,
+schema, backup, data-preservation or release-integrity gates to save resources.
+
+## Checks by functionality
+
 | Change | Focused checks and constraints |
 | --- | --- |
 | Markdown only | Validate changed links/paths and commands; review diff; `git diff --check`. No Flutter tests or builds. |
