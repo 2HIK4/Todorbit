@@ -30,6 +30,7 @@ class DriveFixture {
       unauthorizedOnce = false;
   bool paginate = false;
   String? expectedClientSecret;
+  String? uploadedName;
   final uploaded = BytesBuilder();
   Uint8List? stored;
   Map<String, String> properties = {};
@@ -70,6 +71,7 @@ class DriveFixture {
       uploaded.clear();
       if (uploadStatus != 200) return jsonResponse({}, uploadStatus);
       final data = jsonDecode(request.body) as Map;
+      uploadedName = data['name'] as String;
       expect(data['parents'], ['appDataFolder']);
       properties = (data['appProperties'] as Map).cast<String, String>();
       return http.Response(
@@ -149,6 +151,28 @@ class DriveFixture {
 }
 
 void main() {
+  test(
+    'sync uploads use independent namespace, batch identity and verified bytes',
+    () async {
+      final fixture = DriveFixture();
+      addTearDown(fixture.client.close);
+      await fixture.auth.connect();
+      final provider = GoogleDriveProvider.sync(fixture.auth, fixture.client);
+      final bytes = Uint8List.fromList([1, 255, 2, 4]);
+      final stored = await provider.upload(bytes, {
+        'kind': 'operations',
+        'batchId': 'batch-one',
+        'workspaceId': 'workspace',
+      }, (_, _, _) {});
+      expect(fixture.uploadedName, 'todorbit-operations-batch-one.tdsync');
+      expect(stored.properties['application'], 'todorbit-sync');
+      expect(stored.properties['batchId'], 'batch-one');
+      expect(stored.properties['backupId'], isNull);
+      expect(stored.properties['verified'], 'true');
+      expect(await provider.download(stored, (_, _, _) {}), bytes);
+    },
+  );
+
   test('bundled public Desktop parameters connect and refresh after restart without a configuration import', () async {
     final fixture = DriveFixture();
     fixture.expectedClientSecret = 'public-desktop-parameter';

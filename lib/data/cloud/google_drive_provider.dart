@@ -7,10 +7,38 @@ import 'package:http/http.dart' as http;
 import 'cloud_storage_provider.dart';
 import 'google_drive_auth.dart';
 
+class DriveChangePage {
+  const DriveChangePage({
+    required this.objects,
+    required this.removedIds,
+    required this.checkpoint,
+    required this.hasMore,
+  });
+  final List<CloudObject> objects;
+  final Set<String> removedIds;
+  final String checkpoint;
+  final bool hasMore;
+}
+
+class DriveCheckpointExpired extends CloudFailure {
+  const DriveCheckpointExpired()
+    : super(
+        'Drive change history expired. Re-read retained cloud history before advancing the checkpoint. Local work is unchanged.',
+      );
+}
+
 class GoogleDriveProvider implements CloudStorageProvider {
-  GoogleDriveProvider(this.auth, this.client);
+  GoogleDriveProvider(this.auth, this.client)
+    : _namespace = 'todorbit',
+      _idProperty = 'backupId',
+      _extension = 'tdbackup';
+  GoogleDriveProvider.sync(this.auth, this.client)
+    : _namespace = 'todorbit-sync',
+      _idProperty = 'batchId',
+      _extension = 'tdsync';
   final GoogleDriveAuth auth;
   final http.Client client;
+  final String _namespace, _idProperty, _extension;
   static const maxBytes = 128 * 1024 * 1024;
   static const _fields =
       'id,name,size,createdTime,md5Checksum,appProperties,spaces';
@@ -18,14 +46,23 @@ class GoogleDriveProvider implements CloudStorageProvider {
   CloudAccount? get account => auth.account;
 
   Future<http.StreamedResponse> _send(http.Request Function() request) async {
+    final accountId = account?.id;
+    if (accountId == null) {
+      throw const CloudFailure('Connect Google Drive first.');
+    }
     for (var attempt = 0; attempt < 2; attempt++) {
       final current = request();
       current.followRedirects = false;
-      current.headers['Authorization'] =
-          'Bearer ${await auth.accessToken(forceRefresh: attempt == 1)}';
+      final token = await auth.accessToken(forceRefresh: attempt == 1);
+      _checkAccount(accountId);
+      current.headers['Authorization'] = 'Bearer $token';
       final response = await client
           .send(current)
           .timeout(const Duration(seconds: 60));
+      if (account?.id != accountId) {
+        await response.stream.drain<void>();
+        _checkAccount(accountId);
+      }
       if (response.statusCode != 401 || attempt == 1) return response;
       await response.stream.drain<void>();
     }
@@ -39,6 +76,10 @@ class GoogleDriveProvider implements CloudStorageProvider {
     List<int>? body,
     Set<int> accepted = const {200},
   }) async {
+    final accountId = account?.id;
+    if (accountId == null) {
+      throw const CloudFailure('Connect Google Drive first.');
+    }
     final stream = await _send(() {
       final request = http.Request(method, uri);
       if (headers != null) request.headers.addAll(headers);
@@ -47,6 +88,7 @@ class GoogleDriveProvider implements CloudStorageProvider {
     });
     final response = await http.Response.fromStream(stream)
         .timeout(const Duration(seconds: 60));
+    _checkAccount(accountId);
     if (!accepted.contains(response.statusCode)) _fail(response.statusCode);
     return response;
   }
@@ -77,7 +119,7 @@ class GoogleDriveProvider implements CloudStorageProvider {
         data['name'] is! String ||
         bytes < 1 ||
         bytes > maxBytes ||
-        properties['application'] != 'todorbit' ||
+        properties['application'] != _namespace ||
         !(data['spaces'] as List? ?? []).contains('appDataFolder') ||
         data['md5Checksum'] is! String) {
       throw const CloudFailure(
@@ -109,7 +151,8 @@ class GoogleDriveProvider implements CloudStorageProvider {
         'GET',
         Uri.https('www.googleapis.com', '/drive/v3/files', {
           'spaces': 'appDataFolder',
-          'q': "trashed = false and appProperties has { key='application' and value='todorbit' }",
+          'q':
+              "trashed = false and appProperties has { key='application' and value='$_namespace' }",
           'fields': 'nextPageToken,files($_fields)',
           'pageSize': '100',
           'orderBy': 'createdTime desc',
@@ -127,6 +170,95 @@ class GoogleDriveProvider implements CloudStorageProvider {
       }
     } while (page != null);
     return result;
+  }
+
+  Future<String> startChangeToken() async {
+    final accountId = account?.id;
+    if (accountId == null) {
+      throw const CloudFailure('Connect Google Drive first.');
+    }
+    final response = await _request(
+      'GET',
+      Uri.https('www.googleapis.com', '/drive/v3/changes/startPageToken'),
+    );
+    _checkAccount(accountId);
+    final data = jsonDecode(response.body) as Map;
+    final token = data['startPageToken'];
+    if (token is! String || token.isEmpty || token.length > 4096) {
+      throw const CloudFailure(
+        'Google Drive returned an invalid change checkpoint.',
+      );
+    }
+    return token;
+  }
+
+  // The store commits this page's checkpoint only with its retained/applied
+  // operations. Removed cloud objects are never interpreted as record deletes.
+  Future<DriveChangePage> changes(String token) async {
+    if (token.isEmpty || token.length > 4096) {
+      throw const CloudFailure('Invalid change checkpoint.');
+    }
+    final accountId = account?.id;
+    if (accountId == null) {
+      throw const CloudFailure('Connect Google Drive first.');
+    }
+    final response = await _request(
+      'GET',
+      Uri.https('www.googleapis.com', '/drive/v3/changes', {
+        'pageToken': token,
+        'spaces': 'appDataFolder',
+        'pageSize': '100',
+        'includeRemoved': 'true',
+        'fields':
+            'nextPageToken,newStartPageToken,changes(fileId,removed,file($_fields,trashed))',
+      }),
+      accepted: const {200, 410},
+    );
+    if (response.statusCode == 410) {
+      throw const DriveCheckpointExpired();
+    }
+    _checkAccount(accountId);
+    final data = jsonDecode(response.body) as Map;
+    final next = data['nextPageToken'];
+    final checkpoint = next ?? data['newStartPageToken'];
+    if (checkpoint is! String ||
+        checkpoint.isEmpty ||
+        checkpoint.length > 4096 ||
+        (next != null && data['newStartPageToken'] != null) ||
+        data['changes'] is! List ||
+        (data['changes'] as List).length > 100 ||
+        (next != null && next == token)) {
+      throw const CloudFailure('Google Drive returned an invalid change page.');
+    }
+    final objects = <CloudObject>[];
+    final removed = <String>{};
+    for (final change in data['changes'] as List) {
+      if (change is! Map || change['fileId'] is! String) {
+        throw const CloudFailure('Invalid Drive change.');
+      }
+      if (change['removed'] == true ||
+          (change['file'] is Map &&
+              (change['file'] as Map)['trashed'] == true)) {
+        removed.add(change['fileId'] as String);
+        continue;
+      }
+      final file = change['file'];
+      if (file is Map &&
+          (file['appProperties'] as Map?)?['application'] == _namespace) {
+        if (file['id'] != change['fileId']) {
+          throw const CloudFailure(
+            'Drive change identity differs from its file.',
+          );
+        }
+        objects.add(_object(file.cast<String, dynamic>(), accountId));
+      }
+    }
+    return DriveChangePage(
+      objects: List.unmodifiable(objects),
+      removedIds: Set.unmodifiable(removed),
+      checkpoint: checkpoint,
+      hasMore: next != null,
+    );
   }
 
   Future<CloudObject> _inspect(String id, String accountId) async {
@@ -160,7 +292,7 @@ class GoogleDriveProvider implements CloudStorageProvider {
       throw const CloudFailure('Backup exceeds the 128 MiB cloud limit.');
     }
     final name =
-        'todorbit-${properties['kind']}-${properties['backupId']}.tdbackup';
+        'todorbit-${properties['kind']}-${properties[_idProperty]}.$_extension';
     final start = await _request(
       'POST',
       Uri.https('www.googleapis.com', '/upload/drive/v3/files', {
@@ -176,7 +308,7 @@ class GoogleDriveProvider implements CloudStorageProvider {
         jsonEncode({
           'name': name,
           'parents': ['appDataFolder'],
-          'appProperties': {...properties, 'application': 'todorbit'},
+          'appProperties': {...properties, 'application': _namespace},
         }),
       ),
     );
@@ -228,7 +360,7 @@ class GoogleDriveProvider implements CloudStorageProvider {
     final stored = await _inspect(id, accountId);
     if (stored.bytes != bytes.length ||
         stored.md5 != md5.convert(bytes).toString() ||
-        stored.properties['backupId'] != properties['backupId']) {
+        stored.properties[_idProperty] != properties[_idProperty]) {
       throw const CloudFailure(
         'Stored backup verification failed. Existing snapshots are unchanged.',
       );
@@ -274,7 +406,7 @@ class GoogleDriveProvider implements CloudStorageProvider {
     final checked = await _inspect(object.id, object.accountId);
     if (checked.bytes != object.bytes ||
         checked.md5 != object.md5 ||
-        checked.properties['backupId'] != object.properties['backupId']) {
+        checked.properties[_idProperty] != object.properties[_idProperty]) {
       throw const CloudFailure('Cloud backup changed. Reload the list.');
     }
     final response = await _send(
