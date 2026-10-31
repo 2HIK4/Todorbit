@@ -41,8 +41,11 @@
   canceled/denied message. Updated GMS through official Google Play for the final
   reconnect. Restored networking and stopped both test emulators/fixture server.
   Account-wide grant revocation remains unverified; no global grant was revoked.
-- Finishing unpublished draft staging.
-  No public release/tag has been created. Development installation and personal
+- Staged [unpublished GitHub draft](https://github.com/2HIK4/Todorbit/releases/tag/untagged-76b06409b4f941be9b7c)
+  (release ID `429762923`, target `9f1d55e`). APK, update JSON, notes and checksum
+  all match remote asset sizes/digests. API confirms draft/prerelease, no publish
+  timestamp; no public beta tag exists. Private AAB/test fixtures excluded.
+  Development installation and personal
   Windows data/releases remain untouched. Detailed hashes, receipts and manual
   acceptance procedure: [production acceptance](ANDROID_PRODUCTION_BETA_ACCEPTANCE.md).
 

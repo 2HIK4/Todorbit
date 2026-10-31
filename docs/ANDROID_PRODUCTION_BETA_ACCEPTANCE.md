@@ -176,8 +176,14 @@ stopped.
 
 Windows/Android Drive interoperability and real account-wide grant revocation
 remain unverified publication blockers. Public discovery/download/install checks
-can only follow publication and are not claimed. Verified assets are being staged
-as an unpublished draft; no public release/tag is claimed.
+can only follow publication and are not claimed. The
+[unpublished draft](https://github.com/2HIK4/Todorbit/releases/tag/untagged-76b06409b4f941be9b7c)
+is release ID `429762923`, target `9f1d55e`, proposed tag `v1.0.19-beta.1`.
+GitHub API confirms `draft: true`, `prerelease: true`, no publication timestamp,
+and all four asset sizes/SHA-256 digests match local files. No public beta tag
+exists. Assets are the normal APK, Android update JSON, notes and a three-entry
+checksum file; the private AAB and all test fixtures are excluded. The full local
+preparation checksum separately includes the validated AAB.
 
 Source review of the existing Windows updater shows Android APKs cannot be
 selected as Windows packages. Stable excludes the beta. Pre-release may report
