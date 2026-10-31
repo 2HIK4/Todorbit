@@ -23,6 +23,8 @@ internal static partial class LifeManagerWidgetSelfTest {
       revision = next;
     }
     var path = Path.Combine(directory, "revision-safety.sqlite");
+    var futureRevision = DateTime.UtcNow.AddYears(10).ToString(
+      "yyyy-MM-dd'T'HH:mm:ss.ffffff'Z'", CultureInfo.InvariantCulture);
     CreateDatabase(path);
     using var first = LifeManagerWidgetRepository.OpenForTest(path);
     using var second = LifeManagerWidgetRepository.OpenForTest(path);
@@ -32,7 +34,7 @@ internal static partial class LifeManagerWidgetSelfTest {
       seed.Open();
       using var command = seed.CreateCommand();
       command.CommandText = "UPDATE tasks SET updated_at=$future WHERE id=$id";
-      command.Parameters.AddWithValue("$future", revision);
+      command.Parameters.AddWithValue("$future", futureRevision);
       command.Parameters.AddWithValue("$id", id);
       command.ExecuteNonQuery();
     }
@@ -42,7 +44,10 @@ internal static partial class LifeManagerWidgetSelfTest {
         task.ScheduledDate, task.DeadlineDate, task.UpdatedAt);
     second.UpdateTask(id, Edit(original, "Edited elsewhere"));
     var edited = second.LoadTasks(day).Single(t => t.Id == id);
-    if (edited.UpdatedAt == original.UpdatedAt) throw new InvalidOperationException("Native edit reused revision.");
+    if (DateTime.Parse(edited.UpdatedAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind) <=
+        DateTime.Parse(original.UpdatedAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind)) {
+      throw new InvalidOperationException("Native edit did not advance past a future persisted revision.");
+    }
     try {
       first.CompleteTask(id, original.UpdatedAt);
       throw new InvalidOperationException("Stale native completion was accepted.");

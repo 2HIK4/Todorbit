@@ -404,7 +404,8 @@ internal sealed partial class LifeManagerWidgetRepository : IDisposable {
       throw new ArgumentException("Unsupported task status.");
     }
     var now = NextTaskRevision(update.ExpectedUpdatedAt, DateTime.UtcNow);
-    var completedAt = update.Status == "completed" ? UtcNowString() : null;
+    var eventTime = UtcNowString();
+    var completedAt = update.Status == "completed" ? eventTime : null;
     using var transaction = connection.BeginTransaction();
     string? previousScheduledDate = null;
     string? previousStatus = null;
@@ -493,7 +494,7 @@ internal sealed partial class LifeManagerWidgetRepository : IDisposable {
         """;
       operation.Parameters.AddWithValue("$id", operationId);
       operation.Parameters.AddWithValue("$scope", $"widget:task:{id}");
-      operation.Parameters.AddWithValue("$now", now);
+      operation.Parameters.AddWithValue("$now", eventTime);
       operation.ExecuteNonQuery();
       using var change = connection.CreateCommand();
       change.Transaction = transaction;
