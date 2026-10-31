@@ -214,6 +214,112 @@ void main() {
     expect((await cloud.history.status(settings)).localChanges, isTrue);
   });
 
+  test('staging and opened receipt survive unavailable cloud history', () async {
+    final cloud = service(MemoryCloud());
+    final object = await upload(cloud);
+    final preview = await cloud.preview(object, 'fixture', progress);
+    // The historical service committed pending-restore.json, then failed here,
+    // reporting a generic error despite a replayable restart request.
+    final history = File('${root.path}/cloud-transfer-history.json');
+    await history.delete();
+    final unavailable = Directory(history.path);
+    await unavailable.create();
+    await cloud.scheduleRestore(preview);
+    expect(await local.hasScheduledRestore(), isTrue);
+    expect(await local.completedRestore(), isNull);
+    await database.close();
+    await local.applyScheduledRestore(
+      appSchemaVersion: AppDatabase.currentSchemaVersion,
+    );
+    database = AppDatabase(NativeDatabase(local.databaseFile));
+    await database.customSelect('SELECT 1 FROM tasks').get();
+    await local.markRestoreOpened();
+    await unavailable.delete();
+    // No cloud-history file exists, as on a new receiving device.
+    final status = await cloud.history.status(settings);
+    expect(status.lastRestore, isNotNull);
+    expect(status.localChanges, isFalse);
+  });
+
+  test(
+    'interrupted finalization resumes without replacing Before Restore',
+    () async {
+      final cloud = service(MemoryCloud());
+      final object = await upload(cloud);
+      await repository.addTask(const TaskDraft(title: 'Original target data'));
+      final original = await databaseFingerprint(local.databaseFile.path);
+      await cloud.scheduleRestore(
+        await cloud.preview(object, 'fixture', progress),
+      );
+      await database.close();
+      final blockedStatus = Directory('${root.path}/restore-status.json');
+      await blockedStatus.create();
+      await expectLater(
+        local.applyScheduledRestore(
+          appSchemaVersion: AppDatabase.currentSchemaVersion,
+        ),
+        throwsA(isA<FileSystemException>()),
+      );
+      expect(await local.hasScheduledRestore(), isTrue);
+      final before = (await local.list())
+          .where((r) => r.kind == BackupKind.beforeRestore)
+          .single;
+      expect(await databaseFingerprint(before.file.path), original);
+      await blockedStatus.delete();
+      await local.applyScheduledRestore(
+        appSchemaVersion: AppDatabase.currentSchemaVersion,
+      );
+      expect(
+        (await local.list()).where((r) => r.kind == BackupKind.beforeRestore),
+        hasLength(1),
+      );
+      expect(await databaseFingerprint(before.file.path), original);
+      database = AppDatabase(NativeDatabase(local.databaseFile));
+      final rows = await database.customSelect('SELECT title FROM tasks').get();
+      expect(rows, hasLength(1));
+      expect(await local.completedRestore(), isNull);
+      await local.markRestoreOpened();
+      expect((await cloud.history.status(settings)).lastRestore, isNotNull);
+      expect(await local.hasScheduledRestore(), isFalse);
+    },
+  );
+
+  test(
+    'local restore retry preserves edits after interrupted finalization',
+    () async {
+      final snapshot = await local.createBackup(BackupKind.manual);
+      await local.scheduleRestore(
+        snapshot,
+        appSchemaVersion: AppDatabase.currentSchemaVersion,
+      );
+      await database.close();
+      final blockedStatus = Directory('${root.path}/restore-status.json');
+      await blockedStatus.create();
+      await expectLater(
+        local.applyScheduledRestore(
+          appSchemaVersion: AppDatabase.currentSchemaVersion,
+        ),
+        throwsA(isA<FileSystemException>()),
+      );
+      await blockedStatus.delete();
+      database = AppDatabase(NativeDatabase(local.databaseFile));
+      await LifeRepository(database)
+          .addTask(const TaskDraft(title: 'Work after interrupted restore'));
+      final edited = await databaseFingerprint(local.databaseFile.path);
+      await database.close();
+      await expectLater(
+        local.applyScheduledRestore(
+          appSchemaVersion: AppDatabase.currentSchemaVersion,
+        ),
+        throwsStateError,
+      );
+      expect(await databaseFingerprint(local.databaseFile.path), edited);
+      expect(await local.hasScheduledRestore(), isTrue);
+      expect(await local.completedRestore(), isNull);
+      database = AppDatabase(NativeDatabase(local.databaseFile));
+    },
+  );
+
   test(
     'preferences changed during review or before restart prevent replacement',
     () async {

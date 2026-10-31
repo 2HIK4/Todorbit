@@ -16,12 +16,14 @@ class BackupDialog extends StatefulWidget {
     this.chooseImport,
     this.chooseExport,
     this.embedded = false,
+    this.onPendingRestoreChanged,
   });
   final BackupService service;
   final String? automaticError;
   final Future<File?> Function()? chooseImport;
   final Future<File?> Function()? chooseExport;
   final bool embedded;
+  final ValueChanged<String?>? onPendingRestoreChanged;
 
   @override
   State<BackupDialog> createState() => _BackupDialogState();
@@ -53,6 +55,7 @@ class _BackupDialogState extends State<BackupDialog> {
           restoreResult = result;
           error = null;
         });
+        widget.onPendingRestoreChanged?.call(pending);
       }
     } catch (failure) {
       if (mounted) setState(() => error = '$failure');
@@ -219,7 +222,7 @@ class _BackupDialogState extends State<BackupDialog> {
     final content = SizedBox(
       width: 700,
       height: widget.embedded
-          ? 720
+          ? null
           : math.min(
               MediaQuery.sizeOf(context).height * 0.85,
               records != null && records!.length < 3 && pendingName == null
@@ -229,6 +232,10 @@ class _BackupDialogState extends State<BackupDialog> {
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: ListView(
+          shrinkWrap: widget.embedded,
+          physics: widget.embedded
+              ? const NeverScrollableScrollPhysics()
+              : null,
           children: [
             Row(
               children: [

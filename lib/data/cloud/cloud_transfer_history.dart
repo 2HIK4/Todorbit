@@ -40,17 +40,28 @@ class CloudTransferHistory {
   );
 
   Future<Map<String, dynamic>> _read() async {
-    if (!await _file.exists()) return {};
-    final data = jsonDecode(await _file.readAsString());
+    final data = await _file.exists()
+        ? jsonDecode(await _file.readAsString())
+        : <String, dynamic>{'version': 1};
     if (data is! Map<String, dynamic> || data['version'] != 1) {
       throw const FormatException('Unsupported cloud transfer history');
     }
     final pending = data['pendingRestore'];
     final completed = await local.completedRestore();
-    if (pending is Map && completed?.backup == pending['backup']) {
+    final receipt =
+        completed?.cloudTransfer ??
+        (pending is Map && completed?.backup == pending['backup']
+            ? pending
+            : null);
+    if (completed != null && receipt != null) {
       data['lastRestore'] = {
-        ...pending,
-        'at': completed!.openedAt.toUtc().toIso8601String(),
+        ...receipt,
+        'at': completed.openedAt.toUtc().toIso8601String(),
+      };
+    } else if (completed != null) {
+      // Legacy restores have a real opened receipt but no transfer baseline.
+      data['lastRestore'] = {
+        'at': completed.openedAt.toUtc().toIso8601String(),
       };
     }
     return data;
@@ -79,7 +90,10 @@ class CloudTransferHistory {
     return CloudTransferStatus(
       lastBackup: backupTime,
       lastRestore: restoreTime,
-      localChanges: baseline is! Map
+      localChanges:
+          baseline is! Map ||
+              baseline['database'] == null ||
+              baseline['settings'] == null
           ? null
           : baseline['database'] !=
                     await databaseFingerprint(local.databaseFile.path) ||

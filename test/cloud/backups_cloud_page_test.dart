@@ -21,12 +21,16 @@ import 'package:life_manager/features/settings/settings_transfer_dialog.dart';
 import 'cloud_test_fakes.dart';
 
 class _LocalFixture extends BackupService {
-  _LocalFixture() : super(File('unused-test-profile/life.sqlite'));
+  _LocalFixture({this.pending})
+    : super(File('unused-test-profile/life.sqlite'));
+  String? pending;
+  @override
+  Future<void> cancelScheduledRestore() async => pending = null;
   int creates = 0;
   @override
   Future<List<BackupRecord>> list() async => [];
   @override
-  Future<String?> pendingRestoreName() async => null;
+  Future<String?> pendingRestoreName() async => pending;
   @override
   Future<String?> restoreStatus() async => null;
   @override
@@ -79,6 +83,90 @@ class _RestoreFixture extends CloudBackupService {
 
 void main() {
   for (final brightness in Brightness.values) {
+    testWidgets(
+      'pending restart survives reopening ${brightness.name} at large text',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(360, 740));
+        final database = AppDatabase(NativeDatabase.memory());
+        final local = _LocalFixture(pending: 'manual-fixture.sqlite');
+        final controller = AppController(
+          LifeRepository(database),
+          backupService: local,
+        );
+        await controller.initialize();
+        final client = MockClient((_) async => http.Response('', 503));
+        final auth = GoogleDriveAuth(
+          client: client,
+          store: MemoryTokenStore(),
+          flow: TestGoogleFlow(),
+          clientId: '',
+          enabled: false,
+        );
+        final service = CloudBackupService(
+          local: local,
+          provider: MemoryCloud()..account = null,
+          appVersion: 'fixture',
+        );
+        try {
+          await tester.pumpWidget(
+            ProviderScope(
+              overrides: [
+                appControllerProvider.overrideWith((_) => controller),
+              ],
+              child: MaterialApp(
+                theme: ThemeData(brightness: brightness),
+                home: MediaQuery(
+                  data: const MediaQueryData(
+                    size: Size(360, 740),
+                    textScaler: TextScaler.linear(1.5),
+                  ),
+                  child: Scaffold(
+                    body: ListView(
+                      children: [
+                        BackupsCloudPage(auth: auth, service: service),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.runAsync(() async {
+            await Future<void>.delayed(const Duration(milliseconds: 100));
+          });
+          await tester.pumpAndSettle();
+          final notice = find.text(
+            'Restart required to finish restoring. Close and reopen Todorbit. Your current data remains active until restart.',
+          );
+          await tester.ensureVisible(notice);
+          await tester.pumpAndSettle();
+          expect(notice, findsOneWidget);
+          final rect = tester.getRect(notice);
+          expect(rect.left, greaterThanOrEqualTo(0));
+          expect(rect.right, lessThanOrEqualTo(360));
+          tester
+              .state<ScrollableState>(find.byType(Scrollable).first)
+              .position
+              .jumpTo(0);
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Local backup actions & history'));
+          await tester.pumpAndSettle();
+          final cancel = find.text('Cancel scheduled restore');
+          await tester.ensureVisible(cancel);
+          await tester.pumpAndSettle();
+          await tester.tap(cancel);
+          await tester.pumpAndSettle();
+          expect(notice, findsNothing);
+          expect(tester.takeException(), isNull);
+        } finally {
+          await tester.pumpWidget(const SizedBox.shrink());
+          client.close();
+          await database.close();
+          await tester.binding.setSurfaceSize(null);
+        }
+      },
+    );
+
     testWidgets(
       'backup page ${brightness.name} at 440px and large text keeps offline local controls usable',
       (tester) async {

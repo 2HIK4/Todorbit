@@ -52,6 +52,7 @@ class _TransferService extends BackupService {
     String? portableSettings,
     String? expectedLocalFingerprint,
     String? expectedLocalPreferences,
+    Map<String, dynamic>? cloudTransfer,
   }) async {
     scheduleCalls++;
   }

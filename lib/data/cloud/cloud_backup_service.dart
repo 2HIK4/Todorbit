@@ -212,6 +212,12 @@ class CloudBackupService {
       if (snapshot == null) {
         throw const CloudFailure('Select a full database backup.');
       }
+      // All fallible receipt work must finish before committing the restart
+      // marker. Once committed, staging must never be reported as a failure.
+      final transfer = <String, dynamic>{
+        'database': await databaseFingerprint(snapshot.file.path),
+        'settings': settingsFingerprint(preview.manifest['settings'] as String),
+      };
       // Reuses all managed-file, digest, integrity and schema gates. Startup
       // creates Before Restore and closes native connections before applying.
       await local.scheduleRestore(
@@ -220,12 +226,8 @@ class CloudBackupService {
         portableSettings: preview.manifest['settings'] as String,
         expectedLocalFingerprint: preview.localFingerprint,
         expectedLocalPreferences: preview.localPreferences,
+        cloudTransfer: transfer,
       );
-      await history.record('pendingRestore', {
-        'backup': path.basename(snapshot.file.path),
-        'database': await databaseFingerprint(snapshot.file.path),
-        'settings': settingsFingerprint(preview.manifest['settings'] as String),
-      });
     },
   );
 }

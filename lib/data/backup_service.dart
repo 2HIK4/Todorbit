@@ -285,17 +285,18 @@ class BackupService {
         data['backup'] is! String) {
       return;
     }
-    await _restoreStatus.writeAsString(
-      jsonEncode({
-        'state': 'opened',
-        'backup': data['backup'],
-        'openedAt': DateTime.now().toUtc().toIso8601String(),
-      }),
-      flush: true,
-    );
+    await _writeRestoreJson(_restoreStatus, {
+      'state': 'opened',
+      'backup': data['backup'],
+      'openedAt': DateTime.now().toUtc().toIso8601String(),
+      if (data['cloudTransfer'] != null) 'cloudTransfer': data['cloudTransfer'],
+    });
   }
 
-  Future<({String backup, DateTime openedAt})?> completedRestore() async {
+  Future<
+    ({String backup, DateTime openedAt, Map<String, dynamic>? cloudTransfer})?
+  >
+  completedRestore() async {
     if (!await _restoreStatus.exists()) return null;
     final data = jsonDecode(await _restoreStatus.readAsString());
     if (data is! Map ||
@@ -306,7 +307,12 @@ class BackupService {
     final time = DateTime.tryParse('${data['openedAt']}');
     return time == null
         ? null
-        : (backup: data['backup'] as String, openedAt: time);
+        : (
+            backup: data['backup'] as String,
+            openedAt: time,
+            cloudTransfer: (data['cloudTransfer'] as Map?)
+                ?.cast<String, dynamic>(),
+          );
   }
 
   /// Personalization from a cloud restore is applied only after the replaced
@@ -331,6 +337,7 @@ class BackupService {
     String? portableSettings,
     String? expectedLocalFingerprint,
     String? expectedLocalPreferences,
+    Map<String, dynamic>? cloudTransfer,
   }) async {
     if (await _restoreMarker.exists()) {
       throw StateError('A restore is already scheduled. Cancel it first.');
@@ -386,6 +393,7 @@ class BackupService {
         'portableSettings': ?portableSettings,
         'expectedLocalFingerprint': ?expectedLocalFingerprint,
         'expectedLocalPreferences': ?expectedLocalPreferences,
+        'cloudTransfer': ?cloudTransfer,
       }),
       flush: true,
     );
@@ -437,33 +445,52 @@ class BackupService {
     if (widgetBundle != null) {
       WidgetConfigurationStore.validateBundle(widgetBundle);
     }
-    final rollback = await createBackup(BackupKind.beforeRestore);
-    if (marker['expectedLocalPreferences'] case final String expected) {
-      if (await profilePreferencesFingerprint(databaseFile.parent) !=
-          expected) {
-        throw StateError(
-          'Local preferences changed after restore review. Nothing was replaced. Cancel the pending restore and review it again.',
-        );
-      }
-    }
-    // Check the consistent recovery snapshot, immediately before replacement.
-    // A write after confirmation must not be silently overwritten on restart.
-    if (marker['expectedLocalFingerprint'] case final String expected) {
-      if (await databaseFingerprint(rollback.file.path) != expected) {
-        throw StateError(
-          'Local data changed after restore review. Nothing was replaced. Cancel the pending restore and review it again.',
-        );
-      }
-    }
+    // SQLite backup is atomic, but process death can occur before the receipt
+    // is written. A durable intent and exact logical digest let startup finish
+    // an already-applied restore without replacing the original recovery copy.
+    final incomingFingerprint = await databaseFingerprint(snapshotPath);
     final targetPath = databaseFile.path;
-    final expectedFingerprint = marker['expectedLocalFingerprint'] as String?;
-    await Isolate.run(
-      () => _restoreSnapshot(
-        snapshotPath,
-        targetPath,
-        expectedFingerprint: expectedFingerprint,
-      ),
-    );
+    final alreadyApplied =
+        marker['replacementStarted'] == true &&
+        marker['incomingFingerprint'] == incomingFingerprint &&
+        await databaseFingerprint(databaseFile.path) == incomingFingerprint;
+    BackupRecord? rollback;
+    if (!alreadyApplied) {
+      rollback = await createBackup(BackupKind.beforeRestore);
+      if (marker['expectedLocalPreferences'] case final String expected) {
+        if (await profilePreferencesFingerprint(databaseFile.parent) !=
+            expected) {
+          throw StateError(
+            'Local preferences changed after restore review. Nothing was replaced. Cancel the pending restore and review it again.',
+          );
+        }
+      }
+      // Check the consistent recovery snapshot, immediately before replacement.
+      // A write after confirmation must not be silently overwritten on restart.
+      if (marker['expectedLocalFingerprint'] case final String expected) {
+        if (await databaseFingerprint(rollback.file.path) != expected) {
+          throw StateError(
+            'Local data changed after restore review. Nothing was replaced. Cancel the pending restore and review it again.',
+          );
+        }
+      }
+      final expectedFingerprint =
+          marker['expectedLocalFingerprint'] as String? ??
+          await databaseFingerprint(rollback.file.path);
+      // Also bind legacy/local restores before replacement. A retry after an
+      // interrupted finalization must refuse subsequent target edits.
+      marker['expectedLocalFingerprint'] = expectedFingerprint;
+      marker['replacementStarted'] = true;
+      marker['incomingFingerprint'] = incomingFingerprint;
+      await _writeRestoreJson(_restoreMarker, marker);
+      await Isolate.run(
+        () => _restoreSnapshot(
+          snapshotPath,
+          targetPath,
+          expectedFingerprint: expectedFingerprint,
+        ),
+      );
+    }
     final restoredSchema = await Isolate.run(
       () => _inspectSnapshot(targetPath),
     );
@@ -474,17 +501,22 @@ class BackupService {
       await WidgetConfigurationStore(databaseFile.parent)
           .importBundle(widgetBundle);
     }
-    await _restoreStatus.writeAsString(
-      jsonEncode({
-        'state': 'applied',
-        'backup': filename,
-        if (marker['portableSettings'] != null)
-          'portableSettings': marker['portableSettings'],
-      }),
-      flush: true,
-    );
+    await _writeRestoreJson(_restoreStatus, {
+      'state': 'applied',
+      'backup': filename,
+      if (marker['cloudTransfer'] != null)
+        'cloudTransfer': marker['cloudTransfer'],
+      if (marker['portableSettings'] != null)
+        'portableSettings': marker['portableSettings'],
+    });
     await _restoreMarker.delete();
     return rollback;
+  }
+
+  Future<void> _writeRestoreJson(File file, Map<String, dynamic> value) async {
+    final temporary = File('${file.path}.tmp');
+    await temporary.writeAsString(jsonEncode(value), flush: true);
+    await temporary.rename(file.path);
   }
 }
 

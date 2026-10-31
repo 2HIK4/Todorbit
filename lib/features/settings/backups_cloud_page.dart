@@ -38,6 +38,7 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
   bool historyLoaded = false;
   CloudTransferStatus? transferStatus;
   String? error, message;
+  String? pendingRestore;
   String stage = '';
   double? progress;
   final cloudProgress = ValueNotifier<({String stage, double? fraction})>((
@@ -95,6 +96,7 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
             appVersion: version ?? 'Unknown',
           );
         }
+        await _loadPendingRestore();
         await auth!.load();
         await _loadTransferStatus();
         if (auth!.account != null) await _list();
@@ -143,6 +145,9 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
             CloudFailure() => failure.message,
             SocketException() || http.ClientException() => 'Network unavailable. Local backups remain available. Try again when connected.',
             TimeoutException() => 'The request timed out. Try again; previous backups are unchanged.',
+            StateError() => failure.message.toString(),
+            FormatException() => 'Backup or local transfer metadata is invalid or unsupported. Keep the original backup and review Local Backups.',
+            FileSystemException() => 'Local storage could not finish the operation. Check free space and file access, then review Local Backups before retrying.',
             _ => 'The operation could not finish. Check the connection, local storage, and Google configuration, then try again.',
           },
         );
@@ -175,6 +180,11 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
     if (!await service!.local.databaseFile.exists()) return;
     final loaded = await service!.history.status(_portableSettings());
     if (mounted) setState(() => transferStatus = loaded);
+  }
+
+  Future<void> _loadPendingRestore() async {
+    final pending = await service!.local.pendingRestoreName();
+    if (mounted) setState(() => pendingRestore = pending);
   }
 
   Future<void> _connect() => _run(() async {
@@ -407,9 +417,10 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
         await recovery.exportTo(recoveryFile, recovery.categories.keys.toSet());
         await service!.scheduleRestore(preview);
         if (mounted) {
-          setState(
-            () => message = 'Restore scheduled, not yet applied. Close Todorbit and its widget, then reopen. Review Local Backups for the actual restore result or to cancel.',
-          );
+          setState(() {
+            pendingRestore = preview.snapshot!.file.path;
+            message = 'Restart required to finish restoring. The backup is prepared; your current data is still active. Close and reopen Todorbit. On Windows, close its widget too. Review Local Backups to cancel.';
+          });
         }
       }
     });
@@ -512,6 +523,11 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
                 service: local,
                 automaticError: controller.backupError,
                 embedded: true,
+                onPendingRestoreChanged: (pending) {
+                  if (mounted && pendingRestore != pending) {
+                    setState(() => pendingRestore = pending);
+                  }
+                },
               ),
             ],
           )
@@ -641,6 +657,13 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
           ],
         ),
         _heading('Cloud Backups'),
+        if (pendingRestore != null)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Restart required to finish restoring. Close and reopen Todorbit. Your current data remains active until restart.',
+            ),
+          ),
         const Text(
           'Encrypted snapshots on demand. Backups do not sync or merge devices.',
         ),

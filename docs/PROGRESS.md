@@ -1,5 +1,23 @@
 # Progress
 
+## Drive sync and restore implementation in progress (2026-10-31)
+
+- Branch `feature/drive-sync-recovery`, baseline `f62cd7b`; coordinated release
+  authorized only after all gates. Owner currently permits mocked Drive only.
+- Restore staging no longer performs fallible cloud-history work after committing
+  its restart marker. Baselines travel with applied/opened receipts. Interrupted
+  finalization recognizes exact restored contents and retains the original Before
+  Restore copy; subsequent edits are protected. Original phone exception remains
+  unmeasured; this fixes a reproducible matching lifecycle defect.
+- Embedded backups now scroll with Settings; pending restart/cancellation passes
+  compact light/dark at 1.5x text. Initial 69 focused checks passed; later local
+  retry/data checks and final eight UI checks retained per the ledger.
+- Causal DAG/encrypted-batch primitives are being developed separately; sync is
+  not operational. Pending: transactional all-writer capture, persistent conflict
+  and exchange state, pairing/UI, platform workers, restore coordination and
+  exact-source release gates. No version/tag/release or personal data changed.
+- [Implementation boundary and every verification/rerun](DRIVE_SYNC_RECOVERY_CHECKPOINT.md).
+
 ## Android beta 2 published; testing policy finalized (2026-10-31)
 
 - Published [v1.0.19-beta.2](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.2),
