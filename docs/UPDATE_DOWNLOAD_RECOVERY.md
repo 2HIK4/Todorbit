@@ -1,5 +1,8 @@
 # Update download repair — 2026-10-31
 
+Published in [Android beta 2, version 1.0.19-beta.2 (25)](ANDROID_BETA_2_PUBLICATION.md).
+The private code-24 measurements and implementation checkpoint below are historical.
+
 Implementation commit `57d8d59`, unpublished on `feature/android-mobile`. The public
 `v1.0.19-beta.1` tag, its assets, production certificate, package identity,
 database, backups and Windows installation identities are unchanged.

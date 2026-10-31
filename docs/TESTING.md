@@ -68,6 +68,12 @@ checks system stability before installation, then renders, creates/reopens and
 completes a synthetic task. It does not build the app or rerun host suites.
 Its evidence artifact records the exact APK hash and observed runtime behavior;
 it does not prove physical ARM64/OEM behavior or the installation approval UI.
+GitHub requires the workflow to be registered on the default branch for ordinary
+manual dispatch. While introducing it on `feature/android-mobile`, its narrowly
+scoped workflow-file push bootstrap uses the explicit `[16k-runtime]` commit
+marker. Draft-asset retrieval requires push visibility; the job has no signing
+keys and makes no repository/release write calls. Keep candidate-source CI
+evidence distinct from these test-harness commits.
 
 | Change | Focused checks and constraints |
 | --- | --- |

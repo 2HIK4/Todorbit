@@ -1,5 +1,32 @@
 # Progress
 
+## Android beta 2 published; testing policy finalized (2026-10-31)
+
+- Published [v1.0.19-beta.2](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.2),
+  code 25, at 16:18:52 UTC / 19:18:52 Amman. Tag/source `500a9a8`; unchanged signed
+  ARM64/x64/universal 25.53/27.05/51.61 MB packages, metadata/notes/checksums only.
+  All 16 previous releases/assets, beta 1 and Windows unchanged; no tag moved.
+- Runtime hold cleared on official API 36, 16 KiB revision 7, Linux/KVM, Emulator 37.2.13:
+  [41218583203](https://github.com/2HIK4/Todorbit/actions/runs/41218583203) passed
+  healthy no-app baseline, exact APK render, SQLite task restart/completion and
+  no crash/ANR. API-35 r05 guests failed without Todorbit on Windows and Linux;
+  precise upstream cause unestablished. No application fix/rebuild was needed.
+- Reused exact-source Windows CI 451 tests/one opt-in skip, Android CI 71 host/two
+  integrations, signing/alignment/private AAB/security and preservation evidence.
+  No full suite, OAuth, Sandbox or broad widget acceptance repeated. Every new
+  diagnostic/runtime/distribution invocation and rerun reason has a ledger.
+- Anonymous public downloads/checksums, ABI selection/fallback, Stable exclusion,
+  actual public beta 1 → beta 2 app download/native verification/system approval pass.
+  All 45 tables, attachment/backups/preferences/widget config retained. Installed
+  APK matches public x64 hash/certificate. Emulators stopped, test data retained.
+- `ac9a884` persists receipt-first testing, evidence reuse, Quick/Feature/Critical/
+  Release levels and per-invocation ledger in AGENTS/Testing/Codex workflow.
+  Artifact-only runtime harness `d642fe5` is separate from immutable package source.
+- Physical phone/OEM/ARM64 16 KiB and Windows/Android Drive interoperability remain
+  owner testing limits. [Publication receipt](ANDROID_BETA_2_PUBLICATION.md),
+  [phone guide](ANDROID_BETA_2_PHONE_TESTING.md),
+  [investigation ledger](ANDROID_BETA_2_RELEASE_CHECKPOINT.md).
+
 ## Android beta 2 prepared; runtime publication hold (2026-10-31)
 
 - Candidate `500a9a8` on `feature/android-mobile`: `1.0.19-beta.2+25`, fresh

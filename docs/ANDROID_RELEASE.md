@@ -77,7 +77,7 @@ code for a universal APK. The preparation tool reads official published Android
 metadata and fails on non-increasing codes or unavailable validation responses.
 No Android metadata on existing Windows releases is expected before first launch.
 
-Tracked Markdown [candidate notes](ANDROID_RELEASE_NOTES.md) are used as the
+Tracked Markdown [beta 2 notes](ANDROID_BETA_2_RELEASE_NOTES.md) are used as the
 default, with an optional tracked path input. The preparation script validates
 production signer, non-debuggable APK, ID/version, minimum SDK, ABIs, APK/AAB
 signature, native alignment and checksums, and emits:

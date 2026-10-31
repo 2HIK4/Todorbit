@@ -20,7 +20,7 @@ Todorbit is an offline Windows productivity app with an Android beta for tasks, 
 
 ## Android beta installation
 
-The production-signed [Android 1.0.19-beta.1 pre-release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.1) supports Android 8.0+ on ARM64/x86-64, with Tasks and Calendar launcher widgets. Download the APK and verify its published SHA-256. Windows/Android Google Drive restoration remains unverified; back up existing data and start with disposable data. This is snapshot recovery, not synchronization. Before replacing a debug-signed app, verify an external backup and recovery first. See [phone installation and backup testing](docs/ANDROID_PHONE_BETA_TESTING.md) and [publication checks](docs/ANDROID_BETA_1_PUBLICATION.md).
+The production-signed [Android 1.0.19-beta.2 pre-release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.2) supports Android 8.0+ on ARM64/x86-64, with smaller architecture-specific APKs, resumable update downloads and Tasks/Calendar widgets. Download the correct APK and verify its published SHA-256. Windows/Android Google Drive restoration remains unverified; back up existing data and start with disposable data. This is snapshot recovery, not synchronization. Before replacing a debug-signed app, verify an external backup and recovery first. See [phone installation, signing and backup testing](docs/ANDROID_BETA_2_PHONE_TESTING.md) and [publication checks](docs/ANDROID_BETA_2_PUBLICATION.md).
 
 ## Windows installation
 
