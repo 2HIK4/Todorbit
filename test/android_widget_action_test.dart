@@ -62,10 +62,10 @@ void main() {
     'repeated completion advances after-completion recurrence once',
     () async {
       final first = await controller.repository.addRecurringTask(
-        TaskDraft(title: 'Repeat', scheduledDate: localDate(DateTime.now())),
+        TaskDraft(title: 'Repeat', scheduledDate: localDate(frozenTime)),
         RecurrenceRule(
           kind: RecurrenceKind.afterCompletion,
-          startDate: localDate(DateTime.now()),
+          startDate: localDate(frozenTime),
           interval: 2,
         ),
       );

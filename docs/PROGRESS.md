@@ -12,8 +12,20 @@
 - Focused Dart tests including unchanged recurrence assertions: 18 pass. Full
   analysis/formatting, connected diagnostics and 15 release/helper tests pass.
   Native Release build and isolated persistence/revision self-test pass.
-  Final full suite, exact-source CI,
-  replacement signed artifacts and affected device acceptance remain pending.
+  Final full suite: 434 pass, one deliberate skip. Windows CI `41179574454`
+  passes on `afe5241`; Android CI `41179298416` passes on Android-equivalent
+  `57d7c4d`. Final publication-ref CI, replacement signed artifacts and affected
+  device acceptance were pending at the implementation checkpoint. Rebuilt APK/AAB
+  now pass strict preparation and credential review. APK SHA-256:
+  `eeb140b1ee574689c890bd52e2e078f547a3fc5533a5197c4d066eb8828c5d6b`.
+- Fresh disposable C: guest repeated actual production 22-to-23 update; all 45
+  tables, attachment/backup bytes, settings and widget IDs/themes survived.
+  Normal widget completion/reopen passed. A real delayed capability after a UI
+  edit made no database change (45 tables identical). Identical-APK 16 KiB runtime
+  and persistent SQLite/widget actions pass, no app crash/ANR recorded there.
+  Both guests stopped; baseline snapshot retained for public checks. Cleared only
+  unused task-owned RAM/download caches to fit the fresh guest; no profiles reset.
+- Final publication-ref CI and refreshed draft/public verification remain pending.
 - Keep beta draft unpublished until those gates pass. Retain completed Android
   OAuth/encrypted recovery acceptance and owner cross-platform deferral; do not
   reopen Windows Sandbox or touch development/personal profiles.

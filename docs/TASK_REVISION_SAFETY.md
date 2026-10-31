@@ -80,8 +80,24 @@ recurrence rejection assertions. Full analysis and connected diagnostics pass;
 helper tests pass. Native Release builds with zero warnings/errors and the
 isolated persistence/revision self-test passes. The first full host run had 433
 passes, one deliberate skip and the duplicate repository contract failure; that
-behavior was corrected and its unchanged focused test now passes. Final full
-suite, exact-source CI, replacement APK/AAB, affected Android update/widget
-acceptance and publication checks are pending at this implementation checkpoint.
+behavior was corrected and its unchanged focused test now passes. The final full
+host suite passes 434 tests with one deliberate skip.
+
+Implementation commits are `57d7c4d` and `afe5241` (native action/history times
+remain actual times, separate from logical revisions).
+[Windows CI 41179574454](https://github.com/2HIK4/Todorbit/actions/runs/41179574454)
+passes on `afe5241`, including 434 host tests, Windows Release, native packaged
+self-test and installer/config gates.
+[Android CI 41179298416](https://github.com/2HIK4/Todorbit/actions/runs/41179298416)
+passes on `57d7c4d`, including the new host checks and real emulator integration.
+Android application source is identical through `afe5241`; final publication-ref
+CI and publication checks remain pending at this checkpoint. Rebuilt APK/AAB pass
+all production identity/signature/ABI/SDK/alignment and bundle-separation checks.
+Actual 22-to-23 installation, all-45-table/file/settings/widget preservation,
+normal widget actions, delayed native capability after editing, and identical-APK
+16 KiB runtime/persistent SQLite actions passed; see
+[production acceptance](ANDROID_PRODUCTION_BETA_ACCEPTANCE.md). The first local signed rebuild stopped
+on missing installed CMake in process PATH; the retry includes the verified Visual
+Studio CMake/Ninja paths. No source policy or validator was weakened.
 Earlier signing/OAuth acceptance is retained; its APK hash is not evidence for
 the rebuilt artifact. Windows/Android cloud restoration remains owner-deferred.

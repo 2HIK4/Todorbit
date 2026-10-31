@@ -1,19 +1,15 @@
-# Todorbit Android beta 1 - unpublished draft
+# Todorbit Android beta 1
 
-Proposed version: **1.0.19-beta.1 (23)**. Android 8.0+; ARM64 and x86-64.
+Version: **1.0.19-beta.1 (23)**. Android 8.0+; ARM64 and x86-64.
 This Android beta does not replace or modify the published Windows releases.
 
-**Publication hold:** an intermittent stale-widget edit-protection CI failure
-requires diagnosis. Real grant revocation and fresh reauthorization passed.
-The owner explicitly deferred Windows/Android Drive interoperability acceptance
-until after this first beta is published; it remains an unverified beta limitation.
-Windows app testing remains stopped at the owner's request.
-The production APK/AAB, artifact preparation, current application-source CI,
-same-signer in-app upgrade/data preservation, Android encrypted Drive recovery and
-16 KiB emulator runtime checks have passed. This file must be
-finalized against the verified artifacts before publication. No public download
-is available yet. The local production APK is 51,529,687 bytes; SHA-256:
-`02e97a8be84a79f11a165569aedb2e662bd41f66cc607c231531f14b8ddcc295`.
+**Beta limitation:** Windows/Android Drive discovery and restoration remain
+unverified. The owner explicitly deferred that acceptance and will test a Windows
+backup on Android after publication. Begin with disposable data and keep an
+independent backup before any replacement restore. Backups do not synchronize devices.
+
+The production APK is 51,529,687 bytes; SHA-256:
+`eeb140b1ee574689c890bd52e2e078f547a3fc5533a5197c4d066eb8828c5d6b`.
 
 The permanent RSA-4096 signing identity is established; the owner confirms two
 independent encrypted backups passed recovery. Its verified public fingerprints are:
@@ -21,7 +17,7 @@ independent encrypted backups passed recovery. Its verified public fingerprints 
 - SHA-1: `D0:AE:60:28:E4:CD:0C:1C:83:67:11:42:F6:0F:14:2D:A8:1D:AD:96`.
 - SHA-256: `00226dad75ac907ac51c86df2c5011f0b6e2ce8291994103975f11a8eb574a99`.
 
-## Included in the candidate source
+## Included in this beta
 
 - Shared local-first tasks, events, planning and encrypted snapshot recovery.
 - Refined mobile navigation, settings, readable empty states and 48 dp controls.
@@ -33,6 +29,9 @@ independent encrypted backups passed recovery. Its verified public fingerprints 
   than user-supplied OAuth credentials. This is backup/restore, not synchronization.
 - GitHub update discovery, release notes, cancelable APK download, checksum and
   installed-publisher verification, followed by Android's installation approval.
+- Task completion rejects stale edits even with equal or backward clock values.
+  Persistent task revisions advance strictly; guarded completion and recurrence
+  run atomically. Repeated widget delivery cannot advance a recurring task twice.
 
 ## Install after publication
 
@@ -87,10 +86,10 @@ app to work around a certificate mismatch.
   tables, attachment bytes, backup, preferences and widget configurations survived.
   Task widget completion/reopening worked after updating. Android and Windows CI
   passed on the tested application source.
-- Later Windows CI run `41176493080` failed `stale completion cannot overwrite an
-  edit`: the expected stale-action rejection did not occur. Following run
-  `41176579454` passed, and a local 100-edit probe found no revision collisions.
-  The failure is unresolved; a passing retry does not establish its cause.
+- Windows CI run `41176493080` exposed reused wall-clock task revisions. A frozen
+  clock reproduced the failure before the fix; strictly advancing persisted
+  revisions and atomic expected-token writes now prevent it. The full host suite
+  passes 434 tests, including deterministic concurrency/clock regressions.
 - Physical-phone/OEM launcher resizing, reboot behavior and TalkBack breadth
   remain limited. Widget completion opens Todorbit; it is not a stopped-app
   background database writer.
@@ -102,9 +101,5 @@ app to work around a certificate mismatch.
   this beta supplies no Windows update.
 - No synchronization, telemetry, new cloud account system or Play publication
   is introduced. Local use remains available without Google Drive.
-
-Before publishing, complete the remaining mandatory acceptance gates and update
-this draft status. After publication, verify the public APK download and normal
-Android Pre-release discovery/installation; these checks have not run yet.
 
 See the [phone installation and Windows backup test procedure](https://github.com/2HIK4/Todorbit/blob/feature/android-mobile/docs/ANDROID_PHONE_BETA_TESTING.md).

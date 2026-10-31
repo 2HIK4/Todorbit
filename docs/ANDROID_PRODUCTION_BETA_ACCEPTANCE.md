@@ -4,6 +4,49 @@ This is an unpublished candidate checkpoint. It must not be read as a public
 release receipt. Candidate name is `1.0.19-beta.1`, Android code 23; code 22 is
 reserved for a private same-signer baseline.
 
+## Rebuilt safety-fix candidate (2026-10-31)
+
+The prior stale-widget hold is resolved in source by `57d7c4d` and `afe5241`;
+see [root cause, invariant and deterministic tests](TASK_REVISION_SAFETY.md).
+Full host suite: 434 pass, one deliberate opt-in companion-launch skip. Full
+analysis/formatting, native Release/self-test and Windows CI `41179574454` pass.
+Android CI `41179298416` passes on identical Android application source.
+
+New normal production APK from `afe5241`: 51,529,687 bytes, SHA-256
+`eeb140b1ee574689c890bd52e2e078f547a3fc5533a5197c4d066eb8828c5d6b`.
+New Play AAB: 48,106,140 bytes, SHA-256
+`3afb9ee90842d3bd5f4b382fe2dcc8756003477e4603f4b1743ef85b5e8cddd7`.
+Strict preparation passed signatures, identity/version, SDK/ABIs, native alignment,
+Play permission/provider separation, bundle 16 KiB configuration and published-code
+floor. Credential scan passed 728 tracked files/archive entries. Private outputs
+are under ignored `.buildlog/android-production-beta/revision-fix/`.
+These replace the earlier artifact hashes below; old files remain historical
+evidence only. Schema remains 22.
+
+Fresh C: guest `TodorbitRevisionAcceptance` repeated the actual production-signer
+22-to-23 in-app download, native verification, source permission and system update.
+Play Protect requested a scan; Scan app was selected and installation completed
+normally. No explicit final scan-result text was captured, so no such text is
+claimed for this run. Installed base APK hash equals `eeb140...c5d6b` above.
+Closed before/after exports confirm all 45 tables identical, attachment and backup
+bytes retained, appearance/updater preferences and widget IDs 2/3/config retained.
+Task and Calendar widgets render their records/themes. Normal candidate widget
+completion and reopening both passed.
+
+An additional delayed-capability check captured a real issued widget command,
+edited the synthetic task through the UI, then delivered the old capability.
+The updated title/open status remained; all 45 tables match exactly before/after
+delivery. This observes native stale-capability handling; deterministic host tests
+separately prove the transactional repository guard during an intervening edit.
+
+The identical APK passed API-35 x86-64 `PAGE_SIZE=16384` runtime again: Flutter
+rendering, task completion persisted through force-stop/cold reopen, then widget
+reopening. No app crash/ANR event was recorded in that guest. Both guests are
+stopped with data retained. A cold baseline snapshot `revision-baseline-22` is
+available for subsequent public discovery after replacing the private baseline
+with the normal code-22 APK. All new receipts/captures stay under `revision-fix/`.
+Final publication-ref CI, refreshed draft and public checks remain pending.
+
 ## Owner acceptance update (2026-10-31)
 
 The owner explicitly deferred Windows/Android Google Drive discovery/restore
