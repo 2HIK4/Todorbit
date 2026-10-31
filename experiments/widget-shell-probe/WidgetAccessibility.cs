@@ -34,7 +34,7 @@ internal sealed partial class NativeDesktopWidgetHost
             for (var i = scrollOffset; i < Math.Min(tasks.Count, scrollOffset + VisibleTaskRows); i++)
             {
                 var task = tasks[i]; var visible = i - scrollOffset;
-                items.Add(new("Complete " + task.Title, CheckboxRect(visible), () => { RunAction(() => repository.CompleteTask(task.Id)); RefreshTasks(); }));
+                items.Add(new("Complete " + task.Title, CheckboxRect(visible), () => { RunAction(() => repository.CompleteTask(task.Id, task.UpdatedAt)); RefreshTasks(); }));
                 items.Add(new("Edit " + task.Title, TaskRowRect(visible), () => OpenTaskEditor(task)));
             }
             items.Add(new("Add a task to " + ViewLabel(settings.View), AddRect, () => OpenQuickAdd()));

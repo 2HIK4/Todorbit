@@ -41,6 +41,16 @@ features + shared controls -> AppController -> LifeRepository + part files -> Dr
 independent repositories. The native writer is a separate, restricted boundary.
 Check both readers/writers when changing a shared model, schema or profile format.
 
+Task `updated_at` is also a persisted concurrency token. Every existing-task
+writer advances it beyond the preceding value even with a frozen/coarse or
+backward clock. Flutter retains the exact stored text as `LifeTask.revision` for
+legacy native timestamp compatibility. Task edits use an expected-token SQL CAS;
+completion revalidates state and token inside its transaction and keeps recurrence
+advancement in that transaction. Duplicate desired completion states do not write.
+Windows widget commands carry their displayed revision, not just an ID. Actual
+completion time is separate from the logical revision. Schema/backup format stay
+at 22. See [task revision safety](TASK_REVISION_SAFETY.md).
+
 | Subsystem / purpose | Main implementation and dependencies | Tests / constraints |
 | --- | --- | --- |
 | Shell, tasks, projects, categories | `lib/features/workspace/`, `lib/app/app_controller.dart`, `lib/domain/models.dart`, `lib/data/life_repository.dart` | `test/workspace_test.dart`, `test/repository_test.dart`; controller is shared across feature views. |

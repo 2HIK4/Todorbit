@@ -32,7 +32,7 @@ jobs:
       # Windows CI remains the independent full-analysis/full-host-suite gate
       # on every push/PR. Signed candidates require both workflows.
       - run: flutter analyze --no-pub lib/platform/android lib/features/mobile integration_test test_driver/android_update_app.dart
-      - run: flutter test --no-pub --concurrency=1 test/android_platform_test.dart test/android_google_drive_auth_test.dart test/android_update_service_test.dart test/android_software_updates_page_test.dart test/mobile_workspace_test.dart test/mobile_editors_test.dart test/cross_platform_backup_test.dart
+      - run: flutter test --no-pub --concurrency=1 test/android_platform_test.dart test/android_google_drive_auth_test.dart test/android_update_service_test.dart test/android_software_updates_page_test.dart test/android_widget_action_test.dart test/task_revision_concurrency_test.dart test/mobile_workspace_test.dart test/mobile_editors_test.dart test/cross_platform_backup_test.dart
       - run: python -m unittest discover -s tools -p test_prepare_android_release.py
       - run: flutter build apk --debug --flavor github --target-platform android-arm64,android-x64
       - run: python tools/verify-android-artifact.py build/app/outputs/flutter-apk/app-github-debug.apk

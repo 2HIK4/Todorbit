@@ -126,7 +126,7 @@ extension TrashRepository on LifeRepository {
     ''',
           variables: [
             Variable.withString(task.id),
-            Variable.withString(task.updatedAt.toUtc().toIso8601String()),
+            Variable.withString(task.revision),
           ],
         )
         .getSingleOrNull();
@@ -210,7 +210,7 @@ extension TrashRepository on LifeRepository {
     await db.transaction(() async {
       await _requireActiveTask(task.id);
       await _requireNoActiveTimerForTask(task.id);
-      final now = DateTime.now().toUtc().toIso8601String();
+      final now = _nextTaskRevision(task.updatedAt).toIso8601String();
       final changed = await db.customUpdate(
         '''
         UPDATE tasks SET archived_at=?,updated_at=?
@@ -225,7 +225,7 @@ extension TrashRepository on LifeRepository {
           Variable.withString(now),
           Variable.withString(now),
           Variable.withString(task.id),
-          Variable.withString(task.updatedAt.toUtc().toIso8601String()),
+          Variable.withString(task.revision),
         ],
       );
       if (changed != 1) throw StateError('Task changed or is unavailable');
@@ -242,9 +242,11 @@ extension TrashRepository on LifeRepository {
           AND deleted_at IS NULL
       ''',
         variables: [
-          Variable.withString(DateTime.now().toUtc().toIso8601String()),
+          Variable.withString(
+            _nextTaskRevision(task.updatedAt).toIso8601String(),
+          ),
           Variable.withString(task.id),
-          Variable.withString(task.updatedAt.toUtc().toIso8601String()),
+          Variable.withString(task.revision),
         ],
       );
       if (changed != 1) throw StateError('Archived task changed');
@@ -273,7 +275,11 @@ extension TrashRepository on LifeRepository {
           throw StateError('Stop timers in this ${kind.name} first');
         }
       }
-      final now = DateTime.now().toUtc().toIso8601String();
+      final now =
+          (kind == TrashKind.task
+                  ? await _nextStoredTaskRevision(id)
+                  : DateTime.now().toUtc())
+              .toIso8601String();
       final changed = await db.customUpdate(
         'UPDATE $table SET deleted_at=?,updated_at=? WHERE id=? AND deleted_at IS NULL',
         variables: [
@@ -331,13 +337,16 @@ extension TrashRepository on LifeRepository {
         if (task == null) throw StateError('Restore the parent task first');
         await _requireAvailableParents('tasks', taskId);
       }
+      final revision = item.kind == TrashKind.task
+          ? await _nextStoredTaskRevision(item.id)
+          : DateTime.now().toUtc();
       final changed = await db.customUpdate(
         '''
         UPDATE $table SET deleted_at=NULL,updated_at=?
         WHERE id=? AND deleted_at=?
       ''',
         variables: [
-          Variable.withString(DateTime.now().toUtc().toIso8601String()),
+          Variable.withString(revision.toIso8601String()),
           Variable.withString(item.id),
           Variable.withString(item.deletedAt.toUtc().toIso8601String()),
         ],

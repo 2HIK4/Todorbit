@@ -242,7 +242,7 @@ internal sealed class LifeManagerWidget : Form {
     };
     checkbox.CheckedChanged += (_, _) => {
       if (!checkbox.Checked) return;
-      RunAction(() => repository.CompleteTask(task.Id));
+      RunAction(() => repository.CompleteTask(task.Id, task.UpdatedAt));
       RefreshTasks();
     };
     row.Controls.AddRange([checkbox, title]);

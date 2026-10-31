@@ -243,6 +243,7 @@ class LifeTask {
     required this.priority,
     required this.createdAt,
     required this.updatedAt,
+    this.storedRevision,
     this.categoryId,
     this.projectId,
     this.scheduledDate,
@@ -272,6 +273,9 @@ class LifeTask {
   final String? deadlineDate;
   final DateTime createdAt;
   final DateTime updatedAt;
+  // Preserve the exact SQLite token (including legacy native fractional format).
+  final String? storedRevision;
+  String get revision => storedRevision ?? updatedAt.toUtc().toIso8601String();
   final DateTime? completedAt;
   final int? plannedDurationMinutes;
   final int? remainingWorkMinutes;

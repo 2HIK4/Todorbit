@@ -128,6 +128,7 @@ internal static partial class LifeManagerWidgetSelfTest {
       TestIsolatedAppData(directory);
       TestStartupRegistration(directory);
       TestPrivacy(directory);
+      TestTaskRevisionSafety(directory);
       CreateDatabase(databasePath);
       string id, inboxId;
       using (var repository =
@@ -208,7 +209,7 @@ internal static partial class LifeManagerWidgetSelfTest {
             .All(item => item.Id != upcomingId)) {
           throw new InvalidOperationException("Upcoming view filtering failed.");
         }
-        repository.CompleteTask(id);
+        repository.CompleteTask(id, ReadTaskRevision(repository, id));
         if (repository.LoadTasks(today).Count != 0) {
           throw new InvalidOperationException("Completed task remained visible.");
         }
@@ -343,7 +344,8 @@ internal static partial class LifeManagerWidgetSelfTest {
           command.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
           command.ExecuteNonQuery();
         }
-        v6Repository.CompleteTask(recurringId);
+        v6Repository.CompleteTask(recurringId, ReadTaskRevision(v6Repository, recurringId));
+        v6Repository.CompleteTask(recurringId, ReadTaskRevision(v6Repository, recurringId));
         string completedBefore, completedAfter;
         using (var check = new SqliteConnection(
             $"Data Source={databasePath};Mode=ReadOnly;Pooling=False")) {
@@ -392,7 +394,7 @@ internal static partial class LifeManagerWidgetSelfTest {
           throw new InvalidOperationException(
             "Schema v6 editor completion did not advance the series.");
         }
-        v6Repository.CompleteTask(third[0].Id);
+        v6Repository.CompleteTask(third[0].Id, third[0].UpdatedAt);
         if (v6Repository.LoadTasks(nextDay)
             .Any(task => task.Title == "Every three days")) {
           throw new InvalidOperationException(
@@ -441,7 +443,7 @@ internal static partial class LifeManagerWidgetSelfTest {
           command.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
           command.ExecuteNonQuery();
         }
-        v7Repository.CompleteTask(taskId);
+        v7Repository.CompleteTask(taskId, ReadTaskRevision(v7Repository, taskId));
         using var check = new SqliteConnection(
           $"Data Source={databasePath};Mode=ReadOnly;Pooling=False");
         check.Open();

@@ -1,5 +1,23 @@
 # Progress
 
+## Stale-widget safety fix under release verification (2026-10-31)
+
+- Frozen-clock reproduction produces the exact stale-action test failure before
+  the fix. Direct wall-clock `updated_at` could be reused; native completion also
+  lacked an expected snapshot token. See [task revision safety](TASK_REVISION_SAFETY.md).
+- Task revisions now strictly advance using the existing UTC token, with exact
+  stored-text CAS and transactional completion/recurrence revalidation. Native
+  widget paths carry expected revisions. Duplicate completion is a no-op.
+  Schema/backup format remain 22; no data migration or reset is introduced.
+- Focused Dart tests including unchanged recurrence assertions: 18 pass. Full
+  analysis/formatting, connected diagnostics and 15 release/helper tests pass.
+  Native Release build and isolated persistence/revision self-test pass.
+  Final full suite, exact-source CI,
+  replacement signed artifacts and affected device acceptance remain pending.
+- Keep beta draft unpublished until those gates pass. Retain completed Android
+  OAuth/encrypted recovery acceptance and owner cross-platform deferral; do not
+  reopen Windows Sandbox or touch development/personal profiles.
+
 ## Final OAuth acceptance resumed; interoperability deferred by owner (2026-10-31)
 
 - Owner explicitly accepts deferring Windows/Android Drive discovery/restore

@@ -39,9 +39,31 @@ part 'task_composition_repository.dart';
 part 'progressive_plan_repository.dart';
 
 class LifeRepository {
-  LifeRepository(this.db);
+  LifeRepository(this.db, {DateTime Function()? taskClock})
+    : _taskClock = taskClock ?? DateTime.now;
   final AppDatabase db;
+  final DateTime Function() _taskClock;
   final _uuid = const Uuid();
+
+  // updated_at is also the persisted task concurrency token. A frozen/coarse
+  // clock or rollback must never reuse it. Writers with an expected snapshot use
+  // this value in the same CAS; unconditional writers read it in their transaction.
+  DateTime _nextTaskRevision(DateTime previous) {
+    final wallTime = _taskClock().toUtc();
+    return wallTime.isAfter(previous)
+        ? wallTime
+        : previous.toUtc().add(const Duration(microseconds: 1));
+  }
+
+  Future<DateTime> _nextStoredTaskRevision(String id) async {
+    final row = await db
+        .customSelect(
+          'SELECT updated_at FROM tasks WHERE id=?',
+          variables: [Variable.withString(id)],
+        )
+        .getSingle();
+    return _nextTaskRevision(DateTime.parse(row.read<String>('updated_at')));
+  }
 
   Future<bool> claimSupportIntroduction(File file) =>
       SupportIntroductionStore(file).claim();
@@ -143,8 +165,7 @@ class LifeRepository {
           )
           .getSingleOrNull();
       if (existing == null ||
-          existing.read<String>('updated_at') !=
-              previous.updatedAt.toUtc().toIso8601String()) {
+          existing.read<String>('updated_at') != previous.revision) {
         throw StateError(
           'This task changed elsewhere. Reopen it before editing prerequisites.',
         );
@@ -153,7 +174,7 @@ class LifeRepository {
         'DELETE FROM task_dependencies WHERE task_id=?',
         variables: [Variable.withString(taskId)],
       );
-      final now = DateTime.now().toUtc().toIso8601String();
+      final now = _nextTaskRevision(previous.updatedAt).toIso8601String();
       for (final prerequisiteId in prerequisiteIds) {
         final prerequisite = await db
             .customSelect(
@@ -574,6 +595,7 @@ class LifeRepository {
     deadlineDate: r.read<String?>('deadline_date'),
     createdAt: DateTime.parse(r.read<String>('created_at')),
     updatedAt: DateTime.parse(r.read<String>('updated_at')),
+    storedRevision: r.read<String>('updated_at'),
     completedAt: _parseNullable(r.read<String?>('completed_at')),
     plannedDurationMinutes: r.read<int?>('planned_duration_minutes'),
     remainingWorkMinutes: r.read<int?>('remaining_work_minutes'),
@@ -715,7 +737,7 @@ class LifeRepository {
     if (draft.notification != null) {
       TaskNotification.fromJson(draft.notification!.toJson());
     }
-    final now = DateTime.now().toUtc();
+    final now = _taskClock().toUtc();
     final id = _uuid.v4();
     await db.transaction(() async {
       await _checkAssignment(draft.categoryId, draft.projectId);
@@ -747,9 +769,11 @@ class LifeRepository {
       WHERE id=? AND updated_at=? AND deleted_at IS NULL AND archived_at IS NULL''',
       variables: [
         Variable.withString(status.name),
-        Variable.withString(DateTime.now().toUtc().toIso8601String()),
+        Variable.withString(
+          _nextTaskRevision(task.updatedAt).toIso8601String(),
+        ),
         Variable.withString(task.id),
-        Variable.withString(task.updatedAt.toUtc().toIso8601String()),
+        Variable.withString(task.revision),
       ],
     );
     if (changed != 1) throw StateError('Task changed; reload it');
@@ -978,7 +1002,8 @@ class LifeRepository {
     if (draft.notification != null) {
       TaskNotification.fromJson(draft.notification!.toJson());
     }
-    final now = DateTime.now().toUtc();
+    final now = _taskClock().toUtc();
+    final revision = _nextTaskRevision(previous.updatedAt);
     final completed = draft.status == TaskStatus.completed
         ? (previous.completedAt ?? now)
         : null;
@@ -1030,13 +1055,13 @@ class LifeRepository {
           Variable<String>(draft.projectId),
           Variable<String>(draft.scheduledDate),
           Variable<String>(draft.deadlineDate),
-          Variable.withString(now.toIso8601String()),
+          Variable.withString(revision.toIso8601String()),
           Variable<String>(completed?.toIso8601String()),
           Variable<int>(draft.plannedDurationMinutes),
           Variable<int>(draft.remainingWorkMinutes),
           Variable.withInt(draft.schedulingLocked ? 1 : 0),
           Variable.withString(previous.id),
-          Variable.withString(previous.updatedAt.toUtc().toIso8601String()),
+          Variable.withString(previous.revision),
         ],
       );
       if (updated != 1) {
@@ -1057,7 +1082,7 @@ class LifeRepository {
               beforeDate: previous.scheduledDate,
               afterDate: draft.scheduledDate,
               beforeUpdatedAt: previous.updatedAt,
-              afterUpdatedAt: now,
+              afterUpdatedAt: revision,
             ),
           ],
         );
@@ -1070,9 +1095,28 @@ class LifeRepository {
   }
 
   Future<void> setComplete(LifeTask task, bool complete) async {
-    final now = DateTime.now().toUtc();
+    final now = _taskClock().toUtc();
     await db.transaction(() async {
       await _requireActiveTask(task.id);
+      final current = await db
+          .customSelect(
+            'SELECT status,updated_at FROM tasks WHERE id=?',
+            variables: [Variable.withString(task.id)],
+          )
+          .getSingle();
+      final status = current.read<String>('status');
+      if (status == TaskStatus.cancelled.name) {
+        throw StateError('Cancelled tasks cannot change completion.');
+      }
+      final expected = task.revision;
+      if (current.read<String>('updated_at') != expected) {
+        throw StateError(
+          'This task changed elsewhere. Reopen it before changing completion.',
+        );
+      }
+      // A current snapshot may repeat its desired state without another write.
+      // Stale repository snapshots still reject, including after completion.
+      if ((status == TaskStatus.completed.name) == complete) return;
       if (!complete) await _checkRecurringReopen(task.id);
       final updated = await db.customUpdate(
         'UPDATE tasks SET status=?,completed_at=?,updated_at=? WHERE id=? AND updated_at=? AND deleted_at IS NULL AND archived_at IS NULL',
@@ -1081,9 +1125,11 @@ class LifeRepository {
             complete ? TaskStatus.completed.name : TaskStatus.notStarted.name,
           ),
           Variable<String>(complete ? now.toIso8601String() : null),
-          Variable.withString(now.toIso8601String()),
+          Variable.withString(
+            _nextTaskRevision(task.updatedAt).toIso8601String(),
+          ),
           Variable.withString(task.id),
-          Variable.withString(task.updatedAt.toUtc().toIso8601String()),
+          Variable.withString(expected),
         ],
       );
       if (updated != 1) {
@@ -1091,7 +1137,7 @@ class LifeRepository {
           'This task changed elsewhere. Reopen it before changing completion.',
         );
       }
-      if (complete && task.status != TaskStatus.completed) {
+      if (complete) {
         await _advanceCompletionSeries(task.id, now);
       }
     });
@@ -1158,7 +1204,7 @@ class LifeRepository {
     if (!task.isOpen) {
       throw StateError('Only a pending occurrence can be skipped');
     }
-    final now = DateTime.now().toUtc().toIso8601String();
+    final now = _nextTaskRevision(task.updatedAt).toIso8601String();
     await db.transaction(() async {
       final updated = await db.customUpdate(
         '''UPDATE tasks SET status='cancelled',completed_at=NULL,updated_at=?
@@ -1166,7 +1212,7 @@ class LifeRepository {
         variables: [
           Variable.withString(now),
           Variable.withString(task.id),
-          Variable.withString(task.updatedAt.toUtc().toIso8601String()),
+          Variable.withString(task.revision),
         ],
       );
       if (updated != 1) {
@@ -1633,7 +1679,14 @@ class LifeRepository {
         }
       }
 
-      final now = DateTime.now().toUtc();
+      var now = _taskClock().toUtc();
+      for (final change in preview.changes) {
+        if (!now.isAfter(change.expectedUpdatedAt)) {
+          now = change.expectedUpdatedAt.toUtc().add(
+            const Duration(microseconds: 1),
+          );
+        }
+      }
       final history = <ScheduleHistoryChange>[];
       final skippedIds = {
         for (final collision in seriesCollisions)

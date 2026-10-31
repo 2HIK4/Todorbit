@@ -300,7 +300,7 @@ Future<void> publishAndroidRepository(
                 .take(500))
           {
             'id': t.id,
-            'revision': t.updatedAt.toUtc().toIso8601String(),
+            'revision': t.revision,
             'due': t.deadlineDate ?? '',
             'title': t.title,
             'day': t.scheduledDate ?? '',

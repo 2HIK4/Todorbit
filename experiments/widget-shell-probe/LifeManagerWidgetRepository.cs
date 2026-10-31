@@ -403,8 +403,8 @@ internal sealed partial class LifeManagerWidgetRepository : IDisposable {
     if (!validStatuses.Contains(update.Status)) {
       throw new ArgumentException("Unsupported task status.");
     }
-    var now = UtcNowString();
-    var completedAt = update.Status == "completed" ? now : null;
+    var now = NextTaskRevision(update.ExpectedUpdatedAt, DateTime.UtcNow);
+    var completedAt = update.Status == "completed" ? UtcNowString() : null;
     using var transaction = connection.BeginTransaction();
     string? previousScheduledDate = null;
     string? previousStatus = null;
@@ -516,30 +516,44 @@ internal sealed partial class LifeManagerWidgetRepository : IDisposable {
     }
     if (schemaVersion >= 6 && previousStatus != "completed" &&
         update.Status == "completed") {
-      AdvanceCompletionSeries(id, now, transaction);
+      AdvanceCompletionSeries(id, completedAt!, transaction);
     }
     transaction.Commit();
   }
 
-  internal void CompleteTask(string id) {
+  internal void CompleteTask(string id, string expectedUpdatedAt) {
     privacy?.RequireUnlocked();
-    var now = UtcNowString();
     using var transaction = connection.BeginTransaction();
+    using (var current = connection.CreateCommand()) {
+      current.Transaction = transaction;
+      current.CommandText = "SELECT status FROM tasks WHERE id=$id" +
+        (schemaVersion >= 13 ? ActiveTaskClause : "") +
+        (schemaVersion >= 18 ? ActiveParentClause : "");
+      current.Parameters.AddWithValue("$id", id);
+      if (current.ExecuteScalar() is string status && status == "completed") {
+        transaction.Commit();
+        return; // Duplicate delivery never writes or advances recurrence twice.
+      }
+    }
+    var completedAt = UtcNowString();
+    var revision = NextTaskRevision(expectedUpdatedAt, DateTime.UtcNow);
     using var command = connection.CreateCommand();
     command.Transaction = transaction;
     command.CommandText = """
       UPDATE tasks
-      SET status='completed', completed_at=$now, updated_at=$now
-      WHERE id=$id AND status NOT IN ('completed', 'cancelled')
+      SET status='completed', completed_at=$now, updated_at=$revision
+      WHERE id=$id AND updated_at=$expected AND status NOT IN ('completed', 'cancelled')
       """ + (schemaVersion >= 13 ? ActiveTaskClause : "") +
       (schemaVersion >= 18 ? ActiveParentClause : "");
-    command.Parameters.AddWithValue("$now", now);
+    command.Parameters.AddWithValue("$now", completedAt);
+    command.Parameters.AddWithValue("$revision", revision);
+    command.Parameters.AddWithValue("$expected", expectedUpdatedAt);
     command.Parameters.AddWithValue("$id", id);
     if (command.ExecuteNonQuery() != 1) {
       throw new InvalidOperationException(
         "The task was already changed or no longer exists.");
     }
-    if (schemaVersion >= 6) AdvanceCompletionSeries(id, now, transaction);
+    if (schemaVersion >= 6) AdvanceCompletionSeries(id, completedAt, transaction);
     transaction.Commit();
   }
 
@@ -698,6 +712,15 @@ internal sealed partial class LifeManagerWidgetRepository : IDisposable {
 
   private static string UtcNowString() => DateTime.UtcNow.ToString(
     "yyyy-MM-dd'T'HH:mm:ss.ffffff'Z'", CultureInfo.InvariantCulture);
+
+  internal static string NextTaskRevision(string previous, DateTime wallTime) {
+    var old = DateTime.Parse(previous, CultureInfo.InvariantCulture,
+      DateTimeStyles.RoundtripKind).ToUniversalTime();
+    // Match Dart's microsecond precision before comparing, never after it.
+    var candidate = new DateTime(wallTime.ToUniversalTime().Ticks / 10 * 10, DateTimeKind.Utc);
+    if (candidate <= old) candidate = old.AddTicks(10);
+    return candidate.ToString("yyyy-MM-dd'T'HH:mm:ss.ffffff'Z'", CultureInfo.InvariantCulture);
+  }
 
   public void Dispose() => connection.Dispose();
 }

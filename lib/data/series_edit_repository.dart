@@ -511,6 +511,7 @@ extension SeriesEditRepository on LifeRepository {
           final deadline = offset == null
               ? null
               : RecurrenceRule.shiftDate(slot.nominalDate, offset);
+          final taskRevision = await _nextStoredTaskRevision(item.taskId!);
           await db.customUpdate(
             '''UPDATE tasks SET title=?,notes=?,priority=?,category_id=?,
               project_id=?,deadline_date=?,planned_duration_minutes=?,
@@ -526,7 +527,7 @@ extension SeriesEditRepository on LifeRepository {
               Variable<int>(preview.draft.plannedDurationMinutes),
               Variable<int>(preview.draft.remainingWorkMinutes),
               Variable.withInt(preview.draft.schedulingLocked ? 1 : 0),
-              Variable.withString(now),
+              Variable.withString(taskRevision.toIso8601String()),
               Variable.withString(item.taskId!),
             ],
           );

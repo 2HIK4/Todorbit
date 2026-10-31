@@ -55,7 +55,7 @@ extension TaskCompositionRepository on LifeRepository {
         AND updated_at=? AND deleted_at IS NULL AND archived_at IS NULL''',
             variables: [
               Variable.withString(parent.id),
-              Variable.withString(parent.updatedAt.toUtc().toIso8601String()),
+              Variable.withString(parent.revision),
             ],
           )
           .getSingleOrNull();

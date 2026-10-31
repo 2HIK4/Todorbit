@@ -1047,7 +1047,8 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
         SetView(WidgetTaskView.Upcoming);
         break;
       case HitTarget.TaskCheckbox when taskIndex >= 0 && taskIndex < tasks.Count:
-        RunAction(() => repository.CompleteTask(tasks[taskIndex].Id));
+        var task = tasks[taskIndex];
+        RunAction(() => repository.CompleteTask(task.Id, task.UpdatedAt));
         RefreshTasks();
         break;
       case HitTarget.TaskRow when taskIndex >= 0 && taskIndex < tasks.Count:

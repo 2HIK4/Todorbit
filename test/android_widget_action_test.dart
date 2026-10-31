@@ -10,16 +10,19 @@ import 'package:life_manager/platform/android/android_widget_action.dart';
 void main() {
   late AppDatabase database;
   late AppController controller;
+  final frozenTime = DateTime.utc(2026, 10, 31, 12);
   setUp(() async {
     database = AppDatabase(NativeDatabase.memory());
-    controller = AppController(LifeRepository(database));
+    controller = AppController(
+      LifeRepository(database, taskClock: () => frozenTime),
+    );
     await controller.refresh();
   });
   tearDown(() async => database.close());
 
   Map<String, dynamic> command(LifeTask task, bool complete) => {
     'id': task.id,
-    'revision': task.updatedAt.toUtc().toIso8601String(),
+    'revision': task.revision,
     'complete': complete,
   };
 

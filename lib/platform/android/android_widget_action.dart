@@ -19,8 +19,22 @@ Future<void> applyAndroidWidgetAction(
   }
   // A repeated delivery must never toggle a task back or advance a series twice.
   if ((task.status == TaskStatus.completed) == complete) return;
-  if (task.updatedAt.toUtc().toIso8601String() != revision) {
+  if (task.revision != revision) {
     throw StateError('Task changed. Open it before changing completion.');
   }
-  await controller.setComplete(task, complete);
+  try {
+    await controller.setComplete(task, complete);
+  } on StateError {
+    // Another widget may have delivered the same desired state after our read.
+    // Re-read; only an already attained state is harmless. Never retry a write
+    // using a fresh revision, which would silently accept a genuinely stale edit.
+    await controller.refresh();
+    final current = controller.tasks.where((task) => task.id == id).firstOrNull;
+    if (current != null &&
+        current.status != TaskStatus.cancelled &&
+        (current.status == TaskStatus.completed) == complete) {
+      return;
+    }
+    rethrow;
+  }
 }
