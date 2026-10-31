@@ -1,8 +1,8 @@
 # Production Android beta acceptance - 2026-10-31
 
-This is an unpublished candidate checkpoint. It must not be read as a public
-release receipt. Candidate name is `1.0.19-beta.1`, Android code 23; code 22 is
-reserved for a private same-signer baseline.
+The beta is now published; see the [public verification receipt](ANDROID_BETA_1_PUBLICATION.md).
+Earlier candidate/draft checkpoints below are historical. Published name is
+`1.0.19-beta.1`, Android code 23; code 22 remains a private same-signer baseline.
 
 ## Rebuilt safety-fix candidate (2026-10-31)
 

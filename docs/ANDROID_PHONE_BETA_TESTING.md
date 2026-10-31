@@ -1,9 +1,16 @@
 # Android beta phone installation and Windows backup acceptance
 
-For `1.0.19-beta.1` (23), package `io.github.hik4.todorbit`. This procedure is
-for use only after the beta is public. Windows/Android Google Drive discovery
+For the public pre-release `1.0.19-beta.1` (23), package `io.github.hik4.todorbit`.
+Windows/Android Google Drive discovery
 and restore remain unverified; the owner explicitly deferred this test until
 after publication. Backup/restore replaces snapshots; it is not synchronization.
+
+[Direct APK download](https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.1/Todorbit-1.0.19-beta.1-android-universal.apk),
+51,529,687 bytes. Verified SHA-256:
+
+```text
+eeb140b1ee574689c890bd52e2e078f547a3fc5533a5197c4d066eb8828c5d6b
+```
 
 1. Use Android 8.0 or later on ARM64 or x86-64. Open the official
    [beta release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.1)

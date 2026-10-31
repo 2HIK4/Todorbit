@@ -6,7 +6,7 @@
 
 ![Todorbit Today view](docs/screenshots/todorbit-today.png)
 
-Todorbit is an offline Windows productivity app for tasks, calendar events, habits, goals, focus sessions, and a native desktop widget. It is built with Flutter and SQLite. Creator: [Hussam Alkhatib](https://2hik4.github.io/).
+Todorbit is an offline Windows productivity app with an Android beta for tasks, calendar events, habits, goals, and focus sessions. It is built with Flutter and SQLite. Creator: [Hussam Alkhatib](https://2hik4.github.io/).
 
 ## What it does
 
@@ -17,6 +17,10 @@ Todorbit is an offline Windows productivity app for tasks, calendar events, habi
 - Use a native Windows desktop widget for Quick Add, task editing, and completion.
 - Keep data local, with managed backups, reviewed restore, and SQLite import/export.
 - Customize light and dark color palettes with a color wheel and share validated JSON themes through Settings → Appearance → Customize Theme.
+
+## Android beta installation
+
+The production-signed [Android 1.0.19-beta.1 pre-release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.1) supports Android 8.0+ on ARM64/x86-64, with Tasks and Calendar launcher widgets. Download the APK and verify its published SHA-256. Windows/Android Google Drive restoration remains unverified; back up existing data and start with disposable data. This is snapshot recovery, not synchronization. Before replacing a debug-signed app, verify an external backup and recovery first. See [phone installation and backup testing](docs/ANDROID_PHONE_BETA_TESTING.md) and [publication checks](docs/ANDROID_BETA_1_PUBLICATION.md).
 
 ## Windows installation
 

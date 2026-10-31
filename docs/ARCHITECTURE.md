@@ -48,8 +48,8 @@ legacy native timestamp compatibility. Task edits use an expected-token SQL CAS;
 completion revalidates state and token inside its transaction and keeps recurrence
 advancement in that transaction. Duplicate desired completion states do not write.
 Windows widget commands carry their displayed revision, not just an ID. Actual
-completion time is separate from the logical revision. Schema/backup format stay
-at 22. See [task revision safety](TASK_REVISION_SAFETY.md).
+completion time is separate from the logical revision. Schema stays at 22 and
+the backup format is unchanged. See [task revision safety](TASK_REVISION_SAFETY.md).
 
 | Subsystem / purpose | Main implementation and dependencies | Tests / constraints |
 | --- | --- | --- |

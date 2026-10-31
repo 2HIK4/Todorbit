@@ -1,5 +1,28 @@
 # Progress
 
+## Android beta 1 published and verified (2026-10-31)
+
+- Published [v1.0.19-beta.1](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.1),
+  code 23, as a public pre-release at 11:19:47 UTC / 14:19:47 Asia/Amman.
+  Tag/source `b48d7a7`; safety fixes `57d7c4d`, `afe5241`. No tag moved.
+- Exact-source Windows CI `41195345642` and Android CI `41195345616` pass:
+  434 full host tests, 69 Android host checks, two emulator integration tests,
+  Release/native/package/config gates. Deliberate opt-in companion launch skip
+  remains explicit; local and packaged native self-tests pass.
+- Anonymous downloads, all four public asset sizes/digests/checksums, production
+  signature and tag/source verify. APK SHA-256:
+  `eeb140b1ee574689c890bd52e2e078f547a3fc5533a5197c4d066eb8828c5d6b`.
+- Normal production build 22 discovers 23 on Pre-release and excludes it on Stable.
+  Actual public download/native verification/system installation succeeds; all
+  45 tables, attachment/backups/preferences/widget IDs/config survive. Identical
+  APK passes 16 KiB runtime and delayed-widget safety checks. Drive remains enabled;
+  completed real-account OAuth/encrypted recovery acceptance retained unchanged.
+- Windows/Android Drive restoration remains owner-deferred/unverified; owner phone
+  procedure is ready. Existing Windows release identities/assets unchanged.
+  Emulators/server stopped, development/personal profiles preserved.
+- [Full publication receipt](ANDROID_BETA_1_PUBLICATION.md) and
+  [phone installation/Windows backup test](ANDROID_PHONE_BETA_TESTING.md).
+
 ## Stale-widget safety fix under release verification (2026-10-31)
 
 - Frozen-clock reproduction produces the exact stale-action test failure before
@@ -8,7 +31,7 @@
 - Task revisions now strictly advance using the existing UTC token, with exact
   stored-text CAS and transactional completion/recurrence revalidation. Native
   widget paths carry expected revisions. Duplicate completion is a no-op.
-  Schema/backup format remain 22; no data migration or reset is introduced.
+  Schema remains 22 and backup format is unchanged; no data migration or reset is introduced.
 - Focused Dart tests including unchanged recurrence assertions: 18 pass. Full
   analysis/formatting, connected diagnostics and 15 release/helper tests pass.
   Native Release build and isolated persistence/revision self-test pass.

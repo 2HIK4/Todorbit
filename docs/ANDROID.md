@@ -1,5 +1,11 @@
 # Android development
 
+The first production-signed [Android beta is public](ANDROID_BETA_1_PUBLICATION.md):
+`1.0.19-beta.1` (23), Android 8.0+ on ARM64/x86-64. See
+[phone installation and Windows backup testing](ANDROID_PHONE_BETA_TESTING.md).
+Windows/Android cloud restoration remains unverified under the owner's scoped
+first-beta deferral; this is not a Stable or Play release.
+
 Android work lives on `feature/android-mobile`. It shares schema 22, the
 repository, recurrence/scheduling rules, controller, backup codec and theme
 palettes with Windows. Android screens live under `lib/features/mobile/`;

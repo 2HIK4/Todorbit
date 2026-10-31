@@ -1,5 +1,10 @@
 # Task revision safety: stale widget completion (2026-10-31)
 
+The fix is published in Android `v1.0.19-beta.1` (23). Final exact-source CI,
+anonymous download and genuine public updater installation passed; see the
+[publication receipt](ANDROID_BETA_1_PUBLICATION.md). Implementation checkpoints
+below retain their original chronology.
+
 ## Cause and reproduction
 
 [Windows CI 41176493080](https://github.com/2HIK4/Todorbit/actions/runs/41176493080)
