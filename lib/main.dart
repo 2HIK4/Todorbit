@@ -49,7 +49,8 @@ Future<void> androidBackgroundMain() async {
     final file = AppDatabase.fileInDataRoot(root);
     if (!await file.exists() ||
         await MigrationGate.olderSchema(file) != null ||
-        await BackupService(file).hasScheduledRestore()) {
+        await BackupService(file).hasScheduledRestore() ||
+        await BackupService(file).restoreAwaitingOpen()) {
       return;
     }
     final privacy = await (await PrivacyStore.openDefault()).load();
@@ -138,6 +139,14 @@ Future<void> _startApplication(
       );
     }
     database = await AppDatabase.openDefault();
+    try {
+      if (await backupService.restoreAwaitingOpen()) {
+        await LifeRepository(database).quarantineRestoredSync();
+      }
+    } catch (_) {
+      await database.close();
+      rethrow;
+    }
   } catch (failure) {
     runApp(
       _StartupFailureApp(

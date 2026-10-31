@@ -9,6 +9,8 @@ import 'package:life_manager/domain/recurrence.dart';
 import 'package:life_manager/domain/series_edit.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
+import 'support/legacy_sync_fixture.dart';
+
 void main() {
   String day(int offset) =>
       RecurrenceRule.shiftDate(localDate(DateTime.now()), offset);
@@ -192,6 +194,7 @@ void main() {
       await before.close();
       final raw = sqlite.sqlite3.open(file.path);
       try {
+        stripSyncSchemaForLegacyFixture(raw);
         raw.execute('DROP TABLE progressive_plan_assignments');
         raw.execute('DROP TABLE progressive_plan_steps');
         raw.execute('DROP TABLE progressive_plans');
@@ -251,6 +254,7 @@ void main() {
       await before.close();
       final raw = sqlite.sqlite3.open(file.path);
       try {
+        stripSyncSchemaForLegacyFixture(raw);
         raw.execute('DROP TABLE event_reminder_deliveries');
         raw.execute('PRAGMA user_version=19');
       } finally {

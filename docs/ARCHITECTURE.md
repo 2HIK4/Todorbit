@@ -118,6 +118,16 @@ activation channel to Settings > Widget and the correct draft editor.
 
 Google Drive backups are an optional layer under `lib/data/cloud/` and Settings > Backups & Cloud. `CloudStorageProvider` abstracts remote objects; Google OAuth and secure token storage are separate from Drive HTTP operations. `CloudBackupService` reuses `BackupService` for SQLite-safe snapshots and staged restore, while `CloudBackupCodec` encrypts a versioned portable manifest with AES-256-GCM and a passphrase-derived key. The manifest includes the existing shareable settings JSON; OAuth tokens, PIN policy and device-only controls remain local. Full restore applies portable personalization after the database opens/migrates and before the opened receipt. Settings-only restore reuses selective settings transfer. There is no background synchronization or cloud retention. See `GOOGLE_DRIVE_BACKUP.md` for format limits, setup, portability and verification boundaries.
 
+The authorized sync implementation is under construction and inactive. Source
+schema 23 adds `sync_capture_context`, `sync_journal` and `sync_entity_heads`.
+Portable SQLite writes and immutable before/after journal entries commit together
+through database triggers, including writes from other connections. The journal
+stays disabled until verified recovery and explicit pairing; a replaced database
+is quarantined before use. Credentials remain outside SQLite. Causal revision and
+AES-GCM batch primitives and a separate Drive namespace are implemented, but no
+automatic exchange/UI/background feature is enabled. See the
+[current implementation and verification boundary](DRIVE_SYNC_RECOVERY_CHECKPOINT.md).
+
 - Flutter Material 3 UI with a compact Fluent-inspired desktop layout.
 - Riverpod owns application state. Feature widgets observe a controller, while data access stays in the repository.
 - Drift opens SQLite in a background isolate. The repository owns SQL, migrations, transactions, and mapping to immutable domain objects. Initial schema uses explicit SQL to keep migration changes reviewable.

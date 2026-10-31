@@ -9,6 +9,8 @@ import 'package:life_manager/data/migration_gate.dart';
 import 'package:life_manager/domain/models.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
+import 'support/legacy_sync_fixture.dart';
+
 void main() {
   test(
     'incomplete v20/v21 reminder schema is rejected without replacement',
@@ -201,6 +203,7 @@ void main() {
       await initial.close();
       final raw = sqlite.sqlite3.open(file.path);
       try {
+        stripSyncSchemaForLegacyFixture(raw);
         raw.execute('DROP TABLE saved_views');
         raw.execute('PRAGMA user_version = 11');
       } finally {
@@ -433,6 +436,7 @@ void main() {
       await initial.close();
       final raw = sqlite.sqlite3.open(file.path);
       try {
+        stripSyncSchemaForLegacyFixture(raw);
         raw.execute('DROP TABLE saved_views');
         raw.execute('PRAGMA user_version=11');
       } finally {
@@ -490,6 +494,7 @@ void main() {
         await source.close();
         final raw = sqlite.sqlite3.open(sourceFile.path);
         try {
+          stripSyncSchemaForLegacyFixture(raw);
           raw.execute('ALTER TABLE fixed_events DROP COLUMN details_json');
           raw.execute('ALTER TABLE categories DROP COLUMN event_color');
           raw.execute('DROP TABLE event_detail_types');

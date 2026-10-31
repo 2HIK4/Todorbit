@@ -9,6 +9,8 @@ import 'package:life_manager/domain/recurrence.dart';
 import 'package:life_manager/domain/scheduling_engine.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
+import 'support/legacy_sync_fixture.dart';
+
 void main() {
   late AppDatabase database;
   late LifeRepository repository;
@@ -179,6 +181,7 @@ void main() {
       );
       await first.close();
       final raw = sqlite.sqlite3.open(file.path);
+      stripSyncSchemaForLegacyFixture(raw);
       raw.execute('DROP TABLE time_entry_history');
       raw.execute('DROP TABLE time_entries');
       raw.execute('DROP TABLE timer_runs');

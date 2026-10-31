@@ -1,6 +1,6 @@
 # Progress
 
-## Drive sync and restore implementation in progress (2026-10-31)
+## Drive sync and restore implementation in progress (2026-10-31 to 2026-11-01)
 
 - Branch `feature/drive-sync-recovery`, baseline `f62cd7b`; coordinated release
   authorized only after all gates. Owner currently permits mocked Drive only.
@@ -12,9 +12,19 @@
 - Embedded backups now scroll with Settings; pending restart/cancellation passes
   compact light/dark at 1.5x text. Initial 69 focused checks passed; later local
   retry/data checks and final eight UI checks retained per the ledger.
-- Causal DAG/encrypted-batch primitives are being developed separately; sync is
-  not operational. Pending: transactional all-writer capture, persistent conflict
-  and exchange state, pairing/UI, platform workers, restore coordination and
+- Commits `b0b254a` (restore), `dcb578a` (causal/encrypted primitives) and `c0037a3`
+  (isolated Drive batches/change feed) are local and unpublished. Fifteen causal/
+  codec checks and 17 mocked transport checks pass.
+- Source schema 23 adds inactive SQLite capture for 41 portable tables. Nine
+  journal checks cover verified activation, native-connection capture, rollback,
+  replay ancestry, key moves, managed bytes, device path exclusion, restore
+  quarantine and the public schema-22 upgrade. The broader affected pass has 104
+  checks. Full host run: 480 pass/one opt-in skip/five stale assertions; all five
+  corrected in a 55-test follow-up, with unaffected passes retained. Native
+  Release/self-test and actual native-repository capture against a Dart-created
+  synthetic schema-23 database pass; no duplicate completion journal entry.
+- Sync is not operational. Pending: durable exchange/checkpoints, persistent conflict
+  state, pairing/UI, platform workers, completed restore reconciliation and
   exact-source release gates. No version/tag/release or personal data changed.
 - [Implementation boundary and every verification/rerun](DRIVE_SYNC_RECOVERY_CHECKPOINT.md).
 

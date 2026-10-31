@@ -10,6 +10,8 @@ import 'package:life_manager/domain/recurrence.dart';
 import 'package:life_manager/domain/trash.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
+import 'support/legacy_sync_fixture.dart';
+
 void main() {
   late AppDatabase database;
   late LifeRepository repository;
@@ -311,6 +313,7 @@ void main() {
       await first.close();
       final raw = sqlite.sqlite3.open(file.path);
       try {
+        stripSyncSchemaForLegacyFixture(raw);
         raw.execute('DROP INDEX tasks_deleted_at');
         raw.execute('DROP INDEX projects_deleted_at');
         raw.execute('DROP INDEX categories_deleted_at');

@@ -1,7 +1,12 @@
 # Future cross-device synchronization proposal
 
-This is a design boundary, not an implemented feature or authorization to add a
-service. Todorbit currently exchanges verified snapshots. Full restore replaces
+Implementation was authorized on 2026-10-31. The
+[active implementation checkpoint](DRIVE_SYNC_RECOVERY_CHECKPOINT.md) records
+completed primitives, inactive journal migration and remaining requirements.
+Synchronization is not enabled or release-ready. The proposal below retains
+the original design boundary and safety requirements.
+
+This is the original design boundary. Todorbit currently exchanges verified snapshots. Full restore replaces
 a dataset after review; it does not merge concurrent edits. A future transport,
 account model and key-recovery model require a separate product decision.
 

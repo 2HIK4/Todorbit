@@ -1,5 +1,18 @@
 # Decisions
 
+- **Authorized sync and restore isolation (2026-10-31; continued 2026-11-01):**
+  the owner authorized implementing encrypted incremental Drive sync using the
+  existing account/project, independent from encrypted backups. Use immutable
+  causal revisions and explicit conflict choices; timestamps never choose a
+  meaningful winner. A verified recovery snapshot precedes activation, and
+  portable SQL mutations commit their journal entry in the same transaction.
+  Delivery receipts, OS/device paths, credentials and permissions remain local.
+  Full restore retains both recovery queues and quarantines the replaced
+  profile until safe reconciliation. Implementation is inactive and incomplete;
+  this decision does not assert release readiness. Current real-Drive testing
+  authorization is mocked transport only.
+  [Implementation and gates](DRIVE_SYNC_RECOVERY_CHECKPOINT.md).
+
 - **Resumable updates and ABI delivery (2026-10-31):** share a private persisted
   HTTP Range downloader across Windows/Android; Pause retains bytes, Discard
   removes partial state, and full length/hash/native verification remains

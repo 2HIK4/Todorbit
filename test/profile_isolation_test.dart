@@ -68,19 +68,38 @@ void main() {
       );
       await fresh.parent.create(recursive: true);
       final newDb = AppDatabase(NativeDatabase(fresh));
-      final tables = await newDb
-          .customSelect(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name != 'schema_version'",
-          )
-          .get();
-      for (final entry in tables) {
-        final table = entry.read<String>('name');
-        final row = await newDb
-            .customSelect('SELECT COUNT(*) AS total FROM $table')
-            .getSingle();
-        expect(row.read<int>('total'), 0, reason: table);
+      try {
+        final tables = await newDb
+            .customSelect(
+              "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name != 'schema_version'",
+            )
+            .get();
+        for (final entry in tables) {
+          final table = entry.read<String>('name');
+          final row = await newDb
+              .customSelect('SELECT COUNT(*) AS total FROM $table')
+              .getSingle();
+          if (table == 'sync_capture_context') {
+            final context = await newDb
+                .customSelect('SELECT * FROM sync_capture_context')
+                .getSingle();
+            expect(context.data, {
+              'id': 1,
+              'workspace_id': null,
+              'account_id': null,
+              'device_id': null,
+              'capture_enabled': 0,
+              'applying_remote': 0,
+              'restore_quarantined': 0,
+            });
+            expect(row.read<int>('total'), 1);
+          } else {
+            expect(row.read<int>('total'), 0, reason: table);
+          }
+        }
+      } finally {
+        await newDb.close();
       }
-      await newDb.close();
       final retained = AppDatabase(NativeDatabase(legacy));
       expect(await LifeRepository(retained).tasks(), isNotEmpty);
       await retained.close();

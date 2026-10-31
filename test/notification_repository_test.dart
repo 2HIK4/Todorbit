@@ -8,6 +8,8 @@ import 'package:life_manager/domain/models.dart';
 import 'package:life_manager/domain/notifications.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
+import 'support/legacy_sync_fixture.dart';
+
 void main() {
   test('notifications are off by default and settings persist', () async {
     final db = AppDatabase(NativeDatabase.memory());
@@ -48,6 +50,7 @@ void main() {
       await original.close();
       final raw = sqlite.sqlite3.open(file.path);
       try {
+        stripSyncSchemaForLegacyFixture(raw);
         raw.execute('DROP TABLE notification_deliveries');
         raw.execute('DROP TABLE notification_settings');
         raw.execute('PRAGMA user_version=13');

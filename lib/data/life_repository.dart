@@ -22,6 +22,9 @@ import '../domain/progressive_plan.dart';
 import '../domain/scheduling_models.dart';
 import 'app_database.dart';
 import 'support_introduction_store.dart';
+import 'backup_service.dart';
+import 'sync_schema.dart';
+import 'profile_fingerprint.dart';
 
 part 'series_edit_repository.dart';
 part 'habit_repository.dart';
@@ -37,6 +40,7 @@ part 'event_repository.dart';
 part 'entity_icon_repository.dart';
 part 'task_composition_repository.dart';
 part 'progressive_plan_repository.dart';
+part 'sync_repository.dart';
 
 class LifeRepository {
   LifeRepository(this.db, {DateTime Function()? taskClock})

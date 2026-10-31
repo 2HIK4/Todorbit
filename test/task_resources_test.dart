@@ -11,6 +11,8 @@ import 'package:life_manager/domain/task_resources.dart';
 import 'package:life_manager/domain/trash.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
+import 'support/legacy_sync_fixture.dart';
+
 class _ChangingFile implements File {
   _ChangingFile(this.source);
   final File source;
@@ -176,6 +178,7 @@ void main() {
       await created.close();
       final raw = sqlite.sqlite3.open(file.path);
       try {
+        stripSyncSchemaForLegacyFixture(raw);
         raw.execute('DROP TABLE task_resources');
         raw.execute('PRAGMA user_version=14');
       } finally {

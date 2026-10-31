@@ -8,6 +8,8 @@ import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/domain/models.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
+import 'support/legacy_sync_fixture.dart';
+
 void main() {
   test(
     'saved event and occurrence reminders activate companion detection',
@@ -244,6 +246,7 @@ void main() {
       );
       await first.close();
       final raw = sqlite.sqlite3.open(file.path);
+      stripSyncSchemaForLegacyFixture(raw);
       raw.execute('DROP TABLE event_occurrence_changes');
       raw.execute('ALTER TABLE fixed_events DROP COLUMN recurrence_until');
       raw.execute('PRAGMA user_version=15');

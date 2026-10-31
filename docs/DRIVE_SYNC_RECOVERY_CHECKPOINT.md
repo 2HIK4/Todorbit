@@ -1,4 +1,4 @@
-# Drive sync and restore work — 2026-10-31
+# Drive sync and restore work — 2026-10-31 to 2026-11-01
 
 Branch: `feature/drive-sync-recovery`, baseline `f62cd7b`.
 The owner authorizes coordinated publication after all mandatory gates pass;
@@ -58,6 +58,24 @@ Detailed helper receipts/logs stay in ignored `.buildlog/verify/`.
 | Dart MCP discovery/connect after access change | IDE DTD `ws://127.0.0.1:63713/...` | Connected, no running apps | Live reload unavailable; no live UI claim |
 | `verify.ps1 -Plan` | Command selection | Initial direct script blocked by local execution policy; explicit child PowerShell preview passed | No tests executed by preview |
 | `dart format` after each retry-guard and UI fixture edit | Changed paths only | Passed | Formatting newly edited source/assertions |
+| Quick Drive transport; `20261031-214211-9438/result.json` | Sync namespace and change feed, working tree after `dcb578a` | Analysis stopped on fixture brace lint; no tests | New transport code; lint corrected |
+| Quick Drive transport; `20261031-214321-4584/result.json` | Default backup regressions and new change feed | 16 passed; analysis/format/diff pass | First behavioral execution of new feed/account guards |
+| Quick Drive transport; `20261031-214404-9579/result.json` | Added sync upload identity/read-back assertion | 17 passed; analysis/format/diff pass | Shared upload fixture changed; new namespace upload assertion required |
+| Quick SQLite capture; `20261031-234025-7760/result.json` | Schema 23, inactive capture, atomic outbox, migration/startup | Analysis stopped on two brace lints; no tests | New code; braces corrected |
+| Quick SQLite capture; `20261031-234256-6899/result.json` | Journal/reopen/quarantine plus startup/migration interruption | 30 passed; analysis/format/diff pass | Added restored-queue quarantine and stable fingerprint assertions |
+| Quick restore integration; `20261031-234515-3754/result.json` | Startup guard, resource-path exclusion, existing restore fixtures | 50 passed, three legacy-fixture failures | Historical fixture relabeling retained new schema objects; primary-key capture was also refined during this run, so this is not final DDL evidence |
+| Quick capture/restore/domain migration; `20261031-234853-9753/result.json` | Final key-move capture, corrected synthetic legacy fixtures, all affected migration consumers | 104 passed; analysis/format/diff pass | Legitimate event-occurrence key moves need an old-key tombstone; old-schema fixtures now remove only inactive/empty sync schema before relabeling |
+| Quick journal; `20261031-235217-8730/result.json` | Additional explicit public schema-22 migration and attachment-ID/byte preservation | Nine passed; analysis/format/diff pass | New upgrade-path assertion; production source unchanged and the other 96 integration checks remain reusable |
+| Full host integration; `20261031-235306-4534/result.json` | Shared-schema checkpoint, complete host analysis/serial tests | 480 passed, one existing opt-in skip, five stale fixture/assertion failures; full analysis/format passed | First broad invocation in this task; Python/doc steps did not run because the host step failed. Production source stayed frozen; test-only corrections followed |
+| Targeted final assertions; `20261101-000234-0657/result.json` | Cloud roundtrip, v7/v8 and other historical migrations, fresh-profile control row, native revision/CAS format | 55 passed; analysis/format/diff pass | Corrected five full-run failures and all newly edited legacy fixture consumers; other host passes retained rather than repeating the full suite |
+| `python -m unittest discover -s tools -p test_dev_verify.py` | Changed catalog and helper plans, `.buildlog/sync-dev-helper-tests.log` | Eight passed | New sync feature group and database coverage invalidate prior catalog evidence |
+| `python tools/dev/check-docs.py` | Developer links/map/catalog, `.buildlog/sync-docs-check.log` | Zero errors | New checkpoint/routing links; subsequent decision link was reviewed against the same existing checkpoint |
+| Read-only GitHub release API and `git ls-remote --tags origin` | Version history | Latest Android beta 2 (`500a9a8`), Windows 1.0.18; no tag/release changed | Required release history inspection; no artifacts downloaded or candidate version selected |
+| `git diff 500a9a8 -- tools/prepare-android-release.py tools/test_prepare_android_release.py pubspec.lock`; Python version | Reuse check for release validator | Unchanged; Python 3.14.5 | Eleven validator checks from existing receipts retained for unchanged tooling; mandatory final candidate CI remains pending |
+| `flutter test --no-pub --concurrency=1 --reporter=expanded .buildlog/native-capture-check/fixture_test.dart` | Export synthetic actual-schema captured task for cross-language verification | One passed; `.buildlog/native-capture-check/fixture.log` | Dart connection tests cannot prove the native Microsoft.Data.Sqlite library executes these triggers |
+| `dotnet run --project .buildlog/native-capture-check/NativeCapture.csproj --configuration Release` | Builds production native Release project and exercises its actual repository against the Dart-created synthetic database | Passed; `.buildlog/native-capture-check/native.log` | Child APPDATA/LOCALAPPDATA and explicit database were verified beneath `.buildlog/`; completion journaled exactly once, duplicate delivery did not write |
+| `tools/dev/native-self-test.ps1 -Executable experiments/widget-shell-probe/bin/Release/net10.0-windows/TodorbitWidget.exe` | Production native Release schema compatibility and regressions | Passed; `.buildlog/sync-native-self-test.log` | Maximum supported schema changed to 23; isolated child environments printed before launch |
+| Dart MCP hot reload after access change | IDE DTD | No active app connection | Live inspection unavailable; no personal profile launched |
 
 New regression assertions cover unavailable cloud history, interrupted receipt
 finalization, retaining the original recovery snapshot, rejecting edits after
@@ -76,13 +94,55 @@ backup passphrases/formats remain independent. Four tests cover pairing-code
 roundtrip, nonce freshness, tampering and identity/schema isolation.
 
 These are primitives, not an activated sync service. No keys have been generated
-for a real account or saved to a user profile. No SQLite schema was changed.
+for a real account or saved to a user profile. Commit `b0b254a` contains the
+restore checkpoint; `dcb578a` contains the causal/encryption primitives.
+
+Drive transport now provides a separate `todorbit-sync` application namespace,
+batch identities/extensions, chunked verified uploads and explicit paged change
+tokens. Account identity is rechecked after token acquisition and responses.
+Missing cloud objects are removal signals, never domain deletion operations.
+Expired tokens require retaining local state and re-reading retained history.
+References: [Drive changes](https://developers.google.com/workspace/drive/api/reference/rest/v3/changes/list),
+[appdata isolation](https://developers.google.com/workspace/drive/api/guides/appdata).
+
+Working-tree schema 23 adds inactive capture context, journal and visible heads.
+It is not enabled by app startup or UI. Activation requires a verified recoverable
+snapshot and stable account/workspace/device binding. SQLite triggers cover the
+41 portable tables, including native-connection writes. Delivery ledgers and local
+notification policy are excluded. This migration is still under focused review;
+packaging, exact-source CI and final release gates remain required. Current
+host coverage consists of the full run plus the 55-test correction pass, not a
+claim that the original Full helper returned success. Physical/native UI and
+background delivery have not been observed in this task.
+
+Restore applies a quarantine before opening the replaced database; startup also
+quarantines older snapshots after migration. Android reminder jobs refuse staged
+or applied-but-unopened restores. No queue is cleared: the source snapshot and
+Before Restore copy retain their respective original journals. A quarantined
+profile cannot activate capture until explicit reconciliation exists. Internal
+sync bookkeeping is excluded from the logical user-data fingerprint.
+
+## Portable model audit
+
+| Boundary | Capture policy |
+| --- | --- |
+| Tasks, categories, projects, fixed events, event detail types | Portable stable rows |
+| Work sessions, availability windows/exceptions, scheduling operations/changes | Portable; transitions and domain constraints must be revalidated on remote apply |
+| Task sequences/membership/dependencies, parent links, checklist | Portable relationships; key moves retain old-key tombstones |
+| Recurrence series/occurrences, series edit/collision history, progressive plans/steps/assignments | Portable; completion and recurrence cannot be merged as independent unrelated fields |
+| Habits/entries/rest days/history, goals/milestones/progress/task-project-habit links | Portable stable rows and history |
+| Timers, time entries/history, templates, saved views, deletion tombstones, entity icons | Portable; active-timer uniqueness and relationship transitions still require safe apply validation |
+| Managed resource rows and HTTP/HTTPS link rows | Portable; exact managed bytes retained in journal JSON using an explicit blob encoding |
+| External file/folder references and platform-specific application links | Device-local; excluded from bootstrap and subsequent capture |
+| Notification settings and three delivery ledgers | Device-local policy/receipts; excluded |
+| Portable JSON preferences | Not integrated yet; no claim of preference synchronization |
+| PIN/privacy, OAuth tokens, workspace credentials, OS permission/widget placement/launcher IDs/startup | Device-local; never added to journal capture or cloud metadata |
 
 ## Release status
 
-Unpublished implementation checkpoint. Sync engine, pairing, all-writer capture,
+Unpublished implementation checkpoint. Complete sync engine, pairing,
 conflict UI and both background adapters are not yet implemented. No claim of
 two-way sync, automatic/background sync or release readiness is made. Existing
-backup format and schema remain unchanged. Real cross-client pairing/exchange
+encrypted backup envelope remains unchanged; schema 23 is unpublished. Real cross-client pairing/exchange
 acceptance cannot be performed while testing is limited to mocks; historical
 backup OAuth acceptance is not acceptance of a new sync protocol.

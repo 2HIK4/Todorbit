@@ -16,6 +16,8 @@ import 'package:life_manager/features/settings/sidebar_order_dialog.dart';
 import 'package:life_manager/main.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
+import 'support/legacy_sync_fixture.dart';
+
 import 'test_privacy.dart';
 
 void main() {
@@ -275,6 +277,7 @@ void main() {
       );
       await first.close();
       final raw = sqlite.sqlite3.open(file.path);
+      stripSyncSchemaForLegacyFixture(raw);
       raw.execute('ALTER TABLE fixed_events DROP COLUMN details_json');
       raw.execute('ALTER TABLE categories DROP COLUMN event_color');
       raw.execute('DROP TABLE event_detail_types');

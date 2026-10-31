@@ -257,7 +257,19 @@ void main() {
         databaseRows(before.file)['tasks']!.single['title'],
         'Fresh sentinel',
       );
-      expect(databaseRows(targetFile), expected);
+      final expectedRestored = {
+        ...expected,
+        'sync_capture_context': [
+          for (final context in expected['sync_capture_context']!)
+            {
+              ...context,
+              'capture_enabled': 0,
+              'applying_remote': 0,
+              'restore_quarantined': 1,
+            },
+        ],
+      };
+      expect(databaseRows(targetFile), expectedRestored);
       expect(await targetLocal.restoreStatus(), isNull);
       expect(
         await targetLocal.restoredPortableSettings(),

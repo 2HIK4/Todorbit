@@ -6,11 +6,12 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as path;
 
 import 'profile_paths.dart';
+import 'sync_schema.dart';
 
 class AppDatabase extends GeneratedDatabase {
   AppDatabase(super.executor);
 
-  static const currentSchemaVersion = 22;
+  static const currentSchemaVersion = 23;
 
   /// Resolve the database within a selected per-user data root. This also lets
   /// disposable profile tests exercise the same path as a packaged build.
@@ -160,6 +161,7 @@ class AppDatabase extends GeneratedDatabase {
       await _createEventReminderDeliveries();
       await _createEventDetails();
       await _createTaskNotifications();
+      await createSyncSchema(this);
       if (existing.isNotEmpty) {
         final reference = AppDatabase(NativeDatabase.memory());
         try {
@@ -179,7 +181,9 @@ class AppDatabase extends GeneratedDatabase {
       await customStatement('PRAGMA user_version = $currentSchemaVersion');
     }),
     onUpgrade: (migrator, from, to) => transaction(() async {
-      if (from < 1 || from > 21 || to != 22) {
+      if (from < 1 ||
+          from >= currentSchemaVersion ||
+          to != currentSchemaVersion) {
         throw StateError('No migration registered from schema $from to $to');
       }
       if (from == 1) {
@@ -227,6 +231,7 @@ class AppDatabase extends GeneratedDatabase {
       await _createEventReminderDeliveries();
       await _createEventDetails();
       await _createTaskNotifications();
+      if (from < 23) await createSyncSchema(this);
       await customStatement('PRAGMA user_version = $currentSchemaVersion');
     }),
   );

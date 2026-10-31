@@ -262,6 +262,12 @@ class BackupService {
 
   Future<bool> hasScheduledRestore() => _restoreMarker.exists();
 
+  Future<bool> restoreAwaitingOpen() async {
+    if (!await _restoreStatus.exists()) return false;
+    final status = jsonDecode(await _restoreStatus.readAsString());
+    return status is Map && status['state'] == 'applied';
+  }
+
   Future<String?> restoreStatus() async {
     if (!await _restoreStatus.exists()) return null;
     try {
@@ -491,6 +497,9 @@ class BackupService {
         ),
       );
     }
+    await Isolate.run(
+      () => _quarantineRestoredSync(targetPath, incomingFingerprint),
+    );
     final restoredSchema = await Isolate.run(
       () => _inspectSnapshot(targetPath),
     );
@@ -563,6 +572,13 @@ void _validateLifeManagerSnapshot(String filePath) {
         .map((row) => row['name'] as String)
         .toSet();
     final required = <String>{'tasks', 'categories', 'projects'};
+    if (schema >= 23) {
+      required.addAll({
+        'sync_capture_context',
+        'sync_journal',
+        'sync_entity_heads',
+      });
+    }
     if (schema >= 2) {
       required.add('fixed_events');
     }
@@ -787,6 +803,30 @@ Future<void> _restoreSnapshot(
   } finally {
     target.close();
     source.close();
+  }
+}
+
+void _quarantineRestoredSync(String filename, String expectedFingerprint) {
+  final database = sqlite.sqlite3.open(filename);
+  try {
+    database.execute('BEGIN EXCLUSIVE');
+    if (databaseContentsFingerprint(database) != expectedFingerprint) {
+      throw StateError(
+        'Restored data changed before finalization. Keep the recovery snapshots and review the pending restore.',
+      );
+    }
+    if (database
+        .select(
+          "SELECT 1 FROM sqlite_schema WHERE type='table' AND name='sync_capture_context'",
+        )
+        .isNotEmpty) {
+      database.execute(
+        'UPDATE sync_capture_context SET capture_enabled=0,applying_remote=0,restore_quarantined=1 WHERE id=1',
+      );
+    }
+    database.execute('COMMIT');
+  } finally {
+    database.close();
   }
 }
 

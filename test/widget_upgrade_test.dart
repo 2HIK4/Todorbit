@@ -17,6 +17,8 @@ import 'package:life_manager/domain/models.dart';
 import 'package:life_manager/features/settings/settings_transfer.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
+import 'support/legacy_sync_fixture.dart';
+
 void main() {
   test('history coalesces gestures, bounds snapshots and invalidates redo', () {
     final history = SettingsHistory<int>(limit: 2, equal: (a, b) => a == b);
@@ -232,6 +234,7 @@ void main() {
         expect(current.notification.enabled, true);
         await db.close();
         final raw = sqlite.sqlite3.open(file.path);
+        stripSyncSchemaForLegacyFixture(raw);
         raw.execute('PRAGMA user_version=21');
         raw.close();
         db = AppDatabase(NativeDatabase(file));

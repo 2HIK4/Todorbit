@@ -179,7 +179,12 @@ void main() {
     await repository.setComplete(native, true);
     final done = await current(task.id);
     expect(done.revision, '2030-01-01T00:00:00.000001Z');
-    expect(AppDatabase.currentSchemaVersion, 22);
+    expect(
+      (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
+        'user_version',
+      ),
+      AppDatabase.currentSchemaVersion,
+    );
   });
 
   test(
