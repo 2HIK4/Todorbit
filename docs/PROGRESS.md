@@ -1,5 +1,28 @@
 # Progress
 
+## Android beta 2 prepared; runtime publication hold (2026-10-31)
+
+- Candidate `500a9a8` on `feature/android-mobile`: `1.0.19-beta.2+25`, fresh
+  signed ARM64/x64/universal APKs and private Play AAB. No code-24 artifact reuse.
+  Both exact-source CI workflows passed: Windows `41213677399` (451 tests,
+  one opt-in skip, Release/native/package gates); Android `41213677390`
+  (71 host checks, two emulator integrations). Signer/identity/alignment/bundle,
+  five JVM signing tests and 940-entry credential audit passed.
+- Populated production beta 1 code 23 passed native verification and actual
+  Android installer approval to final beta 2 code 25. Play Protect scan reported
+  the app safe. All 45 tables, attachments, existing backups, settings and widget
+  configuration compare identical. Public discovery/download upgrade is pending.
+- **Publication stopped:** the mandatory 16 KiB runtime guest showed system-wide
+  and Todorbit crashes; cold boot also failed with system death. Alignment and
+  later task/reopen observations cannot substitute for a valid runtime pass.
+  Cause remains unresolved. Do not publish draft ID `430022327` as-is; ARM64
+  and universal uploads were interrupted. Both emulators stopped/data retained.
+- Next: diagnose the retained 16 KiB guest/lifecycle failure or validate in a
+  healthy supported environment, then complete/reconcile draft assets and run
+  public verification after authorized publication. All 16 existing releases,
+  including beta 1 and every Windows asset, remain unchanged. No tag moved.
+  [Exact artifacts, evidence, pending gates and signing guidance](ANDROID_BETA_2_RELEASE_CHECKPOINT.md).
+
 ## Update recovery, decimal sizes and ABI delivery (2026-10-31)
 
 - Implementation `57d8d59` on `feature/android-mobile`, unpublished. Shared
