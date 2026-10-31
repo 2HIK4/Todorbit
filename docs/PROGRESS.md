@@ -1,5 +1,107 @@
 # Progress
 
+## Production Android beta prepared; publication held (2026-10-31)
+
+- Proposed `1.0.19-beta.1+23` remains unused publicly; normal unpublished
+  production baseline code 22 and candidate APK/AAB code 23 built. Owner signing
+  identity/recovery attestations recorded; private-key access and both public
+  fingerprints verified without exposing credentials.
+- Application source is unchanged from `313b7a7`. `220cec2` fixes current aapt2
+  minimum-SDK labels (seven tests pass); `7224076` strengthens tampered-newer-APK
+  rejection. Android CI `41134977565` and Windows CI `41134977577` passed on
+  `7224076`, including real-emulator verification and Windows Release/self-test.
+- Strict artifact preparation passed APK/AAB signer, identity/version/SDK/ABIs,
+  Play permission/provider separation, native alignment, bundle 16 KiB config,
+  monotonic-code/checksum/metadata checks. Credential scan passed 723 tracked
+  files/archive entries. Verified assets are under ignored
+  `.buildlog/android-production-beta/prepared/`; AAB stays unpublished.
+- Actual in-app production update 22 to 23 passed download cancel/retry,
+  permission denial/grant, installer cancel/retained-download retry and approved
+  installation after Play Protect scan. All 45 database tables, attachment bytes,
+  backup, preferences and widget IDs/settings survived. Widget completion and
+  reopening worked after updating.
+- Production native Google authorization, encrypted upload/read-back verification,
+  wrong-phrase rejection, preview, scheduled restore/reopen and success receipt
+  passed on synthetic data. All 45 tables and the Before Restore database match;
+  actual preference-reader comparison confirms equivalent settings. Owner typed
+  recovery phrases locally. Existing cloud backups remain untouched.
+- Official API-35 x86-64 16 KiB runtime (`PAGE_SIZE=16384`) passed launch/render,
+  SQLite task save/cold reopen and widget completion/reopening. No app crash/ANR
+  recorded there. One private-baseline ANR recovered earlier under constrained
+  emulator resources; do not infer its cause or hide it. Physical ARM64 testing
+  remains unobserved.
+- Windows Sandbox test used only the verified published v1.0.18 portable package,
+  public payload and bounded read-only results. UI-control tools failed even after
+  reset. Owner reported browser sign-in but app still showed Connect; sentinel
+  never appeared in the isolated database. Owner explicitly declined further
+  Windows testing; Sandbox closed. Cross-platform Drive discovery remains
+  unverified and retains its documented publication-blocker status.
+- Android offline local use, account cancellation, local disconnect/reconnect and
+  refreshed cloud history passed. Offline authorization has a generic
+  canceled/denied message. Updated GMS through official Google Play for the final
+  reconnect. Restored networking and stopped both test emulators/fixture server.
+  Account-wide grant revocation remains unverified; no global grant was revoked.
+- Finishing unpublished draft staging.
+  No public release/tag has been created. Development installation and personal
+  Windows data/releases remain untouched. Detailed hashes, receipts and manual
+  acceptance procedure: [production acceptance](ANDROID_PRODUCTION_BETA_ACCEPTANCE.md).
+
+## Paused by owner to free PC resources (2026-10-30)
+
+- Owner explicitly requested stopping. Stopped local Release/Gradle, fixture,
+  loopback server, download and disposable-emulator processes; no files deleted.
+  Production signing credentials and all application profiles remain intact.
+- Do not restart work until the owner resumes. Pending changes/evidence are kept
+  in the working tree and `.buildlog/android-production-beta/`. No release was
+  published and no production APK validation or actual upgrade is claimed.
+- On resume inspect status/diff first. The startup checkpoint retry passed
+  unchanged. Connected Dart analysis of the updated integration test reports no
+  errors. Fixture scripts now derive baseline/candidate codes from source and APK
+  metadata; Release helper rejects `-NoPub` to avoid stale debug registrants.
+- Current intended emulator fallback is Android 11 on USB, as selected by owner.
+  Official Google image metadata and a partial verified-only-on-completion curl
+  download are retained. The NVMe emulator did not start because C: had only
+  approximately 2.2 GB free. No personal files were removed to free space.
+- Resume production build with plugin regeneration enabled and no concurrent
+  Flutter commands in this checkout. Finish all signing, alignment, CI, actual
+  production-signer installer/data/widget persistence and authorized Drive gates
+  before any publication. See the production acceptance checkpoint below.
+
+## Production signing verified; beta acceptance running (2026-10-30)
+
+- Owner completed long-lived signing setup, confirmed two independent encrypted
+  recovery-tested backups and production OAuth registration. Verified RSA-4096
+  key access and public fingerprints without emitting credentials. See the
+  [production acceptance checkpoint](ANDROID_PRODUCTION_BETA_ACCEPTANCE.md).
+- Candidate source versions synchronized in `ee38860`: `1.0.19-beta.1+23`, private
+  baseline code 22. Pushed `feature/android-mobile`; existing Windows releases
+  unchanged. `dcd6c7e` avoids retired SDK `tools` installation in Android CI;
+  `38ec237` reads Gradle's debug signing path for CI fixtures and retains tool
+  failures. Exact-source CI must pass after these CI-only changes.
+- Windows CI `41118115728` passed on `dcd6c7e`, including full host tests, Release,
+  native/package/config gates and installer/portable artifacts (unpublished).
+  Local formatting/analysis pass; full suite has 425 passes, one deliberate skip
+  and one 70-second startup-worker checkpoint timeout. Focused retry is pending;
+  no assertions/timeouts weakened. Release Python tests 4 pass. Local evidence:
+  `.buildlog/android-production-beta/`, host receipt
+  `.buildlog/verify/20261030-223852-2873/`.
+- Initial local Release failed on an incomplete system SDK selected by saved
+  Flutter config. A workspace-scoped ignored Gradle init now selects the existing
+  complete SDK; no system SDK/cache was removed or global config changed. The
+  candidate Release build is still running. No signed APK validation/publication
+  is claimed yet.
+- Fresh disposable production AVD: `TodorbitProductionBeta`, `emulator-5582`,
+  visible for owner test-account sign-in. Archived `TodorbitAndroidTest` stopped
+  without uninstall/wipe. Never install production into its debug profile.
+  Owner sign-in confirmation is pending; leave credential entry to the owner.
+  Private fixture source/TLS transport and same-signer read-only instrumentation
+  are isolated under ignored build logs, excluded from normal `lib/main.dart`.
+- Resume: finish production APK/AAB and private code-22 fixture build, verify
+  signer/non-debuggable/SDK/ABIs/alignment/hashes and credential exclusions;
+  perform actual permission/cancel/retry/system-installer upgrade, compare closed
+  profiles/widgets/attachments/backups, complete authorized Drive acceptance and
+  required CI/runtime gates, then prepare a draft. No release/tag published.
+
 ## First production-signed Android beta preparation (2026-10-30)
 
 - Clean implementation baseline `5fcd561`, `feature/android-mobile`. Owner

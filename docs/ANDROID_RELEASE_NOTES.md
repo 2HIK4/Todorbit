@@ -3,11 +3,20 @@
 Proposed version: **1.0.19-beta.1 (23)**. Android 8.0+; ARM64 and x86-64.
 This Android beta does not replace or modify the published Windows releases.
 
-**Publication hold:** production signing identity/recovery, signed release
-artifacts, exact-source CI, same-production-signer in-app upgrade acceptance and
-real Google Drive authorization acceptance are pending. This file must be
-finalized against the verified artifacts before publication. No production APK,
-certificate fingerprint, checksum or public download is available yet.
+**Publication hold:** Windows/Android Drive interoperability and real grant-revocation
+acceptance remain unverified. Windows app testing was stopped at the owner's request.
+The production APK/AAB, artifact preparation, current application-source CI,
+same-signer in-app upgrade/data preservation, Android encrypted Drive recovery and
+16 KiB emulator runtime checks have passed. This file must be
+finalized against the verified artifacts before publication. No public download
+is available yet. The local production APK is 51,529,687 bytes; SHA-256:
+`02e97a8be84a79f11a165569aedb2e662bd41f66cc607c231531f14b8ddcc295`.
+
+The permanent RSA-4096 signing identity is established; the owner confirms two
+independent encrypted backups passed recovery. Its verified public fingerprints are:
+
+- SHA-1: `D0:AE:60:28:E4:CD:0C:1C:83:67:11:42:F6:0F:14:2D:A8:1D:AD:96`.
+- SHA-256: `00226dad75ac907ac51c86df2c5011f0b6e2ce8291994103975f11a8eb574a99`.
 
 ## Included in the candidate source
 
@@ -57,23 +66,32 @@ app to work around a certificate mismatch.
 ## Known limitations and testing status
 
 - This is an Android beta; retain independently accessible backups.
-- **Google Drive:** the native authorization start/cancel flow was observed on a
-  development emulator. Production OAuth, authenticated encrypted backup/restore,
-  and real Windows/Android cloud discovery have not passed acceptance. Production
-  certificate registration in the existing Cloud project and authorized account
-  testing remain required. Ordinary users must not supply credentials JSON.
-- The implementation's host tests, disposable-emulator data workflow, native
-  widget render tests and Windows Release checks are recorded in the source
-  acceptance report. They do not establish the pending production signing or
-  actual same-production-certificate installer upgrade.
+- **Google Drive:** production native authorization, encrypted upload/remote
+  verification, wrong-passphrase rejection, decrypted preview and restore/reopen
+  passed with an authorized test account and synthetic data. Local offline use,
+  authorization cancellation and local disconnect/reconnect were also observed.
+  Windows/Android interoperability and account-wide grant revocation remain
+  unverified. Offline authorization can show a generic canceled/denied message.
+  Ordinary users must not supply credentials JSON.
+- Google Drive requires current Google Play services. The disposable test device
+  was updated through Google Play before the final reconnect/history checks.
+- Production-signer build 22 to 23 passed real download cancel/retry, permission
+  denial/grant, Android installer cancel/retry and approved update. All 45 SQLite
+  tables, attachment bytes, backup, preferences and widget configurations survived.
+  Task widget completion/reopening worked after updating. Android and Windows CI
+  passed on the tested application source.
 - Physical-phone/OEM launcher resizing, reboot behavior and TalkBack breadth
   remain limited. Widget completion opens Todorbit; it is not a stopped-app
   background database writer.
-- Native alignment checks do not establish runtime acceptance on a real 16 KiB
-  page-size Android environment. That observation remains pending.
+- Native ELF/APK ZIP alignment and runtime on Google's API-35 x86-64 16 KiB
+  emulator passed, including SQLite save/reopen and widget actions. Physical
+  ARM64 16 KiB devices remain unobserved.
+- Existing Windows Pre-release update checks may report that the newer Android
+  tag has no verified Windows x64 package. Windows never selects the Android APK;
+  this beta supplies no Windows update.
 - No synchronization, telemetry, new cloud account system or Play publication
   is introduced. Local use remains available without Google Drive.
 
-Before publishing, replace this draft testing status with exact candidate-source
-results, production SHA-1/SHA-256 certificate fingerprints, APK SHA-256, actual
-updater observations and remaining explicitly accepted limitations.
+Before publishing, complete the remaining mandatory acceptance gates and update
+this draft status. After publication, verify the public APK download and normal
+Android Pre-release discovery/installation; these checks have not run yet.

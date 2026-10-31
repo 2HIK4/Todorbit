@@ -1,5 +1,10 @@
 # First Android beta: owner signing setup and remaining acceptance
 
+Signing setup has since been completed by the owner. See the
+[production acceptance checkpoint](ANDROID_PRODUCTION_BETA_ACCEPTANCE.md) for
+verified public fingerprints, current source and remaining gates. The preparation
+state below is retained as the original checklist; do not regenerate the key.
+
 Preparation checkpoint: 2026-10-30, implementation `5fcd561` on
 `feature/android-mobile`. This is a preparation record, not a publication receipt.
 The owner confirmed that no existing production key is available and requested
@@ -194,7 +199,8 @@ or enrollment is authorized by this task.
 3. Exercise native checksum/package/signer/SDK/ABI validation and actual system
    installation permission denial, cancellation, retry and approval through the
    in-app flow. Reopen and compare data/settings/attachments. The existing
-   `tools/test-android-update.ps1` creates **debug** fixtures at codes 19/20;
+   `tools/test-android-update.ps1` creates **debug** fixtures at the source build
+   code and the next code;
    it does not prove this production path and must not downgrade/uninstall the
    archived code-21 profile. Do not count `adb install -r` as installer acceptance.
 4. Run `tools/prepare-android-release.py` with the production APK, signed candidate

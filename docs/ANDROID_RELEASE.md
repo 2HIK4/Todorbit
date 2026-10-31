@@ -3,9 +3,12 @@
 ## Establish the production identity
 
 For the first beta, use the [owner setup and acceptance checklist](ANDROID_BETA_PREPARATION.md).
-No production key has been established at that checkpoint. Select the
-owner-controlled durable GitHub app-signing identity before public release.
-Keep its keystore outside Git,
+The owner established the GitHub identity on 2026-10-30 and confirmed two
+independent encrypted, recovery-tested backups. Public certificate SHA-256 is
+`00226dad75ac907ac51c86df2c5011f0b6e2ce8291994103975f11a8eb574a99`;
+SHA-1 is recorded in [Android OAuth setup](ANDROID_GOOGLE_DRIVE.md).
+The local keystore and private-key access were verified without emitting secrets:
+RSA-4096, SHA256withRSA, certificate valid through 2054-03-17. Keep its keystore outside Git,
 with at least two encrypted offline backups in separate locations. Store alias
 and passwords in the owner's password manager; test recovery using a copy.
 Losing the GitHub signing key can make in-place updates impossible. Do not

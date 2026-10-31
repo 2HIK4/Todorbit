@@ -8,6 +8,14 @@ Enabling code does not register the publisher's certificate with Google.
 
 ## Publisher setup in the existing Cloud project
 
+Production GitHub signer established on 2026-10-30: SHA-1
+`D0:AE:60:28:E4:CD:0C:1C:83:67:11:42:F6:0F:14:2D:A8:1D:AD:96`, SHA-256
+`00226dad75ac907ac51c86df2c5011f0b6e2ce8291994103975f11a8eb574a99`.
+Both were verified from the owner-controlled keystore. The owner reports that
+the corresponding Android OAuth client is registered in the existing project.
+Registration is not evidence of successful authorization or backup acceptance;
+the authorized-account procedure below remains required.
+
 1. Open [Google Cloud Console](https://console.cloud.google.com/), select
    **Todorbit**, project ID **`todorbit`**. Existing Windows engineering/private
    acceptance records identify this project; confirm that the currently shipped
