@@ -7,6 +7,21 @@ import 'package:life_manager/features/settings/android_software_updates_page.dar
 import 'package:life_manager/platform/android/android_update_service.dart';
 
 class Updates extends AndroidUpdateService {
+  AndroidUpdateRelease? retained;
+  int retainedBytes = 0;
+  @override
+  Future<void> remember(
+    AndroidUpdateRelease release,
+    AndroidUpdateDevice device,
+  ) async {}
+  @override
+  Future<AndroidUpdateRelease?> remembered(AndroidUpdateDevice device) async =>
+      retained;
+  @override
+  Future<int> saved(
+    AndroidUpdateRelease release,
+    AndroidUpdateDevice device,
+  ) async => retainedBytes;
   AndroidUpdateRelease? result;
   String installation = 'canceled';
   bool permission = false;
@@ -48,6 +63,49 @@ class MemoryStore extends UpdatePreferenceStore {
 }
 
 void main() {
+  testWidgets(
+    'reopening shows saved progress and Resume, never Install for a partial',
+    (tester) async {
+      final service = Updates()
+        ..retainedBytes = 30000000
+        ..retained = AndroidUpdateRelease(
+          tag: 'v1.0.20',
+          versionName: '1.0.20',
+          versionCode: 24,
+          publishedAt: DateTime.utc(2026),
+          notes: '',
+          size: 50000000,
+          sha256Digest: 'a' * 64,
+          uri: Uri.parse(
+            'https://github.com/2HIK4/Todorbit/releases/download/v1.0.20/Todorbit-1.0.20-android-arm64.apk',
+          ),
+        );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AndroidSoftwareUpdatesPage(
+            service: service,
+            store: MemoryStore(),
+            loadDevice: () async => const AndroidUpdateDevice(
+              versionName: '1.0.19',
+              versionCode: 23,
+              sdk: 35,
+              abis: ['arm64-v8a'],
+              distribution: 'github',
+              directory: 'unused',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('Resume Download'), 250);
+      expect(find.textContaining('60%'), findsOneWidget);
+      expect(find.textContaining('30 MB / 50 MB'), findsOneWidget);
+      expect(find.text('Discard Download'), findsOneWidget);
+      expect(find.text('Install Update'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
   for (final scale in [1.0, 1.8]) {
     testWidgets(
       'Android update flow, narrow layout and permission denial at $scale text scale',
@@ -61,13 +119,13 @@ void main() {
           tester.view.resetDevicePixelRatio();
           root.deleteSync(recursive: true);
         });
-        const device = AndroidUpdateDevice(
+        final device = AndroidUpdateDevice(
           versionName: '1.0.18',
           versionCode: 19,
           sdk: 35,
           abis: ['arm64-v8a'],
           distribution: 'github',
-          directory: 'unused',
+          directory: root.path,
         );
         await tester.pumpWidget(
           MaterialApp(

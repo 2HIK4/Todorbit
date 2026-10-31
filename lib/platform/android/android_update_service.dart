@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as path;
 
 import '../../data/software_update_service.dart';
+import '../../data/resumable_update_download.dart';
 import 'android_platform.dart';
 
 class AndroidUpdateDevice {
@@ -81,8 +82,13 @@ class AndroidUpdateService {
        _createDownloadClient = downloadClient ?? HttpClient.new;
   final HttpClient _client;
   final HttpClient Function() _createDownloadClient;
-  HttpClient? _downloadClient;
-  bool _canceled = false;
+  late final transfer = ResumableUpdateDownload(
+    approved: (uri) =>
+        SoftwareUpdateService.approvedDownload(uri) &&
+        uri.userInfo.isEmpty &&
+        (!uri.hasPort || uri.port == 443),
+    client: _createDownloadClient,
+  );
   Object? _releases;
   DateTime? _fetched;
   String? _etag;
@@ -159,7 +165,11 @@ class AndroidUpdateService {
     }
     // Device ABI priority determines selection; universal APKs list each ABI.
     for (final abi in device.abis) {
-      for (final entry in entries.whereType<Map<String, dynamic>>()) {
+      for (final entry
+          in (entries.whereType<Map<String, dynamic>>().toList()..sort(
+            (a, b) => (a['size'] is int ? a['size'] as int : maxApkBytes)
+                .compareTo(b['size'] is int ? b['size'] as int : maxApkBytes),
+          ))) {
         if (entry['abis'] is! List || !(entry['abis'] as List).contains(abi)) {
           continue;
         }
@@ -351,117 +361,110 @@ class AndroidUpdateService {
     return selected;
   }
 
+  // Partial updates are user-owned until explicitly discarded.
   Future<void> clean(Directory directory, {String? keep}) async {
     await directory.create(recursive: true);
-    await for (final entry in directory.list()) {
-      if (entry is File &&
-          entry.path != keep &&
-          (entry.path.endsWith('.part') ||
-              DateTime.now().difference(await entry.lastModified()) >
-                  const Duration(days: 7))) {
-        await entry.delete();
-      }
-    }
   }
+
+  File target(AndroidUpdateRelease release, AndroidUpdateDevice device) =>
+      File(path.join(device.directory!, path.basename(release.uri.path)));
+  Map<String, Object> identity(AndroidUpdateRelease release) =>
+      ResumableUpdateDownload.identity(
+        release.uri,
+        release.size,
+        release.sha256Digest,
+        '${release.versionName}+${release.versionCode}',
+      );
+  Future<int> saved(AndroidUpdateRelease release, AndroidUpdateDevice device) =>
+      transfer.saved(target(release, device), identity(release));
+  Future<void> discard(
+    AndroidUpdateRelease release,
+    AndroidUpdateDevice device,
+  ) => transfer.discard(target(release, device));
 
   Future<File> download(
     AndroidUpdateRelease release,
     AndroidUpdateDevice device,
     void Function(int received, int total) progress,
   ) async {
-    if (_downloadClient != null) {
-      throw StateError('A download is already running.');
-    }
     if (!official(release.uri, release.tag, path.basename(release.uri.path))) {
       throw StateError('Unapproved update source.');
     }
-    final directory = Directory(device.directory!);
-    final file = File(
-      path.join(directory.path, path.basename(release.uri.path)),
-    );
-    await clean(directory, keep: file.path);
-    if (await file.exists()) {
-      if (await file.length() == release.size &&
-          (await sha256.bind(file.openRead()).first).toString() ==
-              release.sha256Digest) {
-        return file;
-      }
-      await file.delete();
-    }
-    // Also reserve space for Android's separate installation staging copy.
-    if (device.freeBytes < release.size * 2 + 32 * 1024 * 1024) {
+    final retained = await saved(release, device);
+    if (device.freeBytes < release.size * 2 - retained + 32 * 1024 * 1024) {
       throw StateError(
         'Not enough free storage for this update. Free some space and retry.',
       );
     }
-    _canceled = false;
-    final client = _downloadClient = _createDownloadClient();
-    final partial = File('${file.path}.part');
-    try {
-      var uri = release.uri;
-      HttpClientResponse? response;
-      for (var redirects = 0; redirects < 5; redirects++) {
-        if (!SoftwareUpdateService.approvedDownload(uri) ||
-            uri.userInfo.isNotEmpty ||
-            (uri.hasPort && uri.port != 443)) {
-          throw StateError('Unapproved update redirect.');
-        }
-        final request = await client
-            .getUrl(uri)
-            .timeout(const Duration(seconds: 20));
-        request.followRedirects = false;
-        response = await request.close().timeout(const Duration(seconds: 20));
-        if (!response.isRedirect) break;
-        final location = response.headers.value(HttpHeaders.locationHeader);
-        if (location == null) throw StateError('Invalid update redirect.');
-        uri = uri.resolve(location);
-        await response.drain<void>();
-      }
-      if (response?.statusCode != 200 || response!.isRedirect) {
-        throw StateError(
-          'Update download failed (HTTP ${response?.statusCode}).',
-        );
-      }
-      final sink = partial.openWrite();
-      var received = 0;
-      try {
-        await for (final chunk in response.timeout(
-          const Duration(seconds: 30),
-        )) {
-          if (_canceled) throw const AndroidUpdateCanceled();
-          received += chunk.length;
-          if (received > release.size) {
-            throw StateError('APK exceeds the published size.');
-          }
-          sink.add(chunk);
-          progress(received, release.size);
-        }
-        await sink.flush();
-      } finally {
-        await sink.close();
-      }
-      if (_canceled) throw const AndroidUpdateCanceled();
-      if (received != release.size ||
-          (await sha256.bind(partial.openRead()).first).toString() !=
-              release.sha256Digest) {
-        throw StateError(
-          'APK size or SHA-256 checksum failed. Retry the download.',
-        );
-      }
-      return await partial.rename(file.path);
-    } catch (_) {
-      if (await partial.exists()) await partial.delete();
-      if (_canceled) throw const AndroidUpdateCanceled();
-      rethrow;
-    } finally {
-      client.close(force: true);
-      _downloadClient = null;
-    }
+    return transfer.download(
+      uri: release.uri,
+      target: target(release, device),
+      size: release.size,
+      digest: release.sha256Digest,
+      version: '${release.versionName}+${release.versionCode}',
+      progress: progress,
+    );
   }
 
-  void cancelDownload() {
-    _canceled = true;
-    _downloadClient?.close(force: true);
+  void pauseDownload() => transfer.pause();
+  void cancelDownload() => pauseDownload();
+
+  Future<void> remember(
+    AndroidUpdateRelease release,
+    AndroidUpdateDevice device,
+  ) async {
+    final file = File(path.join(device.directory!, 'selected-update.json'));
+    await file.parent.create(recursive: true);
+    await file.writeAsString(
+      jsonEncode({
+        'tag': release.tag,
+        'versionName': release.versionName,
+        'versionCode': release.versionCode,
+        'publishedAt': release.publishedAt.toIso8601String(),
+        'notes': release.notes,
+        'uri': release.uri.toString(),
+        'size': release.size,
+        'sha256': release.sha256Digest,
+      }),
+      flush: true,
+    );
+  }
+
+  Future<AndroidUpdateRelease?> remembered(AndroidUpdateDevice device) async {
+    try {
+      final data = jsonDecode(
+        await File(path.join(device.directory!, 'selected-update.json'))
+            .readAsString(),
+      ) as Map;
+      final release = AndroidUpdateRelease(
+        tag: data['tag'] as String,
+        versionName: data['versionName'] as String,
+        versionCode: data['versionCode'] as int,
+        publishedAt: DateTime.parse(data['publishedAt'] as String),
+        notes: data['notes'] as String,
+        uri: Uri.parse(data['uri'] as String),
+        size: data['size'] as int,
+        sha256Digest: data['sha256'] as String,
+      );
+      if (release.versionCode <= device.versionCode ||
+          release.size <= 0 ||
+          release.size > maxApkBytes ||
+          !RegExp(r'^[a-f0-9]{64}$').hasMatch(release.sha256Digest) ||
+          !official(
+            release.uri,
+            release.tag,
+            path.basename(release.uri.path),
+          )) {
+        return null;
+      }
+      return release;
+    } on FileSystemException {
+      return null;
+    } on FormatException {
+      return null;
+    } on TypeError {
+      return null;
+    }
   }
 
   Future<void> verify(AndroidUpdateRelease release, File file) =>

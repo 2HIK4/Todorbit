@@ -17,6 +17,7 @@ import 'package:path/path.dart' as path;
 
 import '../../data/profile_paths.dart';
 import '../../data/software_update_service.dart';
+import '../../data/resumable_update_download.dart';
 import '../../data/update_helper_launcher.dart';
 import '../../app/app_controller.dart';
 import '../widget/native_widget_service.dart';
@@ -27,6 +28,7 @@ enum UpdateStatus {
   current,
   available,
   downloading,
+  paused,
   ready,
   offline,
   failed,
@@ -60,6 +62,11 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
   File? _package;
   int _received = 0;
   bool _portable = false;
+  double _speed = 0;
+  Directory get _updateRoot =>
+      Directory(path.join(_store.file.parent.path, 'updates'));
+  Directory _folder(UpdateRelease release) =>
+      Directory(path.join(_updateRoot.path, release.tag));
   bool _installing = false;
   bool _detailsExpanded = false;
 
@@ -97,7 +104,25 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
           _error = previousFailure;
         }
       });
-      if (preferences.automaticChecks && previousFailure == null) {
+      final saved = await _service.remembered(_updateRoot, _version, _portable);
+      if (!mounted) return;
+      if (saved != null &&
+          (_preferences.channel == UpdateChannel.prerelease ||
+              saved.version.pre.isEmpty)) {
+        final bytes = await _service.saved(saved, _folder(saved));
+        final completed = bytes == saved.size
+            ? await _service.download(saved, _folder(saved))
+            : null;
+        if (!mounted) return;
+        setState(() {
+          _release = saved;
+          _received = bytes;
+          _package = completed;
+          _status = completed == null
+              ? UpdateStatus.paused
+              : UpdateStatus.ready;
+        });
+      } else if (preferences.automaticChecks && previousFailure == null) {
         await _check();
       }
     } catch (error) {
@@ -167,8 +192,13 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
         lastChecked: DateTime.now().toUtc(),
       );
       await _store.save(updated);
+      final bytes = result == null
+          ? 0
+          : await _service.saved(result, _folder(result));
+      if (result != null) await _service.remember(result, _updateRoot);
       if (!mounted) return;
       setState(() {
+        _received = bytes;
         _preferences = updated;
         _release = result;
         _status = result == null
@@ -197,18 +227,27 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
     if (release == null) return;
     setState(() {
       _status = UpdateStatus.downloading;
-      _received = 0;
+      _speed = 0;
       _error = null;
     });
     try {
-      final folder = Directory(
-        path.join(ProfilePaths.activeDirectory().path, 'updates', release.tag),
-      );
+      final folder = _folder(release);
+      await _service.remember(release, _updateRoot);
+      final watch = Stopwatch()..start();
+      var start = _received;
       final package = await _service.download(
         release,
         folder,
         onProgress: (received, _) {
-          if (mounted) setState(() => _received = received);
+          if (mounted) {
+            setState(() {
+              _received = received;
+              if (received < start) start = received;
+              if (watch.elapsedMilliseconds >= 1000) {
+                _speed = (received - start) * 1000 / watch.elapsedMilliseconds;
+              }
+            });
+          }
         },
       );
       if (mounted) {
@@ -218,10 +257,14 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
         });
       }
     } catch (error) {
+      final retained = await _service.saved(release, _folder(release));
       if (mounted) {
         setState(() {
-          _status = UpdateStatus.failed;
-          _error = '$error';
+          _status = UpdateStatus.paused;
+          _received = retained;
+          _error = error is UpdateDownloadPaused
+              ? null
+              : 'Interrupted, resumable. Reconnect and tap Resume. $error';
         });
       }
     }
@@ -369,7 +412,11 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
       UpdateStatus.checking => 'Checking GitHub Releases…',
       UpdateStatus.current => 'Up to date',
       UpdateStatus.available => 'Update available',
-      UpdateStatus.downloading => 'Downloading update…',
+      UpdateStatus.downloading =>
+        _service.transfer.verifying
+            ? 'Verifying download…'
+            : 'Downloading update…',
+      UpdateStatus.paused => 'Paused / interrupted, resumable',
       UpdateStatus.ready => 'Ready to install',
       UpdateStatus.offline => 'Offline',
       UpdateStatus.failed => 'Update failed',
@@ -382,6 +429,7 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
           subtitle: Text(_version),
         ),
         ListTile(title: const Text('Status'), subtitle: Text(statusText)),
+        if (_service.transfer.notice != null) Text(_service.transfer.notice!),
         if (_error != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -393,14 +441,39 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
         if (release != null) ...[
           ListTile(
             title: const Text('Available update'),
-            subtitle: Text('Todorbit ${release.tag}'),
+            subtitle: Text(
+              'Todorbit ${release.tag} · ${formatDownloadSize(release.size)}',
+            ),
           ),
-          if (_status == UpdateStatus.downloading)
+          if (_status == UpdateStatus.downloading || _received > 0)
             LinearProgressIndicator(
               value: total <= 0 ? null : (_received / total).clamp(0.0, 1.0),
             ),
+          if (_status == UpdateStatus.downloading || _received > 0)
+            Text(
+              '${formatDownloadSize(_received, total: total)} · ${(_received * 100 / total).round()}%',
+            ),
+          if (_status == UpdateStatus.downloading && _speed > 0)
+            Text('${formatDownloadSize(_speed.round())}/s'),
           if (_status == UpdateStatus.downloading)
-            Text(formatDownloadSize(_received, total: total)),
+            TextButton(
+              onPressed: _service.pauseDownload,
+              child: const Text('Pause Download'),
+            ),
+          if (_status == UpdateStatus.paused && _received > 0)
+            TextButton(
+              onPressed: () async {
+                await _service.discard(release, _folder(release));
+                if (mounted) {
+                  setState(() {
+                    _received = 0;
+                    _status = UpdateStatus.available;
+                    _error = null;
+                  });
+                }
+              },
+              child: const Text('Discard Download'),
+            ),
         ],
         ListTile(
           title: const Text('Last checked'),
@@ -434,17 +507,19 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
               child: Text('Pre-release'),
             ),
           ],
-          onChanged: (value) async {
-            if (value == null) return;
-            await _save(_preferences.copyWith(channel: value));
-            if (mounted) {
-              setState(() {
-                _status = UpdateStatus.idle;
-                _release = null;
-                _package = null;
-              });
-            }
-          },
+          onChanged: _status == UpdateStatus.downloading
+              ? null
+              : (value) async {
+                  if (value == null) return;
+                  await _save(_preferences.copyWith(channel: value));
+                  if (mounted) {
+                    setState(() {
+                      _status = UpdateStatus.idle;
+                      _release = null;
+                      _package = null;
+                    });
+                  }
+                },
         ),
         const SizedBox(height: 14),
         Align(
@@ -462,15 +537,14 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
         if (release != null) ...[
           const SizedBox(height: 8),
           if (_status == UpdateStatus.available ||
-              _status == UpdateStatus.failed)
+              _status == UpdateStatus.failed ||
+              _status == UpdateStatus.paused)
             Align(
               alignment: Alignment.centerLeft,
               child: FilledButton(
                 onPressed: _download,
                 child: Text(
-                  _status == UpdateStatus.failed
-                      ? 'Retry download'
-                      : 'Download update',
+                  _received > 0 ? 'Resume Download' : 'Download update',
                 ),
               ),
             ),

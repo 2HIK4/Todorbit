@@ -7,6 +7,7 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/software_update_service.dart';
+import '../../data/resumable_update_download.dart';
 import '../../platform/android/android_platform.dart';
 import '../../platform/android/android_update_service.dart';
 import '../shared/download_size.dart';
@@ -38,6 +39,9 @@ class _AndroidSoftwareUpdatesPageState
   File? apk;
   bool busy = false, downloading = false;
   int received = 0;
+  double speed = 0;
+  final watch = Stopwatch();
+  int speedStart = 0;
   String status = 'Check for a newer Android release.', error = '';
 
   @override
@@ -52,6 +56,24 @@ class _AndroidSoftwareUpdatesPageState
     device = loaded;
     if (loaded.directory != null) {
       await service.clean(Directory(loaded.directory!));
+      release = await service.remembered(loaded);
+      if (preferences.channel == UpdateChannel.stable &&
+          release != null &&
+          UpdateVersion.parse(release!.tag)!.pre.isNotEmpty) {
+        release = null;
+      }
+      if (release != null) {
+        received = await service.saved(release!, loaded);
+        status = received > 0
+            ? 'Interrupted, resumable. Tap Resume to continue and verify.'
+            : 'Ready to download.';
+        if (received == release!.size) {
+          final file = await service.download(release!, loaded, (_, _) {});
+          await service.verify(release!, file);
+          apk = file;
+          status = 'Verified update is ready to install.';
+        }
+      }
     }
   });
 
@@ -64,9 +86,18 @@ class _AndroidSoftwareUpdatesPageState
     try {
       await action();
     } catch (failure) {
+      if (downloading) {
+        if (release != null && device != null) {
+          received = await service.saved(release!, device!);
+        }
+        status = failure is UpdateDownloadPaused
+            ? 'Paused. Saved bytes retained.'
+            : 'Interrupted, resumable. Reconnect and tap Resume.';
+      }
       if (mounted) {
         setState(
           () => error = switch (failure) {
+            UpdateDownloadPaused() => '',
             SocketException() =>
               'Network unavailable. Connect to the internet and retry.',
             TimeoutException() =>
@@ -95,6 +126,11 @@ class _AndroidSoftwareUpdatesPageState
     preferences = preferences.copyWith(lastChecked: DateTime.now().toUtc());
     await store.save(preferences);
     release = found;
+    received = 0;
+    if (found != null) {
+      await service.remember(found, device!);
+      received = await service.saved(found, device!);
+    }
     status = found == null
         ? 'No newer compatible Android update is available.'
         : 'An Android update is available.';
@@ -102,12 +138,26 @@ class _AndroidSoftwareUpdatesPageState
 
   Future<void> download() => run(() async {
     downloading = true;
-    received = 0;
+    speed = 0;
+    watch
+      ..reset()
+      ..start();
+    speedStart = received;
     status = 'Downloading update…';
     if (mounted) setState(() {});
+    await service.remember(release!, device!);
     final current = await (widget.loadDevice ?? AndroidUpdateDevice.load)();
     final file = await service.download(release!, current, (done, total) {
-      if (mounted) setState(() => received = done);
+      if (mounted) {
+        setState(() {
+          received = done;
+          if (service.transfer.verifying) status = 'Verifying download…';
+          if (done < speedStart) speedStart = done;
+          if (watch.elapsedMilliseconds >= 1000) {
+            speed = (done - speedStart) * 1000 / watch.elapsedMilliseconds;
+          }
+        });
+      }
     });
     downloading = false;
     status = 'Verifying APK signature, publisher and device compatibility…';
@@ -252,19 +302,33 @@ class _AndroidSoftwareUpdatesPageState
               ),
               const SizedBox(height: 16),
               Semantics(liveRegion: true, child: Text(status)),
-              if (downloading && release != null) ...[
+              if (service.transfer.notice != null)
+                Text(service.transfer.notice!),
+              if (release != null && (downloading || received > 0)) ...[
                 const SizedBox(height: 8),
                 LinearProgressIndicator(
                   value: received / release!.size,
                   semanticsLabel: 'Update download progress',
                 ),
                 Text(
-                  '${(received * 100 / release!.size).round()}% · ${formatDownloadSize(received)} / ${formatDownloadSize(release!.size)}',
+                  '${(received * 100 / release!.size).round()}% · ${formatDownloadSize(received, total: release!.size)}',
                 ),
-                TextButton(
-                  onPressed: service.cancelDownload,
-                  child: const Text('Cancel download'),
-                ),
+                if (downloading && speed > 0)
+                  Text('${formatDownloadSize(speed.round())}/s'),
+                if (downloading)
+                  TextButton(
+                    onPressed: service.pauseDownload,
+                    child: const Text('Pause Download'),
+                  ),
+                if (!busy && apk == null)
+                  TextButton(
+                    onPressed: () => run(() async {
+                      await service.discard(release!, device!);
+                      received = 0;
+                      status = 'Download discarded. Ready to download.';
+                    }),
+                    child: const Text('Discard Download'),
+                  ),
               ] else if (busy)
                 const Padding(
                   padding: EdgeInsets.all(12),
@@ -287,7 +351,9 @@ class _AndroidSoftwareUpdatesPageState
                     if (apk == null)
                       FilledButton(
                         onPressed: busy ? null : download,
-                        child: const Text('Download Update'),
+                        child: Text(
+                          received > 0 ? 'Resume Download' : 'Download Update',
+                        ),
                       ),
                     if (apk != null)
                       FilledButton(

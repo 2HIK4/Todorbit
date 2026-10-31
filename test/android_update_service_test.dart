@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_manager/data/software_update_service.dart';
+import 'package:life_manager/data/resumable_update_download.dart';
 import 'package:life_manager/platform/android/android_update_service.dart';
 
 const device = AndroidUpdateDevice(
@@ -86,6 +87,8 @@ class FakeResponse extends Stream<List<int>> implements HttpClientResponse {
   @override
   int get statusCode => reply.status;
   @override
+  int get contentLength => -1;
+  @override
   bool get isRedirect => [301, 302, 303, 307, 308].contains(statusCode);
   @override
   HttpHeaders get headers => FakeHeaders(reply.headers);
@@ -120,6 +123,8 @@ class FakeClient extends Fake implements HttpClient {
   FakeClient(this.handle);
   final Reply Function(Uri) handle;
   int requests = 0;
+  @override
+  set autoUncompress(bool value) {}
   @override
   Future<HttpClientRequest> getUrl(Uri uri) async {
     requests++;
@@ -159,6 +164,27 @@ void main() {
       isNotNull,
     );
   });
+  test(
+    'prefers smaller compatible split even when universal appears first',
+    () {
+      final manifest = androidManifest();
+      final release = androidRelease();
+      final universal = {
+        'name': 'Todorbit-1.0.19-android-universal.apk',
+        'abis': ['arm64-v8a', 'x86_64'],
+        'size': 200,
+        'sha256': 'a' * 64,
+      };
+      (manifest['apks'] as List).insert(0, universal);
+      (release['assets'] as List).insert(
+        0,
+        apkAsset(universal['name'] as String, size: 200),
+      );
+      expect(parse(manifest, release)!.uri.path, endsWith('-arm64.apk'));
+      (manifest['apks'] as List).removeAt(1);
+      expect(parse(manifest, release)!.uri.path, endsWith('-universal.apk'));
+    },
+  );
   test('stable excludes prereleases; pre-release includes them', () {
     final m = androidManifest(version: '1.0.19-rc.1');
     final r = androidRelease(version: '1.0.19-rc.1', pre: true);
@@ -319,30 +345,25 @@ void main() {
       service.close();
     },
   );
-  test(
-    'cleanup removes partial and expired APKs, retains recent verified file',
-    () async {
-      final dir = await Directory.systemTemp.createTemp(
-        'android-update-clean-',
+  test('cleanup preserves saved updates until owner discards them', () async {
+    final dir = await Directory.systemTemp.createTemp('android-update-clean-');
+    try {
+      final old = await File('${dir.path}/old.apk').writeAsString('old');
+      await old.setLastModified(
+        DateTime.now().subtract(const Duration(days: 8)),
       );
-      try {
-        final old = await File('${dir.path}/old.apk').writeAsString('old');
-        await old.setLastModified(
-          DateTime.now().subtract(const Duration(days: 8)),
-        );
-        await File('${dir.path}/interrupted.apk.part').writeAsString('partial');
-        final kept = await File('${dir.path}/current.apk')
-            .writeAsString('current');
-        final service = AndroidUpdateService();
-        await service.clean(dir);
-        expect(await dir.list().length, 1);
-        expect(await kept.exists(), isTrue);
-        service.close();
-      } finally {
-        await dir.delete(recursive: true);
-      }
-    },
-  );
+      await File('${dir.path}/interrupted.apk.part').writeAsString('partial');
+      final kept = await File('${dir.path}/current.apk')
+          .writeAsString('current');
+      final service = AndroidUpdateService();
+      await service.clean(dir);
+      expect(await dir.list().length, 3);
+      expect(await kept.exists(), isTrue);
+      service.close();
+    } finally {
+      await dir.delete(recursive: true);
+    }
+  });
   test(
     'download verifies size/digest, reuses valid APK and cleans failures',
     () async {
@@ -393,27 +414,28 @@ void main() {
         );
         await expectLater(
           bad.download(update, local, (_, _) {}),
-          throwsStateError,
+          throwsA(isA<HttpException>()),
         );
-        expect(await dir.list().toList(), isEmpty);
+        expect(await bad.saved(update, local), 1);
+        await bad.discard(update, local);
         bad.close();
         final failed = AndroidUpdateService(
           downloadClient: () => FakeClient((_) => Reply([], status: 503)),
         );
         await expectLater(
           failed.download(update, local, (_, _) {}),
-          throwsStateError,
+          throwsA(isA<HttpException>()),
         );
-        expect(await dir.list().toList(), isEmpty);
+        expect(await failed.saved(update, local), 0);
         failed.close();
         final canceled = AndroidUpdateService(
           downloadClient: () => FakeClient((_) => Reply(bytes)),
         );
         await expectLater(
           canceled.download(update, local, (_, _) => canceled.cancelDownload()),
-          throwsA(isA<AndroidUpdateCanceled>()),
+          throwsA(isA<UpdateDownloadPaused>()),
         );
-        expect(await dir.list().toList(), isEmpty);
+        await canceled.discard(update, local);
         canceled.close();
       } finally {
         service.close();

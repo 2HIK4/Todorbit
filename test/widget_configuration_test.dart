@@ -69,24 +69,21 @@ void main() {
     expect(config.surfaces['today']!.border, isTrue);
   });
   test(
-    'IEC download sizes share units, handle unknowns and remain bounded',
+    'Decimal download sizes share units, handle unknowns and remain bounded',
     () {
       expect(
         formatDownloadSize(17150980, total: 47132241),
-        '16.36 MiB / 44.95 MiB',
+        '17.2 MB / 47.1 MB',
       );
       expect(formatDownloadSize(0), '0 B');
       expect(formatDownloadSize(3, total: 5), '3 B / 5 B');
-      expect(formatDownloadSize(1024, total: 0), '1.00 KiB');
-      expect(formatDownloadSize(0, total: 1048576), '0.00 MiB / 1.00 MiB');
-      expect(
-        formatDownloadSize(1048576, total: 1048576),
-        '1.00 MiB / 1.00 MiB',
-      );
+      expect(formatDownloadSize(1024, total: 0), '1 KB');
+      expect(formatDownloadSize(0, total: 1048576), '0 MB / 1 MB');
+      expect(formatDownloadSize(1048576, total: 1048576), '1 MB / 1 MB');
       expect(formatDownloadSize(-1), 'Unknown size');
-      expect(formatDownloadSize(1024, total: -10), '1.00 KiB');
-      expect(formatDownloadSize(9223372036854775807), endsWith(' TiB'));
-      expect(formatDownloadSize(1024 * 1024 * 1024), '1.00 GiB');
+      expect(formatDownloadSize(1024, total: -10), '1 KB');
+      expect(formatDownloadSize(9223372036854775807), endsWith(' TB'));
+      expect(formatDownloadSize(1024 * 1024 * 1024), '1.1 GB');
     },
   );
   test(

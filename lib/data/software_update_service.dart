@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as path;
 
 import 'profile_paths.dart';
+import 'resumable_update_download.dart';
 
 enum UpdateChannel { stable, prerelease }
 
@@ -177,6 +177,8 @@ class SoftwareUpdateService {
 
   static bool approvedDownload(Uri uri) =>
       uri.scheme == 'https' &&
+      uri.userInfo.isEmpty &&
+      (!uri.hasPort || uri.port == 443) &&
       const {
         'github.com',
         'release-assets.githubusercontent.com',
@@ -295,79 +297,91 @@ class SoftwareUpdateService {
     );
   }
 
+  Future<void> remember(UpdateRelease release, Directory root) async {
+    await root.create(recursive: true);
+    await File(path.join(root.path, 'selected-update.json')).writeAsString(
+      jsonEncode({
+        'tag': release.tag,
+        'notes': release.notes,
+        'uri': release.assetUri.toString(),
+        'size': release.size,
+        'sha256': release.sha256Digest,
+      }),
+      flush: true,
+    );
+  }
+
+  Future<UpdateRelease?> remembered(
+    Directory root,
+    String currentVersion,
+    bool portable,
+  ) async {
+    try {
+      final data = jsonDecode(
+        await File(path.join(root.path, 'selected-update.json')).readAsString(),
+      ) as Map;
+      final version = UpdateVersion.parse(data['tag'] as String);
+      final uri = Uri.parse(data['uri'] as String);
+      if (version == null ||
+          version.compareTo(UpdateVersion.parse(currentVersion)!) <= 0 ||
+          uri !=
+              Uri.https(
+                'github.com',
+                '/2HIK4/Todorbit/releases/download/${data['tag']}/${assetName(data['tag'] as String, portable: portable)}',
+              ) ||
+          data['size'] is! int ||
+          (data['size'] as int) <= 0 ||
+          !RegExp(r'^[a-f0-9]{64}$').hasMatch(data['sha256'] as String)) {
+        return null;
+      }
+      return UpdateRelease(
+        version: version,
+        tag: data['tag'] as String,
+        notes: data['notes'] as String,
+        assetUri: uri,
+        sha256Digest: data['sha256'] as String,
+        size: data['size'] as int,
+      );
+    } on FileSystemException {
+      return null;
+    } on FormatException {
+      return null;
+    } on TypeError {
+      return null;
+    }
+  }
+
+  late final transfer = ResumableUpdateDownload(approved: _approvedDownload);
+  File target(UpdateRelease release, Directory folder) =>
+      File(path.join(folder.path, path.basename(release.assetUri.path)));
+  Map<String, Object> identity(UpdateRelease release) =>
+      ResumableUpdateDownload.identity(
+        release.assetUri,
+        release.size,
+        release.sha256Digest,
+        release.tag,
+      );
+  Future<int> saved(UpdateRelease release, Directory folder) =>
+      transfer.saved(target(release, folder), identity(release));
+  Future<void> discard(UpdateRelease release, Directory folder) =>
+      transfer.discard(target(release, folder));
+  void pauseDownload() => transfer.pause();
+
   Future<File> download(
     UpdateRelease release,
     Directory stagingDirectory, {
     void Function(int received, int total)? onProgress,
-  }) async {
-    await stagingDirectory.create(recursive: true);
-    final target = File(
-      path.join(stagingDirectory.path, path.basename(release.assetUri.path)),
-    );
-    final partial = File('${target.path}.part');
-    if (await partial.exists()) await partial.delete();
-    try {
-      var uri = release.assetUri;
-      HttpClientResponse? response;
-      for (var redirect = 0; redirect < 5; redirect++) {
-        if (!_approvedDownload(uri)) {
-          throw StateError('Unapproved download source');
-        }
-        final request = await _client
-            .getUrl(uri)
-            .timeout(const Duration(seconds: 20));
-        request.followRedirects = false;
-        request.headers.set(
-          HttpHeaders.userAgentHeader,
-          'Todorbit-Update-Checker',
-        );
-        response = await request.close().timeout(const Duration(seconds: 20));
-        if (response.isRedirect) {
-          final location = response.headers.value(HttpHeaders.locationHeader);
-          if (location == null) {
-            throw StateError('Download redirect has no location');
-          }
-          uri = uri.resolve(location);
-          continue;
-        }
-        break;
-      }
-      if (response == null ||
-          response.statusCode != 200 ||
-          response.isRedirect) {
-        throw StateError('Package download failed (${response?.statusCode}).');
-      }
-      final sink = partial.openWrite();
-      var received = 0;
-      try {
-        await for (final chunk in response.timeout(
-          const Duration(seconds: 30),
-        )) {
-          received += chunk.length;
-          if (received > release.size) {
-            throw StateError('Download exceeds published size');
-          }
-          sink.add(chunk);
-          onProgress?.call(received, release.size);
-        }
-        await sink.flush();
-      } finally {
-        await sink.close();
-      }
-      if (received != release.size ||
-          (await sha256.bind(partial.openRead()).first).toString() !=
-              release.sha256Digest) {
-        throw StateError(
-          'Package size or SHA-256 digest does not match the release',
-        );
-      }
-      if (await target.exists()) await target.delete();
-      return await partial.rename(target.path);
-    } catch (_) {
-      if (await partial.exists()) await partial.delete();
-      rethrow;
-    }
-  }
+  }) => transfer.download(
+    uri: release.assetUri,
+    target: target(release, stagingDirectory),
+    size: release.size,
+    digest: release.sha256Digest,
+    version: release.tag,
+    progress: onProgress ?? (_, _) {},
+  );
 
-  void close() => _client.close(force: true);
+  void close() {
+    pauseDownload();
+    _client.close(force: true);
+  }
 }

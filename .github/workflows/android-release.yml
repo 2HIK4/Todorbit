@@ -61,7 +61,15 @@ jobs:
           }
           @("storeFile=$(EscapeProperty $keystore)","storePassword=$(EscapeProperty $env:STORE_PASSWORD)","keyAlias=$(EscapeProperty $env:KEY_ALIAS)","keyPassword=$(EscapeProperty $env:KEY_PASSWORD)") | Set-Content android/key.properties -Encoding ascii
       - run: flutter pub get
-      - run: ./tools/build-android.ps1 -Mode Release -Distribution github
+      - run: ./tools/build-android.ps1 -Mode Release -Distribution github -SplitPerAbi
+      - name: Test Android signing decisions
+        shell: pwsh
+        run: |
+          . ./tools/dev/native-command.ps1
+          Push-Location android
+          try {
+            Invoke-TodorbitNative -Command ./gradlew.bat -ArgumentList @(':app:testGithubReleaseUnitTest','-Pandroid.onlyEnableUnitTestForTheTestedBuildType=false','-Ptarget-platform=android-arm64,android-x64','-Psplit-per-abi=true','--console=plain')
+          } finally { Pop-Location }
       - run: ./tools/build-android.ps1 -Mode Release -Distribution play -Bundle
       - name: Verify identity, signer, alignment, monotonic version and checksums
         shell: pwsh
@@ -72,7 +80,7 @@ jobs:
         run: |
           $env:PATH = "$env:ANDROID_HOME/build-tools/36.0.0;$env:PATH"
           $version = (Select-String -Path pubspec.yaml -Pattern '^version: (.+)\+(\d+)$').Matches[0]
-          python tools/prepare-android-release.py --apk build/app/outputs/flutter-apk/app-github-release.apk --aab build/app/outputs/bundle/playRelease/app-play-release.aab --version $version.Groups[1].Value --version-code $version.Groups[2].Value --certificate-sha256 $env:CERTIFICATE --notes $env:NOTES_PATH --output release/android-candidate
+          python tools/prepare-android-release.py --apk build/app/outputs/flutter-apk/app-github-release.apk --arm64-apk build/app/outputs/flutter-apk/app-arm64-v8a-github-release.apk --x64-apk build/app/outputs/flutter-apk/app-x86_64-github-release.apk --aab build/app/outputs/bundle/playRelease/app-play-release.aab --version $version.Groups[1].Value --version-code $version.Groups[2].Value --certificate-sha256 $env:CERTIFICATE --notes $env:NOTES_PATH --output release/android-candidate
           if ($LASTEXITCODE -ne 0) { throw 'Android candidate verification failed' }
       - uses: actions/upload-artifact@v4
         with:

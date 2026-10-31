@@ -10,7 +10,14 @@ import 'package:life_manager/features/settings/software_updates_page.dart';
 import 'package:life_manager/features/widget/native_widget_service.dart';
 
 class MemoryUpdateStore extends UpdatePreferenceStore {
-  MemoryUpdateStore() : super(File('unused-update-test.json'));
+  MemoryUpdateStore()
+    : super(
+        File(
+          '${Directory.systemTemp.createTempSync('windows-update-ui-').path}/settings.json',
+        ),
+      ) {
+    addTearDown(() => file.parent.delete(recursive: true));
+  }
   UpdatePreferences value = const UpdatePreferences(automaticChecks: false);
 
   @override
@@ -21,6 +28,16 @@ class MemoryUpdateStore extends UpdatePreferenceStore {
 }
 
 class FixtureUpdateService extends SoftwareUpdateService {
+  @override
+  Future<void> remember(UpdateRelease release, Directory root) async {}
+  @override
+  Future<UpdateRelease?> remembered(
+    Directory root,
+    String currentVersion,
+    bool portable,
+  ) async => null;
+  @override
+  Future<int> saved(UpdateRelease release, Directory folder) async => 0;
   @override
   Future<UpdateRelease?> check({
     required String currentVersion,

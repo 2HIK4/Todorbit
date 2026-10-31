@@ -17,17 +17,16 @@ import java.util.zip.ZipFile
 
 /** Only GitHub builds contain this user-initiated, app-private installer. */
 class AndroidUpdater(private val activity: Activity) {
-    private val root get() = File(activity.cacheDir, "update-apks").apply { mkdirs() }.canonicalFile
+    private val root get() = File(activity.filesDir, "update-apks").apply { mkdirs() }.canonicalFile
     private var permissionReply: MethodChannel.Result? = null
     private var installReply: MethodChannel.Result? = null
     private var installedBefore = 0L
-    init {
-        // Clean abandoned large downloads on ordinary app startup too.
-        root.listFiles()?.filter { it.isFile && System.currentTimeMillis() - it.lastModified() > 7L * 24 * 60 * 60 * 1000 }
-            ?.forEach { it.delete() }
-    }
     private fun version(info: PackageInfo) = if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong()
-    private fun installed(): PackageInfo = activity.packageManager.getPackageInfo(activity.packageName, PackageManager.GET_SIGNATURES)
+    private fun installed(): PackageInfo = activity.packageManager.getPackageInfo(activity.packageName,
+        if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES)
+    private fun installedSigners(info: PackageInfo): Set<String> =
+        (if (Build.VERSION.SDK_INT >= 28) info.signingInfo?.apkContentsSigners else info.signatures)
+            ?.map { digest(it.toByteArray()) }?.toSet() ?: emptySet()
     private fun digest(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
     fun handle(call: MethodCall, result: MethodChannel.Result): Boolean {
@@ -87,10 +86,17 @@ class AndroidUpdater(private val activity: Activity) {
         require(signature.isVerified) { "APK signature integrity verification failed." }
         val signers = signature.signerCertificates.map { digest(it.encoded) }.toSet()
         val current = installed()
-        val installedSigners = current.signatures?.map { digest(it.toByteArray()) }?.toSet() ?: emptySet()
-        require(signers.isNotEmpty() && signers == installedSigners) { "APK signing certificate differs from this installation. Keep your data and contact the publisher; do not uninstall to fix this." }
-        val archive = requireNotNull(activity.packageManager.getPackageArchiveInfo(file.path, 0)) { "APK metadata is unreadable." }
-        require(archive.packageName == "io.github.hik4.todorbit" && archive.packageName == activity.packageName) { "APK package identity is incorrect." }
+        val installedSigners = installedSigners(current)
+        val archive = requireNotNull(activity.packageManager.getPackageArchiveInfo(file.path, 0)) { "APK metadata is unreadable or damaged." }
+        require(archive.packageName == "io.github.hik4.todorbit" && archive.packageName == activity.packageName) { "APK package identity is incorrect. Download the official Todorbit package." }
+        val certificates = if (Build.VERSION.SDK_INT >= 28) current.signingInfo?.apkContentsSigners else current.signatures
+        val development = certificates?.any {
+            val certificate = java.security.cert.CertificateFactory.getInstance("X.509")
+                .generateCertificate(it.toByteArray().inputStream()) as java.security.cert.X509Certificate
+            certificate.subjectX500Principal.name.contains("CN=Android Debug")
+        } == true
+        val signerFailure = AndroidUpdateSigning.failure(signers, installedSigners, development, BuildConfig.DEBUG)
+        require(signerFailure == null) { signerFailure!! }
         require(version(archive) > version(current) && version(archive) == requireNotNull(call.argument<Number>("versionCode")).toLong()) { "APK version code is not the expected newer version." }
         require(archive.versionName == call.argument<String>("versionName")) { "APK version name differs from release metadata." }
         require(archive.applicationInfo!!.minSdkVersion <= Build.VERSION.SDK_INT) { "APK requires a newer Android version." }

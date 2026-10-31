@@ -8,6 +8,12 @@ plugins {
 }
 
 android {
+    if (project.findProperty("split-per-abi")?.toString() == "true") {
+        splits.abi.isUniversalApk = true
+        // The universal split otherwise also collects dependency-only 32-bit
+        // libraries, although this build supplies engines only for arm64/x64.
+        packaging.jniLibs.excludes += setOf("**/armeabi-v7a/**", "**/x86/**")
+    }
     namespace = "io.github.hik4.todorbit"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
@@ -99,6 +105,7 @@ flutter {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     implementation("com.google.android.gms:play-services-auth:22.0.0")
     implementation("androidx.core:core:1.17.0")
     "githubImplementation"("com.android.tools.build:apksig:9.1.0")

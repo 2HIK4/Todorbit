@@ -34,6 +34,25 @@ def minimum_sdk(badging):
     return int(values[0])
 
 
+def verify_apk(file, version, code, expected, expected_abis):
+    signature = run('apksigner', 'verify', '--verbose', '--print-certs', str(file))
+    certs = re.findall(r'Signer #\d+ certificate SHA-256 digest: ([a-fA-F0-9]+)', signature)
+    if len(certs) != 1 or certs[0].lower() != expected or 'CN=Android Debug' in signature:
+        raise ValueError('APK signer is not the approved production identity')
+    badging = run('aapt2', 'dump', 'badging', str(file))
+    identity = re.search(r"package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'", badging)
+    if not identity or identity.groups() != ('io.github.hik4.todorbit', str(code), version):
+        raise ValueError('APK package/version does not match requested release (ABI offsets are forbidden)')
+    if 'application-debuggable' in badging:
+        raise ValueError('Debuggable APK cannot be a production release')
+    abi_line = re.search(r'native-code: ([^\n]+)', badging)
+    abis = re.findall(r"'([^']+)'", abi_line[1]) if abi_line else []
+    if set(abis) != set(expected_abis) or minimum_sdk(badging) != 26:
+        raise ValueError('APK architecture/minimum SDK does not match requested artifact')
+    run('python', str(Path(__file__).with_name('verify-android-artifact.py')), str(file))
+    return abis
+
+
 def verify_bundle(file, version, code):
     cache = Path(os.environ.get('GRADLE_USER_HOME', Path.home() / '.gradle')) / 'caches/modules-2/files-2.1'
     jars = []
@@ -88,6 +107,8 @@ def published_floor():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--apk', type=Path, required=True)
+    parser.add_argument('--arm64-apk', type=Path)
+    parser.add_argument('--x64-apk', type=Path)
     parser.add_argument('--aab', type=Path, required=True)
     parser.add_argument('--version', required=True)
     parser.add_argument('--version-code', type=int, required=True)
@@ -100,21 +121,12 @@ def main():
     expected = args.certificate_sha256.replace(':', '').lower()
     if not re.fullmatch(r'[a-f0-9]{64}', expected):
         raise ValueError('Expected production certificate SHA-256 is required')
-    signature = run('apksigner', 'verify', '--verbose', '--print-certs', str(args.apk))
-    certs = re.findall(r'Signer #\d+ certificate SHA-256 digest: ([a-fA-F0-9]+)', signature)
-    if len(certs) != 1 or certs[0].lower() != expected or 'CN=Android Debug' in signature:
-        raise ValueError('APK signer is not the approved production identity')
-    badging = run('aapt2', 'dump', 'badging', str(args.apk))
-    identity = re.search(r"package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'", badging)
-    if not identity or identity.groups() != ('io.github.hik4.todorbit', str(args.version_code), args.version):
-        raise ValueError('APK package/version does not match requested release')
-    if "application-debuggable" in badging:
-        raise ValueError('Debuggable APK cannot be a production release')
-    minimum = minimum_sdk(badging)
-    abis = re.findall(r"'([^']+)'", re.search(r'native-code: ([^\n]+)', badging)[1])
-    if set(abis) != {'arm64-v8a', 'x86_64'} or minimum != 26:
-        raise ValueError('Expected universal arm64/x64 APK with minimum API 26')
-    run('python', str(Path(__file__).with_name('verify-android-artifact.py')), str(args.apk))
+    abis = verify_apk(args.apk, args.version, args.version_code, expected, ['arm64-v8a', 'x86_64'])
+    splits = []
+    for arch, file, apk_abis in [('arm64', args.arm64_apk, ['arm64-v8a']), ('x64', args.x64_apk, ['x86_64'])]:
+        if file:
+            verify_apk(file, args.version, args.version_code, expected, apk_abis)
+            splits.append((arch, file, apk_abis))
     run('python', str(Path(__file__).with_name('verify-android-artifact.py')), str(args.aab))
     # jarsigner establishes bundle integrity; keytool establishes its signer.
     bundle_result = run('jarsigner', '-verify', str(args.aab))
@@ -136,12 +148,19 @@ def main():
     shutil.copyfile(args.aab, args.output / aab_name)
     manifest = {'formatVersion': 1, 'packageName': 'io.github.hik4.todorbit',
                 'versionName': args.version, 'versionCode': args.version_code,
-                'minSdk': minimum, 'apks': [{'name': apk_name, 'abis': abis,
+                'minSdk': 26, 'apks': [{'name': apk_name, 'abis': abis,
                 'size': args.apk.stat().st_size, 'sha256': sha256(args.apk)}]}
+    split_files = []
+    for arch, file, apk_abis in splits:
+        name = f'Todorbit-{args.version}-android-{arch}.apk'
+        shutil.copyfile(file, args.output / name)
+        split_files.append(args.output / name)
+        manifest['apks'].insert(0, {'name': name, 'abis': apk_abis,
+                                  'size': file.stat().st_size, 'sha256': sha256(file)})
     manifest_path = args.output / f'Todorbit-{args.version}-android-update.json'
     manifest_path.write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
     shutil.copyfile(args.notes, args.output / 'ANDROID-RELEASE-NOTES.md')
-    files = [args.output / name for name in (apk_name, aab_name, manifest_path.name, 'ANDROID-RELEASE-NOTES.md')]
+    files = [args.output / name for name in (apk_name, aab_name, manifest_path.name, 'ANDROID-RELEASE-NOTES.md')] + split_files
     (args.output / 'ANDROID-SHA256SUMS.txt').write_text(''.join(f'{sha256(f)}  {f.name}\n' for f in files), encoding='utf-8')
     for file in files:
         assert sha256(file) in (args.output / 'ANDROID-SHA256SUMS.txt').read_text()

@@ -52,5 +52,34 @@ class VersionGateTests(unittest.TestCase):
                 release.published_floor()
 
 
+class ApkVariantTests(unittest.TestCase):
+    def verify(self, code=24, abis="'arm64-v8a'", signer='a' * 64):
+        badging = (f"package: name='io.github.hik4.todorbit' versionCode='{code}' versionName='1.0.20-beta.1'\n"
+                   f"minSdkVersion:'26'\nnative-code: {abis}\n")
+        def run(*args):
+            if args[0] == 'apksigner':
+                return f'Signer #1 certificate SHA-256 digest: {signer}'
+            if args[0] == 'aapt2':
+                return badging
+            return ''
+        with patch.object(release, 'run', side_effect=run):
+            return release.verify_apk('candidate.apk', '1.0.20-beta.1', 24, 'a' * 64, ['arm64-v8a'])
+
+    def test_arm64_same_code(self):
+        self.assertEqual(self.verify(), ['arm64-v8a'])
+
+    def test_flutter_abi_offset_rejected(self):
+        with self.assertRaisesRegex(ValueError, 'ABI offsets'):
+            self.verify(code=2024)
+
+    def test_wrong_architecture_rejected(self):
+        with self.assertRaisesRegex(ValueError, 'architecture'):
+            self.verify(abis="'x86_64'")
+
+    def test_wrong_signer_rejected(self):
+        with self.assertRaisesRegex(ValueError, 'production identity'):
+            self.verify(signer='b' * 64)
+
+
 if __name__ == '__main__':
     unittest.main()

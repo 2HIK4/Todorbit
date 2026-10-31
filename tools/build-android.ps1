@@ -4,6 +4,7 @@ param(
   [string]$AndroidSdk = $env:ANDROID_HOME,
   [string]$GradleUserHome = $env:GRADLE_USER_HOME,
   [switch]$Bundle,
+  [switch]$SplitPerAbi,
   [switch]$GoogleDrive,
   [switch]$DisableGoogleDrive,
   [switch]$NoPub,
@@ -36,10 +37,12 @@ if ($Mode -eq 'Release' -and !(Test-Path -LiteralPath (Join-Path $repo 'android/
 Push-Location $repo
 try {
   $kind = if ($Bundle) { 'appbundle' } else { 'apk' }
+  if ($Bundle -and $SplitPerAbi) { throw 'SplitPerAbi applies only to APK builds.' }
   $arguments = @('build',$kind,"--$($Mode.ToLowerInvariant())")
   if ($NoPub) { $arguments += '--no-pub' }
   $arguments += @('--flavor', $Distribution)
   $arguments += @('--target-platform','android-arm64,android-x64')
+  if ($SplitPerAbi) { $arguments += '--split-per-abi' }
   if ($GoogleDrive) { $arguments += '--dart-define=GOOGLE_DRIVE_ANDROID_ENABLED=true' }
   if ($DisableGoogleDrive) { $arguments += '--dart-define=GOOGLE_DRIVE_ANDROID_ENABLED=false' }
   if ($BuildNumber -gt 0) { $arguments += @('--build-number', "$BuildNumber") }
@@ -48,4 +51,11 @@ try {
     else { "build/app/outputs/flutter-apk/app-$Distribution-$($Mode.ToLowerInvariant()).apk" }
   & python (Join-Path $PSScriptRoot 'verify-android-artifact.py') $artifact
   if ($LASTEXITCODE -ne 0) { throw 'Android native alignment validation failed.' }
+  if ($SplitPerAbi) {
+    foreach ($abi in @('arm64-v8a','x86_64')) {
+      $split = "build/app/outputs/flutter-apk/app-$abi-$Distribution-$($Mode.ToLowerInvariant()).apk"
+      & python (Join-Path $PSScriptRoot 'verify-android-artifact.py') $split
+      if ($LASTEXITCODE -ne 0) { throw "Android $abi native alignment validation failed." }
+    }
+  }
 } finally { Pop-Location }
