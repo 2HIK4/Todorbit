@@ -34,11 +34,15 @@ keyPassword=<local secret>
 ```
 
 ```powershell
-./tools/build-android.ps1 -Mode Release -Distribution github
+./tools/build-android.ps1 -Mode Release -Distribution github -SplitPerAbi
 ./tools/build-android.ps1 -Mode Release -Distribution play -Bundle
 ```
 
 APK: `build/app/outputs/flutter-apk/app-github-release.apk`.
+ARM64/x64: `app-arm64-v8a-github-release.apk` and
+`app-x86_64-github-release.apk` in the same directory. All three APKs share the
+same version code; Flutter ABI offsets are disabled. The universal split excludes
+dependency-only 32-bit libraries that have no Flutter engine in this build.
 AAB: `build/app/outputs/bundle/playRelease/app-play-release.aab`.
 Release tasks fail without credentials; there is no debug-signing fallback.
 Verify with SDK `apksigner verify --verbose --print-certs <apk>` and
@@ -79,6 +83,8 @@ production signer, non-debuggable APK, ID/version, minimum SDK, ABIs, APK/AAB
 signature, native alignment and checksums, and emits:
 
 - `Todorbit-<version>-android-universal.apk`
+- Optional `Todorbit-<version>-android-arm64.apk` and `-android-x64.apk`,
+  individually validated with `--arm64-apk` / `--x64-apk` and added to metadata
 - `Todorbit-<version>-android-play.aab`
 - `Todorbit-<version>-android-update.json`
 - `ANDROID-SHA256SUMS.txt`, `ANDROID-RELEASE-NOTES.md`

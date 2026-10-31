@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.19-beta.2+25 - Android pre-release
+
+- Prefer smaller compatible ARM64/x86-64 APKs; retain a universal fallback and
+  identical version codes and production signing across all variants.
+- Retain partial update downloads through Pause/Resume, navigation and process
+  restart; explicit Discard removes partial bytes. Reverify full size/hash and
+  Android package/signature/device compatibility before installation.
+- Show decimal KB/MB/GB download sizes, progress and speed on both updater screens.
+- Distinguish development signing, unexpected publisher, package, version and
+  architecture errors without bypassing protection or uninstalling user data.
+- Preserve database schema 22, backups, widgets, preferences and Windows releases.
+
 ## 1.0.19-beta.1+23 - Android candidate (unpublished)
 
 - Prepare the first production-signed Android beta with the permanent publisher

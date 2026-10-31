@@ -5,7 +5,7 @@ on:
       notes_path:
         description: Tracked Markdown release-notes path
         required: true
-        default: docs/ANDROID_RELEASE_NOTES.md
+        default: docs/ANDROID_BETA_2_RELEASE_NOTES.md
 permissions:
   contents: read
 concurrency:
