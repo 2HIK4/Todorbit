@@ -12,7 +12,9 @@ on:
         description: Expected APK SHA-256 from the validated candidate
         required: true
 permissions:
-  contents: read
+  # GitHub requires push access to read unpublished release assets. This trusted
+  # artifact-only job makes no repository/release write calls and has no signing keys.
+  contents: write
 jobs:
   runtime:
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[16k-runtime]')
