@@ -37,7 +37,8 @@ the existing refusal/review path. Receipt files use temporary-write/rename.
 
 ## Verification ledger
 
-All new checks use disposable data. No full suite or release build has run.
+All new checks use disposable data. The full host checkpoint and its focused
+correction pass are recorded below; no coordinated release build has run.
 Detailed helper receipts/logs stay in ignored `.buildlog/verify/`.
 
 | Invocation | Source / purpose | Result | Reason |
@@ -105,7 +106,7 @@ Expired tokens require retaining local state and re-reading retained history.
 References: [Drive changes](https://developers.google.com/workspace/drive/api/reference/rest/v3/changes/list),
 [appdata isolation](https://developers.google.com/workspace/drive/api/guides/appdata).
 
-Working-tree schema 23 adds inactive capture context, journal and visible heads.
+Commit `b689ce7` added schema 23 capture context, journal and visible heads.
 It is not enabled by app startup or UI. Activation requires a verified recoverable
 snapshot and stable account/workspace/device binding. SQLite triggers cover the
 41 portable tables, including native-connection writes. Delivery ledgers and local
@@ -143,6 +144,55 @@ sync bookkeeping is excluded from the logical user-data fingerprint.
 Unpublished implementation checkpoint. Complete sync engine, pairing,
 conflict UI and both background adapters are not yet implemented. No claim of
 two-way sync, automatic/background sync or release readiness is made. Existing
-encrypted backup envelope remains unchanged; schema 23 is unpublished. Real cross-client pairing/exchange
+encrypted backup envelope remains unchanged; schema 24 is unpublished. Real cross-client pairing/exchange
 acceptance cannot be performed while testing is limited to mocks; historical
 backup OAuth acceptance is not acceptance of a new sync protocol.
+
+## Durable exchange checkpoint — 2026-11-01
+
+The current draft schema 24 retains per-device sequence numbers, causal clocks,
+encrypted incoming/outgoing batches and verified cloud-object receipts. Existing
+schema-23 operation IDs and ancestry survive migration. Outgoing encrypted bytes
+are persisted before network use and reused exactly after restart. Acknowledging
+one batch never clears edits made during its upload and never sets a misleading
+end-to-end success timestamp. SHA/identity mismatches retain the queue.
+
+Original SQLite transactions have explicit mutation-group bounds, including
+nested-savepoint rollback and actions larger than the 512-operation wire limit.
+The Flutter adapter finishes lazy initialization before choosing the first
+action's grouping boundary. Native writes use the same grouping protocol.
+Encryption and large batch encoding run off the foreground isolate.
+
+Incoming receipt authenticates account/workspace, ciphertext and full record
+identity before retaining immutable history transactionally. Partial groups and
+missing causal dependencies remain pending. Received-history clocks are separate
+from materialized/visible observations: a local edit cannot acknowledge a remote
+change merely because its ciphertext arrived. Incoming receipt is **not** remote
+application, conflict resolution or successful synchronization. No UI/network
+engine enables these primitives yet.
+
+| Invocation | Source / purpose | Result | Reason |
+| --- | --- | --- | --- |
+| Quick `20261101-001521-1503` | Draft schema24, journal/migration, causal clocks, isolation | 26 pass; analysis/format pass | New sequence migration and cross-record causal metadata |
+| Quick `20261101-002256-6434` | Outgoing batch staging | Analysis stopped on redundant import and brace lint; no tests | New exchange adapter; corrected mechanical issues |
+| Quick `20261101-002408-0083` | Staging/restart/ack, migration, codec | 10 pass | Validates immutable encrypted retry bytes and preservation during upload; predates mutation groups |
+| Quick `20261101-004257-6379` | Transaction groups and native boundary | Analysis stopped on brace lint; no tests | New group capture; corrected mechanical issue |
+| Quick `20261101-004632-9403` | Journal, staging, schema23 migration, profile isolation, task CAS | 27 pass; analysis/format pass | Group-aware capture and migration invalidate earlier schema24 evidence |
+| Quick `20261101-005749-0338` | Staging, schema23 migration, initialization interruption | 28 pass; analysis/format pass | First explicit creation/upgrade crash checks for grouped schema24 |
+| `flutter test --no-pub --reporter=expanded .buildlog/native-capture-v24/fixture_test.dart` | Actual Dart schema24 recurring fixture; isolated explicit file | 1 pass | New schema/native group protocol invalidates schema23 native fixture |
+| `dotnet run --project .buildlog/native-capture-v24/NativeCapture.csproj -c Release` | Actual native repository + Microsoft.Data.Sqlite; synthetic APPDATA/LOCALAPPDATA | Pass; exactly one completion/next-occurrence group, duplicate adds no operation | New C# grouping code; logs/fixture/evidence retained privately |
+| `tools/dev/native-self-test.ps1 -Executable .../TodorbitWidget.exe` | New Release native executable, helper-isolated profile | Pass | Changed native transaction wrapper; no physical UI claim |
+| Quick `20261101-010120-8835` | Incoming retention and additional outgoing transaction tests | Analysis stopped on a fixture const expression; no tests | New receiver; corrected fixture |
+| Quick `20261101-010148-2706` | Incoming reorder/dedup/fragments/managed bytes/auth/rollback; outgoing rollback/fragments | 12 pass; analysis/format pass | New receiver and >512-operation group coverage |
+| Quick `20261101-010257-9904` | Lazy first action after reopening, staging/migration/initialization | 31 pass; analysis/format pass | Review identified startup grouping gap; received-clock column was added during this run, so this receipt does not establish final DDL |
+| Quick `20261101-010441-2138` | Separate received/visible clocks, real child-process deaths, schema23 migration, isolation, initialization | 33 pass, one fixture assertion failed; analysis/format pass | New clock column and crash barriers; fixture expected empty visible clock instead of legitimate local-device zero. Corrected assertion. Both real-crash and initialization checks passed against this DDL and are retained |
+| Quick `20261101-010710-2968` | Corrected clock fixture, cross-device cycle closure, outgoing groups, backup/restore, capture, codec and causal graph | 51 pass; analysis/format/diff pass | Corrected the sole failed assertion; new causal-cycle validation moved ahead of readiness; added current-schema backup regressions. Unchanged successful crash/migration/isolation checks above reused |
+| `dart format --output=none --set-exit-if-changed` and `flutter analyze --no-pub` over every changed/untracked Dart file | Entire current schema24 exchange checkpoint; `.buildlog/sync-v24-final-{format,analysis}.log` | Pass | Final combined lint/format review without repeating passing runtime tests |
+| `python -m unittest discover -s tools -p test_dev_verify.py` | Expanded sync feature path/test catalog | 8 pass | Catalog now includes exchange and real-crash tests; `.buildlog/sync-v24-dev-helper-tests.log` |
+| `python tools/dev/check-docs.py` | Current links/map/catalog | Zero errors | New exchange references; `.buildlog/sync-v24-docs-check.log` |
+| Dart MCP `hot_reload` after checkpoint changes | IDE DTD `ws://127.0.0.1:63713/EwjOuzLVbjU=` | No active application | Diagnostic attempt only; no live UI acceptance claimed |
+
+Native evidence under `.buildlog/native-capture-v24/` predates the additive
+received-clock column and Dart lazy-open correction. It establishes the tested
+native grouping protocol, not final-source packaged acceptance. Exact-source
+platform gates remain mandatory.

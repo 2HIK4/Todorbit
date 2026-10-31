@@ -64,7 +64,7 @@ Future<void> openAndVerify(File file, {bool legacy = false}) async {
               )
               .get())
           .length,
-      48,
+      51,
     );
     expect(
       (await db.customSelect('PRAGMA integrity_check').getSingle())

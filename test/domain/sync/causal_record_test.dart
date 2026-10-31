@@ -31,6 +31,45 @@ Iterable<List<T>> permutations<T>(List<T> values) sync* {
 }
 
 void main() {
+  test(
+    'workspace clocks distinguish related-record causality from concurrency',
+    () {
+      final rule = revision(
+        'rule',
+        [],
+        {'rule': 'daily'},
+        device: 'android',
+        sequence: 4,
+      );
+      final later = SyncRevision(
+        id: 'completion',
+        device: 'windows',
+        sequence: 1,
+        parents: [],
+        value: {'status': 'completed'},
+        observed: {'android': 4},
+      );
+      final concurrent = revision('offline', [], {
+        'status': 'completed',
+      }, device: 'windows');
+      expect(later.observes(rule), isTrue);
+      expect(concurrent.observes(rule), isFalse);
+      expect(
+        () => SyncRevision(
+          id: 'invalid',
+          device: 'windows',
+          sequence: 2,
+          parents: [],
+          value: {},
+          observed: {},
+        ),
+        throwsFormatException,
+      );
+      expect(() => later.observed['android'] = 5, throwsUnsupportedError);
+      expect(SyncRevision.fromJson(later.toJson()).observed, {'android': 4});
+    },
+  );
+
   test('late transitive ancestry cannot reverse a device sequence', () {
     final record = CausalRecord()
       ..accept(

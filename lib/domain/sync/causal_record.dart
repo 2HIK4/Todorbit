@@ -31,7 +31,11 @@ class SyncRevision {
     required this.sequence,
     required Iterable<String> parents,
     required Map<String, Object?>? value,
+    Map<String, int>? observed,
   }) : parents = Set<String>.unmodifiable(parents),
+       observed = Map<String, int>.unmodifiable(
+         observed ?? (sequence > 1 ? {device: sequence - 1} : {}),
+       ),
        value = value == null
            ? null
            : _freeze(_canonical(value)) as Map<String, Object?> {
@@ -40,6 +44,11 @@ class SyncRevision {
         device.isEmpty ||
         device.length > 128 ||
         sequence < 1 ||
+        (this.observed[device] ?? 0) != sequence - 1 ||
+        this.observed.entries.any(
+          (entry) =>
+              entry.key.isEmpty || entry.key.length > 128 || entry.value < 0,
+        ) ||
         this.parents.contains(id) ||
         this.parents.length > 256 ||
         this.parents.any((id) => id.isEmpty || id.length > 128) ||
@@ -50,13 +59,17 @@ class SyncRevision {
   final String id, device;
   final int sequence;
   final Set<String> parents;
+  final Map<String, int> observed;
   final Map<String, Object?>? value;
+  bool observes(SyncRevision other) =>
+      (observed[other.device] ?? 0) >= other.sequence;
 
   Map<String, Object?> toJson() => {
     'id': id,
     'device': device,
     'sequence': sequence,
     'parents': parents.toList()..sort(),
+    'observed': observed,
     'value': value,
   };
 
@@ -67,6 +80,7 @@ class SyncRevision {
           'sequence',
           'parents',
           'value',
+          'observed',
         }).isNotEmpty ||
         json['id'] is! String ||
         json['device'] is! String ||
@@ -74,7 +88,12 @@ class SyncRevision {
         json['parents'] is! List ||
         !json.containsKey('value') ||
         (json['parents'] as List).any((value) => value is! String) ||
-        (json['value'] != null && json['value'] is! Map)) {
+        (json['value'] != null && json['value'] is! Map) ||
+        (json['observed'] != null &&
+            (json['observed'] is! Map ||
+                (json['observed'] as Map).values.any(
+                  (value) => value is! int,
+                )))) {
       throw const FormatException('Invalid sync revision payload');
     }
     return SyncRevision(
@@ -83,6 +102,7 @@ class SyncRevision {
       sequence: json['sequence'] as int,
       parents: (json['parents'] as List).cast<String>(),
       value: (json['value'] as Map?)?.cast<String, Object?>(),
+      observed: (json['observed'] as Map?)?.cast<String, int>(),
     );
   }
 }

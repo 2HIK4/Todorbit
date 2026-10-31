@@ -23,7 +23,13 @@
   corrected in a 55-test follow-up, with unaffected passes retained. Native
   Release/self-test and actual native-repository capture against a Dart-created
   synthetic schema-23 database pass; no duplicate completion journal entry.
-- Sync is not operational. Pending: durable exchange/checkpoints, persistent conflict
+- Draft schema24 now persists encrypted batch retries/receipts and transaction
+  group bounds across wire batches. Incoming history is authenticated and
+  retained without changing visible data. Native recurring completion capture
+  and duplicate delivery pass against an isolated actual-schema fixture.
+  Received history remains separate from visible observations. Latest detailed
+  verification and the lazy-reopen fix are recorded in the linked ledger.
+- Sync is not operational. Pending: completed exchange/checkpoints, remote apply, persistent conflict
   state, pairing/UI, platform workers, completed restore reconciliation and
   exact-source release gates. No version/tag/release or personal data changed.
 - [Implementation boundary and every verification/rerun](DRIVE_SYNC_RECOVERY_CHECKPOINT.md).

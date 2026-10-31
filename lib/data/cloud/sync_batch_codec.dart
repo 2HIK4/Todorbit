@@ -1,33 +1,71 @@
 import 'dart:convert';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
 
 import '../../domain/sync/causal_record.dart';
 
+class SyncMutationGroup {
+  SyncMutationGroup({
+    required this.id,
+    required this.first,
+    required this.last,
+  }) {
+    if (id.isEmpty || id.length > 128 || first < 1 || last < first) {
+      throw const FormatException('Invalid sync mutation group');
+    }
+  }
+  final String id;
+  final int first, last;
+  Map<String, Object?> toJson() => {'id': id, 'first': first, 'last': last};
+  factory SyncMutationGroup.fromJson(Map<String, dynamic> json) {
+    if (json.length != 3 ||
+        json['id'] is! String ||
+        json['first'] is! int ||
+        json['last'] is! int) {
+      throw const FormatException('Invalid sync mutation group');
+    }
+    return SyncMutationGroup(
+      id: json['id'] as String,
+      first: json['first'] as int,
+      last: json['last'] as int,
+    );
+  }
+}
+
 class SyncRecordOperation {
   const SyncRecordOperation({
     required this.entity,
     required this.recordKey,
     required this.revision,
+    this.group,
   });
   final String entity, recordKey;
   final SyncRevision revision;
+  final SyncMutationGroup? group;
   Map<String, Object?> toJson() => {
     'entity': entity,
     'key': recordKey,
     'revision': revision.toJson(),
+    if (group != null) 'group': group!.toJson(),
   };
 
   factory SyncRecordOperation.fromJson(Map<String, dynamic> value) {
-    if (value.length != 3 ||
+    if (value.keys.toSet().difference({
+          'entity',
+          'key',
+          'revision',
+          'group',
+        }).isNotEmpty ||
         value['entity'] is! String ||
         value['key'] is! String ||
         value['revision'] is! Map ||
         (value['entity'] as String).isEmpty ||
         (value['entity'] as String).length > 80 ||
         (value['key'] as String).isEmpty ||
-        (value['key'] as String).length > 1024) {
+        (value['key'] as String).length > 1024 ||
+        (value['group'] != null && value['group'] is! Map)) {
       throw const FormatException('Invalid sync operation');
     }
     return SyncRecordOperation(
@@ -36,6 +74,11 @@ class SyncRecordOperation {
       revision: SyncRevision.fromJson(
         (value['revision'] as Map).cast<String, dynamic>(),
       ),
+      group: value['group'] == null
+          ? null
+          : SyncMutationGroup.fromJson(
+              (value['group'] as Map).cast<String, dynamic>(),
+            ),
     );
   }
 }
@@ -60,6 +103,25 @@ class SyncBatch {
         this.operations.map((op) => op.revision.sequence).toSet().length !=
             this.operations.length) {
       throw const FormatException('Invalid per-device sync batch');
+    }
+    final groups = <String, String>{};
+    for (final operation in this.operations) {
+      final group = operation.group;
+      if (schema >= 24 && group == null) {
+        throw const FormatException('Sync mutation group is required');
+      }
+      if (group == null) continue;
+      if (operation.revision.sequence < group.first ||
+          operation.revision.sequence > group.last) {
+        throw const FormatException(
+          'Sync operation is outside its mutation group',
+        );
+      }
+      final header = jsonEncode(group.toJson());
+      if (groups.containsKey(group.id) && groups[group.id] != header) {
+        throw const FormatException('Sync mutation group bounds differ');
+      }
+      groups[group.id] = header;
     }
   }
   final String id, device;
@@ -104,6 +166,7 @@ class SyncWorkspaceKey {
   );
   factory SyncWorkspaceKey.fromRecoveryCode(String code) {
     try {
+      if (code.length != 43) throw const FormatException();
       final bytes = base64Url.decode(base64Url.normalize(code));
       if (bytes.length != 32 ||
           base64Url.encode(bytes).replaceAll('=', '') != code) {
@@ -139,6 +202,15 @@ class SyncBatchCodec {
     SyncWorkspaceKey key, {
     required String workspace,
     required String account,
+  }) => Isolate.run(
+    () => _encrypt(batch, key, workspace: workspace, account: account),
+  );
+
+  Future<Uint8List> _encrypt(
+    SyncBatch batch,
+    SyncWorkspaceKey key, {
+    required String workspace,
+    required String account,
   }) async {
     final clear = utf8.encode(jsonEncode(batch.toJson()));
     if (clear.length > maxPlaintextBytes) {
@@ -164,6 +236,22 @@ class SyncBatchCodec {
   }
 
   Future<SyncBatch> decrypt(
+    Uint8List encrypted,
+    SyncWorkspaceKey key, {
+    required String workspace,
+    required String account,
+    required int expectedSchema,
+  }) => Isolate.run(
+    () => _decrypt(
+      encrypted,
+      key,
+      workspace: workspace,
+      account: account,
+      expectedSchema: expectedSchema,
+    ),
+  );
+
+  Future<SyncBatch> _decrypt(
     Uint8List encrypted,
     SyncWorkspaceKey key, {
     required String workspace,

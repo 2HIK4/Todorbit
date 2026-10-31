@@ -47,6 +47,9 @@ extension SyncRepository on LifeRepository {
         );
       }
       if (context.read<int>('capture_enabled') == 1) return null;
+      throw StateError(
+        'This bound profile requires reviewed reconciliation before capture can resume. Its retained queue is unchanged.',
+      );
     }
     if (await recovery.hasScheduledRestore()) {
       throw StateError('Finish or cancel the pending restore before pairing.');
@@ -74,8 +77,8 @@ extension SyncRepository on LifeRepository {
         );
       }
       await db.customStatement(
-        'UPDATE sync_capture_context SET workspace_id=?,account_id=?,device_id=? WHERE id=1',
-        [workspaceId, accountId, deviceId],
+        'UPDATE sync_capture_context SET workspace_id=?,account_id=?,device_id=?,mutation_group=? WHERE id=1',
+        [workspaceId, accountId, deviceId, _uuid.v4()],
       );
       for (final table in portableSyncTables) {
         final columns =
@@ -83,12 +86,24 @@ extension SyncRepository on LifeRepository {
                 .map((row) => row.data)
                 .toList();
         await db.customStatement(
-          '''INSERT INTO sync_journal(operation_id,workspace_id,account_id,device_id,entity,record_key,after_json)
-          SELECT $syncOperationUuidSql,?,?,?,'$table',${syncKeyJson(columns, 'source.')},${syncRowJson(columns, 'source.')}
-          FROM "$table" AS source WHERE ${syncRowIsPortable(table, 'source.')}''',
+          '''INSERT INTO sync_journal(operation_id,workspace_id,account_id,device_id,entity,record_key,after_json,origin_sequence,observed_json,parent_ids_json,mutation_group_id)
+          SELECT $syncOperationUuidSql,?,?,?,'$table',${syncKeyJson(columns, 'source.')},${syncRowJson(columns, 'source.')},
+            context.device_sequence+row_number() OVER(ORDER BY ${syncKeyJson(columns, 'source.')}),
+            json_set(context.observed_json,'\$.' || json_quote(context.device_id),context.device_sequence+row_number() OVER(ORDER BY ${syncKeyJson(columns, 'source.')})-1),'[]',context.mutation_group
+          FROM "$table" AS source CROSS JOIN sync_capture_context AS context
+          WHERE context.id=1 AND ${syncRowIsPortable(table, 'source.')}''',
           [workspaceId, accountId, deviceId],
         );
+        await db.customStatement(
+          'UPDATE sync_capture_context SET device_sequence=device_sequence+changes(), observed_json=json_set(observed_json,$syncDeviceClockPathSql,device_sequence+changes()) WHERE id=1',
+        );
       }
+      final firstSequence = current.read<int>('device_sequence') + 1;
+      await db.customStatement(
+        '''INSERT INTO sync_mutation_groups(id,workspace_id,account_id,device_id,first_sequence,last_sequence,complete)
+        SELECT mutation_group,workspace_id,account_id,device_id,?,device_sequence,1 FROM sync_capture_context WHERE id=1 AND device_sequence>=?''',
+        [firstSequence, firstSequence],
+      );
       await db.customStatement(
         '''INSERT INTO sync_entity_heads(workspace_id,entity,record_key,visible_revision)
         SELECT workspace_id,entity,record_key,operation_id FROM sync_journal
@@ -97,7 +112,7 @@ extension SyncRepository on LifeRepository {
         [workspaceId, accountId],
       );
       await db.customStatement(
-        'UPDATE sync_capture_context SET capture_enabled=1 WHERE id=1',
+        'UPDATE sync_capture_context SET capture_enabled=1,mutation_group=NULL WHERE id=1',
       );
     });
     return beforeSync;

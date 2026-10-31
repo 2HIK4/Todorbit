@@ -26,7 +26,7 @@ String databaseContentsFingerprint(sqlite.Database db) {
   final parts = <Object?>[db.userVersion];
   final tables = db.select(
     "SELECT name, sql FROM sqlite_master WHERE type='table' "
-    "AND name NOT LIKE 'sqlite_%' AND name NOT IN ('backup_widget_personalization', 'sync_capture_context', 'sync_journal', 'sync_entity_heads') ORDER BY name",
+    "AND name NOT LIKE 'sqlite_%' AND name NOT IN ('backup_widget_personalization', 'sync_capture_context', 'sync_journal', 'sync_entity_heads', 'sync_batches', 'sync_remote_objects', 'sync_mutation_groups') ORDER BY name",
   );
   for (final table in tables) {
     final name = (table['name'] as String).replaceAll('"', '""');

@@ -91,6 +91,20 @@ void main() {
               'capture_enabled': 0,
               'applying_remote': 0,
               'restore_quarantined': 0,
+              'device_sequence': 0,
+              'observed_json': '{}',
+              'received_json': '{}',
+              'automatic_sync': 0,
+              'change_token': null,
+              'last_success_utc': null,
+              'failure_count': 0,
+              'next_attempt_utc': null,
+              'last_error_code': null,
+              'mutation_group': null,
+              'lease_owner': null,
+              'lease_until_ms': null,
+              'lease_heartbeat_ms': null,
+              'suspended_for_restore': 0,
             });
             expect(row.read<int>('total'), 1);
           } else {

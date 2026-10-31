@@ -24,11 +24,28 @@ void stripSyncSchemaForLegacyFixture(sqlite.Database database) {
     final name = (row['name'] as String).replaceAll('"', '""');
     database.execute('DROP TRIGGER "$name"');
   }
+  final tables = database
+      .select("SELECT name FROM sqlite_schema WHERE type='table'")
+      .map((row) => row['name'])
+      .toSet();
   for (final table in [
+    'sync_batches',
+    'sync_remote_objects',
+    'sync_mutation_groups',
+  ]) {
+    if (tables.contains(table) &&
+        database.select('SELECT 1 FROM "$table" LIMIT 1').isNotEmpty) {
+      throw StateError('Legacy fixture must not contain retained sync batches');
+    }
+  }
+  for (final table in [
+    'sync_remote_objects',
     'sync_journal',
+    'sync_mutation_groups',
+    'sync_batches',
     'sync_entity_heads',
     'sync_capture_context',
   ]) {
-    database.execute('DROP TABLE "$table"');
+    if (tables.contains(table)) database.execute('DROP TABLE "$table"');
   }
 }

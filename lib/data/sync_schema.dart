@@ -49,6 +49,7 @@ const portableSyncTables = <String>{
 
 const syncOperationUuidSql =
     "lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',(random() & 3)+1,1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))";
+const syncDeviceClockPathSql = r"'$.' || json_quote(device_id)";
 
 String syncRowIsPortable(String table, String prefix) =>
     table == 'task_resources'
@@ -71,7 +72,10 @@ String syncKeyJson(List<Map<String, Object?>> columns, String prefix) {
   return syncRowJson(keys, prefix);
 }
 
-Future<void> createSyncSchema(GeneratedDatabase db) async {
+Future<void> createSyncSchema(
+  GeneratedDatabase db, {
+  bool installTriggers = true,
+}) async {
   await db.customStatement('''CREATE TABLE sync_capture_context (
     id INTEGER PRIMARY KEY CHECK(id=1),
     workspace_id TEXT, account_id TEXT, device_id TEXT,
@@ -97,6 +101,15 @@ Future<void> createSyncSchema(GeneratedDatabase db) async {
     visible_revision TEXT NOT NULL,
     PRIMARY KEY(workspace_id,entity,record_key)
   )''');
+  if (installTriggers) {
+    await installSyncCaptureTriggers(db);
+  }
+}
+
+Future<void> installSyncCaptureTriggers(
+  GeneratedDatabase db, {
+  bool causal = false,
+}) async {
   for (final table in portableSyncTables) {
     final columns = (await db.customSelect('PRAGMA table_info("$table")').get())
         .map((row) => row.data)
@@ -129,8 +142,8 @@ Future<void> createSyncSchema(GeneratedDatabase db) async {
           AND $portable
           ${action == 'UPDATE' ? 'AND $oldRow IS NOT $newRow' : ''}
         BEGIN
-          ${action == 'UPDATE' ? _captureMutation(table, oldKey, oldRow, 'NULL', '$oldKey IS NOT $key AND $oldPortable') : ''}
-          ${_captureMutation(table, key, before, after, action == 'UPDATE' ? '($oldKey IS $key OR $newPortable)' : '1')}
+          ${action == 'UPDATE' ? _captureMutation(table, oldKey, oldRow, 'NULL', '$oldKey IS NOT $key AND $oldPortable', causal) : ''}
+          ${_captureMutation(table, key, before, after, action == 'UPDATE' ? '($oldKey IS $key OR $newPortable)' : '1', causal)}
         END''',
       );
     }
@@ -143,13 +156,20 @@ String _captureMutation(
   String before,
   String after,
   String condition,
+  bool causal,
 ) =>
     '''
-  INSERT INTO sync_journal(operation_id,workspace_id,account_id,device_id,entity,record_key,parent_id,before_json,after_json)
+  INSERT INTO sync_journal(operation_id,workspace_id,account_id,device_id,entity,record_key,parent_id,before_json,after_json${causal ? ',origin_sequence,observed_json,parent_ids_json,mutation_group_id' : ''})
   SELECT $syncOperationUuidSql,workspace_id,account_id,device_id,'$table',$key,
     (SELECT visible_revision FROM sync_entity_heads WHERE workspace_id=sync_capture_context.workspace_id AND entity='$table' AND record_key=$key),
-    $before,$after FROM sync_capture_context WHERE id=1 AND ($condition);
+    $before,$after${causal ? ",device_sequence+1,observed_json,coalesce((SELECT json_array(visible_revision) FROM sync_entity_heads WHERE workspace_id=sync_capture_context.workspace_id AND entity='$table' AND record_key=$key),'[]'),coalesce(mutation_group,$syncOperationUuidSql)" : ''} FROM sync_capture_context WHERE id=1 AND ($condition);
   INSERT INTO sync_entity_heads(workspace_id,entity,record_key,visible_revision)
   SELECT workspace_id,entity,record_key,operation_id FROM sync_journal WHERE sequence=last_insert_rowid() AND ($condition)
   ON CONFLICT(workspace_id,entity,record_key) DO UPDATE SET visible_revision=excluded.visible_revision;
+  ${causal ? "UPDATE sync_capture_context SET device_sequence=device_sequence+1,observed_json=json_set(observed_json,$syncDeviceClockPathSql,device_sequence+1) WHERE id=1 AND ($condition);" : ''}
+  ${causal ? '''INSERT INTO sync_mutation_groups(id,workspace_id,account_id,device_id,first_sequence,last_sequence,complete)
+    SELECT j.mutation_group_id,j.workspace_id,j.account_id,j.device_id,j.origin_sequence,j.origin_sequence,CASE WHEN c.mutation_group IS NULL THEN 1 ELSE 0 END
+    FROM sync_journal j JOIN sync_capture_context c ON c.id=1 AND j.device_id=c.device_id AND j.origin_sequence=c.device_sequence
+      AND j.workspace_id=c.workspace_id AND j.account_id=c.account_id WHERE ($condition)
+    ON CONFLICT(id) DO UPDATE SET last_sequence=excluded.last_sequence;''' : ''}
 ''';

@@ -572,6 +572,13 @@ void _validateLifeManagerSnapshot(String filePath) {
         .map((row) => row['name'] as String)
         .toSet();
     final required = <String>{'tasks', 'categories', 'projects'};
+    if (schema >= 24) {
+      required.addAll({
+        'sync_batches',
+        'sync_remote_objects',
+        'sync_mutation_groups',
+      });
+    }
     if (schema >= 23) {
       required.addAll({
         'sync_capture_context',

@@ -26,7 +26,7 @@ internal sealed class DependencyReviewRequiredException(
 
 internal sealed partial class LifeManagerWidgetRepository : IDisposable {
   private const int MinimumSchemaVersion = 4;
-  private const int MaximumSchemaVersion = 23;
+  private const int MaximumSchemaVersion = 24;
   private const string ActiveTaskClause = """
      AND deleted_at IS NULL AND archived_at IS NULL
      AND (category_id IS NULL OR EXISTS
@@ -103,7 +103,7 @@ internal sealed partial class LifeManagerWidgetRepository : IDisposable {
     var elapsed = (int)localNow.TimeOfDay.TotalMinutes - minute;
     if (elapsed < 0 || elapsed >= 60) return [];
     var day = localNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-    using var transaction = connection.BeginTransaction();
+    using var transaction = BeginCapturedTransaction();
     var results = new List<string>();
     var due = CountActiveTasks("deadline_date <= $day", day, transaction);
     if (dueEnabled && due > 0 && Claim("due", day, transaction)) {
@@ -158,7 +158,7 @@ internal sealed partial class LifeManagerWidgetRepository : IDisposable {
       }
     }
     var results = new List<string>();
-    using var transaction = connection.BeginTransaction();
+    using var transaction = BeginCapturedTransaction();
     foreach (var item in templates) {
       if (item.ReminderMinutes is int minutes && minutes >= 0 &&
           minutes <= 10080) {
@@ -365,7 +365,7 @@ internal sealed partial class LifeManagerWidgetRepository : IDisposable {
     }
     var id = Guid.NewGuid().ToString();
     var now = UtcNowString();
-    using var transaction = connection.BeginTransaction();
+    using var transaction = BeginCapturedTransaction();
     using var command = connection.CreateCommand();
     command.Transaction = transaction;
     command.CommandText = """
@@ -406,7 +406,7 @@ internal sealed partial class LifeManagerWidgetRepository : IDisposable {
     var now = NextTaskRevision(update.ExpectedUpdatedAt, DateTime.UtcNow);
     var eventTime = UtcNowString();
     var completedAt = update.Status == "completed" ? eventTime : null;
-    using var transaction = connection.BeginTransaction();
+    using var transaction = BeginCapturedTransaction();
     string? previousScheduledDate = null;
     string? previousStatus = null;
     using (var previousCommand = connection.CreateCommand()) {
@@ -524,7 +524,7 @@ internal sealed partial class LifeManagerWidgetRepository : IDisposable {
 
   internal void CompleteTask(string id, string expectedUpdatedAt) {
     privacy?.RequireUnlocked();
-    using var transaction = connection.BeginTransaction();
+    using var transaction = BeginCapturedTransaction();
     using (var current = connection.CreateCommand()) {
       current.Transaction = transaction;
       current.CommandText = "SELECT status FROM tasks WHERE id=$id" +
@@ -709,6 +709,49 @@ internal sealed partial class LifeManagerWidgetRepository : IDisposable {
     using var command = connection.CreateCommand();
     command.CommandText = sql;
     command.ExecuteNonQuery();
+  }
+
+  private CapturedTransaction BeginCapturedTransaction() {
+    var transaction = connection.BeginTransaction();
+    try {
+      string? group = null;
+      if (schemaVersion >= 24) {
+        using var query = connection.CreateCommand();
+        query.Transaction = transaction;
+        query.CommandText = "SELECT capture_enabled,mutation_group FROM sync_capture_context WHERE id=1";
+        using (var reader = query.ExecuteReader()) {
+          if (!reader.Read()) throw new InvalidOperationException("Sync capture context is missing; open the main app for recovery.");
+          if (reader.GetInt32(0) == 1) {
+            if (!reader.IsDBNull(1)) throw new InvalidOperationException("An unfinished sync mutation requires recovery.");
+            group = Guid.NewGuid().ToString();
+          }
+        }
+        if (group != null) {
+          query.CommandText = "UPDATE sync_capture_context SET mutation_group=$group WHERE id=1";
+          query.Parameters.AddWithValue("$group", group);
+          query.ExecuteNonQuery();
+        }
+      }
+      return new CapturedTransaction(this, transaction, group);
+    } catch { transaction.Dispose(); throw; }
+  }
+
+  private sealed class CapturedTransaction(LifeManagerWidgetRepository owner, SqliteTransaction inner, string? group) : IDisposable {
+    internal SqliteTransaction Inner { get; } = inner;
+    public static implicit operator SqliteTransaction(CapturedTransaction value) => value.Inner;
+    internal void Commit() {
+      if (group != null) {
+        using var command = owner.connection.CreateCommand();
+        command.Transaction = Inner;
+        command.CommandText = "UPDATE sync_mutation_groups SET complete=1 WHERE id=$group";
+        command.Parameters.AddWithValue("$group", group);
+        command.ExecuteNonQuery();
+        command.CommandText = "UPDATE sync_capture_context SET mutation_group=NULL WHERE id=1 AND mutation_group=$group";
+        if (command.ExecuteNonQuery() != 1) throw new InvalidOperationException("Sync mutation group changed unexpectedly; nothing was committed.");
+      }
+      Inner.Commit();
+    }
+    public void Dispose() => Inner.Dispose();
   }
 
   private static string UtcNowString() => DateTime.UtcNow.ToString(

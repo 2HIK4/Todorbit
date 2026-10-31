@@ -1,17 +1,114 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path/path.dart' as path;
+import 'package:uuid/uuid.dart';
 
 import 'profile_paths.dart';
 import 'sync_schema.dart';
+import 'sync_exchange_schema.dart';
 
 class AppDatabase extends GeneratedDatabase {
   AppDatabase(super.executor);
 
-  static const currentSchemaVersion = 23;
+  static const currentSchemaVersion = 24;
+  bool _syncGroupingReady = false;
+  final Object _syncGroupZone = Object();
+
+  Future<T> _syncWrite<T>(Future<T> Function() action) async {
+    if (Zone.current[_syncGroupZone] == true) return action();
+    // Lazy opening must finish before choosing the transaction boundary.
+    // Otherwise the first action after restart can be split into per-statement
+    // groups when beforeOpen enables capture halfway through that action.
+    if (!_syncGroupingReady) await customSelect('SELECT 1').get();
+    return transaction(action);
+  }
+
+  Future<T> _duringSyncOpening<T>(Future<T> Function() action) =>
+      runZoned(action, zoneValues: {_syncGroupZone: true});
+
+  @override
+  Future<int> customInsert(
+    String query, {
+    List<Variable> variables = const [],
+    Set<ResultSetImplementation>? updates,
+  }) => _syncWrite(
+    () => super.customInsert(query, variables: variables, updates: updates),
+  );
+
+  @override
+  Future<int> customUpdate(
+    String query, {
+    List<Variable> variables = const [],
+    Set<ResultSetImplementation>? updates,
+    UpdateKind? updateKind,
+  }) => _syncWrite(
+    () => super.customUpdate(
+      query,
+      variables: variables,
+      updates: updates,
+      updateKind: updateKind,
+    ),
+  );
+
+  @override
+  Future<void> customStatement(String statement, [List<dynamic>? args]) =>
+      RegExp(
+        r'^\s*(INSERT|UPDATE|DELETE|REPLACE|WITH)\b',
+        caseSensitive: false,
+      ).hasMatch(statement)
+      ? _syncWrite(() => super.customStatement(statement, args))
+      : super.customStatement(statement, args);
+
+  @override
+  Future<T> transaction<T>(
+    Future<T> Function() action, {
+    bool requireNew = false,
+  }) async {
+    if (Zone.current[_syncGroupZone] == true) {
+      return super.transaction(action, requireNew: requireNew);
+    }
+    if (!_syncGroupingReady) await customSelect('SELECT 1').get();
+    if (!_syncGroupingReady) {
+      return super.transaction(action, requireNew: requireNew);
+    }
+    return super.transaction(
+      () => runZoned(() async {
+        // Acquire the writer lock before reading capture state. In WAL mode
+        // a read snapshot must not race another writer before lock upgrade.
+        await super.customStatement(
+          'UPDATE sync_capture_context SET mutation_group=mutation_group WHERE id=1 AND capture_enabled=1',
+        );
+        final context = await customSelect(
+          'SELECT capture_enabled,mutation_group FROM sync_capture_context WHERE id=1',
+        ).getSingle();
+        if (context.read<int>('capture_enabled') == 0) return action();
+        if (context.readNullable<String>('mutation_group') != null) {
+          throw StateError(
+            'An unfinished sync mutation group needs recovery. Preserve this profile and its queue.',
+          );
+        }
+        final group = const Uuid().v4();
+        await super.customStatement(
+          'UPDATE sync_capture_context SET mutation_group=? WHERE id=1',
+          [group],
+        );
+        final result = await action();
+        await super.customStatement(
+          'UPDATE sync_mutation_groups SET complete=1 WHERE id=?',
+          [group],
+        );
+        await super.customStatement(
+          'UPDATE sync_capture_context SET mutation_group=NULL WHERE id=1',
+        );
+        return result;
+      }, zoneValues: {_syncGroupZone: true}),
+      requireNew: requireNew,
+    );
+  }
 
   /// Resolve the database within a selected per-user data root. This also lets
   /// disposable profile tests exercise the same path as a packaged build.
@@ -63,31 +160,34 @@ class AppDatabase extends GeneratedDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    beforeOpen: (_) async {
+    beforeOpen: (_) => _duringSyncOpening(() async {
       await customStatement('PRAGMA foreign_keys = ON');
-    },
-    onCreate: (migrator) => transaction(() async {
-      final existing = await _schemaDefinition();
-      if (existing.isNotEmpty) {
-        // Older builds could commit only part of first initialization. Never
-        // infer that version 0 means disposable: reject any populated table.
-        final tables = await customSelect(
-          "SELECT name FROM sqlite_schema WHERE type='table' "
-          "AND name NOT GLOB 'sqlite_*'",
-        ).get();
-        for (final table in tables) {
-          final name = table.read<String>('name').replaceAll('"', '""');
-          if ((await customSelect(
-            'SELECT 1 FROM "$name" LIMIT 1',
-          ).get()).isNotEmpty) {
-            throw StateError(
-              'Incomplete database contains data; no changes were committed. '
-              'Preserve this profile and recover from a trusted backup.',
-            );
+      await customStatement('PRAGMA busy_timeout = 5000');
+      _syncGroupingReady = true;
+    }),
+    onCreate: (migrator) => _duringSyncOpening(
+      () => transaction(() async {
+        final existing = await _schemaDefinition();
+        if (existing.isNotEmpty) {
+          // Older builds could commit only part of first initialization. Never
+          // infer that version 0 means disposable: reject any populated table.
+          final tables = await customSelect(
+            "SELECT name FROM sqlite_schema WHERE type='table' "
+            "AND name NOT GLOB 'sqlite_*'",
+          ).get();
+          for (final table in tables) {
+            final name = table.read<String>('name').replaceAll('"', '""');
+            if ((await customSelect(
+              'SELECT 1 FROM "$name" LIMIT 1',
+            ).get()).isNotEmpty) {
+              throw StateError(
+                'Incomplete database contains data; no changes were committed. '
+                'Preserve this profile and recover from a trusted backup.',
+              );
+            }
           }
         }
-      }
-      await customStatement('''
+        await customStatement('''
         CREATE TABLE IF NOT EXISTS categories (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL COLLATE NOCASE UNIQUE,
@@ -95,7 +195,7 @@ class AppDatabase extends GeneratedDatabase {
           updated_at TEXT NOT NULL
         )
       ''');
-      await customStatement('''
+        await customStatement('''
         CREATE TABLE IF NOT EXISTS projects (
           id TEXT PRIMARY KEY,
           category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
@@ -105,7 +205,7 @@ class AppDatabase extends GeneratedDatabase {
           UNIQUE(category_id, name)
         )
       ''');
-      await customStatement('''
+        await customStatement('''
         CREATE TABLE IF NOT EXISTS tasks (
           id TEXT PRIMARY KEY,
           title TEXT NOT NULL CHECK(length(trim(title)) > 0),
@@ -124,116 +224,121 @@ class AppDatabase extends GeneratedDatabase {
           scheduling_locked INTEGER NOT NULL DEFAULT 0 CHECK(scheduling_locked IN (0,1))
         )
       ''');
-      await customStatement(
-        'CREATE INDEX IF NOT EXISTS tasks_status_schedule ON tasks(status, scheduled_date)',
-      );
-      await customStatement(
-        'CREATE INDEX IF NOT EXISTS tasks_deadline ON tasks(deadline_date)',
-      );
-      await customStatement(
-        'CREATE INDEX IF NOT EXISTS tasks_project ON tasks(project_id)',
-      );
-      await customStatement(
-        'CREATE INDEX IF NOT EXISTS tasks_category ON tasks(category_id)',
-      );
-      await customStatement(
-        'CREATE INDEX IF NOT EXISTS projects_category ON projects(category_id)',
-      );
-      await _createEvents();
-      await _createSessions();
-      await _createScheduling();
-      await _createRelationships();
-      await _createRecurrence();
-      await _createSeriesEditHistory();
-      await _createRecurrenceCollisionHistory();
-      await _createHabits();
-      await _createGoals();
-      await _createTimeTracking();
-      await _createTemplates();
-      await _createSavedViews();
-      await _createTrash();
-      await _createNotifications();
-      await _createTaskResources();
-      await _createEventRecurrence();
-      await _createEntityIcons();
-      await _createTaskComposition();
-      await _createProgressivePlans();
-      await _createEventReminderDeliveries();
-      await _createEventDetails();
-      await _createTaskNotifications();
-      await createSyncSchema(this);
-      if (existing.isNotEmpty) {
-        final reference = AppDatabase(NativeDatabase.memory());
-        try {
-          final expected = await reference._schemaDefinition();
-          if (jsonEncode(await _schemaDefinition()) != jsonEncode(expected)) {
-            throw StateError(
-              'Incomplete database has an incompatible schema; '
-              'no changes were committed. Preserve this profile.',
-            );
-          }
-        } finally {
-          await reference.close();
-        }
-      }
-      // Drift normally writes this after the callback. Include it in the same
-      // transaction as DDL, so a killed process cannot leave a stale version.
-      await customStatement('PRAGMA user_version = $currentSchemaVersion');
-    }),
-    onUpgrade: (migrator, from, to) => transaction(() async {
-      if (from < 1 ||
-          from >= currentSchemaVersion ||
-          to != currentSchemaVersion) {
-        throw StateError('No migration registered from schema $from to $to');
-      }
-      if (from == 1) {
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS tasks_status_schedule ON tasks(status, scheduled_date)',
+        );
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS tasks_deadline ON tasks(deadline_date)',
+        );
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS tasks_project ON tasks(project_id)',
+        );
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS tasks_category ON tasks(category_id)',
+        );
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS projects_category ON projects(category_id)',
+        );
         await _createEvents();
-      }
-      if (from < 3) {
         await _createSessions();
-      }
-      if (from < 4) {
-        await customStatement(
-          'ALTER TABLE tasks ADD COLUMN planned_duration_minutes INTEGER CHECK(planned_duration_minutes IS NULL OR planned_duration_minutes > 0)',
-        );
-        await customStatement(
-          'ALTER TABLE tasks ADD COLUMN remaining_work_minutes INTEGER CHECK(remaining_work_minutes IS NULL OR remaining_work_minutes >= 0)',
-        );
-        await customStatement(
-          'ALTER TABLE tasks ADD COLUMN scheduling_locked INTEGER NOT NULL DEFAULT 0 CHECK(scheduling_locked IN (0,1))',
-        );
         await _createScheduling();
-      }
-      if (from < 5) {
         await _createRelationships();
-      }
-      if (from < 6) {
         await _createRecurrence();
-      } else if (from < 7) {
-        await _upgradeRecurrenceVersions();
-      }
-      if (from < 7) {
         await _createSeriesEditHistory();
         await _createRecurrenceCollisionHistory();
-      }
-      if (from < 8) await _createHabits();
-      if (from < 9) await _createGoals();
-      if (from < 10) await _createTimeTracking();
-      await _createTemplates();
-      await _createSavedViews();
-      await _createTrash();
-      await _createNotifications();
-      await _createTaskResources();
-      await _createEventRecurrence();
-      await _createEntityIcons();
-      await _createTaskComposition();
-      await _createProgressivePlans();
-      await _createEventReminderDeliveries();
-      await _createEventDetails();
-      await _createTaskNotifications();
-      if (from < 23) await createSyncSchema(this);
-      await customStatement('PRAGMA user_version = $currentSchemaVersion');
-    }),
+        await _createHabits();
+        await _createGoals();
+        await _createTimeTracking();
+        await _createTemplates();
+        await _createSavedViews();
+        await _createTrash();
+        await _createNotifications();
+        await _createTaskResources();
+        await _createEventRecurrence();
+        await _createEntityIcons();
+        await _createTaskComposition();
+        await _createProgressivePlans();
+        await _createEventReminderDeliveries();
+        await _createEventDetails();
+        await _createTaskNotifications();
+        await createSyncSchema(this, installTriggers: false);
+        await upgradeSyncExchangeSchema(this);
+        if (existing.isNotEmpty) {
+          final reference = AppDatabase(NativeDatabase.memory());
+          try {
+            final expected = await reference._schemaDefinition();
+            if (jsonEncode(await _schemaDefinition()) != jsonEncode(expected)) {
+              throw StateError(
+                'Incomplete database has an incompatible schema; '
+                'no changes were committed. Preserve this profile.',
+              );
+            }
+          } finally {
+            await reference.close();
+          }
+        }
+        // Drift normally writes this after the callback. Include it in the same
+        // transaction as DDL, so a killed process cannot leave a stale version.
+        await customStatement('PRAGMA user_version = $currentSchemaVersion');
+      }),
+    ),
+    onUpgrade: (migrator, from, to) => _duringSyncOpening(
+      () => transaction(() async {
+        if (from < 1 ||
+            from >= currentSchemaVersion ||
+            to != currentSchemaVersion) {
+          throw StateError('No migration registered from schema $from to $to');
+        }
+        if (from == 1) {
+          await _createEvents();
+        }
+        if (from < 3) {
+          await _createSessions();
+        }
+        if (from < 4) {
+          await customStatement(
+            'ALTER TABLE tasks ADD COLUMN planned_duration_minutes INTEGER CHECK(planned_duration_minutes IS NULL OR planned_duration_minutes > 0)',
+          );
+          await customStatement(
+            'ALTER TABLE tasks ADD COLUMN remaining_work_minutes INTEGER CHECK(remaining_work_minutes IS NULL OR remaining_work_minutes >= 0)',
+          );
+          await customStatement(
+            'ALTER TABLE tasks ADD COLUMN scheduling_locked INTEGER NOT NULL DEFAULT 0 CHECK(scheduling_locked IN (0,1))',
+          );
+          await _createScheduling();
+        }
+        if (from < 5) {
+          await _createRelationships();
+        }
+        if (from < 6) {
+          await _createRecurrence();
+        } else if (from < 7) {
+          await _upgradeRecurrenceVersions();
+        }
+        if (from < 7) {
+          await _createSeriesEditHistory();
+          await _createRecurrenceCollisionHistory();
+        }
+        if (from < 8) await _createHabits();
+        if (from < 9) await _createGoals();
+        if (from < 10) await _createTimeTracking();
+        await _createTemplates();
+        await _createSavedViews();
+        await _createTrash();
+        await _createNotifications();
+        await _createTaskResources();
+        await _createEventRecurrence();
+        await _createEntityIcons();
+        await _createTaskComposition();
+        await _createProgressivePlans();
+        await _createEventReminderDeliveries();
+        await _createEventDetails();
+        await _createTaskNotifications();
+        if (from < 23) await createSyncSchema(this, installTriggers: false);
+        if (from < 24) await upgradeSyncExchangeSchema(this);
+        await customStatement('PRAGMA user_version = $currentSchemaVersion');
+      }),
+    ),
   );
 
   // GLOB treats '_' literally; LIKE would also hide user names like sqlitecustom.

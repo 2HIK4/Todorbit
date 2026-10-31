@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:drift/drift.dart';
 import 'package:crypto/crypto.dart';
@@ -25,6 +26,10 @@ import 'support_introduction_store.dart';
 import 'backup_service.dart';
 import 'sync_schema.dart';
 import 'profile_fingerprint.dart';
+import 'sync_exchange_models.dart';
+import 'cloud/cloud_storage_provider.dart';
+import 'cloud/sync_batch_codec.dart';
+import '../domain/sync/causal_record.dart';
 
 part 'series_edit_repository.dart';
 part 'habit_repository.dart';
@@ -41,6 +46,8 @@ part 'entity_icon_repository.dart';
 part 'task_composition_repository.dart';
 part 'progressive_plan_repository.dart';
 part 'sync_repository.dart';
+part 'sync_exchange_repository.dart';
+part 'sync_incoming_repository.dart';
 
 class LifeRepository {
   LifeRepository(this.db, {DateTime Function()? taskClock})
