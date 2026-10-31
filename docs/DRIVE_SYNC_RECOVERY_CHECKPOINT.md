@@ -196,3 +196,35 @@ Native evidence under `.buildlog/native-capture-v24/` predates the additive
 received-clock column and Dart lazy-open correction. It establishes the tested
 native grouping protocol, not final-source packaged acceptance. Exact-source
 platform gates remain mandatory.
+
+SQLite leases now coordinate independent processes/Flutter engines. Ownership
+expires after 30 seconds unless renewed; stale owners cannot acknowledge or stage
+new work under a successor's lease. A backward wall-clock jump permits bounded
+lease recovery without making timestamps conflict winners. User database writes
+continue while exchange owns a lease. Restore quarantine invalidates ownership.
+Connection setup sets its SQLite busy timeout **before** enabling WAL, fixing a
+race reproduced by concurrent independent-engine startup.
+
+| Invocation | Source / purpose | Result | Reason |
+| --- | --- | --- | --- |
+| Quick `20261101-011040-3222` | Lease adapters and exchange guards based on `6fe452f` | Analysis stopped on multiline brace lint; no tests | New job-ownership boundary; corrected mechanical issue |
+| Quick `20261101-011147-0396` | Concurrent engines, expiry/heartbeat/clock jumps/fencing/quarantine; staging and incoming regressions | 19 pass; one concurrent-opening failure | SQLite WAL setup raced before busy timeout; 14 unaffected exchange checks retained |
+| Quick `20261101-011321-2254` | Earlier busy-timeout setup and all lease cases | 6 pass; analysis/format/diff pass | Corrected the reproduced opening race; no blanket rerun |
+
+## Remote-application design boundary
+
+Global causal clocks prove retained ancestry; they cannot alone prove what the
+user has seen when unrelated later changes apply around unresolved conflicts.
+The materializer must preserve that distinction. Planned visibility metadata is
+an exact set of applied per-device sequence intervals (compressed adjacent
+ranges), separate from received causal clocks. Applying sequence 100 must not
+implicitly acknowledge conflicted sequence 10. Complete mutation groups apply
+atomically, while independent groups may continue. Per-record visible parent
+sets must retain every safely merged head; local edits inherit all of them.
+Automatic safe merges must not emit endlessly competing synthetic revisions.
+
+Meaningful cross-record hazards (recurrence completion/rule changes, parent
+deletion/descendant edits, uniqueness and relationship cycles) still require
+domain review before SQL application. Do not implement the receiver by blindly
+upserting rows or by treating received history as user acknowledgement. These
+checks, persisted resolution and restore reconciliation remain unfinished.

@@ -130,8 +130,9 @@ extension SyncExchangeRepository on LifeRepository {
     SyncBinding binding,
     SyncWorkspaceKey key, {
     SyncBatchCodec? codec,
+    SyncLease? lease,
   }) async {
-    await _requireSyncBinding(binding);
+    await _requireSyncExchange(binding, lease);
     final existing = await db
         .customSelect(
           "SELECT * FROM sync_batches WHERE workspace_id=? AND account_id=? AND device_id=? AND direction='outgoing' AND uploaded=0 ORDER BY created_at,id LIMIT 1",
@@ -143,7 +144,9 @@ extension SyncExchangeRepository on LifeRepository {
         )
         .get();
     if (existing.isNotEmpty) {
-      return _pendingSyncBatch(existing.single.data, binding);
+      final pending = await _pendingSyncBatch(existing.single.data, binding);
+      await _requireSyncExchange(binding, lease);
+      return pending;
     }
     final headers = await db
         .customSelect(
@@ -213,7 +216,7 @@ extension SyncExchangeRepository on LifeRepository {
     );
     final digest = await _syncBytesDigest(encrypted);
     await db.transaction(() async {
-      await _requireSyncBinding(binding);
+      await _requireSyncExchange(binding, lease);
       await db.customStatement(
         'INSERT INTO sync_batches(id,workspace_id,account_id,device_id,direction,payload,sha256,created_at) VALUES(?,?,?,?,?,?,?,?)',
         [
@@ -252,9 +255,10 @@ extension SyncExchangeRepository on LifeRepository {
 
   Future<void> acknowledgeSyncBatch(
     PendingSyncBatch batch,
-    CloudObject remote,
-  ) => db.transaction(() async {
-    await _requireSyncBinding(batch.binding);
+    CloudObject remote, {
+    SyncLease? lease,
+  }) => db.transaction(() async {
+    await _requireSyncExchange(batch.binding, lease);
     final persisted = await db
         .customSelect(
           'SELECT * FROM sync_batches WHERE id=?',
@@ -262,6 +266,7 @@ extension SyncExchangeRepository on LifeRepository {
         )
         .getSingle();
     final stored = await _pendingSyncBatch(persisted.data, batch.binding);
+    await _requireSyncExchange(batch.binding, lease);
     if (remote.accountId != batch.binding.account ||
         remote.bytes != stored.bytes.length ||
         remote.md5 != md5.convert(stored.bytes).toString() ||

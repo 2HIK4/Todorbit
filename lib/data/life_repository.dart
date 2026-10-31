@@ -48,6 +48,7 @@ part 'progressive_plan_repository.dart';
 part 'sync_repository.dart';
 part 'sync_exchange_repository.dart';
 part 'sync_incoming_repository.dart';
+part 'sync_lease_repository.dart';
 
 class LifeRepository {
   LifeRepository(this.db, {DateTime Function()? taskClock})

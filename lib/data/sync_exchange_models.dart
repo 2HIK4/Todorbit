@@ -9,6 +9,13 @@ class SyncBinding {
   final String workspace, account, device;
 }
 
+class SyncLease {
+  const SyncLease({required this.binding, required this.owner});
+  final SyncBinding binding;
+  final String owner;
+  static const duration = Duration(seconds: 30);
+}
+
 class PendingSyncBatch {
   PendingSyncBatch({
     required this.id,

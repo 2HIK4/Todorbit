@@ -136,6 +136,7 @@ class AppDatabase extends GeneratedDatabase {
       NativeDatabase.createInBackground(
         file,
         setup: (database) {
+          database.execute('PRAGMA busy_timeout = 5000');
           database.execute('PRAGMA foreign_keys = ON');
           database.execute('PRAGMA journal_mode = WAL');
         },

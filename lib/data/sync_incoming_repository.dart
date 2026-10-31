@@ -107,8 +107,9 @@ extension SyncIncomingRepository on LifeRepository {
     CloudObject remote,
     Uint8List source, {
     SyncBatchCodec? codec,
+    SyncLease? lease,
   }) async {
-    await _requireSyncBinding(binding);
+    await _requireSyncExchange(binding, lease);
     final bytes = Uint8List.fromList(source);
     if (remote.accountId != binding.account ||
         remote.bytes != bytes.length ||
@@ -137,7 +138,7 @@ extension SyncIncomingRepository on LifeRepository {
     }
     final digest = await _syncBytesDigest(bytes);
     return db.transaction(() async {
-      await _requireSyncBinding(binding);
+      await _requireSyncExchange(binding, lease);
       final previous = await db
           .customSelect(
             'SELECT * FROM sync_batches WHERE id=?',
@@ -301,6 +302,7 @@ extension SyncIncomingRepository on LifeRepository {
         'INSERT OR IGNORE INTO sync_remote_objects(object_id,batch_id,md5,bytes) VALUES(?,?,?,?)',
         [remote.id, batch.id, remote.md5, remote.bytes],
       );
+      await _requireSyncExchange(binding, lease);
       return inserted;
     });
   }
