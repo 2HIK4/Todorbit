@@ -67,6 +67,17 @@ the authorized-account procedure below remains required.
 
 ## Windows/Android discovery gate
 
+For the first Android beta `1.0.19-beta.1` only, the owner explicitly deferred
+this gate on 2026-10-31 until after publication. Android production authorization
+and encrypted backup/restore passed real-account acceptance; Windows/Android
+discovery and restoration remain unverified. The owner will test a Windows-created
+backup on Android after publication. Start with disposable data and preserve an
+independently accessible backup of existing data before any replacement restore.
+This scoped beta acceptance does not establish interoperability or waive OAuth
+revocation, signing, integrity, CI or migration-safety requirements. Do not restart
+Windows application testing as part of this publication task. Snapshot recovery
+is not automatic two-way synchronization.
+
 Both adapters use the existing project, Drive `appDataFolder`,
 `appProperties.application=todorbit`, `todorbit-<kind>-<UUID>.tdbackup` names,
 format version 1, AES-256-GCM/recovery passphrase and schema 22. Android keeps only
@@ -139,5 +150,7 @@ another review. Review both devices and back up local work before replacing it.
 Google authorization uses the
 [official AuthorizationClient flow](https://developer.android.com/identity/authorization).
 Missing/outdated Play services leaves local backups and offline productivity
-available. Real authorization, consent and cross-device cloud restoration remain
-unverified until the owner completes the setup and authorized account checks.
+available. Production Android authorization, encrypted backup/restore and real
+grant revocation/reauthorization passed on 2026-10-31; see the
+[observed acceptance](ANDROID_PRODUCTION_BETA_ACCEPTANCE.md). Cross-device cloud
+restoration remains unverified under the owner's scoped beta deferral above.

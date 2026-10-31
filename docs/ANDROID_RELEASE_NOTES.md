@@ -3,8 +3,11 @@
 Proposed version: **1.0.19-beta.1 (23)**. Android 8.0+; ARM64 and x86-64.
 This Android beta does not replace or modify the published Windows releases.
 
-**Publication hold:** Windows/Android Drive interoperability and real grant-revocation
-acceptance remain unverified. Windows app testing was stopped at the owner's request.
+**Publication hold:** an intermittent stale-widget edit-protection CI failure
+requires diagnosis. Real grant revocation and fresh reauthorization passed.
+The owner explicitly deferred Windows/Android Drive interoperability acceptance
+until after this first beta is published; it remains an unverified beta limitation.
+Windows app testing remains stopped at the owner's request.
 The production APK/AAB, artifact preparation, current application-source CI,
 same-signer in-app upgrade/data preservation, Android encrypted Drive recovery and
 16 KiB emulator runtime checks have passed. This file must be
@@ -70,8 +73,12 @@ app to work around a certificate mismatch.
   verification, wrong-passphrase rejection, decrypted preview and restore/reopen
   passed with an authorized test account and synthetic data. Local offline use,
   authorization cancellation and local disconnect/reconnect were also observed.
-  Windows/Android interoperability and account-wide grant revocation remain
-  unverified. Offline authorization can show a generic canceled/denied message.
+  Windows/Android interoperability remains unverified; the owner will test a
+  Windows backup on Android after publication, initially using disposable data.
+  Back up existing data outside the app before any replacement restore.
+  Disposable-account grant revocation was detected, fresh Google consent appeared,
+  reauthorization/discovery passed, and local data/settings/backups were unchanged.
+  Offline authorization can show a generic canceled/denied message.
   Ordinary users must not supply credentials JSON.
 - Google Drive requires current Google Play services. The disposable test device
   was updated through Google Play before the final reconnect/history checks.
@@ -80,6 +87,10 @@ app to work around a certificate mismatch.
   tables, attachment bytes, backup, preferences and widget configurations survived.
   Task widget completion/reopening worked after updating. Android and Windows CI
   passed on the tested application source.
+- Later Windows CI run `41176493080` failed `stale completion cannot overwrite an
+  edit`: the expected stale-action rejection did not occur. Following run
+  `41176579454` passed, and a local 100-edit probe found no revision collisions.
+  The failure is unresolved; a passing retry does not establish its cause.
 - Physical-phone/OEM launcher resizing, reboot behavior and TalkBack breadth
   remain limited. Widget completion opens Todorbit; it is not a stopped-app
   background database writer.
@@ -95,3 +106,5 @@ app to work around a certificate mismatch.
 Before publishing, complete the remaining mandatory acceptance gates and update
 this draft status. After publication, verify the public APK download and normal
 Android Pre-release discovery/installation; these checks have not run yet.
+
+See the [phone installation and Windows backup test procedure](https://github.com/2HIK4/Todorbit/blob/feature/android-mobile/docs/ANDROID_PHONE_BETA_TESTING.md).

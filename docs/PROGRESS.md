@@ -1,5 +1,28 @@
 # Progress
 
+## Final OAuth acceptance resumed; interoperability deferred by owner (2026-10-31)
+
+- Owner explicitly accepts deferring Windows/Android Drive discovery/restore
+  until after the first Android beta publication and will test a Windows backup
+  on Android. It remains unverified; start with disposable data and external
+  backups before replacement. No further Windows app testing is authorized.
+- Real disposable-account OAuth revocation/reauthorization passed: owner revoked
+  access, refresh detected revoked grant, fresh Google consent appeared, owner
+  reauthorized, and both existing backups were rediscovered. All 45 local tables,
+  attachment/backups/preferences/widget settings remained identical. No app
+  crash/ANR observed; stopped emulator with data retained. No OAuth bug found.
+- New mandatory safety blocker: Windows CI `41176493080` accepted the command in
+  `stale completion cannot overwrite an edit`, contrary to its expected rejection.
+  Following CI `41176579454` passed, and a local 100-edit revision probe found no
+  collisions; neither explains the failure. No assertions/runtime code changed.
+  Per owner's stop-on-another-gate instruction, keep the draft unpublished until
+  diagnosed and any required rebuild/reacceptance completes.
+- Existing APK and application source remain unchanged. Signing/artifact/16 KiB
+  preparation and credential audit were revalidated. Exact phone instructions:
+  [phone beta testing](ANDROID_PHONE_BETA_TESTING.md).
+- Publication is authorized only after this test passes and other mandatory
+  gates remain satisfied. No signing, integrity, CI or migration gates are waived.
+
 ## Production Android beta prepared; publication held (2026-10-31)
 
 - Proposed `1.0.19-beta.1+23` remains unused publicly; normal unpublished

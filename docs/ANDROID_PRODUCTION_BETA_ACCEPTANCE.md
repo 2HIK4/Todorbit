@@ -4,6 +4,67 @@ This is an unpublished candidate checkpoint. It must not be read as a public
 release receipt. Candidate name is `1.0.19-beta.1`, Android code 23; code 22 is
 reserved for a private same-signer baseline.
 
+## Owner acceptance update (2026-10-31)
+
+The owner explicitly deferred Windows/Android Google Drive discovery/restore
+acceptance until after the first Android beta is published and will personally
+test a Windows-created backup on Android. This narrowly scoped acceptance changes
+the earlier hold below: interoperability remains unverified but is an openly
+disclosed beta limitation, not a prepublication blocker for this version. Begin
+with disposable data and externally back up existing data before replacement.
+Backup/restore is not automatic two-way synchronization. Windows testing remains
+stopped. Real OAuth grant revocation/reauthorization subsequently passed as recorded
+below. All signing, integrity, CI and data-safety
+gates remain in force.
+
+## Real OAuth revocation and reauthorization: passed (2026-10-31)
+
+The owner confirmed the existing emulator account is dedicated/disposable and
+authorized account-wide revocation. Native production code 23 refreshed Drive
+history successfully before revocation. A closed profile export was retained.
+The owner manually revoked Todorbit access in Google's third-party connections
+settings; no credentials were requested or captured. The page-opening ADB action
+was rejected by automatic approval review as blocked by policy, so the owner
+opened the page and performed the account action manually.
+
+Without locally disconnecting or restarting Todorbit, Refresh cloud backups then
+reported **Session needs reconnecting** and **Google access expired or was revoked.
+Reconnect Google Drive to authorize again.** The app remained open and local data
+still matched the prior full transfer. Reconnect opened the Google account chooser
+and fresh consent for Todorbit's own Drive configuration data. The owner manually
+approved Continue on the disposable account. Todorbit reported Google Drive
+connected, and refreshed history rediscovered both existing encrypted backups,
+with the same dates, source/version, sizes and verification/compatibility labels.
+No cloud delete/upload/restore operation was performed during this test.
+
+Closed before/after comparison passed SQLite integrity and identical contents of
+all 45 tables, stable IDs, the 41-byte managed attachment, all preceding backup
+bytes, appearance, updater preferences and widget themes/filters/opacity. No
+Todorbit crash/ANR event was recorded in this emulator session. The emulator was
+stopped with data retained. Evidence stays private/ignored:
+`oauth-before-profile.zip`, `oauth-after-profile.zip`,
+`oauth-profile-comparison.json`, and the `oauth-*` UI captures. No OAuth bug was
+found or fixed. This clears only the revocation hold; the newly discovered CI
+safety failure below still blocks publication.
+
+## New CI safety blocker discovered during final revalidation
+
+Windows run `41176493080` on documentation-only `9f1d55e` failed
+`test/android_widget_action_test.dart: stale completion cannot overwrite an edit`.
+The expected `StateError` was not thrown; the asynchronous command completed.
+The run had 425 passes, one failure and one deliberate skip. Following Windows
+run `41176579454` on `6fac3c0` passed, including the full suite/Release/package
+checks. Application source remains identical to the built APK and earlier CI.
+
+A private local probe ran 100 rapid add/edit operations in an isolated in-memory
+database: zero equal revisions and zero stale commands accepted. It does not
+reproduce or explain the runner failure. The guard uses `updatedAt` equality;
+clock/revision collision is a hypothesis, not a proven diagnosis. No production
+code or assertions have been changed, and no retry is treated as resolving the
+failure. This is a new data-safety publication blocker under the owner's explicit
+instruction to stop if another mandatory gate cannot be satisfied. The existing
+APK remains unpublished pending diagnosis and any required rebuild/reacceptance.
+
 ## Identity and source
 
 - Owner-controlled keystore: `C:\Users\User\TodorbitSigning\todorbit-release.jks`,
@@ -174,9 +235,11 @@ prompt was bypassed and no account-wide Google grant was revoked. Both Android
 test guests are stopped with data retained, and the temporary fixture server is
 stopped.
 
-Windows/Android Drive interoperability and real account-wide grant revocation
-remain unverified publication blockers. Public discovery/download/install checks
-can only follow publication and are not claimed. The
+At that initial checkpoint, Windows/Android Drive interoperability and real
+account-wide grant revocation were unverified publication blockers. The owner
+decision and completed revocation test above supersede those two holds; the new
+CI safety blocker remains. Public discovery/download/install checks can only
+follow publication and are not claimed. The
 [unpublished draft](https://github.com/2HIK4/Todorbit/releases/tag/untagged-76b06409b4f941be9b7c)
 is release ID `429762923`, target `9f1d55e`, proposed tag `v1.0.19-beta.1`.
 GitHub API confirms `draft: true`, `prerelease: true`, no publication timestamp,
@@ -193,8 +256,8 @@ do not alter historical Windows releases to disguise it.
 
 ## Retained manual acceptance procedure
 
-Android steps below have observed evidence above. Cross-platform and account-wide
-revocation steps remain unverified. This procedure is retained for future explicit
+Android steps, including account-wide revocation, have observed evidence above.
+Cross-platform steps remain unverified. This procedure is retained for future explicit
 authorization; it is not a request to repeat the Windows test the owner stopped.
 Do not capture or automate password/verification entry.
 
@@ -222,7 +285,8 @@ Do not capture or automate password/verification entry.
    client using that Google account; do not perform it against personal access
    without the owner's explicit action.
 
-Until these observations pass, Drive acceptance remains a publication blocker.
+The owner explicitly deferred cross-platform acceptance for this first beta;
+OAuth revocation passed. The separate unresolved CI failure still blocks release.
 See [full OAuth and recovery details](ANDROID_GOOGLE_DRIVE.md). Native 16 KiB
 alignment and actual 16 KiB runtime acceptance must also be reported separately;
 compilation/alignment is not a runtime observation.
