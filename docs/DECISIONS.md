@@ -1,5 +1,14 @@
 # Decisions
 
+- **Resumable updates and ABI delivery (2026-10-31):** share a private persisted
+  HTTP Range downloader across Windows/Android; Pause retains bytes, Discard
+  removes partial state, and full length/hash/native verification remains
+  mandatory. Android background execution is best effort with user-controlled
+  resume after force-stop; no foreground service or DownloadManager cancellation
+  workaround. Offer signed ARM64/x64 packages with a universal fallback and one
+  common monotonic version code. Keep full-package delivery; defer delta patches.
+  [Implementation, measurements and signing recovery](UPDATE_DOWNLOAD_RECOVERY.md).
+
 - **Android widget actions and support (2026-10-30):** keep native widgets as
   bounded read-only projections. Complete/reopen through an authenticated,
   revision-checked Flutter application action, rather than adding a second

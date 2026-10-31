@@ -44,6 +44,9 @@ scoped writer never migrates schemas. Android native surfaces never write SQLite
 - Android update discovery is Dart; signature verification, permission and install
   are native GitHub flavor behavior. Play has a separate store flow and no installer.
   Release tooling is `tools/prepare-android-release.py` and `.github/workflows/android-release.yml`.
+- Both update adapters share `lib/data/resumable_update_download.dart`; decimal
+  presentation uses `lib/features/shared/download_size.dart`. See
+  [download recovery](UPDATE_DOWNLOAD_RECOVERY.md) for persisted state and signing diagnostics.
 - Small visual changes use the nearest shared control in `lib/features/shared/`;
   test the changed layout at compact width and larger text before broadening.
 

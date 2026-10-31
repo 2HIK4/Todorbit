@@ -94,5 +94,11 @@ Keep signing keys and passwords outside Git. Debug APKs are development builds,
 not public releases. A release must use the same long-lived upload/app signing
 identity for every update. Public publishing remains a separate approval.
 
+GitHub candidate builds can use `tools/build-android.ps1 -Mode Release
+-Distribution github -SplitPerAbi` for ARM64/x86-64 APKs plus a universal fallback.
+All variants share the release version code; ABI offsets are prohibited by the
+candidate validator. See [download recovery and package measurements](UPDATE_DOWNLOAD_RECOVERY.md)
+for selection, signing diagnostics and the next-beta acceptance limits.
+
 Build/test/device results and exact outstanding acceptance must be recorded here
 before claiming the Android definition of done.

@@ -35,7 +35,11 @@ profile's existing settings. A malformed or newer format is reported; it is
 never overwritten with defaults.
 
 Downloads go to the active profile's `updates/<tag>` folder. Interrupted
-downloads leave no accepted package. The app verifies size and SHA-256 during
+downloads retain bound partial bytes for Pause/Resume across screen/app restarts;
+Discard explicitly removes a partial download. Partial files are never accepted
+installation packages. See [download recovery and signing diagnosis](UPDATE_DOWNLOAD_RECOVERY.md)
+for protocol behavior, Android persistence/background limits and measured sizes.
+The app verifies size and SHA-256 during
 download and immediately before installing. HTTPS redirects are restricted to
 GitHub release delivery hosts. The confirmation dialog explicitly states that
 current releases are unsigned: the GitHub digest checks integrity, but does

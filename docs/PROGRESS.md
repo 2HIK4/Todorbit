@@ -1,5 +1,33 @@
 # Progress
 
+## Update recovery, decimal sizes and ABI delivery (2026-10-31)
+
+- Implementation `57d8d59` on `feature/android-mobile`, unpublished. Shared
+  persisted Range/If-Range downloads retain exact partial bytes through
+  navigation/restart/process death; Pause/Resume and explicit Discard on both
+  updater screens. Full hash/length and native install checks remain mandatory.
+  Decimal sizes/progress/speed use 1000-byte units and at most one fractional digit.
+- Signed ARM64/x64/universal private code-24 APKs measure 25,533,723 / 27,051,703 /
+  51,611,607 bytes. ARM64 saves 50.4% against public beta 1. Common code, approved
+  production signer, exact ABIs and 16 KiB ELF/ZIP gates pass. The universal
+  build excludes unsupported dependency-only 32-bit libraries. Windows packages
+  measured 47,243,956-byte Setup / 62,421,403-byte portable; no speculative change.
+- Final Feature pass: 50 host tests, focused analysis/format, 11 release-validator
+  tests; 8 developer-helper tests, docs/catalog and diff checks pass. Five native
+  signing-policy JVM tests pass. Actual signed universal-23 to x64-24 emulator
+  package update succeeds; original first-install timestamp retained. It is not
+  a populated-data/in-app approval audit. Emulator stopped, test data retained.
+- Phone signer remains unmeasured; read-only certificate diagnostics and verified
+  backup-first development-to-production migration instructions are documented.
+  Modern installed-signer APIs, production pin and distinct errors are implemented.
+  Android lock/Doze/force-stop can interrupt execution; bytes survive for manual
+  resume. Physical phone/OEM/ARM64 acceptance remains pending. Emulator System UI
+  startup ANR limits GUI evidence; Dart MCP had no running debug app to reload.
+- No release/tag/asset, production signing identity, schema, profile or Drive
+  behavior changed. No full unrelated suites or widget/Drive acceptance repeated.
+  Next beta still needs a new synchronized version/code and mandatory exact-source
+  release gates. [Measurements, tests, changed boundaries and recovery](UPDATE_DOWNLOAD_RECOVERY.md).
+
 ## Android beta 1 published and verified (2026-10-31)
 
 - Published [v1.0.19-beta.1](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.1),
