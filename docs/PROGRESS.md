@@ -1,5 +1,17 @@
 # Progress
 
+## Sync button preview published (2026-11-01)
+
+- Published [v1.0.19-beta.3](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.3)
+  for Windows + Android, build/code 26, source `c47be13`, schema 22.
+- Sync opens Coming soon; full synchronization is not enabled. The unfinished
+  engine and schema 23-25 migrations remain separate and unpublished.
+- Tests/CI were explicitly waived by the owner for this button-only release.
+  Builds, package signatures/identity/alignment and all 11 public asset hashes
+  passed. No live UI, installation or real Drive acceptance is claimed.
+- [Publication receipt and exact assets](SYNC_BUTTON_PREVIEW_PUBLICATION.md).
+  Full sync work remains paused; preserve the uncommitted applier changes.
+
 ## Update recovery, decimal sizes and ABI delivery (2026-10-31)
 
 - Implementation `57d8d59` on `feature/android-mobile`, unpublished. Shared
