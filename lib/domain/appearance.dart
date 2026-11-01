@@ -2,24 +2,15 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-enum ThemeModePreference { system, light, dark }
+import 'theme_json.dart';
+export 'theme_json.dart' show ThemeModePreference;
 
 /// Version 1 themes contain colors only. Theme JSON is data, never executable.
 class ThemePalette {
   const ThemePalette(this.colors);
   final Map<String, Color> colors;
 
-  static const keys = <String>[
-    'background',
-    'surface',
-    'accent',
-    'primaryText',
-    'secondaryText',
-    'border',
-    'success',
-    'warning',
-    'error',
-  ];
+  static const keys = themePaletteKeys;
 
   static const light = ThemePalette({
     'background': Color(0xFFF8F7FC),
@@ -79,24 +70,10 @@ class ThemePalette {
           '#${colors[key]!.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}',
   };
 
-  factory ThemePalette.fromJson(Object? source) {
-    if (source is! Map<String, dynamic> ||
-        source.length != keys.length ||
-        source.keys.any((key) => !keys.contains(key))) {
-      throw const FormatException(
-        'Theme colors must contain the nine supported tokens',
-      );
-    }
-    final colors = <String, Color>{};
-    for (final key in keys) {
-      final raw = source[key];
-      if (raw is! String || !RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(raw)) {
-        throw FormatException('Invalid $key color');
-      }
-      colors[key] = Color(int.parse('FF${raw.substring(1)}', radix: 16));
-    }
-    return ThemePalette(colors);
-  }
+  factory ThemePalette.fromJson(Object? source) => ThemePalette({
+    for (final entry in normalizeThemePaletteJson(source).entries)
+      entry.key: Color(int.parse('FF${entry.value.substring(1)}', radix: 16)),
+  });
 
   double contrast(String foreground, String background) {
     double luminance(Color color) {
@@ -192,76 +169,26 @@ class ThemeCustomization {
   };
 
   factory ThemeCustomization.fromJson(Object? source) {
-    if (source is! Map<String, dynamic> || source['version'] != 1) {
-      throw const FormatException('Unsupported theme format');
-    }
-    final presetsRaw = source['presets'];
-    if (presetsRaw is! Map<String, dynamic> || presetsRaw.length > 30) {
-      throw const FormatException('Invalid theme presets');
-    }
-    final presets = <String, ThemePalette>{};
-    for (final entry in presetsRaw.entries) {
-      if (entry.key.trim().isEmpty || entry.key.length > 60) {
-        throw const FormatException('Invalid preset name');
-      }
-      presets[entry.key] = ThemePalette.fromJson(entry.value);
-    }
-    final author = source['author'];
-    if (author != null &&
-        (author is! String || author.trim().isEmpty || author.length > 100)) {
-      throw const FormatException('Invalid theme author');
-    }
-    final link = source['authorProfile'];
-    final profile = link is String ? Uri.tryParse(link) : null;
-    if (link != null &&
-        (profile == null ||
-            profile.scheme != 'https' ||
-            profile.host.isEmpty)) {
-      throw const FormatException('Invalid theme author profile');
-    }
-    final compact = source['compact'] ?? false;
-    final textScale = source['textScale'] ?? 1;
-    final sidebarWidth = source['sidebarWidth'] ?? 238;
-    final openingScreen = source['openingScreen'] ?? 'today';
-    final calendarDefaultView = source['calendarDefaultView'] ?? 'week';
-    final reducedMotion = source['reducedMotion'] ?? false;
-    final widgetOpacity = source['widgetOpacity'] ?? 100;
-    if (compact is! bool ||
-        textScale is! num ||
-        textScale < 0.85 ||
-        textScale > 1.5 ||
-        sidebarWidth is! int ||
-        sidebarWidth < 190 ||
-        sidebarWidth > 330 ||
-        openingScreen is! String ||
-        !const [
-          'today',
-          'inbox',
-          'calendar',
-          'habits',
-          'goals',
-        ].contains(openingScreen) ||
-        calendarDefaultView is! String ||
-        !const ['day', 'week', 'month'].contains(calendarDefaultView) ||
-        reducedMotion is! bool ||
-        widgetOpacity is! int ||
-        widgetOpacity < 0 ||
-        widgetOpacity > 100) {
-      throw const FormatException('Invalid layout preference');
-    }
+    final value = normalizeThemeCustomizationJson(source);
     return ThemeCustomization(
-      light: ThemePalette.fromJson(source['light']),
-      dark: ThemePalette.fromJson(source['dark']),
-      presets: presets,
-      author: author as String?,
-      authorProfile: profile,
-      compact: compact,
-      textScale: textScale.toDouble(),
-      sidebarWidth: sidebarWidth,
-      openingScreen: openingScreen,
-      calendarDefaultView: calendarDefaultView,
-      reducedMotion: reducedMotion,
-      widgetOpacity: widgetOpacity,
+      light: ThemePalette.fromJson(value['light']),
+      dark: ThemePalette.fromJson(value['dark']),
+      presets: {
+        for (final entry
+            in (value['presets'] as Map<String, Map<String, String>>).entries)
+          entry.key: ThemePalette.fromJson(entry.value),
+      },
+      author: value['author'] as String?,
+      authorProfile: value['authorProfile'] == null
+          ? null
+          : Uri.parse(value['authorProfile'] as String),
+      compact: value['compact'] as bool,
+      textScale: value['textScale'] as double,
+      sidebarWidth: value['sidebarWidth'] as int,
+      openingScreen: value['openingScreen'] as String,
+      calendarDefaultView: value['calendarDefaultView'] as String,
+      reducedMotion: value['reducedMotion'] as bool,
+      widgetOpacity: value['widgetOpacity'] as int,
     );
   }
 }

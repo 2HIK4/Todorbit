@@ -64,7 +64,7 @@ the backup format is unchanged. See [task revision safety](TASK_REVISION_SAFETY.
 | Native rendering and calendar data | `experiments/widget-shell-probe/`: `LifeManagerWidget.cs`, `CalendarWidget.cs`, `CalendarWidgetLayout.cs`, `WidgetCalendarRepository.cs`, `LifeManagerWidgetRepository.cs`, `WidgetEdgeSnap.cs` | Native `*SelfTest.cs`, `--self-test`, `--lifecycle-self-test`; never migrate/create SQLite. Bounded date grid, extra height goes to agenda; preserve saved geometry and legacy settings. |
 | Privacy, notifications and startup | `lib/app/privacy_manager.dart`, `lib/data/privacy_store.dart`, `lib/data/notification_repository.dart`; native `PrivacyState.cs`, `StartupRegistration.cs`, reminder code in `LifeManagerWidget.cs` | `test/privacy_test.dart`, `test/notification_repository_test.dart`, native self-test; UI lock is not encryption; claims record attempted display, not receipt. |
 | Local backup/restore and import/export | `lib/data/backup_service.dart`, `lib/data/life_repository.dart`, `lib/features/settings/backup_dialog.dart` | `test/backup_service_test.dart`, `test/import_export_test.dart`; verified SQLite snapshots, staged restore before Drift, Before restore snapshot and no silent replacement. |
-| Optional Drive snapshots | `lib/data/cloud/`: `cloud_backup_service.dart`, `cloud_backup_codec.dart`, `cloud_storage_provider.dart`, `google_drive_auth.dart`, `google_drive_provider.dart`; `lib/features/settings/backups_cloud_page.dart` | `test/cloud/`; reuses local backup, encrypted portable manifest; tokens/PIN/device controls stay local. No synchronization. [Drive format/setup](GOOGLE_DRIVE_BACKUP.md). |
+| Optional Drive snapshots | `lib/data/cloud/`: `cloud_backup_service.dart`, `cloud_backup_codec.dart`, `cloud_storage_provider.dart`, `google_drive_auth.dart`, `google_drive_provider.dart`; `lib/features/settings/backups_cloud_page.dart` | `test/cloud/`; reuses local backup, encrypted portable manifest; tokens/PIN/device controls stay local. Independent from incremental sync. [Drive format/setup](GOOGLE_DRIVE_BACKUP.md). |
 | Updates and distribution | `lib/data/software_update_service.dart`, `update_helper_launcher.dart`, `lib/features/settings/software_updates_page.dart`, `tools/update-helper.ps1`, `tools/build-*.ps1`, `installer/`, `.github/workflows/windows-ci.yml` | `test/software_update_service_test.dart`, `test/update_helper_launcher_test.dart`, PowerShell harnesses in [Testing](TESTING.md); keep AppId, paths, version/asset names, hash and rollback checks. |
 
 ## Cross-boundary constraints and schema history
@@ -116,27 +116,31 @@ content and week-start preferences come from the existing profile preferences.
 `--edit-widget tasks|calendar` goes through the runner's existing single-window
 activation channel to Settings > Widget and the correct draft editor.
 
-Google Drive backups are an optional layer under `lib/data/cloud/` and Settings > Backups & Cloud. `CloudStorageProvider` abstracts remote objects; Google OAuth and secure token storage are separate from Drive HTTP operations. `CloudBackupService` reuses `BackupService` for SQLite-safe snapshots and staged restore, while `CloudBackupCodec` encrypts a versioned portable manifest with AES-256-GCM and a passphrase-derived key. The manifest includes the existing shareable settings JSON; OAuth tokens, PIN policy and device-only controls remain local. Full restore applies portable personalization after the database opens/migrates and before the opened receipt. Settings-only restore reuses selective settings transfer. There is no background synchronization or cloud retention. See `GOOGLE_DRIVE_BACKUP.md` for format limits, setup, portability and verification boundaries.
+Google Drive backups are an optional layer under `lib/data/cloud/` and Settings > Backups & Cloud. `CloudStorageProvider` abstracts remote objects; Google OAuth and secure token storage are separate from Drive HTTP operations. `CloudBackupService` reuses `BackupService` for SQLite-safe snapshots and staged restore, while `CloudBackupCodec` encrypts a versioned portable manifest with AES-256-GCM and a passphrase-derived key. The manifest includes the existing shareable settings JSON; OAuth tokens, PIN policy and device-only controls remain local. Full restore applies portable personalization after the database opens/migrates and before the opened receipt. Settings-only restore reuses selective settings transfer. Snapshot creation remains explicit and cloud history is not automatically pruned. See `GOOGLE_DRIVE_BACKUP.md` for format limits, setup, portability and verification boundaries.
 
-The authorized sync implementation is under construction and inactive. Source
-schema 25 extends `sync_capture_context`, `sync_journal` and `sync_entity_heads`
-with causal sequences and original transaction groups. Encrypted retry batches
-and verified remote-object receipts are durable. Incoming authentication retains
-history atomically; it does not apply data or report successful synchronization.
-Exact applied intervals and full visible parent sets preserve unresolved holes;
-received causal history alone never establishes user acknowledgement.
-Portable SQLite writes and immutable before/after journal entries commit together
-through database triggers, including writes from other connections. The journal
-stays disabled until verified recovery and explicit pairing; a replaced database
-is quarantined before use. Credentials remain outside SQLite. Causal revision and
-AES-GCM batch primitives and a separate Drive namespace are implemented, but no
-automatic exchange/UI/background feature is enabled. See the
-[current implementation and verification boundary](DRIVE_SYNC_RECOVERY_CHECKPOINT.md).
+Encrypted incremental sync is separately enabled through Settings > Sync. Schema
+26 retains immutable causal operations and transaction groups for 42 portable
+tables, including allowlisted preferences and explicit timer ownership. SQLite
+capture includes legitimate native writers; remote apply suppresses capture and
+recurrence side effects inside the same writer transaction. Exact visible
+intervals preserve unresolved causal holes. Receiving history never establishes
+user acknowledgement. Managed bytes are validated before selected application.
+
+`SyncController` and `SyncEngine` coordinate pairing, a bounded encrypted outbox,
+Drive change cursors, lease ownership, retries and atomic incoming application.
+The consolidated review retains competing heads and checks actual relational
+consequences before accepting decisions. Restored databases are quarantined;
+explicit reconciliation retains pre-restore facts and uses a fresh device and
+an authenticated restore-intent group. Android constrained jobs and the existing
+Windows companion invoke the same bounded headless engine. Workers never migrate,
+restore or unlock profiles. Credentials stay in OS-protected profile storage.
+See the [sync guide](GOOGLE_DRIVE_SYNC.md) and
+[current verification boundary](DRIVE_SYNC_RECOVERY_CHECKPOINT.md).
 
 - Flutter Material 3 UI with a compact Fluent-inspired desktop layout.
 - Riverpod owns application state. Feature widgets observe a controller, while data access stays in the repository.
 - Drift opens SQLite in a background isolate. The repository owns SQL, migrations, transactions, and mapping to immutable domain objects. Initial schema uses explicit SQL to keep migration changes reviewable.
-- SQLite lives in the per-user application-support directory. UUID identifiers and UTC modification fields prepare data for future synchronization; no synchronization is implemented.
+- SQLite lives in the per-user application-support directory. Stable UUIDs and UTC modification fields coexist with explicit causal sync revisions; timestamps never select competing values.
 - `lib/domain/`: entity models. `lib/data/`: SQLite and repository. `lib/features/`: screens and reusable controls. `lib/app/`: shell, state, theme.
 - Windows widget and tray code live behind a separate native-companion boundary.
 

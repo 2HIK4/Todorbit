@@ -240,6 +240,51 @@ void main() {
     );
   });
 
+  test('portable preference keys merge independently and private policy keys are rejected', () async {
+    await seed();
+    await sender.savePortablePreference('firstWeekday', 1);
+    await receiver.savePortablePreference('theme', 'dark');
+    await exchange();
+    expect((await apply()).state, SyncApplyState.applied);
+    expect(await receiver.portablePreferences(), {
+      'firstWeekday': 1,
+      'theme': 'dark',
+    });
+    await exchange(reverse: true);
+    expect((await apply(reverse: true)).state, SyncApplyState.applied);
+    expect(await sender.portablePreferences(), {
+      'firstWeekday': 1,
+      'theme': 'dark',
+    });
+    await expectLater(
+      receiver.savePortablePreference('oauthTokens', {'secret': 'synthetic'}),
+      throwsFormatException,
+    );
+    expect(
+      (await receiver.portablePreferences()).containsKey('oauthTokens'),
+      isFalse,
+    );
+  });
+
+  test('an imported running timer cannot be heartbeated or closed by another device', () async {
+    await seed();
+    final task = (await sender.tasks()).single;
+    final run = await sender.startTimer(task.id);
+    await exchange();
+    final result = await apply();
+    expect(result.state, SyncApplyState.applied, reason: result.reason);
+    final remote = (await receiver.activeTimerRun())!;
+    expect(remote.ownerDeviceId, a.device);
+    expect(remote.canControl, isFalse);
+    await expectLater(receiver.heartbeatTimer(remote), throwsStateError);
+    await expectLater(receiver.stopTimer(remote), throwsStateError);
+    expect((await receiver.timeEntries()).single.endsAt, isNull);
+    await sender.pauseTimer(run);
+    await exchange();
+    expect((await apply()).state, SyncApplyState.applied);
+    expect((await receiver.timeEntries()).single.endsAt, isNotNull);
+  });
+
   test('same-field conflict retains both branches while an independent group applies', () async {
     await seed();
     await receiver.updateTask(
@@ -372,6 +417,121 @@ void main() {
       expect(result.reason, 'relatedDeletion');
       expect((await receiver.tasks()).single.notes, 'Retain child edit');
       expect((await receiver.categories()).single.id, category.id);
+      final review = (await receiver.reviewSyncConflicts(
+        b,
+        lease: rightLease!,
+      ))!;
+      final child = review.records.singleWhere((r) => r.entity == 'tasks');
+      expect(child.consequence, isTrue);
+      final cloudChoices = {
+        for (final record in review.records)
+          record.id: SyncResolutionChoice.revision(record.remoteHeads.single),
+      };
+      final mixed = await receiver.resolveSyncConflicts(
+        b,
+        lease: rightLease!,
+        reviewedToken: review.token,
+        choices: {
+          ...cloudChoices,
+          child.id: const SyncResolutionChoice.local(),
+        },
+      );
+      expect(mixed.state, SyncApplyState.needsReview);
+      expect((await receiver.categories()).single.id, category.id);
+      expect((await receiver.tasks()).single.notes, 'Retain child edit');
+      final refreshed = (await receiver.reviewSyncConflicts(
+        b,
+        lease: rightLease!,
+      ))!;
+      final resolved = await receiver.resolveSyncConflicts(
+        b,
+        lease: rightLease!,
+        reviewedToken: refreshed.token,
+        choices: {
+          for (final record in refreshed.records)
+            record.id: SyncResolutionChoice.revision(record.remoteHeads.single),
+        },
+      );
+      expect(resolved.state, SyncApplyState.applied, reason: resolved.reason);
+      expect((await receiver.categories()), isEmpty);
+      expect(
+        (await right.customSelect('SELECT notes FROM tasks').getSingle())
+            .read<String>('notes'),
+        'Retain child edit',
+      );
+    },
+  );
+
+  test('purging a task must explicitly review its new managed attachment before cascading it', () async {
+    await seed();
+    final task = (await receiver.tasks()).single;
+    final file = File('${root.path}/new-managed.bin')
+      ..writeAsBytesSync([10, 20, 30]);
+    await receiver.attachManagedFile(task.id, file);
+    final resource = (await receiver.taskResources(task.id)).single;
+    await left.customStatement('DELETE FROM tasks WHERE id=?', [task.id]);
+    await exchange();
+    expect((await apply()).state, SyncApplyState.needsReview);
+    final review = (await receiver.reviewSyncConflicts(b, lease: rightLease!))!;
+    final dependent = review.records.singleWhere(
+      (r) => r.entity == 'task_resources',
+    );
+    expect(dependent.consequence, isTrue);
+    expect(dependent.candidates[dependent.remoteHeads.single], isNull);
+    final mixed = {
+      for (final record in review.records)
+        record.id: SyncResolutionChoice.revision(record.remoteHeads.single),
+    };
+    mixed[dependent.id] = const SyncResolutionChoice.local();
+    expect(
+      (await receiver.resolveSyncConflicts(
+        b,
+        lease: rightLease!,
+        reviewedToken: review.token,
+        choices: mixed,
+      )).state,
+      SyncApplyState.needsReview,
+    );
+    expect(await receiver.managedAttachmentBytes(resource), [10, 20, 30]);
+    final refreshed = (await receiver.reviewSyncConflicts(
+      b,
+      lease: rightLease!,
+    ))!;
+    final result = await receiver.resolveSyncConflicts(
+      b,
+      lease: rightLease!,
+      reviewedToken: refreshed.token,
+      choices: {
+        for (final record in refreshed.records)
+          record.id: SyncResolutionChoice.revision(record.remoteHeads.single),
+      },
+    );
+    expect(result.state, SyncApplyState.applied, reason: result.reason);
+    expect(await receiver.tasks(), isEmpty);
+    expect(await receiver.taskResources(task.id), isEmpty);
+  });
+
+  test(
+    'timer ownership transfer pauses only at the confirmed checkpoint',
+    () async {
+      await seed();
+      final task = (await sender.tasks()).single;
+      final original = await sender.startTimer(task.id);
+      await exchange();
+      expect((await apply()).state, SyncApplyState.applied);
+      final imported = (await receiver.activeTimerRun())!;
+      await receiver.adoptTimerAtCheckpoint(imported);
+      final adopted = (await receiver.activeTimerRun())!;
+      expect(adopted.canControl, isTrue);
+      expect(adopted.ownerDeviceId, b.device);
+      expect((await receiver.timeEntries()).single.endsAt, original.lastSeenAt);
+      expect(adopted.state.name, 'paused');
+      await receiver.resumeTimer(adopted);
+      expect(await receiver.timeEntries(), hasLength(2));
+      expect(
+        (await receiver.timeEntries()).where((e) => e.endsAt == null),
+        hasLength(1),
+      );
     },
   );
 
@@ -717,6 +877,39 @@ void main() {
     expect((await sender.tasks()).single.title, 'B title');
     expect(await receiver.reviewSyncConflicts(b, lease: rightLease!), isNull);
   });
+
+  test(
+    'Resolve Later survives another apply attempt and unrelated edits',
+    () async {
+      await seed();
+      await receiver.updateTask(
+        (await receiver.tasks()).single,
+        const TaskDraft(title: 'B title'),
+      );
+      await sender.updateTask(
+        (await sender.tasks()).single,
+        const TaskDraft(title: 'A title'),
+      );
+      await exchange();
+      await apply();
+      final review = (await receiver.reviewSyncConflicts(
+        b,
+        lease: rightLease!,
+      ))!;
+      await receiver.dismissSyncConflicts(b, review, lease: rightLease!);
+      await receiver.addTask(
+        const TaskDraft(title: 'Unrelated synthetic edit'),
+      );
+      await apply();
+      final refreshed = (await receiver.reviewSyncConflicts(
+        b,
+        lease: rightLease!,
+      ))!;
+      expect(refreshed.dismissed, isTrue);
+      expect(refreshed.attentionToken, review.attentionToken);
+      expect((await receiver.tasks()).map((t) => t.title), contains('B title'));
+    },
+  );
 
   test('a newly received revision invalidates an open decision without changing data', () async {
     await seed();

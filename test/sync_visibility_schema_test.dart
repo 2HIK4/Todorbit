@@ -33,7 +33,7 @@ class _Schema24Connection extends AppDatabase {
 }
 
 void main() {
-  test('schema24 restages old ciphertext without deleting bytes or changing operations', () async {
+  test('schema24 retains original ciphertext and upgraded visibility while quarantining prototype exchange', () async {
     final root = await Directory.systemTemp.createTemp(
       'todorbit-sync-v24-upgrade-',
     );
@@ -134,18 +134,16 @@ void main() {
       final ids = before
           .map((row) => row.read<String>('operation_id'))
           .toList();
-      final next = (await repository.prepareNextSyncBatch(binding, key))!;
-      expect(next.id, isNot(legacy.id));
-      final upgraded = await codec.decrypt(
-        next.bytes,
-        key,
-        workspace: binding.workspace,
-        account: binding.account,
-        expectedSchema: 25,
+      await expectLater(
+        repository.prepareNextSyncBatch(binding, key),
+        throwsStateError,
       );
-      expect(upgraded.operations.map((op) => op.revision.id), ids);
-      expect(upgraded.operations.first.revision.visible!.toJson(), isEmpty);
-      expect(upgraded.operations.last.revision.visible!.toJson(), {
+      final retained = await db
+          .customSelect('SELECT * FROM sync_journal ORDER BY sequence')
+          .get();
+      expect(retained.map((r) => r.read<String>('operation_id')), ids);
+      expect(jsonDecode(retained.first.read<String>('visible_json')), isEmpty);
+      expect(jsonDecode(retained.last.read<String>('visible_json')), {
         binding.device: [
           [1, 1],
         ],
@@ -159,25 +157,25 @@ void main() {
         ],
       });
       expect(context.read<int>('automatic_sync'), 0);
+      expect(context.read<int>('capture_enabled'), 0);
+      expect(context.read<int>('restore_quarantined'), 1);
       expect(
         await db.customSelect('SELECT * FROM sync_batches').get(),
-        hasLength(2),
+        hasLength(1),
       );
       await repository.addTask(
-        const TaskDraft(title: 'Next visible local action'),
+        const TaskDraft(title: 'Retained local work during quarantine'),
       );
-      final last =
-          (await db
-                  .customSelect(
-                    'SELECT visible_json FROM sync_journal ORDER BY sequence DESC LIMIT 1',
-                  )
-                  .getSingle())
-              .read<String>('visible_json');
-      expect(jsonDecode(last), {
-        binding.device: [
-          [1, 2],
-        ],
-      });
+      expect(await repository.tasks(), hasLength(3));
+      final afterEdit = await db
+          .customSelect('SELECT * FROM sync_journal ORDER BY sequence')
+          .get();
+      expect(afterEdit.map((r) => r.read<String>('operation_id')), ids);
+      expect(
+        (await db.customSelect('SELECT payload FROM sync_batches').getSingle())
+            .data['payload'],
+        ciphertext,
+      );
       await expectLater(
         db.customStatement("UPDATE sync_journal SET visible_json='{}'"),
         throwsA(isA<sqlite.SqliteException>()),

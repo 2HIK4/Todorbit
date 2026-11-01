@@ -28,6 +28,7 @@ class DriveCheckpointExpired extends CloudFailure {
 }
 
 abstract interface class SyncStorageProvider implements CloudStorageProvider {
+  Future<List<CloudObject>> listWorkspaceProofs();
   Future<String> startChangeToken();
   Future<DriveChangePage> changes(String token);
 }
@@ -143,7 +144,12 @@ class GoogleDriveProvider implements CloudStorageProvider, SyncStorageProvider {
   }
 
   @override
-  Future<List<CloudObject>> list() async {
+  Future<List<CloudObject>> list() => _list();
+
+  @override
+  Future<List<CloudObject>> listWorkspaceProofs() => _list(kind: 'workspace');
+
+  Future<List<CloudObject>> _list({String? kind}) async {
     final accountId = account?.id;
     if (accountId == null) {
       throw const CloudFailure('Connect Google Drive first.');
@@ -157,7 +163,7 @@ class GoogleDriveProvider implements CloudStorageProvider, SyncStorageProvider {
         Uri.https('www.googleapis.com', '/drive/v3/files', {
           'spaces': 'appDataFolder',
           'q':
-              "trashed = false and appProperties has { key='application' and value='$_namespace' }",
+              "trashed = false and appProperties has { key='application' and value='$_namespace' }${kind == null ? '' : " and appProperties has { key='kind' and value='$kind' }"}",
           'fields': 'nextPageToken,files($_fields)',
           'pageSize': '100',
           'orderBy': 'createdTime desc',

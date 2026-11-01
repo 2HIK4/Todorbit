@@ -171,6 +171,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   const bool legacy_widget_mode =
       std::find(command_line_arguments.begin(), command_line_arguments.end(),
                 "--legacy-flutter-widget") != command_line_arguments.end();
+  const bool sync_background = std::find(command_line_arguments.begin(),
+      command_line_arguments.end(), "--sync-background") != command_line_arguments.end();
   const bool diagnostics_requested = legacy_widget_mode &&
       std::find(command_line_arguments.begin(), command_line_arguments.end(),
                 "--widget-diagnostics") != command_line_arguments.end();
@@ -182,13 +184,22 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
       ::OleUninitialize();
       return EXIT_FAILURE;
     }
-    const std::wstring mutex_name = L"Local\\TodorbitMain-" + profile_key;
+    if (sync_background && FindProfileWindow(profile_key) != nullptr) {
+      ::OleUninitialize();
+      return EXIT_SUCCESS;
+    }
+    const std::wstring mutex_name = (sync_background ? L"Local\\TodorbitSync-" : L"Local\\TodorbitMain-") + profile_key;
     instance_mutex = ::CreateMutexW(nullptr, TRUE, mutex_name.c_str());
     if (instance_mutex == nullptr) {
       ::OleUninitialize();
       return EXIT_FAILURE;
     }
     owns_instance = ::GetLastError() != ERROR_ALREADY_EXISTS;
+    if (sync_background && !owns_instance) {
+      ::CloseHandle(instance_mutex);
+      ::OleUninitialize();
+      return EXIT_SUCCESS;
+    }
     if (!owns_instance) {
       const std::string command = ActivationCommand(command_line_arguments);
       for (int attempt = 0; attempt < 150; ++attempt) {
@@ -230,7 +241,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   flutter::DartProject project(L"data");
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
-  FlutterWindow window(project);
+  FlutterWindow window(project, sync_background);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size = legacy_widget_mode
                                ? Win32Window::Size(360, 480)
@@ -245,7 +256,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     return EXIT_FAILURE;
   }
   const std::wstring profile_property = L"TodorbitMain-" + profile_key;
-  if (owns_instance) ::SetPropW(window.GetHandle(), profile_property.c_str(),
+  if (owns_instance && !sync_background) ::SetPropW(window.GetHandle(), profile_property.c_str(),
                                 reinterpret_cast<HANDLE>(1));
   WidgetDiagnostics::Snapshot(window.GetHandle(), nullptr, L"before desktop attachment");
   if (legacy_widget_mode && !AttachWidgetToDesktop(window.GetHandle())) {

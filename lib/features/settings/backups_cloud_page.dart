@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
 import '../../app/app_controller.dart';
+import '../../app/sync_controller.dart';
 import '../../data/app_database.dart';
 import '../../data/cloud/cloud_backup_service.dart';
 import '../../data/cloud/cloud_storage_provider.dart';
@@ -36,6 +37,7 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
   List<CloudObject> objects = [];
   bool busy = false, signingIn = false;
   bool historyLoaded = false;
+  bool sharedAuth = false;
   CloudTransferStatus? transferStatus;
   String? error, message;
   String? pendingRestore;
@@ -51,9 +53,11 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
     super.initState();
     final local = ref.read(appControllerProvider).backupService;
     if (local == null) return;
-    client = widget.auth == null ? http.Client() : null;
+    final suppliedAuth = widget.auth ?? ref.read(syncControllerProvider)?.auth;
+    sharedAuth = widget.auth == null && suppliedAuth != null;
+    client = suppliedAuth == null ? http.Client() : null;
     auth =
-        widget.auth ??
+        suppliedAuth ??
         (Platform.isAndroid
             ? AndroidGoogleDriveAuth(
                 client: client!,
@@ -77,7 +81,7 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
         widget.service ??
         CloudBackupService(
           local: local,
-          provider: GoogleDriveProvider(auth!, client!),
+          provider: GoogleDriveProvider(auth!, client ?? auth!.client),
           appVersion: Platform.isAndroid
               ? const String.fromEnvironment(
                   'FLUTTER_BUILD_NAME',
@@ -106,7 +110,7 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
 
   @override
   void dispose() {
-    auth?.flow.cancel();
+    if (!sharedAuth || signingIn) auth?.flow.cancel();
     client?.close();
     cloudProgress.dispose();
     super.dispose();
@@ -154,6 +158,7 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
       }
     } finally {
       if (mounted) {
+        if (sharedAuth) ref.read(syncControllerProvider)?.connectionChanged();
         setState(() {
           busy = false;
           signingIn = false;

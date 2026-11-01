@@ -1,6 +1,40 @@
 part of 'life_repository.dart';
 
 extension SyncStatusRepository on LifeRepository {
+  Future<void> savePortablePreferences(Map<String, Object?> values) =>
+      db.transaction(() async {
+        for (final entry in values.entries) {
+          await savePortablePreference(entry.key, entry.value);
+        }
+      });
+  Future<void> savePortablePreference(String key, Object? value) async {
+    final json = jsonEncode(validatePortablePreference(key, value));
+    await db.customStatement(
+      '''INSERT INTO portable_preferences(key,value_json,updated_at) VALUES(?,?,?)
+      ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,updated_at=excluded.updated_at
+      WHERE portable_preferences.value_json!=excluded.value_json''',
+      [key, json, DateTime.now().toUtc().toIso8601String()],
+    );
+  }
+
+  Future<Map<String, Object?>> portablePreferences() async => {
+    for (final row
+        in await db.customSelect('SELECT * FROM portable_preferences').get())
+      row.read<String>('key'): validatePortablePreference(
+        row.read<String>('key'),
+        jsonDecode(row.read<String>('value_json')),
+      ),
+  };
+
+  Future<void> initializePortablePreferences(Map<String, Object?> values) =>
+      db.transaction(() async {
+        final existing = await portablePreferences();
+        for (final entry in values.entries) {
+          if (!existing.containsKey(entry.key)) {
+            await savePortablePreference(entry.key, entry.value);
+          }
+        }
+      });
   Future<SyncExchangeStatus> syncExchangeStatus() async {
     final c = await db
         .customSelect('SELECT * FROM sync_capture_context WHERE id=1')
@@ -11,12 +45,8 @@ extension SyncStatusRepository on LifeRepository {
     final pending = await db
         .customSelect(
           '''SELECT COUNT(*) AS value FROM sync_journal
-      WHERE workspace_id=? AND account_id=? AND device_id=? AND uploaded=0''',
-          variables: [
-            Variable<String>(workspace),
-            Variable<String>(account),
-            Variable<String>(device),
-          ],
+      WHERE workspace_id=? AND account_id=? AND uploaded=0''',
+          variables: [Variable<String>(workspace), Variable<String>(account)],
         )
         .getSingle();
     final groups = await db

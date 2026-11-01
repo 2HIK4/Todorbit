@@ -31,6 +31,33 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
   String? error;
   Timer? clock;
 
+  Future<void> _takeControl(TimerRun previous) async {
+    final selected = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Take control at the last synced checkpoint?'),
+        content: const Text(
+          'This closes the known interval at its last synced checkpoint and pauses the timer on this device. Stop it on the originating device first. Later work or concurrent ownership changes will require conflict review.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Take control and pause'),
+          ),
+        ],
+      ),
+    );
+    if (selected == true && mounted) {
+      await _run(
+        () => ref.read(appControllerProvider).adoptTimerAtCheckpoint(previous),
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -117,11 +144,12 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
     final run = controller.activeTimer;
     final thisRun = run?.taskId == widget.taskId ? run : null;
     final now = widget.now?.call() ?? DateTime.now();
-    final recovery = run?.needsReview(now) ?? false;
+    final remote = run != null && !run.canControl;
+    final recovery = !remote && (run?.needsReview(now) ?? false);
     final entries = controller.timeEntries
         .where((item) => item.taskId == widget.taskId)
         .toList();
-    final confirmedEnd = recovery ? run!.lastSeenAt : now;
+    final confirmedEnd = recovery || remote ? run!.lastSeenAt : now;
     final total = TimeEntry.distinctDuration(entries, confirmedEnd);
     final session = thisRun == null
         ? Duration.zero
@@ -235,7 +263,16 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
                   error!,
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
-              if (recovery && thisRun != null) ...[
+              if (remote && thisRun != null) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'This timer is controlled by another device. Work is shown through its last synced checkpoint. Pause or stop it on that device.',
+                ),
+                OutlinedButton(
+                  onPressed: busy ? null : () => _takeControl(thisRun),
+                  child: const Text('Take control at checkpoint'),
+                ),
+              ] else if (recovery && thisRun != null) ...[
                 const SizedBox(height: 12),
                 Text(
                   'Timer needs review. Last confirmed running at ${_stamp(thisRun.lastSeenAt)}.',

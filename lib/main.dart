@@ -12,6 +12,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'app/app_controller.dart';
+import 'app/sync_controller.dart';
+import 'app/sync_runtime.dart';
+import 'app/sync_background.dart';
 import 'app/privacy_manager.dart';
 import 'data/app_database.dart';
 import 'data/widget_configuration_store.dart';
@@ -36,6 +39,25 @@ import 'platform/android/android_surfaces.dart';
 import 'platform/android/android_platform.dart';
 
 Future<void> main(List<String> args) => _startApplication(args);
+
+@pragma('vm:entry-point')
+Future<void> androidSyncBackgroundMain() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  var retry = false;
+  try {
+    final root = await AndroidPlatform.channel.invokeMethod<String>('dataRoot');
+    if (root == null) return;
+    ProfilePaths.configureAndroidRoot(root);
+    retry = await runBackgroundSync(publish: publishAndroidRepository);
+  } catch (_) {
+    // The durable queue/backoff is retained; authentication or lock attention
+    // is presented only in the foreground.
+  } finally {
+    await AndroidPlatform.channel.invokeMethod<void>('backgroundComplete', {
+      'retry': retry,
+    });
+  }
+}
 
 /// Bounded JobScheduler entry point. UI owns restores and schema upgrades.
 @pragma('vm:entry-point')
@@ -77,6 +99,14 @@ Future<void> _startApplication(
   bool migrationApproved = false,
 }) async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (Platform.isWindows && args.contains('--sync-background')) {
+    try {
+      await runBackgroundSync();
+    } catch (_) {
+      /* A bounded worker never opens error dialogs over a locked app. */
+    }
+    exit(0);
+  }
   if (Platform.isAndroid) {
     final root = await AndroidPlatform.channel.invokeMethod<String>('dataRoot');
     if (root == null) {
@@ -159,6 +189,9 @@ Future<void> _startApplication(
     return;
   }
   final privacy = PrivacyManager(privacyStore, privacySettings);
+  if (await backupService.restoreAwaitingOpen()) {
+    await LifeRepository(database).quarantineRestoredSync();
+  }
   privacy.startInactivityCheck();
   final appearanceStore = await AppearancePreferenceStore.openDefault();
   final calendarPreferenceStore = await CalendarPreferenceStore.openDefault();
@@ -235,11 +268,16 @@ Future<void> _startApplication(
   }
   final legacyWidgetMode =
       Platform.isWindows && args.contains('--legacy-flutter-widget');
+  final sync = (Platform.isWindows || Platform.isAndroid)
+      ? createSyncRuntime(controller, privacy)
+      : null;
+  if (sync != null) unawaited(sync.initialize());
   runApp(
     ProviderScope(
       overrides: [
         appControllerProvider.overrideWith((ref) => controller),
         privacyManagerProvider.overrideWith((ref) => privacy),
+        syncControllerProvider.overrideWith((ref) => sync),
       ],
       child: legacyWidgetMode && !privacy.enabled
           ? DesktopWidgetApp(
@@ -547,6 +585,9 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
     final privacy = ref.read(privacyManagerProvider);
     if (state == AppLifecycleState.resumed) {
       unawaited(privacy.resumed());
+      unawaited(
+        ref.read(syncControllerProvider)?.syncNow() ?? Future<void>.value(),
+      );
       ref.read(appControllerProvider).refresh();
       ref.read(appControllerProvider).checkAutomaticBackup();
     } else if (state == AppLifecycleState.inactive ||

@@ -6,6 +6,11 @@ class _SyncResolutionDraft {
   final SyncConflictReview review;
 }
 
+class _SyncCloudPreview implements Exception {
+  const _SyncCloudPreview(this.values);
+  final Map<String, Map<String, Object?>?>? values;
+}
+
 extension SyncResolutionRepository on LifeRepository {
   Future<_SyncResolutionDraft?> _prepareSyncResolution(
     SyncBinding binding,
@@ -56,6 +61,14 @@ extension SyncResolutionRepository on LifeRepository {
     final records = <_SyncRecordDraft>[];
     final visibleRecords = <SyncConflictRecord>[];
     final schema = _SyncApplySchema(this, {}, binding);
+    final structural =
+        (await _syncCrossRecordHazard(binding, operations, schema)) != null ||
+        groups.any(
+          (g) =>
+              g.readNullable<String>('blocked_reason') != null &&
+              jsonDecode(g.read<String>('blocked_reason'))['reason'] !=
+                  'recordConflict',
+        );
     String? reason;
     for (final op in keys.values) {
       final entity = op['entity'] as String, key = op['record_key'] as String;
@@ -112,8 +125,174 @@ extension SyncResolutionRepository on LifeRepository {
           local: current,
           review: review,
           candidates: Map.unmodifiable(candidates),
+          remoteHeads: Set.unmodifiable(
+            history
+                .where(
+                  (row) =>
+                      row['group_materialized'] != 1 &&
+                      review.heads.contains(row['operation_id']),
+                )
+                .map((row) => row['operation_id'] as String),
+          ),
         ),
       );
+    }
+    if (structural && reason == null) {
+      // Derive actual SQLite consequences in a savepoint and roll it back.
+      // A parent choice must not silently cascade through an unseen local
+      // child, or claim to keep a row which SQLite would redirect/delete.
+      final heads = await db
+          .customSelect(
+            '''SELECT entity,record_key FROM sync_entity_heads
+        WHERE workspace_id=? ORDER BY entity,record_key LIMIT 8193''',
+            variables: [Variable.withString(binding.workspace)],
+          )
+          .get();
+      if (heads.length > 8192) {
+        throw StateError(
+          'This related-record review exceeds its safe bound. No changes were applied.',
+        );
+      }
+      final locals = <String, (String, String, Map<String, Object?>?)>{};
+      for (final head in heads) {
+        final entity = head.read<String>('entity'),
+            key = head.read<String>('record_key');
+        final scope = _syncScope(entity, key);
+        if (!keys.containsKey(scope)) {
+          locals[scope] = (entity, key, await schema.current(entity, key));
+        }
+        if (!await renewSyncLease(lease)) {
+          throw StateError('Sync review ownership expired.');
+        }
+      }
+      Map<String, Map<String, Object?>?>? preview;
+      if (visibleRecords.every((r) => r.remoteHeads.length == 1)) {
+        final cloud = [
+          for (final record in visibleRecords)
+            _SyncRecordDraft(
+              record.entity,
+              record.key,
+              record.local,
+              SyncRecordReview(
+                heads: record.review.heads,
+                merged: record.candidates[record.remoteHeads.single],
+                conflicts: const [],
+              ),
+            ),
+        ];
+        try {
+          await db.transaction(() async {
+            final first = groups.first;
+            final result = await _applyPreparedSyncGroup(
+              binding,
+              lease,
+              _SyncGroupDraft(
+                id: ids.first,
+                device: first.read<String>('device_id'),
+                first: first.read<int>('first_sequence'),
+                last: first.read<int>('last_sequence'),
+                localSequence: context.read<int>('device_sequence'),
+                visibleState: context.read<String>('visible_json'),
+                records: cloud,
+                operations: operations,
+                coveredGroups: ids.skip(1).toSet(),
+              ),
+            );
+            final post = _SyncApplySchema(this, {}, binding);
+            final values = result.state == SyncApplyState.applied
+                ? <String, Map<String, Object?>?>{
+                    for (final item in locals.entries)
+                      item.key: await post.current(
+                        item.value.$1,
+                        item.value.$2,
+                      ),
+                  }
+                : null;
+            throw _SyncCloudPreview(values);
+          }, requireNew: true);
+        } on _SyncCloudPreview catch (result) {
+          preview = result.values;
+        }
+      }
+      final hiddenBy = operations
+          .where((op) {
+            final value = _syncJsonRow(op['after_json']);
+            return value == null ||
+                value['deleted_at'] != null ||
+                value['archived_at'] != null;
+          })
+          .map(
+            (op) =>
+                _syncScope(op['entity'] as String, op['record_key'] as String),
+          )
+          .toSet();
+      for (final entry in locals.entries) {
+        final (entity, key, current) = entry.value;
+        final consequence = preview?[entry.key];
+        final losesVisibility =
+            current != null &&
+            (await schema.references(
+              entity,
+              current,
+            )).intersection(hiddenBy).isNotEmpty;
+        if (preview != null &&
+            !losesVisibility &&
+            _syncSame(
+              current == null ? null : _syncUserFields(current),
+              consequence == null ? null : _syncUserFields(consequence),
+            )) {
+          continue;
+        }
+        final history =
+            (await db
+                    .customSelect(
+                      '''SELECT $_syncReviewProjection FROM sync_journal j
+          JOIN sync_mutation_groups g ON g.id=j.mutation_group_id WHERE j.workspace_id=? AND j.account_id=?
+          AND j.entity=? AND j.record_key=? AND g.materialized=1 AND j.known=1 ORDER BY j.sequence''',
+                      variables: [
+                        Variable.withString(binding.workspace),
+                        Variable.withString(binding.account),
+                        Variable.withString(entity),
+                        Variable.withString(key),
+                      ],
+                    )
+                    .get())
+                .map((r) => r.data)
+                .toList();
+        final baseline = reviewPortableRecord(
+          entity,
+          history.map(_syncRevisionFromJournal),
+        );
+        if (baseline.needsDecision ||
+            !_syncSame(
+              baseline.merged == null
+                  ? null
+                  : _syncUserFields(baseline.merged!),
+              current == null ? null : _syncUserFields(current),
+            )) {
+          reason = 'unverifiedLocalState';
+        }
+        records.add(_SyncRecordDraft(entity, key, current, baseline));
+        visibleRecords.add(
+          SyncConflictRecord(
+            entity: entity,
+            key: key,
+            local: current,
+            review: baseline,
+            candidates: {if (preview != null) r'$consequence': consequence},
+            remoteHeads: preview == null ? const {} : const {r'$consequence'},
+            consequence: true,
+          ),
+        );
+        if (!await renewSyncLease(lease)) {
+          throw StateError('Sync review ownership expired.');
+        }
+      }
+      if (records.length > 2048) {
+        throw StateError(
+          'This review exceeds the safe transaction bound. Nothing was changed.',
+        );
+      }
     }
     final retained = await db
         .customSelect(
@@ -128,6 +307,8 @@ extension SyncResolutionRepository on LifeRepository {
                 'sequence': context.read<int>('device_sequence'),
                 'visible': context.read<String>('visible_json'),
                 'retained': retained.read<int>('value'),
+                'structural': structural,
+                'reason': reason,
                 'groups': ids,
                 'records': [
                   for (final record in visibleRecords)
@@ -143,6 +324,24 @@ extension SyncResolutionRepository on LifeRepository {
         )
         .toString();
     final first = groups.first;
+    final attentionToken = sha256
+        .convert(
+          utf8.encode(
+            jsonEncode(
+              _syncCanonical([
+                for (final record in visibleRecords)
+                  {
+                    'id': record.id,
+                    'heads': record.review.heads.toList()..sort(),
+                  },
+              ]),
+            ),
+          ),
+        )
+        .toString();
+    final dismissed = groups
+        .where((g) => g.readNullable<String>('blocked_reason') != null)
+        .toList();
     return _SyncResolutionDraft(
       _SyncGroupDraft(
         id: ids.first,
@@ -157,6 +356,15 @@ extension SyncResolutionRepository on LifeRepository {
       ),
       SyncConflictReview(
         token: token,
+        structural: structural,
+        attentionToken: attentionToken,
+        dismissed:
+            dismissed.isNotEmpty &&
+            dismissed.every(
+              (g) =>
+                  jsonDecode(g.read<String>('blocked_reason'))['dismissed'] ==
+                  attentionToken,
+            ),
         records: List.unmodifiable(visibleRecords),
         reason: reason,
       ),
@@ -167,6 +375,23 @@ extension SyncResolutionRepository on LifeRepository {
     SyncBinding binding, {
     required SyncLease lease,
   }) async => (await _prepareSyncResolution(binding, lease))?.review;
+
+  Future<void> dismissSyncConflicts(
+    SyncBinding binding,
+    SyncConflictReview review, {
+    required SyncLease lease,
+  }) => db.transaction(() async {
+    final current = await _prepareSyncResolution(binding, lease);
+    if (current == null ||
+        current.review.attentionToken != review.attentionToken) {
+      return;
+    }
+    await db.customStatement(
+      '''UPDATE sync_mutation_groups SET blocked_reason=json_set(blocked_reason,'\$.dismissed',?)
+        WHERE workspace_id=? AND account_id=? AND materialized=0 AND blocked_reason IS NOT NULL''',
+      [review.attentionToken, binding.workspace, binding.account],
+    );
+  });
 
   Future<SyncApplyResult> resolveSyncConflicts(
     SyncBinding binding, {
@@ -193,21 +418,7 @@ extension SyncResolutionRepository on LifeRepository {
       );
     }
     final draft = prepared.draft;
-    final blocked = await db
-        .customSelect(
-          '''SELECT blocked_reason FROM sync_mutation_groups
-      WHERE workspace_id=? AND account_id=? AND materialized=0 AND blocked_reason IS NOT NULL''',
-          variables: [
-            Variable.withString(binding.workspace),
-            Variable.withString(binding.account),
-          ],
-        )
-        .get();
-    final structural = blocked.any(
-      (g) =>
-          jsonDecode(g.read<String>('blocked_reason'))['reason'] !=
-          'recordConflict',
-    );
+    final structural = prepared.review.structural;
     final resolved = <_SyncRecordDraft>[];
     for (final record in prepared.review.records) {
       var value = record.review.merged == null
@@ -262,6 +473,8 @@ extension SyncResolutionRepository on LifeRepository {
             merged: value,
             conflicts: const [],
           ),
+          preserveRelationships:
+              structural && choice != null && choice.revision == null,
         ),
       );
     }

@@ -12,6 +12,7 @@ import '../../app/app_controller.dart';
 import '../../domain/appearance.dart';
 import '../widget/native_widget_service.dart';
 import 'backups_cloud_page.dart';
+import 'sync_settings_page.dart';
 import 'settings_transfer_dialog.dart';
 import 'hotkeys_dialog.dart';
 import 'notification_dialog.dart';
@@ -32,6 +33,7 @@ enum _SettingsPage {
   widget('Widget', Icons.widgets_outlined),
   privacy('Privacy & Data', Icons.lock_outline),
   backups('Backups & Cloud', Icons.backup_outlined),
+  sync('Sync', Icons.sync),
   updates('Software Updates', Icons.system_update_outlined);
 
   const _SettingsPage(this.title, this.icon);
@@ -305,6 +307,7 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
           nativeWidget: widget.nativeWidget,
         ),
         _SettingsPage.backups => const BackupsCloudPage(),
+        _SettingsPage.sync => const SyncSettingsPage(),
       },
     ],
   );

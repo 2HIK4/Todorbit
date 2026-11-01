@@ -19,6 +19,8 @@ class TimerRun {
     required this.lastSeenAt,
     required this.updatedAt,
     this.stoppedAt,
+    this.ownerDeviceId,
+    this.canControl = true,
   });
   final String id;
   final String? taskId;
@@ -27,6 +29,8 @@ class TimerRun {
   final DateTime lastSeenAt;
   final DateTime updatedAt;
   final DateTime? stoppedAt;
+  final String? ownerDeviceId;
+  final bool canControl;
   bool get active => state != TimerState.stopped;
   bool needsReview(DateTime now) =>
       state == TimerState.running &&
@@ -40,6 +44,8 @@ class TimerRun {
     lastSeenAt: value.toUtc(),
     updatedAt: updatedAt,
     stoppedAt: stoppedAt,
+    ownerDeviceId: ownerDeviceId,
+    canControl: canControl,
   );
 }
 

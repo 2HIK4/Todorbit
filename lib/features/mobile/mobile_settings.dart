@@ -10,6 +10,7 @@ import '../../domain/appearance.dart';
 import '../../domain/models.dart';
 import '../../platform/android/android_platform.dart';
 import '../settings/backups_cloud_page.dart';
+import '../settings/sync_settings_page.dart';
 import '../settings/android_software_updates_page.dart';
 import '../settings/privacy_dialog.dart';
 import '../settings/task_view_settings_dialog.dart';
@@ -386,10 +387,18 @@ class _MobileSettingsState extends ConsumerState<MobileSettings>
             ),
             const MobileSectionTitle('Data and app'),
             ListTile(
+              leading: const Icon(Icons.sync),
+              title: const Text('Sync'),
+              subtitle: const Text(
+                'Encrypted incremental changes and conflict resolution',
+              ),
+              onTap: () => showSyncSettings(context),
+            ),
+            ListTile(
               leading: const Icon(Icons.backup_outlined),
               title: const Text('Backups and Google Drive'),
               subtitle: const Text(
-                'Verified snapshots. Restore replaces data; devices do not sync.',
+                'Verified snapshots. Restore replaces local data; Sync is managed separately.',
               ),
               onTap: () => Navigator.push<void>(
                 context,

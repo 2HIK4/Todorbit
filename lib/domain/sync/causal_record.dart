@@ -35,6 +35,7 @@ class SyncRevision {
     required Map<String, Object?>? value,
     Map<String, int>? observed,
     this.visible,
+    this.intent = 'edit',
   }) : parents = Set<String>.unmodifiable(parents),
        observed = Map<String, int>.unmodifiable(
          observed ?? (sequence > 1 ? {device: sequence - 1} : {}),
@@ -42,7 +43,8 @@ class SyncRevision {
        value = value == null
            ? null
            : _freeze(_canonical(value)) as Map<String, Object?> {
-    if (id.isEmpty ||
+    if (!const {'edit', 'restore'}.contains(intent) ||
+        id.isEmpty ||
         id.length > 128 ||
         device.isEmpty ||
         device.length > 128 ||
@@ -66,6 +68,7 @@ class SyncRevision {
     }
   }
   final String id, device;
+  final String intent;
   final int sequence;
   final Set<String> parents;
   final Map<String, int> observed;
@@ -82,6 +85,7 @@ class SyncRevision {
     'observed': observed,
     if (visible != null) 'visible': visible!.toJson(),
     'value': value,
+    if (intent != 'edit') 'intent': intent,
   };
 
   factory SyncRevision.fromJson(Map<String, dynamic> json) {
@@ -93,10 +97,12 @@ class SyncRevision {
           'value',
           'observed',
           'visible',
+          'intent',
         }).isNotEmpty ||
         json['id'] is! String ||
         json['device'] is! String ||
         json['sequence'] is! int ||
+        (json['intent'] != null && json['intent'] is! String) ||
         json['parents'] is! List ||
         !json.containsKey('value') ||
         (json['parents'] as List).any((value) => value is! String) ||
@@ -121,6 +127,7 @@ class SyncRevision {
           : SyncVisibility.fromJson(
               (json['visible'] as Map).cast<String, dynamic>(),
             ),
+      intent: json['intent'] as String? ?? 'edit',
     );
   }
 }
@@ -289,7 +296,8 @@ class CausalRecord {
     )) {
       return result(candidates.values.first, []);
     }
-    if (bases.length != 1 ||
+    if (ordered.any((id) => _revisions[id]!.intent == 'restore') ||
+        bases.length != 1 ||
         candidates.values.any((value) => value == null) ||
         _revisions[bases.single]!.value == null) {
       return result(null, [

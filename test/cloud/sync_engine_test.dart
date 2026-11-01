@@ -63,6 +63,7 @@ void main() {
       recovery: leftRecovery,
       loadKey: (_) async => key,
       isUnlocked: () => unlocked,
+      verifyWorkspace: (_, _) async {},
     );
     b = SyncEngine(
       repository: receiver,
@@ -70,6 +71,7 @@ void main() {
       recovery: rightRecovery,
       loadKey: (_) async => key,
       isUnlocked: () => unlocked,
+      verifyWorkspace: (_, _) async {},
     );
   });
   tearDown(() async {
@@ -145,4 +147,68 @@ void main() {
       expect(a.status.phase, SyncPhase.disconnected);
     },
   );
+  test('background budget yields without consuming queued bytes or adding failure backoff', () async {
+    final bounded = SyncEngine(
+      repository: sender,
+      storage: drive,
+      recovery: leftRecovery,
+      loadKey: (_) async => SyncWorkspaceKey.generate(),
+      isUnlocked: () => true,
+      verifyWorkspace: (_, _) async {},
+      timeBudget: Duration.zero,
+    );
+    try {
+      await bounded.syncNow(manual: true);
+      expect(bounded.status.phase, SyncPhase.pending);
+      expect(drive.uploads, 0);
+      expect((await sender.syncExchangeStatus()).retryAt, isNull);
+      expect((await sender.syncExchangeStatus()).pending, greaterThan(0));
+      expect(await sender.acquireSyncLease(first), isNotNull);
+    } finally {
+      await bounded.close();
+    }
+  });
+  test('workspace verification failure is actionable and cannot upload queued edits', () async {
+    final verified = SyncEngine(
+      repository: sender,
+      storage: drive,
+      recovery: leftRecovery,
+      loadKey: (_) async => SyncWorkspaceKey.generate(),
+      isUnlocked: () => true,
+      verifyWorkspace: (_, _) async =>
+          throw const FormatException('Untrusted proof'),
+    );
+    try {
+      await verified.syncNow(manual: true);
+      expect(verified.status.phase, SyncPhase.needsAttention);
+      expect(verified.status.notice, contains('could not be verified'));
+      expect(drive.uploads, 0);
+      expect((await sender.syncExchangeStatus()).pending, greaterThan(0));
+    } finally {
+      await verified.close();
+    }
+  });
+  test('a changed background privacy policy fences a job before receiving remote content', () async {
+    await a.syncNow(manual: true);
+    var allowed = true;
+    drive.beforeList = () async => allowed = false;
+    final protected = SyncEngine(
+      repository: receiver,
+      storage: drive,
+      recovery: rightRecovery,
+      loadKey: (_) async => SyncWorkspaceKey.generate(),
+      isUnlocked: () => true,
+      canExchange: () async => allowed,
+      verifyWorkspace: (_, _) async {},
+    );
+    try {
+      await protected.syncNow(manual: true);
+      expect(protected.status.phase, SyncPhase.error);
+      expect(await receiver.tasks(), isEmpty);
+      expect((await receiver.syncExchangeStatus()).changeToken, isNull);
+      expect(drive.downloads, 0);
+    } finally {
+      await protected.close();
+    }
+  });
 }

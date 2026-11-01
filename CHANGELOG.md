@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.19-beta.4+27 - coordinated sync candidate (unpublished)
+
+- Add encrypted incremental Google Drive sync, same-account recovery-code pairing,
+  automatic exchange, Sync Now and persistent consolidated conflict review.
+- Preserve both branches of meaningful conflicts and related deletion consequences;
+  merge safe independent fields and retain interrupted encrypted transfers.
+- Schedule bounded Android network jobs and hidden Windows companion workers,
+  subject to OS authorization/scheduling and foreground privacy barriers.
+- Preserve original queued history across restore reconciliation using a fresh
+  device identity; report committed restores accurately as requiring restart.
+- Migrate existing data to schema 26 with portable preferences and explicit timer
+  ownership. Keep snapshot backups, device settings and release identities intact.
+- Drive validation currently uses mocks; real-account and physical acceptance
+  remain unobserved. See docs/GOOGLE_DRIVE_SYNC.md.
+
 ## 1.0.19-beta.2+25 - Android pre-release
 
 - Prefer smaller compatible ARM64/x86-64 APKs; retain a universal fallback and

@@ -11,7 +11,7 @@ String _syncMetadataJson(String column) =>
 
 String get _syncReviewProjection =>
     '''j.operation_id,j.workspace_id,j.account_id,j.device_id,j.entity,j.record_key,
-  j.origin_sequence,j.observed_json,j.visible_json,j.parent_ids_json,j.mutation_group_id,
+  j.origin_sequence,j.observed_json,j.visible_json,j.parent_ids_json,j.mutation_group_id,j.intent,
   ${_syncMetadataJson('before_json')},${_syncMetadataJson('after_json')}''';
 
 Map<String, Object?>? _syncJsonRow(Object? value) => value == null
@@ -52,10 +52,17 @@ Future<Uint8List> _syncManagedBytesInWorker(
 });
 
 class _SyncRecordDraft {
-  _SyncRecordDraft(this.entity, this.key, this.current, this.review);
+  _SyncRecordDraft(
+    this.entity,
+    this.key,
+    this.current,
+    this.review, {
+    this.preserveRelationships = false,
+  });
   final String entity, key;
   final Map<String, Object?>? current;
   final SyncRecordReview review;
+  final bool preserveRelationships;
 }
 
 class _SyncGroupDraft {
@@ -607,7 +614,7 @@ extension SyncApplyRepository on LifeRepository {
       }
       Future<SyncApplyResult> block(String reason) async {
         await db.customStatement(
-          'UPDATE sync_mutation_groups SET blocked_reason=? WHERE id=?',
+          "UPDATE sync_mutation_groups SET blocked_reason=json_patch(CASE WHEN json_valid(blocked_reason) THEN blocked_reason ELSE '{}' END,?) WHERE id=?",
           [
             jsonEncode({
               'reason': reason,
@@ -625,6 +632,24 @@ extension SyncApplyRepository on LifeRepository {
       }
 
       if (draft.reason != null) return block(draft.reason!);
+      final protectedRelations = <String, Map<String, Object?>>{};
+      for (final record in draft.records.where(
+        (r) => r.preserveRelationships && r.current != null,
+      )) {
+        for (final scope in await fresh.references(
+          record.entity,
+          record.current!,
+        )) {
+          final reference = jsonDecode(scope) as List;
+          if (portableSyncTables.contains(reference.first)) {
+            final prior = await fresh.current(
+              reference.first as String,
+              jsonEncode(reference[1]),
+            );
+            if (prior != null) protectedRelations[scope] = prior;
+          }
+        }
+      }
       final deferred =
           (await db.customSelect('PRAGMA defer_foreign_keys').getSingle())
                   .data
@@ -717,6 +742,32 @@ extension SyncApplyRepository on LifeRepository {
             }
           }
           await _validateSyncDomainState(draft.records);
+          final verified = _SyncApplySchema(this, {}, binding);
+          for (final entry in protectedRelations.entries) {
+            final reference = jsonDecode(entry.key) as List;
+            final after = await verified.current(
+              reference.first as String,
+              jsonEncode(reference[1]),
+            );
+            if (entry.value['deleted_at'] == null &&
+                entry.value['archived_at'] == null &&
+                (after == null ||
+                    after['deleted_at'] != null ||
+                    after['archived_at'] != null)) {
+              throw const _SyncDomainBlock('relatedRecordNeedsDecision');
+            }
+          }
+          for (final record in draft.records) {
+            final actual = await verified.current(record.entity, record.key);
+            if (!_syncSame(
+              actual == null ? null : _syncUserFields(actual),
+              record.review.merged == null
+                  ? null
+                  : _syncUserFields(record.review.merged!),
+            )) {
+              throw const _SyncDomainBlock('recordRelationshipConsequences');
+            }
+          }
           for (final record in draft.records) {
             final heads = record.review.heads.toList()..sort();
             if (heads.isEmpty) {
@@ -886,6 +937,19 @@ extension SyncApplyRepository on LifeRepository {
   }
 
   Future<void> _validateSyncDomainState(List<_SyncRecordDraft> records) async {
+    for (final record in records.where(
+      (r) => r.entity == 'portable_preferences' && r.review.merged != null,
+    )) {
+      final value = record.review.merged!;
+      final raw = jsonDecode(value['value_json'] as String);
+      final normalized = validatePortablePreference(
+        value['key'] as String,
+        raw,
+      );
+      if (!_syncSame(raw, normalized)) {
+        throw const _SyncDomainBlock('invalidPortablePreference');
+      }
+    }
     if ((await db.customSelect('PRAGMA foreign_key_check').get()).isNotEmpty) {
       throw const _SyncDomainBlock('recordRelationship');
     }

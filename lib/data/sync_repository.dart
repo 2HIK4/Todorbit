@@ -80,6 +80,11 @@ extension SyncRepository on LifeRepository {
         'UPDATE sync_capture_context SET workspace_id=?,account_id=?,device_id=?,mutation_group=? WHERE id=1',
         [workspaceId, accountId, deviceId, _uuid.v4()],
       );
+      await db.customStatement(
+        '''UPDATE timer_runs SET owner_device_id=?
+        WHERE state!='stopped' AND owner_device_id IS NULL''',
+        [deviceId],
+      );
       for (final table in portableSyncTables) {
         final columns =
             (await db.customSelect('PRAGMA table_info("$table")').get())

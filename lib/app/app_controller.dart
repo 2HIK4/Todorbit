@@ -21,6 +21,7 @@ import '../domain/templates.dart';
 import '../domain/saved_views.dart';
 import '../domain/appearance.dart';
 import '../domain/task_view_preferences.dart';
+import '../domain/sync/portable_preferences.dart';
 import '../domain/hotkeys.dart';
 import '../domain/scheduling_models.dart';
 import '../domain/trash.dart';
@@ -65,6 +66,7 @@ class AppController extends ChangeNotifier {
   final BackupService? backupService;
   final WidgetConfigurationStore? widgetStore;
   String? backupError;
+  VoidCallback? onLocalChange;
 
   List<Category> categories = [];
   List<Project> projects = [];
@@ -198,11 +200,14 @@ class AppController extends ChangeNotifier {
     if (selectedTaskId != null && selectedTask == null) selectedTaskId = null;
     loading = false;
     notifyListeners();
+    onLocalChange?.call();
   }
 
   void _syncTimerHeartbeat() {
     final run = activeTimer;
-    if (run?.state != TimerState.running || run!.needsReview(DateTime.now())) {
+    if (run?.state != TimerState.running ||
+        !run!.canControl ||
+        run.needsReview(DateTime.now())) {
       _timerHeartbeat?.cancel();
       _timerHeartbeat = null;
       return;
@@ -274,13 +279,84 @@ class AppController extends ChangeNotifier {
     if (calendarPreferenceStore != null) {
       calendarContent = await calendarPreferenceStore!.load();
     }
+    await applyPortablePreferences(seed: true);
     await refresh();
   }
 
+  Future<void> applyPortablePreferences({bool seed = false}) async {
+    if (seed) {
+      await repository.initializePortablePreferences({
+        'theme': theme.name,
+        'customization': customization.toJson()
+          ..remove('author')
+          ..remove('authorProfile'),
+        'calendarContent': calendarContent.name,
+        'firstWeekday': firstWeekday,
+        'lastCalendarMode': lastCalendarMode,
+        'keepCompletedVisible': taskViewPreferences.keepCompletedVisible,
+        'spellCheckEnabled': taskViewPreferences.spellCheckEnabled,
+        'newTaskPlannedDay': taskViewPreferences.newTaskPlannedDay.name,
+        'compositionTextDisplay':
+            taskViewPreferences.compositionTextDisplay.name,
+      });
+    }
+    final values = await repository.portablePreferences();
+    if (values['theme'] case final String mode) {
+      theme = ThemeModePreference.values.byName(mode);
+    }
+    if (values['customization'] case final Map value) {
+      final localMetadata =
+          (await appearanceStore?.loadCustomization() ?? customization)
+              .toJson();
+      customization = ThemeCustomization.fromJson(<String, Object?>{
+        ...Map<String, Object?>.from(value),
+        for (final field in deviceLocalThemeFields)
+          if (localMetadata.containsKey(field)) field: localMetadata[field],
+      });
+    }
+    if (values['calendarContent'] case final String content) {
+      calendarContent = CalendarContent.values.byName(content);
+    }
+    if (values['firstWeekday'] case final int day) firstWeekday = day;
+    if (values.containsKey('lastCalendarMode')) {
+      lastCalendarMode = values['lastCalendarMode'] as String?;
+    }
+    taskViewPreferences = taskViewPreferences.copyWith(
+      keepCompletedVisible: values['keepCompletedVisible'] as bool?,
+      spellCheckEnabled: values['spellCheckEnabled'] as bool?,
+      newTaskPlannedDay: values['newTaskPlannedDay'] is String
+          ? NewTaskPlannedDay.values.byName(
+              values['newTaskPlannedDay'] as String,
+            )
+          : null,
+      compositionTextDisplay: values['compositionTextDisplay'] is String
+          ? CompositionTextDisplay.values.byName(
+              values['compositionTextDisplay'] as String,
+            )
+          : null,
+    );
+    // SQL is the durable source after sync. Profile JSON remains a compatible
+    // projection for existing native readers and portable settings exports.
+    await appearanceStore?.save(theme);
+    await appearanceStore?.saveCustomization(customization);
+    await appearanceStore?.saveFirstWeekday(firstWeekday);
+    await appearanceStore?.saveLastCalendarMode(lastCalendarMode);
+    await appearanceStore?.saveTaskViewPreferences(taskViewPreferences);
+    await calendarPreferenceStore?.save(calendarContent);
+    notifyListeners();
+  }
+
   Future<void> setTaskViewPreferences(TaskViewPreferences value) async {
+    await repository.savePortablePreferences({
+      'keepCompletedVisible': value.keepCompletedVisible,
+      'spellCheckEnabled': value.spellCheckEnabled,
+      'newTaskPlannedDay': value.newTaskPlannedDay.name,
+      'compositionTextDisplay': value.compositionTextDisplay.name,
+    });
     await appearanceStore?.saveTaskViewPreferences(value);
     taskViewPreferences = value;
     notifyListeners();
+    onLocalChange?.call();
   }
 
   Future<void> setHotkeys(HotkeyPreferences value) async {
@@ -294,7 +370,9 @@ class AppController extends ChangeNotifier {
     calendarContent = value;
     notifyListeners();
     try {
+      await repository.savePortablePreference('calendarContent', value.name);
       await calendarPreferenceStore?.save(value);
+      onLocalChange?.call();
     } catch (_) {
       calendarContent = previous;
       notifyListeners();
@@ -303,15 +381,19 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> setFirstWeekday(int value) async {
+    await repository.savePortablePreference('firstWeekday', value);
     await appearanceStore?.saveFirstWeekday(value);
     firstWeekday = value;
     notifyListeners();
+    onLocalChange?.call();
   }
 
   Future<void> setLastCalendarMode(String value) async {
+    await repository.savePortablePreference('lastCalendarMode', value);
     await appearanceStore?.saveLastCalendarMode(value);
     lastCalendarMode = value;
     notifyListeners();
+    onLocalChange?.call();
   }
 
   Future<void> setSidebarOrder(List<WorkspaceView> value) async {
@@ -387,15 +469,29 @@ class AppController extends ChangeNotifier {
     if (store == null) return;
     final value = await store.load();
     final palette = await store.loadCustomization();
+    await repository.savePortablePreferences({
+      'theme': value.name,
+      'customization': palette.toJson()
+        ..remove('author')
+        ..remove('authorProfile'),
+    });
     customization = palette;
     theme = value;
     notifyListeners();
+    onLocalChange?.call();
   }
 
   Future<void> saveCustomization(ThemeCustomization value) async {
+    await repository.savePortablePreference(
+      'customization',
+      value.toJson()
+        ..remove('author')
+        ..remove('authorProfile'),
+    );
     await appearanceStore?.saveCustomization(value);
     customization = value;
     notifyListeners();
+    onLocalChange?.call();
   }
 
   Future<void> setTheme(ThemeModePreference value) async {
@@ -403,7 +499,9 @@ class AppController extends ChangeNotifier {
     theme = value;
     notifyListeners();
     try {
+      await repository.savePortablePreference('theme', value.name);
       await appearanceStore?.save(value);
+      onLocalChange?.call();
     } catch (_) {
       theme = previous;
       notifyListeners();
@@ -689,6 +787,11 @@ class AppController extends ChangeNotifier {
 
   Future<void> pauseTimer() async {
     await repository.pauseTimer(activeTimer!);
+    await refresh();
+  }
+
+  Future<void> adoptTimerAtCheckpoint(TimerRun previous) async {
+    await repository.adoptTimerAtCheckpoint(previous);
     await refresh();
   }
 

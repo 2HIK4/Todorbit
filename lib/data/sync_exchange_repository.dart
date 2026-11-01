@@ -44,6 +44,7 @@ SyncRevision _syncRevisionFromJournal(Map<String, Object?> row) => SyncRevision(
               .cast<String, dynamic>(),
         ),
   value: _syncPortableValue(row['after_json'] as String?),
+  intent: row['intent'] as String? ?? 'edit',
 );
 
 SyncBatch _buildOutgoingSyncBatch(
@@ -111,7 +112,6 @@ extension SyncExchangeRepository on LifeRepository {
   ) async {
     if (row['workspace_id'] != binding.workspace ||
         row['account_id'] != binding.account ||
-        row['device_id'] != binding.device ||
         row['direction'] != 'outgoing' ||
         row['superseded'] == 1) {
       throw StateError(
@@ -130,6 +130,7 @@ extension SyncExchangeRepository on LifeRepository {
       binding: binding,
       bytes: bytes,
       sha256: digest,
+      originDevice: row['device_id'] as String,
     );
   }
 
@@ -142,11 +143,10 @@ extension SyncExchangeRepository on LifeRepository {
     await _requireSyncExchange(binding, lease);
     final existing = await db
         .customSelect(
-          "SELECT * FROM sync_batches WHERE workspace_id=? AND account_id=? AND device_id=? AND direction='outgoing' AND uploaded=0 AND superseded=0 ORDER BY created_at,id LIMIT 1",
+          "SELECT * FROM sync_batches WHERE workspace_id=? AND account_id=? AND direction='outgoing' AND uploaded=0 AND superseded=0 ORDER BY created_at,id LIMIT 1",
           variables: [
             Variable.withString(binding.workspace),
             Variable.withString(binding.account),
-            Variable.withString(binding.device),
           ],
         )
         .get();
@@ -157,26 +157,24 @@ extension SyncExchangeRepository on LifeRepository {
     }
     final headers = await db
         .customSelect(
-          '''SELECT j.operation_id,
+          '''SELECT j.operation_id,j.device_id,
       coalesce(length(CAST(j.after_json AS BLOB)),0)+length(j.observed_json)+length(j.visible_json)+length(j.parent_ids_json)+length(j.record_key)+1024 AS payload_bytes
       FROM sync_journal j JOIN sync_mutation_groups g ON g.id=j.mutation_group_id AND g.complete=1
-      WHERE j.workspace_id=? AND j.account_id=? AND j.device_id=?
+      WHERE j.workspace_id=? AND j.account_id=?
       AND j.uploaded=0 AND j.batch_id IS NULL AND j.known=1 ORDER BY j.origin_sequence LIMIT 512''',
           variables: [
             Variable.withString(binding.workspace),
             Variable.withString(binding.account),
-            Variable.withString(binding.device),
           ],
         )
         .get();
     if (headers.isEmpty) {
       final pending = await db
           .customSelect(
-            'SELECT 1 FROM sync_journal WHERE workspace_id=? AND account_id=? AND device_id=? AND uploaded=0 AND batch_id IS NULL LIMIT 1',
+            'SELECT 1 FROM sync_journal WHERE workspace_id=? AND account_id=? AND uploaded=0 AND batch_id IS NULL LIMIT 1',
             variables: [
               Variable.withString(binding.workspace),
               Variable.withString(binding.account),
-              Variable.withString(binding.device),
             ],
           )
           .get();
@@ -188,8 +186,10 @@ extension SyncExchangeRepository on LifeRepository {
       return null;
     }
     final ids = <String>[];
+    final origin = headers.first.read<String>('device_id');
     var rawBytes = 0;
     for (final header in headers) {
+      if (header.read<String>('device_id') != origin) continue;
       rawBytes += header.read<int>('payload_bytes');
       if (rawBytes > SyncBatchCodec.maxPlaintextBytes * 2) {
         if (ids.isEmpty) {
@@ -202,7 +202,7 @@ extension SyncExchangeRepository on LifeRepository {
       ids.add(header.read<String>('operation_id'));
     }
     final rows = (await db.customSelect(
-      '''SELECT j.operation_id,j.device_id,j.origin_sequence,j.parent_ids_json,j.observed_json,j.visible_json,j.entity,j.record_key,j.after_json,j.mutation_group_id,
+      '''SELECT j.operation_id,j.device_id,j.origin_sequence,j.parent_ids_json,j.observed_json,j.visible_json,j.entity,j.record_key,j.after_json,j.mutation_group_id,j.intent,
         g.first_sequence AS group_first,g.last_sequence AS group_last
       FROM sync_journal j JOIN sync_mutation_groups g ON g.id=j.mutation_group_id
       WHERE j.operation_id IN (${List.filled(ids.length, '?').join(',')}) ORDER BY j.origin_sequence''',
@@ -214,7 +214,15 @@ extension SyncExchangeRepository on LifeRepository {
       );
     }
     final id = _uuid.v4();
-    final batch = await _syncBuildInWorker(rows, binding, id);
+    final batch = await _syncBuildInWorker(
+      rows,
+      SyncBinding(
+        workspace: binding.workspace,
+        account: binding.account,
+        device: origin,
+      ),
+      id,
+    );
     final encrypted = await (codec ?? SyncBatchCodec()).encrypt(
       batch,
       key,
@@ -230,7 +238,7 @@ extension SyncExchangeRepository on LifeRepository {
           batch.id,
           binding.workspace,
           binding.account,
-          binding.device,
+          origin,
           'outgoing',
           encrypted,
           digest,
@@ -257,6 +265,7 @@ extension SyncExchangeRepository on LifeRepository {
       binding: binding,
       bytes: encrypted,
       sha256: digest,
+      originDevice: origin,
     );
   }
 
@@ -280,7 +289,7 @@ extension SyncExchangeRepository on LifeRepository {
         remote.properties['batchId'] != batch.id ||
         remote.properties['workspaceId'] != batch.binding.workspace ||
         remote.properties['application'] != 'todorbit-sync' ||
-        remote.properties['deviceId'] != batch.binding.device ||
+        remote.properties['deviceId'] != stored.originDevice ||
         remote.properties['protocol'] != '1' ||
         remote.properties['kind'] != 'operations' ||
         remote.properties['verified'] != 'true' ||

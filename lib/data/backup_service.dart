@@ -262,6 +262,33 @@ class BackupService {
 
   Future<bool> hasScheduledRestore() => _restoreMarker.exists();
 
+  Future<BackupRecord?> restorationRecoveryBackup() async {
+    if (!await _restoreStatus.exists()) return null;
+    final data = jsonDecode(await _restoreStatus.readAsString()) as Map;
+    final filename = data['beforeRestore'];
+    if (filename == null) return null;
+    if (filename is! String ||
+        !filename.startsWith('before-restore-') ||
+        !_managedName.hasMatch(filename) ||
+        path.basename(filename) != filename ||
+        data['beforeRestoreSha256'] is! String) {
+      throw StateError(
+        'The restore recovery receipt is damaged. Preserve all snapshots.',
+      );
+    }
+    final file = File(path.join(backupDirectory.path, filename));
+    if (!await file.exists() ||
+        await Isolate.run(() => _hashFile(file.path)) !=
+            data['beforeRestoreSha256']) {
+      throw StateError(
+        'The original Before Restore snapshot is missing or changed. Preserve the profile and recover that snapshot first.',
+      );
+    }
+    return (await list()).singleWhere(
+      (r) => path.equals(r.file.path, file.path),
+    );
+  }
+
   Future<bool> restoreAwaitingOpen() async {
     if (!await _restoreStatus.exists()) return false;
     final status = jsonDecode(await _restoreStatus.readAsString());
@@ -295,6 +322,9 @@ class BackupService {
       'state': 'opened',
       'backup': data['backup'],
       'openedAt': DateTime.now().toUtc().toIso8601String(),
+      if (data['beforeRestore'] != null) 'beforeRestore': data['beforeRestore'],
+      if (data['beforeRestoreSha256'] != null)
+        'beforeRestoreSha256': data['beforeRestoreSha256'],
       if (data['cloudTransfer'] != null) 'cloudTransfer': data['cloudTransfer'],
     });
   }
@@ -463,6 +493,11 @@ class BackupService {
     BackupRecord? rollback;
     if (!alreadyApplied) {
       rollback = await createBackup(BackupKind.beforeRestore);
+      marker['beforeRestore'] = path.basename(rollback.file.path);
+      final rollbackPath = rollback.file.path;
+      marker['beforeRestoreSha256'] = await Isolate.run(
+        () => _hashFile(rollbackPath),
+      );
       if (marker['expectedLocalPreferences'] case final String expected) {
         if (await profilePreferencesFingerprint(databaseFile.parent) !=
             expected) {
@@ -513,6 +548,10 @@ class BackupService {
     await _writeRestoreJson(_restoreStatus, {
       'state': 'applied',
       'backup': filename,
+      if (marker['beforeRestore'] != null)
+        'beforeRestore': marker['beforeRestore'],
+      if (marker['beforeRestoreSha256'] != null)
+        'beforeRestoreSha256': marker['beforeRestoreSha256'],
       if (marker['cloudTransfer'] != null)
         'cloudTransfer': marker['cloudTransfer'],
       if (marker['portableSettings'] != null)
@@ -689,6 +728,18 @@ void _validateLifeManagerSnapshot(String filePath) {
     }
     if (connection.select('PRAGMA foreign_key_check').isNotEmpty) {
       throw StateError('Snapshot has broken record relationships');
+    }
+    if (schema >= 26 &&
+        (!names.contains('portable_preferences') ||
+            !connection
+                .select('PRAGMA table_info(sync_journal)')
+                .any((r) => r['name'] == 'intent') ||
+            !connection
+                .select('PRAGMA table_info(timer_runs)')
+                .any((r) => r['name'] == 'owner_device_id'))) {
+      throw StateError(
+        'Snapshot has incomplete portable preference or timer ownership metadata',
+      );
     }
     if (schema >= 22) {
       final columns = connection

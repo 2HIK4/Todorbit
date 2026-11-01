@@ -9,21 +9,31 @@ class SyncConflictRecord {
     required this.local,
     required this.review,
     required this.candidates,
+    this.remoteHeads = const {},
+    this.consequence = false,
   });
   final String entity, key;
   final Map<String, Object?>? local;
   final SyncRecordReview review;
   final Map<String, Map<String, Object?>?> candidates;
+  final Set<String> remoteHeads;
+  final bool consequence;
   String get id => '$entity:$key';
 }
 
 class SyncConflictReview {
   const SyncConflictReview({
     required this.token,
+    required this.attentionToken,
+    this.dismissed = false,
+    this.structural = false,
     required this.records,
     required this.reason,
   });
   final String token;
+  final String attentionToken;
+  final bool dismissed;
+  final bool structural;
   final List<SyncConflictRecord> records;
   final String? reason;
 }
@@ -91,15 +101,18 @@ class PendingSyncBatch {
     required this.binding,
     required Uint8List bytes,
     required this.sha256,
-  }) : bytes = Uint8List.fromList(bytes).asUnmodifiableView();
+    String? originDevice,
+  }) : bytes = Uint8List.fromList(bytes).asUnmodifiableView(),
+       originDevice = originDevice ?? binding.device;
   final String id, sha256;
   final SyncBinding binding;
+  final String originDevice;
   final Uint8List bytes;
   Map<String, String> get properties => Map.unmodifiable({
     'kind': 'operations',
     'batchId': id,
     'workspaceId': binding.workspace,
-    'deviceId': binding.device,
+    'deviceId': originDevice,
     'protocol': '1',
   });
 }

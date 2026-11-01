@@ -24,6 +24,7 @@ import '../habits/habits_view.dart';
 import '../goals/goals_view.dart';
 import '../reports/reports_view.dart';
 import '../shared/about_view_button.dart';
+import '../shared/sync_status_button.dart';
 import '../contributors/contributors_view.dart';
 import '../time_tracking/time_tracking_dialog.dart';
 import '../templates/templates_dialog.dart';
@@ -742,7 +743,17 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     width: 1,
                     color: Theme.of(context).colorScheme.outlineVariant,
                   ),
-                  Expanded(child: _mainPanel(controller, wide)),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: SyncStatusButton(allowAutomatic: !editor),
+                        ),
+                        Expanded(child: _mainPanel(controller, wide)),
+                      ],
+                    ),
+                  ),
                   if (wide && editor) ...[
                     VerticalDivider(
                       width: 1,

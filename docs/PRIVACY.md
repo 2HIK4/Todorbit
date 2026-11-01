@@ -51,8 +51,30 @@ remain on the device separately from the encrypted cloud object.
 The app transfers Google user data directly between your device and Google's
 API. It does not send backup content or Google account data to a Todorbit
 server, advertisers, or AI training services. The implementation uses Google
-user data only to provide and protect the backup/restore feature. There is
+user data only to provide and protect backup/restore and explicitly enabled sync. There is
 no human access to cloud content through a Todorbit service.
+
+## Optional encrypted synchronization
+
+Settings > Sync separately enables encrypted incremental synchronization with
+the same Google account and `drive.appdata` scope. It transfers portable planner
+records, history, managed attachment bytes and compatible preferences. External
+file references, device permissions, widget placement/IDs, privacy credentials and
+OAuth tokens do not sync. Google receives ciphertext and operational metadata
+such as workspace/device/batch IDs, protocol version, object time and size.
+
+A random AES-256-GCM workspace key is kept in platform-protected profile storage;
+its private recovery code pairs another device. Neither the key nor the code is
+uploaded. Workspace proofs and operations authenticate their account/workspace.
+Disabling Automatic Sync stops scheduled exchange; explicit Sync Now remains
+available. OS scheduling, network access, app lock and authorization constrain
+background exchange. See the [sync guide](GOOGLE_DRIVE_SYNC.md).
+
+Sync history is retained without automatic cloud pruning, including competing
+and deleted-record revisions needed for recovery. Disconnecting or disabling
+sync does not delete that history or its local key. App-data deletion through
+Google's controls can affect both sync and independent cloud snapshots. Keep a
+verified recoverable copy before deleting cloud application data.
 
 ## Retention, deletion and revocation
 

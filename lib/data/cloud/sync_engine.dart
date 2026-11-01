@@ -18,16 +18,22 @@ enum SyncPhase {
   error,
 }
 
+class _SyncCycleYield implements Exception {
+  const _SyncCycleYield();
+}
+
 class SyncEngineStatus {
   const SyncEngineStatus(
     this.phase, {
     this.pending = 0,
     this.conflicts = 0,
     this.lastSuccess,
+    this.notice,
   });
   final SyncPhase phase;
   final int pending, conflicts;
   final DateTime? lastSuccess;
+  final String? notice;
 }
 
 // Scheduling and authentication adapters call the same bounded exchange. It
@@ -39,13 +45,19 @@ class SyncEngine {
     required this.recovery,
     required this.loadKey,
     required this.isUnlocked,
+    required this.verifyWorkspace,
     this.onRemoteApplied,
+    this.timeBudget,
+    this.canExchange,
   });
   final LifeRepository repository;
   final SyncStorageProvider storage;
   final BackupService recovery;
+  final Duration? timeBudget;
+  final Future<bool> Function()? canExchange;
   final Future<SyncWorkspaceKey?> Function(SyncBinding) loadKey;
   final bool Function() isUnlocked;
+  final Future<void> Function(SyncBinding, SyncWorkspaceKey) verifyWorkspace;
   final Future<void> Function()? onRemoteApplied;
   final _events = StreamController<SyncEngineStatus>.broadcast();
   Stream<SyncEngineStatus> get changes => _events.stream;
@@ -83,6 +95,23 @@ class SyncEngine {
   }
 
   Future<void> _cycle(bool manual) async {
+    final deadline = timeBudget == null
+        ? null
+        : DateTime.now().add(timeBudget!);
+    Future<T> network<T>(Future<T> Function() operation) async {
+      final remaining = deadline?.difference(DateTime.now());
+      if (remaining != null && remaining <= Duration.zero) {
+        throw const _SyncCycleYield();
+      }
+      if (remaining == null) {
+        return operation().timeout(const Duration(minutes: 3));
+      }
+      return operation().timeout(
+        remaining,
+        onTimeout: () => throw const _SyncCycleYield(),
+      );
+    }
+
     SyncLease? lease;
     Timer? heartbeat;
     var ownershipLost = false;
@@ -96,6 +125,7 @@ class SyncEngine {
         return;
       }
       if (!isUnlocked() ||
+          (canExchange != null && !await canExchange!()) ||
           local.quarantined ||
           !local.enabled ||
           (!manual &&
@@ -103,10 +133,17 @@ class SyncEngine {
                   (local.retryAt?.isAfter(DateTime.now().toUtc()) ?? false)))) {
         _emit(
           SyncEngineStatus(
-            local.quarantined ? SyncPhase.needsAttention : SyncPhase.idle,
+            local.quarantined
+                ? SyncPhase.needsAttention
+                : local.automatic && local.retryAt != null
+                ? SyncPhase.offline
+                : SyncPhase.idle,
             pending: local.pending,
             conflicts: local.conflicts,
             lastSuccess: local.lastSuccess,
+            notice: local.quarantined
+                ? 'Reconcile this restored profile in Sync settings before exchanging changes.'
+                : null,
           ),
         );
         return;
@@ -117,6 +154,7 @@ class SyncEngine {
             SyncPhase.needsAttention,
             pending: local.pending,
             conflicts: local.conflicts,
+            notice: 'Finish or cancel the scheduled restore before syncing.',
           ),
         );
         return;
@@ -127,6 +165,7 @@ class SyncEngine {
             SyncPhase.disconnected,
             pending: local.pending,
             conflicts: local.conflicts,
+            notice: 'Reconnect the Google account paired with this profile.',
           ),
         );
         return;
@@ -138,6 +177,8 @@ class SyncEngine {
             SyncPhase.needsAttention,
             pending: local.pending,
             conflicts: local.conflicts,
+            notice:
+                'Enter the original workspace recovery code in Sync settings.',
           ),
         );
         return;
@@ -146,8 +187,12 @@ class SyncEngine {
       if (lease == null) return;
       final owned = lease;
       Future<void> guard() async {
+        if (deadline != null && !DateTime.now().isBefore(deadline)) {
+          throw const _SyncCycleYield();
+        }
         if (_closed ||
             !isUnlocked() ||
+            (canExchange != null && !await canExchange!()) ||
             storage.account?.id != binding.account ||
             ownershipLost ||
             await recovery.hasScheduledRestore() ||
@@ -175,6 +220,8 @@ class SyncEngine {
           lastSuccess: local.lastSuccess,
         ),
       );
+      await network(() => verifyWorkspace(binding, key));
+      await guard();
       var bounded = false;
       // The encrypted bytes are staged before HTTP. An ambiguous upload keeps
       // those exact bytes/ID for retry; duplicate remote copies are idempotent.
@@ -186,9 +233,9 @@ class SyncEngine {
           lease: owned,
         );
         if (pending == null) break;
-        final remote = await storage
-            .upload(pending.bytes, pending.properties, (_, _, _) {})
-            .timeout(const Duration(minutes: 3));
+        final remote = await network(
+          () => storage.upload(pending.bytes, pending.properties, (_, _, _) {}),
+        );
         await guard();
         await repository.acknowledgeSyncBatch(pending, remote, lease: owned);
         if (i == 23) bounded = true;
@@ -197,9 +244,17 @@ class SyncEngine {
       Future<bool> retain(List<CloudObject> objects) async {
         for (final object in objects) {
           await guard();
-          if (object.properties['workspaceId'] != binding.workspace ||
-              object.properties['kind'] != 'operations') {
+          if (object.properties['workspaceId'] != binding.workspace) {
+            throw const FormatException(
+              'A different encrypted workspace needs recovery',
+            );
+          }
+          if (object.properties['kind'] == 'workspace') {
+            await network(() => verifyWorkspace(binding, key));
             continue;
+          }
+          if (object.properties['kind'] != 'operations') {
+            throw const FormatException('Unsupported sync object kind');
           }
           if (await repository.hasRetainedSyncObject(
             binding,
@@ -209,9 +264,9 @@ class SyncEngine {
             continue;
           }
           if (downloaded >= 48) return false;
-          final bytes = await storage
-              .download(object, (_, _, _) {})
-              .timeout(const Duration(minutes: 3));
+          final bytes = await network(
+            () => storage.download(object, (_, _, _) {}),
+          );
           await guard();
           await repository.retainIncomingSyncBatch(
             binding,
@@ -230,8 +285,8 @@ class SyncEngine {
         if (token == null) {
           // Take the cursor BEFORE listing. Changes concurrent with the scan
           // are replayed rather than lost between list and startPageToken.
-          final beginning = await storage.startChangeToken();
-          if (await retain(await storage.list())) {
+          final beginning = await network(storage.startChangeToken);
+          if (await retain(await network(storage.list))) {
             await repository.commitSyncChangeToken(
               binding,
               beginning,
@@ -249,7 +304,7 @@ class SyncEngine {
             if (!seen.add(token!)) {
               throw const FormatException('Repeated Drive cursor');
             }
-            final changes = await storage.changes(token);
+            final changes = await network(() => storage.changes(token!));
             if (!await retain(changes.objects)) {
               bounded = true;
               break;
@@ -302,7 +357,7 @@ class SyncEngine {
         ),
       );
     } catch (error) {
-      if (lease != null) {
+      if (lease != null && error is! _SyncCycleYield && !_closed) {
         try {
           await repository.recordSyncExchange(
             lease.binding,
@@ -322,12 +377,25 @@ class SyncEngine {
       }
       _emit(
         SyncEngineStatus(
-          error is CloudFailure || error is TimeoutException
+          error is _SyncCycleYield
+              ? SyncPhase.pending
+              : error is FormatException
+              ? SyncPhase.needsAttention
+              : error is CloudFailure || error is TimeoutException
               ? SyncPhase.offline
               : SyncPhase.error,
           pending: local?.pending ?? status.pending,
           conflicts: local?.conflicts ?? status.conflicts,
           lastSuccess: local?.lastSuccess ?? status.lastSuccess,
+          notice: error is FormatException
+              ? 'The encrypted workspace could not be verified. Keep your recovery code and snapshots; competing history is retained.'
+              : error is CloudFailure
+              ? error.message
+              : error is TimeoutException
+              ? 'The connection timed out. Pending changes will be retried.'
+              : error is _SyncCycleYield
+              ? null
+              : 'Sync stopped safely. Local data and pending versions are retained; retry from Sync settings.',
         ),
       );
     } finally {

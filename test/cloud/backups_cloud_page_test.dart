@@ -8,17 +8,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:life_manager/app/app_controller.dart';
+import 'package:life_manager/app/sync_controller.dart';
 import 'package:life_manager/data/app_database.dart';
 import 'package:life_manager/data/backup_service.dart';
 import 'package:life_manager/data/cloud/cloud_backup_service.dart';
 import 'package:life_manager/data/cloud/cloud_storage_provider.dart';
 import 'package:life_manager/data/cloud/google_drive_auth.dart';
+import 'package:life_manager/data/cloud/sync_pairing_service.dart';
 import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/features/settings/backups_cloud_page.dart';
 import 'package:life_manager/features/settings/settings_transfer.dart';
 import 'package:life_manager/features/settings/settings_transfer_dialog.dart';
 
 import 'cloud_test_fakes.dart';
+import '../support/mock_sync_drive.dart';
 
 class _LocalFixture extends BackupService {
   _LocalFixture({this.pending})
@@ -82,6 +85,71 @@ class _RestoreFixture extends CloudBackupService {
 }
 
 void main() {
+  testWidgets('disconnecting Backups disconnects the shared sync session', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final local = _LocalFixture();
+    final controller = AppController(
+      LifeRepository(database),
+      backupService: local,
+    );
+    await controller.initialize();
+    final client = MockClient((_) async => http.Response('', 503));
+    final auth = _ConnectedAuth(client);
+    final drive = MockSyncDrive();
+    final sync = SyncController(
+      repository: controller.repository,
+      recovery: local,
+      auth: auth,
+      storage: drive,
+      pairing: SyncPairingService(storage: drive, vault: MemoryTokenStore()),
+      isUnlocked: () => true,
+      onApplied: () async {},
+    );
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appControllerProvider.overrideWith((_) => controller),
+            syncControllerProvider.overrideWith((_) => sync),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: BackupsCloudPage(
+                  service: CloudBackupService(
+                    local: local,
+                    provider: MemoryCloud(),
+                    appVersion: 'fixture',
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pumpAndSettle();
+      expect(sync.auth.account?.id, 'test-account');
+      await tester.ensureVisible(find.text('Disconnect'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Disconnect'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Disconnect'));
+      await tester.pumpAndSettle();
+      expect(sync.auth.account, isNull);
+      expect(drive.uploads, 0);
+      expect(tester.takeException(), isNull);
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await sync.shutdown();
+      client.close();
+      await database.close();
+    }
+  });
   for (final brightness in Brightness.values) {
     testWidgets(
       'pending restart survives reopening ${brightness.name} at large text',

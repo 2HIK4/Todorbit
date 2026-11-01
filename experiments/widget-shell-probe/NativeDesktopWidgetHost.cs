@@ -10,6 +10,7 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
   private readonly AppearanceSettingsStore appearanceStore = new();
   private readonly AppearanceSettings appearance;
   private readonly PrivacyState privacy = PrivacyState.OpenDefault();
+  private readonly NativeSyncScheduler syncScheduler;
   private readonly WidgetCommandServer commandServer;
   private readonly SynchronizationContext uiContext;
   private readonly NotifyIcon trayIcon;
@@ -35,6 +36,7 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
       bool diagnostics, string initialCommand) {
     this.repository = repository;
     this.appExe = appExe;
+    syncScheduler = new NativeSyncScheduler(repository.AutomaticSyncEnabled, ResolveMainApp);
     this.diagnostics = diagnostics;
     settings = settingsStore.Load();
     appearance = appearanceStore.Load(settings.Theme);
@@ -52,6 +54,7 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
       refreshDebounce.Stop();
       host?.RefreshFromDatabase();
       calendarHost?.RefreshFromDatabase();
+      syncScheduler.Request();
     };
     databaseWatcher = new FileSystemWatcher(
       Path.GetDirectoryName(repository.DatabasePath)!,
@@ -286,6 +289,12 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
   }
 
   private void SetTheme(WidgetThemePreference value) {
+    try { repository.SaveThemePreference(value); }
+    catch {
+      MessageBox.Show("The theme could not be saved. Keep the current theme and try again after opening the main app.",
+        "Todorbit widget", MessageBoxButtons.OK, MessageBoxIcon.Error);
+      return;
+    }
     appearance.Theme = value;
     appearanceStore.Save(appearance);
     host?.SetPalette(ResolvePalette(value));
@@ -424,6 +433,7 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
       explorerRecovery.Dispose();
       notificationTimer.Dispose();
       privacyTimer.Dispose();
+      syncScheduler.Dispose();
       calendarHost?.Dispose();
       host?.Dispose();
       host = null;

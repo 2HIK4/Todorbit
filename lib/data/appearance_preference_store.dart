@@ -105,8 +105,8 @@ class AppearancePreferenceStore {
         : null;
   }
 
-  Future<void> saveLastCalendarMode(String value) async {
-    if (!const ['day', 'week', 'month'].contains(value)) {
+  Future<void> saveLastCalendarMode(String? value) async {
+    if (value != null && !const ['day', 'week', 'month'].contains(value)) {
       throw ArgumentError.value(value);
     }
     await _write({...await _read(), 'lastCalendarMode': value});

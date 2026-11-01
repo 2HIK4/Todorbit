@@ -281,8 +281,8 @@ bool DecodeColor(const std::string& text, COLORREF* color) {
 
 }  // namespace
 
-FlutterWindow::FlutterWindow(const flutter::DartProject& project)
-    : project_(project) {}
+FlutterWindow::FlutterWindow(const flutter::DartProject& project, bool background)
+    : project_(project), background_(background) {}
 
 FlutterWindow::~FlutterWindow() {}
 
@@ -481,7 +481,7 @@ bool FlutterWindow::OnCreate() {
       ::RegisterDragDrop(file_drop_window_, file_drop_target_));
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
-    this->Show();
+    if (!background_) this->Show();
   });
 
   // Flutter can complete the first frame before the "show window" callback is

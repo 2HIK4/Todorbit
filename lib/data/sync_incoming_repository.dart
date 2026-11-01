@@ -299,8 +299,8 @@ extension SyncIncomingRepository on LifeRepository {
         }
         await db.customStatement(
           '''INSERT INTO sync_journal(operation_id,workspace_id,account_id,device_id,entity,record_key,
-          after_json,uploaded,origin_sequence,observed_json,parent_ids_json,batch_id,known,mutation_group_id,visible_json)
-          VALUES(?,?,?,?,?,?,?,1,?,?,?,?,0,?,?)''',
+          after_json,uploaded,origin_sequence,observed_json,parent_ids_json,batch_id,known,mutation_group_id,visible_json,intent)
+          VALUES(?,?,?,?,?,?,?,1,?,?,?,?,0,?,?,?)''',
           [
             revision.id,
             binding.workspace,
@@ -315,6 +315,7 @@ extension SyncIncomingRepository on LifeRepository {
             batch.id,
             group.id,
             jsonEncode(revision.visible!.toJson()),
+            revision.intent,
           ],
         );
         inserted++;

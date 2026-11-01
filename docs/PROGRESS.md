@@ -1,5 +1,34 @@
 # Progress
 
+## Integrated Drive sync - release verification pending (2026-11-01)
+
+- The full engine now powers Windows/Android Sync Now, settings, encrypted pairing,
+  durable conflict decisions, automatic exchange and bounded platform workers.
+- Schema 26 preserves existing records and adds portable preferences, explicit
+  timer ownership and immutable restore intent. Restore reconciliation retains
+  original queued operations/ciphertext and creates a fresh device identity.
+- Critical checks cover SQL cascade/deletion consequences, mixed-choice rollback,
+  timer ownership/adoption, causal restore, process death and shared auth. Final
+  full analysis passes; repaired cases passed focused checks. Native Release
+  theme writes pass against a disposable migrated profile. See the ledger for
+  failed historical invocations and exact reuse boundaries.
+- Drive uses mocks only. Full source is unpublished. Candidate version is `1.0.19-beta.4+27`;
+  exact-source CI, final packages and artifact/installation gates are next.
+- [Implementation/check ledger](DRIVE_SYNC_RECOVERY_CHECKPOINT.md) and
+  [pairing, data boundaries and manual guide](GOOGLE_DRIVE_SYNC.md).
+
+## Sync button preview published (2026-11-01)
+
+- Published [v1.0.19-beta.3](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.3)
+  for Windows + Android, build/code 26, source `c47be13`, schema 22.
+- Sync opens Coming soon; full synchronization is not enabled. The unfinished
+  engine and schema 23-25 migrations remain separate and unpublished.
+- Tests/CI were explicitly waived by the owner for this button-only release.
+  Builds, package signatures/identity/alignment and all 11 public asset hashes
+  passed. No live UI, installation or real Drive acceptance is claimed.
+- [Publication receipt and exact assets](SYNC_BUTTON_PREVIEW_PUBLICATION.md).
+  Full sync work resumed after this publication; see the current checkpoint above.
+
 ## Drive sync and restore implementation in progress (2026-10-31 to 2026-11-01)
 
 - Branch `feature/drive-sync-recovery`, baseline `f62cd7b`; coordinated release

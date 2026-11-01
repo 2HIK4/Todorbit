@@ -9,6 +9,7 @@ import '../life_repository.dart';
 import '../sync_exchange_models.dart';
 import 'cloud_storage_provider.dart';
 import 'google_drive_auth.dart';
+import 'google_drive_provider.dart';
 import 'sync_batch_codec.dart';
 
 class SyncPairing {
@@ -183,6 +184,28 @@ class SyncPairingService {
     return pairing;
   }
 
+  Future<SyncPairing> freshRestoredDevice({String? recoveryCode}) async {
+    final existing = await prepare(recoveryCode: recoveryCode);
+    final binding = SyncBinding(
+      workspace: existing.binding.workspace,
+      account: existing.binding.account,
+      device: _uuid.v4(),
+    );
+    // Write the new identity before SQL can commit it. The quarantined profile
+    // cannot exchange in between; a failed SQL attempt retains both snapshots
+    // and can retry with another unused identity without reusing old clocks.
+    await vault.write(
+      jsonEncode({
+        'format': 1,
+        'workspace': binding.workspace,
+        'account': binding.account,
+        'device': binding.device,
+        'recovery': existing.key.exportRecoveryCode(),
+      }),
+    );
+    return SyncPairing(binding, existing.key);
+  }
+
   void _checkAccount(String account) {
     if (storage.account?.id != account) {
       throw const CloudFailure(
@@ -226,7 +249,10 @@ class SyncPairingService {
     SyncWorkspaceKey key,
   ) async {
     _checkAccount(binding.account);
-    final objects = await storage.list();
+    final provider = storage;
+    final objects = await (provider is SyncStorageProvider
+        ? provider.listWorkspaceProofs()
+        : provider.list());
     _checkAccount(binding.account);
     if (objects.any(
       (o) =>

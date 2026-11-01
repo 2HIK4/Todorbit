@@ -26,7 +26,7 @@ internal sealed class DependencyReviewRequiredException(
 
 internal sealed partial class LifeManagerWidgetRepository : IDisposable {
   private const int MinimumSchemaVersion = 4;
-  private const int MaximumSchemaVersion = 25;
+  private const int MaximumSchemaVersion = 26;
   private const string ActiveTaskClause = """
      AND deleted_at IS NULL AND archived_at IS NULL
      AND (category_id IS NULL OR EXISTS
@@ -47,6 +47,14 @@ internal sealed partial class LifeManagerWidgetRepository : IDisposable {
   private readonly PrivacyState? privacy;
   private int schemaVersion;
   internal string DatabasePath { get; }
+  internal bool AutomaticSyncEnabled() {
+    RefreshSchemaVersion();
+    if (schemaVersion < 26 || privacy?.IsLocked() == true ||
+        File.Exists(Path.Combine(Path.GetDirectoryName(DatabasePath)!, "pending-restore.json"))) return false;
+    using var command = connection.CreateCommand();
+    command.CommandText = "SELECT COUNT(*) FROM sync_capture_context WHERE id=1 AND capture_enabled=1 AND automatic_sync=1 AND restore_quarantined=0 AND suspended_for_restore=0";
+    return Convert.ToInt32(command.ExecuteScalar()) == 1;
+  }
 
   private LifeManagerWidgetRepository(string databasePath, PrivacyState? privacy = null) {
     this.privacy = privacy;
@@ -85,6 +93,24 @@ internal sealed partial class LifeManagerWidgetRepository : IDisposable {
 
   internal static LifeManagerWidgetRepository OpenForTest(string databasePath) =>
     new(databasePath);
+
+  internal void SaveThemePreference(WidgetThemePreference value) {
+    privacy?.RequireUnlocked();
+    RefreshSchemaVersion();
+    if (schemaVersion < 26) return;
+    using var transaction = BeginCapturedTransaction();
+    using var command = connection.CreateCommand();
+    command.Transaction = transaction;
+    command.CommandText = """
+      INSERT INTO portable_preferences(key,value_json,updated_at) VALUES('theme',$value,$now)
+      ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,updated_at=excluded.updated_at
+      WHERE portable_preferences.value_json!=excluded.value_json
+      """;
+    command.Parameters.AddWithValue("$value", JsonSerializer.Serialize(value.ToString().ToLowerInvariant()));
+    command.Parameters.AddWithValue("$now", UtcNowString());
+    command.ExecuteNonQuery();
+    transaction.Commit();
+  }
 
   // Claim before showing a tray balloon so a restart or a second timer tick
   // cannot repeat it. A notification can be claimed only for the current day.

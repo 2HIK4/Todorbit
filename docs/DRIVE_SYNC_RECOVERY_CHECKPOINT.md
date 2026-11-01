@@ -3,7 +3,9 @@
 Branch: `feature/drive-sync-recovery`, baseline `f62cd7b`.
 The owner authorizes coordinated publication after all mandatory gates pass;
 real Drive testing is currently restricted to mocked transport by owner choice.
-No new release, version, tag, cloud object or personal profile has been changed.
+The separate button-only beta 3 publication is recorded in
+[its receipt](SYNC_BUTTON_PREVIEW_PUBLICATION.md). Full sync remains unpublished;
+no real Drive account or personal profile is used for this implementation.
 
 ## Plan and scope
 
@@ -410,3 +412,177 @@ Competing first-device keys stop pairing and preserve both keys/history.
 Next: integrate timer ownership, portable preferences, restore reconciliation,
 workspace-proof checks in exchange, foreground UI/runtime and supported platform
 scheduling. Real-account acceptance remains unobserved and unauthorized for now.
+
+## Integrated sync checkpoint — 2026-11-01
+
+Working tree after `e0be3d3`. Schema 26 adds portable preference records, timer
+ownership and immutable restore intent. Foreground Windows/Android controls now
+use the shared engine. Background entry points use the same leases/protocol;
+Android schedules constrained jobs, and the Windows companion starts a hidden
+bounded worker. Protected profiles require an unlocked foreground session.
+
+Restoration retains authenticated pre-restore operations and original staged
+ciphertext, then uses a fresh device identity and a causal restore group. An
+older restored value cannot silently erase a newer competing edit; cloud-only
+records are not deleted. Automatic sync remains off after reconciliation.
+Structural conflict review previews actual SQL consequences inside a rolled-back
+savepoint, includes affected related records, and rejects choices that would
+silently hide or cascade away a record the user chose to retain. A running timer
+has one owner; explicit adoption pauses at its last known checkpoint, never now.
+
+The earlier statements that the engine is inactive describe historical commits.
+Current runtime integration is implemented, with release verification pending.
+Mocked Drive remains the only authorized cloud acceptance environment.
+
+| Invocation / evidence | Result | New or rerun reason |
+| --- | --- | --- |
+| `sync-ownership-analysis.log`, `sync-ownership-verify.log` | Initial analysis passed; new repository code then stopped on two brace lints | Ownership/preferences implementation; scoped mechanical correction |
+| `sync-preferences-analysis.log`, `sync-device-preferences-verify.log` | Five controller brace lints; no tests | Added preference integration; corrected with scoped `sync-preferences-lint-fix.log` |
+| Quick `20261101-183312-7981` | 44 pass, 13 old table-count assertions fail | Added portable table; expected count updated from 51 to 52, no domain data changed |
+| Quick `20261101-183704-1040` | 22 pass; format/analysis/diff pass | Corrected table count; initialization/migration/process-death checks |
+| `sync-ui-analysis.log`, `sync-ui-wiring-analysis.log` | Missing required desktop argument and brace lints corrected; ten-path analysis passed | New foreground integration |
+| Quick `20261101-184447-1508`, `sync-ui-verify-followup.log` | Formatting then lint gates stopped before tests | New conflict dialog/fixtures; corrected formatting, braces and super parameter |
+| Quick `20261101-184857-8235` | 20 pass, two narrow UI fixture tap failures | Fixture scrolled without pumping a frame before hit testing; no overflow observed |
+| Quick `20261101-185259-9349` | Three UI tests pass | Corrected fixture frame: light/dark narrow large-text decisions and lock closure |
+| `sync-background-analysis.log`, `sync-background-braces.log`, `sync-budget-braces.log` | Six brace lints corrected | New headless entry points and cycle budget |
+| `sync-restore-integration-analysis.log`, `sync-restore-braces.log` | Read-only database constructor API corrected and braces fixed | Used installed Drift API source to select `NativeDatabase.opened` with SQLite read-only mode |
+| Quick `20261101-190904-2954`, `20261101-190927-8282` | Format then invalid constant property access stopped before tests | Newly added restore integration fixture; corrected format and fixture constants |
+| Quick `20261101-191115-9501` | 12 pass, restore conflict expectation failed | Revealed older restore matching common-base value could be merged away; introduced authenticated immutable restore intent |
+| Quick `20261101-191416-4910` | 13 pass; format/analysis/diff pass | Intent fix: staged restore/reopen/quarantine, original ciphertext retry, fresh device sequence, older/newer conflict and cloud-only record retention |
+| `sync-related-consequence-analysis.log`, `sync-consequence-braces.log`, `sync-consequences-verify.log`, `sync-adoption-braces.log`, `sync-relationship-braces.log` | Seven consequence and four adoption brace lints corrected; tests blocked until corrected | New structural preview, relationship guards and explicit timer adoption |
+| Quick `20261101-193019-7016` | 29 pass; format/analysis/diff pass | Actual SQL cascade/soft-delete consequences, mixed decisions rollback, ownership adoption, restore and causal merge regressions |
+| `sync-native-dotnet.log` | Release build passed, zero warnings/errors | New companion scheduler/schema compatibility |
+| `sync-native-self-test.log` | Passed with verified disposable APPDATA/LOCALAPPDATA | Native Release self-test; no physical shell/input claim |
+| `sync-native-kotlin.log` | Canceled before source compilation | PowerShell split unquoted dotted Gradle property; corrected argument quoting |
+| `sync-gradle-threads.log` | Diagnostic captured own Gradle daemon | Slow native build investigation; no test/retry or source change |
+
+Private logs referenced above are under ignored `.buildlog/`; helper receipts
+retain exact commands/source/dirty state. New foreground behavior, platform
+compilation, full host integration and exact-source release gates remain pending.
+
+## Runtime integration follow-up — 2026-11-01
+
+- Quick `20261101-225404-4603`: 31 tests passed, targeted analysis/format/diff
+  passed. New cases prove background-budget yield retains the queue without
+  failure backoff, workspace-proof rejection prevents uploads, and Resolve Later
+  survives another apply attempt plus an unrelated edit. Includes narrow
+  light/dark large-text conflict UI. Later projection/route cleanup changes are
+  covered by the broader integration invocation below, not this earlier pass.
+- `sync-native-kotlin-corrected.log`: `:app:compileGithubReleaseKotlin` passed
+  (55 tasks, 9m34s), using JDK 21 and the complete cached SDK. Existing Kotlin/AGP
+  deprecation warnings remain. This is compilation evidence, not a release APK
+  or real-account background acceptance. The draft AOT generated as a dependency
+  is not a publication candidate.
+- Full `20261101-225848-7809`: formatting passed (298 files); canceled during
+  analysis before tests after review identified missing headless preference JSON
+  projection and loss of device-local customization metadata. Corrected before
+  proceeding; no pass claimed. `sync-gradle-kotlin-threads.log` is a diagnostic
+  snapshot of the active build, not a test rerun.
+- Full `20261101-230131-9035`: formatting passed; analysis stopped on one new timer
+  brace lint and an invalid CalendarContent name in a new fixture; no tests.
+  Both corrected in `sync-full-lint-format.log`. The fixture now exercises SQL
+  preferences projected without controller initialization while preserving local
+  author/sidebar/opening-page/widget-opacity settings and clearing a null calendar
+  mode. These device fields are explicitly excluded from the portable theme.
+- Dart MCP hot reload attempted: DTD had no active app connection. Widget tests
+  are rendered automation evidence only. No personal profile was opened.
+- Source versions selected for the next candidate: `1.0.19-beta.4+27`, greater
+  than public beta 3/code 26 (read-only `gh release list` checked). Unpublished;
+  existing tags/assets are unchanged. Full integration remains pending in
+  `sync-full-integration-corrected.log`.
+
+- Full `20261101-230258-9769`: format and full analysis passed; stopped during
+  serial tests after two appearance tests exposed a Map<dynamic,dynamic> passed
+  to the strictly typed theme decoder. The stopped run is incomplete, not a
+  full-suite pass. Fixed the map type directly before continuing.
+- Quick `20261101-230441-0301`: eight appearance/settings/conflict UI tests passed;
+  targeted analysis, formatting and diff checks passed. This validates the
+  corrected headless JSON projection and device-local customization preservation.
+- The top-right button now routes quarantined/reconnect profiles to setup and
+  shows actionable safe engine notices. Final broad integration runs after this
+  last UI change in `sync-full-final.log`.
+
+- `sync-privacy-website-check.log`: dependency-free website checks passed for
+  three pages after adding the optional-sync privacy disclosure. Rendered browser
+  layout was not repeated for this text-only change.
+- `sync-native-theme-build.log`: native Release build passed with zero warnings
+  after adding transactional portable theme capture from both companion commands
+  and its tray control. Native JSON remains a projection after SQL commits.
+- Quick `20261101-231107-7211`: formatting and targeted analysis passed; Flutter
+  could not start tests because the concurrently running full suite held
+  `build/native_assets/windows/sqlite3.dll`. No test results are claimed. Run
+  Windows Flutter test processes sequentially; rerun this gate after full-suite
+  completion. No permissions or dependency changes are needed.
+- Full `20261101-230534-1558` currently continues with one historical assertion
+  failure: settings-only import now intentionally updates `portable_preferences`.
+  The corrected fixture compares every other SQLite table and explicitly checks
+  the selected imported preference. Current planner data remains protected.
+- Added an explicit Release-only fixture outside the default host suite:
+  `test_driver/native_sync_writer_test.dart`. Windows CI runs it after building
+  the companion, with isolated child APPDATA/LOCALAPPDATA. It checks capture,
+  group completion, idempotence and failed-write preservation of JSON/history.
+  `tools/test-background-sync.py` checks the exact Windows runner for hidden,
+  unchanged missing/migration/protected/pending-restore profiles. Both gates
+  remain pending; neither uses real Drive authorization.
+
+## Broad integration repairs and source freeze preparation
+
+- Full `20261101-230534-1558`: 560 pass, one existing opt-in skip, five failures.
+  Full analysis/format passed. The five failures were one obsolete all-SQL-tables
+  settings assertion, two plain-Dart crash workers importing Flutter through
+  preference validation, and two prototype migration fixtures assuming capture
+  resumes automatically. This run changed during targeted repairs and does not
+  establish the final exact-source full-suite gate; final CI remains mandatory.
+- Theme JSON validation now lives in pure Dart `theme_json.dart`, shared by the
+  UI adapter and portable preference validation. Repository workers no longer
+  import Flutter rendering types. Native author/sidebar/opening/opacity metadata
+  stays local. Session sharing also makes Backups disconnect fence Sync, without
+  deleting workspace keys or queued data. Explicit reconnect can repair a damaged
+  saved session without repeatedly loading that same damaged session first.
+- `sync-auth-data-boundary-format.log` stopped on an extra parenthesis in a new
+  widget fixture; corrected in `sync-shared-auth-fixture-format.log`.
+  `sync-auth-pure-data-analysis.log` then passed on eight affected paths.
+- Quick `20261101-232836-8831`: 21 pass, one new shared-auth widget fixture timeout;
+  analysis/format passed. Actual native theme capture/group completion/idempotence
+  and write-failure preservation passed against the rebuilt native executable.
+  Both real process-death rollback gates, schema 23/24 retained-history quarantine,
+  settings-only planner preservation, theme decoding and reconnect checks passed.
+- Quick `20261101-233122-5291`: seven backup UI checks passed; analysis/format/diff
+  passed. The new fixture now allows the existing asynchronous file-I/O setup to
+  finish before settling its progress indicator. No production timeout change.
+- `sync-final-release-validator-tests.log`: 11 Python release-validator tests pass.
+- `sync-final-dev-helper-tests.log` and `sync-final-docs-check.log`: helper/link
+  gates found two wildcard paths in the architecture map; replaced with concrete
+  existing paths. `sync-final-dev-helper-corrected.log`: eight pass;
+  `sync-final-docs-corrected.log`: zero errors. `sync-final-diff-check.log` passed.
+- `sync-native-theme-final-build.log`: native Release build passed, zero warnings,
+  after rechecking schema changes during companion scheduling. Actual packaged
+  self-test and hidden-worker artifact gates remain pending.
+- Windows Sandbox acceptance harness now reads the candidate schema from its
+  manifest (26/52 tables) and checks a synthetic populated in-place setup before
+  uninstall/reinstall preservation. It still refuses execution outside a fresh
+  Sandbox account. This gate remains pending final package creation.
+- Final background privacy review added an asynchronous policy fence: a headless
+  job re-reads persisted privacy/restore state at exchange boundaries and before
+  publishing Android surfaces, so a PIN enabled by another process stops the
+  already-running worker. Focused validation is in `sync-background-policy-check.log`.
+
+## Frozen implementation candidate — 2026-11-01
+
+- Quick `20261101-233359-1322`: eight engine/controller tests passed;
+  analysis/format/diff passed. Includes a persisted background-policy change
+  fencing incoming content before download/application, bounded job yield,
+  immutable retry, workspace proof checks and explicit damaged-session reconnect.
+- Headless application now projects portable preferences without refreshing a
+  foreground controller, so a sync-only process never starts a timer heartbeat.
+- `sync-candidate-full-analysis.log`: final full analysis of lib/test/integration
+  and test-driver roots passed. `sync-headless-projection-format.log` records the
+  last two formatted paths. `sync-platform-harness-syntax.log` and PowerShell
+  parser checks passed for the new hidden-worker/Sandbox harness changes;
+  `sync-candidate-diff-check.log` passed.
+- Dart MCP hot reload was attempted again after implementation: no active app
+  connection on the IDE DTD. No live debug UI acceptance is claimed.
+- Earlier broad unaffected passes and corrected focused evidence are retained;
+  do not repeat the local full suite just for a fresh receipt. Exact-source CI
+  must run the full final suite before publication. Final packages, Sandbox,
+  hidden-worker artifact check and Android 16 KiB artifact runtime remain pending.

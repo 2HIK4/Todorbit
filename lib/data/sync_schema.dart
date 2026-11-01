@@ -45,6 +45,7 @@ const portableSyncTables = <String>{
   'progressive_plans',
   'progressive_plan_steps',
   'progressive_plan_assignments',
+  'portable_preferences',
 };
 
 const syncOperationUuidSql =

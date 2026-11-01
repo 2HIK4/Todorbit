@@ -28,7 +28,7 @@ class _Schema23Connection extends AppDatabase {
 }
 
 void main() {
-  test('schema 23 queue upgrades without changing operation IDs or losing ancestry', () async {
+  test('schema 23 queue upgrades intact and quarantines prototype capture until reviewed recovery', () async {
     final root = await Directory.systemTemp.createTemp('todorbit-sync-v23-');
     final file = File('${root.path}/life.sqlite');
     var db = AppDatabase(NativeDatabase(file));
@@ -69,18 +69,25 @@ void main() {
       expect((await LifeRepository(db).tasks()).single.id, first.id);
       await LifeRepository(db)
           .addTask(const TaskDraft(title: 'Next offline edit'));
-      final next =
+      final retainedAfterEdit =
           (await db
                   .customSelect('SELECT * FROM sync_journal ORDER BY sequence')
                   .get())
-              .last;
-      expect(next.read<int>('origin_sequence'), 2);
-      expect(jsonDecode(next.read<String>('observed_json')), {device: 1});
+              .single;
+      expect(
+        retainedAfterEdit.read<String>('operation_id'),
+        before.read<String>('operation_id'),
+      );
+      expect(retainedAfterEdit.read<int>('origin_sequence'), 1);
+      expect((await LifeRepository(db).tasks()), hasLength(2));
       final context = await db
           .customSelect('SELECT * FROM sync_capture_context')
           .getSingle();
-      expect(context.read<int>('device_sequence'), 2);
-      expect(jsonDecode(context.read<String>('observed_json')), {device: 2});
+      expect(context.read<int>('capture_enabled'), 0);
+      expect(context.read<int>('restore_quarantined'), 1);
+      expect(context.read<int>('automatic_sync'), 0);
+      expect(context.read<int>('device_sequence'), 1);
+      expect(jsonDecode(context.read<String>('observed_json')), {device: 1});
     } finally {
       await db.close();
       await root.delete(recursive: true);

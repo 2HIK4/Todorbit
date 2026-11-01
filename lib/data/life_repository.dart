@@ -33,6 +33,7 @@ import 'cloud/sync_batch_codec.dart';
 import '../domain/sync/causal_record.dart';
 import '../domain/sync/sync_visibility.dart';
 import '../domain/sync/portable_record_merge.dart';
+import '../domain/sync/portable_preferences.dart';
 
 part 'series_edit_repository.dart';
 part 'habit_repository.dart';
@@ -55,6 +56,7 @@ part 'sync_lease_repository.dart';
 part 'sync_apply_repository.dart';
 part 'sync_resolution_repository.dart';
 part 'sync_status_repository.dart';
+part 'sync_restore_repository.dart';
 
 class LifeRepository {
   LifeRepository(this.db, {DateTime Function()? taskClock})

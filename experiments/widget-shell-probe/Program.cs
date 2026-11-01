@@ -61,6 +61,16 @@ if (args.Length >= 1 && args[0] is "--widget" or "--widget-command") {
         "theme-dark" => WidgetThemePreference.Dark,
         _ => WidgetThemePreference.System,
       };
+      if (File.Exists(Path.Combine(AppDataPaths.ActiveDirectory, "life_manager.sqlite"))) {
+        try {
+          using var repository = LifeManagerWidgetRepository.OpenDefault();
+          repository.SaveThemePreference(appearance.Theme);
+        } catch {
+          Console.Error.WriteLine("The theme could not be saved. Existing settings and queued changes are retained.");
+          Environment.ExitCode = 2;
+          return;
+        }
+      }
       appearanceStore.Save(appearance);
     }
     return;

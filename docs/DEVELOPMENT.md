@@ -40,6 +40,20 @@ For packaged verification substitute the Release bundle executable path.
 Windows CMake already publishes/packages the companion; a separate `dotnet build`
 is useful for fast native diagnostics, not an extra distribution packaging step.
 
+After building a sync-capable Release bundle, run the explicit native writer and
+hidden-worker gates sequentially with other Flutter tests:
+
+```powershell
+$env:TODORBIT_NATIVE_SYNC_EXECUTABLE = (Resolve-Path 'build/windows/x64/runner/Release/TodorbitWidget.exe').Path
+flutter test --no-pub --concurrency=1 test_driver/native_sync_writer_test.dart
+python tools/test-background-sync.py --executable build/windows/x64/runner/Release/Todorbit.exe --schema 26
+```
+
+Both create disposable profiles and override child APPDATA/LOCALAPPDATA. They do
+not connect Google Drive. Windows CI runs them against its exact Release bundle.
+Do not run simultaneous Windows Flutter test processes in one checkout: native
+asset preparation can conflict with a DLL loaded by another test process.
+
 Release builds synchronize the native widget's per-user Windows Run entry after opening the active profile. New widget settings default to startup on; an explicit saved off remains off. Debug builds skip this synchronization so isolated GUI work does not alter the developer account's startup entries. Test registration through the native self-test's private registry key; a real sign-in still requires separate Windows acceptance.
 
 The Inno Setup project is `installer/life_manager.iss` and retains its existing AppId and install path for upgrades. Run `installer/build-installer.ps1 -Compiler '<ISCC.exe path>'` only after a Release build. Portable packaging uses `tools/build-portable.ps1`. Packages and generated files under `release/` are ignored by Git.

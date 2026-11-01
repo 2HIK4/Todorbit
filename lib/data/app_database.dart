@@ -11,11 +11,12 @@ import 'profile_paths.dart';
 import 'sync_schema.dart';
 import 'sync_exchange_schema.dart';
 import 'sync_visibility_schema.dart';
+import 'sync_device_schema.dart';
 
 class AppDatabase extends GeneratedDatabase {
   AppDatabase(super.executor);
 
-  static const currentSchemaVersion = 25;
+  static const currentSchemaVersion = 26;
   bool _syncGroupingReady = false;
   final Object _syncGroupZone = Object();
 
@@ -263,9 +264,11 @@ class AppDatabase extends GeneratedDatabase {
         await _createEventReminderDeliveries();
         await _createEventDetails();
         await _createTaskNotifications();
+        await createSyncPortableFields(this);
         await createSyncSchema(this, installTriggers: false);
         await upgradeSyncExchangeSchema(this);
         await upgradeSyncVisibilitySchema(this);
+        await upgradeSyncDeviceCapture(this);
         if (existing.isNotEmpty) {
           final reference = AppDatabase(NativeDatabase.memory());
           try {
@@ -337,9 +340,11 @@ class AppDatabase extends GeneratedDatabase {
         await _createEventReminderDeliveries();
         await _createEventDetails();
         await _createTaskNotifications();
+        await createSyncPortableFields(this);
         if (from < 23) await createSyncSchema(this, installTriggers: false);
         if (from < 24) await upgradeSyncExchangeSchema(this);
         if (from < 25) await upgradeSyncVisibilitySchema(this);
+        if (from < 26) await upgradeSyncDeviceCapture(this);
         await customStatement('PRAGMA user_version = $currentSchemaVersion');
       }),
     ),

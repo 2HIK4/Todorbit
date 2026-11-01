@@ -6,6 +6,9 @@ import 'package:life_manager/data/cloud/google_drive_provider.dart';
 
 class MockSyncDrive implements SyncStorageProvider {
   @override
+  Future<List<CloudObject>> listWorkspaceProofs() async =>
+      objects.where((o) => o.properties['kind'] == 'workspace').toList();
+  @override
   CloudAccount? account = const CloudAccount('mock-only', 'Synthetic account');
   final objects = <CloudObject>[];
   final payloads = <String, Uint8List>{};

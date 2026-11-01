@@ -18,13 +18,10 @@ import android.provider.OpenableColumns
 import androidx.core.content.FileProvider
 import android.webkit.MimeTypeMap
 import com.google.android.gms.auth.api.identity.Identity
-import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.ClearTokenRequest
-import com.google.android.gms.common.api.Scope
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.api.ApiException
-import android.accounts.Account
 
 class MainActivity : FlutterActivity() {
     private lateinit var bridge: MethodChannel
@@ -59,6 +56,11 @@ class MainActivity : FlutterActivity() {
             if (updater.handle(call, result)) return@setMethodCallHandler
             when (call.method) {
                 "dataRoot" -> result.success(filesDir.absolutePath)
+                "scheduleSync" -> {
+                    val args=call.arguments as? Map<*,*>
+                    ReminderRefreshJob.scheduleSync(this,args?.get("enabled")==true,args?.get("immediate")==true)
+                    result.success(null)
+                }
                 "initialLink" -> result.success(initialLink)
                 "ackLink" -> { if(initialLink == call.arguments) {initialLink = null; intent.data = null}; result.success(null) }
                 "notificationsAllowed" -> result.success(notificationsAllowed())
@@ -224,10 +226,7 @@ class MainActivity : FlutterActivity() {
         googleResult=result
         val client=Identity.getAuthorizationClient(this)
         fun request() {
-            val builder=AuthorizationRequest.builder().setRequestedScopes(listOf(Scope("https://www.googleapis.com/auth/drive.appdata")))
-            if(interactive) builder.setPrompt(AuthorizationRequest.Prompt.SELECT_ACCOUNT)
-            else if (account != null && account.contains('@')) builder.setAccount(Account(account, "com.google"))
-            client.authorize(builder.build()).addOnSuccessListener { authorization ->
+            client.authorize(driveAuthorizationRequest(interactive,account)).addOnSuccessListener { authorization ->
                 if(googleResult !== result) return@addOnSuccessListener
                 if(authorization.hasResolution()) {
                     if(!interactive) {googleResult=null; result.error("reconnect","Google access expired or was revoked. Reconnect Google Drive to authorize again.",null)}

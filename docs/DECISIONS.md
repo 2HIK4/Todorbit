@@ -8,8 +8,9 @@
   portable SQL mutations commit their journal entry in the same transaction.
   Delivery receipts, OS/device paths, credentials and permissions remain local.
   Full restore retains both recovery queues and quarantines the replaced
-  profile until safe reconciliation. Implementation is inactive and incomplete;
-  this decision does not assert release readiness. Current real-Drive testing
+  profile until safe reconciliation. Schema 26 now integrates foreground controls
+  and bounded platform scheduling, portable preferences, timer ownership and
+  authenticated restore intent; release verification is still pending. Current real-Drive testing
   authorization is mocked transport only.
   [Implementation and gates](DRIVE_SYNC_RECOVERY_CHECKPOINT.md).
 

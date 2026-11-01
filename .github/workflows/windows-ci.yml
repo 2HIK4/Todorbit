@@ -42,6 +42,14 @@ jobs:
       - name: Build portable package with audited OAuth configuration
         shell: pwsh
         run: ./tools/build-portable.ps1
+      - name: Verify native sync writer with a disposable migrated profile
+        shell: pwsh
+        run: |
+          $env:TODORBIT_NATIVE_SYNC_EXECUTABLE = (Resolve-Path 'build/windows/x64/runner/Release/TodorbitWidget.exe').Path
+          flutter test --no-pub --concurrency=1 test_driver/native_sync_writer_test.dart
+      - name: Verify hidden background sync barriers
+        shell: pwsh
+        run: python tools/test-background-sync.py --executable build/windows/x64/runner/Release/Todorbit.exe --schema 26
       - name: Native widget self-test in disposable profile
         shell: pwsh
         run: |

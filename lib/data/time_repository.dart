@@ -23,6 +23,8 @@ extension TimeRepository on LifeRepository {
         ? null
         : DateTime.parse(row.read<String>('stopped_at')),
     updatedAt: DateTime.parse(row.read<String>('updated_at')),
+    ownerDeviceId: row.readNullable<String>('owner_device_id'),
+    canControl: row.data['local_control'] != 0,
   );
 
   TimeEntry _timeFromRow(QueryRow row) => TimeEntry(
@@ -40,9 +42,9 @@ extension TimeRepository on LifeRepository {
   );
 
   Future<TimerRun?> activeTimerRun() async {
-    final row = await db
-        .customSelect("SELECT * FROM timer_runs WHERE state!='stopped' LIMIT 1")
-        .getSingleOrNull();
+    final row = await db.customSelect("""SELECT r.*,CASE WHEN c.workspace_id IS NULL OR r.owner_device_id=c.device_id
+          THEN 1 ELSE 0 END AS local_control FROM timer_runs r CROSS JOIN sync_capture_context c
+          WHERE r.state!='stopped' AND c.id=1 LIMIT 1""").getSingleOrNull();
     return row == null ? null : _runFromRow(row);
   }
 
@@ -80,7 +82,8 @@ extension TimeRepository on LifeRepository {
       final now = DateTime.now().toUtc().toIso8601String();
       await db.customInsert(
         '''INSERT INTO timer_runs(id,task_id,state,started_at,last_seen_at,
-          created_at,updated_at) VALUES(?,?,'running',?,?,?,?)''',
+          created_at,updated_at,owner_device_id) VALUES(?,?,'running',?,?,?,?,
+          (SELECT device_id FROM sync_capture_context WHERE id=1))''',
         variables: [
           Variable.withString(id),
           Variable.withString(taskId),
@@ -118,6 +121,18 @@ extension TimeRepository on LifeRepository {
         )
         .getSingleOrNull();
     if (row == null) throw StateError('Timer changed. Refresh it first.');
+    final context = await db
+        .customSelect(
+          'SELECT workspace_id,device_id FROM sync_capture_context WHERE id=1',
+        )
+        .getSingle();
+    if (context.readNullable<String>('workspace_id') != null &&
+        row.readNullable<String>('owner_device_id') !=
+            context.readNullable<String>('device_id')) {
+      throw StateError(
+        'This timer is controlled by its originating device. Stop or review it there before changing its work intervals.',
+      );
+    }
     return _runFromRow(row);
   }
 
@@ -240,6 +255,46 @@ extension TimeRepository on LifeRepository {
       );
     });
   }
+
+  Future<void> adoptTimerAtCheckpoint(
+    TimerRun previous,
+  ) => db.transaction(() async {
+    final context = await db
+        .customSelect('SELECT * FROM sync_capture_context WHERE id=1')
+        .getSingle();
+    if (context.read<int>('capture_enabled') != 1 ||
+        context.read<int>('restore_quarantined') != 0 ||
+        context.read<int>('suspended_for_restore') != 0) {
+      throw StateError('Reconcile this profile before taking timer ownership.');
+    }
+    final row = await db
+        .customSelect(
+          'SELECT * FROM timer_runs WHERE id=? AND updated_at=? AND state!=\'stopped\'',
+          variables: [
+            Variable.withString(previous.id),
+            Variable.withString(previous.updatedAt.toUtc().toIso8601String()),
+          ],
+        )
+        .getSingleOrNull();
+    if (row == null) {
+      throw StateError('The timer changed. Refresh before taking ownership.');
+    }
+    final current = _runFromRow(row);
+    if (current.ownerDeviceId == context.readNullable<String>('device_id')) {
+      return;
+    }
+    if (current.state == TimerState.running) {
+      await _closeOpenInterval(current.id, current.lastSeenAt);
+    }
+    await db.customStatement(
+      'UPDATE timer_runs SET state=\'paused\',owner_device_id=?,updated_at=? WHERE id=?',
+      [
+        context.read<String>('device_id'),
+        _nextTaskRevision(current.updatedAt).toIso8601String(),
+        current.id,
+      ],
+    );
+  });
 
   Future<void> stopRecoveredTimerAtCheckpoint(TimerRun previous) async {
     await db.transaction(() async {

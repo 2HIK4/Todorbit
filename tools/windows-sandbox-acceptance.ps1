@@ -39,6 +39,14 @@ public static class SandboxSQLite {
   [DllImport("sqlite3", CallingConvention=CallingConvention.Cdecl)] static extern int sqlite3_step(IntPtr statement);
   [DllImport("sqlite3", CallingConvention=CallingConvention.Cdecl)] static extern IntPtr sqlite3_column_text(IntPtr statement, int column);
   [DllImport("sqlite3", CallingConvention=CallingConvention.Cdecl)] static extern int sqlite3_finalize(IntPtr statement);
+  [DllImport("sqlite3", CallingConvention=CallingConvention.Cdecl)] static extern int sqlite3_exec(IntPtr db, [MarshalAs(UnmanagedType.LPUTF8Str)] string sql, IntPtr callback, IntPtr state, out IntPtr error);
+  [DllImport("sqlite3", CallingConvention=CallingConvention.Cdecl)] static extern void sqlite3_free(IntPtr value);
+  public static void Execute(string file, string sql) {
+    IntPtr db=IntPtr.Zero, error=IntPtr.Zero;
+    try {
+      if(sqlite3_open_v2(file,out db,2,IntPtr.Zero)!=0 || sqlite3_exec(db,sql,IntPtr.Zero,IntPtr.Zero,out error)!=0) throw new Exception("Disposable SQLite write failed");
+    } finally {if(error!=IntPtr.Zero) sqlite3_free(error); if(db!=IntPtr.Zero) sqlite3_close(db);}
+  }
   public static string Scalar(string file, string sql) {
     IntPtr db = IntPtr.Zero, statement = IntPtr.Zero;
     try {
@@ -78,7 +86,7 @@ public static class SandboxSQLite {
         $deadline = [DateTime]::UtcNow.AddSeconds(90)
         while ([DateTime]::UtcNow -lt $deadline -and -not $process.HasExited) {
           try {
-            if ((Test-Path -LiteralPath $db) -and [SandboxSQLite]::Scalar($db,'PRAGMA user_version') -eq '21' -and [SandboxSQLite]::Scalar($db,"SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'") -eq '44') { $ready = $true; break }
+            if ((Test-Path -LiteralPath $db) -and [SandboxSQLite]::Scalar($db,'PRAGMA user_version') -eq [string]$manifest.schemaVersion -and [SandboxSQLite]::Scalar($db,"SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'") -eq [string]$manifest.tableCount) { $ready = $true; break }
           } catch { }
           Start-Sleep -Milliseconds 250
         }
@@ -92,12 +100,17 @@ public static class SandboxSQLite {
       }
     }
   }
-  $checks.Add('Installer and path-with-spaces portable create/reopen separate schema-21, 44-table profiles with integrity OK')
+  $checks.Add("Installer and path-with-spaces portable create/reopen separate schema-$($manifest.schemaVersion), $($manifest.tableCount)-table profiles with integrity OK")
   $widget = Start-Process -FilePath (Join-Path $portable 'TodorbitWidget.exe') -ArgumentList '--self-test' -Wait -PassThru -WindowStyle Hidden
   if ($widget.ExitCode -ne 0) { throw 'Packaged widget self-test failed.' }
   $checks.Add('Packaged native widget self-test succeeds')
   $installedDb = Join-Path $profiles[0].profile 'life_manager.sqlite'
+  Get-Process TodorbitWidget -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($work + '\',[StringComparison]::OrdinalIgnoreCase) } | Stop-Process
+  [SandboxSQLite]::Execute($installedDb,"INSERT INTO tasks(id,title,notes,status,priority,created_at,updated_at) VALUES('01ad804e-2bf0-4433-a450-367ac3559ea6','Synthetic upgrade sentinel','','notStarted',0,'2026-11-01T00:00:00Z','2026-11-01T00:00:00Z'); PRAGMA wal_checkpoint(TRUNCATE);")
   $before = (Get-FileHash -LiteralPath $installedDb -Algorithm SHA256).Hash
+  Install-Candidate
+  if ((Get-FileHash -LiteralPath $installedDb -Algorithm SHA256).Hash -ne $before -or [SandboxSQLite]::Scalar($installedDb,"SELECT title FROM tasks WHERE id='01ad804e-2bf0-4433-a450-367ac3559ea6'") -ne 'Synthetic upgrade sentinel') { throw 'In-place setup changed existing records.' }
+  $checks.Add('In-place setup preserves a populated database byte-for-byte and retains its sentinel task')
   $uninstall = Start-Process -FilePath (Join-Path $installed 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru -WindowStyle Hidden
   if ($uninstall.ExitCode -ne 0 -or (Test-Path -LiteralPath $key) -or (Get-FileHash -LiteralPath $installedDb -Algorithm SHA256).Hash -ne $before) { throw 'Uninstall/profile preservation check failed.' }
   Install-Candidate

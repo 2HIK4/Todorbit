@@ -17,6 +17,7 @@ import io.flutter.plugin.common.MethodChannel
 class ReminderRefreshJob : JobService() {
     private var engine: FlutterEngine? = null
     private var active: JobParameters? = null
+    private var authorization: BackgroundDriveAuthorization? = null
     private val handler=Handler(Looper.getMainLooper())
     private val timeout=Runnable {finish(true)}
     override fun onStartJob(params: JobParameters): Boolean {
@@ -33,19 +34,29 @@ class ReminderRefreshJob : JobService() {
                 if(active !== params) return@Runnable
                 try {
                     val worker=FlutterEngine(this); engine=worker
+                    authorization=BackgroundDriveAuthorization(this)
                     MethodChannel(worker.dartExecutor.binaryMessenger,"todorbit/android").setMethodCallHandler {call,result ->
                         when(call.method) {
                             "dataRoot" -> result.success(filesDir.absolutePath)
+                            "googleAuthorize" -> {
+                                if(call.argument<Boolean>("interactive")==true) result.error("reconnect","Background authorization cannot open an account screen.",null)
+                                else authorization?.authorize(call.argument<String>("account"),call.argument<Boolean>("force")==true,result)
+                            }
+                            "googleCancel" -> {authorization?.cancel();result.success(null)}
                             "reminderReceipts" -> result.success(AndroidSurfaces.reminderReceipts(this))
                             "publish" -> AndroidSurfaces.enqueue {
                                 try {AndroidSurfaces.publish(this,call.arguments as String); result.success(null)}
                                 catch (_: Exception) {result.error("refresh","Could not refresh Android surfaces",null)}
                             }
-                            "backgroundComplete" -> {result.success(null); handler.post {finish(false)}}
+                            "backgroundComplete" -> {
+                                val retry=call.argument<Boolean>("retry")==true
+                                result.success(null); handler.post {finish(retry)}
+                            }
                             else -> result.notImplemented()
                         }
                     }
-                    worker.dartExecutor.executeDartEntrypoint(DartExecutor.DartEntrypoint(loader.findAppBundlePath(),"androidBackgroundMain"))
+                    val entry=if(params.jobId==2028 || params.jobId==2029) "androidSyncBackgroundMain" else "androidBackgroundMain"
+                    worker.dartExecutor.executeDartEntrypoint(DartExecutor.DartEntrypoint(loader.findAppBundlePath(),entry))
                 } catch (_: Exception) {finish(true)}
             })
             return true
@@ -53,11 +64,25 @@ class ReminderRefreshJob : JobService() {
     }
     private fun finish(retry: Boolean) {
         handler.removeCallbacks(timeout)
+        authorization?.cancel();authorization=null
         engine?.destroy(); engine=null
         active?.let {jobFinished(it,retry)}; active=null
     }
-    override fun onStopJob(params: JobParameters): Boolean {handler.removeCallbacks(timeout); engine?.destroy(); engine=null; active=null; return true}
+    override fun onStopJob(params: JobParameters): Boolean {handler.removeCallbacks(timeout); authorization?.cancel();authorization=null; engine?.destroy(); engine=null; active=null; return true}
     companion object {
+        fun scheduleSync(context: Context, enabled: Boolean, immediate: Boolean=false) {
+            val scheduler=context.getSystemService(JobScheduler::class.java)
+            if(!enabled) {scheduler.cancel(2028);scheduler.cancel(2029);return}
+            if(scheduler.getPendingJob(2028)==null) {
+                scheduler.schedule(JobInfo.Builder(2028,ComponentName(context,ReminderRefreshJob::class.java))
+                    .setPeriodic(JobInfo.getMinPeriodMillis()).setPersisted(true)
+                    .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                    .setBackoffCriteria(30000,JobInfo.BACKOFF_POLICY_EXPONENTIAL).build())
+            }
+            if(immediate) scheduler.schedule(JobInfo.Builder(2029,ComponentName(context,ReminderRefreshJob::class.java))
+                .setMinimumLatency(1000).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                .setBackoffCriteria(30000,JobInfo.BACKOFF_POLICY_EXPONENTIAL).build())
+        }
         fun schedule(context: Context, immediate: Boolean=false) {
             val scheduler=context.getSystemService(JobScheduler::class.java)
             val builder=JobInfo.Builder(if(immediate) 2027 else 2026,ComponentName(context,ReminderRefreshJob::class.java))

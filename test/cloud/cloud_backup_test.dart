@@ -313,7 +313,7 @@ void main() {
     }
   }, timeout: const Timeout(Duration(minutes: 2)));
 
-  test('settings-only encrypted round trip selectively applies and merges without database edits', () async {
+  test('settings-only encrypted round trip updates portable preferences without planner edits', () async {
     final root = await Directory.systemTemp.createTemp(
       'todorbit-cloud-settings-',
     );
@@ -345,7 +345,7 @@ void main() {
       );
       expect(await local.list(), isEmpty);
       await current.setFirstWeekday(7);
-      final before = databaseRows(file);
+      final before = databaseRows(file)..remove('portable_preferences');
       final preview = await service.preview(uploaded, passphrase, progress);
       expect(preview.snapshot, isNull);
       expect(preview.manifest.containsKey('database'), isFalse);
@@ -362,7 +362,11 @@ void main() {
       expect(current.firstWeekday, 7);
       await settings.applyTo(current, {SettingsCategory.calendar});
       expect(current.firstWeekday, 1);
-      expect(databaseRows(file), before);
+      expect(databaseRows(file)..remove('portable_preferences'), before);
+      expect(
+        (await current.repository.portablePreferences())['firstWeekday'],
+        1,
+      );
     } finally {
       current.dispose();
       await db.close();

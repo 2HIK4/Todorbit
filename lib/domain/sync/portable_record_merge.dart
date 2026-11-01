@@ -1,5 +1,7 @@
 import 'causal_record.dart';
 
+import 'dart:convert';
+
 const _coupledFields = <String, List<Set<String>>>{
   'tasks': [
     {'status', 'completed_at', 'scheduled_date', 'remaining_work_minutes'},
@@ -58,7 +60,14 @@ const _coupledFields = <String, List<Set<String>>>{
     {'task_id', 'starts_at', 'ends_at', 'outcome', 'actual_started_at'},
   ],
   'timer_runs': [
-    {'task_id', 'state', 'started_at', 'last_seen_at', 'stopped_at'},
+    {
+      'task_id',
+      'state',
+      'started_at',
+      'last_seen_at',
+      'stopped_at',
+      'owner_device_id',
+    },
   ],
   'time_entries': [
     {'task_id', 'session_id', 'starts_at', 'ends_at', 'source', 'timer_run_id'},
@@ -95,6 +104,7 @@ SyncRecordReview reviewPortableRecord(
         parents: revision.parents,
         observed: revision.observed,
         visible: revision.visible,
+        intent: revision.intent,
         value: revision.value == null
             ? null
             : ({...revision.value!}..remove('updated_at')),
@@ -103,6 +113,46 @@ SyncRecordReview reviewPortableRecord(
   }
   final review = graph.review();
   final originals = {for (final revision in revisions) revision.id: revision};
+  final heads = [for (final id in review.heads) originals[id]!];
+  Object? canonical(Object? value) => switch (value) {
+    Map() => {
+      for (final key in value.keys.cast<String>().toList()..sort())
+        key: canonical(value[key]),
+    },
+    List() => value.map(canonical).toList(),
+    _ => value,
+  };
+  if (heads.length > 1 &&
+      heads.any(
+        (r) =>
+            r.value?['deleted_at'] != null || r.value?['archived_at'] != null,
+      ) &&
+      heads
+              .map(
+                (r) => jsonEncode(
+                  canonical(
+                    r.value == null
+                        ? null
+                        : ({...r.value!}..remove('updated_at')),
+                  ),
+                ),
+              )
+              .toSet()
+              .length >
+          1) {
+    return SyncRecordReview(
+      heads: review.heads,
+      merged: null,
+      conflicts: [
+        SyncConflict(
+          SyncConflict.record,
+          null,
+          Map.unmodifiable({for (final head in heads) head.id: head.value}),
+          basePresent: false,
+        ),
+      ],
+    );
+  }
   final conflicts = [
     for (final conflict in review.conflicts)
       if (conflict.field == SyncConflict.record)
