@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.19-beta.4+27 - coordinated sync candidate (unpublished)
+## 1.0.19-beta.4+27 - coordinated Windows + Android pre-release
 
 - Add encrypted incremental Google Drive sync, same-account recovery-code pairing,
   automatic exchange, Sync Now and persistent consolidated conflict review.
@@ -12,8 +12,14 @@
   device identity; report committed restores accurately as requiring restart.
 - Migrate existing data to schema 26 with portable preferences and explicit timer
   ownership. Keep snapshot backups, device settings and release identities intact.
-- Drive validation currently uses mocks; real-account and physical acceptance
+- Include Microsoft-signed C++ runtime DLLs for clean Windows installations.
+- Drive validation uses mocks; real-account and physical acceptance
   remain unobserved. See docs/GOOGLE_DRIVE_SYNC.md.
+
+## 1.0.19-beta.3+26 - Sync button preview
+
+- Publish the initial Coming soon Sync control for Windows and Android, retaining
+  schema 22. Full synchronization follows in beta 4.
 
 ## 1.0.19-beta.2+25 - Android pre-release
 

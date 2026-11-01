@@ -1,8 +1,8 @@
 # Encrypted Google Drive sync
 
-Implementation candidate, schema 26. Full sync is not yet published. The separate
-beta 3 has only a Coming soon button. See the [current implementation and gate
-ledger](DRIVE_SYNC_RECOVERY_CHECKPOINT.md) for current evidence.
+Version 1.0.19-beta.4, schema 26. The separate beta 3 has only a Coming soon
+button. See the [publication receipt](DRIVE_SYNC_BETA_4_PUBLICATION.md) and
+[implementation ledger](DRIVE_SYNC_RECOVERY_CHECKPOINT.md) for current evidence.
 
 ## Connect two devices
 

@@ -2,6 +2,11 @@
 
 ## Current status
 
+The current coordinated release is **[v1.0.19-beta.4](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.4)**,
+Windows + Android, version `1.0.19-beta.4+27`, Android code 27, schema 26.
+[Publication evidence, exact checksums and limits](DRIVE_SYNC_BETA_4_PUBLICATION.md).
+The Windows 1.0.18 checkpoint below is historical.
+
 As checked on 2026-10-28, the latest public release is the Windows x64
 **v1.0.18 pre-release (1.0.18+19)**, tag/source `08eab9a`.
 [Publication receipt](TODORBIT_1_0_18_PUBLICATION.md) records the exact-source

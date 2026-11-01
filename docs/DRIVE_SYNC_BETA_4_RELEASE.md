@@ -33,4 +33,6 @@ signer. Windows Setup and portable ZIP are separate choices. Verify the publishe
 SHA-256 manifests before installing. Do not uninstall an app to bypass a signer
 error; retain and verify its data recovery first.
 
-[Pairing, data boundaries and short manual acceptance guide](https://github.com/2HIK4/Todorbit/blob/v1.0.19-beta.4/docs/GOOGLE_DRIVE_SYNC.md).
+[Pairing, data boundaries and short manual acceptance guide](https://github.com/2HIK4/Todorbit/blob/feature/drive-sync-recovery/docs/GOOGLE_DRIVE_SYNC.md).
+
+[Publication receipt, exact checksums and acceptance limits](https://github.com/2HIK4/Todorbit/blob/feature/drive-sync-recovery/docs/DRIVE_SYNC_BETA_4_PUBLICATION.md).

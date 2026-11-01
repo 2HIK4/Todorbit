@@ -649,3 +649,103 @@ compilation, full host integration and exact-source release gates remain pending
 - Repackaging is in `sync-crt-windows-{installer,portable,checksums}.log`. Final
   unchanged-package Sandbox acceptance, replacement ZIP equality and exact-source
   packaging CI are still required. Public beta 4 remains unpublished.
+
+## Final package acceptance — 2026-11-02
+
+Release candidate source is `67b265d2c546aa5ea5fad6b5214dad1a715869d9`.
+Application/runtime source remains identical to `0813913`; the later commits
+change acceptance harnesses, packaging scripts/CRT redistribution and evidence.
+
+- CRT-inclusive installer built successfully. Initial portable invocation refused
+  to overwrite its prior output (`sync-crt-windows-portable.log`); corrected by
+  using a fresh private output directory, preserving the older ZIP.
+  `sync-crt-windows-portable-corrected.log` passed. Exact executable/AOT hashes
+  remained unchanged and tracked build configuration was restored.
+- `sync-crt-portable-equality.log`: all 28 Release bundle files matched final ZIP
+  bytes; ZIP CRC passed; three signed runtime DLLs, receipt and notice present.
+- `sync-crt-final-sandbox-launch.json` and its mapped `results/acceptance.json`:
+  PASS against the unchanged final setup/ZIP. Fresh per-user installation,
+  installer registration/path, installed and path-with-spaces portable cold
+  schema-26/52-table create/reopen/integrity, native self-test, populated in-place
+  setup byte preservation, uninstall data retention and reinstall all passed.
+  The private runner only adds failure diagnostics and guest shutdown afterward;
+  no dependency injection or test weakening. The guest was stopped afterward.
+- Computer-use inspection was attempted when waiting for that guest. Both the
+  skill's node runtime and the alternate CUA entry point reported missing kernel
+  assets; no desktop UI was automated. The file-based guest completed normally.
+- `sync-android-upgrade/receipt.json`: disposable `TodorbitProductionFast`, serial
+  `emulator-5584`, accepted production beta 1/code 23 to beta 4/code 27 with
+  `adb install -r`, retaining the first-install timestamp. Explicit schema 22->26
+  backup/migration prompt observed; existing synthetic task and project survived
+  a cold reopen. The attempted additional draft sentinel was not saved, so it is
+  explicitly not claimed as migration evidence. Retained original synthetic
+  records provide the observed preservation evidence. Network radios were off;
+  no real Drive exchange/pairing was attempted. An existing locally saved account
+  label was displayed by setup, without contacting Drive. The emulator is stopped
+  with its disposable data retained. Actual system-installer approval is unobserved.
+- Top-right Sync opens the real production Android setup page. Private screenshot
+  and accessibility evidence are under `sync-android-upgrade/`; this is emulator
+  Release rendering, separate from physical phone/OEM acceptance.
+- Android 16 KiB artifact workflow `41353852427`: PASS for the exact x64 APK
+  SHA-256 `8d2a5fb6c9c257f31a140ad44077ee68e23d7a1634a4654264bc64c155417d43`.
+  Official API-36 16 KiB guest: stable no-app baseline, rendered app, create/reopen/
+  complete synthetic task, no crash or ANR observed. Receipt downloaded under
+  `sync-final-16k-evidence/Android-16KiB-runtime-evidence/`.
+- Draft beta 4 created as release ID `430876643`, target `67b265d`, prerelease.
+  Parallel upload initially left four starter objects. After stopping only its
+  owned uploader, retrying missing draft objects sequentially over HTTP/1 completed.
+  A duplicate x64 retry was correctly refused because that asset had completed;
+  it was reused unchanged. `sync-beta4-draft-integrity.json`: all 11 completed
+  assets match local exact lengths and GitHub SHA-256 metadata; private AAB absent.
+  Initial JSON audit selected UTF-8 for a PowerShell UTF-16 redirection and failed
+  decoding; detecting the BOM corrected the diagnostic without changing assets.
+- `sync-final-portable-update.log` found an old harness expecting numeric-core
+  version 1.0.19 instead of beta.4. Corrected only harness prerelease parsing.
+  `sync-final-portable-update-corrected.log`: actual package swap, automatic restart,
+  SQLite integrity, synthetic task and widget/settings/profile retention passed.
+  Its cleanup raced a terminating process and reported a locked DLL. Cleanup now
+  waits for its owned processes. Valid swap evidence is reused, not repeated.
+  `sync-final-portable-rollback.log`: deliberate version mismatch rolled back,
+  automatically restarted and retained isolated data/settings; cleanup passed.
+- Exact-source Windows CI for the CRT packaging correction is `41353292679`.
+  It remains pending before publication. Prior 568-pass host evidence is retained;
+  Android/16 KiB artifact and Windows package evidence remain valid because no
+  runtime code changed. Beta 4 is still a draft; no public release gate is waived.
+
+## Public release verified — 2026-11-02
+
+- Exact candidate Windows CI `41353292679` passed: 568 host tests, one existing
+  opt-in skip, full analysis, helper/config gates, native Release/self-test,
+  C++ runtime positive/negative gates, native SQL writer, hidden background
+  barriers, installer/portable/checksums. Complete log is
+  `sync-final-exact-source-ci.log`. No mandatory gate was waived.
+- Published release `430876643`, tag `v1.0.19-beta.4`, source `67b265d`, version
+  `1.0.19-beta.4+27`, at 2026-11-02 01:03:03 Asia/Amman. Pre-release, Latest false.
+  `sync-beta4-published.json` and `sync-beta4-public-tag.json` bind source/tag.
+- `sync-beta4-anonymous-verification.log` and `sync-beta4-anonymous-integrity.json`:
+  anonymous public metadata, all 11 exact lengths/digests, and hashed small-asset
+  downloads pass. Five final binary HTTP Range delivery probes passed in
+  `sync-beta4-public-download-probes.log` / JSON. Complete digests are verified
+  through GitHub metadata; large APK/ZIP files were not downloaded redundantly.
+- `sync-beta4-public-updater-test.log`: one production-selector check passes on
+  anonymous metadata, covering Windows Setup/portable choice, Android ARM64/x64
+  priority and hashes, increasing code 27, and Stable exclusion. No data profile,
+  real Drive account or installer is opened by this metadata test.
+- Portable swap evidence was reused after its cleanup-only fix. The required
+  deliberate-failure rollback then passed in `sync-final-portable-rollback.log`.
+  The harness fix preserves prerelease version names and waits for terminating
+  owned processes before deleting its verified temporary root. It is test-only;
+  packaged `update-helper.ps1` is unchanged and its actual version gate passed.
+- `sync-publication-docs-check.log`: zero link/map/catalog errors;
+  pre-publication diff check passed. Final publication documentation is being
+  finalized after the observed public checks; binary rebuilds/CI reruns are
+  unnecessary for this evidence/test-harness-only follow-up.
+- [Public receipt, all artifact hashes and explicit acceptance limits](DRIVE_SYNC_BETA_4_PUBLICATION.md).
+
+Final documentation checks `sync-final-publication-docs.log` and
+`sync-publication-final-docs.log` report zero errors; final diff checks passed.
+These text-only invocations validate the completed receipt and updated download
+links, not new runtime behavior. The final follow-up also retains the already
+validated portable test-harness prerelease/cleanup corrections. It does not
+change published application or package source, so no binary rebuild or new
+full-suite run is warranted. Published tag remains exactly `67b265d`.

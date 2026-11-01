@@ -2,11 +2,12 @@ param([string]$Package = '', [switch]$ExpectFailure)
 
 $ErrorActionPreference = 'Stop'
 $versionText = Get-Content -Raw 'pubspec.yaml'
-if ($versionText -notmatch '(?m)^version:\s*(\d+\.\d+\.\d+)') {
+if ($versionText -notmatch '(?m)^version:\s*(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)') {
   throw 'Could not read application version.'
 }
 $version = $Matches[1]
-if (-not $Package) { $Package = "release\Todorbit-$version-win-x64-portable.zip" }
+$packageVersion = ($version -split '-')[0]
+if (-not $Package) { $Package = "release\Todorbit-$packageVersion-win-x64-portable.zip" }
 $zip = (Resolve-Path -LiteralPath $Package).Path
 $script = (Resolve-Path -LiteralPath 'tools\update-helper.ps1').Path
 $root = Join-Path $env:TEMP ('todorbit-portable-update-' + [guid]::NewGuid().ToString('N'))
@@ -169,13 +170,13 @@ sys.exit(0 if task == 1 and integrity == 'ok' else 1)
 } finally {
   $env:APPDATA = $previousAppData
   $env:LOCALAPPDATA = $previousLocalAppData
-  if ($helper -and -not $helper.HasExited) { $helper.Kill() }
-  if ($app -and -not $app.HasExited) { $app.Kill() }
-  if ($widgetProcess -and -not $widgetProcess.HasExited) { $widgetProcess.Kill() }
+  if ($helper -and -not $helper.HasExited) { $helper.Kill(); [void]$helper.WaitForExit(10000) }
+  if ($app -and -not $app.HasExited) { $app.Kill(); [void]$app.WaitForExit(10000) }
+  if ($widgetProcess -and -not $widgetProcess.HasExited) { $widgetProcess.Kill(); [void]$widgetProcess.WaitForExit(10000) }
   if (Test-Path -LiteralPath $initial) {
     Get-Process -Name Todorbit,TodorbitWidget -ErrorAction SilentlyContinue | Where-Object {
       try { $_.Path -and $_.Path.StartsWith($initial + '\', [StringComparison]::OrdinalIgnoreCase) } catch { $false }
-    } | Stop-Process -Force
+    } | ForEach-Object { Stop-Process -InputObject $_ -Force; [void]$_.WaitForExit(10000) }
   }
   if ($helper) { $helper.Dispose() }
   if ($app) { $app.Dispose() }
