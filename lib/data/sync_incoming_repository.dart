@@ -1,5 +1,43 @@
 part of 'life_repository.dart';
 
+Future<List<String>> _syncKnownClosureInWorker(
+  List<Map<String, Object?>> rows,
+) => Isolate.run(() {
+  final blocked = <String, Set<String>>{};
+  final waiting = <String, List<String>>{};
+  final ready = <String>[];
+  final byId = {for (final row in rows) row['operation_id'] as String: row};
+  for (final row in rows) {
+    final id = row['operation_id'] as String;
+    final dependencies = <String>{
+      for (final parent in jsonDecode(row['missing_parents'] as String) as List)
+        jsonEncode(['operation', parent]),
+      for (final pair
+          in jsonDecode(row['missing_observations'] as String) as List)
+        jsonEncode(['sequence', pair[0], pair[1]]),
+    };
+    blocked[id] = dependencies;
+    if (dependencies.isEmpty) ready.add(id);
+    for (final dependency in dependencies) {
+      (waiting[dependency] ??= []).add(id);
+    }
+  }
+  for (var cursor = 0; cursor < ready.length; cursor++) {
+    final id = ready[cursor];
+    final row = byId[id]!;
+    for (final fact in [
+      jsonEncode(['operation', id]),
+      jsonEncode(['sequence', row['device_id'], row['origin_sequence']]),
+    ]) {
+      for (final dependent in waiting[fact] ?? const <String>[]) {
+        final remaining = blocked[dependent]!;
+        if (remaining.remove(fact) && remaining.isEmpty) ready.add(dependent);
+      }
+    }
+  }
+  return ready;
+});
+
 Object? _syncCanonical(Object? value) => switch (value) {
   Map() => {
     for (final key in value.keys.cast<String>().toList()..sort())
@@ -283,12 +321,7 @@ extension SyncIncomingRepository on LifeRepository {
       }
       await _validateRetainedSyncParents(binding);
       await _advanceKnownSyncHistory(binding);
-      await db.customStatement(
-        '''UPDATE sync_mutation_groups SET complete=1
-        WHERE workspace_id=? AND account_id=? AND complete=0 AND
-        last_sequence-first_sequence+1=(SELECT COUNT(*) FROM sync_journal j WHERE j.mutation_group_id=sync_mutation_groups.id AND j.known=1)''',
-        [binding.workspace, binding.account],
-      );
+      await _completeRetainedSyncGroups(binding);
       final objects = await db
           .customSelect(
             'SELECT batch_id FROM sync_remote_objects WHERE object_id=?',
@@ -369,42 +402,78 @@ extension SyncIncomingRepository on LifeRepository {
     }
   }
 
-  Future<void> _advanceKnownSyncHistory(SyncBinding binding) async {
-    // Global clocks track authenticated history, never user-visible state.
-    // A future materializer must separately track what the user has reviewed.
-    while (true) {
-      final ready = await db
-          .customSelect(
-            '''SELECT j.operation_id,j.device_id,j.origin_sequence FROM sync_journal j
-        WHERE j.workspace_id=? AND j.account_id=? AND j.known=0
-        AND NOT EXISTS(SELECT 1 FROM json_each(j.parent_ids_json) p WHERE NOT EXISTS(
-          SELECT 1 FROM sync_journal a WHERE a.operation_id=p.value AND a.known=1))
-        AND NOT EXISTS(SELECT 1 FROM json_each(j.observed_json) v WHERE v.value>0 AND NOT EXISTS(
-          SELECT 1 FROM sync_journal a WHERE a.workspace_id=j.workspace_id AND a.account_id=j.account_id
-          AND a.device_id=v.key AND a.origin_sequence=v.value AND a.known=1))
-        ORDER BY j.sequence LIMIT 512''',
-            variables: [
-              Variable.withString(binding.workspace),
-              Variable.withString(binding.account),
-            ],
-          )
-          .get();
-      if (ready.isEmpty) break;
-      for (final row in ready) {
-        await db.customStatement(
-          'UPDATE sync_journal SET known=1 WHERE operation_id=?',
-          [row.read<String>('operation_id')],
-        );
-        await db.customStatement(
-          '''UPDATE sync_capture_context SET received_json=json_set(received_json,'\$.' || json_quote(?),
-          max(coalesce(json_extract(received_json,'\$.' || json_quote(?)),0),?)) WHERE id=1''',
-          [
-            row.read<String>('device_id'),
-            row.read<String>('device_id'),
-            row.read<int>('origin_sequence'),
-          ],
-        );
-      }
+  Future<int> advanceRetainedSyncHistory(
+    SyncBinding binding, {
+    SyncLease? lease,
+  }) => db.transaction(() async {
+    await _requireSyncExchange(binding, lease);
+    final advanced = await _advanceKnownSyncHistory(binding);
+    await _completeRetainedSyncGroups(binding);
+    await _requireSyncExchange(binding, lease);
+    return advanced;
+  });
+
+  Future<void> _completeRetainedSyncGroups(SyncBinding binding) =>
+      db.customStatement(
+        '''WITH counts AS (
+    SELECT mutation_group_id,COUNT(*) AS known_count FROM sync_journal
+    WHERE workspace_id=? AND account_id=? AND known=1 GROUP BY mutation_group_id)
+    UPDATE sync_mutation_groups SET complete=1 WHERE complete=0 AND id IN (
+      SELECT g.id FROM sync_mutation_groups g JOIN counts c ON c.mutation_group_id=g.id
+      WHERE c.known_count=g.last_sequence-g.first_sequence+1)''',
+        [binding.workspace, binding.account],
+      );
+
+  Future<int> _advanceKnownSyncHistory(SyncBinding binding) async {
+    // Bound work per lease transaction. A delayed early page may unlock a much
+    // larger retained graph; the worker continues in fresh transactions with
+    // heartbeat opportunities instead of monopolizing SQLite until expiry.
+    final rows =
+        (await db
+                .customSelect(
+                  '''WITH pending AS (
+      SELECT j.operation_id,j.device_id,j.origin_sequence,
+      (SELECT json_group_array(p.value) FROM json_each(j.parent_ids_json) p WHERE NOT EXISTS(
+        SELECT 1 FROM sync_journal a WHERE a.operation_id=p.value AND a.known=1)) AS missing_parents,
+      (SELECT json_group_array(json_array(v.key,v.value)) FROM json_each(j.observed_json) v
+        WHERE v.value>0 AND NOT EXISTS(SELECT 1 FROM sync_journal a WHERE
+        a.workspace_id=j.workspace_id AND a.account_id=j.account_id AND a.device_id=v.key
+        AND a.origin_sequence=v.value AND a.known=1)) AS missing_observations
+      FROM sync_journal j WHERE j.workspace_id=? AND j.account_id=? AND j.known=0)
+      SELECT * FROM pending ORDER BY json_array_length(missing_parents)+json_array_length(missing_observations),origin_sequence,device_id LIMIT 1024''',
+                  variables: [
+                    Variable.withString(binding.workspace),
+                    Variable.withString(binding.account),
+                  ],
+                )
+                .get())
+            .map((row) => Map<String, Object?>.from(row.data))
+            .toList();
+    final ready = await _syncKnownClosureInWorker(rows);
+    if (ready.isEmpty) return 0;
+    for (var offset = 0; offset < ready.length; offset += 256) {
+      final ids = ready.skip(offset).take(256).toList();
+      await db.customStatement(
+        'UPDATE sync_journal SET known=1 WHERE operation_id IN (${List.filled(ids.length, '?').join(',')})',
+        ids,
+      );
     }
+    final readyIds = ready.toSet();
+    final received = <String, int>{};
+    for (final row in rows.where(
+      (row) => readyIds.contains(row['operation_id']),
+    )) {
+      final device = row['device_id'] as String;
+      final sequence = row['origin_sequence'] as int;
+      if (sequence > (received[device] ?? 0)) received[device] = sequence;
+    }
+    for (final entry in received.entries) {
+      await db.customStatement(
+        '''UPDATE sync_capture_context SET received_json=json_set(received_json,'\$.' || json_quote(?),
+        max(coalesce(json_extract(received_json,'\$.' || json_quote(?)),0),?)) WHERE id=1''',
+        [entry.key, entry.key, entry.value],
+      );
+    }
+    return ready.length;
   }
 }

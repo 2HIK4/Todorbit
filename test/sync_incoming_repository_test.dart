@@ -396,4 +396,70 @@ void main() {
       expect(await receiver.tasks(), isEmpty);
     },
   );
+  test('a delayed page unlocks bounded durable work across restart', () async {
+    await left.transaction(() async {
+      for (var i = 0; i < 1025; i++) {
+        await sender.addTask(TaskDraft(title: 'One large original action $i'));
+      }
+    });
+    final batches = <PendingSyncBatch>[];
+    while (true) {
+      final batch = await sender.prepareNextSyncBatch(source, key);
+      if (batch == null) break;
+      batches.add(batch);
+      await sender.acknowledgeSyncBatch(batch, remote(batch));
+    }
+    expect(batches, hasLength(3));
+    expect(await receive(batches[2]), 1);
+    expect(await receive(batches[1]), 512);
+    expect(await receive(batches[0]), 512);
+    expect(
+      (await right
+              .customSelect(
+                'SELECT COUNT(*) AS n FROM sync_journal WHERE known=1',
+              )
+              .getSingle())
+          .read<int>('n'),
+      1024,
+    );
+    expect(
+      (await right
+              .customSelect('SELECT complete FROM sync_mutation_groups')
+              .getSingle())
+          .read<int>('complete'),
+      0,
+    );
+    await right.close();
+    right = AppDatabase(NativeDatabase(File('${root.path}/right.sqlite')));
+    receiver = LifeRepository(right);
+    await receiver.addTask(
+      const TaskDraft(title: 'User action between short sync jobs'),
+    );
+    expect(await receiver.advanceRetainedSyncHistory(target), 1);
+    expect(await receiver.advanceRetainedSyncHistory(target), 0);
+    expect(
+      (await right
+              .customSelect(
+                "SELECT complete FROM sync_mutation_groups WHERE device_id='${source.device}'",
+              )
+              .getSingle())
+          .read<int>('complete'),
+      1,
+    );
+    expect(
+      (await receiver.tasks()).single.title,
+      'User action between short sync jobs',
+    );
+    final context = await right
+        .customSelect('SELECT * FROM sync_capture_context')
+        .getSingle();
+    expect(
+      jsonDecode(context.read<String>('received_json'))[source.device],
+      1025,
+    );
+    expect(
+      jsonDecode(context.read<String>('visible_json'))[source.device],
+      isNull,
+    );
+  });
 }

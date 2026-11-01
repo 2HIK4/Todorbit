@@ -280,3 +280,46 @@ transaction wrapper and schema25 migration postdate the schema23 full pass.
 
 Foreground/background engines and remote application remain disabled. No
 publication candidate exists yet.
+
+Retained-history readiness now processes at most 1,024 metadata nodes per
+transaction, computes dependency closure off the foreground isolate and updates
+known flags in bounded SQL chunks. A delayed first page cannot monopolize a
+lease while unlocking an arbitrarily large queue. Follow-up jobs continue after
+restart; received clocks still do not change visible data.
+Quick `20261101-080051-4478` passed 14 incoming/lease checks plus analysis,
+formatting and diff validation. Its new 1,025-operation reordered fixture proves
+bounded continuation, restart and an intervening local user edit. This targeted
+pass replaces receiver-readiness evidence only; unaffected full-host checks from
+`20261101-012822-1294` are retained.
+
+### Remote applier implementation notes
+
+The next implementation must prepare a review outside the writer transaction,
+then compare the captured local sequence and exact visible state under the writer
+lock before applying. Received-history changes alone do not invalidate a visible
+review. Original groups apply fully or remain retained; missing visible parents
+wait, semantic conflicts persist, and independent eligible groups continue.
+
+Use per-record causal review with all safely materialized heads and the candidate
+group. Keep complete visible parent sets; do not emit synthetic merge operations
+which can bounce between devices. Modification metadata may be derived for
+display, but any changed task row must get a strictly new local CAS timestamp
+even when a future clock makes the maximum remote timestamp unchanged. Reuse the
+existing monotonic repository helper. Incoming facts remain unchanged in history.
+
+Audit cross-record concurrent deletion/descendant edits and recurrence/progressive
+rule/completion changes before SQL. Use FK references plus task-parent,
+recurrence-family and entity-icon relationships. Validate dependency/parent
+cycles, task project/category compatibility, recurrence namespaces and SQLite
+constraints inside the trial transaction. Native recurring semantics must not be
+rerun from a remote task completion. The three recurrence and four icon-cleanup
+SQL triggers must be suppressed/restored inside the same atomic apply transaction
+or explicitly guarded; capture is suppressed with `applying_remote`.
+
+Managed byte history should be compared by authenticated digest/length references
+and load only a selected payload when writing, avoiding retention of every old
+attachment in a review's memory. Keep per-record processing bounded and renew
+owned work between steps. A remote purge must not silently cascade through a
+device-local external resource. An existing row without captured visible heads
+must not be overwritten as a presumed empty slot. Restore quarantine and staged
+restore suspension remain exchange barriers.
