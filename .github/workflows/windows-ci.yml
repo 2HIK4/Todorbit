@@ -39,6 +39,9 @@ jobs:
       - name: Build Windows Release
         shell: pwsh
         run: ./tools/build-windows-release.ps1
+      - name: Verify C++ runtime packaging gates
+        shell: pwsh
+        run: ./tools/test-windows-crt.ps1
       - name: Build portable package with audited OAuth configuration
         shell: pwsh
         run: ./tools/build-portable.ps1

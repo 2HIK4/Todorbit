@@ -40,6 +40,12 @@ For packaged verification substitute the Release bundle executable path.
 Windows CMake already publishes/packages the companion; a separate `dotnet build`
 is useful for fast native diagnostics, not an extra distribution packaging step.
 
+`tools/build-windows-release.ps1` also stages the three Microsoft-signed desktop
+x64 C++ redistributables from the installed Visual Studio redist directory.
+Installer and ZIP packaging require their valid signatures and matching
+`data/windows-crt.json` receipt. Clean machines must not depend on a developer's
+system-wide Visual Studio runtime. See [Flutter deployment guidance](https://docs.flutter.dev/platform-integration/windows/building).
+
 After building a sync-capable Release bundle, run the explicit native writer and
 hidden-worker gates sequentially with other Flutter tests:
 

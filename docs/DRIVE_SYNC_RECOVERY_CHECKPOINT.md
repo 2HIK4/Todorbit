@@ -609,3 +609,43 @@ compilation, full host integration and exact-source release gates remain pending
   unchanged Android application source; website run `41347862688` passed.
 - Signed split APK construction is in progress in `sync-final-android-apks.log`.
   No release/tag/assets have been published for beta 4.
+
+## Clean Windows deployment correction — 2026-11-02
+
+- Windows CI `41348561761` passed on `0f8e61f`: 568 host tests passed, one existing
+  opt-in skip; full analysis, native writer, hidden-worker, packaged self-test,
+  OAuth/config and installer/package gates passed. Android CI `41347898852` passed
+  on identical Android application source. Both complete logs remain private.
+- Signed APKs from unchanged runtime source `0813913` passed alignment:
+  universal 52,463,895 bytes; ARM64 25,927,259; x64 27,510,775. Private Play AAB
+  is 48,924,126 bytes. `sync-final-android-candidate-validation.log` passed all
+  production signer/package/version/code/ABI and Play separation/configuration
+  gates. Five native signing-policy JVM tests passed, zero failures/errors/skips,
+  recorded in XML plus `sync-final-android-native-receipt.json`. A PowerShell
+  stderr warning interrupted orchestration after successful Gradle execution;
+  native tests were not repeated, and the not-yet-started AAB build ran separately.
+- `sync-final-portable-equality.log`: all 24 application bundle files matched
+  the initial ZIP byte-for-byte; CRC/private-file checks passed. CRT repackaging
+  invalidates that package hash, so compare the replacement ZIP again.
+- Clean Sandbox install initially passed hash/registration checks, then failed
+  app schema readiness twice. `sync-final-sandbox-diagnostic-launch.json` records
+  the unchanged-package diagnostic run. Standard error was empty: Windows could
+  not start the native loader. No planner data was opened on the owner's account.
+- Controlled fresh-guest probe `sync-crt-probe-launch.json` injected only three
+  valid Microsoft-signed x64 Visual C++ runtime DLLs. It passed all schema-26/
+  52-table cold create/reopen, packaged native self-test, populated in-place setup
+  byte preservation, uninstall retention and reinstall checks. This is diagnostic
+  evidence, explicitly not acceptance of the original packages. Shader/renderer
+  warnings occurred in the virtual guest; no physical GUI claim is made.
+- Root cause: application-local `msvcp140.dll`, `vcruntime140.dll` and
+  `vcruntime140_1.dll` were missing. Flutter's Windows deployment guidance lists
+  these files; Microsoft's Visual Studio redistribution list permits unmodified
+  redist distribution under its terms. Added signed desktop-x64 redistributable
+  staging/receipt and installer/portable gates, plus distribution notices.
+- `sync-crt-staging.log` passed; `sync-crt-negative-gates.log` accepts the authentic
+  set and rejects absent receipts/DLLs, altered bytes and hash mismatches. Exact
+  runtime executable/AOT/native hashes are bound in
+  `sync-pre-crt-runtime-binaries.json`; app recompilation is unnecessary.
+- Repackaging is in `sync-crt-windows-{installer,portable,checksums}.log`. Final
+  unchanged-package Sandbox acceptance, replacement ZIP equality and exact-source
+  packaging CI are still required. Public beta 4 remains unpublished.

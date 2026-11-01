@@ -1,0 +1,13 @@
+Microsoft Visual C++ runtime redistributables (desktop x64)
+
+Copyright Microsoft Corporation. All rights reserved.
+
+This package includes Microsoft-signed msvcp140.dll, vcruntime140.dll and
+vcruntime140_1.dll from the installed Visual Studio C++ redistributable set.
+These components retain their Microsoft copyright and license terms; the
+Todorbit project license does not replace those terms.
+
+Microsoft's Visual Studio 2022 redistribution guidance and redistributable list:
+https://learn.microsoft.com/en-us/visualstudio/releases/2022/redistribution
+
+Exact deployed versions and SHA-256 values: data/windows-crt.json.
