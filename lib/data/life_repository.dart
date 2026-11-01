@@ -53,6 +53,8 @@ part 'sync_exchange_repository.dart';
 part 'sync_incoming_repository.dart';
 part 'sync_lease_repository.dart';
 part 'sync_apply_repository.dart';
+part 'sync_resolution_repository.dart';
+part 'sync_status_repository.dart';
 
 class LifeRepository {
   LifeRepository(this.db, {DateTime Function()? taskClock})

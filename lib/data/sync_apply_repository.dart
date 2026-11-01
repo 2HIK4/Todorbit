@@ -68,12 +68,14 @@ class _SyncGroupDraft {
     required this.visibleState,
     required this.records,
     required this.operations,
+    required this.coveredGroups,
     this.reason,
   });
   final String id, device, visibleState;
   final int first, last, localSequence;
   final List<_SyncRecordDraft> records;
   final List<Map<String, Object?>> operations;
+  final Set<String> coveredGroups;
   final String? reason;
 }
 
@@ -260,10 +262,74 @@ class _SyncApplySchema {
 }
 
 extension SyncApplyRepository on LifeRepository {
+  Future<Set<String>?> _coveredSyncAncestors(
+    SyncBinding binding,
+    String groupId,
+  ) async {
+    final groups = await db
+        .customSelect(
+          '''WITH RECURSIVE ancestors(id) AS (
+      SELECT p.value FROM sync_journal j,json_each(j.parent_ids_json) p WHERE j.mutation_group_id=?
+      UNION SELECT p.value FROM sync_journal j JOIN ancestors a ON a.id=j.operation_id,json_each(j.parent_ids_json) p)
+      SELECT DISTINCT g.* FROM ancestors a JOIN sync_journal j ON j.operation_id=a.id
+      JOIN sync_mutation_groups g ON g.id=j.mutation_group_id WHERE g.id!=? AND g.materialized=0
+      AND g.workspace_id=? AND g.account_id=?''',
+          variables: [
+            Variable.withString(groupId),
+            Variable.withString(groupId),
+            Variable.withString(binding.workspace),
+            Variable.withString(binding.account),
+          ],
+        )
+        .get();
+    if (groups.isEmpty) return <String>{};
+    final first = await db
+        .customSelect(
+          'SELECT visible_json FROM sync_journal WHERE mutation_group_id=? ORDER BY origin_sequence LIMIT 1',
+          variables: [Variable.withString(groupId)],
+        )
+        .getSingle();
+    final visible = SyncVisibility.fromJson(
+      (jsonDecode(first.read<String>('visible_json')) as Map)
+          .cast<String, dynamic>(),
+    );
+    final covered = <String>{};
+    for (final group in groups) {
+      if (group.read<int>('complete') != 1 ||
+          !visible.covers(
+            SyncVisibility({
+              group.read<String>('device_id'): [
+                SyncSequenceRange(
+                  group.read<int>('first_sequence'),
+                  group.read<int>('last_sequence'),
+                ),
+              ],
+            }),
+          )) {
+        return null;
+      }
+      final missing = await db
+          .customSelect(
+            '''SELECT 1 FROM sync_journal old WHERE old.mutation_group_id=? AND NOT EXISTS(
+        SELECT 1 FROM sync_journal replacement WHERE replacement.mutation_group_id=?
+        AND replacement.entity=old.entity AND replacement.record_key=old.record_key) LIMIT 1''',
+            variables: [
+              Variable.withString(group.read<String>('id')),
+              Variable.withString(groupId),
+            ],
+          )
+          .get();
+      if (missing.isNotEmpty) return null;
+      covered.add(group.read<String>('id'));
+    }
+    return covered;
+  }
+
   Future<_SyncGroupDraft?> _prepareSyncGroup(
     SyncBinding binding,
-    SyncLease lease,
-  ) async {
+    SyncLease lease, {
+    String? groupId,
+  }) async {
     await _requireSyncExchange(binding, lease);
     final context = await db
         .customSelect(
@@ -274,21 +340,34 @@ extension SyncApplyRepository on LifeRepository {
         .customSelect(
           '''SELECT g.* FROM sync_mutation_groups g
       WHERE g.workspace_id=? AND g.account_id=? AND g.complete=1 AND g.materialized=0
-      AND (g.blocked_reason IS NULL OR CASE WHEN json_valid(g.blocked_reason) THEN
+      AND (? IS NULL OR g.id=?) AND (? IS NOT NULL OR g.blocked_reason IS NULL OR CASE WHEN json_valid(g.blocked_reason) THEN
         json_extract(g.blocked_reason,'\$.sequence')!=(SELECT device_sequence FROM sync_capture_context WHERE id=1)
         OR json_extract(g.blocked_reason,'\$.visible')!=(SELECT visible_json FROM sync_capture_context WHERE id=1) ELSE 0 END)
-      AND NOT EXISTS(SELECT 1 FROM sync_journal j,json_each(j.parent_ids_json) p
-      JOIN sync_journal a ON a.operation_id=p.value JOIN sync_mutation_groups parent ON parent.id=a.mutation_group_id
-      WHERE j.mutation_group_id=g.id AND parent.materialized=0 AND parent.id!=g.id)
-      ORDER BY g.first_sequence,g.device_id LIMIT 1''',
+      ORDER BY g.first_sequence,g.device_id''',
           variables: [
             Variable.withString(binding.workspace),
             Variable.withString(binding.account),
+            Variable<String>(groupId),
+            Variable<String>(groupId),
+            Variable<String>(groupId),
           ],
         )
         .get();
     if (eligible.isEmpty) return null;
-    final group = eligible.single;
+    QueryRow? group;
+    var covered = <String>{};
+    for (final candidate in eligible) {
+      final ancestors = await _coveredSyncAncestors(
+        binding,
+        candidate.read<String>('id'),
+      );
+      if (ancestors != null) {
+        group = candidate;
+        covered = ancestors;
+        break;
+      }
+    }
+    if (group == null) return null;
     final id = group.read<String>('id');
     final operations =
         (await db
@@ -321,15 +400,16 @@ extension SyncApplyRepository on LifeRepository {
       final history =
           (await db
                   .customSelect(
-                    '''SELECT $_syncReviewProjection FROM sync_journal j JOIN sync_mutation_groups g ON g.id=j.mutation_group_id
+                    '''SELECT $_syncReviewProjection,g.materialized AS group_materialized FROM sync_journal j JOIN sync_mutation_groups g ON g.id=j.mutation_group_id
         WHERE j.workspace_id=? AND j.account_id=? AND j.entity=? AND j.record_key=? AND j.known=1
-        AND (g.materialized=1 OR g.id=?) ORDER BY j.sequence''',
+        AND (g.materialized=1 OR g.id IN (${List.filled(covered.length + 1, '?').join(',')})) ORDER BY j.sequence''',
                     variables: [
                       Variable.withString(binding.workspace),
                       Variable.withString(binding.account),
                       Variable.withString(entity),
                       Variable.withString(key),
                       Variable.withString(id),
+                      ...covered.map(Variable.withString),
                     ],
                   )
                   .get())
@@ -339,7 +419,7 @@ extension SyncApplyRepository on LifeRepository {
       final baseline = reviewPortableRecord(
         entity,
         history
-            .where((r) => r['mutation_group_id'] != id)
+            .where((r) => r['group_materialized'] == 1)
             .map(_syncRevisionFromJournal),
       );
       if (baseline.needsDecision ||
@@ -366,6 +446,7 @@ extension SyncApplyRepository on LifeRepository {
       visibleState: context.read<String>('visible_json'),
       records: records,
       operations: operations,
+      coveredGroups: covered,
       reason: reason,
     );
   }
@@ -487,6 +568,14 @@ extension SyncApplyRepository on LifeRepository {
         pending.isEmpty ? SyncApplyState.idle : SyncApplyState.waiting,
       );
     }
+    return _applyPreparedSyncGroup(binding, lease, draft);
+  }
+
+  Future<SyncApplyResult> _applyPreparedSyncGroup(
+    SyncBinding binding,
+    SyncLease lease,
+    _SyncGroupDraft draft,
+  ) {
     return db.transaction(() async {
       await _requireSyncExchange(binding, lease);
       final context = await db
@@ -646,10 +735,27 @@ extension SyncApplyRepository on LifeRepository {
               ],
             );
           }
-          final visible = SyncVisibility.fromJson(
+          var visible = SyncVisibility.fromJson(
             (jsonDecode(context.read<String>('visible_json')) as Map)
                 .cast<String, dynamic>(),
           ).withRange(draft.device, draft.first, draft.last);
+          for (final id in draft.coveredGroups) {
+            final ancestor = await db
+                .customSelect(
+                  'SELECT device_id,first_sequence,last_sequence FROM sync_mutation_groups WHERE id=?',
+                  variables: [Variable.withString(id)],
+                )
+                .getSingle();
+            visible = visible.withRange(
+              ancestor.read<String>('device_id'),
+              ancestor.read<int>('first_sequence'),
+              ancestor.read<int>('last_sequence'),
+            );
+            await db.customStatement(
+              'UPDATE sync_mutation_groups SET materialized=1,blocked_reason=NULL WHERE id=?',
+              [id],
+            );
+          }
           final observed = (jsonDecode(
             context.read<String>('received_json'),
           ) as Map).cast<String, int>();

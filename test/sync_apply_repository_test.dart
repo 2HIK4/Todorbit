@@ -648,6 +648,105 @@ void main() {
     },
   );
 
+  test('reviewed resolution preserves independent fields and converges without echo', () async {
+    await seed();
+    await receiver.updateTask(
+      (await receiver.tasks()).single,
+      const TaskDraft(title: 'B title', notes: 'B independent notes'),
+    );
+    await sender.updateTask(
+      (await sender.tasks()).single,
+      const TaskDraft(title: 'A title', priority: 2),
+    );
+    await exchange();
+    expect((await apply()).state, SyncApplyState.needsReview);
+    final review = (await receiver.reviewSyncConflicts(b, lease: rightLease!))!;
+    final record = review.records.single;
+    final selected = record.candidates.entries
+        .singleWhere((entry) => entry.value?['title'] == 'A title')
+        .key;
+    final result = await receiver.resolveSyncConflicts(
+      b,
+      lease: rightLease!,
+      reviewedToken: review.token,
+      choices: {record.id: SyncResolutionChoice.revision(selected)},
+    );
+    expect(result.state, SyncApplyState.applied, reason: result.reason);
+    expect((await receiver.tasks()).single.title, 'A title');
+    expect((await receiver.tasks()).single.notes, 'B independent notes');
+    expect((await receiver.tasks()).single.priority, 2);
+    await exchange(reverse: true);
+    var applied = await apply(reverse: true);
+    if (applied.state == SyncApplyState.needsReview) {
+      // The retained original branch may be encountered before the resolution
+      // which causally supersedes it. The drain must continue past that barrier.
+      applied = await apply(reverse: true);
+    }
+    expect(applied.state, SyncApplyState.applied, reason: applied.reason);
+    expect((await sender.tasks()).single.notes, 'B independent notes');
+    expect((await sender.tasks()).single.title, 'A title');
+    expect((await apply(reverse: true)).state, SyncApplyState.idle);
+  });
+
+  test('keeping unchanged local bytes emits a durable resolution after every reviewed head', () async {
+    await seed();
+    await receiver.updateTask(
+      (await receiver.tasks()).single,
+      const TaskDraft(title: 'B title'),
+    );
+    await sender.updateTask(
+      (await sender.tasks()).single,
+      const TaskDraft(title: 'A title'),
+    );
+    await exchange();
+    await apply();
+    final review = (await receiver.reviewSyncConflicts(b, lease: rightLease!))!;
+    final result = await receiver.resolveSyncConflicts(
+      b,
+      lease: rightLease!,
+      reviewedToken: review.token,
+      choices: {review.records.single.id: const SyncResolutionChoice.local()},
+    );
+    expect(result.state, SyncApplyState.applied, reason: result.reason);
+    await exchange(reverse: true);
+    var applied = await apply(reverse: true);
+    if (applied.state == SyncApplyState.needsReview) {
+      applied = await apply(reverse: true);
+    }
+    expect(applied.state, SyncApplyState.applied, reason: applied.reason);
+    expect((await sender.tasks()).single.title, 'B title');
+    expect(await receiver.reviewSyncConflicts(b, lease: rightLease!), isNull);
+  });
+
+  test('a newly received revision invalidates an open decision without changing data', () async {
+    await seed();
+    await receiver.updateTask(
+      (await receiver.tasks()).single,
+      const TaskDraft(title: 'B title'),
+    );
+    await sender.updateTask(
+      (await sender.tasks()).single,
+      const TaskDraft(title: 'A title'),
+    );
+    await exchange();
+    await apply();
+    final review = (await receiver.reviewSyncConflicts(b, lease: rightLease!))!;
+    await sender.updateTask(
+      (await sender.tasks()).single,
+      const TaskDraft(title: 'A later title'),
+    );
+    await exchange();
+    final result = await receiver.resolveSyncConflicts(
+      b,
+      lease: rightLease!,
+      reviewedToken: review.token,
+      choices: {review.records.single.id: const SyncResolutionChoice.local()},
+    );
+    expect(result.state, SyncApplyState.retry);
+    expect(result.reason, 'staleDecision');
+    expect((await receiver.tasks()).single.title, 'B title');
+  });
+
   test(
     'a newly added excluded reference is rechecked under the writer lock',
     () async {

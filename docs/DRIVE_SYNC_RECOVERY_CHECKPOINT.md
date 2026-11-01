@@ -369,3 +369,44 @@ The updated sync feature catalog passed eight helper tests
 reported zero errors (`.buildlog/sync-apply-docs-check.log`). Dart MCP hot reload
 was attempted after this checkpoint; the IDE DTD still had no active application.
 No live UI claim is made.
+
+## Resumed exchange and resolution checkpoint - 2026-11-01
+
+The owner resumed the remaining sync work after the separate button-only beta 3
+publication. Mocked Drive only remains authorized. The earlier no-test exception
+was scoped to that UI-only release; data-safety checks resume for the engine.
+No full-sync release is published and the new engine is not wired into app startup.
+
+Persistent conflict review now snapshots complete pending groups, local sequence,
+exact visibility, retained history and actual affected records. Decisions recheck
+under the writer lock, apply atomically and append a durable resolution group
+parenting every reviewed head, including unchanged-local choices. Independent
+fields survive a conflict choice. Covered original ancestor groups can be safely
+superseded by a complete resolution without replaying a conflicting predecessor.
+Structural barriers require explicit choices for every reviewed coupled record;
+SQL/domain constraints and device-local resource protection remain authoritative.
+
+A shared bounded engine stages immutable encrypted uploads before HTTP, retains
+incoming pages before advancing cursors, takes the initial cursor before listing,
+rescans on expired cursors, continues past conflict barriers and renews SQLite
+ownership during network waits. Backoff/contact/error state is durable; lock,
+account and restore barriers stop exchange. Repeat clicks share one in-flight job.
+Secure pairing has account-bound AES-GCM workspace proofs, a deterministic account
+workspace identity, independent device identities and OS-secure recovery-key
+storage. The sole generated key is persisted before any ambiguous proof upload.
+Competing first-device keys stop pairing and preserve both keys/history.
+
+| Invocation | Result | Reason / evidence |
+| --- | --- | --- |
+| Scoped resolution analysis; `.buildlog/sync-resolution-analysis.log` | Two brace lints, no tests | New resolver and previously unverified covered-ancestor changes |
+| Scoped `dart fix` diagnostic; `.buildlog/sync-resolution-lint-fix.log` | Rejected multiple positional paths; no source change | Corrected both braces directly instead |
+| Quick `20261101-181458-7721` | Analysis/format pass; 15 pass, two fixture expectations fail | A predecessor conflict is encountered before its later resolution; fixtures incorrectly expected a one-step drain |
+| Quick `20261101-181644-6463` | 17 pass; analysis/format/diff pass | Fixtures now drain past the predecessor; proves both resolutions converge without echo |
+| Scoped engine analysis / brace fixes; `.buildlog/sync-engine-analysis.log`, `sync-engine-lint-fix.log`, `sync-status-lint-fix.log` | Five mechanical brace lints corrected | New engine and durable status repository |
+| Quick `20261101-182020-4063` | Analysis stopped on two missing override annotations; no tests | New change-feed transport interface; annotations corrected |
+| Pairing brace fixes; `.buildlog/sync-pairing-lint-fix.log` | Nine mechanical fixes | New pairing service |
+| Quick `20261101-182342-7647` | 25 pass; analysis/format/diff pass | New mocked two-profile engine, ambiguous ciphertext retry, cursor failure/expiry, lock/account barriers, pairing/recovery/competing-key tests plus resolver regression after preserving compatible bulk selections |
+
+Next: integrate timer ownership, portable preferences, restore reconciliation,
+workspace-proof checks in exchange, foreground UI/runtime and supported platform
+scheduling. Real-account acceptance remains unobserved and unauthorized for now.

@@ -1,5 +1,39 @@
 import 'dart:typed_data';
 
+import '../domain/sync/causal_record.dart';
+
+class SyncConflictRecord {
+  const SyncConflictRecord({
+    required this.entity,
+    required this.key,
+    required this.local,
+    required this.review,
+    required this.candidates,
+  });
+  final String entity, key;
+  final Map<String, Object?>? local;
+  final SyncRecordReview review;
+  final Map<String, Map<String, Object?>?> candidates;
+  String get id => '$entity:$key';
+}
+
+class SyncConflictReview {
+  const SyncConflictReview({
+    required this.token,
+    required this.records,
+    required this.reason,
+  });
+  final String token;
+  final List<SyncConflictRecord> records;
+  final String? reason;
+}
+
+class SyncResolutionChoice {
+  const SyncResolutionChoice.local() : revision = null;
+  const SyncResolutionChoice.revision(this.revision);
+  final String? revision;
+}
+
 class SyncBinding {
   const SyncBinding({
     required this.workspace,
@@ -7,6 +41,27 @@ class SyncBinding {
     required this.device,
   });
   final String workspace, account, device;
+}
+
+class SyncExchangeStatus {
+  const SyncExchangeStatus({
+    required this.binding,
+    required this.enabled,
+    required this.automatic,
+    required this.quarantined,
+    required this.pending,
+    required this.conflicts,
+    required this.waiting,
+    this.changeToken,
+    this.lastSuccess,
+    this.retryAt,
+    this.errorCode,
+  });
+  final SyncBinding? binding;
+  final bool enabled, automatic, quarantined;
+  final int pending, conflicts, waiting;
+  final String? changeToken, errorCode;
+  final DateTime? lastSuccess, retryAt;
 }
 
 class SyncLease {

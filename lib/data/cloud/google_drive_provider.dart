@@ -27,7 +27,12 @@ class DriveCheckpointExpired extends CloudFailure {
       );
 }
 
-class GoogleDriveProvider implements CloudStorageProvider {
+abstract interface class SyncStorageProvider implements CloudStorageProvider {
+  Future<String> startChangeToken();
+  Future<DriveChangePage> changes(String token);
+}
+
+class GoogleDriveProvider implements CloudStorageProvider, SyncStorageProvider {
   GoogleDriveProvider(this.auth, this.client)
     : _namespace = 'todorbit',
       _idProperty = 'backupId',
@@ -172,6 +177,7 @@ class GoogleDriveProvider implements CloudStorageProvider {
     return result;
   }
 
+  @override
   Future<String> startChangeToken() async {
     final accountId = account?.id;
     if (accountId == null) {
@@ -194,6 +200,7 @@ class GoogleDriveProvider implements CloudStorageProvider {
 
   // The store commits this page's checkpoint only with its retained/applied
   // operations. Removed cloud objects are never interpreted as record deletes.
+  @override
   Future<DriveChangePage> changes(String token) async {
     if (token.isEmpty || token.length > 4096) {
       throw const CloudFailure('Invalid change checkpoint.');
