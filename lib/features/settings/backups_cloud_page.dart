@@ -22,6 +22,7 @@ import 'settings_transfer_dialog.dart';
 import 'windows_settings_file_dialog.dart';
 import '../shared/settings_section.dart';
 import '../shared/status_notice.dart';
+import 'restore_confirmation_dialog.dart';
 
 class BackupsCloudPage extends ConsumerStatefulWidget {
   const BackupsCloudPage({super.key, this.auth, this.service});
@@ -388,25 +389,25 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
           builder: (_) => SettingsTransferDialog(initialTransfer: settings),
         );
       } else {
-        final approved = await _confirm(
-          'Replace this local profile?',
-          'Backup: ${_date(object.createdAt)} • Todorbit ${preview.manifest['appVersion']}\n'
-              'Source profile: ${preview.manifest['profileId']}\n'
-              'Target profile: ${service!.local.databaseFile.parent.path}\n\n'
-              '${preview.summary?.description}\n\n'
-              '${switch (transferStatus?.localChanges) {
-                true => 'Warning: this device has local changes since its last successful full backup or restore. Back up this device before replacing it.\n\n',
-                false => 'This device matches its last full transfer. Changes made on another device are not merged.\n\n',
-                null => 'This device has no verified transfer baseline. Back up any local work before replacing it.\n\n',
-              }}'
-              '${object.createdAt.isBefore(DateTime.now()) ? 'Check the backup date above; a remote backup can be older than your local work.\n\n' : ''}'
-              'This replaces all database records and the included personalization after you close and reopen Todorbit. It does not merge tasks. '
-              'A verified local Before Restore database backup is created first. '
-              'Current personalization is saved separately as JSON. Credentials and privacy controls stay on this device. '
-              'Linked external files are not bundled and may need relinking. '
-              'Settings to replace: ${settings.categories.keys.map((item) => item.label).join(', ')}.',
-          'Confirm replacement',
-        );
+        final approved =
+            await showDialog<bool>(
+              context: context,
+              builder: (_) => RestoreConfirmationDialog(
+                backupLabel: 'Backup: ${_date(object.createdAt)}',
+                summary: preview.summary?.description ?? 'Full profile backup',
+                localWarning: switch (transferStatus?.localChanges) {
+                  true => 'This device has local changes since its last successful full backup or restore. Back up this device before replacing it.',
+                  false => 'This device matches its last full transfer. Changes made on another device are not merged.',
+                  null => 'This device has no verified transfer baseline. Back up any local work before replacing it.',
+                },
+                details:
+                    'Todorbit ${preview.manifest['appVersion']}\n'
+                    'Source profile: ${preview.manifest['profileId']}\n'
+                    'Target profile: ${service!.local.databaseFile.parent.path}\n\n'
+                    'Settings to replace: ${settings.categories.keys.map((item) => item.label).join(', ')}.',
+              ),
+            ) ==
+            true;
         if (!approved || !mounted) return;
         if (settingsFingerprint(reviewedSettings) !=
             settingsFingerprint(_portableSettings())) {

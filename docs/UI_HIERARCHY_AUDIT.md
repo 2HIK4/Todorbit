@@ -174,3 +174,27 @@ screenshots. All complete records remain available on demand.
 privacy dismissal, bulk-selection safety and complete-record disclosure.
 The single-conflict desktop dialog now uses a shorter preferred height; long
 content remains scrollable and mobile retains the available height.
+
+## Final source refinement
+
+Before packaging, the remaining dense full-cloud-restore confirmation was split
+into backup summary, visible replacement/recovery guidance and Restore details.
+Source/target IDs/paths, app version and included settings remain accessible.
+The existing settings fingerprint check, recovery export and schedule call remain
+unchanged and approval/cancellation retain the same result.
+
+`restore-review.log`: 11 pass (four new portrait/landscape, light/dark checks with
+200%/150% text, plus seven existing cloud backup/restore checks). Warnings remain
+in the main scroll area, actions stay visible and Details expands; cancel returns
+false and never schedules replacement. `restore-analysis.log` covers only the new
+boundary; the prior full analysis passed (`analysis-clean.log`, 291.6 seconds).
+
+The first candidate `3c94188` CI runs 41358317755/41358371855 were canceled after
+this final UI source change; they are not release evidence. Both exact-source
+workflows must run on the final commit. No artifact was built from that first
+candidate. A private draft exists without assets; its target will be updated to
+the final source before upload. This is the specific reason for the CI rerun.
+
+Final Windows debug rebuild and hot reload succeeded (8 libraries); the changed
+event editor was observed in light mode. Runtime errors and final profile identity
+are checked before closing this isolated app. Native source was not repainted.

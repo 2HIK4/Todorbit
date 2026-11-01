@@ -7,6 +7,8 @@
 - Compare changed sync values first, with complete records and base values
   available on demand, clear selection and fixed review actions.
 - Simplify backup, pairing and update copy; keep recovery warnings visible.
+- Group restore warnings and recovery steps; disclose profile IDs, paths and
+  replaced settings on demand without changing replacement approval.
 - Improve settings headings, task readability and small progress-entry dialogs.
 - Preserve schema 26, encryption/conflict rules, profiles and package identities.
 - Real Google Drive end-to-end and physical-device acceptance remain unverified.

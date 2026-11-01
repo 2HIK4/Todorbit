@@ -9,6 +9,8 @@
 - Visible deletion/related-record notices preserve the existing review rules.
 - Shorter backup, sync setup and update copy, clear inline states and prominent
   recovery guidance. Core backup actions take priority over account maintenance.
+- Group restore warnings and recovery steps; disclose profile IDs, paths and
+  replaced settings on demand without changing replacement approval.
 - Scrollable goal adjustments, milestones and habit value entry; improved task,
   navigation, template and report text hierarchy.
 
