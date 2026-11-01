@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.19-beta.3+26 - Sync entry preview
+
+- Add a Sync button to the Windows task toolbar and Android app bar.
+- Explain that synchronization is coming soon; snapshot transfer remains in
+  Backups & Cloud. This release does not enable the unfinished sync engine.
+- Retain the published database schema, package identity and signing identity.
+- Test suites and CI test runs omitted at the owner's explicit request for this
+  UI-only pre-release. Package builds, signing and checksum verification remain.
+
 ## 1.0.19-beta.2+25 - Android pre-release
 
 - Prefer smaller compatible ARM64/x86-64 APKs; retain a universal fallback and

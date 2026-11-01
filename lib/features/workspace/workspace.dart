@@ -24,6 +24,7 @@ import '../habits/habits_view.dart';
 import '../goals/goals_view.dart';
 import '../reports/reports_view.dart';
 import '../shared/about_view_button.dart';
+import '../shared/sync_status_button.dart';
 import '../contributors/contributors_view.dart';
 import '../time_tracking/time_tracking_dialog.dart';
 import '../templates/templates_dialog.dart';
@@ -1382,7 +1383,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 SizedBox(
                   width: constraints.maxWidth < 700
                       ? constraints.maxWidth
-                      : math.max(180, constraints.maxWidth - 430),
+                      : math.max(180, constraints.maxWidth - 478),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1402,6 +1403,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   ),
                 ),
                 AboutViewButton(description: _viewDescription(controller.view)),
+                const SyncStatusButton(),
                 PopupMenuButton<TaskSort>(
                   tooltip: 'Sort tasks',
                   onSelected: controller.setSort,

@@ -19,6 +19,7 @@ import '../reports/reports_view.dart';
 import '../scheduling/smart_reschedule.dart';
 import '../search/advanced_search_dialog.dart';
 import '../shared/sidebar_items.dart';
+import '../shared/sync_status_button.dart';
 import '../shared/text_prompt_dialog.dart';
 import '../shared/icon_picker.dart';
 import '../shared/event_color_picker.dart';
@@ -399,6 +400,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
               )
             : Text(title(c)),
         actions: [
+          const SyncStatusButton(),
           IconButton(
             tooltip: searching ? 'Close search' : 'Search tasks',
             onPressed: () => setState(() {
