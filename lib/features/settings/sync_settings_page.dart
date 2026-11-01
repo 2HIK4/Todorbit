@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/sync_controller.dart';
 import '../../data/cloud/sync_engine.dart';
 import 'sync_conflicts_dialog.dart';
+import '../shared/settings_section.dart';
+import '../shared/status_notice.dart';
 
 Future<void> showSyncSettings(BuildContext context) => showDialog<void>(
   context: context,
@@ -79,8 +81,8 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage> {
             controller.auth.account?.label ?? 'Google Drive is disconnected',
           ),
         ),
-        const Text(
-          'Edits save locally immediately. Sync exchanges encrypted incremental changes between your paired devices. Backups remain independent recoverable snapshots.',
+        const SettingsHelperText(
+          'Keep paired devices up to date with encrypted changes. Edits save locally immediately.',
         ),
         const SizedBox(height: 12),
         if (controller.auth.account == null)
@@ -91,10 +93,14 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage> {
           ),
         if ((!paired || controller.snapshot?.quarantined == true) &&
             controller.auth.account != null) ...[
-          Text(
-            controller.snapshot?.quarantined == true
+          StatusNotice(
+            title: controller.snapshot?.quarantined == true
+                ? 'Restore needs review'
+                : 'Pair your devices',
+            icon: Icons.key_outlined,
+            message: controller.snapshot?.quarantined == true
                 ? 'Restore paused synchronization. Reconcile with the original workspace to retain both restored records and pre-restore pending work. Enter the original recovery code if it is unavailable on this device. Automatic sync stays off until you enable it.'
-                : 'Joining another device? Enter its recovery code. For your first device, leave this blank to create a workspace. A verified recovery snapshot is made before local capture starts.',
+                : 'Enter the recovery code from your other device. On your first device, leave it blank to create a workspace. A verified recovery backup is created before sync starts.',
           ),
           const SizedBox(height: 12),
           TextField(
@@ -105,6 +111,7 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage> {
             decoration: const InputDecoration(
               labelText: 'Workspace recovery code',
               helperText: 'Leave blank only for your first device.',
+              helperMaxLines: 3,
             ),
           ),
           const SizedBox(height: 8),
@@ -138,19 +145,20 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage> {
             contentPadding: EdgeInsets.zero,
             title: const Text('Automatic Sync'),
             subtitle: const Text(
-              'Checks while open; background delivery is subject to operating-system scheduling and authorization.',
+              'Checks while open. Background checks depend on your device and account access.',
             ),
             value: controller.snapshot?.automatic ?? false,
             onChanged: busy || controller.snapshot?.quarantined == true
                 ? null
                 : controller.setAutomatic,
           ),
+          const SizedBox(height: 8),
           Text(
             'Pending changes: ${controller.status.pending} · Conflicts: ${controller.status.conflicts}',
           ),
           const SizedBox(height: 6),
-          Text(
-            'Last successful exchange: ${controller.status.lastSuccess?.toLocal().toString() ?? 'Not yet recorded'}',
+          SettingsHelperText(
+            'Last synced: ${controller.status.lastSuccess == null ? 'Not yet' : '${MaterialLocalizations.of(context).formatMediumDate(controller.status.lastSuccess!.toLocal())} \u00b7 ${TimeOfDay.fromDateTime(controller.status.lastSuccess!.toLocal()).format(context)}'}',
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -166,7 +174,9 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage> {
                 onPressed: busy
                     ? null
                     : () => showSyncConflicts(context, controller),
-                child: const Text('Open Conflict Resolution'),
+                child: Text(
+                  'Review conflicts (${controller.status.conflicts})',
+                ),
               ),
               TextButton(
                 onPressed: busy ? null : controller.connect,
@@ -192,8 +202,10 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Keep this code private. Anyone with the code and access to this Google account can decrypt its sync workspace.',
+                    const StatusNotice(
+                      title: 'Keep your recovery code private',
+                      message: 'Anyone with this code and access to this Google account can decrypt the sync workspace.',
+                      icon: Icons.key_outlined,
                     ),
                     const SizedBox(height: 8),
                     SelectableText(revealed!),
@@ -207,15 +219,22 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage> {
             ),
         ],
         if (controller.message != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Text(controller.message!),
-          ),
+          StatusNotice(title: 'Sync status', message: controller.message!),
         if (controller.status.notice != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Text(controller.status.notice!),
+          StatusNotice(
+            title: 'Attention needed',
+            message: controller.status.notice!,
+            icon: Icons.warning_amber_outlined,
           ),
+        const SizedBox(height: 16),
+        const SettingsSection(
+          title: 'About encrypted sync',
+          children: [
+            SettingsHelperText(
+              'Sync exchanges incremental changes between paired devices. Backups remain separate recovery snapshots. Background delivery depends on operating-system scheduling and authorization.',
+            ),
+          ],
+        ),
       ],
     );
   }

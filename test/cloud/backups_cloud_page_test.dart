@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:life_manager/features/shared/app_theme.dart';
+import 'package:life_manager/domain/appearance.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -182,7 +184,12 @@ void main() {
                 appControllerProvider.overrideWith((_) => controller),
               ],
               child: MaterialApp(
-                theme: ThemeData(brightness: brightness),
+                theme: buildAppTheme(
+                  brightness,
+                  brightness == Brightness.dark
+                      ? ThemePalette.dark
+                      : ThemePalette.light,
+                ),
                 home: MediaQuery(
                   data: const MediaQueryData(
                     size: Size(360, 740),
@@ -268,10 +275,12 @@ void main() {
                 appControllerProvider.overrideWith((_) => controller),
               ],
               child: MaterialApp(
-                theme: ThemeData(
-                  brightness: brightness,
-                  splashFactory: NoSplash.splashFactory,
-                ),
+                theme: buildAppTheme(
+                  brightness,
+                  brightness == Brightness.dark
+                      ? ThemePalette.dark
+                      : ThemePalette.light,
+                ).copyWith(splashFactory: NoSplash.splashFactory),
                 home: MediaQuery(
                   data: const MediaQueryData(
                     size: Size(440, 740),
@@ -295,16 +304,16 @@ void main() {
           });
           await tester.pumpAndSettle();
           final connect = find.widgetWithText(
-            FilledButton,
+            OutlinedButton,
             'Connect Google Drive',
           );
-          expect(tester.widget<FilledButton>(connect).onPressed, isNull);
+          expect(tester.widget<OutlinedButton>(connect).onPressed, isNull);
           expect(
             find.text('Import Google Desktop configuration'),
             findsNothing,
           );
           expect(
-            find.textContaining('while public access is being prepared'),
+            find.textContaining('Google Drive is unavailable in this build'),
             findsOneWidget,
           );
           expect(

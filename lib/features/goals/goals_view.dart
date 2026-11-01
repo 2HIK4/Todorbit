@@ -44,6 +44,7 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Adjust ${goal.title}'),
+        scrollable: true,
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -108,6 +109,7 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
           title: Text(
             previous == null ? 'Milestone for ${goal.title}' : 'Edit milestone',
           ),
+          scrollable: true,
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

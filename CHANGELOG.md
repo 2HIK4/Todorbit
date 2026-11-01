@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.19-beta.5+28 - UI hierarchy refinement
+
+- Unify page, section, item, body, helper and metadata typography; use semantic
+  text colors and custom-palette surface layers in both themes.
+- Compare changed sync values first, with complete records and base values
+  available on demand, clear selection and fixed review actions.
+- Simplify backup, pairing and update copy; keep recovery warnings visible.
+- Improve settings headings, task readability and small progress-entry dialogs.
+- Preserve schema 26, encryption/conflict rules, profiles and package identities.
+- Real Google Drive end-to-end and physical-device acceptance remain unverified.
+
 ## 1.0.19-beta.4+27 - coordinated Windows + Android pre-release
 
 - Add encrypted incremental Google Drive sync, same-account recovery-code pairing,

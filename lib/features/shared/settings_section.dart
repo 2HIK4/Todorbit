@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'app_spacing.dart';
+
 /// A settings group with one boundary around its heading and related controls.
 class SettingsSection extends StatefulWidget {
   const SettingsSection({
@@ -34,7 +36,7 @@ class _SettingsSectionState extends State<SettingsSection> {
       side: BorderSide(color: theme.colorScheme.outlineVariant),
     );
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpacing.related),
       child: Material(
         color: theme.colorScheme.surface,
         shape: shape,
@@ -47,7 +49,10 @@ class _SettingsSectionState extends State<SettingsSection> {
           childrenPadding: widget.contentPadding,
           shape: const Border(),
           collapsedShape: const Border(),
-          title: Text(widget.title, style: theme.textTheme.titleSmall),
+          title: Semantics(
+            header: true,
+            child: Text(widget.title, style: theme.textTheme.titleSmall),
+          ),
           subtitle: widget.description == null
               ? null
               : SettingsHelperText(widget.description!),

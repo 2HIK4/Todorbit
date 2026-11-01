@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'app_spacing.dart';
+
 /// Keeps dialog actions reachable when the window or text scale is narrow.
 class DialogActionBar extends StatelessWidget {
   const DialogActionBar({
@@ -15,8 +17,8 @@ class DialogActionBar extends StatelessWidget {
   Widget build(BuildContext context) => OverflowBar(
     alignment: alignment,
     overflowAlignment: OverflowBarAlignment.end,
-    spacing: 8,
-    overflowSpacing: 8,
+    spacing: AppSpacing.gap,
+    overflowSpacing: AppSpacing.gap,
     children: children,
   );
 }

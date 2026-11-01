@@ -151,8 +151,9 @@ class _TemplatesDialogState extends ConsumerState<TemplatesDialog> {
                   ),
                 ],
               ),
-              const Text(
-                'Save a task from its details or a project from its menu. Apply a template here.',
+              Text(
+                'Save tasks or projects as templates, then reuse them here.',
+                style: Theme.of(context).textTheme.bodySmall,
               ),
               if (error != null)
                 Text(

@@ -1,5 +1,12 @@
 # Todorbit themes
 
+Flutter's shared theme builder is `lib/features/shared/app_theme.dart`, called
+from `lib/main.dart`. It defines page/section/item/body/helper/metadata roles,
+list subtitle styling, input helper wrapping and palette-derived surface layers.
+Shared group/action spacing uses `AppSpacing`. See [UI hierarchy review](UI_HIERARCHY_AUDIT.md)
+for the scale, contrast checks and rendered acceptance limits. Palette JSON and
+native widget token names remain unchanged.
+
 Settings → Appearance → Customize Theme edits light and dark palettes independently. Click a labeled swatch to open the interactive hue wheel and its saturation/value square. The live swatch previews the chosen color; the editable HEX field provides precise keyboard input and stays synchronized with the wheel. Confirm applies the color to the theme draft, Cancel discards the picker edit, and Reset restores that color's default. Save changes applies the whole theme immediately throughout Todorbit and writes the shared widget settings file. Closing the theme editor with Cancel discards the draft. Presets can be saved, switched, duplicated, renamed, or deleted. Reset this mode restores the lavender default for the selected mode.
 
 The shared file is `appearance-settings.json` in the active data profile shown by Settings > Data profile. Fresh installed profiles use `%APPDATA%\TodoPilot`; portable copies use their location-keyed subfolder there. Registered older TodoPilot upgrades can continue using `%APPDATA%\Life Manager`. Its `theme` field is `system`, `light`, or `dark`; `customization` is versioned JSON. The native widget watches the active profile's file and uses the matching palette even when Flutter is closed. Invalid colors fall back to the built-in widget palette.

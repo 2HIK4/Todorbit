@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:life_manager/features/shared/app_theme.dart';
+import 'package:life_manager/domain/appearance.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_manager/app/app_controller.dart';
@@ -52,9 +54,10 @@ void main() {
       ProviderScope(
         overrides: [appControllerProvider.overrideWith((ref) => controller)],
         child: MaterialApp(
-          theme: ThemeData(
-            useMaterial3: true,
-            brightness: dark ? Brightness.dark : Brightness.light,
+          theme: buildAppTheme(
+            dark ? Brightness.dark : Brightness.light,
+            dark ? ThemePalette.dark : ThemePalette.light,
+            android: true,
           ),
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context)

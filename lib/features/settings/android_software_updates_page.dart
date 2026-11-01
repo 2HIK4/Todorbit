@@ -11,6 +11,8 @@ import '../../data/resumable_update_download.dart';
 import '../../platform/android/android_platform.dart';
 import '../../platform/android/android_update_service.dart';
 import '../shared/download_size.dart';
+import '../shared/settings_section.dart';
+import '../shared/status_notice.dart';
 
 class AndroidSoftwareUpdatesPage extends StatefulWidget {
   const AndroidSoftwareUpdatesPage({
@@ -238,7 +240,7 @@ class _AndroidSoftwareUpdatesPageState
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 12),
-            Text(
+            SettingsHelperText(
               installed == null
                   ? 'Loading installed version…'
                   : 'Installed version: ${installed.versionName}\nBuild number: ${installed.versionCode}\nDistribution: ${installed.distribution == 'play' ? 'Google Play' : 'GitHub'}',
@@ -285,8 +287,8 @@ class _AndroidSoftwareUpdatesPageState
                       }),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Stable shows stable Android releases. Pre-release also includes experimental releases.',
+              const SettingsHelperText(
+                'Pre-release includes experimental versions.',
               ),
               const SizedBox(height: 12),
               Text(
@@ -301,7 +303,7 @@ class _AndroidSoftwareUpdatesPageState
                 label: const Text('Check for Updates'),
               ),
               const SizedBox(height: 16),
-              Semantics(liveRegion: true, child: Text(status)),
+              StatusNotice(title: 'Update status', message: status),
               if (service.transfer.notice != null)
                 Text(service.transfer.notice!),
               if (release != null && (downloading || received > 0)) ...[
@@ -340,8 +342,16 @@ class _AndroidSoftwareUpdatesPageState
                   'Version ${available.versionName} (${available.versionCode})',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
-                Text(
-                  'Released: ${available.publishedAt.toLocal()}\nDownload: ${formatDownloadSize(available.size)}',
+                SettingsHelperText(
+                  'Download: ${formatDownloadSize(available.size)}',
+                ),
+                SettingsSection(
+                  title: 'Package details',
+                  children: [
+                    SettingsHelperText(
+                      'Build ${available.versionCode}, released ${available.publishedAt.toLocal()}',
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 Wrap(
@@ -397,7 +407,7 @@ class _AndroidSoftwareUpdatesPageState
                 ),
               ),
             const SizedBox(height: 20),
-            const Text(
+            const SettingsHelperText(
               'Updates preserve app data when signed by the same publisher. Android controls installation and may close Todorbit. Reopen it from your launcher after updating.',
             ),
           ],

@@ -156,7 +156,7 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
         ),
         Text(
           '$from to $through · Local calendar days',
-          style: Theme.of(context).textTheme.bodyMedium,
+          style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 18),
         Wrap(

@@ -21,6 +21,7 @@ import 'settings_transfer.dart';
 import 'settings_transfer_dialog.dart';
 import 'windows_settings_file_dialog.dart';
 import '../shared/settings_section.dart';
+import '../shared/status_notice.dart';
 
 class BackupsCloudPage extends ConsumerStatefulWidget {
   const BackupsCloudPage({super.key, this.auth, this.service});
@@ -494,8 +495,11 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
       '${_compatible(item) ? 'Compatible' : 'Unsupported format/schema'}';
 
   Widget _heading(String text) => Padding(
-    padding: const EdgeInsets.only(top: 20, bottom: 10),
-    child: Text(text, style: Theme.of(context).textTheme.titleMedium),
+    padding: const EdgeInsets.only(top: 24, bottom: 12),
+    child: Semantics(
+      header: true,
+      child: Text(text, style: Theme.of(context).textTheme.titleMedium),
+    ),
   );
 
   @override
@@ -555,15 +559,15 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
         if (auth?.needsReconnect == true)
           const Text('Session needs reconnecting.'),
         if (!configured)
-          const Text(
-            'Google Drive connection is unavailable in this build while public access is being prepared. Local backups and settings JSON transfer remain available. No Google Cloud setup is needed by users.',
+          const SettingsHelperText(
+            'Google Drive is unavailable in this build. Use local backups or transfer settings below.',
           ),
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            FilledButton(
+            OutlinedButton(
               onPressed: busy || !configured ? null : _connect,
               child: Text(
                 connected ? 'Reconnect Google Drive' : 'Connect Google Drive',
@@ -669,20 +673,25 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
               'Restart required to finish restoring. Close and reopen Todorbit. Your current data remains active until restart.',
             ),
           ),
-        const Text(
+        const SettingsHelperText(
           'Encrypted snapshots on demand. Backups do not sync or merge devices.',
         ),
-        Text(
+        const SizedBox(height: 8),
+        SettingsHelperText(
           'Last successful backup on this device: ${_transferDate(transferStatus?.lastBackup)}',
         ),
-        Text(
+        SettingsHelperText(
           'Last successful restore on this device: ${_transferDate(transferStatus?.lastRestore)}',
         ),
-        Text(switch (transferStatus?.localChanges) {
-          true => 'Local changes since the last full transfer. Back up before switching devices.',
-          false => 'Local data matches the last full transfer.',
-          null => 'Local transfer baseline not recorded. Keep a backup before restoring.',
-        }),
+        StatusNotice(
+          title: 'Before restoring',
+          icon: Icons.history,
+          message: switch (transferStatus?.localChanges) {
+            true => 'Local changes since the last full transfer. Back up before switching devices.',
+            false => 'Local data matches the last full transfer.',
+            null => 'Local transfer baseline not recorded. Keep a backup before restoring.',
+          },
+        ),
         const SizedBox(height: 10),
         Text(
           !connected
@@ -749,8 +758,12 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(_date(object.createdAt)),
-                  Text(_details(object)),
+                  Text(
+                    _date(object.createdAt),
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 4),
+                  SettingsHelperText(_details(object)),
                   Wrap(
                     spacing: 8,
                     children: [
@@ -794,8 +807,11 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
             ),
           ],
         ),
-        const Text(
-          'Keep your recovery passphrase separately: it cannot be recovered.',
+        const StatusNotice(
+          title: 'Keep your recovery passphrase',
+          message:
+              'Store it separately. A lost passphrase cannot be recovered.',
+          icon: Icons.key_outlined,
         ),
         _heading('Settings & Preferences Backup'),
         const SizedBox(height: 10),
@@ -803,7 +819,7 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            FilledButton(
+            OutlinedButton(
               onPressed: ready ? _settingsUpload : null,
               child: const Text('Back Up Settings to Google Drive'),
             ),

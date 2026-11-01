@@ -890,15 +890,14 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Padding(
-                        padding: EdgeInsets.only(left: 12),
-                        child: Text(
-                          'CATEGORIES',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1,
+                        padding: const EdgeInsets.only(left: 12),
+                        child: Semantics(
+                          header: true,
+                          child: Text(
+                            'Categories',
+                            style: Theme.of(context).textTheme.titleSmall,
                           ),
                         ),
                       ),
@@ -916,11 +915,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   ],
                 ),
                 if (controller.categories.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(12, 2, 8, 10),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 2, 8, 10),
                     child: Text(
                       'Organize tasks with categories',
-                      style: TextStyle(fontSize: 12),
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ),
                 for (final category in controller.categories) ...[

@@ -1,5 +1,7 @@
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:life_manager/features/shared/app_theme.dart';
+import 'package:life_manager/domain/appearance.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_manager/app/app_controller.dart';
@@ -38,6 +40,11 @@ void main() {
           ProviderScope(
             overrides: [appControllerProvider.overrideWith((ref) => c)],
             child: MaterialApp(
+              theme: buildAppTheme(
+                Brightness.light,
+                ThemePalette.light,
+                android: true,
+              ),
               builder: (context, child) => MediaQuery(
                 data: MediaQuery.of(context)
                     .copyWith(textScaler: TextScaler.linear(1.5)),
@@ -96,6 +103,11 @@ void main() {
         ProviderScope(
           overrides: [appControllerProvider.overrideWith((ref) => c)],
           child: MaterialApp(
+            theme: buildAppTheme(
+              Brightness.light,
+              ThemePalette.light,
+              android: true,
+            ),
             home: MediaQuery(
               data: const MediaQueryData(
                 size: Size(320, 640),

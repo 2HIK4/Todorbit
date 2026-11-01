@@ -1,5 +1,20 @@
 # Progress
 
+## UI hierarchy refinement in progress (2026-11-02)
+
+- Branch `feature/ui-hierarchy-polish`, baseline `aae8928`; candidate
+  `1.0.19-beta.5+28`, schema 26. Coordinated publication is explicitly authorized
+  after mandatory gates. Existing release tags/assets remain untouched.
+- Shared production typography, semantic subtitles/surfaces, field-first conflict
+  comparisons, visible recovery notices, simpler sync/backup/update copy and
+  scrollable progress dialogs implemented. Domain/security/native behavior stays.
+- Isolated Windows debug Today/task/event/Calendar/settings/backup/sync/goal/habit
+  views observed in light/dark; hot reload succeeds, no reported runtime errors.
+  Computer-use runtime failed to initialize; physical mouse/DPI is not claimed.
+- Focused production-theme checks and exact-source release preparation are pending.
+  Failed/stale assertions, evidence reuse, emulator diagnostics and next checks
+  are in [the audit and invocation ledger](UI_HIERARCHY_AUDIT.md).
+
 ## Encrypted sync beta 4 published (2026-11-02)
 
 - Published [v1.0.19-beta.4](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.4)

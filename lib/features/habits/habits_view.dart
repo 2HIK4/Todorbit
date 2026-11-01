@@ -57,6 +57,7 @@ class _HabitsViewState extends ConsumerState<HabitsView> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('${habit.title} · $day'),
+        scrollable: true,
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

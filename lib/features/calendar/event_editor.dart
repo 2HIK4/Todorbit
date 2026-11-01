@@ -859,7 +859,12 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                           children: [
                             Icon(Icons.circle, color: _inheritedColor()),
                             const SizedBox(width: 10),
-                            const Text('Inherited default'),
+                            const Expanded(
+                              child: Text(
+                                'Inherited default',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -870,7 +875,12 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                             children: [
                               Icon(Icons.circle, color: Color(color.$2)),
                               const SizedBox(width: 10),
-                              Text(color.$1),
+                              Expanded(
+                                child: Text(
+                                  color.$1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -882,7 +892,12 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                             children: [
                               Icon(Icons.circle, color: Color(colorValue!)),
                               const SizedBox(width: 10),
-                              Text(eventColorLabel(colorValue)),
+                              Expanded(
+                                child: Text(
+                                  eventColorLabel(colorValue),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -892,7 +907,12 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                           children: [
                             Icon(Icons.colorize_outlined),
                             SizedBox(width: 10),
-                            Text('Custom Color'),
+                            Expanded(
+                              child: Text(
+                                'Custom Color',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -926,7 +946,12 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                                 : Color(colorValue!),
                           ),
                           const SizedBox(width: 10),
-                          Text(eventColorLabel(colorValue)),
+                          Expanded(
+                            child: Text(
+                              eventColorLabel(colorValue),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ),
                     ),

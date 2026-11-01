@@ -154,7 +154,7 @@ void main() {
       expect(find.byIcon(Icons.expand_more), findsOneWidget);
       final ordered = [
         'Installed version',
-        'Status',
+        'Update status',
         'Available update',
         'Last checked',
         'Automatically check for updates',

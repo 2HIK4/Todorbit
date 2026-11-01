@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
 import 'features/shared/week_start_localizations.dart';
-import 'features/shared/desktop_tooltip_theme.dart';
+import 'features/shared/app_theme.dart';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -726,122 +726,11 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
     );
   }
 
-  ThemeData _theme(Brightness brightness, ThemePalette palette) {
-    // Custom colors replace the seed's tonal backgrounds. Select the stronger
-    // black/white contrast for their foregrounds as well (at least 4.5:1).
-    Color foregroundOn(Color background) {
-      final luminance = background.computeLuminance();
-      return (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05)
-          ? Colors.black
-          : Colors.white;
-    }
-
-    final scheme =
-        ColorScheme.fromSeed(
-          seedColor: palette['accent'],
-          brightness: brightness,
-        ).copyWith(
-          surface: palette['surface'],
-          onSurface: palette['primaryText'],
-          onSurfaceVariant: palette['secondaryText'],
-          primary: palette['accent'],
-          onPrimary: foregroundOn(palette['accent']),
-          outline: palette['border'],
-          outlineVariant: palette['border'],
-          error: palette['error'],
-          onError: foregroundOn(palette['error']),
-        );
-    final base = ThemeData(useMaterial3: true, colorScheme: scheme);
-    final text = base.textTheme;
-    return ThemeData(
-      useMaterial3: true,
-      visualDensity:
-          !Platform.isAndroid &&
-              ref.read(appControllerProvider).customization.compact
-          ? VisualDensity.compact
-          : VisualDensity.standard,
-      colorScheme: scheme,
-      materialTapTargetSize: Platform.isAndroid
-          ? MaterialTapTargetSize.padded
-          : null,
-      iconButtonTheme: Platform.isAndroid
-          ? IconButtonThemeData(
-              style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
-            )
-          : null,
-      textButtonTheme: Platform.isAndroid
-          ? TextButtonThemeData(
-              style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
-            )
-          : null,
-      tooltipTheme: desktopTooltipTheme(scheme),
-      scaffoldBackgroundColor: palette['background'],
-      textTheme: text.copyWith(
-        headlineMedium: text.headlineMedium?.copyWith(
-          fontSize: 26,
-          fontWeight: FontWeight.w600,
-          letterSpacing: -0.4,
-        ),
-        titleLarge: text.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-        titleMedium: text.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-        titleSmall: text.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-        bodySmall: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: scheme.outlineVariant),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: scheme.primary, width: 2),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 11,
-        ),
-        helperStyle: TextStyle(color: scheme.onSurfaceVariant),
-      ),
-      expansionTileTheme: const ExpansionTileThemeData(
-        childrenPadding: EdgeInsets.symmetric(vertical: 12),
-        shape: Border(),
-        collapsedShape: Border(),
-      ),
-      cardTheme: CardThemeData(
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: scheme.outlineVariant),
-        ),
-      ),
-      dialogTheme: DialogThemeData(
-        backgroundColor: scheme.surfaceContainerLow,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          minimumSize: Size(0, Platform.isAndroid ? 48 : 40),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          minimumSize: Size(0, Platform.isAndroid ? 48 : 40),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          side: BorderSide(color: scheme.outlineVariant),
-        ),
-      ),
-      dividerTheme: DividerThemeData(
-        color: scheme.outlineVariant,
-        thickness: 1,
-      ),
-    );
-  }
+  ThemeData _theme(Brightness brightness, ThemePalette palette) =>
+      buildAppTheme(
+        brightness,
+        palette,
+        android: Platform.isAndroid,
+        compact: ref.read(appControllerProvider).customization.compact,
+      );
 }

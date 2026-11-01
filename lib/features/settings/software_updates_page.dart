@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import '../shared/download_size.dart';
+import '../shared/status_notice.dart';
 
 import 'package:path/path.dart' as path;
 
@@ -428,7 +429,7 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
           title: const Text('Installed version'),
           subtitle: Text(_version),
         ),
-        ListTile(title: const Text('Status'), subtitle: Text(statusText)),
+        StatusNotice(title: 'Update status', message: statusText),
         if (_service.transfer.notice != null) Text(_service.transfer.notice!),
         if (_error != null)
           Padding(
@@ -480,7 +481,7 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
           subtitle: Text(
             _preferences.lastChecked == null
                 ? 'Never'
-                : _preferences.lastChecked!.toLocal().toString(),
+                : '${MaterialLocalizations.of(context).formatMediumDate(_preferences.lastChecked!.toLocal())} ${TimeOfDay.fromDateTime(_preferences.lastChecked!.toLocal()).format(context)}',
           ),
         ),
         SwitchListTile(
