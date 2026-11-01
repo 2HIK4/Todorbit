@@ -37,8 +37,13 @@
   one existing opt-in skip; full analysis/format and Python/docs checks pass.
   Final helper diff failure was one catalog EOF blank line, corrected separately
   without repeating runtime checks. Details and limits remain in the ledger.
-- Sync is not operational. Pending: completed exchange/checkpoints, remote apply, persistent conflict
-  state, pairing/UI, platform workers, completed restore reconciliation and
+- Controlled remote-apply fixtures now pass (14), plus killed-apply/incoming/lease
+  regressions (16). Original groups merge/apply atomically, related conflicts stay
+  retained, recurrence is not replayed, and stale editor/local-file races are
+  protected. This is not connected to the app's network or startup lifecycle.
+- Sync is not operational. Pending: completed exchange/checkpoints, model-wide
+  acceptance, persistent conflict resolution, pairing/UI, portable preferences,
+  active-timer ownership, platform workers, completed restore reconciliation and
   exact-source release gates. No version/tag/release or personal data changed.
 - [Implementation boundary and every verification/rerun](DRIVE_SYNC_RECOVERY_CHECKPOINT.md).
 

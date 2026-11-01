@@ -323,3 +323,49 @@ owned work between steps. A remote purge must not silently cascade through a
 device-local external resource. An existing row without captured visible heads
 must not be overwritten as a presumed empty slot. Restore quarantine and staged
 restore suspension remain exchange barriers.
+
+## Atomic remote application checkpoint — 2026-11-01
+
+`sync_apply_repository.dart` now prepares causal reviews outside the writer lock,
+then revalidates both portable sequence/visibility and actual affected rows under
+the lock. Safely merged original groups apply atomically; conflicts/constraint
+failures retain immutable history and persist a structured review barrier.
+Independent eligible groups continue, leaving exact visibility holes. SQLite
+constraints, dependency cycles, one-level task hierarchy and task assignment
+checks run before commit. Recurrence completion writes the original stable rows;
+it does not run completion/generation logic again.
+
+All seven audited recurrence/icon triggers are suppressed and restored in the
+same apply transaction. `applying_remote` prevents journal echoes. Modified task
+rows, including dependency-only revisions, receive a strictly new local CAS token
+using the existing monotonic helper. Actual cloud revisions remain unchanged in
+history. Managed bytes are reviewed by digest/length and only the selected payload
+is loaded/rehashed when writing. Cross-record deletion/recurrence barriers retain
+concurrent edits. Device-local file references are checked again under the writer
+lock: excluded local mutations intentionally do not advance portable clocks.
+
+These are controlled repository fixtures, not an enabled app sync feature or UI
+acceptance. The applier is not connected to startup/network/background adapters.
+Persistent review decisions, model-wide acceptance and the remaining release
+requirements are still pending.
+
+| Invocation | Source / purpose | Result | Reason |
+| --- | --- | --- | --- |
+| `flutter analyze --no-pub` on the new applier, repository and models; `.buildlog/sync-apply-initial-analysis.log` | Initial applier implementation based on `d75ef17` | Stopped on 19 brace lints; no tests | New code; mechanically corrected with scoped `dart fix --apply --code curly_braces_in_flow_control_structures lib/data/sync_apply_repository.dart` (19 fixes, private log) |
+| Quick `20261101-082021-9281` | Bootstrap/idempotence, two-way merge without echo, stale editor CAS, visibility holes, managed bytes, recurrence, related deletion and rollback | 7 pass; analysis/format/diff pass | First actual remote SQL application evidence |
+| Quick `20261101-082714-1250` | Added dependency cycles, dependency-only CAS, rule/completion, external refs and identity collisions | 10 pass; two path assertion failures; analysis/format pass | Source barriers behaved correctly; fixtures compared normalized stored Windows paths with mixed-separator constructor strings. Corrected fixtures |
+| Quick `20261101-083010-1291` | Writer-lock revalidation and deterministic review/lock race fixtures | Analysis stopped on one brace lint; no tests | New excluded-reference race guard; corrected mechanical lint |
+| Quick `20261101-083143-4558` | All corrected applier cases plus portable/excluded mutation races | 14 pass; analysis/format/diff pass | New writer-lock guards invalidate first applier evidence; preserves real external files/references |
+| Quick `20261101-083545-9481` | Real process death after row insertion and after group materialization, incoming history and lease regressions | 16 pass; analysis/format/diff pass | New apply lifecycle boundary: both killed transactions restore rows, flags and all seven triggers; resume applies once with original ciphertext/history retained |
+
+Before enabling the engine, active timer ownership/heartbeat behavior still needs
+integration review: importing a running timer must not make a second controller
+checkpoint it or duplicate actual work. Pairing must also prove that both auth
+adapters use the same canonical Google account identity for authenticated context;
+historical passphrase backup interoperability alone does not establish that fact.
+
+The updated sync feature catalog passed eight helper tests
+(`.buildlog/sync-apply-dev-helper-tests.log`) and documentation/catalog validation
+reported zero errors (`.buildlog/sync-apply-docs-check.log`). Dart MCP hot reload
+was attempted after this checkpoint; the IDE DTD still had no active application.
+No live UI claim is made.

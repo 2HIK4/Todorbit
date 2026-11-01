@@ -16,6 +16,20 @@ class SyncLease {
   static const duration = Duration(seconds: 30);
 }
 
+enum SyncApplyState { idle, waiting, retry, applied, needsReview }
+
+class SyncApplyResult {
+  const SyncApplyResult(
+    this.state, {
+    this.groupId,
+    this.reason,
+    this.records = 0,
+  });
+  final SyncApplyState state;
+  final String? groupId, reason;
+  final int records;
+}
+
 class PendingSyncBatch {
   PendingSyncBatch({
     required this.id,

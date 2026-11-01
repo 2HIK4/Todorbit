@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as path;
 import 'package:uuid/uuid.dart';
+import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 import '../domain/models.dart';
 import '../domain/recurrence.dart';
@@ -31,6 +32,7 @@ import 'cloud/cloud_storage_provider.dart';
 import 'cloud/sync_batch_codec.dart';
 import '../domain/sync/causal_record.dart';
 import '../domain/sync/sync_visibility.dart';
+import '../domain/sync/portable_record_merge.dart';
 
 part 'series_edit_repository.dart';
 part 'habit_repository.dart';
@@ -50,6 +52,7 @@ part 'sync_repository.dart';
 part 'sync_exchange_repository.dart';
 part 'sync_incoming_repository.dart';
 part 'sync_lease_repository.dart';
+part 'sync_apply_repository.dart';
 
 class LifeRepository {
   LifeRepository(this.db, {DateTime Function()? taskClock})
