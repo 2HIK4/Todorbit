@@ -586,3 +586,26 @@ compilation, full host integration and exact-source release gates remain pending
   do not repeat the local full suite just for a fresh receipt. Exact-source CI
   must run the full final suite before publication. Final packages, Sandbox,
   hidden-worker artifact check and Android 16 KiB artifact runtime remain pending.
+
+## Final artifact checkpoint (candidate application source `0813913`)
+
+- `sync-final-windows-build.log`: Windows Release build passed (186.7 seconds),
+  using the previously approved public Drive configuration digest. Installer,
+  portable ZIP and checksum generation passed in the matching
+  `sync-final-windows-{installer,portable,checksums}.log` logs. The tracked default
+  configuration was restored; it was not committed with publisher parameters.
+- `sync-final-hidden-worker.log`: harness cleanup failed because Python's SQLite
+  connection context manager commits but does not close the connection. No app
+  behavior failure was established. Added explicit close in the harness only.
+- `sync-final-hidden-worker-corrected.log`: the exact Windows Release runner
+  passed all four disposable missing/migration/protected/restore barriers;
+  original profile files remained unchanged, no visible window was observed.
+  Executable SHA-256 is retained in that receipt. `sync-final-packaged-native-test.log`
+  passed using isolated child APPDATA/LOCALAPPDATA.
+- Windows exact-source CI run `41347862678` was superseded before completion by
+  the corrected harness checkpoint. Application code and packaged bits do not
+  change for this one-line harness fix; reuse the valid local build evidence.
+  Replacement Windows CI remains mandatory. Android run `41347898852` validates
+  unchanged Android application source; website run `41347862688` passed.
+- Signed split APK construction is in progress in `sync-final-android-apks.log`.
+  No release/tag/assets have been published for beta 4.

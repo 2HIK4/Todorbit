@@ -47,6 +47,7 @@ def main():
                     connection.execute('CREATE TABLE sentinel(value TEXT)')
                     connection.execute("INSERT INTO sentinel VALUES('Synthetic retained work')")
                     connection.execute(f'PRAGMA user_version={22 if barrier == "migration" else args.schema}')
+                connection.close()
                 if barrier == 'protected':
                     (profile / 'privacy-settings.json').write_text('{"enabled":true}', encoding='utf-8')
                 if barrier == 'restore':
