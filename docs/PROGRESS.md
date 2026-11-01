@@ -29,6 +29,14 @@
   and duplicate delivery pass against an isolated actual-schema fixture.
   Received history remains separate from visible observations. Latest detailed
   verification and the lazy-reopen fix are recorded in the linked ledger.
+- Draft schema25 adds exact applied visibility intervals and merged visible
+  parents. The schema24 migration retains/requeues original operations while
+  archiving their old ciphertext. Portable review separates modification metadata
+  from user-value decisions. Focused migration/crash/backup/lease checks and actual
+  native recurring capture with visibility pass. Full host integration: 524 pass,
+  one existing opt-in skip; full analysis/format and Python/docs checks pass.
+  Final helper diff failure was one catalog EOF blank line, corrected separately
+  without repeating runtime checks. Details and limits remain in the ledger.
 - Sync is not operational. Pending: completed exchange/checkpoints, remote apply, persistent conflict
   state, pairing/UI, platform workers, completed restore reconciliation and
   exact-source release gates. No version/tag/release or personal data changed.

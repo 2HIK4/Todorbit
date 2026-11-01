@@ -119,10 +119,12 @@ activation channel to Settings > Widget and the correct draft editor.
 Google Drive backups are an optional layer under `lib/data/cloud/` and Settings > Backups & Cloud. `CloudStorageProvider` abstracts remote objects; Google OAuth and secure token storage are separate from Drive HTTP operations. `CloudBackupService` reuses `BackupService` for SQLite-safe snapshots and staged restore, while `CloudBackupCodec` encrypts a versioned portable manifest with AES-256-GCM and a passphrase-derived key. The manifest includes the existing shareable settings JSON; OAuth tokens, PIN policy and device-only controls remain local. Full restore applies portable personalization after the database opens/migrates and before the opened receipt. Settings-only restore reuses selective settings transfer. There is no background synchronization or cloud retention. See `GOOGLE_DRIVE_BACKUP.md` for format limits, setup, portability and verification boundaries.
 
 The authorized sync implementation is under construction and inactive. Source
-schema 24 extends `sync_capture_context`, `sync_journal` and `sync_entity_heads`
+schema 25 extends `sync_capture_context`, `sync_journal` and `sync_entity_heads`
 with causal sequences and original transaction groups. Encrypted retry batches
 and verified remote-object receipts are durable. Incoming authentication retains
 history atomically; it does not apply data or report successful synchronization.
+Exact applied intervals and full visible parent sets preserve unresolved holes;
+received causal history alone never establishes user acknowledgement.
 Portable SQLite writes and immutable before/after journal entries commit together
 through database triggers, including writes from other connections. The journal
 stays disabled until verified recovery and explicit pairing; a replaced database
@@ -145,7 +147,7 @@ native HWNDs created directly as Explorer `SHELLDLL_DefView` children, while
 keyboard entry uses short-lived activated WinForms top-level surfaces. This avoids
 both shell-child Flutter focus and post-paint WinForms reparenting. A
 narrow native repository reads and writes only task fields already owned by
-schemas v4 through v24, validates the schema before opening, uses UUIDs/UTC timestamps and
+schemas v4 through v25, validates the schema before opening, uses UUIDs/UTC timestamps and
 transactions, rejects stale edits, and never creates or migrates the database.
 A named-pipe command boundary lets Flutter show, hide, toggle, refresh, open
 Quick Add, select Today/Inbox/All Tasks/Upcoming, or close the single native

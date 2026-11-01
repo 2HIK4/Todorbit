@@ -86,29 +86,34 @@ extension SyncRepository on LifeRepository {
                 .map((row) => row.data)
                 .toList();
         await db.customStatement(
-          '''INSERT INTO sync_journal(operation_id,workspace_id,account_id,device_id,entity,record_key,after_json,origin_sequence,observed_json,parent_ids_json,mutation_group_id)
+          '''INSERT INTO sync_journal(operation_id,workspace_id,account_id,device_id,entity,record_key,after_json,origin_sequence,observed_json,parent_ids_json,mutation_group_id,visible_json)
           SELECT $syncOperationUuidSql,?,?,?,'$table',${syncKeyJson(columns, 'source.')},${syncRowJson(columns, 'source.')},
             context.device_sequence+row_number() OVER(ORDER BY ${syncKeyJson(columns, 'source.')}),
-            json_set(context.observed_json,'\$.' || json_quote(context.device_id),context.device_sequence+row_number() OVER(ORDER BY ${syncKeyJson(columns, 'source.')})-1),'[]',context.mutation_group
+            json_set(context.observed_json,'\$.' || json_quote(context.device_id),context.device_sequence+row_number() OVER(ORDER BY ${syncKeyJson(columns, 'source.')})-1),'[]',context.mutation_group,
+            CASE WHEN context.device_sequence+row_number() OVER(ORDER BY ${syncKeyJson(columns, 'source.')})>1
+            THEN json_set(context.visible_json,'\$.' || json_quote(context.device_id),json_array(json_array(1,context.device_sequence+row_number() OVER(ORDER BY ${syncKeyJson(columns, 'source.')})-1))) ELSE context.visible_json END
           FROM "$table" AS source CROSS JOIN sync_capture_context AS context
           WHERE context.id=1 AND ${syncRowIsPortable(table, 'source.')}''',
           [workspaceId, accountId, deviceId],
         );
         await db.customStatement(
-          'UPDATE sync_capture_context SET device_sequence=device_sequence+changes(), observed_json=json_set(observed_json,$syncDeviceClockPathSql,device_sequence+changes()) WHERE id=1',
+          '''UPDATE sync_capture_context SET device_sequence=device_sequence+changes(),
+          observed_json=json_set(observed_json,$syncDeviceClockPathSql,device_sequence+changes()),
+          received_json=json_set(received_json,$syncDeviceClockPathSql,device_sequence+changes()),
+          visible_json=CASE WHEN device_sequence+changes()>0 THEN json_set(visible_json,$syncDeviceClockPathSql,json_array(json_array(1,device_sequence+changes()))) ELSE visible_json END WHERE id=1''',
         );
       }
       final firstSequence = current.read<int>('device_sequence') + 1;
       await db.customStatement(
-        '''INSERT INTO sync_mutation_groups(id,workspace_id,account_id,device_id,first_sequence,last_sequence,complete)
-        SELECT mutation_group,workspace_id,account_id,device_id,?,device_sequence,1 FROM sync_capture_context WHERE id=1 AND device_sequence>=?''',
+        '''INSERT INTO sync_mutation_groups(id,workspace_id,account_id,device_id,first_sequence,last_sequence,complete,materialized)
+        SELECT mutation_group,workspace_id,account_id,device_id,?,device_sequence,1,1 FROM sync_capture_context WHERE id=1 AND device_sequence>=?''',
         [firstSequence, firstSequence],
       );
       await db.customStatement(
-        '''INSERT INTO sync_entity_heads(workspace_id,entity,record_key,visible_revision)
-        SELECT workspace_id,entity,record_key,operation_id FROM sync_journal
+        '''INSERT INTO sync_entity_heads(workspace_id,entity,record_key,visible_revision,visible_heads_json)
+        SELECT workspace_id,entity,record_key,operation_id,json_array(operation_id) FROM sync_journal
         WHERE workspace_id=? AND account_id=?
-        ON CONFLICT(workspace_id,entity,record_key) DO UPDATE SET visible_revision=excluded.visible_revision''',
+        ON CONFLICT(workspace_id,entity,record_key) DO UPDATE SET visible_revision=excluded.visible_revision,visible_heads_json=excluded.visible_heads_json''',
         [workspaceId, accountId],
       );
       await db.customStatement(

@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'sync_visibility.dart';
+
 Object? _canonical(Object? value) => switch (value) {
   Map() => {
     for (final key in value.keys.cast<String>().toList()..sort())
@@ -32,6 +34,7 @@ class SyncRevision {
     required Iterable<String> parents,
     required Map<String, Object?>? value,
     Map<String, int>? observed,
+    this.visible,
   }) : parents = Set<String>.unmodifiable(parents),
        observed = Map<String, int>.unmodifiable(
          observed ?? (sequence > 1 ? {device: sequence - 1} : {}),
@@ -49,6 +52,12 @@ class SyncRevision {
           (entry) =>
               entry.key.isEmpty || entry.key.length > 128 || entry.value < 0,
         ) ||
+        (visible?.ranges.entries.any(
+              (entry) => entry.value.any(
+                (range) => range.last > (this.observed[entry.key] ?? 0),
+              ),
+            ) ??
+            false) ||
         this.parents.contains(id) ||
         this.parents.length > 256 ||
         this.parents.any((id) => id.isEmpty || id.length > 128) ||
@@ -60,6 +69,7 @@ class SyncRevision {
   final int sequence;
   final Set<String> parents;
   final Map<String, int> observed;
+  final SyncVisibility? visible;
   final Map<String, Object?>? value;
   bool observes(SyncRevision other) =>
       (observed[other.device] ?? 0) >= other.sequence;
@@ -70,6 +80,7 @@ class SyncRevision {
     'sequence': sequence,
     'parents': parents.toList()..sort(),
     'observed': observed,
+    if (visible != null) 'visible': visible!.toJson(),
     'value': value,
   };
 
@@ -81,6 +92,7 @@ class SyncRevision {
           'parents',
           'value',
           'observed',
+          'visible',
         }).isNotEmpty ||
         json['id'] is! String ||
         json['device'] is! String ||
@@ -89,6 +101,7 @@ class SyncRevision {
         !json.containsKey('value') ||
         (json['parents'] as List).any((value) => value is! String) ||
         (json['value'] != null && json['value'] is! Map) ||
+        (json['visible'] != null && json['visible'] is! Map) ||
         (json['observed'] != null &&
             (json['observed'] is! Map ||
                 (json['observed'] as Map).values.any(
@@ -103,6 +116,11 @@ class SyncRevision {
       parents: (json['parents'] as List).cast<String>(),
       value: (json['value'] as Map?)?.cast<String, Object?>(),
       observed: (json['observed'] as Map?)?.cast<String, int>(),
+      visible: json['visible'] == null
+          ? null
+          : SyncVisibility.fromJson(
+              (json['visible'] as Map).cast<String, dynamic>(),
+            ),
     );
   }
 }

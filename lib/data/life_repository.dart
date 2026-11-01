@@ -30,6 +30,7 @@ import 'sync_exchange_models.dart';
 import 'cloud/cloud_storage_provider.dart';
 import 'cloud/sync_batch_codec.dart';
 import '../domain/sync/causal_record.dart';
+import '../domain/sync/sync_visibility.dart';
 
 part 'series_edit_repository.dart';
 part 'habit_repository.dart';

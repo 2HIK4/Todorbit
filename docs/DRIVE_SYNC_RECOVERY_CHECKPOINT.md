@@ -144,7 +144,7 @@ sync bookkeeping is excluded from the logical user-data fingerprint.
 Unpublished implementation checkpoint. Complete sync engine, pairing,
 conflict UI and both background adapters are not yet implemented. No claim of
 two-way sync, automatic/background sync or release readiness is made. Existing
-encrypted backup envelope remains unchanged; schema 24 is unpublished. Real cross-client pairing/exchange
+encrypted backup envelope remains unchanged; schema 25 is unpublished. Real cross-client pairing/exchange
 acceptance cannot be performed while testing is limited to mocks; historical
 backup OAuth acceptance is not acceptance of a new sync protocol.
 
@@ -228,3 +228,55 @@ deletion/descendant edits, uniqueness and relationship cycles) still require
 domain review before SQL application. Do not implement the receiver by blindly
 upserting rows or by treating received history as user acknowledgement. These
 checks, persisted resolution and restore reconciliation remain unfinished.
+
+## Exact visibility checkpoint — 2026-11-01
+
+Draft source schema 25 adds exact applied/explicitly reviewed sequence intervals,
+separate from received causal history, plus complete visible parent sets. Range
+normalization preserves holes and is independent of delivery order. Visibility
+cannot reference a future/unobserved sequence or acknowledge only a fragment of
+another device's original action. Native and Flutter captures persist the same
+metadata with the original transaction. Incoming groups remain unmaterialized.
+
+The schema24 forward migration retains original operation IDs, payloads and
+encrypted bytes. Pending old-schema ciphertext is marked superseded, retained
+privately, and its pending operations restaged under a new encrypted batch ID
+with visibility metadata. Automatic exchange is disabled during that migration;
+no stored history or user rows are deleted. Schema24 never enabled remote
+application, so migration establishes visibility only for original local rows.
+This is an unpublished protocol transition, not compatibility evidence for a
+released multi-client sync protocol.
+
+Portable-record review now excludes `updated_at` from user-value decisions and
+derives deterministic UTC metadata separately. Divergent user values still need
+a decision, regardless of skewed clocks. Completion/scheduling, recurrence
+rules/templates, event timing, managed bytes and other coupled record transitions
+remain meaningful conflicts. Full record candidates stay in immutable history.
+This review helper has not been wired to a remote SQL materializer or UI yet.
+
+| Invocation | Source / purpose | Result | Reason |
+| --- | --- | --- | --- |
+| Quick `20261101-011617-6348` | Exact interval primitive, causal serialization and codec | 21 pass; analysis/format/diff pass | New visibility model, hole/order/immutability/malformed-wire checks |
+| Quick `20261101-011645-7926` | Visibility cannot invent unobserved/future facts | 22 pass; analysis/format/diff pass | Added visibility-subset validation and regression |
+| Quick `20261101-011858-3579` | Schema25 capture, staging/incoming, schema23 migration and isolation | 28 pass; analysis/format/diff pass | New stored intervals and merged parent sets invalidate schema24 capture evidence |
+| Quick `20261101-012241-0273` | Actual schema24 encrypted-queue migration, backup/restore, real crash barriers and leases | 21 pass; analysis/format/diff pass | New forward migration and schema25 snapshot gate; old ciphertext/IDs retained exactly |
+| Quick `20261101-012423-2710` | Portable record semantics review | Analysis stopped on two multiline brace lints; no tests | New domain helper; corrected mechanical issues |
+| Quick `20261101-012511-4759` | Independent-field merge, skewed clocks, completion/schedule, bytes, deletion and malformed UTC | 6 pass; analysis/format/diff pass | New semantic review boundary; recurrence-specific assertion added afterward for Full pass |
+| `flutter test --no-pub --reporter=expanded .buildlog/native-capture-v25/fixture_test.dart` | Actual Dart schema25 recurring fixture, isolated file | 1 pass | Changed capture DDL invalidates schema24 native fixture |
+| `dotnet run --project .buildlog/native-capture-v25/NativeCapture.csproj -c Release` | Actual production native writer + Microsoft.Data.Sqlite; isolated child APPDATA/LOCALAPPDATA | Pass; completion/next occurrence grouped once with exact prior visibility | Changed native schema ceiling and capture metadata; source/executable/fixture hashes in ignored `evidence.json` |
+| `tools/dev/native-self-test.ps1 -Executable .../TodorbitWidget.exe` | New native Release executable, helper-isolated profile | Pass | Schema25 native boundary; no physical UI claim |
+| Quick `20261101-012656-1538` | Incoming cross-device partial-group acknowledgement | 7 pass; analysis/format/diff pass | New global retained-history validation; full-group acknowledgement accepted, partial rejected atomically |
+| `verify.ps1 -Mode Full -Plan` | Preview standard host integration checks | Plan inspected only | Shared transaction wrapper/schema invalidates previous full-host coverage |
+
+Full host integration `20261101-012822-1294` passed formatting (275 files), full
+analysis, 524 host tests with one existing opt-in skip, 11 Android release-helper
+tests, eight developer-helper tests and documentation/catalog validation (zero
+errors). Its final diff check found one newly added blank line at EOF in the
+feature catalog. That whitespace was corrected and `git diff --check` passed
+separately (`.buildlog/sync-v25-diff-check.log`); no runtime suite was repeated.
+The original Full helper receipt therefore has a nonzero final status despite
+all runtime/static checks passing. This run was necessary because the shared
+transaction wrapper and schema25 migration postdate the schema23 full pass.
+
+Foreground/background engines and remote application remain disabled. No
+publication candidate exists yet.

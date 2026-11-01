@@ -670,6 +670,23 @@ void _validateLifeManagerSnapshot(String filePath) {
     if (!names.containsAll(required)) {
       throw StateError('Snapshot is not a Todorbit database');
     }
+    if (schema >= 25) {
+      for (final entry in const {
+        'sync_capture_context': {'visible_json'},
+        'sync_journal': {'visible_json'},
+        'sync_entity_heads': {'visible_heads_json'},
+        'sync_mutation_groups': {'materialized', 'blocked_reason'},
+        'sync_batches': {'superseded'},
+      }.entries) {
+        final columns = connection
+            .select('PRAGMA table_info("${entry.key}")')
+            .map((row) => row['name'])
+            .toSet();
+        if (!columns.containsAll(entry.value)) {
+          throw StateError('Snapshot has incomplete sync visibility metadata');
+        }
+      }
+    }
     if (connection.select('PRAGMA foreign_key_check').isNotEmpty) {
       throw StateError('Snapshot has broken record relationships');
     }

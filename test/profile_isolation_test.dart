@@ -94,6 +94,7 @@ void main() {
               'device_sequence': 0,
               'observed_json': '{}',
               'received_json': '{}',
+              'visible_json': '{}',
               'automatic_sync': 0,
               'change_token': null,
               'last_success_utc': null,

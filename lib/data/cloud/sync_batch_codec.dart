@@ -106,6 +106,9 @@ class SyncBatch {
     }
     final groups = <String, String>{};
     for (final operation in this.operations) {
+      if (schema >= 25 && operation.revision.visible == null) {
+        throw const FormatException('Applied visibility is required');
+      }
       final group = operation.group;
       if (schema >= 24 && group == null) {
         throw const FormatException('Sync mutation group is required');

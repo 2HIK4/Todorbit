@@ -37,6 +37,12 @@ SyncRevision _syncRevisionFromJournal(Map<String, Object?> row) => SyncRevision(
       .cast<String>(),
   observed: (jsonDecode(row['observed_json'] as String) as Map)
       .cast<String, int>(),
+  visible: row['visible_json'] == null
+      ? null
+      : SyncVisibility.fromJson(
+          (jsonDecode(row['visible_json'] as String) as Map)
+              .cast<String, dynamic>(),
+        ),
   value: _syncPortableValue(row['after_json'] as String?),
 );
 
@@ -106,7 +112,8 @@ extension SyncExchangeRepository on LifeRepository {
     if (row['workspace_id'] != binding.workspace ||
         row['account_id'] != binding.account ||
         row['device_id'] != binding.device ||
-        row['direction'] != 'outgoing') {
+        row['direction'] != 'outgoing' ||
+        row['superseded'] == 1) {
       throw StateError(
         'The staged sync batch belongs to another binding. Retain its queue.',
       );
@@ -135,7 +142,7 @@ extension SyncExchangeRepository on LifeRepository {
     await _requireSyncExchange(binding, lease);
     final existing = await db
         .customSelect(
-          "SELECT * FROM sync_batches WHERE workspace_id=? AND account_id=? AND device_id=? AND direction='outgoing' AND uploaded=0 ORDER BY created_at,id LIMIT 1",
+          "SELECT * FROM sync_batches WHERE workspace_id=? AND account_id=? AND device_id=? AND direction='outgoing' AND uploaded=0 AND superseded=0 ORDER BY created_at,id LIMIT 1",
           variables: [
             Variable.withString(binding.workspace),
             Variable.withString(binding.account),
@@ -151,7 +158,7 @@ extension SyncExchangeRepository on LifeRepository {
     final headers = await db
         .customSelect(
           '''SELECT j.operation_id,
-      coalesce(length(CAST(j.after_json AS BLOB)),0)+length(j.observed_json)+length(j.parent_ids_json)+length(j.record_key)+1024 AS payload_bytes
+      coalesce(length(CAST(j.after_json AS BLOB)),0)+length(j.observed_json)+length(j.visible_json)+length(j.parent_ids_json)+length(j.record_key)+1024 AS payload_bytes
       FROM sync_journal j JOIN sync_mutation_groups g ON g.id=j.mutation_group_id AND g.complete=1
       WHERE j.workspace_id=? AND j.account_id=? AND j.device_id=?
       AND j.uploaded=0 AND j.batch_id IS NULL AND j.known=1 ORDER BY j.origin_sequence LIMIT 512''',
@@ -195,7 +202,7 @@ extension SyncExchangeRepository on LifeRepository {
       ids.add(header.read<String>('operation_id'));
     }
     final rows = (await db.customSelect(
-      '''SELECT j.operation_id,j.device_id,j.origin_sequence,j.parent_ids_json,j.observed_json,j.entity,j.record_key,j.after_json,j.mutation_group_id,
+      '''SELECT j.operation_id,j.device_id,j.origin_sequence,j.parent_ids_json,j.observed_json,j.visible_json,j.entity,j.record_key,j.after_json,j.mutation_group_id,
         g.first_sequence AS group_first,g.last_sequence AS group_last
       FROM sync_journal j JOIN sync_mutation_groups g ON g.id=j.mutation_group_id
       WHERE j.operation_id IN (${List.filled(ids.length, '?').join(',')}) ORDER BY j.origin_sequence''',

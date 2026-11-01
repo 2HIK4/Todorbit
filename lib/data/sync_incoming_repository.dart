@@ -261,8 +261,8 @@ extension SyncIncomingRepository on LifeRepository {
         }
         await db.customStatement(
           '''INSERT INTO sync_journal(operation_id,workspace_id,account_id,device_id,entity,record_key,
-          after_json,uploaded,origin_sequence,observed_json,parent_ids_json,batch_id,known,mutation_group_id)
-          VALUES(?,?,?,?,?,?,?,1,?,?,?,?,0,?)''',
+          after_json,uploaded,origin_sequence,observed_json,parent_ids_json,batch_id,known,mutation_group_id,visible_json)
+          VALUES(?,?,?,?,?,?,?,1,?,?,?,?,0,?,?)''',
           [
             revision.id,
             binding.workspace,
@@ -276,6 +276,7 @@ extension SyncIncomingRepository on LifeRepository {
             jsonEncode(revision.parents.toList()..sort()),
             batch.id,
             group.id,
+            jsonEncode(revision.visible!.toJson()),
           ],
         );
         inserted++;
@@ -343,6 +344,27 @@ extension SyncIncomingRepository on LifeRepository {
     if (inconsistent.isNotEmpty) {
       throw const FormatException(
         'A sync observation contradicts retained causal history',
+      );
+    }
+    final partialVisibility = await db
+        .customSelect(
+          r'''SELECT 1 FROM sync_journal j,
+      json_each(j.visible_json) device,json_each(device.value) span
+      JOIN sync_mutation_groups g ON g.workspace_id=j.workspace_id AND g.account_id=j.account_id
+      AND g.device_id=device.key AND g.device_id!=j.device_id
+      AND json_extract(span.value,'$[0]')<=g.last_sequence AND json_extract(span.value,'$[1]')>=g.first_sequence
+      WHERE j.workspace_id=? AND j.account_id=? AND NOT EXISTS(
+        SELECT 1 FROM json_each(device.value) full_span WHERE
+        json_extract(full_span.value,'$[0]')<=g.first_sequence AND json_extract(full_span.value,'$[1]')>=g.last_sequence) LIMIT 1''',
+          variables: [
+            Variable.withString(binding.workspace),
+            Variable.withString(binding.account),
+          ],
+        )
+        .get();
+    if (partialVisibility.isNotEmpty) {
+      throw const FormatException(
+        'A device acknowledged only part of another original action',
       );
     }
   }

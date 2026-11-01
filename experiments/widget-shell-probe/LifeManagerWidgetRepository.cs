@@ -26,7 +26,7 @@ internal sealed class DependencyReviewRequiredException(
 
 internal sealed partial class LifeManagerWidgetRepository : IDisposable {
   private const int MinimumSchemaVersion = 4;
-  private const int MaximumSchemaVersion = 24;
+  private const int MaximumSchemaVersion = 25;
   private const string ActiveTaskClause = """
      AND deleted_at IS NULL AND archived_at IS NULL
      AND (category_id IS NULL OR EXISTS

@@ -12,6 +12,7 @@ import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/data/sync_exchange_models.dart';
 import 'package:life_manager/domain/models.dart';
 import 'package:life_manager/domain/sync/causal_record.dart';
+import 'package:life_manager/domain/sync/sync_visibility.dart';
 import 'package:uuid/uuid.dart';
 
 void main() {
@@ -224,6 +225,7 @@ void main() {
             sequence: op.revision.sequence,
             parents: op.revision.parents,
             observed: op.revision.observed,
+            visible: op.revision.visible,
             value: {
               ...op.revision.value!,
               'kind': 'file',
@@ -333,6 +335,7 @@ void main() {
               sequence: 1,
               parents: [],
               observed: {observedDevice: 1},
+              visible: SyncVisibility({}),
               value: prototype.revision.value,
             ),
           );
@@ -349,6 +352,47 @@ void main() {
             .read<int>('known'),
         0,
       );
+      expect(await receiver.tasks(), isEmpty);
+    },
+  );
+
+  test(
+    'visibility cannot acknowledge a fragment of another original action',
+    () async {
+      await left.transaction(() async {
+        await sender.addTask(const TaskDraft(title: 'One grouped action A'));
+        await sender.addTask(const TaskDraft(title: 'One grouped action B'));
+      });
+      final batch = (await sender.prepareNextSyncBatch(source, key))!;
+      final prototype = (await clear(batch)).operations.first;
+      expect(await receive(batch), 2);
+      const other = '11d34975-bd28-43df-9dba-8d228c97ea74';
+      Future<PendingSyncBatch> edit(int visibleThrough) => wrap([
+        SyncRecordOperation(
+          entity: prototype.entity,
+          recordKey: prototype.recordKey,
+          group: SyncMutationGroup(id: const Uuid().v4(), first: 1, last: 1),
+          revision: SyncRevision(
+            id: const Uuid().v4(),
+            device: other,
+            sequence: 1,
+            parents: [prototype.revision.id],
+            observed: {source.device: 2},
+            visible: SyncVisibility({})
+                .withRange(source.device, 1, visibleThrough),
+            value: {
+              ...prototype.revision.value!,
+              'title': 'Reviewed whole source action',
+            },
+          ),
+        ),
+      ], device: other);
+      await expectLater(receive(await edit(1)), throwsFormatException);
+      expect(
+        await right.customSelect('SELECT * FROM sync_journal').get(),
+        hasLength(2),
+      );
+      expect(await receive(await edit(2)), 1);
       expect(await receiver.tasks(), isEmpty);
     },
   );

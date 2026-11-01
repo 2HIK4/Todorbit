@@ -109,6 +109,7 @@ Future<void> createSyncSchema(
 Future<void> installSyncCaptureTriggers(
   GeneratedDatabase db, {
   bool causal = false,
+  bool visibility = false,
 }) async {
   for (final table in portableSyncTables) {
     final columns = (await db.customSelect('PRAGMA table_info("$table")').get())
@@ -142,8 +143,8 @@ Future<void> installSyncCaptureTriggers(
           AND $portable
           ${action == 'UPDATE' ? 'AND $oldRow IS NOT $newRow' : ''}
         BEGIN
-          ${action == 'UPDATE' ? _captureMutation(table, oldKey, oldRow, 'NULL', '$oldKey IS NOT $key AND $oldPortable', causal) : ''}
-          ${_captureMutation(table, key, before, after, action == 'UPDATE' ? '($oldKey IS $key OR $newPortable)' : '1', causal)}
+          ${action == 'UPDATE' ? _captureMutation(table, oldKey, oldRow, 'NULL', '$oldKey IS NOT $key AND $oldPortable', causal, visibility) : ''}
+          ${_captureMutation(table, key, before, after, action == 'UPDATE' ? '($oldKey IS $key OR $newPortable)' : '1', causal, visibility)}
         END''',
       );
     }
@@ -157,18 +158,19 @@ String _captureMutation(
   String after,
   String condition,
   bool causal,
+  bool visibility,
 ) =>
     '''
-  INSERT INTO sync_journal(operation_id,workspace_id,account_id,device_id,entity,record_key,parent_id,before_json,after_json${causal ? ',origin_sequence,observed_json,parent_ids_json,mutation_group_id' : ''})
+  INSERT INTO sync_journal(operation_id,workspace_id,account_id,device_id,entity,record_key,parent_id,before_json,after_json${causal ? ',origin_sequence,observed_json,parent_ids_json,mutation_group_id' : ''}${visibility ? ',visible_json' : ''})
   SELECT $syncOperationUuidSql,workspace_id,account_id,device_id,'$table',$key,
     (SELECT visible_revision FROM sync_entity_heads WHERE workspace_id=sync_capture_context.workspace_id AND entity='$table' AND record_key=$key),
-    $before,$after${causal ? ",device_sequence+1,observed_json,coalesce((SELECT json_array(visible_revision) FROM sync_entity_heads WHERE workspace_id=sync_capture_context.workspace_id AND entity='$table' AND record_key=$key),'[]'),coalesce(mutation_group,$syncOperationUuidSql)" : ''} FROM sync_capture_context WHERE id=1 AND ($condition);
-  INSERT INTO sync_entity_heads(workspace_id,entity,record_key,visible_revision)
-  SELECT workspace_id,entity,record_key,operation_id FROM sync_journal WHERE sequence=last_insert_rowid() AND ($condition)
-  ON CONFLICT(workspace_id,entity,record_key) DO UPDATE SET visible_revision=excluded.visible_revision;
-  ${causal ? "UPDATE sync_capture_context SET device_sequence=device_sequence+1,observed_json=json_set(observed_json,$syncDeviceClockPathSql,device_sequence+1) WHERE id=1 AND ($condition);" : ''}
-  ${causal ? '''INSERT INTO sync_mutation_groups(id,workspace_id,account_id,device_id,first_sequence,last_sequence,complete)
-    SELECT j.mutation_group_id,j.workspace_id,j.account_id,j.device_id,j.origin_sequence,j.origin_sequence,CASE WHEN c.mutation_group IS NULL THEN 1 ELSE 0 END
+    $before,$after${causal ? ",device_sequence+1,observed_json,coalesce((SELECT ${visibility ? 'visible_heads_json' : 'json_array(visible_revision)'} FROM sync_entity_heads WHERE workspace_id=sync_capture_context.workspace_id AND entity='$table' AND record_key=$key),'[]'),coalesce(mutation_group,$syncOperationUuidSql)" : ''}${visibility ? ',visible_json' : ''} FROM sync_capture_context WHERE id=1 AND ($condition);
+  INSERT INTO sync_entity_heads(workspace_id,entity,record_key,visible_revision${visibility ? ',visible_heads_json' : ''})
+  SELECT workspace_id,entity,record_key,operation_id${visibility ? ',json_array(operation_id)' : ''} FROM sync_journal WHERE sequence=last_insert_rowid() AND ($condition)
+  ON CONFLICT(workspace_id,entity,record_key) DO UPDATE SET visible_revision=excluded.visible_revision${visibility ? ',visible_heads_json=excluded.visible_heads_json' : ''};
+  ${causal ? "UPDATE sync_capture_context SET device_sequence=device_sequence+1,observed_json=json_set(observed_json,$syncDeviceClockPathSql,device_sequence+1)${visibility ? ',received_json=json_set(received_json,$syncDeviceClockPathSql,device_sequence+1),visible_json=json_set(visible_json,$syncDeviceClockPathSql,json_array(json_array(1,device_sequence+1)))' : ''} WHERE id=1 AND ($condition);" : ''}
+  ${causal ? '''INSERT INTO sync_mutation_groups(id,workspace_id,account_id,device_id,first_sequence,last_sequence,complete${visibility ? ',materialized' : ''})
+    SELECT j.mutation_group_id,j.workspace_id,j.account_id,j.device_id,j.origin_sequence,j.origin_sequence,CASE WHEN c.mutation_group IS NULL THEN 1 ELSE 0 END${visibility ? ',1' : ''}
     FROM sync_journal j JOIN sync_capture_context c ON c.id=1 AND j.device_id=c.device_id AND j.origin_sequence=c.device_sequence
       AND j.workspace_id=c.workspace_id AND j.account_id=c.account_id WHERE ($condition)
     ON CONFLICT(id) DO UPDATE SET last_sequence=excluded.last_sequence;''' : ''}
