@@ -1,19 +1,23 @@
 # Progress
 
-## UI hierarchy refinement in progress (2026-11-02)
+## UI hierarchy beta 5 published (2026-11-02)
 
-- Branch `feature/ui-hierarchy-polish`, baseline `aae8928`; candidate
-  `1.0.19-beta.5+28`, schema 26. Coordinated publication is explicitly authorized
-  after mandatory gates. Existing release tags/assets remain untouched.
-- Shared production typography, semantic subtitles/surfaces, field-first conflict
-  comparisons, visible recovery notices, simpler sync/backup/update copy and
-  scrollable progress dialogs implemented. Domain/security/native behavior stays.
-- Isolated Windows debug Today/task/event/Calendar/settings/backup/sync/goal/habit
-  views observed in light/dark; hot reload succeeds, no reported runtime errors.
-  Computer-use runtime failed to initialize; physical mouse/DPI is not claimed.
-- Focused production-theme checks and exact-source release preparation are pending.
-  Failed/stale assertions, evidence reuse, emulator diagnostics and next checks
-  are in [the audit and invocation ledger](UI_HIERARCHY_AUDIT.md).
+- Published [v1.0.19-beta.5](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.5)
+  for Windows + Android, version `1.0.19-beta.5+28`, Android code 28, schema 26,
+  runtime/tag `1cef226`. Previous releases/tags/assets remain unchanged.
+- Shared typography/semantic surfaces, quieter settings, field-first conflict
+  review, grouped restore guidance, scrollable progress dialogs and flexible event
+  colors. Recovery input stays visible above Android IME at 200% text.
+- Windows CI: 578 pass/one existing skip; Android: 71 host/11 preparation/two
+  integrations; exact production APK real 16 KiB runtime passed. Package/signing,
+  portable swap/rollback, retained Android data/widgets and anonymous updater gates pass.
+- Actual Windows debug and Android Release observations are distinguished from
+  offscreen/widget and source-only review. No real Drive sync E2E, physical shell,
+  DPI/OEM/TalkBack acceptance is claimed. Windows remains unsigned.
+- The completed Windows guest was confirmed closed when the owner requested no
+  Sandbox use; no subsequent Sandbox launch or use. No personal data, secrets or private logs were committed.
+- [Audit, skill application, before/after images and full invocation ledger](UI_HIERARCHY_AUDIT.md).
+  [Publication receipt, downloads, hashes, reruns/reuse and limits](UI_HIERARCHY_PUBLICATION.md).
 
 ## Encrypted sync beta 4 published (2026-11-02)
 

@@ -1,8 +1,8 @@
 # Todorbit UI hierarchy review - 2026-11-02
 
 Candidate: `1.0.19-beta.5+28`, branch `feature/ui-hierarchy-polish`, baseline
-`aae8928` (published runtime `67b265d`). Release gates are pending until recorded
-below. This receipt distinguishes source review, offscreen render and live app
+`aae8928` (published runtime `67b265d`). Final release gates and publication passed; see
+[the publication receipt](UI_HIERARCHY_PUBLICATION.md). This receipt distinguishes source review, offscreen render and live app
 observations; it does not certify every screen or physical Windows/Android input.
 
 ## Design direction and findings
@@ -278,3 +278,98 @@ ProductionFast at 200% text: the focused field remained fully above the keyboard
 system text scale was restored. Private screenshots/XML and the observation JSON
 retain the evidence; no saved account label is published. Focused analysis is
 clean. The final committed build will receive the same identity/runtime gates.
+
+
+## Final committed-source release invocation ledger
+
+All rows below use runtime source `1cef226050a0efe372be5dd1d4264bd28b88c0e5`.
+Detailed commands/outputs are retained privately under `.buildlog/ui-audit/`.
+Each prior candidate's changed Flutter bytes invalidated package/CI gates;
+unchanged native/updater boundary evidence remains explicitly distinguished.
+
+| Command / observation | Result and evidence | New or rerun reason |
+| --- | --- | --- |
+| `dart analyze lib/features/settings/sync_settings_page.dart test/sync_conflicts_dialog_test.dart` | clean, recovery-settled-analysis.log | timing correction invalidated affected analysis |
+| Isolated `flutter run -d windows -t test_driver/driver_main.dart`, DTD/VM hot_reload + runtime errors | reload pass, no errors; task APPDATA database path verified, windows-settled-live.log | final Flutter-source checkpoint; initial HTTP URI rejected, WebSocket connection corrected |
+| `tools/build-windows-release.ps1` | pass, build-settled/windows-release.log | final committed runtime/config consistency |
+| `tools/test-windows-crt.ps1` | pass, build-settled/crt-gates.log | rebuilt Windows bundle |
+| `installer/build-installer.ps1` | pass, build-settled/installer.log | rebuilt final Setup |
+| `tools/build-portable.ps1` | pass, build-settled/portable.log | rebuilt final ZIP |
+| `tools/build-android.ps1 -Mode Release -Distribution github -SplitPerAbi -GoogleDrive` | pass, build-settled/android-apks.log | final committed build; byte-identical observed x64 SHA 7d26ef1e0aeb3e91c72e544ffc0407705110ec65b90c17479c7ba2390944c8f5 |
+| Normal Android local SQLite export / table comparison / widgets / package metadata | 53 user tables plus sqlite_sequence identical; integrity OK; firstInstallTime and widget IDs/providers/hosts/options preserved | final APK after keyboard correction; initial drawer command raced animation, fresh settled snapshot corrected navigation |
+| `prepare-windows-sandbox-acceptance.ps1` + guarded fresh guest runner | PASS install/fresh/reopen/native self-test/in-place/uninstall-retention/reinstall; GUI and Google explicitly UNVERIFIED | final package bytes, settled-windows-sandbox.json |
+| `test-portable-update.ps1 -Package <final ZIP>` | initial fail: two owned companions at the one-second check, settled-portable-swap.log | final packages; Sandbox/build contention active; must diagnose/recheck after those finish |
+| Cancel obsolete Android CI 41385446502 | host job passed; emulator job canceled after source superseded | avoids continuing a 365de86-only job; no pass claimed for its integration job |
+
+The observed Android x64 APK exactly matches the committed-source build hash;
+text scale was restored to 1.0, and the retained emulator shut down without a
+reset. Private exported SQLite, saved account labels and logs are never published.
+
+
+User steering: no further Windows Sandbox use. The task session had already
+closed; no Sandbox processes/sessions were found afterward and none will be
+launched again. Existing completed evidence predates that instruction.
+
+Portable swap passed on the unchanged package after Sandbox/Android emulator
+shutdown reduced host load (`settled-portable-swap-reduced-load.log`); deliberate
+failure rollback also passed (`settled-portable-rollback.log`). The original
+one-second failure is retained, consistent with startup timing under contention;
+the exact cause is not claimed proven. No assertion or production code changed.
+Android final AAB and preparation pass (build-settled/android-aab.log and
+android-prepare.log), including signer, version/identity, nondebuggable packages,
+ABI/SDK/16 KiB alignment and Play permission/provider separation. Only the three
+GitHub APKs and public metadata/checksums/notes are uploaded; AAB stays private.
+Final ZIP CRC, 28-file equality and all 11 SHA-256 values pass in
+current-artifact-audit.json. Packaged native bytes match the earlier self-test;
+the completed guest also independently passed its self-test.
+
+Exact final source CI: Windows 41389595492, Android 41389670305 and exact x64 APK
+16 KiB runtime 41390755947 are pending. Obsolete 365de86 Android logs show the
+combined integration test stalled after APK installation until canceled; that does not
+establish an application failure. A live-log API request for the final running
+job returned 404 (running-job logs unavailable), so no result is inferred.
+
+
+Final 16 KiB runtime 41390755947 passed on exact SHA 7d26ef1e0aeb3e91c72e544ffc0407705110ec65b90c17479c7ba2390944c8f5:
+16384-byte pages, stable no-app baseline, rendered UI, create/reopen/complete,
+no observed crash/ANR. All 11 uploaded draft sizes/digests/source match local.
+Final Android CI attempt 1 had a successful host job but stalled after installing
+the combined integration-test APK. It was canceled for diagnosis after exceeding twice the
+prior passing integration duration; logs confirmed the same connection-stage
+stall as the superseded job. Only android-workflow was rerun on a fresh hosted
+guest (`gh run rerun 41389670305 --job 125098063437`). No code/assertion/artifact
+changed; host checks are not repeated. Final integration is pending.
+
+
+Windows CI 41389595492 completed successfully at final source: clean full
+analysis, 578 host tests passed/one existing opt-in skip, eight developer-helper
+checks, full native/Windows Release/CRT/package gates. Its source-bound pass
+replaces the pending Windows entry above. Public-verification helper scripts
+compile and git diff --check passes; they do not alter product code.
+
+
+## Published result
+
+Published v1.0.19-beta.5 at 2026-11-02 05:14:15 UTC, tag/runtime source 1cef226.
+All mandatory exact-source gates passed: Windows 41389595492 (578 pass/one
+existing opt-in skip), Android 41389670305 attempt 2 (71 host + 11 preparation
+checks + two integrations), exact APK 16 KiB 41390755947. No local full suite
+was redundantly rerun. The retry retained the successful host job.
+
+| Final invocation | Result / purpose |
+| --- | --- |
+| Draft API/source/names/sizes/digests + three CI checks (`draft_gate.py`) | all pass before publication; exact release notes equality initially stopped on Windows CRLF, normalized content matches |
+| `gh release edit v1.0.19-beta.5 --draft=false --latest=false` | authorized coordinated prerelease published; tag points to 1cef226 |
+| Anonymous public API and 11 asset delivery/digest probes (`verify_public.py`) | pass; small files full-hashed, binaries Range + API full-digest matched; old public releases/assets/tags unchanged |
+| `flutter test --no-pub .buildlog/ui-audit/public_updater_test.dart` | one pass using anonymous production metadata: Setup/portable, Android ABI order/fallback/code28, Stable exclusion |
+
+[Publication receipt, final hashes, download links, reuse and limitations](UI_HIERARCHY_PUBLICATION.md)
+is authoritative for the completed release. Earlier pending entries in this
+chronological ledger describe their original checkpoints.
+
+
+Final documentation-only checks: `python tools/dev/check-docs.py` reports zero
+errors; `git diff --check` and staged diff review pass. README/Release/Progress
+now identify the published beta.5 and link the final receipt. Runtime files,
+versions, artifacts and release tag remain at 1cef226; these Markdown-only
+changes reuse its completed release evidence and require no package rebuild.

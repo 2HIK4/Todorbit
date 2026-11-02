@@ -20,11 +20,11 @@ Todorbit is an offline Windows productivity app with an Android beta for tasks, 
 
 ## Android beta installation
 
-The production-signed [Android 1.0.19-beta.4 pre-release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.4) supports Android 8.0+ on ARM64/x86-64, with architecture-specific APKs, resumable updates, Tasks/Calendar widgets and encrypted incremental sync. Download the correct APK and verify its published SHA-256. Drive sync acceptance currently uses mocks; back up existing data and start with disposable profiles. Before replacing a debug-signed app, verify an external backup and recovery first. See [phone signing and backup testing](docs/ANDROID_BETA_2_PHONE_TESTING.md), [sync setup](docs/GOOGLE_DRIVE_SYNC.md) and [publication checks](docs/DRIVE_SYNC_BETA_4_PUBLICATION.md).
+The production-signed [Android 1.0.19-beta.5 pre-release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.5) supports Android 8.0+ on ARM64/x86-64, with architecture-specific APKs, resumable updates, Tasks/Calendar widgets and encrypted incremental sync. Download the correct APK and verify its published SHA-256. Drive sync acceptance currently uses mocks; back up existing data and start with disposable profiles. Before replacing a debug-signed app, verify an external backup and recovery first. See [phone signing and backup testing](docs/ANDROID_BETA_2_PHONE_TESTING.md), [sync setup](docs/GOOGLE_DRIVE_SYNC.md) and [publication checks](docs/UI_HIERARCHY_PUBLICATION.md).
 
 ## Windows installation
 
-Todorbit v1.0.19-beta.4 is a free, MIT-licensed Windows x64 pre-release. Windows 11 is the main development and test platform; Windows 10 acceptance is limited. Download the unsigned installer or portable ZIP from [GitHub Releases](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.4) and compare it with the published SHA-256 checksum. Run the installer or extract the portable ZIP and run `Todorbit.exe`. Keep the full extracted folder together, including `TodorbitWidget.exe`, DLLs, and the `data` folder. Neither package requires Flutter or Visual Studio on the user's computer.
+Todorbit v1.0.19-beta.5 is a free, MIT-licensed Windows x64 pre-release. Windows 11 is the main development and test platform; Windows 10 acceptance is limited. Download the unsigned installer or portable ZIP from [GitHub Releases](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.5) and compare it with the published SHA-256 checksum. Run the installer or extract the portable ZIP and run `Todorbit.exe`. Keep the full extracted folder together, including `TodorbitWidget.exe`, DLLs, and the `data` folder. Neither package requires Flutter or Visual Studio on the user's computer.
 
 The portable ZIP does **not** store data beside the executable. Each extracted portable location uses its own `%APPDATA%\TodoPilot\portable-<location-id>` profile; copying or moving the extracted folder selects a new empty profile. An installer fresh profile uses `%APPDATA%\TodoPilot\life_manager.sqlite`. This legacy path remains stable through the rename. An older `%APPDATA%\Life Manager` database is never selected just because it exists; on first launch Todorbit offers a reviewed, explicit import. Upgrading an installed TodoPilot retains its existing profile and settings. Export/import data through Settings > Backups & Cloud before moving a portable folder, and do not delete either profile folder.
 
@@ -62,6 +62,16 @@ Creator: **Hussam Alkhatib**, Creator & Project Founder. Original concept, produ
 
 ## Current release status
 
-The v1.0.18 pre-release fixes widget restoration after closing/updating, preserves explicit enabled preferences, stabilizes selected-navigation text during opacity changes, and replaces the Calendar planned-task square with an inset circle. It retains v1.0.17's presets, Undo/Redo, navigation, Calendar divider, reminders and direct item navigation. Google Drive snapshots remain experimental; the database stays at schema 22. Registered installer execution, physical GUI/input/DPI and clean-machine trust remain unverified. Packages are unsigned. See [release notes](docs/TODORBIT_1_0_18_RELEASE_NOTES.md), [publication checks](docs/TODORBIT_1_0_18_PUBLICATION.md), and the [preliminary naming review](docs/NAMING_REVIEW.md); formal trademark clearance remains open.
+The coordinated v1.0.19-beta.5 pre-release refines Windows and Android typography,
+semantic colors, settings, conflict/restore review and large-text dialog behavior.
+Android versionCode is 28 and the database remains schema 26. It retains encrypted
+incremental sync, snapshot backup, widgets and existing profiles. Exact-source CI,
+production signing, real 16 KiB APK runtime, disposable upgrade/data retention and
+public updater checks passed. Real Drive sync end-to-end, physical shell/DPI/OEM
+and screen-reader acceptance retain their documented limits. Windows packages
+remain unsigned. See [release notes](docs/UI_HIERARCHY_RELEASE_NOTES.md),
+[publication evidence and checksums](docs/UI_HIERARCHY_PUBLICATION.md), and the
+[preliminary naming review](docs/NAMING_REVIEW.md); formal trademark clearance
+remains open.
 
 **License:** [MIT](LICENSE), approved by the creator for this project. Third-party terms remain separate in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the distributed Flutter and native notices.
