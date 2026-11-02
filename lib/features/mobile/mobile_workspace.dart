@@ -493,17 +493,30 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
       ),
       bottomNavigationBar: tablet
           ? null
-          : NavigationBar(
-              selectedIndex: selected < 0 ? 0 : selected,
-              onDestinationSelected: (i) =>
-                  navigate(preferences.destinations[i]),
-              destinations: [
-                for (final d in preferences.destinations)
-                  NavigationDestination(
-                    icon: Icon(sidebarIcon(d)),
-                    label: d == WorkspaceView.all ? 'Tasks' : sidebarName(d),
+          : Builder(
+              builder: (context) => NavigationBar(
+                selectedIndex: selected < 0
+                    ? preferences.destinations.length
+                    : selected,
+                onDestinationSelected: (i) {
+                  if (i == preferences.destinations.length) {
+                    Scaffold.of(context).openDrawer();
+                  } else {
+                    navigate(preferences.destinations[i]);
+                  }
+                },
+                destinations: [
+                  for (final d in preferences.destinations)
+                    NavigationDestination(
+                      icon: Icon(sidebarIcon(d)),
+                      label: d == WorkspaceView.all ? 'Tasks' : sidebarName(d),
+                    ),
+                  const NavigationDestination(
+                    icon: Icon(Icons.menu),
+                    label: 'More',
                   ),
-              ],
+                ],
+              ),
             ),
       floatingActionButton: c.view == WorkspaceView.calendar
           ? null

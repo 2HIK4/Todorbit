@@ -256,7 +256,8 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
                     controller: interval,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
-                      labelText: 'Repeat every N days, weeks, months, or years',
+                      labelText: 'Repeat interval',
+                      helperText: 'Days, weeks, months or years, matching the schedule.',
                     ),
                   ),
                   if (scheduleKind == RecurrenceKind.weekdays) ...[

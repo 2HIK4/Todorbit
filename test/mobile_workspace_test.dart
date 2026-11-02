@@ -256,6 +256,49 @@ void main() {
     );
   }
 
+  testWidgets(
+    'unpinned mobile view selects More and retains pinned navigation',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      try {
+        await open(tester, size: const Size(320, 640), scale: 1.5);
+        controller.navigate(WorkspaceView.habits);
+        await tester.pumpAndSettle();
+        final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+        expect(
+          bar.destinations.last,
+          isA<NavigationDestination>().having((d) => d.label, 'label', 'More'),
+        );
+        expect(bar.selectedIndex, bar.destinations.length - 1);
+        await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+        await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+        await tester.tap(find.text('More'));
+        await tester.pumpAndSettle();
+        expect(
+          tester.state<ScaffoldState>(find.byType(Scaffold)).isDrawerOpen,
+          isTrue,
+        );
+        expect(controller.view, WorkspaceView.habits);
+        tester.state<ScaffoldState>(find.byType(Scaffold)).closeDrawer();
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Tasks'));
+        await tester.pumpAndSettle();
+        expect(controller.view, WorkspaceView.all);
+        expect(
+          tester
+              .widget<NavigationBar>(find.byType(NavigationBar))
+              .selectedIndex,
+          1,
+        );
+        expect(tester.takeException(), isNull);
+      } finally {
+        semantics.dispose();
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.binding.setSurfaceSize(null);
+      }
+    },
+  );
+
   testWidgets('new task protects Back edits and saves with notifications off', (
     tester,
   ) async {

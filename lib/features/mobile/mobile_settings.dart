@@ -129,7 +129,7 @@ class _MobileSettingsState extends ConsumerState<MobileSettings>
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  'Choose three or four destinations. Use the arrows to order them.',
+                  'Choose three or four pinned destinations. More opens all views. Use the arrows to order them.',
                 ),
                 for (final v in MobilePreferences.supported)
                   CheckboxListTile(
