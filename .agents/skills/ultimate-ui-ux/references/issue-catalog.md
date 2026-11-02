@@ -4,6 +4,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 
 ## 01. Visual hierarchy and typography
 
+**Discover:** Compare heading/body/helper roles and numeric columns in actual renders; stress long labels, missing glyphs, locale and enlarged text.
+
+**Common root causes:** Local text overrides, missing fallback weights/glyphs, fixed line boxes and inconsistent role selection.
+
+**Verify the correction:** Recheck role hierarchy, wrapping/full-content access and contrast at base/larger text in affected themes.
+
+**Related regression scope:** Shared text styles, form labels, dense rows, tables, localized views and native font mappings.
+
+**What can go wrong -> recommended solutions:**
+
 - Headings, labels, notes and body all look identical -> define a semantic type scale and enforce heading/body/label/caption tokens.
 - Everything bright white or bold -> lower emphasis of supportive text while preserving readable contrast; reserve strongest weight for priority information.
 - Title too small or text too large -> tune visual hierarchy and density by screen purpose and viewport.
@@ -19,6 +29,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 
 ## 02. Spacing, alignment and sizing
 
+**Discover:** Measure repeated padding, margins, gaps, control dimensions and text baselines; compare siblings at multiple sizes, string lengths and text scales.
+
+**Common root causes:** Nested padding, ad hoc spacers, unequal constraints, font metrics and conditional helper/action regions.
+
+**Verify the correction:** Compare token-based spacing and alignment before/after; exercise multiline labels and errors without clipping or unexpected movement.
+
+**Related regression scope:** Shared rows, field groups, buttons, dialog footers, icon hit regions and desktop/mobile density variants.
+
+**What can go wrong -> recommended solutions:**
+
 - Uneven gaps/margins/padding -> use a consistent spacing scale with semantic layout groupings.
 - Misaligned icon, label, checkbox or controls -> align to optical/typographic baselines and shared control heights.
 - Cards and form rows have different widths for no reason -> adopt layout grids and consistent columns.
@@ -31,6 +51,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 - Fixed dimensions clip translated text -> prefer min-height, intrinsic sizing and wrapping.
 
 ## 03. Color, themes and visual consistency
+
+**Discover:** Toggle themes and interaction states; trace configured colors from selection through save/reload to each presentation and actual paint.
+
+**Common root causes:** Hardcoded literals, theme/foreground overrides, wrong color mapping, alpha loss, fallback misuse and stale subscriptions.
+
+**Verify the correction:** Check configured marker separately from contrast foreground, live switching, state variants and persisted reload; measure composited colors.
+
+**Related regression scope:** Custom palettes, overlays, icons/charts, selected/disabled states and native projections. See [value tracing](fix-patterns.md#configured-values-and-colors).
+
+**What can go wrong -> recommended solutions:**
 
 - Text blends into background -> adjust semantic text/surface tokens and measure contrast.
 - Too many colors, inconsistent status meaning -> define restrained palette and semantic statuses.
@@ -46,6 +76,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 
 ## 04. Responsive layout and density
 
+**Discover:** Resize a live view around content breakpoints and supported minima; include short height, system insets, long text and larger fonts.
+
+**Common root causes:** Screen-size assumptions, unbounded flex children, rigid dimensions and adaptive branches that recreate state.
+
+**Verify the correction:** Reach every essential action at stressed sizes and restore/rotate without losing draft, selection or scroll.
+
+**Related regression scope:** Shared shell, rails/details panels, dialogs, tables, keyboard viewport and platform minimum-window policy.
+
+**What can go wrong -> recommended solutions:**
+
 - Layout only works at original screenshot size -> test representative widths/heights and orientation changes.
 - Fixed width/height causes clipping -> use flex/grid constraints, intrinsic sizing, breakpoints and min/max bounds.
 - Horizontal overflow appears accidentally -> identify overflowing child; avoid global hidden overflow as a band-aid.
@@ -59,6 +99,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 - Notches, system bars, desktop window chrome obscure UI -> honor safe areas and window insets.
 
 ## 05. Overflow, clipping, layering and scrolling
+
+**Discover:** Inspect clipping/stack contexts and each scroll owner; log visible anchor, offset, focus and extent during validation or content changes.
+
+**Common root causes:** Unstable keys/controllers, fixed footer overlap, ancestor clips, mixed coordinate spaces and repeated focus-reveal calls.
+
+**Verify the correction:** Check last item, nested wheel/touch/keyboard, error transitions and IME without oscillation; allow intentional reveal/clamping.
+
+**Related regression scope:** Lazy lists, sticky regions, anchored overlays, forms and restoration. See [scroll investigation](fix-patterns.md#scroll-jumping-shaking-and-flicker-investigation).
+
+**What can go wrong -> recommended solutions:**
 
 - Clipped text/icon/border/shadow -> remove unnecessary clipping or size container correctly.
 - Dropdown/tooltip clipped by ancestor -> manage portal/overlay placement and clipping contexts.
@@ -74,6 +124,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 
 ## 06. Buttons and interactive controls
 
+**Discover:** Activate every visible action with real identifiers using supported inputs; repeat during pending/error and inspect resulting state.
+
+**Common root causes:** No-op/wrong handlers, missing semantics, unguarded submissions and stale in-flight flags.
+
+**Verify the correction:** Prove one intended operation, truthful feedback, recoverable failure and keyboard/touch activation with visible focus.
+
+**Related regression scope:** Shared button variants, shortcuts, confirmation flows, modal barriers and backend/repository idempotence contracts.
+
+**What can go wrong -> recommended solutions:**
+
 - Clickable-looking element does nothing -> connect real handler, remove faux affordance if noninteractive.
 - Wrong target/action -> verify identifiers and event routing end to end.
 - Missing hover/focus/pressed/disabled state -> provide semantically distinct state styling.
@@ -87,6 +147,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 - Click-through from overlays -> enforce event handling and modal focus blocking appropriately.
 
 ## 07. Forms, inputs and validation
+
+**Discover:** Walk invalid -> corrected -> saved and unsaved cancel; inspect labels, keyboard, draft/cursor and dependent date/time relationships.
+
+**Common root causes:** Independent validators, no explicit-vs-generated edit provenance, build-time controller resets and wrong locale parsing.
+
+**Verify the correction:** Verify submitted model, optional ends, midnight/timezones, deliberate edits and recovery without unnecessary manual correction.
+
+**Related regression scope:** Shared fields, pickers, draft owners, validation layout and platform editors. See [dependent fields](fix-patterns.md#dependent-date-and-time-fields).
+
+**What can go wrong -> recommended solutions:**
 
 - Placeholder used as sole label -> add persistent associated label.
 - Required field unclear -> label requirement and explain validation.
@@ -104,6 +174,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 
 ## 08. Dialogs, drawers, popovers, dropdowns and tooltips
 
+**Discover:** Measure trigger/panel/usable bounds at edges and inside scrolled/nested modals; traverse focus, select and dismiss using supported inputs.
+
+**Common root causes:** Wrong owner/overlay, stale coordinates, absent collision handling, ancestor clipping and blur races.
+
+**Verify the correction:** Check below-trigger placement when appropriate, adaptive edge placement, long-menu scroll, IME/resize, no click-through and focus restoration.
+
+**Related regression scope:** Shared menus, date/color pickers, context menus, sheets and native popup adapters. See [popup investigation](fix-patterns.md#popup-positioning-investigation).
+
+**What can go wrong -> recommended solutions:**
+
 - Modal outside viewport -> constrain size, use inner scroll, keep dismiss/action reachable.
 - Wrong popup anchor/direction -> collision detection, flip near viewport edges.
 - Unwanted stacking of dialogs -> single owner/stack discipline, clear depth hierarchy.
@@ -119,6 +199,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 
 ## 09. Navigation and information architecture
 
+**Discover:** Enter via navigation and deep link; change filters/draft, go Back/Forward, resume and repeat with a modal open.
+
+**Common root causes:** Unstable route identity, unconditional initial navigation, wrong target IDs and lost restoration state.
+
+**Verify the correction:** Assert correct selected location/record, retained draft/filter/scroll and intentional Back/unsaved behavior.
+
+**Related regression scope:** Shell/tab state, external activations, notification targets, privacy gate and editor queues.
+
+**What can go wrong -> recommended solutions:**
+
 - Current location not visible -> selected nav/tab state and meaningful page title.
 - Back button unexpectedly exits/loses work -> restore navigation history and unsaved-change guard.
 - Broken deep links/reloads -> configure routes/state restoration and fallback.
@@ -133,6 +223,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 
 ## 10. Icons, pictures, assets and data visualization
 
+**Discover:** Inspect asset variants at actual scale/theme, missing-file path, long labels and configured icon colors; compare charts to source values.
+
+**Common root causes:** Wrong density/path/key, tint/filter overrides, glyph bounds, misleading scale and color-only encoding.
+
+**Verify the correction:** Check sharpness, aspect ratio, icon visibility/meaning, alt/semantic names, chart units and non-color alternatives.
+
+**Related regression scope:** Shared icon registry, theme tinting, calendar/list markers, export/render paths and native asset mapping.
+
+**What can go wrong -> recommended solutions:**
+
 - Wrong icon conveys opposite meaning -> use clear standard icon metaphor and text if needed.
 - Icons differ in size/weight/stroke or misalign -> standardize icon set, size and optical alignment.
 - Blurry/damaged/missing assets -> correct density, paths, fallbacks and image format.
@@ -145,6 +245,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 - Wrong branding/logo/favicon -> reference official assets and verify usage rights.
 
 ## 11. Lists, cards, tables and repeaters
+
+**Discover:** Use empty/one/many items, long values, sorting/filtering, selection and insert/reorder while scrolled.
+
+**Common root causes:** Index keys, separate filter/indicator sources, eager rendering, fixed row heights and lost query state.
+
+**Verify the correction:** Assert visible order/selection equals data, item identity survives edits and all rows/actions remain reachable.
+
+**Related regression scope:** Shared item rows, paging/query state, drag alternatives, sticky headers and persisted ordering.
+
+**What can go wrong -> recommended solutions:**
 
 - Repeated rows use different component styling -> unify reusable patterns.
 - Sorting/filter UI disagrees with data -> synchronize derived state and visible indicators.
@@ -160,6 +270,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 
 ## 12. Loading, empty, error and success states
 
+**Discover:** Force controlled slow, rejected, partial, offline and retry paths as supported; observe state sequence and retained user input.
+
+**Common root causes:** Missing terminal/finally paths, premature success, stale response overwrite and placeholder dimensions unrelated to content.
+
+**Verify the correction:** Check truthful pending/success/error, useful recovery, preserved draft and stable content during transitions.
+
+**Related regression scope:** Spinners/buttons, banners, shared async state, caches and retry/idempotence behavior.
+
+**What can go wrong -> recommended solutions:**
+
 - Infinite spinner or unexplained wait -> timeout/retry and useful status wording.
 - Content shift when loading -> stable placeholders/min-height for critical regions.
 - Error gives no recovery -> explain issue and provide targeted retry/action.
@@ -172,6 +292,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 - Failure state disappears before comprehension -> keep relevant messages long enough.
 
 ## 13. Accessibility and inclusive interaction
+
+**Discover:** Inspect semantics and rendered contrast; operate keyboard-only and available assistive tech at zoom/larger text and reduced motion.
+
+**Common root causes:** Custom controls without roles/names, hidden focus, duplicate announcements and hardcoded geometry/colors.
+
+**Verify the correction:** Execute applicable criteria below plus manual focus/reader flows; identify exact tool and untested native combinations.
+
+**Related regression scope:** Shared controls, live errors, modal focus, theme tokens, drag alternatives and platform semantics bridges.
+
+**What can go wrong -> recommended solutions:**
 
 - Contrast below applicable guideline -> measure actual foreground/background combination and correct tokens.
 - Keyboard user cannot reach/operate control -> ensure semantic roles, keyboard handlers and focus order.
@@ -191,6 +321,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 
 ## 14. Motion, transitions and feedback animation
 
+**Discover:** Record intermediate frames during rapid reversal, reduced motion, theme switch and keyboard/IME transitions.
+
+**Common root causes:** Recreated animation state, competing writers, exit hit tests left active and expensive repeated layout.
+
+**Verify the correction:** Check interruptibility, stable layout, no flicker/invisible interactions and measured frame behavior when relevant.
+
+**Related regression scope:** Overlay barriers, focus lifecycle, transitions, validation helpers, theme animation and input latency.
+
+**What can go wrong -> recommended solutions:**
+
 - Excessive decorative motion -> remove motion without functional purpose.
 - Slow common controls -> use short, responsive transitions appropriate to interaction frequency.
 - Easing or origin feels wrong -> tune entrance/exit direction and transform-origin.
@@ -203,6 +343,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 - Modal/dialog animation prevents interaction unexpectedly -> avoid blocking UI unnecessarily.
 
 ## 15. UX copy, terminology and instructions
+
+**Discover:** Read action/helper/error copy in its actual flow; compare outcome to wording and inspect long/localized or sensitive identifiers.
+
+**Common root causes:** Engineering vocabulary, duplicated prose, premature success and missing content/localization ownership.
+
+**Verify the correction:** Perform the described action and recovery; check consequence clarity, complete identity access and localized plurals.
+
+**Related regression scope:** Shared messages, confirmation dialogs, notifications, tooltips and translation resources.
+
+**What can go wrong -> recommended solutions:**
 
 - Generic CTA `Submit` when task unclear -> use specific action like `Save changes`.
 - Action text and confirmation contradict -> maintain consistent verbs and outcomes.
@@ -217,6 +367,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 
 ## 16. Localization, RTL and bidirectional text
 
+**Discover:** Switch supported locales; use mixed RTL/LTR IDs, long translations, plural counts and locale date/number input.
+
+**Common root causes:** Physical left/right styles, English plural assumptions, missing glyphs and display/storage format confusion.
+
+**Verify the correction:** Read actual ordering and mirrored semantics; enter/round-trip locale values without changing canonical identity or time.
+
+**Related regression scope:** Navigation arrows, forms, charts, tables, search/collation, accessibility order and native date/number formatting.
+
+**What can go wrong -> recommended solutions:**
+
 - Arabic text misaligned/direction wrong -> set correct direction and logical CSS properties.
 - Mixed English/Arabic numbers and identifiers scrambled -> isolate directional spans and test actual glyph ordering.
 - Navigation arrows/icons do not mirror where expected -> direction-aware icons, avoiding flipping meaningful logos.
@@ -229,6 +389,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 - Search/sorting doesn't match locale -> use appropriate collation and normalization.
 
 ## 17. Mobile-specific UI and UX
+
+**Discover:** Run touch, IME Next/Done/Back, gesture navigation, rotation, background/resume and permission states on supported mobile targets.
+
+**Common root causes:** Desktop assumptions, duplicated/missing insets, focus ownership errors and in-memory-only restoration.
+
+**Verify the correction:** Keep field/actions visible with keyboard; verify unsaved Back, correct touch targets and supported restoration without duplicate side effects.
+
+**Related regression scope:** Sheets, bottom navigation/actions, nested scrolling, launcher widgets and native lifecycle adapters.
+
+**What can go wrong -> recommended solutions:**
 
 - Soft keyboard obscures field/CTA -> use insets, scroll to focus, appropriate keyboard avoidance.
 - Status/nav bars overlap text -> use safe area and contrast-aware system bar styling.
@@ -244,6 +414,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 
 ## 18. Desktop-specific UI and UX
 
+**Discover:** Resize/minimize/restore, move between monitors/scales and use mouse/keyboard/context menus including auxiliary windows.
+
+**Common root causes:** Logical/physical coordinate confusion, wrong window owner, rigid minima and lifecycle tied to main window incorrectly.
+
+**Verify the correction:** Observe actual platform focus, popup work-area containment, retained geometry and input with main window closed where supported.
+
+**Related regression scope:** Runner/window plugins, native widgets, tray, shortcuts, menu ownership and saved placement.
+
+**What can go wrong -> recommended solutions:**
+
 - Narrow window clips controls -> bound minimum sizes or adapt layout gracefully.
 - Multiple monitors cause popup on wrong screen -> anchor positioning to owner window and display bounds.
 - HiDPI changes icon/text alignment -> test device pixel ratios and scaling factors.
@@ -256,6 +436,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 - Auxiliary window focus stolen unexpectedly -> correct activation and focus behavior.
 
 ## 19. Gesture, pointer and keyboard interaction
+
+**Discover:** Probe overlapping targets, drag cancellation, double-click, long press, wheel and shortcuts while editing text.
+
+**Common root causes:** Propagation/hit-test mistakes, conflicting gesture recognizers, weak thresholds and global unscoped shortcuts.
+
+**Verify the correction:** Assert one intended action, correct selection/context and equivalent keyboard/touch access without accidental activation.
+
+**Related regression scope:** Shared gesture wrappers, text selection, nested scroll, drag/drop, menus and pointer capture.
+
+**What can go wrong -> recommended solutions:**
 
 - Click activates two overlapping elements -> correct propagation, event target and hit test areas.
 - Drag unexpectedly clicks -> separate thresholds and click suppression after drag.
@@ -270,6 +460,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 
 ## 20. Notifications, toasts, banners and system feedback
 
+**Discover:** Repeat action/rebuild/resume/retry for one logical event; inspect notification identity/count, target, timing and dismissal.
+
+**Common root causes:** Side effects during render, duplicate subscriptions, missing deduplication/claim and stale target IDs.
+
+**Verify the correction:** Check intended delivery count, true save/failure copy, correct deep link, safe lock-state preview and dismissal/undo policy.
+
+**Related regression scope:** Reminder adapters, banners, badges, delivery ledger, background workers and pending navigation.
+
+**What can go wrong -> recommended solutions:**
+
 - Toast blocks an important button -> move to safe location or avoid obstructing primary action.
 - Multiple duplicate notifications -> deduplicate and batch related events.
 - Error toast disappears too fast -> keep actionable errors or add persistent detail.
@@ -282,6 +482,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 - OS notification leaks sensitive info -> protect lockscreen and preview content.
 
 ## 21. UI state management and persistence
+
+**Discover:** Follow one value through draft/store/projection/render; navigate, reopen, restart and reorder controlled async completions.
+
+**Common root causes:** Multiple owners, wrong invalidation, serialization/default errors and older async results overwriting newer input.
+
+**Verify the correction:** Check immediate consumers and durable reload, failed-save recovery, preview/cancel and preserved deliberate edits.
+
+**Related regression scope:** Undo/history, settings portability, widget projections, caches and stale-write/conflict handling.
+
+**What can go wrong -> recommended solutions:**
 
 - UI displays stale record -> use correct state invalidation/refetch strategy.
 - Settings appear saved but reset after restart -> persist atomically and test relaunch.
@@ -296,6 +506,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 
 ## 22. Perceived and actual performance
 
+**Discover:** Reproduce with realistic large data and repeated navigation; inspect frame/rebuild/layout/memory traces in suitable profile/release mode.
+
+**Common root causes:** Eager collections, hot-path parsing, observer leaks, expensive global rebuilds and layout thrashing.
+
+**Verify the correction:** Compare equivalent before/after traces and latency; verify responsiveness and memory after repeated entry/exit without changing behavior.
+
+**Related regression scope:** Lazy-list identity, accessibility traversal, caching invalidation, startup and theme propagation.
+
+**What can go wrong -> recommended solutions:**
+
 - Slow first render -> remove blocking dependencies, defer noncritical assets, profile startup.
 - Input lag -> move expensive work off hot input path; debounce derived work when appropriate.
 - Scroll stutter -> profile, virtualize lists and reduce unnecessary rebuilds/re-renders.
@@ -308,6 +528,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 - Build succeeds but release feels slow -> profile production/release build, representative hardware and realistic data.
 
 ## 23. Privacy, safety and trust UX
+
+**Discover:** Exercise lock/auth/permission/destructive and failure paths; inspect notification previews, recent-app snapshots and evidence artifacts.
+
+**Common root causes:** Protected state rendered before gate, misleading feedback, overly broad logging and ambiguous consent/consequence copy.
+
+**Verify the correction:** Check no sensitive rendering after lock/logout, honest pending/failure state and appropriate confirmation/undo without data loss.
+
+**Related regression scope:** Caches, auxiliary windows/widgets, clipboard/logs, notifications, backup evidence and session lifecycle.
+
+**What can go wrong -> recommended solutions:**
 
 - Sensitive data in notification or screen previews -> hide/mask sensitive fields and respect lock-state policy.
 - Password field visible or autofill misuse -> use secure field implementation and correct autocomplete attributes.
@@ -322,6 +552,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 
 ## 24. Cross-browser and cross-platform differences
 
+**Discover:** Repeat the same flow on supported engines/platform adapters with native fonts, pickers, input and lifecycle.
+
+**Common root causes:** Unsupported API assumptions, font metrics, viewport/inset differences and diverging adapter mappings.
+
+**Verify the correction:** Check equivalent outcome and preserved data while honoring each platform convention; record unsupported/unobserved combinations.
+
+**Related regression scope:** Shared model/components, platform picker/permission bridges, window metrics and import/export boundaries.
+
+**What can go wrong -> recommended solutions:**
+
 - CSS differs in Safari/Firefox/Chromium -> test supported engines and provide robust fallbacks.
 - System controls/style differ -> test default widgets, focus, autofill and scrollbar behavior.
 - Mobile viewport sizing wrong -> use modern dynamic viewport units and insets with fallback where needed.
@@ -333,6 +573,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 - Unsupported browser API causes blank UI -> feature-detect and provide fallback/error.
 
 ## 25. Design system, component architecture and CSS quality
+
+**Discover:** Locate shared primitives/tokens and all callers before editing; compare near-duplicate variants and style/override precedence.
+
+**Common root causes:** Parallel components, accumulating overrides, arbitrary offsets and semantic roles bypassed by literals.
+
+**Verify the correction:** Check each materially distinct consumer/theme/state and remove only confirmed conflicting rules.
+
+**Related regression scope:** Every affected consumer, native token mapping, density variants and component public contracts.
+
+**What can go wrong -> recommended solutions:**
 
 - Duplicated almost-identical components -> consolidate shared primitives and document variants.
 - Scattered literal colors/sizes -> replace with semantic tokens where stable.
@@ -348,6 +598,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 
 ## 26. Extreme data, input and environment edge cases
 
+**Discover:** Probe bounded extremes: missing/long/Unicode data, large counts, slow/failing operations and rapid concurrent input.
+
+**Common root causes:** Unchecked assumptions, unsafe parsing, eager work and missing ordering/cancellation or null handling.
+
+**Verify the correction:** Verify retained work, valid identity/order, readable reachable content and recoverable failure with controlled fixtures.
+
+**Related regression scope:** Validation/domain boundaries, virtualized lists, persistence codecs, locale and retry logic.
+
+**What can go wrong -> recommended solutions:**
+
 - Single-character/very long name breaks layout -> use flexible min widths and overflow handling.
 - Empty/null/missing data crashes screen -> provide safe rendering defaults and meaningful error/empty display.
 - Huge/negative/unusual numeric values overflow -> robust formatting and constraints.
@@ -361,6 +621,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 
 ## 27. UX architecture, cognitive load and discoverability
 
+**Discover:** Walk primary tasks from realistic entry points; count avoidable steps, dead ends, unclear choices and repeated corrective input.
+
+**Common root causes:** Organization by implementation, equal action emphasis, hidden gestures and inappropriate defaults.
+
+**Verify the correction:** Confirm fewer unnecessary actions without losing capability/safety; distinguish observed friction from taste and preserve user preferences.
+
+**Related regression scope:** Navigation/settings grouping, onboarding, help/copy, shortcuts and learned cross-platform workflows.
+
+**What can go wrong -> recommended solutions:**
+
 - Users cannot find key feature -> make primary tasks visible and navigation predictable.
 - Too many equal-weight buttons/options -> establish one clear primary route, progressive disclosure.
 - Related settings dispersed -> group by user tasks and mental model.
@@ -373,6 +643,16 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 - Inconsistent terminology makes app hard to learn -> maintain content glossary and naming consistency.
 
 ## 28. AI-agent-specific failure patterns
+
+**Discover:** Compare claims against commands/artifacts and requested scope; inspect shared-caller coverage and evidence gaps.
+
+**Common root causes:** Screenshot overfitting, cosmetic patches, scope drift, unchecked generated code and invented verification.
+
+**Verify the correction:** Reproduce independently from recorded steps; reconcile coverage/ledger, diff scope and explicit limitations before delivery.
+
+**Related regression scope:** Unreviewed consumers, test fixtures, baseline updates, project instructions and data/profile isolation.
+
+**What can go wrong -> recommended solutions:**
 
 - Overfit a single screenshot -> test multiple viewport sizes, states, themes and content lengths.
 - Fix one popup, break every popup -> test shared overlay primitives and all consumers.
@@ -391,4 +671,7 @@ This is a **broad practical catalog, not literally every possible UI defect**. T
 
 ## End condition
 
-For each audited relevant category mark `PASS`, `ISSUE`, `NOT_APPLICABLE`, or `NOT_TESTED`. Do not substitute a global claim for an auditable inventory of screens, states, devices and flows. Even a perfect pass today does not preclude new bugs after later changes.
+Record applicability separately, then use the coverage statuses in the
+[audit workflow](audit-workflow.md#6-close-with-an-auditable-coverage-ledger):
+`INSPECTED_PASS`, `INSPECTED_FAIL`, `FIXED_VERIFIED`, `NOT_TESTED`, `BLOCKED`.
+N/A requires a reason and is never counted as a pass. Do not substitute a global claim for an auditable inventory of screens, states, devices and flows. Even a perfect pass today does not preclude new bugs after later changes.

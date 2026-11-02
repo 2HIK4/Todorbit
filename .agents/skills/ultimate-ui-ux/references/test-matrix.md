@@ -11,7 +11,11 @@ Enumerate from repository and runtime, without assuming missing views do not exi
 - Internationalization languages, supported themes, input methods, text size and display configurations.
 - Critical flows and workflow owners; observed production/telemetry issues if available and user-authorized.
 
-Create a coverage map with `Screen or flow | Type | risk | variants | status | evidence`. Don't claim 'all screens' unless mapped and genuinely visited.
+For a full audit follow the [audit workflow](audit-workflow.md) and create a
+coverage map with `Surface ID/entry | owner/shared consumers | platform | risk |
+variants/check | applicability | execution status | evidence`. Use its five
+execution statuses; N/A is separate applicability. Don't claim 'all screens'
+unless mapped and genuinely visited. Minor fixes need only affected rows.
 
 ## 1. Select risk-based combinations
 
@@ -33,6 +37,12 @@ The Cartesian product of platform × screen × state × theme × viewport × lan
 | Locale | default + RTL if supported | language switch, longer translations, locale numbers/dates/currencies |
 
 Tests are context-dependent: don't test Safari for a Windows-only app unless it ships a browser interface. Don't test OS-only widget behavior via web screenshots. If a screen has no meaningful empty state, mark **N/A**, not PASS.
+
+Sizes above are examples, not mandated product breakpoints. Record CSS pixels for
+web, logical pixels plus DPR for Flutter, and physical/native coordinates where
+needed. Separate OS font scale, page zoom and display DPI. Include just-below/at/
+above changed breakpoints, live resizing and high-risk intersections such as
+short phone + IME + error + large text, not only isolated dimension checks.
 
 ## 2. Minimum interaction journey probes
 
@@ -57,6 +67,19 @@ For each relevant high-value screen, exercise:
 - **Native Android:** font scaling, navigation bar/IME insets, system Back, dark mode, accessibility semantics, gesture navigation, rotation and process recreation, TalkBack.
 - **Native iOS:** Dynamic Type, safe areas, VoiceOver, reduce motion, modal sheet dismissal, keyboard avoidance, back gestures.
 - **Windows/macOS desktop:** DPI/scale changes, window min/max/resizing, multi-monitor popup placement, focus switching and keyboard input, native context menus, settings persistence, desktop-widget lifecycle where present.
+
+For Flutter implementation diagnosis use [Flutter engineering](flutter-engineering.md)
+and for widget/integration/golden/accessibility recipes use
+[Flutter verification](flutter-verification.md). Use an existing suitable build;
+create a new profile/release build only when changed risk needs that evidence.
+
+For web visual/interaction regression, reuse existing browser tools and fixtures:
+capture stable route/state baselines, inspect computed styles and accessibility
+tree, execute keyboard and form recovery, and compare before/after at chosen
+viewports. Check bounding rectangles plus scroll/visual-viewport changes during
+validation, menu opening and mobile keyboard. Test controlled delayed/rejected
+requests, hydration/theme flashes and Back/Forward; avoid fixed sleeps and broad
+screenshot tolerance. Automated scanners/screenshots complement actual operation.
 
 ## 4. Accessibility criteria and realistic claims
 
@@ -90,7 +113,8 @@ For *each test run* log:
 - Test ID / timestamp, platform, device/viewport/theme/locale/input mode.
 - Exact command or manual reproduction steps.
 - Component/screens/flow, reason for this test and changed code/commit under test.
-- Pass/fail/not-tested, error details, screenshot/log/video/trace reference.
+- Actual check result, error details, screenshot/log/video/trace reference and
+  evidence level (static, widget/offscreen, runtime or physical platform).
 - Prior relevant successful run and why rerun or why reuse was justified.
 - If untestable, tool/device gap and what narrower evidence was obtained.
 

@@ -24,8 +24,12 @@ For change validation or a release checkpoint, invoke `$todorbit-regression` fro
 [AGENTS.md](../AGENTS.md#skills-and-documentation-routing) requires
 [Ultimate UI/UX](../.agents/skills/ultimate-ui-ux/SKILL.md) for every UI task.
 It replaces the project-local UI review skill as the primary design workflow.
-Do not routinely load global design skills alongside it. Keep its bundled files
-unchanged unless a confirmed compatibility or correctness issue requires a fix.
+Do not routinely load global design skills alongside it. The repository maintains
+the skill locally; keep changes scoped to a requested skill upgrade or a confirmed
+compatibility/correctness fix, with metadata/reference validation. Its routing
+loads only relevant sections for small changes. Full audits use the skill's
+reachable-surface inventory and coverage ledger, including separate untested and
+tooling/environment-blocked rows. See [integration and upgrade evidence](UI_SKILL_INTEGRATION.md).
 
 1. Read the skill and task-relevant project guidance. Choose Build, Audit, Fix,
    Polish or Ship review; scope the inventory, issue-catalog checks, test matrix

@@ -1,5 +1,20 @@
 # Progress
 
+## UI quality engineering skill, Stage 1 (2026-11-02)
+
+- Upgraded repository-local `ultimate-ui-ux` on baseline `3bb6e8b`; retained all
+  28 categories/303 original symptom-repair entries and added diagnostic,
+  verification and shared-regression guidance. Added audit inventory/coverage,
+  Flutter Android/Windows engineering and targeted verification references.
+- Kept the entrypoint concise with section-based loading. Added configured-color,
+  dependent-date, overlay, validation/scroll and proactive related-consumer rules;
+  preserved Todorbit tokens, Fluent/platform/data safety and native evidence gates.
+- Documentation/skill validation and limitations are recorded in the
+  [upgrade ledger](UI_SKILL_INTEGRATION.md#stage-1-ui-quality-engineering-upgrade).
+  Standard validator still lacks PyYAML; strict metadata/reference/preservation
+  checks are used. No application audit, fixes, builds, data/version or release
+  changes. A future Stage 2 audit remains a separate task requiring instruction.
+
 ## Primary UI/UX skill integrated (2026-11-02)
 
 - Installed the user-provided `ultimate-ui-ux` package unchanged in

@@ -24,3 +24,19 @@ Authoritative verification references (consult versions and applicability; do no
 - Agent Skills format: https://agentskills.io/specification
 
 **Do not mistake this skill for a merger of all dependencies, source code, rule databases or assets from the upstream projects.** It is a compatible, lightweight, self-contained synthesis; those upstream packages may offer additional specialized tooling or references.
+
+## Flutter and Windows engineering references
+
+The added diagnostic procedures and recipes are original guidance. These primary
+references support framework-specific details; check applicability to the pinned
+SDK/platform before using a new API. No upstream skill or dependency is required.
+
+- [Flutter constraints](https://docs.flutter.dev/ui/layout/constraints): parent/child constraint diagnosis.
+- [MediaQuery viewInsets](https://api.flutter.dev/flutter/widgets/MediaQueryData/viewInsets.html): obscured area differs from safe padding.
+- [MenuAnchor](https://api.flutter.dev/flutter/material/MenuAnchor-class.html): anchored menu ownership and style/overlay APIs.
+- [WidgetStateProperty](https://api.flutter.dev/flutter/widgets/WidgetStateProperty-class.html): interaction-state color resolution.
+- [TextScaler migration context](https://docs.flutter.dev/release/breaking-changes/deprecate-textscalefactor): nonlinear scaling; historical migration guidance, not a pinned-project upgrade instruction.
+- [Flutter testing overview](https://docs.flutter.dev/testing/overview): widget vs integration evidence and native-tooling limits.
+- [Flutter accessibility testing](https://docs.flutter.dev/ui/accessibility/accessibility-testing): available automated and native checks.
+- [Golden matcher](https://api.flutter.dev/flutter/flutter_test/matchesGoldenFile.html): capture boundary and platform/font/SDK limitations.
+- [Windows responsive design](https://learn.microsoft.com/en-us/windows/apps/design/layout/screen-sizes-and-breakpoints-for-responsive-design): available window space and effective pixels; do not copy XAML breakpoints blindly into Flutter.

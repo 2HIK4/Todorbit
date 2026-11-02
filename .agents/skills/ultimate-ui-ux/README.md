@@ -1,6 +1,6 @@
 # Ultimate UI/UX Agent Skill
 
-A standalone, original, reusable agent skill designed to improve and audit websites and mobile/desktop applications. Includes a 28-category issue/fix catalog, risk-based test matrix, fix patterns, and report template.
+A standalone, original, reusable agent skill designed to improve and audit websites and mobile/desktop applications. Includes a 28-category diagnostic catalog, risk-based test matrix, root-cause investigations, audit coverage workflow, Flutter engineering/test recipes and report template.
 
 **No skill guarantees a perfect design or zero bugs.** This skill requires actual runtime review and evidence, when tooling is available, and requires a clear report of anything untested.
 
@@ -22,6 +22,16 @@ Other agents may support a compatible `skills/<name>/SKILL.md` directory or diff
 - `references/fix-patterns.md`: implementation approaches and fragile patches to avoid.
 - `references/report-template.md`: repeatable findings/test ledger.
 - `references/sources.md`: the ten source projects used as **inspiration**, with links.
+- `references/audit-workflow.md`: reachable-surface inventory, journey probes and five evidence-based coverage statuses.
+- `references/flutter-engineering.md`: constraints, insets/IME, Windows DPI, state, themes, forms, overlays, scrolling and native adapters.
+- `references/flutter-verification.md`: targeted widget, interaction, accessibility, golden, integration and runtime recipes.
+
+For a small fix, read `SKILL.md` and only the relevant reference sections. A full
+audit uses the complete workflow and catalog applicability map. The entrypoint
+routes those choices; the README is optional package orientation, not required
+execution context. Existing catalog symptoms/repairs and upstream attribution
+are retained; each category now includes discovery, causes, verification and
+related regression scope.
 
 ## Useful agent request
 

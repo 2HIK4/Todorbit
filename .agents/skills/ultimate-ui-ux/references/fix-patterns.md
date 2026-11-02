@@ -75,3 +75,102 @@ Prefer correcting causes over masking symptoms. Every pattern is conditional: in
 - `aria-label` sprinkled on nonsemantic components while leaving keyboard handling broken.
 - Installing animation, design system or component packages just to fix one small behavior.
 - Erasing broken tests, bypassing validations, or declaring passes after tool failures.
+
+## Configured values and colors
+
+Use when selection looks correct in an editor but is missing, white, stale or
+different in another view. Trace one stable entity ID and two distinctive values:
+
+| Boundary | Inspect | Correction/verification target |
+| --- | --- | --- |
+| Selection -> draft | callback, canonical key/ARGB/HEX/alpha, selected state | draft receives the intended value; preview/cancel honor the draft contract |
+| Draft -> committed state | copy/update path, notifier and async ordering | correct field/identity changes once; failure retains edits without false success |
+| State -> storage -> reload | codec, allowlist, defaults, old/malformed format | compatible round trip; defaults apply only when absent/invalid, not to every load |
+| Record -> projections | list/calendar/detail/native widget mappers and caches | all relevant presentations receive the same configured semantic value |
+| Projection -> paint | local/theme icon color, foreground resolution, opacity/filter, painter cache | actual marker uses configuration; intentional contrast foreground remains readable |
+
+Find the first divergent boundary; do not hardcode a renderer color to hide a
+mapping or stale-state bug. An icon's configured color and a foreground chosen
+for legibility are different roles: document which part displays the selected
+color. Compare selected/unselected/disabled, light/dark/custom, live update,
+navigation and restart. Regress sibling entities, exports/imports and native
+projections only when they consume the changed representation.
+
+## Dependent date and time fields
+
+First establish the domain: date-only plan/deadline, optional interval, fixed
+event, recurrence or actual work. Determine ordering, equality/zero duration,
+duration semantics, timezone storage and whether automatic assistance is allowed.
+Do not turn every task into an event or silently reschedule saved records.
+
+For a draft interval, a conditional policy may be:
+
+| End state when start changes | Predictable assistance |
+| --- | --- |
+| End absent and optional | Keep absent; do not invent an end |
+| End generated/untouched | If domain permits, derive from new start + valid prior/default duration, including the date across midnight |
+| End explicitly edited and still valid | Preserve it; recalculate displayed duration if appropriate |
+| End explicitly edited and now invalid | Keep the deliberate value with clear inline resolution/confirmation, or apply an already documented assistance rule; do not silently overwrite it |
+| Start is incomplete/unparseable | Retain draft; defer dependent arithmetic until valid input exists |
+
+Track explicit editing separately from a generated value; batch related draft
+updates to avoid transient invalid renders and recursive listeners. Explain any
+automatic adjustment near the field and retain correction/undo where appropriate.
+Safe assistance in a draft does not authorize changing other records.
+
+For zoned wall times, use existing domain conversion: distinguish elapsed duration
+from calendar/wall-clock duration, handle DST gaps/folds with the product's
+resolution policy, and keep date-only values out of UTC arithmetic. Check both
+date and time, midnight/month/year boundaries, earlier/later start, explicit end,
+optional end, cancellation, timezone changes and persisted reload. Regress shared
+pickers, recurrence, reminder projections and Windows/Android editors as affected.
+
+## Popup positioning investigation
+
+1. Record trigger/panel rectangles, usable viewport/work area, overlay owner,
+   scroll offsets, transforms, insets, direction and active keyboard. Determine
+   whether selected-item overlap is intentional platform behavior before patching.
+2. Locate the shared anchor/collision code and its callers. Check coordinate-space
+   mixing, stale measurements, ancestor clipping and the wrong overlay/owner.
+3. Normally place below the trigger with a consistent gap if space allows; flip,
+   shift or constrain/scroll the panel when it does not. Preserve access to trigger
+   and selected options; raising a global z-index does not fix bad geometry.
+4. Recheck top/bottom/side edges, long options, RTL, enlarged text, scrolled
+   parents, nested modals, keyboard and window/DPI change. Verify pointer selection,
+   arrows/Enter, Escape/Back, outside click, no click-through and restored focus.
+5. Cover distinct shared consumers and platform adapters, not just the reported
+   dropdown. Do not replace all menu implementations without a confirmed cause.
+
+## Scroll jumping, shaking and flicker investigation
+
+Capture before/during/after validation/load/theme transitions, including repeated
+identical triggers. Record scroll offset/extent, visible anchor, focused field,
+error/helper dimensions and rebuild/observer count. Distinguish a legitimate
+focus reveal or content shrink clamp from repeated unrequested movement.
+
+Inspect unstable keys/controller creation, conditional helper rows, competing
+validation/focus listeners, async error races, nested scroll owners, changing
+insets and repeated reveal calls. For color/text flicker, trace multiple writers,
+hover/selection theme resolution and transient defaults between loaded values.
+
+Repair the responsible state/layout contract: stable identity, one scroll owner,
+bounded focus reveal, predictable wrapping/error region and ordered updates. Use
+reserved space only when it accommodates supported messages/scales. Do not add
+offset corrections, repeated timers or animations that conceal the shift.
+
+Recheck invalid -> invalid -> corrected with different message lengths, short
+viewport, large text, IME, keyboard traversal, nested dialogs and navigation back.
+Assert draft, cursor and anchor stability within expected layout change; inspect
+intermediate frames so a settled screenshot cannot hide oscillation. Regress
+shared fields, banners, lazy lists and validation consumers with the same cause.
+
+## Proactive investigation boundary
+
+Map symptom -> shared owner -> materially different consumers -> observable
+contracts. Inspect adjacent selected/disabled, empty/error and lifecycle states
+for the same cause (for example repeated notifications from build-side effects,
+settings delayed by stale subscriptions, clipped icons from fixed-height rows or
+navigation reset from unstable keys). Confirm before editing. Include low-risk
+repairs within the authorized task and record larger or preference-changing
+ideas separately. These examples guide detection; they are not claims that a
+particular project currently contains the defects.
