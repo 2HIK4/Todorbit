@@ -292,6 +292,7 @@ void main() {
       await tester.tap(find.byType(EditableText));
       await tester.pump();
       tester.view.viewInsets = const FakeViewPadding(bottom: 340);
+      await tester.pump(const Duration(milliseconds: 350));
       await tester.pumpAndSettle();
       expect(find.byType(EditableText).hitTestable(), findsOneWidget);
       expect(

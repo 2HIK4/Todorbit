@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -33,7 +35,7 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
   final code = TextEditingController();
   final recoveryFocus = FocusNode();
   final recoveryField = GlobalKey();
-  bool revealingField = false;
+  Timer? recoveryReveal;
   String? revealed;
   SyncController? listening;
   @override
@@ -47,18 +49,22 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
   void didChangeMetrics() => _revealRecoveryField();
 
   void _revealRecoveryField() {
-    if (!recoveryFocus.hasFocus || revealingField) return;
-    revealingField = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      revealingField = false;
+    recoveryReveal?.cancel();
+    if (!recoveryFocus.hasFocus) return;
+    // Android's IME can continue resizing after the first metrics frame.
+    recoveryReveal = Timer(const Duration(milliseconds: 250), () {
       if (!mounted || !recoveryFocus.hasFocus) return;
-      final fieldContext = recoveryField.currentContext;
-      if (fieldContext != null) {
-        Scrollable.ensureVisible(
-          fieldContext,
-          alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
-        );
-      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !recoveryFocus.hasFocus) return;
+        final fieldContext = recoveryField.currentContext;
+        if (fieldContext != null) {
+          Scrollable.ensureVisible(
+            fieldContext,
+            alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+          );
+        }
+      });
+      WidgetsBinding.instance.scheduleFrame();
     });
   }
 
@@ -83,6 +89,7 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    recoveryReveal?.cancel();
     recoveryFocus.dispose();
     listening?.removeListener(_privacy);
     code.dispose();

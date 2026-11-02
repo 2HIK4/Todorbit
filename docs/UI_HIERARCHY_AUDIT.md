@@ -243,3 +243,38 @@ cleanup moved into tester.runAsync. These fixture failures do not represent
 application data failures. `recovery-keyboard-analysis.log` is clean.
 The actual keyboard screenshots, not the fixture failure, establish the original
 UI defect. Final package hashes/CI/runtime are regenerated for the correction.
+
+
+### Keyboard timing follow-up
+
+The signed source 365de86 still hid the field after the real Android IME settled;
+its passing synthetic-inset test did not establish device behavior. The next
+correction debounces focus/window metrics for 250 ms, then requests a frame and
+reveals the field after layout. Disposal cancels the pending timer. The test also
+advances past the bounded delay. No code is entered and setup is never activated.
+
+| Invocation / purpose | Source | Result / reason |
+| --- | --- | --- |
+| `flutter test --no-pub test/sync_conflicts_dialog_test.dart` (`recovery-settled-tests.log`) | 365de86 + timing correction | Six pass; rerun because metrics timing changed |
+| `tools/build-android.ps1 -Mode Release -Distribution github -SplitPerAbi -GoogleDrive` (`recovery-settled-apk.log`) | same timing correction | Diagnostic signed build for actual IME verification before final packaging; pending observation |
+
+Windows CI 41385444959 passed at 365de86. Its 16 KiB run 41386317616 failed while
+pulling a missing UI dump; that runtime gate is unverified, not a pass. Source
+changes invalidate its exact-source release gates regardless. New final APK
+runtime evidence must pass before publication.
+
+
+The standalone diagnostic APK command initially failed before packaging because
+its environment omitted Visual Studio CMake/Ninja (CXX1300). The corrected
+invocation uses the established release script PATH; log
+`recovery-settled-apk-env.log`. This is an environment correction, not a source
+change or data reset. Focused `dart analyze` writes
+`recovery-settled-analysis.log`; its completion is recorded at the final gate.
+
+
+The corrected signed diagnostic APK passed two real IME focus checks on retained
+ProductionFast at 200% text: the focused field remained fully above the keyboard
+(bounds [78,470]-[642,668]). No recovery text was entered or setup activated;
+system text scale was restored. Private screenshots/XML and the observation JSON
+retain the evidence; no saved account label is published. Focused analysis is
+clean. The final committed build will receive the same identity/runtime gates.
