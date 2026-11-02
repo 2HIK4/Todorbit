@@ -198,3 +198,25 @@ the final source before upload. This is the specific reason for the CI rerun.
 Final Windows debug rebuild and hot reload succeeded (8 libraries); the changed
 event editor was observed in light mode. Runtime errors and final profile identity
 are checked before closing this isolated app. Native source was not repainted.
+
+## Large-text CI correction
+
+Final source 56fd49b passed Android CI 41358780962. Windows CI 41358780221
+passed analysis and 575 host checks, with two failures and one existing opt-in
+skip. Both failures were the 200% conflict bulk-choice checks: the fixed title
+consumed too much space with the wider default CI font. The font-enabled local
+capture run had not exposed this. A no-font local reproduction also failed both.
+
+The title now joins the scrolling content at large text or short window heights;
+Apply Selected and the count remain outside that scroll. This is a presentation
+fix, preserving all resolution and privacy rules. The same five tests without
+capture fonts pass in `conflicts-large-title.log`; hit-testability is now asserted.
+No passing assertion was weakened. The temporary geometry print was removed.
+
+Packages produced from 56fd49b passed signing/alignment/identity, Windows CRC and
+28-file bundle equality, native self-test, Sandbox install/data retention and
+portable swap/rollback. They remain private historical evidence. The large-text
+runtime change invalidates those package hashes and exact-source CI for release.
+Fresh packages and required checks are therefore rebuilt/rerun; the prior draft
+still has no assets and no public tag/release was created. The version remains
+beta.5/code 28 because beta.4/code 27 is still the newest published release.

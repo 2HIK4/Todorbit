@@ -220,6 +220,7 @@ void main() {
         expect(tester.takeException(), isNull);
         await tester.ensureVisible(find.text('Use Cloud for All'));
         await tester.pumpAndSettle();
+        expect(find.text('Use Cloud for All').hitTestable(), findsOneWidget);
         await tester.tap(find.text('Use Cloud for All'));
         await tester.pumpAndSettle();
         expect(controller.applied, 0);

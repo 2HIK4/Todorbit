@@ -393,6 +393,15 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
         screen.width >= 800 &&
         review.records.length == 1 &&
         MediaQuery.textScalerOf(context).scale(14) <= 18.2;
+    final scrollingTitle =
+        screen.height < 500 || MediaQuery.textScalerOf(context).scale(14) > 21;
+    final title = Semantics(
+      header: true,
+      child: Text(
+        'Resolve sync conflicts',
+        style: Theme.of(context).textTheme.titleLarge,
+      ),
+    );
     return PopScope(
       canPop: !applying,
       onPopInvokedWithResult: (popped, _) {
@@ -410,16 +419,21 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  'Resolve sync conflicts',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 8),
+                if (!scrollingTitle) ...[title, const SizedBox(height: 8)],
                 Expanded(
                   child: ListView.builder(
                     itemCount: review.records.length + 1,
                     itemBuilder: (_, i) => i == 0
-                        ? _header(canBulkCloud)
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (scrollingTitle) ...[
+                                title,
+                                const SizedBox(height: 12),
+                              ],
+                              _header(canBulkCloud),
+                            ],
+                          )
                         : _record(review.records[i - 1]),
                   ),
                 ),

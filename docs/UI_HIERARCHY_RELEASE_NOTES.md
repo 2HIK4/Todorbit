@@ -6,6 +6,8 @@
 - Sync conflict review leads with changed values. Compare devices side by side
   on Windows or in a stacked phone layout. Complete records and previous values
   remain available; selected choices and Apply Selected are easy to locate.
+- Large-text and short-window conflict dialogs keep their title scrollable
+  so choices stay reachable, with Apply Selected fixed below.
 - Visible deletion/related-record notices preserve the existing review rules.
 - Shorter backup, sync setup and update copy, clear inline states and prominent
   recovery guidance. Core backup actions take priority over account maintenance.
