@@ -31,8 +31,8 @@
 
 ## Skills and documentation routing
 
-- Use `.agents/skills/todorbit-regression/SKILL.md` for code validation/release checkpoints and `.agents/skills/todorbit-ui-review/SKILL.md` for UI audits or cross-screen changes.
-- Use installed UI UX Pro Max for substantial interface design when helpful; use specialized Dart/Flutter or other skills only when they materially help. Do not load every skill. Windows guidance and Todorbit tokens remain authoritative for this app.
+- For any task creating, modifying, reviewing, debugging, refactoring or improving a user-facing interface, Codex MUST read and apply [Ultimate UI/UX](.agents/skills/ultimate-ui-ux/SKILL.md) before UI-related changes. This is the primary UI/UX skill, including screens/layouts, dialogs/menus, widgets/components, typography/spacing/colors, forms/control states, motion, responsive behavior, accessibility, navigation, themes/customization and loading/empty/success/error states. Apply checks proportionally; a complete audit is required only when requested or justified by scope. Follow the [UI quality workflow](docs/CODEX_WORKFLOW.md#ui-quality-workflow).
+- Use `.agents/skills/todorbit-regression/SKILL.md` for code validation/release checkpoints; use specialized Dart/Flutter or other skills only when they materially help. Do not load every skill. Windows guidance and Todorbit tokens remain authoritative for this app.
 - [README](README.md): public introduction; [CONTRIBUTING](CONTRIBUTING.md): onboarding.
 - [Architecture map](docs/ARCHITECTURE_MAP.md): feature entry points; [Architecture](docs/ARCHITECTURE.md): relationships and constraints; [Development](docs/DEVELOPMENT.md): toolchain/profile setup; [Testing](docs/TESTING.md): checks by risk.
 - [Codex workflow](docs/CODEX_WORKFLOW.md): task execution and handoffs; [Release](docs/RELEASE.md): packaging/publishing; [Updates](docs/SOFTWARE_UPDATES.md): updater protocol/recovery.

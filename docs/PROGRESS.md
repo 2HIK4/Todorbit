@@ -1,5 +1,19 @@
 # Progress
 
+## Primary UI/UX skill integrated (2026-11-02)
+
+- Installed the user-provided `ultimate-ui-ux` package unchanged in
+  `.agents/skills/ultimate-ui-ux/`. Root guidance requires it for every UI task;
+  the workflow applies checks proportionally across Windows/Android.
+- Removed redundant project-local UI review skill, preserved its Todorbit
+  constraints in the workflow, and retained regression tooling and global skills.
+  Updated AGENTS, Codex workflow, Testing and Decisions; no app/data/version or
+  release changes. [Installation and verification ledger](UI_SKILL_INTEGRATION.md).
+- Package equality, metadata/reference/routing and documentation checks passed.
+  Standard validator lacks PyYAML; the fallback checks the manifest's simple
+  YAML subset. Fresh-session skill-selector invocation remains unobserved; use
+  the documented read-only discovery check and restart only if needed.
+
 ## UI hierarchy beta 5 published (2026-11-02)
 
 - Published [v1.0.19-beta.5](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.5)

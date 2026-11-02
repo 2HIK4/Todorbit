@@ -289,6 +289,21 @@
 - Store the checklist/subtask text mode in the existing per-profile appearance JSON, with full text or two-line compact text and an explicit expand control. No SQLite schema change is needed.
 - Keep the Flutter task editor shared between creation and editing. Use one major divider before composition and one before optional planning; keep row groups free of separator lines. The native Win32 editor retains native controls while matching the same section order and palette.
 
+## Primary UI/UX skill (2026-11-02)
+
+- Install the user-provided `ultimate-ui-ux` package unchanged under
+  `.agents/skills/ultimate-ui-ux/` as the mandatory primary skill for all UI work.
+  Root instructions own activation; [Codex workflow](CODEX_WORKFLOW.md#ui-quality-workflow)
+  owns proportional application and Todorbit's platform/design constraints.
+- Remove the redundant tracked project-local `todorbit-ui-review` skill after
+  preserving its unique guidance in that workflow. Retain `todorbit-regression`,
+  the Dart/Flutter plugin and all global skills. This supersedes the UI skill
+  routing in the 2026-10-21 Codex environment decision below; historical audit
+  records still describe the skills actually used at the time.
+- Keep the generic package self-contained; no application changes, global
+  configuration edits, new runtime dependencies or release work. Installation
+  evidence and discovery limits: [integration receipt](UI_SKILL_INTEGRATION.md).
+
 ## Codex environment (2026-10-21)
 
 - Use the official Dart/Flutter Codex plugin for its skills and MCP server; avoid duplicate standalone Dart/Flutter skill installs. Keep general UI guidance global and Todorbit constraints in project instructions and docs. The repo-local `todorbit-ui-review` and `todorbit-regression` skills now cover the repeatable, project-specific UI and verification workflows without loading their full instructions for unrelated work.

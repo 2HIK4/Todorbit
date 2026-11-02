@@ -15,9 +15,57 @@ Use low reasoning for narrow, reversible edits and routine questions; medium for
 7. When committing is requested or part of the agreed task, stage explicit paths, inspect the staged diff and commit verified work with a meaningful message. Keep unrelated changes out. Do not publish releases without an explicit request; use [Release](RELEASE.md) for release-ready changes.
 8. Report behavior changed, checks and limits, branch/commit and working-tree state. Record failures and manual acceptance still pending.
 
-Record durable product decisions in `docs/DECISIONS.md` and meaningful checkpoints in `docs/PROGRESS.md`. Keep handoffs to the current state, changed files, verification, and next concrete action. For Windows design use [Microsoft Fluent guidance](https://learn.microsoft.com/en-us/windows/apps/design/) first; use `docs/THEMING.md` for Todorbit tokens. Apple Design is an optional independent UX review, not the Windows platform rulebook.
+Record durable product decisions in `docs/DECISIONS.md` and meaningful checkpoints in `docs/PROGRESS.md`. Keep handoffs to the current state, changed files, verification, and next concrete action. For Windows design use [Microsoft Fluent guidance](https://learn.microsoft.com/en-us/windows/apps/design/) first; use `docs/THEMING.md` for Todorbit tokens.
 
-For a UI audit or visual change, invoke `$todorbit-ui-review`; for change validation or a release checkpoint, invoke `$todorbit-regression`. Their sources are in `.agents/skills/`. The official Dart/Flutter plugin supplies the analyzer and live tooling; no separate MCP configuration is needed here.
+For change validation or a release checkpoint, invoke `$todorbit-regression` from `.agents/skills/`. The official Dart/Flutter plugin supplies the analyzer and live tooling; no separate MCP configuration is needed here.
+
+## UI quality workflow
+
+[AGENTS.md](../AGENTS.md#skills-and-documentation-routing) requires
+[Ultimate UI/UX](../.agents/skills/ultimate-ui-ux/SKILL.md) for every UI task.
+It replaces the project-local UI review skill as the primary design workflow.
+Do not routinely load global design skills alongside it. Keep its bundled files
+unchanged unless a confirmed compatibility or correctness issue requires a fix.
+
+1. Read the skill and task-relevant project guidance. Choose Build, Audit, Fix,
+   Polish or Ship review; scope the inventory, issue-catalog checks, test matrix
+   and report to the affected interface and adjacent shared consumers. A small
+   change does not require an application-wide audit.
+2. Inspect the existing implementation and shared controls in `lib/features/shared/`.
+   Use [Design](DESIGN.md), [Theming](THEMING.md) and relevant feature guidance.
+   Identify requirements or confirmed causes before choosing a minimal solution.
+   Preserve Todorbit's compact Fluent-inspired Windows identity, lavender default,
+   semantic tokens, reusable components and working interactions. Functionality,
+   drafts, preferences and data safety take precedence over appearance.
+3. Identify shared Windows/Android components and affected platform-specific
+   adapters. Respect Windows keyboard/mouse/focus and Android touch/Back/IME
+   conventions; consult [Android parity](ANDROID.md) and the
+   [native widget checklist](windows-widget.md) when applicable. Check supported
+   sizes, desktop resizing/scaling, typography/text scaling, wrapping/clipping,
+   spacing/alignment, contrast and accessibility as relevant. Maintain light/dark
+   and custom palettes, including corresponding native widget tokens. Avoid
+   unnecessary visual complexity; match the current design unless a deliberate
+   design-system change is justified.
+4. Implement with minimal unrelated changes. Follow [Testing](TESTING.md): reuse
+   valid receipts, run relevant formatting/analysis and targeted geometry,
+   behavior/semantics tests at ordinary/narrow sizes and larger text; include
+   theme variants when affected. Inspect the running interface when tools are
+   available, first verifying isolated child-process `APPDATA`, `LOCALAPPDATA`
+   and resolved profile. Check interactions, edge states and platform behavior;
+   fix confirmed regressions and recheck the failing case and affected consumers.
+5. Record commands/actions, source, scope, results and rerun reasons. Distinguish
+   widget tests/offscreen images, actual runtime inspection and physical platform
+   evidence. Never claim visual verification without runtime inspection, or a
+   100% error-free interface. Native painting/shell/input/DPI/menu changes still
+   require Release/self-test and relevant manual checks. Report unverified cases.
+
+Codex discovers the repo-local `SKILL.md` and matches its description; the root
+instruction makes reading it mandatory even for small UI tasks. Manual invocation
+is `$ultimate-ui-ux`. In a fresh session rooted in this repository, check the
+skill selector (`$` or `/skills` in CLI/IDE) and ask Codex to read the skill for a
+read-only review of an existing component. Confirm it loads this repository's
+path. Codex detects skill changes automatically; restart Codex if the skill does
+not appear. See [official skill discovery guidance](https://learn.chatgpt.com/docs/build-skills).
 
 ## Focused verification examples
 

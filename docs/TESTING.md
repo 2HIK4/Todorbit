@@ -78,7 +78,7 @@ evidence distinct from these test-harness commits.
 | Change | Focused checks and constraints |
 | --- | --- |
 | Markdown only | Validate changed links/paths and commands; review diff; `git diff --check`. No Flutter tests or builds. |
-| Flutter UI | Relevant `test/*_test.dart`, targeted analysis, isolated rendered inspection; narrow size/larger text and theme variants when affected. Reuse [UI review](../.agents/skills/todorbit-ui-review/SKILL.md). |
+| Flutter UI | Relevant `test/*_test.dart`, targeted analysis, isolated rendered inspection; narrow size/larger text and theme variants when affected. Apply [Ultimate UI/UX](../.agents/skills/ultimate-ui-ux/SKILL.md) through the [UI quality workflow](CODEX_WORKFLOW.md#ui-quality-workflow). |
 | SQLite/domain | Relevant repository/domain tests plus migration, round-trip and stale-write cases for changed data. Start with `test/repository_test.dart`, `test/database_initialization_test.dart`, `test/migration_gate_test.dart` when changing schema/startup. Never use a personal database. |
 | Settings/profile | Feature tests plus `test/profile_isolation_test.dart`, `test/settings_transfer_test.dart` or `test/appearance_preference_store_test.dart` when those boundaries change. Check malformed/newer formats and local vs portable fields. |
 | Calendar/scheduling | `test/calendar_test.dart`, `test/calendar_improvements_test.dart`, `test/event_recurrence_test.dart`, `test/scheduling_engine_test.dart`, `test/scheduling_repository_test.dart` as affected. Native Calendar is a separate rendering path. |
