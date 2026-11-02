@@ -50,10 +50,11 @@ Future<(bool, String?)> chooseBuiltInIcon(
             .toList();
         return AlertDialog(
           title: const Text('Choose icon'),
+          scrollable: true,
           content: SizedBox(
             width: 360,
-            height: 340,
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   autofocus: true,
@@ -64,46 +65,42 @@ Future<(bool, String?)> chooseBuiltInIcon(
                   onChanged: (value) => refresh(() => query = value),
                 ),
                 const SizedBox(height: 12),
-                Expanded(
-                  child: GridView.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 5,
-                          mainAxisSpacing: 4,
-                          crossAxisSpacing: 4,
-                        ),
-                    itemCount: matches.length,
-                    itemBuilder: (context, index) {
-                      final entry = matches[index];
-                      final selected = current == entry.key;
-                      return Tooltip(
-                        message: entry.key,
-                        child: Semantics(
-                          selected: selected,
-                          label: '${entry.key} icon',
-                          child: IconButton(
-                            tooltip: entry.key,
-                            style: IconButton.styleFrom(
-                              backgroundColor: selected
-                                  ? Theme.of(context)
-                                        .colorScheme
-                                        .primaryContainer
-                                  : Theme.of(context)
-                                        .colorScheme
-                                        .surfaceContainerHigh,
-                              foregroundColor: selected
-                                  ? Theme.of(context)
-                                        .colorScheme
-                                        .onPrimaryContainer
-                                  : Theme.of(context).colorScheme.onSurface,
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: [
+                    for (final entry in matches)
+                      SizedBox.square(
+                        dimension: 52,
+                        child: Tooltip(
+                          message: entry.key,
+                          child: Semantics(
+                            selected: current == entry.key,
+                            label: '${entry.key} icon',
+                            child: IconButton(
+                              tooltip: entry.key,
+                              style: IconButton.styleFrom(
+                                backgroundColor: current == entry.key
+                                    ? Theme.of(context)
+                                          .colorScheme
+                                          .primaryContainer
+                                    : Theme.of(context)
+                                          .colorScheme
+                                          .surfaceContainerHigh,
+                                foregroundColor: current == entry.key
+                                    ? Theme.of(context)
+                                          .colorScheme
+                                          .onPrimaryContainer
+                                    : Theme.of(context).colorScheme.onSurface,
+                              ),
+                              onPressed: () =>
+                                  Navigator.pop(context, entry.key),
+                              icon: Icon(entry.value),
                             ),
-                            onPressed: () => Navigator.pop(context, entry.key),
-                            icon: Icon(entry.value),
                           ),
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                  ],
                 ),
               ],
             ),

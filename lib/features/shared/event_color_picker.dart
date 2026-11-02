@@ -60,10 +60,11 @@ class _EventColorDialogState extends State<_EventColorDialog> {
   @override
   Widget build(BuildContext context) => AlertDialog(
     title: const Text('Custom event color'),
+    scrollable: true,
     content: SizedBox(
       width: 350,
-      height: 385,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             height: 38,
@@ -74,57 +75,44 @@ class _EventColorDialogState extends State<_EventColorDialog> {
             ),
           ),
           const SizedBox(height: 12),
-          SegmentedButton<ColorPickerType>(
-            showSelectedIcon: false,
-            segments: const [
-              ButtonSegment(
-                value: ColorPickerType.primary,
-                label: SizedBox(
-                  width: 65,
-                  child: Center(child: Text('Primary')),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final option in const {
+                ColorPickerType.primary: 'Primary',
+                ColorPickerType.accent: 'Accent',
+                ColorPickerType.wheel: 'Wheel',
+              }.entries)
+                ChoiceChip(
+                  label: Text(option.value),
+                  selected: picker == option.key,
+                  onSelected: (_) => setState(() => picker = option.key),
                 ),
-              ),
-              ButtonSegment(
-                value: ColorPickerType.accent,
-                label: SizedBox(
-                  width: 65,
-                  child: Center(child: Text('Accent')),
-                ),
-              ),
-              ButtonSegment(
-                value: ColorPickerType.wheel,
-                label: SizedBox(width: 65, child: Center(child: Text('Wheel'))),
-              ),
             ],
-            selected: {picker},
-            onSelectionChanged: (value) => setState(() => picker = value.first),
           ),
-          Expanded(
-            child: SingleChildScrollView(
-              child: ColorPicker(
-                key: ValueKey(picker),
-                color: preview,
-                onColorChanged: (color) => setState(() {
-                  preview = color;
-                  valid = true;
-                  hex.text =
-                      '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
-                }),
-                pickersEnabled: {
-                  ColorPickerType.both: false,
-                  ColorPickerType.primary: picker == ColorPickerType.primary,
-                  ColorPickerType.accent: picker == ColorPickerType.accent,
-                  ColorPickerType.bw: false,
-                  ColorPickerType.custom: false,
-                  ColorPickerType.customSecondary: false,
-                  ColorPickerType.wheel: picker == ColorPickerType.wheel,
-                },
-                enableShadesSelection: false,
-                wheelDiameter: 190,
-                wheelWidth: 18,
-                showColorCode: false,
-              ),
-            ),
+          ColorPicker(
+            key: ValueKey(picker),
+            color: preview,
+            onColorChanged: (color) => setState(() {
+              preview = color;
+              valid = true;
+              hex.text =
+                  '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
+            }),
+            pickersEnabled: {
+              ColorPickerType.both: false,
+              ColorPickerType.primary: picker == ColorPickerType.primary,
+              ColorPickerType.accent: picker == ColorPickerType.accent,
+              ColorPickerType.bw: false,
+              ColorPickerType.custom: false,
+              ColorPickerType.customSecondary: false,
+              ColorPickerType.wheel: picker == ColorPickerType.wheel,
+            },
+            enableShadesSelection: false,
+            wheelDiameter: 190,
+            wheelWidth: 18,
+            showColorCode: false,
           ),
           TextField(
             controller: hex,

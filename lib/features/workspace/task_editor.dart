@@ -19,6 +19,7 @@ import '../shared/checklist_entry.dart';
 import '../shared/inline_spelling_controller.dart';
 import '../../domain/recurrence.dart';
 import '../calendar/session_editor.dart';
+import '../shared/app_spacing.dart';
 import '../time_tracking/time_tracking_dialog.dart';
 import '../templates/templates_dialog.dart';
 import 'series_editor.dart';
@@ -1081,7 +1082,10 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                     'task-editor:${widget.task?.id ?? widget.parentTaskId ?? 'new'}',
                   ),
                   controller: editorScroll,
-                  padding: const EdgeInsets.fromLTRB(0, 8, 14, 16),
+                  padding: AppSpacing.editorScrollPadding(
+                    context,
+                    bottom: AppSpacing.content,
+                  ),
                   children: [
                     if (widget.parentTaskId != null) ...[
                       Text(

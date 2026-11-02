@@ -6,6 +6,8 @@ import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../shared/dialog_action_bar.dart';
 import '../shared/unsaved_editor_guard.dart';
+import '../shared/app_spacing.dart';
+import '../shared/draft_interval.dart';
 
 class SessionEditor extends ConsumerStatefulWidget {
   const SessionEditor({
@@ -30,6 +32,8 @@ class _SessionEditorState extends ConsumerState<SessionEditor> {
   String? taskId;
   late DateTime start;
   late DateTime end;
+  bool endEdited = false;
+  DateTime? suggestedEnd;
   late SessionOutcome outcome;
   bool busy = false;
   final exitGuard = GlobalKey<UnsavedEditorGuardState>();
@@ -92,12 +96,23 @@ class _SessionEditorState extends ConsumerState<SessionEditor> {
         );
       }
     }
-    if (next != null) {
+    if (next != null && mounted) {
       setState(() {
         if (isStart) {
-          start = next!;
+          final movedEnd = endAfterMovingStart(
+            start: start,
+            end: end,
+            nextStart: next!,
+          );
+          if (!endEdited) end = movedEnd;
+          start = next;
+          suggestedEnd = end.isAfter(start) ? null : movedEnd;
         } else {
           end = next!;
+          endEdited = true;
+          suggestedEnd = end.isAfter(start)
+              ? null
+              : endAfterMovingStart(start: start, end: end, nextStart: start);
         }
       });
     }
@@ -215,7 +230,7 @@ class _SessionEditorState extends ConsumerState<SessionEditor> {
             const SizedBox(height: 14),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
+                padding: AppSpacing.editorScrollPadding(context),
                 children: [
                   AnchoredSelectField<String>(
                     initialValue: taskId,
@@ -233,12 +248,32 @@ class _SessionEditorState extends ConsumerState<SessionEditor> {
                         .toList(),
                     onChanged: (value) => setState(() => taskId = value),
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: AppSpacing.content),
                   Text('Start', style: Theme.of(context).textTheme.titleSmall),
                   _dateTimeRow(start, true),
                   const SizedBox(height: 12),
                   Text('End', style: Theme.of(context).textTheme.titleSmall),
                   _dateTimeRow(end, false),
+                  Text(
+                    end.isAfter(start)
+                        ? 'Moving Start keeps the duration until you edit End.'
+                        : 'End must follow Start. Your edited end is unchanged.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: end.isAfter(start)
+                          ? null
+                          : Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                  if (suggestedEnd != null)
+                    TextButton.icon(
+                      onPressed: () => setState(() {
+                        end = suggestedEnd!;
+                        suggestedEnd = null;
+                        endEdited = false;
+                      }),
+                      icon: const Icon(Icons.update),
+                      label: const Text('Move end with start'),
+                    ),
                   const SizedBox(height: 16),
                   AnchoredSelectField<SessionOutcome>(
                     initialValue: outcome,
@@ -288,6 +323,7 @@ class _SessionEditorState extends ConsumerState<SessionEditor> {
       children: [
         Expanded(
           child: OutlinedButton(
+            key: ValueKey('session-${isStart ? 'start' : 'end'}-date'),
             onPressed: () => _pick(isStart, true),
             child: Text(localDate(value)),
           ),
@@ -295,6 +331,7 @@ class _SessionEditorState extends ConsumerState<SessionEditor> {
         const SizedBox(width: 8),
         Expanded(
           child: OutlinedButton(
+            key: ValueKey('session-${isStart ? 'start' : 'end'}-time'),
             onPressed: () => _pick(isStart, false),
             child: Text(
               '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}',

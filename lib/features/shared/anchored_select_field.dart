@@ -24,6 +24,19 @@ class AnchoredSelectField<T> extends FormField<T> {
            externalLabel: externalLabel,
          ),
        );
+
+  @override
+  FormFieldState<T> createState() => _AnchoredSelectFieldState<T>();
+}
+
+class _AnchoredSelectFieldState<T> extends FormFieldState<T> {
+  @override
+  void didUpdateWidget(covariant AnchoredSelectField<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialValue != widget.initialValue) {
+      setValue(widget.initialValue);
+    }
+  }
 }
 
 class _AnchoredSelectBody<T> extends StatefulWidget {

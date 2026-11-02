@@ -17,6 +17,7 @@ import '../settings/task_view_settings_dialog.dart';
 import '../settings/theme_dialog.dart';
 import '../settings/notification_dialog.dart';
 import '../shared/sidebar_items.dart';
+import '../shared/anchored_select_field.dart';
 import '../shared/weekdays.dart';
 import '../support/support_button.dart';
 import '../contributors/contributors_view.dart';
@@ -206,8 +207,7 @@ class _MobileSettingsState extends ConsumerState<MobileSettings>
               'Appearance',
               subtitle: 'Make Todorbit feel at home',
             ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<ThemeModePreference>(
+            AnchoredSelectField<ThemeModePreference>(
               isExpanded: true,
               initialValue: c.theme,
               decoration: const InputDecoration(labelText: 'Theme'),
@@ -243,7 +243,7 @@ class _MobileSettingsState extends ConsumerState<MobileSettings>
               subtitle: const Text('Destinations and order'),
               onTap: saving ? null : navigation,
             ),
-            DropdownButtonFormField<WorkspaceView>(
+            AnchoredSelectField<WorkspaceView>(
               isExpanded: true,
               initialValue: preferences.start,
               decoration: const InputDecoration(labelText: 'Open on launch'),
@@ -260,7 +260,7 @@ class _MobileSettingsState extends ConsumerState<MobileSettings>
                     },
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<CalendarContent>(
+            AnchoredSelectField<CalendarContent>(
               isExpanded: true,
               initialValue: c.calendarContent,
               decoration: const InputDecoration(labelText: 'Calendar content'),
@@ -280,7 +280,7 @@ class _MobileSettingsState extends ConsumerState<MobileSettings>
               },
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<int>(
+            AnchoredSelectField<int>(
               isExpanded: true,
               initialValue: c.firstWeekday,
               decoration: const InputDecoration(labelText: 'First day of week'),

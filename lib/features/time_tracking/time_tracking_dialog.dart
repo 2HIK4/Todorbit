@@ -163,245 +163,264 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
         height: math.min(630, MediaQuery.sizeOf(context).height - 64),
         child: Padding(
           padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
+          child: CustomScrollView(
+            slivers: [
+              SliverList.list(
                 children: [
-                  Expanded(
-                    child: Text(
-                      'Focus: ${task?.title ?? 'Deleted task'}',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Close actual work',
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Actual work is recorded independently of the task schedule.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 12),
-              Card(
-                color: Theme.of(context).colorScheme.surfaceContainer,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 18,
-                  ),
-                  child: Column(
+                  Row(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            recovery
-                                ? Icons.warning_amber_rounded
-                                : thisRun?.state == TimerState.running
-                                ? Icons.circle
-                                : Icons.pause_circle_outline,
-                            size: 15,
-                            color: recovery
-                                ? Theme.of(context).colorScheme.error
-                                : thisRun?.state == TimerState.running
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 7),
-                          Text(
-                            thisRun == null
-                                ? 'Stopped'
-                                : recovery
-                                ? 'Needs review'
-                                : thisRun.state == TimerState.running
-                                ? 'Running'
-                                : 'Paused',
-                            style: Theme.of(context).textTheme.labelLarge,
-                          ),
-                        ],
+                      Expanded(
+                        child: Text(
+                          'Focus: ${task?.title ?? 'Deleted task'}',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _duration(session),
-                        style: Theme.of(context).textTheme.displaySmall
-                            ?.copyWith(
-                              fontFeatures: const [
-                                FontFeature.tabularFigures(),
-                              ],
-                            ),
-                      ),
-                      Text(
-                        'Current focus session',
-                        style: Theme.of(context).textTheme.bodySmall,
+                      IconButton(
+                        tooltip: 'Close actual work',
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
                       ),
                     ],
                   ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Text(
-                  'Total recorded: ${_duration(total)} · overlaps counted once',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-              if (controller.timerError != null)
-                Text(
-                  controller.timerError!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              if (error != null)
-                Text(
-                  error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              if (remote && thisRun != null) ...[
-                const SizedBox(height: 12),
-                const Text(
-                  'This timer is controlled by another device. Work is shown through its last synced checkpoint. Pause or stop it on that device.',
-                ),
-                OutlinedButton(
-                  onPressed: busy ? null : () => _takeControl(thisRun),
-                  child: const Text('Take control at checkpoint'),
-                ),
-              ] else if (recovery && thisRun != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  'Timer needs review. Last confirmed running at ${_stamp(thisRun.lastSeenAt)}.',
-                ),
-                const Text(
-                  'Choose whether work continued while the app was away.',
-                ),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    OutlinedButton(
-                      onPressed: busy
-                          ? null
-                          : () => _run(controller.keepRecoveredTimer),
-                      child: const Text('Keep elapsed time'),
-                    ),
-                    FilledButton(
-                      onPressed: busy
-                          ? null
-                          : () =>
-                                _run(controller.stopRecoveredTimerAtCheckpoint),
-                      child: const Text('Stop at last checkpoint'),
-                    ),
-                  ],
-                ),
-              ] else if (thisRun != null) ...[
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: busy
-                          ? null
-                          : () => _run(
-                              thisRun.state == TimerState.running
-                                  ? controller.pauseTimer
-                                  : controller.resumeTimer,
-                            ),
-                      icon: Icon(
-                        thisRun.state == TimerState.running
-                            ? Icons.pause
-                            : Icons.play_arrow,
-                      ),
-                      label: Text(
-                        thisRun.state == TimerState.running
-                            ? 'Pause'
-                            : 'Resume',
-                      ),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: busy ? null : () => _run(controller.stopTimer),
-                      icon: const Icon(Icons.stop),
-                      label: const Text('Stop'),
-                    ),
-                  ],
-                ),
-              ] else if (run == null) ...[
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: FilledButton.icon(
-                    onPressed: busy || task == null
-                        ? null
-                        : () =>
-                              _run(() => controller.startTimer(widget.taskId)),
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('Start focus stopwatch'),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Actual work is recorded independently of the task schedule.',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
-                ),
-              ] else ...[
-                const SizedBox(height: 12),
-                Text(
-                  'A timer is active for another task. Pause or stop it there first.',
-                ),
-              ],
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
+                  const SizedBox(height: 12),
+                  Card(
+                    color: Theme.of(context).colorScheme.surfaceContainer,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 18,
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                recovery
+                                    ? Icons.warning_amber_rounded
+                                    : thisRun?.state == TimerState.running
+                                    ? Icons.circle
+                                    : Icons.pause_circle_outline,
+                                size: 15,
+                                color: recovery
+                                    ? Theme.of(context).colorScheme.error
+                                    : thisRun?.state == TimerState.running
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 7),
+                              Flexible(
+                                child: Text(
+                                  thisRun == null
+                                      ? 'Stopped'
+                                      : recovery
+                                      ? 'Needs review'
+                                      : thisRun.state == TimerState.running
+                                      ? 'Running'
+                                      : 'Paused',
+                                  style: Theme.of(context).textTheme.labelLarge,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _duration(session),
+                            style: Theme.of(context).textTheme.displaySmall
+                                ?.copyWith(
+                                  fontFeatures: const [
+                                    FontFeature.tabularFigures(),
+                                  ],
+                                ),
+                          ),
+                          Text(
+                            'Current focus session',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Text(
-                      'Work log',
-                      style: Theme.of(context).textTheme.titleSmall,
+                      'Total recorded: ${_duration(total)} · overlaps counted once',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ),
-                  TextButton.icon(
-                    onPressed: busy || task == null ? null : () => _edit(),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add manual time'),
+                  if (controller.timerError != null)
+                    Text(
+                      controller.timerError!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  if (error != null)
+                    Text(
+                      error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  if (remote && thisRun != null) ...[
+                    const SizedBox(height: 12),
+                    const Text(
+                      'This timer is controlled by another device. Work is shown through its last synced checkpoint. Pause or stop it on that device.',
+                    ),
+                    OutlinedButton(
+                      onPressed: busy ? null : () => _takeControl(thisRun),
+                      child: const Text('Take control at checkpoint'),
+                    ),
+                  ] else if (recovery && thisRun != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      'Timer needs review. Last confirmed running at ${_stamp(thisRun.lastSeenAt)}.',
+                    ),
+                    const Text(
+                      'Choose whether work continued while the app was away.',
+                    ),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        OutlinedButton(
+                          onPressed: busy
+                              ? null
+                              : () => _run(controller.keepRecoveredTimer),
+                          child: const Text('Keep elapsed time'),
+                        ),
+                        FilledButton(
+                          onPressed: busy
+                              ? null
+                              : () => _run(
+                                  controller.stopRecoveredTimerAtCheckpoint,
+                                ),
+                          child: const Text('Stop at last checkpoint'),
+                        ),
+                      ],
+                    ),
+                  ] else if (thisRun != null) ...[
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: busy
+                              ? null
+                              : () => _run(
+                                  thisRun.state == TimerState.running
+                                      ? controller.pauseTimer
+                                      : controller.resumeTimer,
+                                ),
+                          icon: Icon(
+                            thisRun.state == TimerState.running
+                                ? Icons.pause
+                                : Icons.play_arrow,
+                          ),
+                          label: Text(
+                            thisRun.state == TimerState.running
+                                ? 'Pause'
+                                : 'Resume',
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: busy
+                              ? null
+                              : () => _run(controller.stopTimer),
+                          icon: const Icon(Icons.stop),
+                          label: const Text('Stop'),
+                        ),
+                      ],
+                    ),
+                  ] else if (run == null) ...[
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: FilledButton.icon(
+                        onPressed: busy || task == null
+                            ? null
+                            : () => _run(
+                                () => controller.startTimer(widget.taskId),
+                              ),
+                        icon: const Icon(Icons.play_arrow),
+                        label: const Text('Start focus stopwatch'),
+                      ),
+                    ),
+                  ] else ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      'A timer is active for another task. Pause or stop it there first.',
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      Text(
+                        'Work log',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      TextButton.icon(
+                        onPressed: busy || task == null ? null : () => _edit(),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add manual time'),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              Expanded(
-                child: entries.isEmpty
-                    ? const Center(child: Text('No actual work recorded yet.'))
-                    : ListView.builder(
-                        itemCount: entries.length,
-                        itemBuilder: (context, index) {
-                          final entry = entries[index];
-                          return ListTile(
-                            dense: true,
-                            title: Text(
-                              '${_duration(entry.durationAt(confirmedEnd))} · ${entry.source == TimeEntrySource.manual ? 'Manual' : 'Timer'}${entry.endsAt == null ? ' · Running' : ''}',
-                            ),
-                            subtitle: Text(
-                              '${_stamp(entry.startsAt)} – ${entry.endsAt == null ? 'now' : _stamp(entry.endsAt!)}${entry.notes.isEmpty ? '' : '\n${entry.notes}'}',
-                            ),
-                            isThreeLine: entry.notes.isNotEmpty,
-                            trailing: entry.source == TimeEntrySource.manual
-                                ? PopupMenuButton<String>(
-                                    tooltip: 'Manual log actions',
-                                    onSelected: (value) => value == 'edit'
-                                        ? _edit(entry)
-                                        : _clear(entry),
-                                    itemBuilder: (_) => const [
-                                      PopupMenuItem(
-                                        value: 'edit',
-                                        child: Text('Edit'),
-                                      ),
-                                      PopupMenuItem(
-                                        value: 'clear',
-                                        child: Text('Clear'),
-                                      ),
-                                    ],
-                                  )
-                                : null,
-                          );
-                        },
+              if (entries.isEmpty)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Text('No actual work recorded yet.'),
+                  ),
+                )
+              else
+                SliverList.builder(
+                  itemCount: entries.length,
+                  itemBuilder: (context, index) {
+                    final entry = entries[index];
+                    return ListTile(
+                      dense: true,
+                      title: Text(
+                        '${_duration(entry.durationAt(confirmedEnd))} · ${entry.source == TimeEntrySource.manual ? 'Manual' : 'Timer'}${entry.endsAt == null ? ' · Running' : ''}',
                       ),
-              ),
+                      subtitle: Text(
+                        '${_stamp(entry.startsAt)} – ${entry.endsAt == null ? 'now' : _stamp(entry.endsAt!)}${entry.notes.isEmpty ? '' : '\n${entry.notes}'}',
+                      ),
+                      isThreeLine: entry.notes.isNotEmpty,
+                      trailing: entry.source == TimeEntrySource.manual
+                          ? PopupMenuButton<String>(
+                              tooltip: 'Manual log actions',
+                              onSelected: (value) => value == 'edit'
+                                  ? _edit(entry)
+                                  : _clear(entry),
+                              itemBuilder: (_) => const [
+                                PopupMenuItem(
+                                  value: 'edit',
+                                  child: Text('Edit'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'clear',
+                                  child: Text('Clear'),
+                                ),
+                              ],
+                            )
+                          : null,
+                    );
+                  },
+                ),
             ],
           ),
         ),
@@ -469,6 +488,7 @@ class _TimeEntryEditorState extends State<_TimeEntryEditor> {
     title: Text(
       widget.entry == null ? 'Add actual work' : 'Correct actual work',
     ),
+    scrollable: true,
     content: SizedBox(
       width: 380,
       child: Column(

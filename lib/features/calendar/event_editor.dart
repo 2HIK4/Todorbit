@@ -14,6 +14,8 @@ import '../shared/event_color_picker.dart';
 import '../shared/weekdays.dart';
 import '../shared/unsaved_editor_guard.dart';
 import '../shared/dialog_action_bar.dart';
+import '../shared/app_spacing.dart';
+import '../shared/draft_interval.dart';
 import '../widget/native_widget_service.dart';
 
 enum _EventEditScope { occurrence, future, series }
@@ -78,6 +80,8 @@ class _EventEditorState extends ConsumerState<EventEditor> {
   List<EventDetailType> detailTypes = [];
   late DateTime start;
   late DateTime end;
+  bool endEdited = false;
+  DateTime? suggestedEnd;
   bool allDay = false;
   EventRepeatKind? repeatKind;
   Set<int> weekdays = {};
@@ -367,7 +371,11 @@ class _EventEditorState extends ConsumerState<EventEditor> {
   );
 
   Future<void> _pick(bool isStart, bool dateOnly) async {
-    final current = isStart ? start : end;
+    final current = isStart
+        ? start
+        : allDay && dateOnly
+        ? DateTime(end.year, end.month, end.day - 1)
+        : end;
     DateTime? next;
     if (dateOnly) {
       final date = await showDatePicker(
@@ -400,13 +408,29 @@ class _EventEditorState extends ConsumerState<EventEditor> {
         );
       }
     }
-    if (next != null) {
+    if (next != null && mounted) {
       setState(() {
         if (isStart) {
-          start = next!;
-          if (allDay) end = DateTime(start.year, start.month, start.day + 1);
+          final movedEnd = endAfterMovingStart(
+            start: start,
+            end: end,
+            nextStart: next!,
+            allDay: allDay,
+          );
+          if (!endEdited) end = movedEnd;
+          start = next;
+          suggestedEnd = end.isAfter(start) ? null : movedEnd;
         } else {
           end = next!;
+          endEdited = true;
+          suggestedEnd = end.isAfter(start)
+              ? null
+              : endAfterMovingStart(
+                  start: start,
+                  end: end,
+                  nextStart: start,
+                  allDay: allDay,
+                );
         }
       });
     }
@@ -670,6 +694,8 @@ class _EventEditorState extends ConsumerState<EventEditor> {
         details = List.of(occurrence.details);
         start = occurrence.startsAt.toLocal();
         end = occurrence.endsAt.toLocal();
+        endEdited = false;
+        suggestedEnd = null;
         allDay = occurrence.allDay;
         repeatKind = occurrence.repeat?.kind;
         weekdays = {...?occurrence.repeat?.weekdays};
@@ -693,6 +719,8 @@ class _EventEditorState extends ConsumerState<EventEditor> {
       details = List.of(original.details);
       start = original.startsAt.toLocal();
       end = original.endsAt.toLocal();
+      endEdited = false;
+      suggestedEnd = null;
       allDay = original.allDay;
       repeatKind = original.repeat?.kind;
       weekdays = {...?original.repeat?.weekdays};
@@ -739,7 +767,7 @@ class _EventEditorState extends ConsumerState<EventEditor> {
           Expanded(
             child: ListView(
               key: const ValueKey('event-editor-form-list'),
-              padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
+              padding: AppSpacing.editorScrollPadding(context),
               children: [
                 if (widget.event?.nominalDate != null) ...[
                   SegmentedButton<_EventEditScope>(
@@ -963,24 +991,41 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                   value: allDay,
                   onChanged: (value) => setState(() {
                     allDay = value;
+                    endEdited = false;
+                    suggestedEnd = null;
                     if (value) {
                       start = DateTime(start.year, start.month, start.day);
                       end = DateTime(start.year, start.month, start.day + 1);
                     }
                   }),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: AppSpacing.content),
                 Text('Start', style: Theme.of(context).textTheme.titleSmall),
                 _dateTimeRow(start, true),
                 const SizedBox(height: 12),
                 Text('End', style: Theme.of(context).textTheme.titleSmall),
                 _dateTimeRow(end, false),
+                if (suggestedEnd != null)
+                  TextButton.icon(
+                    onPressed: () => setState(() {
+                      end = suggestedEnd!;
+                      suggestedEnd = null;
+                      endEdited = false;
+                    }),
+                    icon: const Icon(Icons.update),
+                    label: const Text('Move end with start'),
+                  ),
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
-                    'Duration: ${eventDurationLabel(start, end, allDay: allDay)}',
+                    'Duration: ${eventDurationLabel(start, end, allDay: allDay)}'
+                    '${suggestedEnd == null ? '' : '. Your edited end is unchanged.'}',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
+                ),
+                Text(
+                  'Moving Start keeps the duration until you edit End.',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 14),
                 AnchoredSelectField<int?>(
@@ -1194,6 +1239,7 @@ class _EventEditorState extends ConsumerState<EventEditor> {
       children: [
         Expanded(
           child: OutlinedButton(
+            key: ValueKey('event-${isStart ? 'start' : 'end'}-date'),
             onPressed: () => _pick(isStart, true),
             child: Text(
               Platform.isAndroid
@@ -1214,6 +1260,7 @@ class _EventEditorState extends ConsumerState<EventEditor> {
         if (!allDay)
           Expanded(
             child: OutlinedButton(
+              key: ValueKey('event-${isStart ? 'start' : 'end'}-time'),
               onPressed: () => _pick(isStart, false),
               child: Text(
                 Platform.isAndroid

@@ -5,6 +5,8 @@ import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../calendar/event_editor.dart';
 import '../calendar/session_editor.dart';
+import '../shared/app_spacing.dart';
+import '../shared/icon_picker.dart';
 
 Future<void> openMobileEditor(
   BuildContext context,
@@ -315,7 +317,8 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
         ),
         const SizedBox(height: 8),
         Wrap(
-          spacing: 8,
+          spacing: AppSpacing.gap,
+          runSpacing: AppSpacing.gap,
           children: [
             ActionChip(
               avatar: const Icon(Icons.add, size: 18),
@@ -341,8 +344,9 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
         if (showEvents)
           for (final e in events)
             Card(
+              margin: const EdgeInsets.symmetric(vertical: AppSpacing.small),
               child: ListTile(
-                leading: const Icon(Icons.event_outlined),
+                leading: _eventIcon(e, controller),
                 title: Text(e.title),
                 subtitle: Text(
                   e.allDay
@@ -355,6 +359,7 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
         if (showTasks) ...[
           for (final s in sessions)
             Card(
+              margin: const EdgeInsets.symmetric(vertical: AppSpacing.small),
               child: ListTile(
                 leading: const Icon(Icons.schedule),
                 title: Text(
@@ -372,6 +377,7 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
             ),
           for (final t in tasks)
             Card(
+              margin: const EdgeInsets.symmetric(vertical: AppSpacing.small),
               child: ListTile(
                 leading: const Icon(Icons.task_alt_outlined),
                 title: Text(t.title),
@@ -381,6 +387,39 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
             ),
         ],
       ],
+    );
+  }
+
+  Widget _eventIcon(FixedEvent event, AppController controller) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = Color(
+      controller.effectiveEventColor(event) ?? scheme.primary.toARGB32(),
+    );
+    final surface = scheme.surfaceContainerHigh;
+    final luminance = color.computeLuminance();
+    final backgroundLuminance = surface.computeLuminance();
+    final contrast = (luminance > backgroundLuminance)
+        ? (luminance + .05) / (backgroundLuminance + .05)
+        : (backgroundLuminance + .05) / (luminance + .05);
+    // Keep the configured icon color even when it is white on a light theme
+    // (or black on a dark theme). A contrasting backing preserves readability.
+    final backing = contrast >= 3
+        ? surface
+        : ((luminance + .05) / .05 >= 1.05 / (luminance + .05)
+              ? Colors.black
+              : Colors.white);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: backing,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.gap),
+        child: Icon(
+          iconForKey(event.iconName, Icons.event_outlined),
+          color: color,
+        ),
+      ),
     );
   }
 }
