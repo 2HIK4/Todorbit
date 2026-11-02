@@ -1,5 +1,28 @@
 # Progress
 
+## Windows/Android UI audit, Stage 2 (2026-11-02)
+
+- Branch `fix/stage2-ui-quality`, clean baseline `f7954d4`. Inventoried 39
+  surface families and applied the updated Ultimate UI/UX audit references.
+- Eleven grouped repairs cover mobile event icon/color rendering, anchored
+  settings selectors, shared select refresh, symmetric mobile editor gutters, draft interval
+  assistance, inclusive all-day End picker, and overflowing color/timer dialogs.
+  Added accurate More selection for drawer views and readable habit interval
+  guidance. No version/schema/backup/cloud behavior or release changes.
+- Main fixes committed as `cc20582`: 593 host tests pass / one existing opt-in
+  skip, full analysis clean. Follow-up `69acf07`: clean targeted analysis,
+  24 regression tests plus narrow navigation label/touch-target checks pass.
+  Isolated companion self-test and 72 native Android render/capability captures
+  pass their assertions; visual sample limitations remain separate.
+- Actual Windows debug and fresh Android API-35 UI samples include saved event
+  color, duration-preserving date change, native keyboard at 200% text and final
+  More selection. [Full inventory, root causes, commands and gaps](UI_UX_STAGE2_AUDIT.md).
+  Original shaking sequence remains un-reproduced; Windows native event-color
+  parity and suspected native Android footer clipping are tracked separately.
+  Physical shell/DPI/OEM/assistive-tech and real accounts remain unverified.
+- Evidence and synthetic profiles stay under ignored `.buildlog/verify/stage2-ui/`.
+  Personal data/previous AVDs were not opened/reset. No remote push or publication.
+
 ## UI quality engineering skill, Stage 1 (2026-11-02)
 
 - Upgraded repository-local `ultimate-ui-ux` on baseline `3bb6e8b`; retained all
