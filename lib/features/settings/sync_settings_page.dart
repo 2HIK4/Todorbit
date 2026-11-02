@@ -28,10 +28,40 @@ class SyncSettingsPage extends ConsumerStatefulWidget {
   ConsumerState<SyncSettingsPage> createState() => _SyncSettingsPageState();
 }
 
-class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage> {
+class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
+    with WidgetsBindingObserver {
   final code = TextEditingController();
+  final recoveryFocus = FocusNode();
+  final recoveryField = GlobalKey();
+  bool revealingField = false;
   String? revealed;
   SyncController? listening;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    recoveryFocus.addListener(_revealRecoveryField);
+  }
+
+  @override
+  void didChangeMetrics() => _revealRecoveryField();
+
+  void _revealRecoveryField() {
+    if (!recoveryFocus.hasFocus || revealingField) return;
+    revealingField = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      revealingField = false;
+      if (!mounted || !recoveryFocus.hasFocus) return;
+      final fieldContext = recoveryField.currentContext;
+      if (fieldContext != null) {
+        Scrollable.ensureVisible(
+          fieldContext,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+        );
+      }
+    });
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -52,6 +82,8 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    recoveryFocus.dispose();
     listening?.removeListener(_privacy);
     code.dispose();
     super.dispose();
@@ -104,6 +136,8 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage> {
           ),
           const SizedBox(height: 12),
           TextField(
+            key: recoveryField,
+            focusNode: recoveryFocus,
             controller: code,
             obscureText: true,
             autocorrect: false,

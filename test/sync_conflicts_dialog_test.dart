@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/testing.dart';
 import 'package:life_manager/app/sync_controller.dart';
 import 'package:life_manager/data/app_database.dart';
@@ -15,6 +16,8 @@ import 'package:life_manager/data/cloud/google_drive_auth.dart';
 import 'package:life_manager/data/cloud/sync_pairing_service.dart';
 import 'package:life_manager/domain/sync/causal_record.dart';
 import 'package:life_manager/features/settings/sync_conflicts_dialog.dart';
+import 'package:life_manager/features/settings/sync_settings_page.dart';
+import 'package:life_manager/data/cloud/cloud_storage_provider.dart';
 import 'package:life_manager/features/shared/app_theme.dart';
 import 'package:life_manager/domain/appearance.dart';
 
@@ -54,6 +57,7 @@ void main() {
   late Directory root;
   var unlocked = true;
   late MockClient client;
+  var providerOwnsController = false;
   final local = {
     'title': 'Study Chapter 2',
     'notes': List.filled(40, 'Long synthetic notes.').join(' '),
@@ -86,6 +90,7 @@ void main() {
     reason: null,
   );
   setUp(() async {
+    providerOwnsController = false;
     root = await Directory.systemTemp.createTemp('todorbit-conflict-ui-');
     database = AppDatabase(NativeDatabase.memory());
     final drive = MockSyncDrive(), vault = MemoryTokenStore();
@@ -111,7 +116,7 @@ void main() {
   });
   tearDown(() async {
     await controller.shutdown();
-    controller.dispose();
+    if (!providerOwnsController) controller.dispose();
     client.close();
     await database.close();
     await root.delete(recursive: true);
@@ -241,6 +246,63 @@ void main() {
     expect(find.text('Resolve sync conflicts'), findsNothing);
     expect(controller.applied, 0);
   });
+
+  testWidgets(
+    'recovery input stays visible after keyboard reduces large-text dialog',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(390, 844);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetViewInsets);
+      controller.auth.account = const CloudAccount(
+        'synthetic',
+        'Synthetic device',
+      );
+      providerOwnsController = true;
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [syncControllerProvider.overrideWith((ref) => controller)],
+          child: MaterialApp(
+            theme: buildAppTheme(
+              Brightness.dark,
+              ThemePalette.dark,
+              android: true,
+            ),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: const TextScaler.linear(2)),
+              child: child!,
+            ),
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => TextButton(
+                  onPressed: () => showSyncSettings(context),
+                  child: const Text('Open sync'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open sync'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byType(TextField));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(EditableText));
+      await tester.pump();
+      tester.view.viewInsets = const FakeViewPadding(bottom: 340);
+      await tester.pumpAndSettle();
+      expect(find.byType(EditableText).hitTestable(), findsOneWidget);
+      expect(
+        tester.getRect(find.byType(EditableText)).bottom,
+        lessThanOrEqualTo(504),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.runAsync(controller.shutdown);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
   testWidgets('changed values lead and complete records remain available', (
     tester,

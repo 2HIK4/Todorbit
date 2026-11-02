@@ -220,3 +220,26 @@ runtime change invalidates those package hashes and exact-source CI for release.
 Fresh packages and required checks are therefore rebuilt/rerun; the prior draft
 still has no assets and no public tag/release was created. The version remains
 beta.5/code 28 because beta.4/code 27 is still the newest published release.
+
+## Final keyboard visibility correction
+
+Source 086a6d3 passed Windows CI (577 pass/one opt-in skip), Android CI (71 host
+checks/two integrations), exact APK 16 KiB runtime, signing/alignment and private
+draft integrity. The retained production emulator passed a 27->28 update: its
+first-install timestamp, all 53 exported tables including personalization, and
+home widget IDs 2/3/providers/options were preserved. Those packages stayed private.
+
+A repeated actual Release check at 200% text confirmed that opening the Android
+keyboard could leave the recovery input outside the dialog's visible scroll area.
+The setup page now observes keyboard/window metrics and keeps the focused recovery
+field visible after layout. The observer/focus node are disposed with the page;
+no recovery-code, pairing, authorization or persistence behavior changes.
+
+`recovery-keyboard-final-tests.log`: six focused checks pass, including keyboard
+insets, 200% conflict selection, privacy dismissal and disclosure. Initial new-test
+runs exposed double disposal in the provider-owned fixture; an explicit shutdown
+inside fake time then stalled cleanup. The owned test process was stopped and
+cleanup moved into tester.runAsync. These fixture failures do not represent
+application data failures. `recovery-keyboard-analysis.log` is clean.
+The actual keyboard screenshots, not the fixture failure, establish the original
+UI defect. Final package hashes/CI/runtime are regenerated for the correction.
