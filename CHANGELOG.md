@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.19-beta.10+33 - experimental Standard and private Sync
+
+- Default new Google Drive workspaces to Standard Sync without an extra password; detect existing modes and preserve legacy encrypted recovery.
+- Offer Private Encrypted Sync for new workspaces, memorable passphrases, authenticated Argon2id key wrapping, recovery codes and protected local key retention.
+- Improve shared Windows/Android Sync settings, credential forms and one-time onboarding. Keep backups independent.
+- Existing-workspace encryption conversion and cloud passphrase changes remain unavailable. Real Google Drive synchronization is not yet manually verified; back up first and use disposable data.
+
 ## 1.0.19-beta.9+32 - experimental Smart Sync reliability fixes
 
 - Accept authenticated encrypted history/proofs when an interrupted completed

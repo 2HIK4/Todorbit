@@ -109,13 +109,19 @@ def main():
     parser.add_argument('--apk', type=Path, required=True)
     parser.add_argument('--arm64-apk', type=Path)
     parser.add_argument('--x64-apk', type=Path)
-    parser.add_argument('--aab', type=Path, required=True)
+    parser.add_argument('--aab', type=Path)
+    parser.add_argument('--apk-only', action='store_true',
+                        help='Prepare GitHub APK assets without a Play AAB; APK/signing/version gates remain required')
     parser.add_argument('--version', required=True)
     parser.add_argument('--version-code', type=int, required=True)
     parser.add_argument('--certificate-sha256', required=True)
     parser.add_argument('--notes', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
+    if args.apk_only and args.aab:
+        parser.error('--apk-only cannot be combined with --aab')
+    if not args.apk_only and not args.aab:
+        parser.error('--aab is required unless --apk-only is explicitly selected')
     if not re.fullmatch(r'\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?', args.version):
         raise ValueError('Version must match the shared release tag without v')
     expected = args.certificate_sha256.replace(':', '').lower()
@@ -127,16 +133,17 @@ def main():
         if file:
             verify_apk(file, args.version, args.version_code, expected, apk_abis)
             splits.append((arch, file, apk_abis))
-    run('python', str(Path(__file__).with_name('verify-android-artifact.py')), str(args.aab))
-    # jarsigner establishes bundle integrity; keytool establishes its signer.
-    bundle_result = run('jarsigner', '-verify', str(args.aab))
-    if 'jar verified.' not in bundle_result:
-        raise ValueError('AAB signature verification failed')
-    bundle_cert = run('keytool', '-printcert', '-jarfile', str(args.aab))
-    fingerprint = re.search(r'SHA256:\s*([A-Fa-f0-9:]+)', bundle_cert)
-    if not fingerprint or fingerprint[1].replace(':', '').lower() != expected:
-        raise ValueError('AAB certificate differs from the approved production identity')
-    print(verify_bundle(args.aab, args.version, args.version_code))
+    if args.aab:
+        run('python', str(Path(__file__).with_name('verify-android-artifact.py')), str(args.aab))
+        # jarsigner establishes bundle integrity; keytool establishes its signer.
+        bundle_result = run('jarsigner', '-verify', str(args.aab))
+        if 'jar verified.' not in bundle_result:
+            raise ValueError('AAB signature verification failed')
+        bundle_cert = run('keytool', '-printcert', '-jarfile', str(args.aab))
+        fingerprint = re.search(r'SHA256:\s*([A-Fa-f0-9:]+)', bundle_cert)
+        if not fingerprint or fingerprint[1].replace(':', '').lower() != expected:
+            raise ValueError('AAB certificate differs from the approved production identity')
+        print(verify_bundle(args.aab, args.version, args.version_code))
     if args.version_code <= published_floor():
         raise ValueError('Android version code must exceed every published stable/pre-release code')
     if not args.notes.read_text(encoding='utf-8').strip():
@@ -145,7 +152,8 @@ def main():
     apk_name = f'Todorbit-{args.version}-android-universal.apk'
     aab_name = f'Todorbit-{args.version}-android-play.aab'
     shutil.copyfile(args.apk, args.output / apk_name)
-    shutil.copyfile(args.aab, args.output / aab_name)
+    if args.aab:
+        shutil.copyfile(args.aab, args.output / aab_name)
     manifest = {'formatVersion': 1, 'packageName': 'io.github.hik4.todorbit',
                 'versionName': args.version, 'versionCode': args.version_code,
                 'minSdk': 26, 'apks': [{'name': apk_name, 'abis': abis,
@@ -160,7 +168,9 @@ def main():
     manifest_path = args.output / f'Todorbit-{args.version}-android-update.json'
     manifest_path.write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
     shutil.copyfile(args.notes, args.output / 'ANDROID-RELEASE-NOTES.md')
-    files = [args.output / name for name in (apk_name, aab_name, manifest_path.name, 'ANDROID-RELEASE-NOTES.md')] + split_files
+    files = [args.output / name for name in (apk_name, manifest_path.name, 'ANDROID-RELEASE-NOTES.md')] + split_files
+    if args.aab:
+        files.append(args.output / aab_name)
     (args.output / 'ANDROID-SHA256SUMS.txt').write_text(''.join(f'{sha256(f)}  {f.name}\n' for f in files), encoding='utf-8')
     for file in files:
         assert sha256(file) in (args.output / 'ANDROID-SHA256SUMS.txt').read_text()

@@ -1,5 +1,17 @@
 # Progress
 
+## Experimental optional Sync encryption beta 10 preparation (2026-11-04)
+
+- Owner authorizes publication of `1.0.19-beta.10+33` / `v1.0.19-beta.10`, based on `06b9ded`; tag/release were unused. Branch `maintenance/smart-sync-beta10-release`. Original storage-cleanup changes preserved and excluded.
+- Reuse targeted implementation checks; rebuild once per platform for version metadata. Owner explicitly skips broad CI/full suites/emulators; no live Google Drive or physical acceptance claimed. Existing signing/OAuth/installer/updater/integrity gates remain.
+- [Release notes](SMART_SYNC_BETA_10_RELEASE_NOTES.md) and [publication receipt](SMART_SYNC_BETA_10_PUBLICATION.md) record actual outcomes and limitations, including unavailable mode conversion/passphrase changes.
+
+## Local Sync manual builds (2026-11-04)
+
+- Application source stays `06b9ded` on `feature/sync-optional-encryption`; no version, signing configuration, conversion or cloud change. Three paused-cleanup documents preserved.
+- Owner authorized one Windows Release bundle and one production-signed GitHub APK, reusing existing toolchains/caches and implementation test evidence. No unit/integration/emulator/live Drive tests or publication.
+- Both first build invocations PASS: Windows Release bundle and production-signed GitHub universal APK (ARM64/x64), unchanged beta-9 version/code 32. Existing signing/OAuth source configuration preserved; no app launched or installed. [Receipt, exact artifact paths, safe profile/install instructions and owner checklist](SYNC_MANUAL_BUILDS.md).
+
 ## Standard and optional private Sync (2026-11-04; local feature)
 
 - Branch `feature/sync-optional-encryption`, baseline `13e2734`; paused storage cleanup documentation preserved and excluded. No version, package, release or push.

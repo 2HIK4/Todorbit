@@ -1,5 +1,10 @@
 """Failure-path checks for the unpublished Android candidate gate."""
 import importlib.util
+import contextlib
+import io
+import json
+from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -79,6 +84,43 @@ class ApkVariantTests(unittest.TestCase):
     def test_wrong_signer_rejected(self):
         with self.assertRaisesRegex(ValueError, 'production identity'):
             self.verify(signer='b' * 64)
+
+
+class ApkOnlyPreparationTests(unittest.TestCase):
+    def test_apk_only_retains_gates_and_emits_only_github_assets(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            apk, notes, output = root/'test.apk', root/'notes.md', root/'output'
+            apk.write_bytes(b'synthetic artifact')
+            notes.write_text('Experimental test notes', encoding='utf-8')
+            argv = ['prepare', '--apk', str(apk), '--apk-only', '--version', '1.0.19-beta.10',
+                    '--version-code', '33', '--certificate-sha256', 'a' * 64,
+                    '--notes', str(notes), '--output', str(output)]
+            with patch('sys.argv', argv), patch.object(release, 'verify_apk', return_value=['arm64-v8a', 'x86_64']) as verify, \
+                    patch.object(release, 'published_floor', return_value=32) as floor, \
+                    patch.object(release, 'run', side_effect=AssertionError('Unexpected AAB command')), contextlib.redirect_stdout(io.StringIO()):
+                release.main()
+            verify.assert_called_once_with(apk, '1.0.19-beta.10', 33, 'a' * 64, ['arm64-v8a', 'x86_64'])
+            floor.assert_called_once()
+            manifest = json.loads((output/'Todorbit-1.0.19-beta.10-android-update.json').read_text())
+            self.assertEqual(manifest['versionCode'], 33)
+            self.assertEqual(manifest['apks'][0]['sha256'], release.sha256(apk))
+            self.assertEqual(len(list(output.iterdir())), 4)
+            self.assertFalse(list(output.glob('*.aab')))
+
+    def test_existing_default_still_requires_aab(self):
+        with patch('sys.argv', ['prepare', '--apk', 'test.apk', '--version', '1.0.19-beta.10',
+                                '--version-code', '33', '--certificate-sha256', 'a' * 64,
+                                '--notes', 'notes.md', '--output', 'output']), \
+                contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            release.main()
+
+    def test_apk_only_cannot_silently_skip_supplied_aab(self):
+        with patch('sys.argv', ['prepare', '--apk', 'test.apk', '--apk-only', '--aab', 'test.aab',
+                                '--version', '1.0.19-beta.10', '--version-code', '33',
+                                '--certificate-sha256', 'a' * 64, '--notes', 'notes.md', '--output', 'output']), \
+                contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            release.main()
 
 
 if __name__ == '__main__':
