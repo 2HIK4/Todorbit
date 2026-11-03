@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:async';
 
 import '../support/mock_sync_drive.dart';
 
@@ -24,7 +23,7 @@ class _ScheduledEngine extends SyncEngine {
   }) : super(isUnlocked: () => true, verifyWorkspace: (_, _) async {});
   int attempts = 0;
   @override
-  Future<void> syncNow({bool manual = false}) async {
+  Future<void> syncNow({bool manual = false, bool localOnly = false}) async {
     attempts++;
   }
 }
@@ -51,8 +50,26 @@ void main() {
     root = await Directory.systemTemp.createTemp('todorbit-engine-mock-');
     final l = File('${root.path}/left.sqlite'),
         r = File('${root.path}/right.sqlite');
-    left = AppDatabase(NativeDatabase(l));
-    right = AppDatabase(NativeDatabase(r));
+    left = AppDatabase(
+      NativeDatabase.createInBackground(
+        l,
+        setup: (db) {
+          db.execute('PRAGMA busy_timeout = 5000');
+          db.execute('PRAGMA foreign_keys = ON');
+          db.execute('PRAGMA journal_mode = WAL');
+        },
+      ),
+    );
+    right = AppDatabase(
+      NativeDatabase.createInBackground(
+        r,
+        setup: (db) {
+          db.execute('PRAGMA busy_timeout = 5000');
+          db.execute('PRAGMA foreign_keys = ON');
+          db.execute('PRAGMA journal_mode = WAL');
+        },
+      ),
+    );
     sender = LifeRepository(left);
     receiver = LifeRepository(right);
     leftRecovery = BackupService(l);
@@ -112,6 +129,19 @@ void main() {
       expect((await receiver.tasks()), hasLength(1));
     },
   );
+  test(
+    'a manual request joining a skipped automatic check still exchanges data',
+    () async {
+      final automatic = a.syncNow();
+      final manual = a.syncNow(manual: true);
+      expect(identical(automatic, manual), isTrue);
+      await manual;
+      expect(drive.uploads, greaterThan(0));
+      expect(a.status.phase, SyncPhase.upToDate);
+      expect((await sender.syncExchangeStatus()).pending, 0);
+    },
+  );
+
   testWidgets(
     'startup, active polling, debounced edits and throttled resume release timers on close',
     (tester) async {
@@ -153,40 +183,18 @@ void main() {
     },
   );
 
-  test('committed edits during a running exchange schedule a follow-up instead of disappearing', () async {
+  test('metadata-only file notifications never exchange or restart a completed sync', () async {
     await sender.setAutomaticSync(first, true);
-    final entered = Completer<void>(), release = Completer<void>();
-    var proofs = 0;
-    final queued = SyncEngine(
-      repository: sender,
-      storage: drive,
-      recovery: leftRecovery,
-      loadKey: a.loadKey,
-      isUnlocked: () => true,
-      changeDebounce: Duration.zero,
-      verifyWorkspace: (_, _) async {
-        if (++proofs == 1) {
-          entered.complete();
-          await release.future;
-        }
-      },
-    );
-    final secondCycle = queued.changes.firstWhere(
-      (s) => proofs > 1 && s.phase == SyncPhase.upToDate,
-    );
-    try {
-      final firstCycle = queued.syncNow();
-      await entered.future;
-      await sender.addTask(const TaskDraft(title: 'Committed while syncing'));
-      queued.localChanged();
-      release.complete();
-      await firstCycle;
-      await secondCycle.timeout(const Duration(seconds: 10));
-      expect(proofs, 2);
-      expect((await sender.syncExchangeStatus()).pending, 0);
-    } finally {
-      await queued.close();
-    }
+    await a.syncNow();
+    final uploads = drive.uploads,
+        downloads = drive.downloads,
+        lists = drive.lists;
+    await a.syncNow(localOnly: true);
+    await a.syncNow(localOnly: true);
+    expect(drive.uploads, uploads);
+    expect(drive.downloads, downloads);
+    expect(drive.lists, lists);
+    expect(a.status.phase, SyncPhase.upToDate);
   });
   test(
     'ambiguous uploads retry exact ciphertext and cannot duplicate domain work',

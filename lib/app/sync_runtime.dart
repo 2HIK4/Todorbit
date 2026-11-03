@@ -58,7 +58,7 @@ SyncController createSyncRuntime(
     isUnlocked: () => !privacy.locked,
     onApplied: () async {
       await controller.applyPortablePreferences();
-      if (refreshController) await controller.refresh(notifyLocalChange: false);
+      if (refreshController) await controller.refresh();
     },
     scheduleBackground:
         scheduleBackground ??

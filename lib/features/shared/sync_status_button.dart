@@ -38,6 +38,7 @@ class SyncStatusButton extends ConsumerWidget {
                     controller.snapshot?.binding == null ||
                     controller.snapshot?.quarantined == true) {
                   await showSyncSettings(context);
+                  controller.recoveryReminder = false;
                 } else if (controller.conflictCount > 0) {
                   await showSyncConflicts(context, controller);
                 } else {

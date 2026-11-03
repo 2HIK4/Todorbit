@@ -72,6 +72,7 @@ class SyncEngine {
   Timer? _poll, _debounce;
   bool _closed = false, _started = false, _foreground = true;
   bool _followup = false;
+  bool _runningManual = false, _manualRequested = false;
   DateTime? _lastForegroundCheck;
 
   void _emit(SyncEngineStatus value) {
@@ -114,21 +115,50 @@ class SyncEngine {
     if (_running != null) _followup = true;
     _debounce?.cancel();
     if (!_foreground) return;
-    _debounce = Timer(changeDebounce, () => unawaited(syncNow()));
+    _debounce = Timer(
+      changeDebounce,
+      () => unawaited(syncNow(localOnly: true)),
+    );
   }
 
-  Future<void> syncNow({bool manual = false}) {
+  Future<void> syncNow({bool manual = false, bool localOnly = false}) {
     if (_closed) return Future.value();
-    return _running ??= _cycle(manual).whenComplete(() {
+    if (_running case final current?) {
+      if (manual && !_runningManual) _manualRequested = true;
+      return current;
+    }
+    final completed = Completer<void>();
+    _running = completed.future;
+    _runningManual = manual;
+    unawaited(_exchangeRequested(completed, manual, localOnly));
+    return completed.future;
+  }
+
+  Future<void> _exchangeRequested(
+    Completer<void> completed,
+    bool manual,
+    bool localOnly,
+  ) async {
+    try {
+      do {
+        _manualRequested = false;
+        _runningManual = manual;
+        await _cycle(manual, localOnly: localOnly && !manual);
+        manual = _manualRequested;
+      } while (manual && !_closed);
+    } catch (error, stack) {
+      completed.completeError(error, stack);
+    } finally {
       _running = null;
+      if (!completed.isCompleted) completed.complete();
       if (_followup && !_closed) {
         _followup = false;
         localChanged();
       }
-    });
+    }
   }
 
-  Future<void> _cycle(bool manual) async {
+  Future<void> _cycle(bool manual, {bool localOnly = false}) async {
     final deadline = timeBudget == null
         ? null
         : DateTime.now().add(timeBudget!);
@@ -153,6 +183,9 @@ class SyncEngine {
     var remoteApplied = false;
     try {
       final local = await repository.syncExchangeStatus();
+      // File watchers also observe leases/cursors and remote projection. They
+      // must not turn every successful check into another network exchange.
+      if (localOnly && local.pending == 0) return;
       final binding = local.binding;
       if (binding == null) {
         _emit(const SyncEngineStatus(SyncPhase.disconnected));

@@ -586,7 +586,7 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
     if (state == AppLifecycleState.resumed) {
       unawaited(privacy.resumed());
       ref.read(syncControllerProvider)?.setForeground(true);
-      ref.read(appControllerProvider).refresh(notifyLocalChange: false);
+      ref.read(appControllerProvider).refresh();
       ref.read(appControllerProvider).checkAutomaticBackup();
     } else if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused ||

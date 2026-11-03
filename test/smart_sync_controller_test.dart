@@ -43,9 +43,21 @@ void main() {
   final controllers = <SyncController>[];
   final auths = <_Auth>[];
 
-  SyncController device(String name) {
+  SyncController device(
+    String name, {
+    Future<void> Function(bool)? scheduleBackground,
+  }) {
     final file = File('${root.path}/$name.sqlite');
-    final db = AppDatabase(NativeDatabase(file));
+    final db = AppDatabase(
+      NativeDatabase.createInBackground(
+        file,
+        setup: (db) {
+          db.execute('PRAGMA busy_timeout = 5000');
+          db.execute('PRAGMA foreign_keys = ON');
+          db.execute('PRAGMA journal_mode = WAL');
+        },
+      ),
+    );
     final auth = _Auth();
     databases.add(db);
     auths.add(auth);
@@ -57,6 +69,7 @@ void main() {
       pairing: SyncPairingService(storage: drive, vault: MemoryTokenStore()),
       isUnlocked: () => true,
       onApplied: () async {},
+      scheduleBackground: scheduleBackground,
     );
     controllers.add(controller);
     return controller;
@@ -94,6 +107,24 @@ void main() {
     expect(a.status.lastSuccess, isNotNull);
     expect(a.needsRecoveryCode, isFalse);
     expect(a.recoveryReminder, isTrue);
+  });
+
+  test('metadata refreshes do not schedule native background jobs but committed edits do', () async {
+    var scheduled = 0;
+    final a = device(
+      'local-change',
+      scheduleBackground: (_) async {
+        scheduled++;
+      },
+    );
+    await a.syncNow(manual: true);
+    scheduled = 0;
+    await a.localChanged();
+    expect(scheduled, 0);
+    await a.repository.addTask(const TaskDraft(title: 'Committed change'));
+    await a.localChanged();
+    expect(scheduled, 1);
+    expect((await a.repository.syncExchangeStatus()).pending, greaterThan(0));
   });
 
   test('second device asks for its code once, retains local data, and exchanges both ways', () async {
@@ -165,7 +196,11 @@ void main() {
         drive.failDownload = false;
         drive.failChanges = false;
         drive.beforeList = null;
-        await resolver.syncNow(manual: true);
+        await resolver.repository.db.customStatement(
+          'UPDATE sync_capture_context SET next_attempt_utc=NULL',
+        );
+        await resolver.engine.syncNow();
+        expect(resolver.message, contains('Decisions synced'));
         await other.syncNow(manual: true);
         await resolver.syncNow(manual: true);
         expect(await resolver.reviewConflicts(), isNull);
@@ -189,6 +224,66 @@ void main() {
         await a.syncNow(manual: true);
         await b.syncNow(manual: true);
         expect(b.status.conflicts, greaterThan(0));
+      },
+    );
+  }
+
+  for (final agree in [true, false]) {
+    test(
+      'concurrent offline resolutions ${agree ? 'agree and converge' : 'retain genuinely competing decisions'}',
+      () async {
+        final a = device('windows'), b = device('android');
+        await a.repository.addTask(const TaskDraft(title: 'Original'));
+        await a.syncNow(manual: true);
+        await b.syncNow(manual: true);
+        await b.activate(recoveryCode: await a.recoveryCode());
+        await a.repository.updateTask(
+          (await a.repository.tasks()).single,
+          const TaskDraft(title: 'Windows decision'),
+        );
+        await b.repository.updateTask(
+          (await b.repository.tasks()).single,
+          const TaskDraft(title: 'Android decision'),
+        );
+        await Future.wait([a.syncNow(manual: true), b.syncNow(manual: true)]);
+        await a.syncNow(manual: true);
+        await b.syncNow(manual: true);
+        final left = (await a.reviewConflicts())!,
+            right = (await b.reviewConflicts())!;
+        final matching = right.records.single.candidates.entries
+            .firstWhere((e) => e.value?['title'] == 'Windows decision')
+            .key;
+        drive.failDownload = true;
+        await Future.wait([
+          a.resolve(left, {
+            left.records.single.id: const SyncResolutionChoice.local(),
+          }),
+          b.resolve(right, {
+            right.records.single.id: agree
+                ? SyncResolutionChoice.revision(matching)
+                : const SyncResolutionChoice.local(),
+          }),
+        ]);
+        drive.failDownload = false;
+        await Future.wait([a.syncNow(manual: true), b.syncNow(manual: true)]);
+        await a.syncNow(manual: true);
+        await b.syncNow(manual: true);
+        if (agree) {
+          expect(await a.reviewConflicts(), isNull);
+          expect(await b.reviewConflicts(), isNull);
+          expect((await a.repository.tasks()).single.title, 'Windows decision');
+          expect((await b.repository.tasks()).single.title, 'Windows decision');
+        } else {
+          final review = (await b.reviewConflicts())!;
+          expect(review.records.single.review.needsDecision, isTrue);
+          await b.resolve(review, {
+            review.records.single.id: const SyncResolutionChoice.local(),
+          });
+          await a.syncNow(manual: true);
+          expect(await a.reviewConflicts(), isNull);
+          expect(await b.reviewConflicts(), isNull);
+          expect((await a.repository.tasks()).single.title, 'Android decision');
+        }
       },
     );
   }

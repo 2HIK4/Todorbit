@@ -45,8 +45,19 @@ class SyncController extends ChangeNotifier {
       timeBudget: timeBudget,
       canExchange: canExchange,
     );
-    _subscription = engine.changes.listen((_) {
-      if (!_disposed) notifyListeners();
+    _subscription = engine.changes.listen((value) {
+      if (_disposed) return;
+      if (_pendingDecisionNotice &&
+          value.pending == 0 &&
+          value.notice == null &&
+          (value.phase == SyncPhase.upToDate ||
+              value.phase == SyncPhase.needsAttention)) {
+        _pendingDecisionNotice = false;
+        if (message == null || message == _decisionsPending) {
+          message = _decisionsSynced;
+        }
+      }
+      notifyListeners();
     });
   }
   final LifeRepository repository;
@@ -63,6 +74,11 @@ class SyncController extends ChangeNotifier {
   bool busy = false, _disposed = false;
   bool needsRecoveryCode = false;
   bool recoveryReminder = false;
+  bool _pendingDecisionNotice = false;
+  static const _decisionsPending =
+      'Decisions saved on this device. Waiting to finish syncing.';
+  static const _decisionsSynced =
+      'Decisions synced. Other devices will receive them on their next check.';
   String? message;
   SyncEngineStatus get status => engine.status;
 
@@ -73,8 +89,11 @@ class SyncController extends ChangeNotifier {
       : snapshot?.binding == null && auth.account != null
       ? 'Ready to set up sync'
       : switch (status.phase) {
-          SyncPhase.disconnected => 'Connect Google Drive',
-          SyncPhase.idle => 'Automatic sync is off',
+          SyncPhase.disconnected => 'Sign-in required',
+          SyncPhase.idle =>
+            snapshot?.automatic == true
+                ? 'Sync paused'
+                : 'Automatic sync is off',
           SyncPhase.syncing => 'Syncing',
           SyncPhase.pending => 'Changes pending',
           SyncPhase.upToDate => 'Up to date',
@@ -118,9 +137,8 @@ class SyncController extends ChangeNotifier {
     notifyListeners();
     try {
       await action();
-    } on SyncRecoveryRequired catch (error) {
+    } on SyncRecoveryRequired {
       needsRecoveryCode = true;
-      message = error.message;
     } on FormatException {
       message = 'The recovery code or retained authorization could not be verified. Check the original code; all data and keys are retained.';
     } catch (error) {
@@ -142,13 +160,15 @@ class SyncController extends ChangeNotifier {
     unawaited(engine.syncNow());
   }
 
-  void localChanged() {
-    engine.localChanged();
-    if (snapshot?.automatic == true) {
-      unawaited(
-        scheduleBackground?.call(true).catchError((Object _) {}) ??
-            Future<void>.value(),
-      );
+  Future<void> localChanged() async {
+    try {
+      final local = await repository.syncExchangeStatus();
+      if (_disposed || local.pending == 0) return;
+      engine.localChanged();
+      if (local.automatic) await scheduleBackground?.call(true);
+    } catch (_) {
+      // The journal survives a transient read/scheduler failure. Periodic and
+      // foreground opportunities retry without a file-watcher feedback loop.
     }
   }
 
@@ -331,13 +351,15 @@ class SyncController extends ChangeNotifier {
       }
       if (result?.state == SyncApplyState.applied) {
         await onApplied();
-        message = 'Decisions saved on this device. Queued resolutions will upload when connected.';
+        _pendingDecisionNotice = true;
+        message = _decisionsPending;
         await engine.syncNow(manual: true);
         if (engine.status.phase == SyncPhase.upToDate ||
             engine.status.phase == SyncPhase.needsAttention &&
                 engine.status.notice == null &&
                 engine.status.pending == 0) {
-          message = 'Decisions synced. Other devices will receive them on their next check.';
+          _pendingDecisionNotice = false;
+          message = _decisionsSynced;
         }
       } else {
         message = result?.state == SyncApplyState.retry

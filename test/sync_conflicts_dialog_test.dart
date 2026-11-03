@@ -366,6 +366,51 @@ void main() {
     },
   );
 
+  testWidgets(
+    'the first-device recovery guide does not reopen on every manual sync',
+    (tester) async {
+      controller.auth.account = const CloudAccount(
+        'synthetic',
+        'Synthetic account',
+      );
+      controller.snapshot = const SyncExchangeStatus(
+        binding: SyncBinding(
+          workspace: 'fixture',
+          account: 'synthetic',
+          device: 'fixture',
+        ),
+        enabled: true,
+        automatic: true,
+        quarantined: false,
+        pending: 0,
+        conflicts: 0,
+        waiting: 0,
+      );
+      controller.engine.status = const SyncEngineStatus(SyncPhase.upToDate);
+      controller.recoveryReminder = true;
+      providerOwnsController = true;
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [syncControllerProvider.overrideWith((ref) => controller)],
+          child: const MaterialApp(home: Scaffold(body: SyncStatusButton())),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('sync-status-button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.text('Save your recovery code'), findsOneWidget);
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+      expect(controller.recoveryReminder, isFalse);
+      await tester.tap(find.byKey(const ValueKey('sync-status-button')));
+      await tester.pumpAndSettle();
+      expect(controller.requests, 2);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byType(SnackBar), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   for (final brightness in Brightness.values) {
     for (final state in [
       'disconnected',

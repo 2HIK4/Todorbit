@@ -127,7 +127,10 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
   Future<void> _showCode(SyncController controller) async {
     try {
       final value = await controller.recoveryCode();
-      if (mounted && controller.isUnlocked()) setState(() => revealed = value);
+      if (mounted && controller.isUnlocked()) {
+        if (value != null) controller.recoveryReminder = false;
+        setState(() => revealed = value);
+      }
     } catch (_) {
       if (mounted && controller.isUnlocked()) {
         ScaffoldMessenger.maybeOf(context)?.showSnackBar(
