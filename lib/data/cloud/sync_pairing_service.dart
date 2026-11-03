@@ -325,10 +325,12 @@ class SyncPairingService {
           proof.bytes > 4096 ||
           proof.properties['protocol'] != '1' ||
           proof.properties['workspaceId'] != binding.workspace ||
-          proof.properties['application'] != 'todorbit-sync' ||
-          proof.properties['verified'] != 'true') {
+          proof.properties['application'] != 'todorbit-sync') {
         throw const FormatException('Invalid workspace proof identity');
       }
+      // A completed upload may lose its reply before the sender's readback
+      // marker is written. The account-bound AES-GCM proof below is required
+      // regardless of that mutable transport marker; never replace the key.
       final bytes = await storage.download(proof, (_, _, _) {});
       _checkAccount(binding.account);
       try {

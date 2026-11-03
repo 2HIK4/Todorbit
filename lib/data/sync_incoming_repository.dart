@@ -155,12 +155,15 @@ extension SyncIncomingRepository on LifeRepository {
         remote.properties['application'] != 'todorbit-sync' ||
         remote.properties['workspaceId'] != binding.workspace ||
         remote.properties['protocol'] != '1' ||
-        remote.properties['kind'] != 'operations' ||
-        remote.properties['verified'] != 'true') {
+        remote.properties['kind'] != 'operations') {
       throw const FormatException(
         'Incoming sync identity or transport digest differs',
       );
     }
+    // Drive's mutable `verified` flag is a sender-side readback receipt, not
+    // authentication. A lost upload reply can leave valid ciphertext without
+    // that PATCH forever. Authenticate the envelope and identities below before
+    // retaining anything; outgoing acknowledgement still requires its receipt.
     final batch = await (codec ?? SyncBatchCodec()).decrypt(
       bytes,
       key,

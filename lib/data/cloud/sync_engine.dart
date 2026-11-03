@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:io';
+
+import 'package:http/http.dart' as http;
 
 import '../backup_service.dart';
 import '../life_repository.dart';
@@ -460,7 +463,10 @@ class SyncEngine {
               ? SyncPhase.pending
               : error is FormatException
               ? SyncPhase.needsAttention
-              : error is CloudFailure || error is TimeoutException
+              : error is CloudFailure ||
+                    error is TimeoutException ||
+                    error is SocketException ||
+                    error is http.ClientException
               ? SyncPhase.offline
               : SyncPhase.error,
           pending: local?.pending ?? status.pending,
@@ -472,6 +478,8 @@ class SyncEngine {
               ? error.message
               : error is TimeoutException
               ? 'The connection timed out. Pending changes will be retried.'
+              : error is SocketException || error is http.ClientException
+              ? 'The connection was interrupted. Pending changes will be retried.'
               : error is _SyncCycleYield
               ? null
               : 'Sync stopped safely. Local data and pending versions are retained; retry from Sync settings.',

@@ -114,8 +114,7 @@ extension SyncStatusRepository on LifeRepository {
         object.properties['workspaceId'] != binding.workspace ||
         object.properties['application'] != 'todorbit-sync' ||
         object.properties['kind'] != 'operations' ||
-        object.properties['protocol'] != '1' ||
-        object.properties['verified'] != 'true') {
+        object.properties['protocol'] != '1') {
       throw const FormatException('Invalid sync object identity');
     }
     final previous = await db
@@ -125,6 +124,8 @@ extension SyncStatusRepository on LifeRepository {
           variables: [Variable.withString(object.id)],
         )
         .get();
+    // Only the authenticated, persisted object receipt can bypass downloading.
+    // A mutable sender readback flag is not part of immutable content identity.
     if (previous.isEmpty) return false;
     final row = previous.single;
     if (row.read<String>('workspace_id') != binding.workspace ||
