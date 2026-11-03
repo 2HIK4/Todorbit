@@ -15,6 +15,7 @@ import '../data/cloud/cloud_storage_provider.dart';
 import '../data/cloud/google_drive_provider.dart';
 import '../data/cloud/sync_engine.dart';
 import '../data/cloud/sync_pairing_service.dart';
+import '../data/cloud/sync_batch_codec.dart';
 
 final syncControllerProvider = ChangeNotifierProvider<SyncController?>(
   (ref) => null,
@@ -47,6 +48,13 @@ class SyncController extends ChangeNotifier {
     );
     _subscription = engine.changes.listen((value) {
       if (_disposed) return;
+      if (_standardIntroPending &&
+          value.lastSuccess != null &&
+          value.notice == null &&
+          (value.phase == SyncPhase.upToDate ||
+              value.phase == SyncPhase.needsAttention)) {
+        standardIntroduction = true;
+      }
       if (_pendingDecisionNotice &&
           value.pending == 0 &&
           value.notice == null &&
@@ -74,6 +82,9 @@ class SyncController extends ChangeNotifier {
   bool busy = false, _disposed = false;
   bool needsRecoveryCode = false;
   bool recoveryReminder = false;
+  bool? standardSync;
+  bool standardIntroduction = false;
+  bool _standardIntroPending = false;
   bool _pendingDecisionNotice = false;
   static const _decisionsPending =
       'Decisions saved on this device. Waiting to finish syncing.';
@@ -111,6 +122,12 @@ class SyncController extends ChangeNotifier {
       snapshot = await repository.syncExchangeStatus();
       try {
         await auth.load();
+        final retained = await pairing.saved();
+        standardSync = retained?.key.isStandard;
+        _standardIntroPending =
+            standardSync == true && retained?.introSeen == false;
+        standardIntroduction =
+            _standardIntroPending && snapshot?.lastSuccess != null;
         if (snapshot?.binding case final binding?) {
           needsRecoveryCode = await pairing.loadKey(binding) == null;
         }
@@ -140,7 +157,7 @@ class SyncController extends ChangeNotifier {
     } on SyncRecoveryRequired {
       needsRecoveryCode = true;
     } on FormatException {
-      message = 'The recovery code or retained authorization could not be verified. Check the original code; all data and keys are retained.';
+      message = 'Cloud data or the entered credential could not be verified. Check your recovery copy and retry; all data and keys are retained.';
     } catch (error) {
       message = error is CloudFailure ? error.message : 'Sync needs attention. Local data, pending changes and competing versions are retained.';
     } finally {
@@ -172,21 +189,34 @@ class SyncController extends ChangeNotifier {
     }
   }
 
-  Future<void> activate({String? recoveryCode}) => _action(() async {
-    final local = await repository.syncExchangeStatus();
-    if (local.binding != null && !local.quarantined) {
-      if (recoveryCode == null) throw const SyncRecoveryRequired();
-      await pairing.recoverKey(local.binding!, recoveryCode);
-      needsRecoveryCode = false;
-      await engine.syncNow(manual: true);
-      return;
-    }
-    await _activate(recoveryCode: recoveryCode);
-  });
+  Future<void> activate({String? recoveryCode, String? password}) =>
+      _action(() async {
+        final local = await repository.syncExchangeStatus();
+        if (local.binding != null && !local.quarantined) {
+          await pairing.recoverKey(
+            local.binding!,
+            recoveryCode,
+            password: password,
+          );
+          standardSync = (await pairing.saved())?.key.isStandard;
+          needsRecoveryCode = false;
+          await engine.syncNow(manual: true);
+          return;
+        }
+        await _activate(recoveryCode: recoveryCode, password: password);
+      });
 
-  Future<void> _activate({String? recoveryCode}) async {
+  Future<void> _activate({
+    String? recoveryCode,
+    String? password,
+    SyncWorkspaceKey? privateKey,
+  }) async {
     final firstDevice = recoveryCode == null && await pairing.saved() == null;
-    final prepared = await pairing.prepare(recoveryCode: recoveryCode);
+    final prepared = await pairing.prepare(
+      recoveryCode: recoveryCode,
+      password: password,
+      privateKey: privateKey,
+    );
     if (!isUnlocked()) return;
     await repository.activateSyncCapture(
       workspaceId: prepared.binding.workspace,
@@ -196,10 +226,29 @@ class SyncController extends ChangeNotifier {
     );
     await repository.setAutomaticSync(prepared.binding, true);
     needsRecoveryCode = false;
-    recoveryReminder = firstDevice;
+    standardSync = prepared.key.isStandard;
+    _standardIntroPending = prepared.key.isStandard && !prepared.introSeen;
+    recoveryReminder = firstDevice && !prepared.key.isStandard;
     await _schedule(true);
     await engine.syncNow(manual: true);
   }
+
+  Future<void> dismissStandardIntroduction() => _action(() async {
+    await pairing.dismissIntroduction();
+    standardIntroduction = false;
+    _standardIntroPending = false;
+  });
+
+  Future<void> startPrivateSync(String password, SyncWorkspaceKey key) =>
+      _action(() async {
+        if ((await repository.syncExchangeStatus()).binding != null) {
+          throw const CloudFailure(
+            'Changing cloud encryption requires a safe migration. This workspace was not changed.',
+          );
+        }
+        if (auth.account == null || auth.needsReconnect) await auth.connect();
+        if (isUnlocked()) await _activate(password: password, privateKey: key);
+      });
 
   Future<void> _schedule(bool enabled) async {
     try {
@@ -283,8 +332,9 @@ class SyncController extends ChangeNotifier {
         return;
       }
       if (await pairing.loadKey(local.binding!) == null) {
-        throw const SyncRecoveryRequired();
+        await pairing.recoverKey(local.binding!, null);
       }
+      standardSync = (await pairing.saved())?.key.isStandard;
       needsRecoveryCode = false;
     }
     await engine.syncNow(manual: manual);
@@ -372,7 +422,8 @@ class SyncController extends ChangeNotifier {
 
   Future<String?> recoveryCode() async {
     if (!isUnlocked()) return null;
-    return (await pairing.saved())?.key.exportRecoveryCode();
+    final key = (await pairing.saved())?.key;
+    return key == null || key.isStandard ? null : key.exportRecoveryCode();
   }
 
   Future<void> shutdown() async {

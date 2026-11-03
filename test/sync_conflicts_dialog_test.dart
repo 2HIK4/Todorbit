@@ -14,6 +14,8 @@ import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/data/sync_exchange_models.dart';
 import 'package:life_manager/data/cloud/google_drive_auth.dart';
 import 'package:life_manager/data/cloud/sync_pairing_service.dart';
+import 'package:life_manager/data/cloud/sync_batch_codec.dart';
+import 'package:life_manager/features/settings/sync_encryption_setup_dialog.dart';
 import 'package:life_manager/domain/sync/causal_record.dart';
 import 'package:life_manager/features/settings/sync_conflicts_dialog.dart';
 import 'package:life_manager/features/settings/sync_settings_page.dart';
@@ -38,7 +40,18 @@ class _Controller extends SyncController {
     required MockSyncDrive drive,
   }) : super(storage: drive, isUnlocked: unlocked, onApplied: () async {});
   int applied = 0;
-  int requests = 0;
+  int requests = 0, privateRequests = 0;
+  String? authorizedPassword;
+  @override
+  Future<void> activate({String? recoveryCode, String? password}) async {
+    authorizedPassword = password;
+  }
+
+  @override
+  Future<void> startPrivateSync(String password, SyncWorkspaceKey key) async {
+    privateRequests++;
+  }
+
   @override
   Future<void> syncNow({bool manual = false}) async {
     requests++;
@@ -551,4 +564,139 @@ void main() {
       expect(controller.applied, 0);
     },
   );
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'private encryption setup ${brightness.name} validates and fits large text',
+      (tester) async {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = const Size(390, 844);
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: ThemeData(brightness: brightness),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: const TextScaler.linear(2)),
+              child: child!,
+            ),
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => TextButton(
+                  onPressed: () => showPrivateSyncSetup(context, controller),
+                  child: const Text('Open encryption'),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('Open encryption'));
+        await tester.pumpAndSettle();
+        expect(find.text('Private Encrypted Sync'), findsOneWidget);
+        await tester.ensureVisible(find.text('I saved my recovery code'));
+        await tester.tap(find.text('I saved my recovery code'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Connect with encryption'));
+        await tester.pumpAndSettle();
+        expect(controller.privateRequests, 0);
+        expect(
+          find.textContaining('Use at least 12 characters'),
+          findsOneWidget,
+        );
+        final fields = find.byType(TextFormField);
+        await tester.enterText(fields.at(0), 'quiet orchard violet bicycle');
+        await tester.enterText(fields.at(1), 'a different memorable phrase');
+        await tester.tap(find.text('Connect with encryption'));
+        await tester.pumpAndSettle();
+        expect(find.text('The passphrases do not match.'), findsOneWidget);
+        await tester.enterText(fields.at(1), 'quiet orchard violet bicycle');
+        await tester.tap(find.text('Connect with encryption'));
+        await tester.pumpAndSettle();
+        expect(controller.privateRequests, 1);
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+  testWidgets(
+    'private setup privacy closure preserves its parent on repeated lock notifications',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (parentContext) => AlertDialog(
+                    title: const Text('Sync parent'),
+                    content: TextButton(
+                      onPressed: () =>
+                          showPrivateSyncSetup(parentContext, controller),
+                      child: const Text('Private setup'),
+                    ),
+                  ),
+                ),
+                child: const Text('Open parent'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open parent'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Private setup'));
+      await tester.pumpAndSettle();
+      unlocked = false;
+      controller.privacyChanged();
+      controller.privacyChanged();
+      await tester.pumpAndSettle();
+      expect(find.text('Private Encrypted Sync'), findsNothing);
+      expect(find.text('Sync parent'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets('private passphrase input preserves intentional spaces', (
+    tester,
+  ) async {
+    controller.auth.account = const CloudAccount(
+      'mock-only',
+      'Synthetic account',
+    );
+    controller.needsRecoveryCode = true;
+    controller.pairing.passwordAvailable = true;
+    providerOwnsController = true;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [syncControllerProvider.overrideWith((ref) => controller)],
+        child: MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showSyncSettings(context),
+                child: const Text('Open Sync'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Open Sync'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Use recovery code'));
+    await tester.pumpAndSettle();
+    const passphrase = '  quiet orchard violet bicycle  ';
+    await tester.enterText(find.byType(TextField), passphrase);
+    await tester.ensureVisible(
+      find.widgetWithText(FilledButton, 'Authorize this device'),
+    );
+    await tester.tap(
+      find.widgetWithText(FilledButton, 'Authorize this device'),
+    );
+    await tester.pumpAndSettle();
+    expect(controller.authorizedPassword, passphrase);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+  });
 }

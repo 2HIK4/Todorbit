@@ -1,5 +1,13 @@
 # Progress
 
+## Standard and optional private Sync (2026-11-04; local feature)
+
+- Branch `feature/sync-optional-encryption`, baseline `13e2734`; paused storage cleanup documentation preserved and excluded. No version, package, release or push.
+- New Standard workspaces use no extra password; shared Windows/Android pairing detects mode/schema, preserves legacy encrypted recovery and reuses causal merge/outboxes/backups. Optional **new workspace** private setup adds Argon2id-wrapped random keys, passphrase/recovery unlock and recovery acknowledgment.
+- **Mode conversion and passphrase changes remain unavailable**, explicitly shown in Settings; current immutable journal protocol lacks a remote generation fence. No unsafe conversion, cloud deletion or migration-success claim.
+- [Implementation, verification receipt, limits and owner checklist](SYNC_OPTIONAL_ENCRYPTION.md); [persistent pre-test ledger](TEST_RUN_LEDGER.md) now routes future sessions to prior evidence and prevents unjustified reruns.
+- Real Google Drive/physical-device acceptance is deferred to the owner. Targeted analysis passes; corrected controller/adapter/UI checks pass, with earlier failures and justified reuse recorded. No full suite/build requested.
+
 ## Experimental Smart Sync beta 9 published (2026-11-04)
 
 - Published [v1.0.19-beta.9](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.9),

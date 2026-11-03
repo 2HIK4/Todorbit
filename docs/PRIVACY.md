@@ -54,21 +54,37 @@ server, advertisers, or AI training services. The implementation uses Google
 user data only to provide and protect backup/restore and explicitly enabled sync. There is
 no human access to cloud content through a Todorbit service.
 
-## Optional encrypted synchronization
+## Optional Google Drive synchronization
 
-Settings > Sync separately enables encrypted incremental synchronization with
-the same Google account and `drive.appdata` scope. It transfers portable planner
-records, history, managed attachment bytes and compatible preferences. External
-file references, device permissions, widget placement/IDs, privacy credentials and
-OAuth tokens do not sync. Google receives ciphertext and operational metadata
-such as workspace/device/batch IDs, protocol version, object time and size.
+Settings > Sync enables incremental synchronization with the same Google account
+and `drive.appdata` scope. Current development source defaults new workspaces to
+**Standard Sync**, which uploads readable planner JSON without Todorbit client-side
+encryption or an additional password. Google Drive's transport and storage
+protections apply; this mode is not end-to-end encrypted. The payload includes
+portable planner records/history, managed attachment bytes and compatible
+preferences. External paths, device permissions, widget placement/IDs, privacy
+credentials, workspace secrets and OAuth tokens do not sync.
 
-A random AES-256-GCM workspace key is kept in platform-protected profile storage;
-its private recovery code pairs another device. Neither the key nor the code is
-uploaded. Workspace proofs and operations authenticate their account/workspace.
+For a new workspace, **Private Encrypted Sync** encrypts operations on the device
+with a random AES-256-GCM key. An Argon2id-derived passphrase key encrypts that
+workspace key for cloud recovery; only the authenticated encrypted wrapper is
+uploaded. Plaintext passphrases, workspace keys and recovery codes are not uploaded.
+Google receives ciphertext and non-content operational metadata such as
+workspace/device/batch IDs, protocol/schema/mode, object time and size. Protected
+profile storage retains the unlocked key. Either the passphrase or separately
+saved random recovery code unlocks new private data on another device. Losing all
+decryption credentials can make encrypted history unrecoverable.
+
+Legacy encrypted workspaces retain their original code-based recovery and format.
+Existing workspace mode conversion and passphrase changes are unavailable pending
+a safe migration protocol; no old cloud history is deleted or rewritten. These
+changes are development source, not a new published release; the publisher must
+update the hosted disclosure before distributing changed privacy behavior.
+
 Disabling Automatic Sync stops scheduled exchange; explicit Sync Now remains
 available. OS scheduling, network access, app lock and authorization constrain
-background exchange. See the [sync guide](GOOGLE_DRIVE_SYNC.md).
+background exchange. See the [sync guide](GOOGLE_DRIVE_SYNC.md) and
+[implementation limits](SYNC_OPTIONAL_ENCRYPTION.md).
 
 Sync history is retained without automatic cloud pruning, including competing
 and deleted-record revisions needed for recovery. Disconnecting or disabling

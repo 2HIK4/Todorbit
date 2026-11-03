@@ -99,15 +99,23 @@ class GoogleDriveProvider implements CloudStorageProvider, SyncStorageProvider {
     return response;
   }
 
-  Never _fail(int status) => throw CloudFailure(switch (status) {
-    401 => 'Google session expired or was revoked. Reconnect Google Drive.',
-    403 =>
-      'Google Drive denied access. Check backup permission and storage quota.',
-    404 => 'This cloud backup is no longer available.',
-    429 => 'Google Drive is busy. Try again later.',
-    >= 500 => 'Google Drive is temporarily unavailable. Try again later.',
-    _ => 'Google Drive request failed (HTTP $status).',
-  });
+  Never _fail(int status) => throw CloudFailure(
+    switch (status) {
+      401 => 'Google session expired or was revoked. Reconnect Google Drive.',
+      403 => 'Google Drive denied access. Check permission and storage quota.',
+      404 => 'This cloud object is no longer available. Refresh and retry.',
+      429 => 'Google Drive is busy. Try again later.',
+      >= 500 => 'Google Drive is temporarily unavailable. Try again later.',
+      _ => 'Google Drive request failed (HTTP $status).',
+    },
+    kind: switch (status) {
+      401 => CloudFailureKind.authentication,
+      403 => CloudFailureKind.permission,
+      409 || 412 => CloudFailureKind.conflict,
+      429 || >= 500 => CloudFailureKind.temporary,
+      _ => CloudFailureKind.unknown,
+    },
+  );
 
   void _checkAccount(String id) {
     if (account?.id != id) {
@@ -364,7 +372,13 @@ class GoogleDriveProvider implements CloudStorageProvider, SyncStorageProvider {
         }
         id = (jsonDecode(response.body) as Map)['id'] as String?;
       }
-      progress('Uploading encrypted backup', end, bytes.length);
+      progress(
+        _namespace == 'todorbit-sync'
+            ? 'Uploading sync data'
+            : 'Uploading encrypted backup',
+        end,
+        bytes.length,
+      );
     }
     if (id == null) {
       throw const CloudFailure('Google Drive did not confirm the backup.');
@@ -445,7 +459,13 @@ class GoogleDriveProvider implements CloudStorageProvider, SyncStorageProvider {
       if (builder.length > object.bytes || builder.length > maxBytes) {
         throw const CloudFailure('Cloud backup exceeded its declared size.');
       }
-      progress('Downloading encrypted backup', builder.length, object.bytes);
+      progress(
+        _namespace == 'todorbit-sync'
+            ? 'Downloading sync data'
+            : 'Downloading encrypted backup',
+        builder.length,
+        object.bytes,
+      );
     }
     final bytes = builder.takeBytes();
     if (bytes.length != object.bytes ||

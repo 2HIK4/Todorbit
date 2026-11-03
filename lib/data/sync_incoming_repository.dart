@@ -154,7 +154,7 @@ extension SyncIncomingRepository on LifeRepository {
         remote.md5 != md5.convert(bytes).toString() ||
         remote.properties['application'] != 'todorbit-sync' ||
         remote.properties['workspaceId'] != binding.workspace ||
-        remote.properties['protocol'] != '1' ||
+        remote.properties['protocol'] != (key.isStandard ? '2' : '1') ||
         remote.properties['kind'] != 'operations') {
       throw const FormatException(
         'Incoming sync identity or transport digest differs',

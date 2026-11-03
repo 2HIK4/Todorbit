@@ -11,7 +11,9 @@ void main() {
   test('lost key recovery authenticates before saving and retains the SQL device identity', () async {
     final drive = MockSyncDrive(), vault = MemoryTokenStore();
     final pairing = SyncPairingService(storage: drive, vault: vault);
-    final original = await pairing.prepare();
+    final original = await pairing.prepare(
+      privateKey: SyncWorkspaceKey.generate(),
+    );
     await vault.delete();
     await expectLater(
       pairing.recoverKey(
@@ -50,13 +52,18 @@ void main() {
           secondVault = MemoryTokenStore();
       final first = SyncPairingService(storage: drive, vault: firstVault);
       final second = SyncPairingService(storage: drive, vault: secondVault);
-      final created = await first.prepare();
+      final created = await first.prepare(
+        privateKey: SyncWorkspaceKey.generate(),
+      );
       expect(drive.objects, hasLength(1));
       expect(
         drive.payloads.values.single.toString(),
         isNot(contains(created.key.exportRecoveryCode())),
       );
-      await expectLater(second.prepare(), throwsA(isA<CloudFailure>()));
+      await expectLater(
+        second.prepare(privateKey: SyncWorkspaceKey.generate()),
+        throwsA(isA<CloudFailure>()),
+      );
       await expectLater(
         second.prepare(
           recoveryCode: SyncWorkspaceKey.generate().exportRecoveryCode(),
@@ -79,9 +86,14 @@ void main() {
       final drive = MockSyncDrive()..failAfterUpload = true;
       final vault = MemoryTokenStore();
       final pairing = SyncPairingService(storage: drive, vault: vault);
-      await expectLater(pairing.prepare(), throwsA(isA<CloudFailure>()));
+      await expectLater(
+        pairing.prepare(privateKey: SyncWorkspaceKey.generate()),
+        throwsA(isA<CloudFailure>()),
+      );
       final saved = (await pairing.saved())!;
-      final retried = await pairing.prepare();
+      final retried = await pairing.prepare(
+        privateKey: SyncWorkspaceKey.generate(),
+      );
       expect(retried.key.exportRecoveryCode(), saved.key.exportRecoveryCode());
       expect(drive.objects, hasLength(1));
     },
@@ -91,13 +103,16 @@ void main() {
     () async {
       final drive = MockSyncDrive(), vault = MemoryTokenStore();
       final pairing = SyncPairingService(storage: drive, vault: vault);
-      await pairing.prepare();
+      await pairing.prepare(privateKey: SyncWorkspaceKey.generate());
       final original = vault.value;
       drive.account = const CloudAccount(
         'other-mocked-account',
         'Synthetic other',
       );
-      await expectLater(pairing.prepare(), throwsA(isA<CloudFailure>()));
+      await expectLater(
+        pairing.prepare(privateKey: SyncWorkspaceKey.generate()),
+        throwsA(isA<CloudFailure>()),
+      );
       expect(vault.value, original);
       expect(drive.uploads, 1);
     },
@@ -107,7 +122,8 @@ void main() {
     final leftVault = MemoryTokenStore(), rightVault = MemoryTokenStore();
     final left = SyncPairingService(storage: leftDrive, vault: leftVault);
     final right = SyncPairingService(storage: rightDrive, vault: rightVault);
-    final first = await left.prepare(), second = await right.prepare();
+    final first = await left.prepare(privateKey: SyncWorkspaceKey.generate()),
+        second = await right.prepare(privateKey: SyncWorkspaceKey.generate());
     final proof = rightDrive.objects.single;
     leftDrive.objects.add(
       CloudObject(

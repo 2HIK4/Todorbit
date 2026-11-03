@@ -42,9 +42,21 @@ abstract interface class CloudStorageProvider {
   Future<void> delete(CloudObject object);
 }
 
+enum CloudFailureKind {
+  unknown,
+  authentication,
+  permission,
+  temporary,
+  incompatible,
+  corrupt,
+  conflict,
+  migrating,
+}
+
 class CloudFailure implements Exception {
-  const CloudFailure(this.message);
+  const CloudFailure(this.message, {this.kind = CloudFailureKind.unknown});
   final String message;
+  final CloudFailureKind kind;
   @override
   String toString() => message;
 }

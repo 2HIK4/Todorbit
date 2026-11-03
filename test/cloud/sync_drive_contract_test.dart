@@ -216,7 +216,10 @@ void main() {
     wire = _DriveWire();
     a = _Device(File('${root.path}/windows.sqlite'), wire);
     b = _Device(File('${root.path}/android.sqlite'), wire);
-    await a.sync.syncNow(manual: true);
+    await a.sync.startPrivateSync(
+      'wire synthetic memorable passphrase',
+      SyncWorkspaceKey.generate(),
+    );
     await b.sync.syncNow(manual: true);
     expect(b.sync.needsRecoveryCode, isTrue);
     await b.sync.activate(recoveryCode: await a.sync.recoveryCode());
@@ -357,7 +360,10 @@ void main() {
     wire = _DriveWire()..loseUploadReply = true;
     a = _Device(File('${root.path}/first-proof.sqlite'), wire);
     b = _Device(File('${root.path}/second-proof.sqlite'), wire);
-    await a.sync.syncNow(manual: true);
+    await a.sync.startPrivateSync(
+      'wire synthetic memorable passphrase',
+      SyncWorkspaceKey.generate(),
+    );
     final retained = await a.sync.pairing.saved();
     expect(retained, isNotNull);
     expect(wire.files.values.single['appProperties']['verified'], isNull);

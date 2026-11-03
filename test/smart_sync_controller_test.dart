@@ -10,6 +10,7 @@ import 'package:life_manager/data/cloud/cloud_storage_provider.dart';
 import 'package:life_manager/data/cloud/google_drive_auth.dart';
 import 'package:life_manager/data/cloud/sync_engine.dart';
 import 'package:life_manager/data/cloud/sync_pairing_service.dart';
+import 'package:life_manager/data/cloud/sync_batch_codec.dart';
 import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/data/sync_exchange_models.dart';
 import 'package:life_manager/domain/models.dart';
@@ -106,7 +107,13 @@ void main() {
     expect(a.status.phase, SyncPhase.upToDate);
     expect(a.status.lastSuccess, isNotNull);
     expect(a.needsRecoveryCode, isFalse);
-    expect(a.recoveryReminder, isTrue);
+    expect(a.recoveryReminder, isFalse);
+    expect(a.standardSync, isTrue);
+    expect(a.standardIntroduction, isTrue);
+    expect(await a.recoveryCode(), isNull);
+    await a.dismissStandardIntroduction();
+    final saved = await a.pairing.saved();
+    expect(saved!.introSeen, isTrue);
   });
 
   test('metadata refreshes do not schedule native background jobs but committed edits do', () async {
@@ -127,8 +134,31 @@ void main() {
     expect((await a.repository.syncExchangeStatus()).pending, greaterThan(0));
   });
 
+  test(
+    'Standard Sync joins without credentials and preserves both local datasets',
+    () async {
+      final a = device('standard-windows'), b = device('standard-android');
+      await a.repository.addTask(const TaskDraft(title: 'Windows local'));
+      await b.repository.addTask(const TaskDraft(title: 'Android local'));
+      await a.syncNow(manual: true);
+      await b.syncNow(manual: true);
+      expect(b.needsRecoveryCode, isFalse);
+      expect(b.standardSync, isTrue);
+      expect(b.standardIntroduction, isFalse);
+      await a.syncNow(manual: true);
+      expect(a.status.phase, SyncPhase.upToDate);
+      expect(b.status.phase, SyncPhase.upToDate);
+      expect(
+        (await a.repository.tasks()).map((t) => t.id).toSet(),
+        (await b.repository.tasks()).map((t) => t.id).toSet(),
+      );
+      expect(await b.repository.tasks(), hasLength(2));
+    },
+  );
+
   test('second device asks for its code once, retains local data, and exchanges both ways', () async {
     final a = device('windows'), b = device('android');
+    await a.pairing.prepare(privateKey: SyncWorkspaceKey.generate());
     await a.repository.addTask(const TaskDraft(title: 'Windows task'));
     await a.syncNow(manual: true);
     final uploads = drive.uploads;

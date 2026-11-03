@@ -305,7 +305,7 @@ class SyncEngine {
       await network(() => verifyWorkspace(binding, key));
       await guard();
       var bounded = false;
-      // The encrypted bytes are staged before HTTP. An ambiguous upload keeps
+      // The immutable bytes are staged before HTTP. An ambiguous upload keeps
       // those exact bytes/ID for retry; duplicate remote copies are idempotent.
       for (var i = 0; i < 24; i++) {
         await guard();
@@ -342,6 +342,7 @@ class SyncEngine {
             binding,
             object,
             lease: owned,
+            protocol: key.isStandard ? '2' : '1',
           )) {
             continue;
           }
@@ -459,7 +460,18 @@ class SyncEngine {
       }
       _emit(
         SyncEngineStatus(
-          error is _SyncCycleYield
+          error is CloudFailure && error.kind == CloudFailureKind.authentication
+              ? SyncPhase.disconnected
+              : error is CloudFailure &&
+                    {
+                      CloudFailureKind.permission,
+                      CloudFailureKind.incompatible,
+                      CloudFailureKind.corrupt,
+                      CloudFailureKind.conflict,
+                      CloudFailureKind.migrating,
+                    }.contains(error.kind)
+              ? SyncPhase.needsAttention
+              : error is _SyncCycleYield
               ? SyncPhase.pending
               : error is FormatException
               ? SyncPhase.needsAttention
@@ -473,7 +485,7 @@ class SyncEngine {
           conflicts: local?.conflicts ?? status.conflicts,
           lastSuccess: local?.lastSuccess ?? status.lastSuccess,
           notice: error is FormatException
-              ? 'The encrypted workspace could not be verified. Keep your recovery code and snapshots; competing history is retained.'
+              ? 'Cloud data could not be verified. Keep your recovery credentials and snapshots; pending work and competing history are retained.'
               : error is CloudFailure
               ? error.message
               : error is TimeoutException

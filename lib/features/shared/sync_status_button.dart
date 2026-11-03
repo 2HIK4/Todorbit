@@ -41,6 +41,27 @@ class SyncStatusButton extends ConsumerWidget {
                   controller.recoveryReminder = false;
                 } else if (controller.conflictCount > 0) {
                   await showSyncConflicts(context, controller);
+                } else if (controller.standardIntroduction) {
+                  final shown = ScaffoldMessenger.maybeOf(context)
+                      ?.showSnackBar(
+                        SnackBar(
+                          content: const Text(
+                            'Google Drive Sync is ready. Review privacy choices in Sync settings.',
+                          ),
+                          showCloseIcon: true,
+                          duration: const Duration(seconds: 8),
+                          action: SnackBarAction(
+                            label: 'Encryption options',
+                            onPressed: () => showSyncSettings(context),
+                          ),
+                        ),
+                      );
+                  if (shown != null) {
+                    await shown.closed;
+                    if (context.mounted && controller.isUnlocked()) {
+                      await controller.dismissStandardIntroduction();
+                    }
+                  }
                 } else {
                   ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                     SnackBar(

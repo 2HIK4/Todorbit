@@ -108,13 +108,14 @@ extension SyncStatusRepository on LifeRepository {
     SyncBinding binding,
     CloudObject object, {
     required SyncLease lease,
+    String protocol = '1',
   }) async {
     await _requireSyncExchange(binding, lease);
     if (object.accountId != binding.account ||
         object.properties['workspaceId'] != binding.workspace ||
         object.properties['application'] != 'todorbit-sync' ||
         object.properties['kind'] != 'operations' ||
-        object.properties['protocol'] != '1') {
+        object.properties['protocol'] != protocol) {
       throw const FormatException('Invalid sync object identity');
     }
     final previous = await db

@@ -34,6 +34,22 @@ retrying it; change one relevant condition or collect new diagnostic evidence.
 
 ## Verification ledger
 
+Start with the persistent [test run ledger](TEST_RUN_LEDGER.md), then follow its
+relevant task receipt. Before **any** test, identify changed behavior and its
+smallest covering assertion, compare prior source/dependency/configuration/
+environment fingerprints, and reuse an equivalent valid pass. A new task, a
+documentation edit, or an unrelated platform edit does not justify rerunning.
+Prefer one final focused check after code stabilizes. Log necessary debugging
+reruns with the change or new evidence that invalidated the earlier result.
+
+New receipts must be linked in the persistent ledger and include local date/time
+with UTC offset, task, commit plus dirty-source fingerprint, affected paths,
+exact command, scope/purpose, Passed/Failed/Blocked/Skipped, necessity/rerun reason,
+and prior evidence or concise output location. Record meaningful skips and reuse;
+never label an unexecuted check Passed. Do not duplicate old ledgers or detailed logs.
+CI and mandatory release gates remain unchanged. Avoid builds, dependency downloads
+and environment setup unless the changed boundary actually requires them.
+
 Record **every executed verification invocation**, including failed diagnostics
 and reruns, in the task's existing acceptance/checkpoint receipt linked from
 [Progress](PROGRESS.md). Keep one compact row per invocation (a receipt may link

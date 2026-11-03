@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/sync_controller.dart';
 import '../../data/cloud/sync_engine.dart';
 import 'sync_conflicts_dialog.dart';
+import 'sync_encryption_setup_dialog.dart';
 import '../shared/settings_section.dart';
 import '../shared/status_notice.dart';
 
@@ -54,6 +55,9 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
   final recoveryField = GlobalKey();
   Timer? recoveryReveal;
   String? revealed;
+  bool showCredential = false,
+      useRecoveryCode = true,
+      encryptionExpanded = false;
   SyncController? listening;
   @override
   void initState() {
@@ -98,6 +102,7 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
   void _privacy() {
     if (listening?.isUnlocked() == false) {
       code.clear();
+      showCredential = false;
       if (mounted) setState(() => revealed = null);
     }
   }
@@ -113,13 +118,25 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
   }
 
   Future<void> _authorize(SyncController controller) async {
-    final entered = code.text.trim();
+    final entered =
+        controller.snapshot?.quarantined == true ||
+            useRecoveryCode ||
+            !controller.pairing.passwordAvailable
+        ? code.text.trim()
+        : code.text;
     if (controller.snapshot?.quarantined == true) {
       await controller.reconcileRestored(
         recoveryCode: entered.isEmpty ? null : entered,
       );
     } else {
-      await controller.activate(recoveryCode: entered.isEmpty ? null : entered);
+      await controller.activate(
+        recoveryCode: useRecoveryCode || !controller.pairing.passwordAvailable
+            ? (entered.isEmpty ? null : entered)
+            : null,
+        password: !useRecoveryCode && controller.pairing.passwordAvailable
+            ? entered
+            : null,
+      );
     }
     if (mounted && !controller.needsRecoveryCode) code.clear();
   }
@@ -217,25 +234,50 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
         if (restored) ...[
           const StatusNotice(
             title: 'Review restored data',
-            message: 'Reconnect restored records with your encrypted data. Existing changes and the recovery snapshot are kept. Automatic sync stays off.',
+            message: 'Reconnect restored records with your cloud data. Existing changes and the recovery snapshot are kept. Automatic sync stays off.',
             icon: Icons.restore,
           ),
         ],
         if (controller.needsRecoveryCode || restored && connected) ...[
           if (!restored)
             const Text(
-              'Enter the recovery code shown in Sync on your other device. This device will remember it securely.',
+              'Unlock your encrypted cloud data once. This device will remember the key in protected storage.',
+            ),
+          if (!restored && controller.pairing.passwordAvailable)
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Use recovery code'),
+              value: useRecoveryCode,
+              onChanged: busy
+                  ? null
+                  : (value) => setState(() {
+                      useRecoveryCode = value;
+                      code.clear();
+                    }),
             ),
           const SizedBox(height: 12),
           TextField(
             key: recoveryField,
             focusNode: recoveryFocus,
             controller: code,
-            obscureText: true,
+            obscureText: !showCredential,
             autocorrect: false,
             enableSuggestions: false,
             decoration: InputDecoration(
-              labelText: 'Recovery code',
+              labelText:
+                  !restored &&
+                      controller.pairing.passwordAvailable &&
+                      !useRecoveryCode
+                  ? 'Encryption passphrase'
+                  : 'Recovery code',
+              suffixIcon: IconButton(
+                tooltip: showCredential ? 'Hide credential' : 'Show credential',
+                onPressed: () =>
+                    setState(() => showCredential = !showCredential),
+                icon: Icon(
+                  showCredential ? Icons.visibility_off : Icons.visibility,
+                ),
+              ),
               helperText: restored
                   ? 'Only needed if this device has lost access.'
                   : null,
@@ -296,6 +338,70 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
               'Google Drive is unavailable in this build. Local backups remain available.',
             ),
           ),
+        if (controller.standardIntroduction) ...[
+          const SizedBox(height: 16),
+          const StatusNotice(
+            title: 'Google Drive Sync is ready',
+            message: 'Your data can sync across your devices without an extra password. Review Encryption options for privacy choices.',
+            icon: Icons.cloud_done_outlined,
+          ),
+          Wrap(
+            spacing: 8,
+            children: [
+              TextButton(
+                onPressed: busy ? null : controller.dismissStandardIntroduction,
+                child: const Text('Got it'),
+              ),
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () async {
+                        await controller.dismissStandardIntroduction();
+                        if (mounted) setState(() => encryptionExpanded = true);
+                      },
+                child: const Text('Encryption options'),
+              ),
+            ],
+          ),
+        ],
+        const SizedBox(height: 12),
+        ExpansionTile(
+          key: ValueKey(encryptionExpanded),
+          initiallyExpanded: encryptionExpanded,
+          tilePadding: EdgeInsets.zero,
+          title: const Text('Encryption options'),
+          subtitle: Text(
+            controller.standardSync == null
+                ? 'Standard Sync is the default'
+                : controller.standardSync!
+                ? 'Standard Sync'
+                : 'Private Encrypted Sync',
+          ),
+          children: [
+            const SettingsHelperText(
+              'Standard Sync uses Google Drive protection without an extra Todorbit password. Private Encrypted Sync encrypts data on your device before upload.',
+            ),
+            const SizedBox(height: 12),
+            if (!paired)
+              OutlinedButton.icon(
+                onPressed: busy
+                    ? null
+                    : () => showPrivateSyncSetup(context, controller),
+                icon: const Icon(Icons.lock_outline),
+                label: const Text('Set up Private Encrypted Sync'),
+              )
+            else ...[
+              const OutlinedButton(
+                onPressed: null,
+                child: Text('Change encryption (unavailable)'),
+              ),
+              const SettingsHelperText(
+                'This version cannot safely convert an existing cloud workspace or change its passphrase. Its current protection, data and recovery code are kept.',
+              ),
+            ],
+            const SizedBox(height: 12),
+          ],
+        ),
         if (paired && !restored) ...[
           const SizedBox(height: 12),
           SwitchListTile.adaptive(
@@ -307,7 +413,7 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
             value: controller.snapshot?.automatic ?? false,
             onChanged: busy ? null : controller.setAutomatic,
           ),
-          if (controller.recoveryReminder)
+          if (controller.recoveryReminder && controller.standardSync != true)
             TextButton.icon(
               onPressed: busy ? null : () => _showCode(controller),
               icon: const Icon(Icons.key_outlined),
@@ -328,10 +434,11 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
                       onPressed: busy ? null : controller.reconnectAndSync,
                       child: const Text('Reconnect account'),
                     ),
-                    TextButton(
-                      onPressed: busy ? null : () => _showCode(controller),
-                      child: const Text('Show recovery code'),
-                    ),
+                    if (controller.standardSync != true)
+                      TextButton(
+                        onPressed: busy ? null : () => _showCode(controller),
+                        child: const Text('Show recovery code'),
+                      ),
                   ],
                 ),
               ),

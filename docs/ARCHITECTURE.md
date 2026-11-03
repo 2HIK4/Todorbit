@@ -118,9 +118,13 @@ activation channel to Settings > Widget and the correct draft editor.
 
 Google Drive backups are an optional layer under `lib/data/cloud/` and Settings > Backups & Cloud. `CloudStorageProvider` abstracts remote objects; Google OAuth and secure token storage are separate from Drive HTTP operations. `CloudBackupService` reuses `BackupService` for SQLite-safe snapshots and staged restore, while `CloudBackupCodec` encrypts a versioned portable manifest with AES-256-GCM and a passphrase-derived key. The manifest includes the existing shareable settings JSON; OAuth tokens, PIN policy and device-only controls remain local. Full restore applies portable personalization after the database opens/migrates and before the opened receipt. Settings-only restore reuses selective settings transfer. Snapshot creation remains explicit and cloud history is not automatically pruned. See `GOOGLE_DRIVE_BACKUP.md` for format limits, setup, portability and verification boundaries.
 
-Encrypted incremental sync is enabled through the Sync button or Settings > Sync.
-Manual sign-in continues through safe setup and the initial exchange; a second
-device authorizes its existing encrypted data with a recovery code once. Schema
+Incremental sync is enabled through the Sync button or Settings > Sync.
+New workspaces default to Standard mode without an extra password; optional private
+setup wraps a random AES-GCM workspace key with an Argon2id passphrase. Bounded
+protocol-2 workspace documents identify mode/schema before credential prompts;
+legacy protocol-1 encrypted data keeps its original recovery-code path. Existing
+workspace conversion and passphrase rotation are explicitly unavailable pending a
+safe generation/fencing protocol; see [implementation limits](SYNC_OPTIONAL_ENCRYPTION.md). Schema
 26 retains immutable causal operations and transaction groups for 42 portable
 tables, including allowlisted preferences and explicit timer ownership. SQLite
 capture includes legitimate native writers; remote apply suppresses capture and
@@ -128,7 +132,7 @@ recurrence side effects inside the same writer transaction. Exact visible
 intervals preserve unresolved causal holes. Receiving history never establishes
 user acknowledgement. Managed bytes are validated before selected application.
 
-`SyncController` and `SyncEngine` coordinate pairing, a bounded encrypted outbox,
+`SyncController` and `SyncEngine` coordinate pairing, a bounded immutable outbox,
 Drive change cursors, lease ownership, retries and atomic incoming application.
 The consolidated review retains competing heads and checks actual relational
 consequences before accepting decisions. Restored databases are quarantined;

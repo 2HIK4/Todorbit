@@ -108,11 +108,20 @@ class PendingSyncBatch {
   final SyncBinding binding;
   final String originDevice;
   final Uint8List bytes;
+  // Staged payloads come only from the canonical codec. Inspect its bounded
+  // prefix, rather than decoding a potentially 24 MiB batch on the UI isolate.
+  static const _standardPrefix = '{"format":"todorbit-sync:2:standard",';
+  late final String _protocol =
+      bytes.length >= _standardPrefix.length &&
+          Iterable<int>.generate(_standardPrefix.length)
+              .every((i) => bytes[i] == _standardPrefix.codeUnitAt(i))
+      ? '2'
+      : '1';
   Map<String, String> get properties => Map.unmodifiable({
     'kind': 'operations',
     'batchId': id,
     'workspaceId': binding.workspace,
     'deviceId': originDevice,
-    'protocol': '1',
+    'protocol': _protocol,
   });
 }

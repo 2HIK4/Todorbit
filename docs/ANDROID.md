@@ -80,13 +80,13 @@ startup migration gate. Linked external file contents are not bundled; Windows
 paths require relinking on Android. OAuth tokens, PIN policy, launcher widget
 IDs, permission grants and navigation preferences are device-local.
 
-Google Drive remains optional snapshot backup/restore, not synchronization.
-Future synchronization needs per-record revisions/tombstones, device identity,
-transactional outbox, conflict review and recurrence-family merge rules before
-any automatic transfer can be enabled. No last-writer-wins database replacement
-or background synchronization is introduced by Android support.
-The [future synchronization proposal](FUTURE_CROSS_DEVICE_SYNC.md) defines the
-transactional outbox, identity, conflict and security gates for a separate task.
+Google Drive snapshot backup/restore remains separate from experimental incremental
+Smart Sync. Windows and Android share the repository, causal journal/conflict rules,
+mode detection and codec. New Standard workspaces need no additional password;
+new private workspaces use passphrase/recovery unlock. Existing encrypted data keeps
+its original recovery path. No database replacement or live cloud acceptance is
+implied. See [Sync](GOOGLE_DRIVE_SYNC.md) and [current limits](SYNC_OPTIONAL_ENCRYPTION.md),
+including unavailable mode conversion and device acceptance still required.
 
 ## Build and signing
 

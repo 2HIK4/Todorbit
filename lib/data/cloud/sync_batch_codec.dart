@@ -164,6 +164,8 @@ class SyncBatch {
 class SyncWorkspaceKey {
   SyncWorkspaceKey._(this._bytes);
   final List<int> _bytes;
+  factory SyncWorkspaceKey.standard() => SyncWorkspaceKey._(const []);
+  bool get isStandard => _bytes.isEmpty;
   factory SyncWorkspaceKey.generate() => SyncWorkspaceKey._(
     List.unmodifiable(SecretKeyData.random(length: 32).bytes),
   );
@@ -180,8 +182,15 @@ class SyncWorkspaceKey {
       throw const FormatException('Enter the complete workspace recovery code');
     }
   }
-  String exportRecoveryCode() => base64Url.encode(_bytes).replaceAll('=', '');
-  SecretKey get secretKey => SecretKey(_bytes);
+  String exportRecoveryCode() {
+    if (isStandard) throw StateError('Standard Sync has no recovery key');
+    return base64Url.encode(_bytes).replaceAll('=', '');
+  }
+
+  SecretKey get secretKey {
+    if (isStandard) throw StateError('Standard Sync has no encryption key');
+    return SecretKey(_bytes);
+  }
 }
 
 class SyncBatchCodec {
@@ -189,6 +198,7 @@ class SyncBatchCodec {
   static const maxPlaintextBytes = 24 * 1024 * 1024;
   static const maxEncryptedBytes = 34 * 1024 * 1024;
   static const header = 'todorbit-sync:1:aes256gcm';
+  static const standardHeader = 'todorbit-sync:2:standard';
 
   List<int> _aad(String workspace, String account) {
     if (workspace.isEmpty ||
@@ -219,6 +229,19 @@ class SyncBatchCodec {
     if (clear.length > maxPlaintextBytes) {
       throw const FormatException(
         'Sync batch exceeds the encrypted protocol limit',
+      );
+    }
+    if (key.isStandard) {
+      _aad(workspace, account);
+      return Uint8List.fromList(
+        utf8.encode(
+          jsonEncode({
+            'format': standardHeader,
+            'workspace': workspace,
+            'account': account,
+            'batch': batch.toJson(),
+          }),
+        ),
       );
     }
     final box = await AesGcm.with256bits().encrypt(
@@ -268,6 +291,21 @@ class SyncBatchCodec {
     }
     try {
       final envelope = jsonDecode(utf8.decode(encrypted)) as Map;
+      if (key.isStandard) {
+        _aad(workspace, account);
+        if (envelope.length != 4 ||
+            envelope['format'] != standardHeader ||
+            envelope['workspace'] != workspace ||
+            envelope['account'] != account ||
+            encrypted.length > maxPlaintextBytes + 1024) {
+          throw const FormatException();
+        }
+        final batch = SyncBatch.fromJson(
+          (envelope['batch'] as Map).cast<String, dynamic>(),
+        );
+        if (batch.schema != expectedSchema) throw const FormatException();
+        return batch;
+      }
       if (envelope.length != 4 || envelope['format'] != header) {
         throw const FormatException();
       }

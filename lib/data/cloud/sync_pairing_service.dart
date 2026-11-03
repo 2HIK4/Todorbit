@@ -11,17 +11,25 @@ import 'cloud_storage_provider.dart';
 import 'google_drive_auth.dart';
 import 'google_drive_provider.dart';
 import 'sync_batch_codec.dart';
+import 'sync_workspace_format.dart';
 
 class SyncPairing {
-  const SyncPairing(this.binding, this.key);
+  const SyncPairing(
+    this.binding,
+    this.key, {
+    this.proof,
+    this.introSeen = true,
+  });
   final SyncBinding binding;
   final SyncWorkspaceKey key;
+  final Uint8List? proof;
+  final bool introSeen;
 }
 
 class SyncRecoveryRequired extends CloudFailure {
   const SyncRecoveryRequired()
     : super(
-        'Enter the recovery code from your other device to authorize this device once.',
+        'Unlock the existing encrypted workspace with its passphrase or recovery code.',
       );
 }
 
@@ -32,6 +40,7 @@ class SyncPairingService {
   static const _proofFormat = 'todorbit-sync-workspace:1:aes256gcm';
   static const _uuid = Uuid();
   Future<SyncPairing>? _preparing;
+  bool passwordAvailable = false;
 
   static String workspaceFor(String account) => _uuid.v5(
     '6ba7b811-9dad-11d1-80b4-00c04fd430c8',
@@ -43,8 +52,16 @@ class SyncPairingService {
     if (raw == null) return null;
     try {
       final value = jsonDecode(raw) as Map;
-      if (value['format'] != 1 ||
-          value.length != 5 ||
+      final standard = value['format'] == 2 && value['mode'] == 'standard';
+      final modernPrivate = value['format'] == 2 && value['mode'] == 'private';
+      if ((!standard && !modernPrivate && value['format'] != 1) ||
+          value.length !=
+              (standard
+                  ? 6
+                  : modernPrivate
+                  ? 8
+                  : 5) ||
+          (value['format'] == 2 && value['introSeen'] is! bool) ||
           value['account'] is! String ||
           value['workspace'] != workspaceFor(value['account'] as String) ||
           value['device'] is! String ||
@@ -57,7 +74,11 @@ class SyncPairingService {
           account: value['account'] as String,
           device: value['device'] as String,
         ),
-        SyncWorkspaceKey.fromRecoveryCode(value['recovery'] as String),
+        standard
+            ? SyncWorkspaceKey.standard()
+            : SyncWorkspaceKey.fromRecoveryCode(value['recovery'] as String),
+        proof: modernPrivate ? base64Decode(value['proof'] as String) : null,
+        introSeen: value['introSeen'] as bool? ?? true,
       );
     } catch (_) {
       throw const FormatException(
@@ -79,11 +100,43 @@ class SyncPairingService {
     return current.key;
   }
 
-  Future<SyncPairing> prepare({String? recoveryCode}) =>
-      _preparing ??= _prepare(recoveryCode)
-          .whenComplete(() => _preparing = null);
+  Future<void> _save(SyncPairing pairing) => vault.write(
+    jsonEncode({
+      'format': pairing.key.isStandard || pairing.proof != null ? 2 : 1,
+      'workspace': pairing.binding.workspace,
+      'account': pairing.binding.account,
+      'device': pairing.binding.device,
+      if (!pairing.key.isStandard) 'recovery': pairing.key.exportRecoveryCode(),
+      if (pairing.key.isStandard || pairing.proof != null) ...{
+        'mode': pairing.key.isStandard ? 'standard' : 'private',
+        'introSeen': pairing.introSeen,
+      },
+      if (pairing.proof != null) 'proof': base64Encode(pairing.proof!),
+    }),
+  );
 
-  Future<SyncPairing> _prepare(String? recoveryCode) async {
+  Future<void> dismissIntroduction() async {
+    final current = await saved();
+    if (current == null || !current.key.isStandard) return;
+    await _save(SyncPairing(current.binding, current.key, introSeen: true));
+  }
+
+  Future<SyncPairing> prepare({
+    String? recoveryCode,
+    String? password,
+    SyncWorkspaceKey? privateKey,
+  }) => _preparing ??= _prepare(
+    recoveryCode,
+    password,
+    privateKey,
+  ).whenComplete(() => _preparing = null);
+
+  Future<SyncPairing> _prepare(
+    String? recoveryCode,
+    String? password,
+    SyncWorkspaceKey? privateKey, {
+    SyncBinding? retainedBinding,
+  }) async {
     final account = storage.account?.id;
     if (account == null) {
       throw const CloudFailure('Connect Google Drive before pairing.');
@@ -94,6 +147,7 @@ class SyncPairingService {
         'This profile is paired with a different account. Its pending work and key are retained.',
       );
     }
+    // Only a successful complete listing can establish an empty workspace.
     final objects = await storage.list();
     _checkAccount(account);
     final workspace = workspaceFor(account);
@@ -107,101 +161,183 @@ class SyncPairingService {
     final proofs = objects
         .where((o) => o.properties['kind'] == 'workspace')
         .toList();
-    if (previous == null && recoveryCode == null && objects.isNotEmpty) {
-      throw const SyncRecoveryRequired();
-    }
-    final supplied = recoveryCode == null
-        ? null
-        : SyncWorkspaceKey.fromRecoveryCode(recoveryCode);
-    if (previous != null &&
-        supplied != null &&
-        previous.key.exportRecoveryCode() != supplied.exportRecoveryCode()) {
+    if (proofs.any((proof) => proof.properties['state'] == 'migrating')) {
       throw const CloudFailure(
-        'The entered code differs from this profile’s retained workspace key. Nothing was replaced.',
+        'Cloud encryption is being migrated. Retry later; local changes are retained.',
+        kind: CloudFailureKind.migrating,
       );
     }
-    final key = previous?.key ?? supplied ?? SyncWorkspaceKey.generate();
     final binding =
         previous?.binding ??
+        retainedBinding ??
         SyncBinding(workspace: workspace, account: account, device: _uuid.v4());
+    SyncWorkspaceKey? key = previous?.key;
+    Uint8List? retainedProof = previous?.proof;
+    if (privateKey != null && key?.isStandard == true) {
+      throw const CloudFailure(
+        'This Standard workspace cannot safely be converted in this version. Its data and mode are unchanged.',
+      );
+    }
     if (proofs.isEmpty) {
+      if (retainedBinding != null) {
+        throw const CloudFailure(
+          'The original cloud workspace is missing. No replacement was initialized.',
+        );
+      }
       if (objects.isNotEmpty) {
         throw const CloudFailure(
           'Workspace proof is missing. Retain cloud history and recover the existing workspace.',
         );
       }
-      // Persist the new key before any upload can become externally visible.
-      // An ambiguous creation must leave its only recovery key recoverable.
-      if (previous == null) {
-        await vault.write(
-          jsonEncode({
-            'format': 1,
-            'workspace': workspace,
-            'account': account,
-            'device': binding.device,
-            'recovery': key.exportRecoveryCode(),
-          }),
+      if (recoveryCode != null ||
+          (password != null && privateKey == null && previous == null)) {
+        throw const CloudFailure(
+          'The existing cloud workspace could not be found. Recovery will not initialize a replacement.',
         );
       }
-      final proof = await _createProof(binding, key);
-      await storage.upload(proof, {
+      // Explicit private setup is optional; ordinary connection uses Standard.
+      key ??= privateKey ?? SyncWorkspaceKey.standard();
+      retainedProof ??= key.isStandard || password != null
+          ? await SyncWorkspaceFormat.create(binding, key, password)
+          : await _createProof(binding, key);
+      final created = SyncPairing(
+        binding,
+        key,
+        proof: key.isStandard
+            ? null
+            : (password != null || previous?.proof != null
+                  ? retainedProof
+                  : null),
+        introSeen: previous?.introSeen ?? !key.isStandard,
+      );
+      // Persist the sole private key AND retryable wrapped proof before HTTP.
+      await _save(created);
+      await storage.upload(retainedProof, {
         'kind': 'workspace',
-        'protocol': '1',
+        'protocol': key.isStandard || created.proof != null ? '2' : '1',
         'workspaceId': workspace,
         'deviceId': binding.device,
         'batchId': _uuid.v4(),
       }, (_, _, _) {});
     } else {
-      await _verifyProofs(binding, key, proofs);
+      if (proofs.length > 64) {
+        throw const CloudFailure(
+          'Too many workspace proofs. Review cloud workspace recovery.',
+        );
+      }
+      final first = proofs.first;
+      if (first.properties['protocol'] == '2') {
+        final bytes = await storage.download(first, (_, _, _) {});
+        _checkAccount(account);
+        final data = SyncWorkspaceFormat.read(bytes, binding);
+        passwordAvailable = data['mode'] == 'private';
+        if (data['mode'] == 'standard') {
+          if (privateKey != null) {
+            throw const CloudFailure(
+              'Existing Standard Sync data was found. Encryption conversion is unavailable; the cloud was not changed. Connect normally to keep syncing.',
+            );
+          }
+          if (key != null && !key.isStandard) {
+            throw const CloudFailure(
+              'Cloud encryption differs from this device. Its key and pending work are retained.',
+            );
+          }
+          key = SyncWorkspaceKey.standard();
+        } else {
+          if (key?.isStandard == true) {
+            throw const CloudFailure(
+              'Cloud encryption changed. Keep this profile and recover the original workspace.',
+            );
+          }
+          if (key == null) {
+            if (recoveryCode != null) {
+              key = SyncWorkspaceKey.fromRecoveryCode(recoveryCode);
+            } else if (password != null) {
+              try {
+                key = await SyncWorkspaceFormat.unlock(data, binding, password);
+              } catch (_) {
+                throw const CloudFailure(
+                  'The passphrase could not unlock this workspace. Try again or use its recovery code.',
+                );
+              }
+            } else {
+              throw const SyncRecoveryRequired();
+            }
+          }
+          retainedProof = bytes;
+        }
+      } else if (first.properties['protocol'] == '1') {
+        if (key?.isStandard == true) {
+          throw const CloudFailure(
+            'Cloud encryption differs from this device. Pending changes are retained.',
+          );
+        }
+        if (key == null) {
+          if (recoveryCode == null) throw const SyncRecoveryRequired();
+          key = SyncWorkspaceKey.fromRecoveryCode(recoveryCode);
+        }
+      } else {
+        throw const CloudFailure(
+          'This cloud workspace needs a compatible Todorbit version. Nothing was replaced.',
+        );
+      }
+      if (recoveryCode != null &&
+          !key.isStandard &&
+          key.exportRecoveryCode() !=
+              SyncWorkspaceKey.fromRecoveryCode(recoveryCode)
+                  .exportRecoveryCode()) {
+        throw const CloudFailure(
+          'The entered code differs from the retained workspace key. Nothing was replaced.',
+        );
+      }
     }
-    // Check again after creation. Drive has no unique-file/CAS creation API.
-    // Competing first-device keys therefore stop exchange instead of silently
-    // accepting two independent encrypted histories for one account.
     await verifyWorkspace(binding, key);
     _checkAccount(account);
-    if (previous == null) {
-      await vault.write(
-        jsonEncode({
-          'format': 1,
-          'workspace': workspace,
-          'account': account,
-          'device': binding.device,
-          'recovery': key.exportRecoveryCode(),
-        }),
-      );
-    }
-    return SyncPairing(binding, key);
+    final result = SyncPairing(
+      binding,
+      key,
+      proof: key.isStandard ? null : retainedProof,
+      introSeen: previous?.introSeen ?? true,
+    );
+    // Keep the first-time Standard explanation pending until acknowledged.
+    final stored = await saved();
+    final finalResult = SyncPairing(
+      binding,
+      key,
+      proof: result.proof,
+      introSeen: stored?.introSeen ?? result.introSeen,
+    );
+    await _save(finalResult);
+    return finalResult;
   }
 
-  Future<void> recoverKey(SyncBinding binding, String recoveryCode) async {
+  Future<void> recoverKey(
+    SyncBinding binding,
+    String? recoveryCode, {
+    String? password,
+  }) async {
     _checkAccount(binding.account);
     if (binding.workspace != workspaceFor(binding.account)) {
       throw const CloudFailure(
-        'This profile needs recovery of its original encrypted data.',
+        'Recover the original workspace before authorizing this profile.',
       );
     }
     final previous = await saved();
-    final key = SyncWorkspaceKey.fromRecoveryCode(recoveryCode);
     if (previous != null &&
         (previous.binding.workspace != binding.workspace ||
             previous.binding.account != binding.account ||
-            previous.binding.device != binding.device ||
-            previous.key.exportRecoveryCode() != key.exportRecoveryCode())) {
+            previous.binding.device != binding.device)) {
       throw const CloudFailure(
         'The retained authorization differs. No key was replaced.',
       );
     }
-    await verifyWorkspace(binding, key);
-    _checkAccount(binding.account);
-    await vault.write(
-      jsonEncode({
-        'format': 1,
-        'workspace': binding.workspace,
-        'account': binding.account,
-        'device': binding.device,
-        'recovery': key.exportRecoveryCode(),
-      }),
-    );
+    // Authenticate before persisting, keeping the retained SQL device identity.
+    await (_preparing ??= _prepare(
+      recoveryCode,
+      password,
+      null,
+      retainedBinding: binding,
+    ).whenComplete(() => _preparing = null));
   }
 
   Future<SyncPairing> activate(
@@ -230,14 +366,13 @@ class SyncPairingService {
     // Write the new identity before SQL can commit it. The quarantined profile
     // cannot exchange in between; a failed SQL attempt retains both snapshots
     // and can retry with another unused identity without reusing old clocks.
-    await vault.write(
-      jsonEncode({
-        'format': 1,
-        'workspace': binding.workspace,
-        'account': binding.account,
-        'device': binding.device,
-        'recovery': existing.key.exportRecoveryCode(),
-      }),
+    await _save(
+      SyncPairing(
+        binding,
+        existing.key,
+        proof: existing.proof,
+        introSeen: existing.introSeen,
+      ),
     );
     return SyncPairing(binding, existing.key);
   }
@@ -321,9 +456,15 @@ class SyncPairingService {
       );
     }
     for (final proof in proofs) {
+      if (proof.properties['state'] == 'migrating') {
+        throw const CloudFailure(
+          'Cloud encryption is being migrated. Retry later; local changes are retained.',
+          kind: CloudFailureKind.migrating,
+        );
+      }
       if (proof.accountId != binding.account ||
-          proof.bytes > 4096 ||
-          proof.properties['protocol'] != '1' ||
+          proof.bytes > 8192 ||
+          !{'1', '2'}.contains(proof.properties['protocol']) ||
           proof.properties['workspaceId'] != binding.workspace ||
           proof.properties['application'] != 'todorbit-sync') {
         throw const FormatException('Invalid workspace proof identity');
@@ -333,6 +474,22 @@ class SyncPairingService {
       // regardless of that mutable transport marker; never replace the key.
       final bytes = await storage.download(proof, (_, _, _) {});
       _checkAccount(binding.account);
+      if (proof.properties['protocol'] == '2') {
+        final data = SyncWorkspaceFormat.read(bytes, binding);
+        try {
+          await SyncWorkspaceFormat.verify(data, binding, key);
+        } catch (_) {
+          throw const CloudFailure(
+            'Cloud mode or private credentials differ. All local data and keys are retained.',
+          );
+        }
+        continue;
+      }
+      if (key.isStandard) {
+        throw const CloudFailure(
+          'Encrypted cloud history requires its original recovery key. Nothing was replaced.',
+        );
+      }
       try {
         if (bytes.length > 4096) throw const FormatException();
         final data = jsonDecode(utf8.decode(bytes)) as Map;

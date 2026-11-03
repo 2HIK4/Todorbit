@@ -290,7 +290,7 @@ extension SyncExchangeRepository on LifeRepository {
         remote.properties['workspaceId'] != batch.binding.workspace ||
         remote.properties['application'] != 'todorbit-sync' ||
         remote.properties['deviceId'] != stored.originDevice ||
-        remote.properties['protocol'] != '1' ||
+        remote.properties['protocol'] != stored.properties['protocol'] ||
         remote.properties['kind'] != 'operations' ||
         remote.properties['verified'] != 'true' ||
         stored.sha256 != batch.sha256) {

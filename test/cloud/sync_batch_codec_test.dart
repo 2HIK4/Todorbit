@@ -91,6 +91,28 @@ void main() {
     },
   );
 
+  test('Standard payload is plaintext, account bound and never accepted as private', () async {
+    final standard = SyncWorkspaceKey.standard();
+    final bytes = await codec.encrypt(
+      batch,
+      standard,
+      workspace: 'workspace',
+      account: 'account',
+    );
+    expect(utf8.decode(bytes), contains('Private task text'));
+    expect((await decrypt(bytes, usingKey: standard)).toJson(), batch.toJson());
+    await expectLater(decrypt(bytes), throwsFormatException);
+    await expectLater(
+      decrypt(bytes, usingKey: standard, account: 'other'),
+      throwsFormatException,
+    );
+    await expectLater(
+      decrypt(await encrypt(), usingKey: standard),
+      throwsFormatException,
+    );
+    expect(() => standard.exportRecoveryCode(), throwsStateError);
+  });
+
   test('recovery codes reject short, malformed and noncanonical encodings', () {
     for (final code in [
       '',

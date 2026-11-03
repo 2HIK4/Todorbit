@@ -1,4 +1,4 @@
-# Encrypted Google Drive sync
+# Google Drive sync
 
 Published baseline: 1.0.19-beta.9+32, schema 26, sync protocol 1. Beta 9 includes
 the interrupted-upload and offline-decision fixes from
@@ -8,27 +8,28 @@ and limits. Real Google Drive end-to-end acceptance remains incomplete.
 
 ## Connect two devices
 
-1. Use disposable profiles and an authorized disposable Google account for
-   acceptance testing. Keep an external verified backup of existing data. On the
-   first device, press Sync or open Settings > Sync > Connect Google Drive.
-   Sign-in continues through secure setup and the initial exchange automatically.
-   Setup creates a verified local recovery snapshot.
-2. Choose Save your recovery code (or Advanced > Show recovery code) and keep it
-   privately outside the device.
-   Do not post it in diagnostics. The code and access to this Google account can
-   decrypt the workspace. Losing every copy can make encrypted history unusable.
-3. On the other device, press Sync and connect the same Google account. Todorbit
-   detects existing encrypted data and requests the first device's recovery code
-   once. Choose Authorize this device. Each device keeps its own identity and
-   uploads its existing records; setup does not replace either database.
-4. Click the top-right Sync icon. Settings > Sync shows pending changes, conflicts
-   and last successful exchange. Automatic sync can be turned off; Sync now still
-   exchanges when explicitly requested. Snapshot backup remains independent.
+The current development source defaults new workspaces to **Standard Sync**:
+connect Google Drive and sync without another password. A second updated device
+automatically detects Standard data and merges its existing local records.
+Existing encrypted workspaces still require their original recovery credential
+once; they are never replaced with Standard data. Published beta-9 behavior above
+remains historical until a new candidate is explicitly built and accepted.
 
-Pairing verifies an account-bound encrypted workspace proof. Competing keys or
-workspace identities stop exchange and preserve history; do not create a new key
-as a recovery shortcut. Existing OAuth publisher configuration is reused. No
-additional cloud service, Todorbit account or permissions are introduced.
+For a **new empty** workspace, Settings > Sync > Encryption options offers Private
+Encrypted Sync. Choose a memorable passphrase, save the random recovery code and
+connect. On another device, choose the passphrase or recovery-code method once;
+protected local storage retains the unlocked workspace key. Standard data is
+readable JSON on Drive; private data is encrypted before upload. Backups remain
+independent recovery snapshots. Both modes retain the existing portable allowlist,
+initial merge, conflicts and automatic scheduling below.
+
+**Existing workspace conversion and passphrase changes are unavailable.** The
+control explains this explicitly. No cloud data is deleted or rewritten. See
+[implementation, safety limits, test receipt and manual acceptance](SYNC_OPTIONAL_ENCRYPTION.md).
+Legacy encrypted workspaces keep their existing recovery codes. New protocol-2
+workspace proofs require updated clients on both devices; older clients stop at
+proof verification. OAuth configuration and account/profile safeguards are reused.
+Normal users never enter publisher client IDs or configuration files.
 
 ## Timing and background behavior
 
@@ -125,7 +126,7 @@ Use disposable profiles on both platforms and an authorized disposable Google
 account. Real Drive acceptance has not been performed for this candidate; current
 automated cloud evidence uses mocks. Do not test against personal data.
 
-1. Pair both profiles with one code. Create a task with notes and a small managed
+1. Connect both profiles in Standard mode, or authorize a private workspace with its passphrase/recovery code. Create a task with notes and a small managed
    attachment on Windows. Click Sync, then sync Android; compare IDs and bytes.
 2. Edit its title on one device and notes on the other while offline. Reconnect;
    verify both independent changes survive and no duplicate task appears.
