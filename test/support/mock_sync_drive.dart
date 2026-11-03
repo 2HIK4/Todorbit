@@ -13,6 +13,7 @@ class MockSyncDrive implements SyncStorageProvider {
   final objects = <CloudObject>[];
   final payloads = <String, Uint8List>{};
   bool failAfterUpload = false, failDownload = false, expired = false;
+  bool failChanges = false;
   int uploads = 0, downloads = 0, lists = 0;
   Future<void> Function()? beforeList;
   @override
@@ -26,6 +27,7 @@ class MockSyncDrive implements SyncStorageProvider {
 
   @override
   Future<DriveChangePage> changes(String token) async {
+    if (failChanges) throw const CloudFailure('Synthetic offline');
     if (expired) {
       expired = false;
       throw const DriveCheckpointExpired();

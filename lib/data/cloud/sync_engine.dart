@@ -49,12 +49,18 @@ class SyncEngine {
     this.onRemoteApplied,
     this.timeBudget,
     this.canExchange,
-  });
+    this.pollInterval = const Duration(minutes: 2),
+    this.changeDebounce = const Duration(milliseconds: 750),
+    this.foregroundInterval = const Duration(seconds: 15),
+    DateTime Function()? now,
+  }) : _now = now ?? DateTime.now;
   final LifeRepository repository;
   final SyncStorageProvider storage;
   final BackupService recovery;
   final Duration? timeBudget;
   final Future<bool> Function()? canExchange;
+  final Duration pollInterval, changeDebounce, foregroundInterval;
+  final DateTime Function() _now;
   final Future<SyncWorkspaceKey?> Function(SyncBinding) loadKey;
   final bool Function() isUnlocked;
   final Future<void> Function(SyncBinding, SyncWorkspaceKey) verifyWorkspace;
@@ -64,7 +70,9 @@ class SyncEngine {
   SyncEngineStatus status = const SyncEngineStatus(SyncPhase.disconnected);
   Future<void>? _running;
   Timer? _poll, _debounce;
-  bool _closed = false;
+  bool _closed = false, _started = false, _foreground = true;
+  bool _followup = false;
+  DateTime? _lastForegroundCheck;
 
   void _emit(SyncEngineStatus value) {
     status = value;
@@ -72,26 +80,52 @@ class SyncEngine {
   }
 
   void start() {
-    if (_closed || _poll != null) return;
-    _poll = Timer.periodic(
-      const Duration(seconds: 25),
-      (_) => unawaited(syncNow()),
-    );
+    if (_closed || _started) return;
+    _started = true;
+    _startPolling();
     unawaited(syncNow());
+  }
+
+  void _startPolling() {
+    if (!_foreground || _closed || !_started || _poll != null) return;
+    _poll = Timer.periodic(pollInterval, (_) => unawaited(syncNow()));
+  }
+
+  void setForeground(bool active) {
+    if (_closed) return;
+    _foreground = active;
+    if (!active) {
+      _poll?.cancel();
+      _poll = null;
+      _debounce?.cancel();
+      return;
+    }
+    _startPolling();
+    final now = _now();
+    if (_lastForegroundCheck == null ||
+        now.difference(_lastForegroundCheck!) >= foregroundInterval) {
+      _lastForegroundCheck = now;
+      unawaited(syncNow());
+    }
   }
 
   void localChanged() {
     if (_closed) return;
+    if (_running != null) _followup = true;
     _debounce?.cancel();
-    _debounce = Timer(
-      const Duration(milliseconds: 750),
-      () => unawaited(syncNow()),
-    );
+    if (!_foreground) return;
+    _debounce = Timer(changeDebounce, () => unawaited(syncNow()));
   }
 
   Future<void> syncNow({bool manual = false}) {
     if (_closed) return Future.value();
-    return _running ??= _cycle(manual).whenComplete(() => _running = null);
+    return _running ??= _cycle(manual).whenComplete(() {
+      _running = null;
+      if (_followup && !_closed) {
+        _followup = false;
+        localChanged();
+      }
+    });
   }
 
   Future<void> _cycle(bool manual) async {
@@ -129,7 +163,8 @@ class SyncEngine {
           local.quarantined ||
           !local.enabled ||
           (!manual &&
-              (!local.automatic ||
+              (!_foreground ||
+                  !local.automatic ||
                   (local.retryAt?.isAfter(DateTime.now().toUtc()) ?? false)))) {
         _emit(
           SyncEngineStatus(
@@ -184,7 +219,18 @@ class SyncEngine {
         return;
       }
       lease = await repository.acquireSyncLease(binding);
-      if (lease == null) return;
+      if (lease == null) {
+        _emit(
+          SyncEngineStatus(
+            SyncPhase.pending,
+            pending: local.pending,
+            conflicts: local.conflicts,
+            lastSuccess: local.lastSuccess,
+            notice: 'Another sync check is running. Try again shortly.',
+          ),
+        );
+        return;
+      }
       final owned = lease;
       Future<void> guard() async {
         if (deadline != null && !DateTime.now().isBefore(deadline)) {

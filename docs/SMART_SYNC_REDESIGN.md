@@ -88,6 +88,14 @@ disposable account; no owner account/profile will be used.
 | Invocation / purpose | Source | Result | Reason / limits |
 | --- | --- | --- | --- |
 | Baseline status/log, architecture/source/test/receipt inspection | `0dcfb5a` | Clean; audit above | New task; prior sync mocks and beta 7 release evidence reviewed, not rerun |
+| `verify.ps1 -Mode Quick -ChangedPaths lib/app/sync_controller.dart,lib/data/cloud/sync_engine.dart,lib/data/cloud/sync_pairing_service.dart -Tests test/sync_controller_test.dart,test/smart_sync_controller_test.dart,test/cloud/sync_engine_test.dart,test/cloud/sync_pairing_service_test.dart` | `4b26af5` + orchestration working diff; `.buildlog/verify/20261103-144631-0486/` | PASS: format, analysis, 19 tests, diff check | New: sign-in continuation, second-device one-time code, offline decisions in both directions/new divergence, safe lost-key recovery, scheduling/debounce/follow-up; mocked provider only |
+| Dart MCP DTD discover/connect; first analyzer probe then roots.add | Current working source | DTD connected, no running app; analyzer initially rejected missing roots; root registered | New tooling setup, not a runtime pass |
+
+Orchestration checkpoint: setup continuation, secure retained-binding key recovery,
+active polling at two minutes, 15-second resume throttle, 750-ms local debounce,
+in-flight follow-up and offline resolution queue pass focused verification.
+No protocol/schema change. UI changes remain under implementation and are not
+covered by the 19-test orchestration receipt.
 
 Next: implement and verify orchestration, then simplify UI and complete the
 integration/visual acceptance ledger. No push, merge or publication authorized.

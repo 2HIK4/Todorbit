@@ -585,14 +585,13 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
     final privacy = ref.read(privacyManagerProvider);
     if (state == AppLifecycleState.resumed) {
       unawaited(privacy.resumed());
-      unawaited(
-        ref.read(syncControllerProvider)?.syncNow() ?? Future<void>.value(),
-      );
-      ref.read(appControllerProvider).refresh();
+      ref.read(syncControllerProvider)?.setForeground(true);
+      ref.read(appControllerProvider).refresh(notifyLocalChange: false);
       ref.read(appControllerProvider).checkAutomaticBackup();
     } else if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
+      ref.read(syncControllerProvider)?.setForeground(false);
       privacy.becameInactive();
     }
   }

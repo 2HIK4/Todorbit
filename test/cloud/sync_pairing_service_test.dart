@@ -2,11 +2,46 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:life_manager/data/cloud/cloud_storage_provider.dart';
 import 'package:life_manager/data/cloud/sync_batch_codec.dart';
 import 'package:life_manager/data/cloud/sync_pairing_service.dart';
+import 'package:life_manager/data/sync_exchange_models.dart';
 
 import '../support/mock_sync_drive.dart';
 import 'cloud_test_fakes.dart';
 
 void main() {
+  test('lost key recovery authenticates before saving and retains the SQL device identity', () async {
+    final drive = MockSyncDrive(), vault = MemoryTokenStore();
+    final pairing = SyncPairingService(storage: drive, vault: vault);
+    final original = await pairing.prepare();
+    await vault.delete();
+    await expectLater(
+      pairing.recoverKey(
+        original.binding,
+        SyncWorkspaceKey.generate().exportRecoveryCode(),
+      ),
+      throwsA(isA<CloudFailure>()),
+    );
+    expect(vault.value, isNull);
+    await pairing.recoverKey(
+      original.binding,
+      original.key.exportRecoveryCode(),
+    );
+    expect((await pairing.saved())!.binding.device, original.binding.device);
+    expect(drive.objects, hasLength(1));
+    final protected = vault.value;
+    await expectLater(
+      pairing.recoverKey(
+        SyncBinding(
+          workspace: original.binding.workspace,
+          account: original.binding.account,
+          device: '628318fd-baf1-4462-9c10-a3ea5a918003',
+        ),
+        original.key.exportRecoveryCode(),
+      ),
+      throwsA(isA<CloudFailure>()),
+    );
+    expect(vault.value, protected);
+  });
+
   test(
     'second device must prove the original account-bound recovery key',
     () async {

@@ -61,11 +61,17 @@ class SyncController extends ChangeNotifier {
   StreamSubscription<SyncEngineStatus>? _subscription;
   SyncExchangeStatus? snapshot;
   bool busy = false, _disposed = false;
+  bool needsRecoveryCode = false;
+  bool recoveryReminder = false;
   String? message;
   SyncEngineStatus get status => engine.status;
 
   String get label => auth.needsReconnect
       ? 'Reconnect Google Drive'
+      : needsRecoveryCode
+      ? 'Authorize this device'
+      : snapshot?.binding == null && auth.account != null
+      ? 'Ready to set up sync'
       : switch (status.phase) {
           SyncPhase.disconnected => 'Connect Google Drive',
           SyncPhase.idle => 'Automatic sync is off',
@@ -77,11 +83,18 @@ class SyncController extends ChangeNotifier {
           SyncPhase.error => 'Sync error',
         };
 
+  int get conflictCount => status.conflicts;
+
+  void setForeground(bool active) => engine.setForeground(active);
+
   Future<void> initialize() async {
     try {
       snapshot = await repository.syncExchangeStatus();
       try {
         await auth.load();
+        if (snapshot?.binding case final binding?) {
+          needsRecoveryCode = await pairing.loadKey(binding) == null;
+        }
       } catch (_) {
         message = 'Reconnect Google Drive to resume. Local data, pending history and the workspace key are retained.';
       }
@@ -105,6 +118,11 @@ class SyncController extends ChangeNotifier {
     notifyListeners();
     try {
       await action();
+    } on SyncRecoveryRequired catch (error) {
+      needsRecoveryCode = true;
+      message = error.message;
+    } on FormatException {
+      message = 'The recovery code or retained authorization could not be verified. Check the original code; all data and keys are retained.';
     } catch (error) {
       message = error is CloudFailure ? error.message : 'Sync needs attention. Local data, pending changes and competing versions are retained.';
     } finally {
@@ -135,6 +153,19 @@ class SyncController extends ChangeNotifier {
   }
 
   Future<void> activate({String? recoveryCode}) => _action(() async {
+    final local = await repository.syncExchangeStatus();
+    if (local.binding != null && !local.quarantined) {
+      if (recoveryCode == null) throw const SyncRecoveryRequired();
+      await pairing.recoverKey(local.binding!, recoveryCode);
+      needsRecoveryCode = false;
+      await engine.syncNow(manual: true);
+      return;
+    }
+    await _activate(recoveryCode: recoveryCode);
+  });
+
+  Future<void> _activate({String? recoveryCode}) async {
+    final firstDevice = recoveryCode == null && await pairing.saved() == null;
     final prepared = await pairing.prepare(recoveryCode: recoveryCode);
     if (!isUnlocked()) return;
     await repository.activateSyncCapture(
@@ -144,9 +175,19 @@ class SyncController extends ChangeNotifier {
       recovery: recovery,
     );
     await repository.setAutomaticSync(prepared.binding, true);
-    await scheduleBackground?.call(true);
+    needsRecoveryCode = false;
+    recoveryReminder = firstDevice;
+    await _schedule(true);
     await engine.syncNow(manual: true);
-  });
+  }
+
+  Future<void> _schedule(bool enabled) async {
+    try {
+      await scheduleBackground?.call(enabled);
+    } catch (_) {
+      message = 'Background checks are unavailable. Sync still works while Todorbit is open.';
+    }
+  }
 
   Future<void> reconcileRestored({String? recoveryCode}) => _action(() async {
     final hadVault = await pairing.saved() != null;
@@ -195,13 +236,39 @@ class SyncController extends ChangeNotifier {
     final binding = (await repository.syncExchangeStatus()).binding;
     if (binding == null) throw StateError('Pair this profile first');
     await repository.setAutomaticSync(binding, enabled);
-    await scheduleBackground?.call(enabled);
+    await _schedule(enabled);
     if (enabled) await engine.syncNow();
   });
 
-  Future<void> syncNow({bool manual = false}) => _action(() async {
-    await engine.syncNow(manual: manual);
+  Future<void> reconnectAndSync() => _action(() async {
+    await auth.connect();
+    if (isUnlocked()) await _sync(true);
   });
+
+  Future<void> syncNow({bool manual = false}) => _action(() => _sync(manual));
+
+  Future<void> _sync(bool manual) async {
+    if (manual) {
+      if (auth.account == null || auth.needsReconnect) {
+        await auth.connect();
+        if (!isUnlocked()) return;
+      }
+      final local = await repository.syncExchangeStatus();
+      if (local.quarantined) {
+        message = 'Review the restored profile before syncing.';
+        return;
+      }
+      if (local.binding == null) {
+        await _activate();
+        return;
+      }
+      if (await pairing.loadKey(local.binding!) == null) {
+        throw const SyncRecoveryRequired();
+      }
+      needsRecoveryCode = false;
+    }
+    await engine.syncNow(manual: manual);
+  }
 
   Future<SyncConflictReview?> reviewConflicts() async {
     if (!isUnlocked()) return null;
@@ -237,12 +304,12 @@ class SyncController extends ChangeNotifier {
       // Fetch known cloud changes before accepting a popup's decisions. SQL
       // then revalidates every local/retained revision under its writer lock.
       await engine.syncNow(manual: true);
-      if (!isUnlocked() ||
-          engine.status.notice != null ||
-          engine.status.phase == SyncPhase.disconnected ||
-          engine.status.phase == SyncPhase.error ||
-          engine.status.phase == SyncPhase.offline) {
-        message = 'Reconnect and refresh the review before applying decisions.';
+      if (!isUnlocked()) return;
+      if (engine.status.phase != SyncPhase.offline &&
+          (engine.status.notice != null ||
+              engine.status.phase == SyncPhase.disconnected ||
+              engine.status.phase == SyncPhase.error)) {
+        message = 'Refresh the review before applying decisions. All versions are retained.';
         return;
       }
       final binding = (await repository.syncExchangeStatus()).binding;
@@ -266,6 +333,12 @@ class SyncController extends ChangeNotifier {
         await onApplied();
         message = 'Decisions saved on this device. Queued resolutions will upload when connected.';
         await engine.syncNow(manual: true);
+        if (engine.status.phase == SyncPhase.upToDate ||
+            engine.status.phase == SyncPhase.needsAttention &&
+                engine.status.notice == null &&
+                engine.status.pending == 0) {
+          message = 'Decisions synced. Other devices will receive them on their next check.';
+        }
       } else {
         message = result?.state == SyncApplyState.retry
             ? 'New changes arrived. Review the refreshed versions.'

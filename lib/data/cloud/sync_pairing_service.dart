@@ -18,6 +18,13 @@ class SyncPairing {
   final SyncWorkspaceKey key;
 }
 
+class SyncRecoveryRequired extends CloudFailure {
+  const SyncRecoveryRequired()
+    : super(
+        'Enter the recovery code from your other device to authorize this device once.',
+      );
+}
+
 class SyncPairingService {
   SyncPairingService({required this.storage, required this.vault});
   final CloudStorageProvider storage;
@@ -101,9 +108,7 @@ class SyncPairingService {
         .where((o) => o.properties['kind'] == 'workspace')
         .toList();
     if (previous == null && recoveryCode == null && objects.isNotEmpty) {
-      throw const CloudFailure(
-        'This account already has a sync workspace. Enter its recovery code from your paired device.',
-      );
+      throw const SyncRecoveryRequired();
     }
     final supplied = recoveryCode == null
         ? null
@@ -166,6 +171,37 @@ class SyncPairingService {
       );
     }
     return SyncPairing(binding, key);
+  }
+
+  Future<void> recoverKey(SyncBinding binding, String recoveryCode) async {
+    _checkAccount(binding.account);
+    if (binding.workspace != workspaceFor(binding.account)) {
+      throw const CloudFailure(
+        'This profile needs recovery of its original encrypted data.',
+      );
+    }
+    final previous = await saved();
+    final key = SyncWorkspaceKey.fromRecoveryCode(recoveryCode);
+    if (previous != null &&
+        (previous.binding.workspace != binding.workspace ||
+            previous.binding.account != binding.account ||
+            previous.binding.device != binding.device ||
+            previous.key.exportRecoveryCode() != key.exportRecoveryCode())) {
+      throw const CloudFailure(
+        'The retained authorization differs. No key was replaced.',
+      );
+    }
+    await verifyWorkspace(binding, key);
+    _checkAccount(binding.account);
+    await vault.write(
+      jsonEncode({
+        'format': 1,
+        'workspace': binding.workspace,
+        'account': binding.account,
+        'device': binding.device,
+        'recovery': key.exportRecoveryCode(),
+      }),
+    );
   }
 
   Future<SyncPairing> activate(

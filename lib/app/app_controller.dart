@@ -133,7 +133,7 @@ class AppController extends ChangeNotifier {
     return null;
   }
 
-  Future<void> refresh() async {
+  Future<void> refresh({bool notifyLocalChange = true}) async {
     final today = localDate(DateTime.now());
     await repository.ensureRecurringTasks(
       RecurrenceRule.shiftDate(today, -14),
@@ -200,7 +200,7 @@ class AppController extends ChangeNotifier {
     if (selectedTaskId != null && selectedTask == null) selectedTaskId = null;
     loading = false;
     notifyListeners();
-    onLocalChange?.call();
+    if (notifyLocalChange) onLocalChange?.call();
   }
 
   void _syncTimerHeartbeat() {

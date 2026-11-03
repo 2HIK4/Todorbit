@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 
 import '../support/mock_sync_drive.dart';
 
@@ -12,6 +13,21 @@ import 'package:life_manager/data/cloud/cloud_storage_provider.dart';
 import 'package:life_manager/data/cloud/sync_engine.dart';
 import 'package:life_manager/data/cloud/sync_batch_codec.dart';
 import 'package:life_manager/domain/models.dart';
+
+class _ScheduledEngine extends SyncEngine {
+  _ScheduledEngine({
+    required super.repository,
+    required super.storage,
+    required super.recovery,
+    required super.loadKey,
+    required super.now,
+  }) : super(isUnlocked: () => true, verifyWorkspace: (_, _) async {});
+  int attempts = 0;
+  @override
+  Future<void> syncNow({bool manual = false}) async {
+    attempts++;
+  }
+}
 
 void main() {
   late Directory root;
@@ -96,6 +112,82 @@ void main() {
       expect((await receiver.tasks()), hasLength(1));
     },
   );
+  testWidgets(
+    'startup, active polling, debounced edits and throttled resume release timers on close',
+    (tester) async {
+      var clock = DateTime.utc(2026, 11, 3);
+      final scheduled = _ScheduledEngine(
+        repository: sender,
+        storage: drive,
+        recovery: leftRecovery,
+        loadKey: a.loadKey,
+        now: () => clock,
+      );
+      scheduled.start();
+      scheduled.start();
+      expect(scheduled.attempts, 1);
+      scheduled.localChanged();
+      scheduled.localChanged();
+      await tester.pump(const Duration(milliseconds: 749));
+      expect(scheduled.attempts, 1);
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(scheduled.attempts, 2);
+      await tester.pump(const Duration(minutes: 2));
+      expect(scheduled.attempts, 3);
+      scheduled.setForeground(false);
+      scheduled.localChanged();
+      await tester.pump(const Duration(minutes: 4));
+      expect(scheduled.attempts, 3);
+      scheduled.setForeground(true);
+      expect(scheduled.attempts, 4);
+      scheduled.setForeground(false);
+      scheduled.setForeground(true);
+      expect(scheduled.attempts, 4);
+      clock = clock.add(const Duration(seconds: 16));
+      scheduled.setForeground(false);
+      scheduled.setForeground(true);
+      expect(scheduled.attempts, 5);
+      await scheduled.close();
+      await tester.pump(const Duration(minutes: 4));
+      expect(scheduled.attempts, 5);
+    },
+  );
+
+  test('committed edits during a running exchange schedule a follow-up instead of disappearing', () async {
+    await sender.setAutomaticSync(first, true);
+    final entered = Completer<void>(), release = Completer<void>();
+    var proofs = 0;
+    final queued = SyncEngine(
+      repository: sender,
+      storage: drive,
+      recovery: leftRecovery,
+      loadKey: a.loadKey,
+      isUnlocked: () => true,
+      changeDebounce: Duration.zero,
+      verifyWorkspace: (_, _) async {
+        if (++proofs == 1) {
+          entered.complete();
+          await release.future;
+        }
+      },
+    );
+    final secondCycle = queued.changes.firstWhere(
+      (s) => proofs > 1 && s.phase == SyncPhase.upToDate,
+    );
+    try {
+      final firstCycle = queued.syncNow();
+      await entered.future;
+      await sender.addTask(const TaskDraft(title: 'Committed while syncing'));
+      queued.localChanged();
+      release.complete();
+      await firstCycle;
+      await secondCycle.timeout(const Duration(seconds: 10));
+      expect(proofs, 2);
+      expect((await sender.syncExchangeStatus()).pending, 0);
+    } finally {
+      await queued.close();
+    }
+  });
   test(
     'ambiguous uploads retry exact ciphertext and cannot duplicate domain work',
     () async {
