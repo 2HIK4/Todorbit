@@ -1,5 +1,36 @@
 # Progress
 
+## Smart Sync comprehensive verification (2026-11-03; local fixes)
+
+- Branch `maintenance/smart-sync-verification`, baseline `4987a46`; published
+  beta 8 application remains `dd36189`. No push, merge, version/tag change or
+  new release. App fix `e7eedc1`, Sandbox harness `9fe20f5` are local only.
+- Confirmed two beta-8 defects using the real Drive adapter over synthetic HTTP:
+  interrupted completed uploads leave an absent readback marker that blocks
+  receivers/proof setup, and socket/HTTP exceptions incorrectly block durable
+  offline decisions. Fixed authentication/receipt handling and transport-state
+  classification; encryption, identity/causal checks and outgoing acknowledgements
+  remain required. No observed data loss; no real account/profile accessed.
+- Current-source full serial suite **635 PASS/one existing skip**, 1180.43s;
+  four-root direct analysis clean, 313-file format clean. Seven new contracts
+  cover both-direction CRUD/preferences, interrupted/retried exchanges, wrong
+  code/tamper rejection, offline/restarted bulk decisions and new divergence.
+  Python helpers pass eight/11/three plus the focused Full-plan gate assertion.
+- Actual published Windows Sandbox install/portable/startup/native self-test,
+  populated upgrade/uninstall preservation/reinstall PASS. Actual published
+  API-35 Android APK fresh install/home/Sync light/dark/200% text/Close inspected.
+  Prior production-signed 16 KiB upgrade remains valid evidence. Corrected-source
+  Windows Debug build/startup and real hot reload/restart PASS; Driver inspects
+  Sync dark/light and retained theme, no runtime errors. Native UI automation
+  kernel is unavailable; physical keyboard/DPI/reader acceptance remains open.
+- Measured ~90.3 GB repository, 63.1 GB in `.buildlog`; USB D flush latency and
+  severe RAM contention observed. Isolated C checkout/temp and sequential heavy
+  checks used; no cleanup/security changes. Flutter analyzer wrapper still stalls;
+  direct analysis succeeds. No unsupported speedup/antivirus-cause claim.
+- No disposable Google account available: **real Drive exchange remains NOT
+  TESTED**. Beta 8 is not ready for broader promotion; fixes are not shipped.
+  [Complete report, coverage, manual procedure and download-count commands](SMART_SYNC_VERIFICATION.md).
+
 ## Experimental Smart Sync beta 8 published (2026-11-03)
 
 - Published [v1.0.19-beta.8](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.8)

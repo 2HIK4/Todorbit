@@ -1,9 +1,10 @@
 # Encrypted Google Drive sync
 
-Published baseline: 1.0.19-beta.7, schema 26, sync protocol 1. The unpublished
-Smart Sync improvements retain these formats and the application version. See
-the [implementation and verification ledger](SMART_SYNC_REDESIGN.md) for current
-evidence; historical release receipts do not verify this working source.
+Published baseline: 1.0.19-beta.8+31, schema 26, sync protocol 1. See the
+[publication receipt](SMART_SYNC_BETA_8_PUBLICATION.md) and
+[comprehensive verification](SMART_SYNC_VERIFICATION.md). The latter identifies
+local fixes for interrupted uploads and offline decisions that are not included
+in the published beta. Real Drive end-to-end acceptance remains incomplete.
 
 ## Connect two devices
 

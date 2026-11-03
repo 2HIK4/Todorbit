@@ -1,5 +1,10 @@
 # Smart Sync implementation ledger
 
+Current follow-up: [comprehensive verification and confirmed fixes](SMART_SYNC_VERIFICATION.md).
+The original implementation below was published as beta 8 at `dd36189`;
+[publication evidence](SMART_SYNC_BETA_8_PUBLICATION.md) supersedes the historical
+unpublished/build-pending statements. New fixes remain local and are not in beta 8.
+
 Implementation is committed on `feature/smart-sync-redesign`; verification is
 partial. See [final verification status](#final-verification-status),
 [implemented behavior](#implemented-behavior-for-review),

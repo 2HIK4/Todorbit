@@ -1,5 +1,16 @@
 # Decisions
 
+- **Authenticated sync versus upload receipts (2026-11-03):** treat Drive's
+  mutable `verified` app property as a sender-side readback acknowledgement,
+  not a substitute for authenticated content. A lost completed-upload reply can
+  leave that PATCH absent indefinitely. Receiving still validates identity,
+  length/digest, AES-GCM, authenticated batch/device, schema and causal structure;
+  only retained authenticated receipts permit cache hits. Outgoing acknowledgement
+  still requires verified readback. No format/schema/key migration or cloud
+  deletion is introduced. Classify ordinary socket/HTTP-client failures as offline
+  so valid reviewed decisions remain durable without weakening stale/security
+  barriers. See [verification and published-beta impact](SMART_SYNC_VERIFICATION.md).
+
 - **Smart Sync refinement (2026-11-03):** keep schema 26, protocol 1, the existing
   encrypted operation journal, provider adapter and snapshot backup formats.
   Manual sign-in continues through setup/exchange. A second device supplies its
