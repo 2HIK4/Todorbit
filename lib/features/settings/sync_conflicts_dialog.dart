@@ -43,7 +43,7 @@ class SyncConflictsDialog extends StatefulWidget {
 class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
   late SyncConflictReview review = widget.review;
   final choices = <String, SyncResolutionChoice>{};
-  bool applying = false, handled = false;
+  bool applying = false, handled = false, confirming = false;
   String? error;
   @override
   void initState() {
@@ -64,12 +64,21 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
     super.dispose();
   }
 
-  String _value(Object? value) => switch (value) {
-    null => 'Not set',
-    String text => text.isEmpty ? 'Empty' : text,
-    bool flag => flag ? 'Yes' : 'No',
+  String _value(Object? value, {String? field}) => switch ((field, value)) {
+    ('priority', 0) => 'None',
+    ('priority', 1) => 'Low',
+    ('priority', 2) => 'Medium',
+    ('priority', 3) => 'High',
+    (_, null) => 'Not set',
+    (_, String text) => text.isEmpty ? 'Empty' : text,
+    (_, bool flag) => flag ? 'Yes' : 'No',
     _ => const JsonEncoder.withIndent('  ').convert(value),
   };
+
+  void _choose(String id, SyncResolutionChoice choice) => setState(() {
+    choices[id] = choice;
+    confirming = false;
+  });
 
   Widget _version(
     SyncConflictRecord record,
@@ -120,7 +129,7 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
                   ),
                   const SizedBox(height: 4),
                   SelectableText(
-                    _value(value[field]),
+                    _value(value[field], field: field),
                     style: theme.textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 12),
@@ -131,11 +140,14 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
                   selected ? Icons.check_circle : Icons.radio_button_unchecked,
                 ),
                 label: Text(
-                  selected
-                      ? 'Selected'
+                  value == null
+                      ? 'Keep deletion'
+                      : record.local == null ||
+                            record.candidates.values.any((v) => v == null)
+                      ? 'Restore this record'
                       : title.startsWith('This')
-                      ? 'Keep This Device'
-                      : 'Keep Cloud',
+                      ? 'Keep this device'
+                      : 'Keep cloud version',
                 ),
               ),
               ExpansionTile(
@@ -210,10 +222,7 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
                   record.local,
                   choices.containsKey(record.id) &&
                       choices[record.id]!.revision == null,
-                  () => setState(
-                    () =>
-                        choices[record.id] = const SyncResolutionChoice.local(),
-                  ),
+                  () => _choose(record.id, const SyncResolutionChoice.local()),
                 ),
                 for (final id in record.remoteHeads)
                   _version(
@@ -225,11 +234,7 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
                         : 'Cloud ${id.substring(0, math.min(8, id.length))}',
                     record.candidates[id],
                     choices[record.id]?.revision == id,
-                    () => setState(
-                      () => choices[record.id] = SyncResolutionChoice.revision(
-                        id,
-                      ),
-                    ),
+                    () => _choose(record.id, SyncResolutionChoice.revision(id)),
                   ),
               ];
               if (constraints.maxWidth < 720 ||
@@ -362,23 +367,25 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
             onPressed: applying
                 ? null
                 : () => setState(() {
+                    confirming = false;
                     for (final record in review.records) {
                       choices[record.id] = const SyncResolutionChoice.local();
                     }
                   }),
-            child: const Text('Use This Device for All'),
+            child: Text('Keep this device for all (${review.records.length})'),
           ),
           TextButton(
             onPressed: applying || !canBulkCloud
                 ? null
                 : () => setState(() {
+                    confirming = false;
                     for (final record in review.records) {
                       choices[record.id] = SyncResolutionChoice.revision(
                         record.remoteHeads.single,
                       );
                     }
                   }),
-            child: const Text('Use Cloud for All'),
+            child: Text('Keep cloud for all (${review.records.length})'),
           ),
         ],
       ),
@@ -402,6 +409,16 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
         style: Theme.of(context).textTheme.titleLarge,
       ),
     );
+    final requiredRecords = review.records.where(
+      (r) => review.structural || r.review.needsDecision,
+    );
+    final ready = requiredRecords.every((r) => choices.containsKey(r.id));
+    final deletions = review.records.where((r) {
+      final choice = choices[r.id];
+      return choice != null &&
+          (choice.revision == null ? r.local : r.candidates[choice.revision]) ==
+              null;
+    }).length;
     return PopScope(
       canPop: !applying,
       onPopInvokedWithResult: (popped, _) {
@@ -421,21 +438,42 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
               children: [
                 if (!scrollingTitle) ...[title, const SizedBox(height: 8)],
                 Expanded(
-                  child: ListView.builder(
-                    itemCount: review.records.length + 1,
-                    itemBuilder: (_, i) => i == 0
-                        ? Column(
+                  child: confirming
+                      ? SingleChildScrollView(
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               if (scrollingTitle) ...[
                                 title,
                                 const SizedBox(height: 12),
                               ],
-                              _header(canBulkCloud),
+                              Text(
+                                'Apply ${choices.length} decisions?',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'The chosen values will replace competing changes on your synced devices.${deletions > 0 ? ' $deletions records will be deleted.' : ''} Your separate backups are kept.',
+                              ),
                             ],
-                          )
-                        : _record(review.records[i - 1]),
-                  ),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: review.records.length + 1,
+                          itemBuilder: (_, i) => i == 0
+                              ? Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (scrollingTitle) ...[
+                                      title,
+                                      const SizedBox(height: 12),
+                                    ],
+                                    _header(canBulkCloud),
+                                  ],
+                                )
+                              : _record(review.records[i - 1]),
+                        ),
                 ),
                 const SizedBox(height: 8),
                 Semantics(
@@ -449,16 +487,29 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
                 DialogActionBar(
                   children: [
                     TextButton(
-                      onPressed: applying ? null : _later,
-                      child: const Text('Resolve Later'),
+                      onPressed: applying
+                          ? null
+                          : confirming
+                          ? () => setState(() => confirming = false)
+                          : _later,
+                      child: Text(confirming ? 'Back' : 'Resolve later'),
                     ),
                     FilledButton(
                       onPressed:
-                          applying || choices.isEmpty || review.reason != null
+                          applying ||
+                              choices.isEmpty ||
+                              !ready ||
+                              review.reason != null
                           ? null
-                          : _apply,
+                          : confirming
+                          ? _apply
+                          : () => setState(() => confirming = true),
                       child: Text(
-                        applying ? 'Saving decisions…' : 'Apply Selected',
+                        applying
+                            ? 'Saving decisions…'
+                            : confirming
+                            ? 'Apply decisions'
+                            : 'Apply selected resolutions',
                       ),
                     ),
                   ],

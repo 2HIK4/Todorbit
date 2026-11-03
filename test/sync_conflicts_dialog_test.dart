@@ -19,6 +19,8 @@ import 'package:life_manager/features/settings/sync_conflicts_dialog.dart';
 import 'package:life_manager/features/settings/sync_settings_page.dart';
 import 'package:life_manager/data/cloud/cloud_storage_provider.dart';
 import 'package:life_manager/features/shared/app_theme.dart';
+import 'package:life_manager/features/shared/sync_status_button.dart';
+import 'package:life_manager/data/cloud/sync_engine.dart';
 import 'package:life_manager/domain/appearance.dart';
 
 import 'dart:io';
@@ -36,6 +38,12 @@ class _Controller extends SyncController {
     required MockSyncDrive drive,
   }) : super(storage: drive, isUnlocked: unlocked, onApplied: () async {});
   int applied = 0;
+  int requests = 0;
+  @override
+  Future<void> syncNow({bool manual = false}) async {
+    requests++;
+  }
+
   Map<String, SyncResolutionChoice>? selected;
   @override
   Future<SyncApplyResult?> resolve(
@@ -223,13 +231,20 @@ void main() {
       (tester) async {
         await open(tester, const Size(360, 640), 2, brightness);
         expect(tester.takeException(), isNull);
-        await tester.ensureVisible(find.text('Use Cloud for All'));
+        await tester.ensureVisible(find.text('Keep cloud for all (1)'));
         await tester.pumpAndSettle();
-        expect(find.text('Use Cloud for All').hitTestable(), findsOneWidget);
-        await tester.tap(find.text('Use Cloud for All'));
+        expect(
+          find.text('Keep cloud for all (1)').hitTestable(),
+          findsOneWidget,
+        );
+        await tester.tap(find.text('Keep cloud for all (1)'));
         await tester.pumpAndSettle();
         expect(controller.applied, 0);
-        await tester.tap(find.text('Apply Selected'));
+        await tester.tap(find.text('Apply selected resolutions'));
+        await tester.pumpAndSettle();
+        expect(controller.applied, 0);
+        expect(find.text('Apply 1 decisions?'), findsOneWidget);
+        await tester.tap(find.text('Apply decisions'));
         await tester.pumpAndSettle();
         expect(controller.applied, 1);
         expect(controller.selected![record.id]!.revision, 'remote');
@@ -259,6 +274,7 @@ void main() {
         'synthetic',
         'Synthetic device',
       );
+      controller.needsRecoveryCode = true;
       providerOwnsController = true;
       await tester.pumpWidget(
         ProviderScope(
@@ -316,4 +332,178 @@ void main() {
     expect(find.textContaining('Long synthetic notes.'), findsOneWidget);
     expect(controller.applied, 0);
   });
+
+  testWidgets(
+    'automatic attention stays a counted badge during sync without opening a route',
+    (tester) async {
+      providerOwnsController = true;
+      controller.engine.status = const SyncEngineStatus(
+        SyncPhase.syncing,
+        conflicts: 3,
+      );
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [syncControllerProvider.overrideWith((ref) => controller)],
+          child: const MaterialApp(home: Scaffold(body: SyncStatusButton())),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 3));
+      expect(find.byType(Badge), findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(Dialog), findsNothing);
+      expect(
+        find.byTooltip('Sync · Syncing · 3 conflicts need attention'),
+        findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel(RegExp('3 conflicts need attention')),
+        findsOneWidget,
+      );
+      semantics.dispose();
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  for (final brightness in Brightness.values) {
+    for (final state in [
+      'disconnected',
+      'ready',
+      'recovery',
+      'synced',
+      'offline',
+      'conflicts',
+    ]) {
+      testWidgets(
+        'compact ${brightness.name} Sync $state at 200 percent text',
+        (tester) async {
+          tester.view.devicePixelRatio = 1;
+          tester.view.physicalSize = const Size(360, 640);
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          if (state != 'disconnected') {
+            controller.auth.account = const CloudAccount(
+              'synthetic',
+              'very.long.synthetic.google.account.address.for.layout@example.invalid',
+            );
+          }
+          controller.needsRecoveryCode = state == 'recovery';
+          if (['synced', 'offline', 'conflicts'].contains(state)) {
+            controller.snapshot = SyncExchangeStatus(
+              binding: const SyncBinding(
+                workspace: 'fixture',
+                account: 'synthetic',
+                device: 'fixture',
+              ),
+              enabled: true,
+              automatic: true,
+              quarantined: false,
+              pending: 0,
+              conflicts: state == 'conflicts' ? 3 : 0,
+              waiting: 0,
+            );
+            controller.engine.status = SyncEngineStatus(
+              state == 'synced'
+                  ? SyncPhase.upToDate
+                  : state == 'offline'
+                  ? SyncPhase.offline
+                  : SyncPhase.needsAttention,
+              conflicts: state == 'conflicts' ? 3 : 0,
+              lastSuccess: DateTime.utc(2026, 11, 3, 10),
+            );
+          }
+          providerOwnsController = true;
+          await tester.pumpWidget(
+            ProviderScope(
+              overrides: [
+                syncControllerProvider.overrideWith((ref) => controller),
+              ],
+              child: RepaintBoundary(
+                key: const ValueKey('sync-capture'),
+                child: MaterialApp(
+                  theme: buildAppTheme(
+                    brightness,
+                    brightness == Brightness.dark
+                        ? ThemePalette.dark
+                        : ThemePalette.light,
+                    android: true,
+                  ),
+                  builder: (context, child) => MediaQuery(
+                    data: MediaQuery.of(context)
+                        .copyWith(textScaler: const TextScaler.linear(2)),
+                    child: child!,
+                  ),
+                  home: Scaffold(
+                    body: Builder(
+                      builder: (context) => TextButton(
+                        onPressed: () => showSyncSettings(context),
+                        child: const Text('Open sync'),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.tap(find.text('Open sync'));
+          await tester.pumpAndSettle();
+          expect(
+            find.byType(TextField),
+            state == 'recovery' ? findsOneWidget : findsNothing,
+          );
+          expect(find.text('Pair your devices'), findsNothing);
+          final primary = find.byType(FilledButton);
+          await tester.ensureVisible(primary);
+          await tester.pumpAndSettle();
+          expect(primary.hitTestable(), findsOneWidget);
+          expect(find.text('Close').hitTestable(), findsOneWidget);
+          if (state == 'conflicts') {
+            await tester.ensureVisible(find.text('Review conflicts'));
+            await tester.pumpAndSettle();
+            expect(find.text('Review conflicts').hitTestable(), findsOneWidget);
+          }
+          expect(tester.takeException(), isNull);
+          final output = Platform.environment['TODORBIT_UI_CAPTURE'];
+          if (output != null) {
+            await tester.runAsync(() async {
+              final boundary = tester.renderObject<RenderRepaintBoundary>(
+                find.byKey(const ValueKey('sync-capture')),
+              );
+              final image = await boundary.toImage();
+              final bytes = await image.toByteData(format: ImageByteFormat.png);
+              final file = File(
+                '$output/sync-${brightness.name}-$state-2x.png',
+              );
+              await file.parent.create(recursive: true);
+              await file.writeAsBytes(bytes!.buffer.asUint8List());
+              image.dispose();
+            });
+          }
+          await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+          await tester.pumpAndSettle();
+          expect(find.byType(AlertDialog), findsNothing);
+          await tester.pumpWidget(const SizedBox());
+        },
+      );
+    }
+  }
+
+  testWidgets(
+    'short landscape conflict confirmation remains reachable at 200 percent text',
+    (tester) async {
+      await open(tester, const Size(640, 360), 2, Brightness.dark);
+      await tester.ensureVisible(find.text('Keep cloud for all (1)'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Keep cloud for all (1)'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Apply selected resolutions'));
+      await tester.pumpAndSettle();
+      expect(find.text('Apply decisions').hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('Back'));
+      await tester.pumpAndSettle();
+      expect(controller.applied, 0);
+    },
+  );
 }
