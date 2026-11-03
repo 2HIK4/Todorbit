@@ -1,5 +1,30 @@
 # Progress
 
+## Experimental Smart Sync beta 9 published (2026-11-04)
+
+- Published [v1.0.19-beta.9](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.9),
+  version `1.0.19-beta.9+32`, tag/app source `a69dd63523f530ca69e547e5439725dbb8ed80aa`.
+  Includes `e7eedc1`, `9fe20f5`, `292175c`; prerelease only, `--latest=false`.
+  Schema 26/protocol 1/encryption/backups/signing/profile identities unchanged.
+- Exact-source Windows CI PASS full analysis/635 tests/one existing skip/native/
+  Release/packages. Android CI PASS 72 host checks/two emulator integrations;
+  only an SDK corrupt-download job was rerun. Local enabled Windows Release,
+  native writer/workers/CRT/self-test, production APKs/private AAB and integrity pass.
+- Actual beta 8 -> beta 9 Windows installed/portable upgrades retain tasks/theme,
+  integrity, repeated startup and uninstall data. Guest theme fixture was corrected
+  to seed both SQLite and its JSON cache; no product/assertion weakening. Actual
+  production Android 16 KiB upgrade code 31 -> 32 retains task/completion/restart,
+  no crash/ANR observed. Receipts/screenshots checked.
+- All 11 public assets fully downloaded anonymously and SHA-256 verified;
+  previous releases/assets/tags unchanged. Production public updater selects
+  beta 9 from beta 8 for Windows modes/Android ABIs and excludes Stable.
+- Real Drive end-to-end exchange is NOT VERIFIED; no disposable account/profile
+  used. Windows unsigned, physical ARM64/OEM/Windows input/DPI/reader and OS
+  background acceptance remain open. Preserve backup/recovery code and test
+  disposable data on both updated devices before considering broader promotion.
+- [Publication ledger, CI, hashes and limits](SMART_SYNC_BETA_9_PUBLICATION.md),
+  [release notes and short manual checklist](SMART_SYNC_BETA_9_RELEASE_NOTES.md).
+
 ## Smart Sync comprehensive verification (2026-11-03; local fixes)
 
 - Branch `maintenance/smart-sync-verification`, baseline `4987a46`; published

@@ -1,5 +1,10 @@
 # Smart Sync comprehensive verification
 
+Publication follow-up: [experimental beta 9](SMART_SYNC_BETA_9_PUBLICATION.md),
+source `a69dd63`, now ships the local fixes recorded here. Statements below about
+unpublished fixes/no push authorization describe this earlier verification task;
+the subsequent explicitly authorized release has separate exact-source evidence.
+
 ## Scope and identities
 
 Started 2026-11-03 on local branch `maintenance/smart-sync-verification`, clean
