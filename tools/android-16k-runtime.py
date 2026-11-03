@@ -24,7 +24,8 @@ def adb(*args):
 
 
 def screen(name):
-    remote = '/sdcard/todorbit-runtime.xml'
+    # A failed dump must never reuse a previous screen's XML after an upgrade.
+    remote = f'/sdcard/todorbit-runtime-{time.monotonic_ns()}.xml'
     adb('shell', 'uiautomator', 'dump', remote)
     adb('pull', remote, str(ROOT / f'{name}.xml'))
     return ET.parse(ROOT / f'{name}.xml')
@@ -33,7 +34,13 @@ def screen(name):
 def find(label, name, timeout=30):
     end = time.monotonic() + timeout
     while time.monotonic() < end:
-        tree = screen(name)
+        try:
+            tree = screen(name)
+        except (subprocess.CalledProcessError, ET.ParseError):
+            # UIAutomator can have no root while Flutter's first frame starts.
+            # Keep the existing deadline and require a fresh successful dump.
+            time.sleep(2)
+            continue
         for node in tree.iter('node'):
             if node.get('enabled') == 'true' and any(
                 label == node.get(key, '') or label in node.get(key, '').split('\n')
