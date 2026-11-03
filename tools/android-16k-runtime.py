@@ -1,7 +1,8 @@
 """Opt-in artifact runtime acceptance on a fresh, disposable Android emulator.
 
 Never builds an app or touches a phone. The workflow supplies a hash-verified
-candidate. All interaction creates synthetic data in an initially absent app.
+candidate and optionally a previous production APK. All interaction creates
+synthetic data in an initially absent app; upgrades never uninstall or clear it.
 """
 import hashlib
 import json
@@ -68,11 +69,20 @@ def main():
     with package.open('rb') as stream:
         digest = hashlib.file_digest(stream, 'sha256').hexdigest()
     assert digest == os.environ['APK_SHA256'], 'Candidate changed'
+    previous = ROOT / 'previous.apk'
+    previous_digest = None
+    if previous.exists():
+        with previous.open('rb') as stream:
+            previous_digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+        assert previous_digest == os.environ['PREVIOUS_APK_SHA256'], 'Previous APK changed'
     server = adb('shell', 'pidof', 'system_server')
     time.sleep(40)
     assert server and adb('shell', 'pidof', 'system_server') == server, 'System restarted without app'
     no_crashes('no-app-baseline')
-    adb('install', str(package))
+    adb('install', str(previous if previous.exists() else package))
+    previous_code = None
+    if previous.exists():
+        previous_code = int(re.search(r'versionCode=(\d+)', adb('shell', 'dumpsys', 'package', PACKAGE))[1])
     adb('shell', 'am', 'start', '-n', PACKAGE + '/.MainActivity')
     tap(find('New task', 'home', timeout=60))
     title = 'Beta2 sixteen KiB acceptance'
@@ -104,6 +114,22 @@ def main():
     if tab is not None:
         tap(tab)
     find(title, 'sqlite-reopen')
+    upgraded_code = None
+    if previous.exists():
+        adb('shell', 'am', 'force-stop', PACKAGE)
+        # The package manager must accept the actual production-signed update.
+        # No uninstall, clear-data command or debug-signing fallback is allowed.
+        adb('install', '-r', str(package))
+        upgraded_code = int(re.search(r'versionCode=(\d+)', adb('shell', 'dumpsys', 'package', PACKAGE))[1])
+        assert upgraded_code > previous_code, 'Upgrade code must increase'
+        adb('shell', 'am', 'start', '-n', PACKAGE + '/.MainActivity')
+        time.sleep(3)
+        tree = screen('upgraded-home')
+        tab = next((n for n in tree.iter('node') if n.get('content-desc', '').startswith('Tasks\n')), None)
+        if tab is not None:
+            tap(tab)
+        find(title, 'upgraded-retained-task')
+        snapshot('upgraded-retained-task')
     tap(find('Complete ' + title, 'task-interaction'))
     time.sleep(2)
     snapshot('completed')
@@ -120,6 +146,9 @@ def main():
         'noAppBaselineSeconds': 40, 'systemStableWithoutApp': True,
         'flutterRendered': True, 'taskCreatedAndRetainedAfterRestart': True,
         'taskCompletionInteraction': True, 'noCrashOrAnrObserved': True,
+        'previousApkSha256': previous_digest,
+        'previousVersionCode': previous_code, 'upgradedVersionCode': upgraded_code,
+        'productionInPlaceUpgradeRetainedTask': previous.exists(),
     }, indent=2) + '\n', encoding='utf-8')
     print('16 KiB artifact runtime passed:', digest)
 

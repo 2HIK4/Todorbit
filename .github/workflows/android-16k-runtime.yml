@@ -11,6 +11,12 @@ on:
       sha256:
         description: Expected APK SHA-256 from the validated candidate
         required: true
+      previous_asset_id:
+        description: Optional previous production x64 APK for in-place upgrade acceptance
+        required: false
+      previous_sha256:
+        description: Expected previous APK SHA-256 (required with previous_asset_id)
+        required: false
 permissions:
   # GitHub requires push access to read unpublished release assets. This trusted
   # artifact-only job makes no repository/release write calls and has no signing keys.
@@ -34,12 +40,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           ASSET_ID: ${{ inputs.asset_id || '695758240' }}
           APK_SHA256: ${{ inputs.sha256 || '7c348bc0286eb9c9134698426a9569d9f9a264063c559c196da5a4a2fdd42d74' }}
+          PREVIOUS_ASSET_ID: ${{ inputs.previous_asset_id }}
+          PREVIOUS_APK_SHA256: ${{ inputs.previous_sha256 }}
         run: |
           [[ "$ASSET_ID" =~ ^[0-9]+$ ]]
           [[ "$APK_SHA256" =~ ^[a-f0-9]{64}$ ]]
           mkdir -p .buildlog/16k-runtime
           gh api "repos/$GITHUB_REPOSITORY/releases/assets/$ASSET_ID" -H 'Accept: application/octet-stream' > .buildlog/16k-runtime/candidate.apk
           echo "$APK_SHA256  .buildlog/16k-runtime/candidate.apk" | sha256sum -c -
+          if [[ -n "$PREVIOUS_ASSET_ID" || -n "$PREVIOUS_APK_SHA256" ]]; then
+            [[ "$PREVIOUS_ASSET_ID" =~ ^[0-9]+$ ]]
+            [[ "$PREVIOUS_APK_SHA256" =~ ^[a-f0-9]{64}$ ]]
+            gh api "repos/$GITHUB_REPOSITORY/releases/assets/$PREVIOUS_ASSET_ID" -H 'Accept: application/octet-stream' > .buildlog/16k-runtime/previous.apk
+            echo "$PREVIOUS_APK_SHA256  .buildlog/16k-runtime/previous.apk" | sha256sum -c -
+          fi
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -48,6 +62,7 @@ jobs:
       - uses: reactivecircus/android-emulator-runner@v2
         env:
           APK_SHA256: ${{ inputs.sha256 || '7c348bc0286eb9c9134698426a9569d9f9a264063c559c196da5a4a2fdd42d74' }}
+          PREVIOUS_APK_SHA256: ${{ inputs.previous_sha256 }}
         with:
           api-level: 36
           arch: x86_64
