@@ -9,28 +9,36 @@
   format changes. Release build/self-test and live HWND style watcher/recreation
   checks pass. Light/dark icon atlases inspected.
 - Expanded Android footer geometry/glyph/density harness and added focused
-  IME/error probes. Checks are ongoing; see the
+  IME/error probes; see the
   [Stage 2.1 ledger](UI_UX_STAGE2_AUDIT.md#stage-21-follow-up--2026-11-03).
-  Original shaking is not yet reproduced; no speculative Flutter patch.
+  Original shaking is not reproduced; no speculative Flutter patch. Eighteen
+  host cases pass across scoped runs; direct test-source analysis is clean.
+  Inline movement is one 9 px caret reveal, then stationary.
 - Windows physical input automation remains blocked by missing kernel assets.
   Native rendering/lifecycle do not certify physical DPI, input or Win+D.
   No data reset, version bump, release or remote operation.
-- Native implementation checkpoint committed `49f8df0`. Current follow-up adds
-  CMake license distribution and three host error/IME probes: the original 15,
-  two repeated-save probes and one inline-frame diagnostic pass across scoped
-  runs. Inline movement is one 9 px caret reveal, then stationary.
-- Resume checkpoint: retained Stage2Audit AVD/port5586, synthetic Android profile
-  verified; guest now stopped gracefully (old PIDs19828/11680 gone). Harness first
-  failed JNI CMake discovery after a literal vswhere quoting error; corrected
-  environment retry `.buildlog/verify/stage21-ui/android-widgets-02.log` built
-  the new test APK successfully (6m39s); reuse it after guest recovery rather
-  than rebuild. Deployment was deferred by the deliberate shutdown.
-  Main-app native keyboard check is not passed: guest/app/launcher ANRs and
-  Driver input timeouts are retained in the ledger. IME preference restored.
-  Connected analyzer timed out; direct SDK analyzer passed with no issues.
-  Windows local Release resumed in `windows-release-resume.log`; once complete,
-  run packaged self-test, then boot the retained AVD with smaller physical
-  rendering dimensions and run the already-built native instrumentation.
+- Native implementation checkpoint `49f8df0`; host probe checkpoint `3b61eb1`.
+  Windows full local Release helper passed (18m57s, signed CRT/Drive metadata
+  checks), and packaged native self-test passed. Added explicit distribution of
+  the attributed font license. A later optional font-cache refinement was
+  discarded after an unsuccessful rerun/diagnostic; the restored packaged
+  self-test passed (exit 0). Final artifact hashes/version metadata recorded.
+  Packaging checkpoint `f6fc308`; Android probe checkpoint `1523d7e`.
+- Original Android footer PNGs re-inspected at full size: both action labels
+  are complete; withdraw the original sample-specific clipping interpretation.
+  Expanded 192-case harness compiled (6m39s) but did not execute. Retained guest
+  suffered system-service death/ANRs and install broken pipe; fresh API35 guest
+  never reached ADB. Incomplete API30 image was not replaced. No speculative
+  Android product patch. Task guests stopped, files retained and original AVD
+  hardware configuration restored; original IME preference restored.
+- Native keyboard/error, OEM launcher placement/resizing, TalkBack, Narrator,
+  physical DPI/multi-monitor and companion-process relaunch remain manual.
+  Prior Android bootstrap APK predates `69acf07`; prepare a fresh acceptance
+  APK for a stable phone/emulator. Stage 2's unchanged broader host evidence is
+  reused. No claim that all acceptance checks or all reported issues are closed.
+- Local Stage 2.1 verification is complete within the documented tooling limits.
+  The user subsequently authorized publication; release versioning, exact-source
+  CI and package gates are a separate checkpoint and must pass before publishing.
 
 ## Windows/Android UI audit, Stage 2 (2026-11-02)
 

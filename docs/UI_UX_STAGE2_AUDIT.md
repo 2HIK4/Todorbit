@@ -106,7 +106,7 @@ the supported task scope (N/A); no installed native OS behavior is inferred.
 | F11 | P2 | Actual Android Habits/Goals screens highlight Today in bottom navigation although Today is not the current view. Phone bar coerces an unpinned selection to index 0; tablet rail already uses no selection | Add a fixed More destination that opens the existing drawer and represents unpinned views. Retain 3/4 saved pinned destinations; explain this in navigation settings | FIXED_VERIFIED: red/green navigation test, 24 follow-up tests; actual final More selection captured on Statistics after hot reload |
 | F12 | P3 | Habit editor's numeric recurrence label is long and ellipsizes at ordinary phone width (`Repeat every N days, weeks, months, or y…`) | Concise Repeat interval label; full unit guidance moves into wrapping helper copy | FIXED_VERIFIED: existing habit/editor compact layout checks; final native re-open not captured because harness installation closed Driver |
 | F13 | P2 parity gap | Native Windows `WidgetCalendarItem` has no per-event color/icon fields and `DrawItemMarker` paints generic kind markers with widget text color. Flutter desktop and Android are separate render paths | Track native event customization parity separately; preserve existing widget appearance precedence. Requires native projection/paint tests and physical shell/DPI acceptance (unavailable here) | Open; source confirmed, no native implementation changed and no all-widget color parity claim |
-| F14 | P2 suspected | Two inspected 100% native Android harness PNGs appear to clip the beginning of footer text at the left screen edge. Compact 200% sample retains readable wrapped footer. Harness checks vertical bounds, not glyph-left clipping | Next probe: record footer global/text-layout bounds and repeat in a launcher host; establish whether test-window geometry or product rendering owns it before patching | INSPECTED_FAIL for sample appearance; root cause unconfirmed, not corrected speculatively |
+| F14 | Initially P2 suspected | Stage 2 interpreted two 100% native Android harness PNGs as clipping footer text. Stage 2.1 full-size reinspection U38 shows both complete labels and withdraws that interpretation | Expanded global/text-layout/local-render probe compiled; actual launcher acceptance remains open | Sample-specific finding WITHDRAWN; expanded runtime probe BLOCKED by guest failures, no speculative product patch |
 
 ## Test invocation ledger
 
@@ -373,9 +373,40 @@ Win+D, monitor migration, real process relaunch or wallpaper/DPI acceptance.
 | U26 | Direct installed `dart.exe analyze test/stage2_ui_regression_test.dart` → analysis-resume.log | PASS: no issues | Fallback after connected analyzer timeout; unchanged app analysis retained |
 | U27 | Verified Stage2Audit identity/PIDs, `adb … emu kill`; attempted own-test display resize first | Android `window` service was missing; no resize applied. Emulator stopped gracefully, data retained. First config edit attempt was guarded out while old PID was still closing | New environment recovery after app and launcher ANRs; no data reset or speculative product patch |
 | U28 | `gradlew.bat --stop` scoped to workspace `.buildlog/android-gradle-home` → gradle-stop.log | One now-idle task daemon stopped | New resource recovery after successful build; no cache deletion |
-| U29 | Resume `tools/build-windows-release.ps1` with task-local TEMP/TMP → windows-release-resume.log | In progress | Resume packaging gate after emulator shutdown; preserve incremental output, keep compiler scratch in workspace |
+| U29 | Resume `tools/build-windows-release.ps1` with task-local TEMP/TMP → windows-release-resume.log | Interrupted for a verbose run after no usable progress transcript; verified/stopped one surviving assemble worker of the canceled command | New observability for unresolved native-preparation wait; preserve incremental files |
+| U30 | Original Windows Release helper with a process-local `flutter` wrapper adding `--verbose` → windows-release-verbose.log | PASS in 18m57s, zero warnings/errors; Microsoft-signed CRT staging, Drive configuration and metadata checks passed | Rerun with concrete phase diagnostics; no publication |
+| U31 | Prepare retained, stopped AVD config at 720×1600/280 dpi, preserving the same logical viewport; original in config-before-resolution.ini | Configuration prepared, no guest data reset. Memory guard deferred boot while host free memory was below 4 GiB | New lower graphics-load environment for native checks, not a product fix |
+| U32 | Close the task-created MCP analyzer worker after timeout/fallback completion | Verified parent/command; VS Code language server untouched | New memory recovery; no files/caches removed |
+| U33 | Packaged `tools/dev/native-self-test.ps1`; source/bundle license hash comparison → packaged-self-test.log | PASS; `data/licenses/MaterialIcons.txt` matches attributed source | New full Release package boundary after U30 |
+| U34 | Restart retained Stage2Audit at smaller resolution; ADB service/memory/disk/log checks, install existing test APK | Boot completed but system died: DeadSystemException, missing window service and package-install broken pipe. Guest had ~1.49 GB available RAM and 3.6 GB free data. No instrumentation fixtures ran | New runtime recovery; cause unconfirmed, no app patch or reset. Guest stopped; original 1080×2400/420 configuration restored |
+| U35 | Inspect existing API30 image and attempt isolated Stage21Api30 boot | Image directory incomplete, kernel missing; emulator exited. Automatic review rejected a duplicate launch; read-only inspection established the first had exited. No duplicate launched or SDK installed | New existing-tool alternative after unstable API35 guest; no outstanding approval request |
+| U36 | Boot fresh Stage21Fresh35/port5584 using existing complete API35 image, independent empty data and task-local temp | Did not reach ADB during prolonged startup; log reports unsupported CPUID feature. Stopped only verified task guest/launcher, preserving files. Neither APK nor fixtures deployed | New final environment attempt, not a product fix; no further environment retries |
+| U37 | Native-only CMake build/install after optional font-family cache → native-package-refresh.log; packaged check → packaged-self-test-final.log; redirected diagnostic → native-final-diagnostic.log | Build/install PASS; packaged check exited 1 without useful child output. Diagnostic advanced through temporary fixtures but did not complete; stopped only its verified task PID. Optional cache removed, without attributing the failure to it | New optional refinement discarded to retain the previously passing implementation; final restored build/check recorded below |
+| U38 | Reopen original `tasks-light-380x540-1-font100.png` and `calendar-light-280x280-1-font100.png` at full size | Both show complete, readable “Open tasks ›” / “Open calendar ›” with left inset. Earlier F14 sample-specific clipping interpretation withdrawn | Reused original PNGs; corrected visual assessment, not new renderer execution |
+| U39 | Connected DTD app inventory and `hot_reload` after test-only Dart change | No connected running app; reload unavailable. Product Flutter source unchanged | New tooling attempt; host tests/analyzer remain the verification evidence |
+| U40 | Native CMake build/install after discarding optional cache → native-package-restored.log | PASS; final native implementation restored, unchanged Flutter AOT retained; full runtime staging completed | Rerun only native packaging to remove optional refinement |
+| U41 | Source/bundled font license SHA-256 comparison; `git diff --check`; `python tools/dev/check-docs.py docs/UI_UX_STAGE2_AUDIT.md docs/PROGRESS.md` | PASS; license hash `3a3eaff2…87bbd`, no whitespace/link/catalog errors | New packaging identity and handoff checks; repeated after documentation updates |
+| U42 | Restored packaged companion `--self-test` via redirected isolated runner → packaged-self-test-restored.log | PASS, exit 0; task revision safety and persistence assertions included | Final rerun after removing optional cache; earlier failed/unfinished runs retained in U37 |
+| U43 | SHA-256, size and executable version recording → final-artifacts.json | PASS; native `c8eba6e7…6fc4f`, main `52656ab9…bb125`, AOT `85a13918…3dd54`; main 1.0.19-beta.5+28, native 1.0.19+28 | New local checkpoint identities; Android debug APK boundary remains explicit below |
 
 ### F06 reproduction result and manual acceptance
+
+Current finding disposition:
+
+| Finding | Stage 2.1 result | Remaining acceptance boundary |
+| --- | --- | --- |
+| F06 error/scroll shaking | NOT REPRODUCED in focused host frame/focus/draft probes; no speculative product patch | Original Android sequence with real IME remains unverified because of guest/system failures |
+| F13 native Windows event appearance | FIXED: read-only projection, glyph rendering, inherited/occurrence styling and live reload; Release tests/renders described above | Physical shell/input/DPI and full companion-process relaunch remain manual |
+| F14 suspected Android footer clipping | Original two PNGs re-inspected: complete text visible. Withdraw the original sample-specific INSPECTED_FAIL interpretation | Expanded 192-case bounds/glyph/density harness compiled but NOT EXECUTED; actual launcher/OEM resizing still unverified |
+
+The Android harness now records root-relative footer bounds and actual text-layout
+edges/ellipsis, checks 48 dp action height and basic accessibility eligibility,
+and saves widget-local renders independently of the physical test-window crop.
+It spans two densities, two font scales, light/dark, both widget types, three
+record counts and four sizes. This prepares a stronger diagnosis; compilation
+does not establish its runtime assertions. No native Android product patch is
+justified by the inspected samples. Prior 72-case execution remains valid only
+for its original narrower assertions and recorded source.
 
 Confirmed host scope: 390×760/150% text, focused notes, IME insets animated
 80→160→240 and back, scroll to the bottom, two invalid event/task saves, 12
@@ -400,7 +431,9 @@ Manual user acceptance (use synthetic records in a disposable profile):
    Repeat on the intended phone/OEM launcher; harness renders do not certify it.
 4. Android: TalkBack names/order/actions, Next/Done and two-stage Back (IME then
    draft protection), portrait/landscape and app-closed widget activation.
-5. Windows: run the local bundle in an isolated profile; compare the calendar
+5. Windows: use a disposable Windows user/VM for the Release main app because
+   startup registration is per Windows user; verify isolated child APPDATA,
+   LOCALAPPDATA and the resolved database. Compare the calendar
    agenda against Flutter for two icons/colors, category inheritance and an
    occurrence override. Change while visible, close/relaunch the **process**,
    then reopen main app. No stale color/icon or altered widget preferences.
@@ -418,7 +451,37 @@ Their Flutter implementation/dependencies are unchanged so a full suite rerun
 is not required for native read-only styling and focused new probes. Native
 render evidence is invalidated by F13's implementation and replaced above.
 
-Pending at this checkpoint: Android expanded footer probe result; focused
-Flutter probes and native Android keyboard/error runtime; final render review,
-documentation/manual acceptance checklist and Git handoff. Original F06 remains
-unreproduced; F14 remains a hypothesis until bounds and glyph checks complete.
+Changed paths (17, relative to `41cd34f`):
+
+- Native production: `experiments/widget-shell-probe/WidgetCalendarRepository.cs`,
+  `CalendarWidget.cs`, `CalendarEventIcon.cs`, `widget-shell-probe.csproj`, and
+  `Icons/{EventIconGlyphs.cs,event-icons.otf,LICENSE.txt,README.md}`.
+- Native tests: `experiments/widget-shell-probe/CalendarEventIconSelfTest.cs`,
+  `WidgetConfigurationSelfTest.cs`, `WidgetLifecycleSelfTest.cs`.
+- Asset generation/distribution: `tools/dev/update-native-event-icons.py`,
+  `windows/CMakeLists.txt`.
+- Focused probes: `test/stage2_ui_regression_test.dart`,
+  `android/app/src/androidTest/kotlin/io/github/hik4/todorbit/WidgetRenderInstrumentation.kt`.
+- Handoff: `docs/UI_UX_STAGE2_AUDIT.md`, `docs/PROGRESS.md`.
+
+At the completed local Stage 2.1 checkpoint, version remains
+`1.0.19-beta.5+28`, schema 26. No data migration, account/cloud change, profile
+reset, publication, push or cleanup occurred in that checkpoint. The user then
+explicitly requested publication; subsequent versioning/release work is a
+separate release checkpoint. Task-created Android guests
+are stopped with their files retained; the retained Stage2Audit hardware
+configuration is restored. The installed personal companion was never stopped
+or used as a test target. Windows computer-use initialization failed before
+input, so no physical desktop/assistive-technology acceptance is claimed.
+
+The Android bootstrap APK used for native rendering/runtime attempts is the
+previous Driver artifact (`d3db8e7…73f90`), predating `69acf07` navigation copy.
+Native Android production code is unchanged, making it suitable for this native
+renderer investigation, but it is **not a current full-app acceptance APK**.
+Build a fresh Android acceptance APK for the manual checklist on a stable
+emulator/phone. Broader Stage 2 host evidence is reused only for unchanged code.
+
+Verified checkpoints: `49f8df0` native appearance, `3b61eb1` host IME/error
+probes, `f6fc308` font attribution/distribution, `1523d7e` Android footer probe.
+Ready for local Windows/Android acceptance builds, with the explicit manual
+boundaries above; this is not a completed physical-platform acceptance claim.
