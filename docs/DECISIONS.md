@@ -1,5 +1,18 @@
 # Decisions
 
+- **Smart Sync refinement (2026-11-03):** keep schema 26, protocol 1, the existing
+  encrypted operation journal, provider adapter and snapshot backup formats.
+  Manual sign-in continues through setup/exchange. A second device supplies its
+  recovery code once; Google login cannot recover an end-to-end key. Authorized
+  devices retain it in OS secure storage. Lost-key recovery authenticates the
+  existing proof without changing the SQL device identity. Offline conflict
+  choices remain durable descendants of the reviewed heads; fresh competing
+  history remains a genuine new conflict. Automatic checks show a badge instead
+  of navigating into dialogs. Startup/resume/active polling and committed-change
+  debounce share the existing fenced engine; metadata-only file notifications
+  do not trigger network work. No new cloud service or format migration.
+  [Audit, implementation and verification](SMART_SYNC_REDESIGN.md).
+
 - **Authorized sync and restore isolation (2026-10-31; continued 2026-11-01):**
   the owner authorized implementing encrypted incremental Drive sync using the
   existing account/project, independent from encrypted backups. Use immutable

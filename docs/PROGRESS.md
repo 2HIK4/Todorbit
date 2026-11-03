@@ -1,5 +1,44 @@
 # Progress
 
+## Smart Sync implementation (2026-11-03; unpublished)
+
+- Branch `feature/smart-sync-redesign`, baseline `0dcfb5a` / published beta 7
+  runtime `2919551`. Audit `4b26af5`, orchestration `eee62a6`, UI `c9784cf`,
+  final orchestration/metadata corrections `f718cbe`.
+  No version/schema/protocol change, release, push or merge.
+- Sign-in continues into secure setup/exchange; additional devices authorize
+  once with the retained recovery key. Startup/resume/active polling/local
+  debounce share existing incremental exchange. Offline decisions remain causal
+  journal operations. Main Sync is compact, with advanced recovery and counted
+  nonmodal conflict attention, individual/bulk review and final confirmation.
+- Final focused regression: 38 PASS (engine, pairing, controller, 21 UI cases and
+  both subprocess crash rollbacks). Final orchestration: 18 PASS, including
+  manual intent during automatic checks, in-flight edits, metadata-only/native
+  scheduling gates and offline/concurrent two-device resolution. Counts overlap.
+  Real-file fixtures use production background/WAL execution and genuine backup
+  gates. Original AppController refresh notifications/API are preserved.
+- Sixteen host PNGs and an actual isolated Windows dark dialog/Driver inspected;
+  two hot reloads passed. These do not establish real OAuth/provider or physical
+  Windows/Android acceptance. No real Drive account or owner profile used.
+- All four source roots pass direct Dart analysis; format passes for 312 files.
+  Python preparation/helper checks pass 11/eight; changed-document links and
+  feature catalog have zero errors. Final Full attempts
+  `20261103-175447-3675` and `20261103-180243-8677` stopped during silent Flutter
+  analysis startup. Direct full serial tests stopped after two passes and over
+  four minutes loading the next unchanged file. No aggregate Full pass claimed.
+- Task TEMP/TMP/JVM temp is on D:. The initial C: 20–70 MiB/memory constraint
+  later eased; only this task's verified stopped compiler output was archived
+  intact. No user files/shared caches deleted. Initial Android builds stopped
+  under pressure and are not APK acceptance evidence. Synthetic profiles remain
+  isolated under `.buildlog/smart-sync/`.
+- Current Windows Release attempts reached CMake/MSBuild/Flutter compilation
+  but did not finish; no new binary accepted. Owned process trees were stopped.
+  Android runtime, real Drive, physical Windows focus/DPI/accessibility and full
+  aggregate gates remain pending. No final-source live reload pass: app closed.
+- Remaining integration outcomes and real-provider/manual acceptance are in
+  [Smart Sync ledger](SMART_SYNC_REDESIGN.md). Do not repeat valid unaffected
+  evidence or use an owner's profile/Drive account.
+
 ## UI quality beta 7 published (2026-11-03)
 
 - Published [v1.0.19-beta.7](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.7) at

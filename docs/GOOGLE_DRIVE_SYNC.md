@@ -1,22 +1,27 @@
 # Encrypted Google Drive sync
 
-Version 1.0.19-beta.4, schema 26. The separate beta 3 has only a Coming soon
-button. See the [publication receipt](DRIVE_SYNC_BETA_4_PUBLICATION.md) and
-[implementation ledger](DRIVE_SYNC_RECOVERY_CHECKPOINT.md) for current evidence.
+Published baseline: 1.0.19-beta.7, schema 26, sync protocol 1. The unpublished
+Smart Sync improvements retain these formats and the application version. See
+the [implementation and verification ledger](SMART_SYNC_REDESIGN.md) for current
+evidence; historical release receipts do not verify this working source.
 
 ## Connect two devices
 
-1. Keep an external verified backup first. On the first device, open Settings >
-   Sync, connect Google Drive, leave the recovery-code field blank, and choose
-   Set up encrypted sync. Setup creates a verified local recovery snapshot.
-2. Choose Show recovery code and keep that code privately outside the device.
+1. Use disposable profiles and an authorized disposable Google account for
+   acceptance testing. Keep an external verified backup of existing data. On the
+   first device, press Sync or open Settings > Sync > Connect Google Drive.
+   Sign-in continues through secure setup and the initial exchange automatically.
+   Setup creates a verified local recovery snapshot.
+2. Choose Save your recovery code (or Advanced > Show recovery code) and keep it
+   privately outside the device.
    Do not post it in diagnostics. The code and access to this Google account can
    decrypt the workspace. Losing every copy can make encrypted history unusable.
-3. On the other device, connect the same Google account and enter the first
-   device's recovery code before setup. Each device keeps its own identity and
+3. On the other device, press Sync and connect the same Google account. Todorbit
+   detects existing encrypted data and requests the first device's recovery code
+   once. Choose Authorize this device. Each device keeps its own identity and
    uploads its existing records; setup does not replace either database.
 4. Click the top-right Sync icon. Settings > Sync shows pending changes, conflicts
-   and last successful exchange. Automatic Sync can be turned off; Sync Now still
+   and last successful exchange. Automatic sync can be turned off; Sync now still
    exchanges when explicitly requested. Snapshot backup remains independent.
 
 Pairing verifies an account-bound encrypted workspace proof. Competing keys or
@@ -26,10 +31,15 @@ additional cloud service, Todorbit account or permissions are introduced.
 
 ## Timing and background behavior
 
-Local edits commit to SQLite immediately. While an unlocked app is open, exchange
-is debounced about 750 ms after changes and polls about every 25 seconds. Another
+Local edits commit to SQLite immediately. While an unlocked app is active, exchange
+is debounced about 750 ms after changes and polls about every two minutes. Another
 active device usually sees safe changes on its next poll plus network time.
-This is an opportunity interval, not a delivery guarantee. Network failures use
+Startup checks automatically, and foreground checks are throttled to at most one
+per 15 seconds. In-app polling pauses in the background; existing OS workers
+remain separate opportunities. Network restoration is detected on the next
+permitted retry/poll without a permanent connectivity service. Scheduler intervals
+are configurable at the engine boundary; automatic on/off is device-local.
+These are opportunity intervals, not delivery guarantees. Network failures use
 durable exponential backoff; Sync Now permits an explicit retry.
 
 Android requests network-constrained periodic jobs at the OS minimum interval
@@ -78,12 +88,21 @@ require conflict review.
 ## Conflicts and restore
 
 The consolidated review compares This Device, cloud candidates and base values.
-Choose per record or use the bulk selection buttons, then Apply Selected. Selecting
-a bulk option does not apply anything. Independent compatible changes remain.
+Choose per record or use the counted bulk selection buttons, then Apply selected
+resolutions and confirm. Selecting a bulk option does not apply anything.
+Independent compatible changes remain.
 Deletion/restore and related-record consequences require explicit consistent
 choices. Unsafe choices roll back together; versions stay retained. Resolve Later
 survives restart and unrelated edits; Settings > Sync can reopen it. Automatic
-prompts wait until editors/modal flows are closed and the app is unlocked.
+checks retain an accessible count badge without opening a modal. Manual Sync
+offers direct review. A confirmed decision is a durable causal operation which
+acknowledges the reviewed heads, including a choice to keep identical local
+bytes. A failed network preflight can save a decision against retained history;
+the SQL transaction still rejects stale reviews. Pending decisions upload on a
+later successful exchange. Other devices accept that descendant instead of
+redisplaying the old conflict. Genuinely new edits or incompatible simultaneous
+decisions may require a new review. Structural groups still require consistent
+choices for every coupled record.
 
 A full restore is staged and requires restart. The UI reports the committed
 restart requirement even if optional cloud-history bookkeeping subsequently fails.

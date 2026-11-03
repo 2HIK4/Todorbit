@@ -118,7 +118,9 @@ activation channel to Settings > Widget and the correct draft editor.
 
 Google Drive backups are an optional layer under `lib/data/cloud/` and Settings > Backups & Cloud. `CloudStorageProvider` abstracts remote objects; Google OAuth and secure token storage are separate from Drive HTTP operations. `CloudBackupService` reuses `BackupService` for SQLite-safe snapshots and staged restore, while `CloudBackupCodec` encrypts a versioned portable manifest with AES-256-GCM and a passphrase-derived key. The manifest includes the existing shareable settings JSON; OAuth tokens, PIN policy and device-only controls remain local. Full restore applies portable personalization after the database opens/migrates and before the opened receipt. Settings-only restore reuses selective settings transfer. Snapshot creation remains explicit and cloud history is not automatically pruned. See `GOOGLE_DRIVE_BACKUP.md` for format limits, setup, portability and verification boundaries.
 
-Encrypted incremental sync is separately enabled through Settings > Sync. Schema
+Encrypted incremental sync is enabled through the Sync button or Settings > Sync.
+Manual sign-in continues through safe setup and the initial exchange; a second
+device authorizes its existing encrypted data with a recovery code once. Schema
 26 retains immutable causal operations and transaction groups for 42 portable
 tables, including allowlisted preferences and explicit timer ownership. SQLite
 capture includes legitimate native writers; remote apply suppresses capture and
@@ -134,8 +136,13 @@ explicit reconciliation retains pre-restore facts and uses a fresh device and
 an authenticated restore-intent group. Android constrained jobs and the existing
 Windows companion invoke the same bounded headless engine. Workers never migrate,
 restore or unlock profiles. Credentials stay in OS-protected profile storage.
+Foreground opportunities are throttled; active polling and debounced committed
+changes share the engine. Local-change scheduling checks pending journal entries
+so file notifications from leases/cursors and remote projection do not feed back
+into network jobs. Conflict decisions remain journal operations, including when
+recorded offline; background attention uses a badge without modal navigation.
 See the [sync guide](GOOGLE_DRIVE_SYNC.md) and
-[current verification boundary](DRIVE_SYNC_RECOVERY_CHECKPOINT.md).
+[current verification boundary](SMART_SYNC_REDESIGN.md).
 
 - Flutter Material 3 UI with a compact Fluent-inspired desktop layout.
 - Riverpod owns application state. Feature widgets observe a controller, while data access stays in the repository.
