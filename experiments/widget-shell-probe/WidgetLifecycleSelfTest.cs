@@ -43,6 +43,19 @@ internal static partial class LifeManagerWidgetSelfTest
                 var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
                 var taskHost = (NativeDesktopWidgetHost)typeof(NativeWidgetApplicationContext).GetField("host", flags)!.GetValue(context)!;
                 var calendarHost = typeof(NativeWidgetApplicationContext).GetField("calendarHost", flags)!.GetValue(context);
+                using (var update = new SqliteConnection($"Data Source={target};Pooling=False"))
+                {
+                    update.Open(); using var command = update.CreateCommand();
+                    command.CommandText = "UPDATE fixed_events SET color_value=4290098034,icon_name='music'";
+                    command.ExecuteNonQuery();
+                }
+                // Exercise the real file watcher/debounce and live calendar host, not a fresh query alone.
+                var wait = System.Diagnostics.Stopwatch.StartNew();
+                while (!HasEventStyle(context) && wait.ElapsedMilliseconds < 3000)
+                {
+                    Application.DoEvents(); Thread.Sleep(20);
+                }
+                Require(HasEventStyle(context), "Live calendar did not refresh event color/icon after a database change.");
                 taskHost.OpenQuickAddDialog();
                 var editor = (Form?)typeof(NativeDesktopWidgetHost).GetField("quickAdd", flags)!.GetValue(taskHost);
                 context.ExecuteCommand("restore");
@@ -66,6 +79,7 @@ internal static partial class LifeManagerWidgetSelfTest
             Application.DoEvents();
             using (var reopened = new NativeWidgetApplicationContext(repository, null, false, "restore"))
             {
+                Require(HasEventStyle(reopened), "Recreated calendar host retained stale event appearance.");
                 Require(reopened.VisibleWidgets == (false, true), "Restart did not restore independent visibility.");
                 reopened.ExecuteCommand("show");
                 Require(reopened.VisibleWidgets == (true, true), "Tasks could not be reopened beside Calendar.");
@@ -86,6 +100,15 @@ internal static partial class LifeManagerWidgetSelfTest
             SqliteConnection.ClearAllPools();
             Directory.Delete(root, true);
         }
+    }
+
+    private static bool HasEventStyle(NativeWidgetApplicationContext context)
+    {
+        var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+        var host = typeof(NativeWidgetApplicationContext).GetField("calendarHost", flags)!.GetValue(context);
+        if (host == null) return false;
+        var items = (IReadOnlyList<WidgetCalendarItem>)typeof(NativeDesktopWidgetHost).GetField("calendarItems", flags)!.GetValue(host)!;
+        return items.Any(i => i.Kind == "Event" && i.ColorValue == unchecked((int)4290098034) && i.IconName == "music");
     }
 
     private static void TestLivePreviewRouting(NativeWidgetApplicationContext context)

@@ -1,5 +1,8 @@
 # Stage 2 UI/UX audit and repairs — 2026-11-02
 
+Focused follow-up: [Stage 2.1](#stage-21-follow-up--2026-11-03). The original
+Stage 2 findings/evidence below remain historical to their recorded source.
+
 Baseline `f7954d4`, initially clean; branch `fix/stage2-ui-quality`. Audit, fix
 and proportionate polish across the actual Windows/Android presentation. No
 version, schema, backup, cloud policy, package identity or release changes.
@@ -304,3 +307,69 @@ it does not turn a source hypothesis into a runtime pass.
 | 26 Extremes | Midnight/year/month, invalid input, deliberate ends, empty/long/large text, viewport/inset tests; unexecuted combinations remain gaps |
 | 27 Cognitive load | Prevent default start/end correction loops; honor deliberately fixed End. Preserve feature access and existing navigation |
 | 28 Agent/evidence | Inventory, red cases, failed diagnostics, rerun reasons, diff review and explicit gaps retained; no screenshot-only universal claims |
+
+## Stage 2.1 follow-up — 2026-11-03
+
+Clean baseline `41cd34f`; branch `fix/stage2-1-ui-verification`. Reviewed Stage 2
+commits `cc20582`, `69acf07`, `41cd34f`, current guidance, relevant native/shared
+consumers, and prior source/artifact receipts. This is a focused fix/verification
+pass on F06/F13/F14, not a repeat application audit. Logs and temporary profiles
+are under ignored `.buildlog/verify/stage21-ui/`.
+
+### Native Windows checkpoint
+
+F13's first divergent boundary was the native read-only projection: it omitted
+`color_value`, `icon_name` and category `event_color`. The agenda then painted a
+generic marker in its text color. It now carries template/occurrence explicit
+colors, category inheritance and icon keys into the native agenda. Missing old
+customization columns retain compatible defaults without migrating SQLite.
+Tasks/sessions and aggregate grid counts keep their distinct existing meanings.
+
+The agenda uses the same 30 built-in Material icon glyphs as Flutter plus the
+default event glyph. A 5,316-byte embedded subset is generated from Flutter's
+existing font with its bundled subset tool; no package or installed Windows font
+is required. Regeneration script, generated registry and attribution/license are
+included. Event tint is independent of widget text overrides; an inherited
+default uses the widget accent. Black/white backing preserves a configured tint
+when its contrast against the agenda surface is below 3:1. Other widget surface,
+text, opacity, geometry, preset and profile formats are unchanged.
+
+Release self-test verifies legacy missing columns, inherited color, occurrence
+override, changed values and reopened repository, all 31 distinct nonwhite glyphs
+and contrast combinations. Actual HWND lifecycle additionally verifies the real
+file-watcher/debounce updates a visible calendar's projected event style and a
+recreated calendar host loads that style. This is not physical pointer/keyboard,
+Win+D, monitor migration, real process relaunch or wallpaper/DPI acceptance.
+
+### Stage 2.1 invocation ledger
+
+| ID | Command/procedure and purpose | Result / evidence | New/rerun or reuse reason |
+| --- | --- | --- | --- |
+| U01 | `git status --short`, branch/log and `git show --stat cc20582`, `69acf07`, `41cd34f`; scoped source/receipt/reference reads | Clean baseline; dedicated branch created | New follow-up ownership; no reset/pull/cleanup |
+| U02 | `python -c` import/probe of `fontTools` | Module absent; no installation. Flutter's existing `font-subset.exe` used | New tool capability probe |
+| U03 | `python tools/dev/update-native-event-icons.py 'D:/vs code/flutter'` | 31 glyphs; 5,316-byte subset and matching registry/license | New exact-glyph source generation; rerun after Unicode generator correction |
+| U04 | `dotnet build experiments/widget-shell-probe/widget-shell-probe.csproj -c Release --no-restore` → native-build.log | Failed: one supplementary code point exceeds C# char; changed registry to full Unicode strings | New native build; diagnosed before retry |
+| U05 | Same build → native-build-02.log | PASS, zero warnings/errors | Rerun after full-Unicode correction |
+| U06 | `tools/dev/native-self-test.ps1 -Executable experiments/widget-shell-probe/bin/Release/net10.0-windows/TodorbitWidget.exe` → native-self-test-01.log | Failed; separate redirected ProcessStartInfo diagnostic found missing required category timestamps in new fixture | New isolated native check/diagnostic; product projection not bypassed |
+| U07 | Same Release build → native-build-03.log and isolated self-test → native-self-test-02.log | PASS, including new projection/glyph/contrast assertions | Rerun after supplying fixture timestamps |
+| U08 | Release `--capture-widgets <ignored windows-renders>` via isolated child runner → native-captures.log | PASS; light/dark icon atlases and native previews produced. Both atlases visually inspected | New render evidence; offscreen, not shell appearance |
+| U09 | Release `--lifecycle-self-test` via isolated child → native-lifecycle.log | PASS: actual two Explorer child HWNDs, independent visibility/preview/reload/recreation | New current Release lifecycle evidence |
+| U10 | Release build → native-build-final.log and lifecycle → native-lifecycle-final.log | PASS; added assertions for live event-style file watcher and recreated calendar host | Rerun for new lifecycle assertions; product implementation unchanged |
+| U11 | Start retained disposable Stage2Audit AVD, port5586, no snapshot/window/audio; ADB boot/profile checks | Boot completed; only prior synthetic audit guest reused, no data reset | New runtime session; retained prior AVD identity/config |
+| U12 | `tools/test-android-widgets.ps1 -Device emulator-5586 -ApplicationApk build/app/outputs/flutter-apk/app-github-debug.apk -AndroidSdk .buildlog/android-sdk -JavaHome <existing JDK21> -GradleUserHome .buildlog/android-gradle-home` → android-widgets-01.log | In progress. Initial shell used a literal vswhere path; Gradle still launched. Result recorded below when complete | New footer glyph/global bounds, local renders and density/size matrix; native app source unchanged |
+| U13 | `flutter test --no-pub --concurrency=1 --reporter=expanded test/stage2_ui_regression_test.dart` → scroll-host-01.log | 15 pass / 3 new probe failures: two lazy-list finders after scrolling; one initial focused-field reveal | New IME/error/cursor probes; original 15 checks still pass |
+| U14 | Same test file with `--name 'error with IME\|inline color errors'` → scroll-host-02.log | In progress; corrected lazy visibility and initial reveal setup | Rerun only affected probes, no speculative app patch |
+| U15 | Computer Use skill/runtime `@oai/sky` initialization | BLOCKED: failed to write kernel assets, missing path | New availability check; no replacement input helper or tooling installation |
+| U16 | Task-local process/log inspection and `jcmd 27420 Thread.print` → gradle-threads.txt | Gradle worker reading cached JARs, not a demonstrated deadlock; Flutter front end subsequently advanced | New bounded diagnostic before considering retry; no cache cleanup |
+| U17 | Release build → native-build-captures.log; isolated `--capture-widgets` → native-captures-final.log | PASS; additional whole-calendar light/dark renders visibly show Rose music icons; both inspected | Rerun after extending only the capture fixture to show an event unobstructed by planned tasks |
+
+Reused: Stage 2 full-source analysis and 593 host passes/one opt-in skip on
+`cc20582`, plus the `69acf07` navigation follow-up and accessibility receipts.
+Their Flutter implementation/dependencies are unchanged so a full suite rerun
+is not required for native read-only styling and focused new probes. Native
+render evidence is invalidated by F13's implementation and replaced above.
+
+Pending at this checkpoint: Android expanded footer probe result; focused
+Flutter probes and native Android keyboard/error runtime; final render review,
+documentation/manual acceptance checklist and Git handoff. Original F06 remains
+unreproduced; F14 remains a hypothesis until bounds and glyph checks complete.

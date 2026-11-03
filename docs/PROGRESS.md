@@ -1,5 +1,21 @@
 # Progress
 
+## Stage 2.1 targeted UI follow-up (2026-11-03)
+
+- Clean baseline `41cd34f`; branch `fix/stage2-1-ui-verification`.
+- Fixed Windows calendar agenda projection/painting of per-event colors and
+  built-in icons, including inherited/occurrence styles and old-column defaults.
+  Embedded 5 KB subset of the existing Flutter font; no package/schema/settings
+  format changes. Release build/self-test and live HWND style watcher/recreation
+  checks pass. Light/dark icon atlases inspected.
+- Expanded Android footer geometry/glyph/density harness and added focused
+  IME/error probes. Checks are ongoing; see the
+  [Stage 2.1 ledger](UI_UX_STAGE2_AUDIT.md#stage-21-follow-up--2026-11-03).
+  Original shaking is not yet reproduced; no speculative Flutter patch.
+- Windows physical input automation remains blocked by missing kernel assets.
+  Native rendering/lifecycle do not certify physical DPI, input or Win+D.
+  No data reset, version bump, release or remote operation.
+
 ## Windows/Android UI audit, Stage 2 (2026-11-02)
 
 - Branch `fix/stage2-ui-quality`, clean baseline `f7954d4`. Inventoried 39

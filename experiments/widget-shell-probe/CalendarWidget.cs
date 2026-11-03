@@ -226,7 +226,13 @@ internal sealed partial class NativeDesktopWidgetHost
             {
                 using var fill = new SolidBrush(Color.FromArgb(28, palette.Accent)); var hit = row; hit.Inflate(0, -1); FillRoundedRectangle(g, fill, hit, 6);
             }
-            DrawItemMarker(g, item, new RectangleF(row.X + 3, row.Y + 7, 10, 10), item.Cancelled ? muted.Color : text.Color);
+            if (item.Kind == "Event")
+            {
+                var fill = ComposedSurface("agenda");
+                var background = Blend(palette.Background, fill, fill.A / 255f);
+                CalendarEventIcon.Draw(g, item, new RectangleF(row.X + 3, row.Y + 6, 14, 14), item.Cancelled ? muted.Color : palette.Accent, background);
+            }
+            else DrawItemMarker(g, item, new RectangleF(row.X + 3, row.Y + 7, 10, 10), item.Cancelled ? muted.Color : text.Color);
             using var itemFont = new Font(font, item.Cancelled ? FontStyle.Strikeout : FontStyle.Regular);
             DrawText(g, item.Title, itemFont, text, new RectangleF(row.X + 21, row.Y, row.Width - 24, row.Height * .55f), ellipsis, "agenda");
             DrawText(g, AgendaMetadata(item), small, muted, new RectangleF(row.X + 21, row.Y + row.Height * .52f, row.Width - 24, row.Height * .45f), ellipsis, "agenda");

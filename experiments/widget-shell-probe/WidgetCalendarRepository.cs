@@ -2,7 +2,8 @@ using System.Globalization;
 using System.Text.Json;
 
 internal sealed record WidgetCalendarItem(DateTime Day, string Kind, string Title,
-  string? TaskId, string Time = "", bool Cancelled = false, DateTime? StartsAt = null, string Id = "", string? NominalDate = null);
+  string? TaskId, string Time = "", bool Cancelled = false, DateTime? StartsAt = null, string Id = "", string? NominalDate = null,
+  int? ColorValue = null, string? IconName = null);
 
 internal sealed partial class LifeManagerWidgetRepository
 {
@@ -25,6 +26,17 @@ internal sealed partial class LifeManagerWidgetRepository
             while (r.Read()) result.Add(new(DateTime.ParseExact(r.GetString(2), "yyyy-MM-dd", CultureInfo.InvariantCulture), "Task", r.GetString(1), r.GetString(0), Id:r.GetString(0)));
         }
         if (schemaVersion < 20) return result;
+        var eventColumns = CalendarColumns("fixed_events");
+        var categoryColors = new Dictionary<string, int>();
+        if (CalendarColumns("categories").Contains("event_color"))
+        {
+            using var colors = connection.CreateCommand();
+            colors.CommandText = "SELECT id,event_color FROM categories WHERE event_color IS NOT NULL AND deleted_at IS NULL";
+            using var reader = colors.ExecuteReader();
+            while (reader.Read()) categoryColors[reader.GetString(0)] = unchecked((int)reader.GetInt64(1));
+        }
+        int? EffectiveColor(int? explicitColor, string? category) => explicitColor ??
+            (category != null && categoryColors.TryGetValue(category, out var color) ? color : null);
         using (var command = connection.CreateCommand())
         {
             command.CommandText = """
@@ -51,9 +63,11 @@ internal sealed partial class LifeManagerWidgetRepository
         }
         using (var command = connection.CreateCommand())
         {
-            command.CommandText = """
+            command.CommandText = $"""
         SELECT e.id,e.title,starts_at,ends_at,recurrence_kind,recurrence_interval,
-          COALESCE(recurrence_weekdays,''),recurrence_until,active_from_date,active_through_date,all_day
+          COALESCE(recurrence_weekdays,''),recurrence_until,active_from_date,active_through_date,all_day,
+          {(eventColumns.Contains("color_value") ? "e.color_value" : "NULL")},
+          {(eventColumns.Contains("icon_name") ? "e.icon_name" : "NULL")},e.category_id
         FROM fixed_events e LEFT JOIN categories c ON c.id=e.category_id
         WHERE e.deleted_at IS NULL AND (c.id IS NULL OR c.deleted_at IS NULL)
         """;
@@ -62,6 +76,10 @@ internal sealed partial class LifeManagerWidgetRepository
             {
                 var start = Local(r.GetString(2)); var end = Local(r.GetString(3));
                 var duration = end - start; var allDay = r.GetInt32(10) == 1;
+                var explicitColor = r.IsDBNull(11) ? (int?)null : unchecked((int)r.GetInt64(11));
+                var icon = r.IsDBNull(12) ? null : r.GetString(12);
+                var category = r.IsDBNull(13) ? null : r.GetString(13);
+                var color = EffectiveColor(explicitColor, category);
                 var template = new EventReminderTemplate(r.GetString(0), r.GetString(1), start, null,
                   r.IsDBNull(4) ? null : r.GetString(4), r.GetInt32(5), r.GetString(6),
                   r.IsDBNull(7) ? null : r.GetString(7), r.IsDBNull(8) ? null : r.GetString(8), r.IsDBNull(9) ? null : r.GetString(9));
@@ -73,11 +91,11 @@ internal sealed partial class LifeManagerWidgetRepository
                     var nominal = day.ToString("yyyy-MM-dd");
                     if (changes.TryGetValue((template.Id, nominal), out var change))
                     {
-                        if (change.Cancelled && change.Payload == null) AddSpan(result, first, through, day + start.TimeOfDay, day + start.TimeOfDay + duration, "Event", template.Title, null, allDay, true,id:template.Id,nominal:nominal);
+                        if (change.Cancelled && change.Payload == null) AddSpan(result, first, through, day + start.TimeOfDay, day + start.TimeOfDay + duration, "Event", template.Title, null, allDay, true,id:template.Id,nominal:nominal,color:color,icon:icon);
                         // Overrides are evaluated separately, including moves into this range.
                         continue;
                     }
-                    AddSpan(result, first, through, day + start.TimeOfDay, day + start.TimeOfDay + duration, "Event", template.Title, null, allDay,id:template.Id,nominal:nominal);
+                    AddSpan(result, first, through, day + start.TimeOfDay, day + start.TimeOfDay + duration, "Event", template.Title, null, allDay,id:template.Id,nominal:nominal,color:color,icon:icon);
                 }
                 foreach (var change in changes.Values.Where(c => c.EventId == template.Id && c.Payload != null))
                 {
@@ -87,17 +105,29 @@ internal sealed partial class LifeManagerWidgetRepository
                     var movedEnd = data.TryGetProperty("endsAt", out var ev) ? Local(ev.GetString()!) : movedStart + duration;
                     var title = data.TryGetProperty("title", out var tv) ? tv.GetString() ?? template.Title : template.Title;
                     var fullDay = data.TryGetProperty("allDay", out var av) ? av.GetBoolean() : allDay;
-                    AddSpan(result, first, through, movedStart, movedEnd, "Event", title, null, fullDay, change.Cancelled,id:template.Id,nominal:change.NominalDate);
+                    var changedColor = data.TryGetProperty("colorValue", out var cv) && cv.ValueKind == JsonValueKind.Number ? unchecked((int)cv.GetInt64()) : explicitColor;
+                    var changedCategory = data.TryGetProperty("categoryId", out var cat) && cat.ValueKind == JsonValueKind.String ? cat.GetString() : category;
+                    var changedIcon = data.TryGetProperty("iconName", out var iv) && iv.ValueKind == JsonValueKind.String ? iv.GetString() : icon;
+                    AddSpan(result, first, through, movedStart, movedEnd, "Event", title, null, fullDay, change.Cancelled,id:template.Id,nominal:change.NominalDate,color:EffectiveColor(changedColor, changedCategory),icon:changedIcon);
                 }
             }
         }
         return result.OrderBy(i => i.Day).ThenBy(i => i.StartsAt ?? i.Day).ThenBy(i => i.Title).ToList();
     }
     private static DateTime Local(string date) => DateTimeOffset.Parse(date, CultureInfo.InvariantCulture).LocalDateTime;
+    private HashSet<string> CalendarColumns(string table)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = $"PRAGMA table_info({table})";
+        using var reader = command.ExecuteReader();
+        var columns = new HashSet<string>();
+        while (reader.Read()) columns.Add(reader.GetString(1));
+        return columns;
+    }
     private static void AddSpan(List<WidgetCalendarItem> items, DateTime first, DateTime through,
-        DateTime start, DateTime end, string kind, string title, string? taskId, bool allDay = false, bool cancelled = false, string id = "", string? nominal = null)
+        DateTime start, DateTime end, string kind, string title, string? taskId, bool allDay = false, bool cancelled = false, string id = "", string? nominal = null, int? color = null, string? icon = null)
     {
         for (var day = start.Date < first ? first : start.Date; day < through && day < end; day = day.AddDays(1))
-            items.Add(new(day, kind, title, taskId, allDay ? "All day · " : start.ToString("t") + " · ", cancelled, start,id,nominal));
+            items.Add(new(day, kind, title, taskId, allDay ? "All day · " : start.ToString("t") + " · ", cancelled, start,id,nominal,color,icon));
     }
 }

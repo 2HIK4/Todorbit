@@ -5,6 +5,7 @@ internal static partial class LifeManagerWidgetSelfTest
     internal static void CaptureWidgetPreviews(string output)
     {
         output = Path.GetFullPath(output); Directory.CreateDirectory(output);
+        CalendarEventIconSelfTest.Capture(output);
         CaptureTooltipPreviews(output);
         var profile = Path.Combine(Path.GetTempPath(), "todorbit-render-" + Guid.NewGuid());
         Directory.CreateDirectory(profile);
@@ -23,6 +24,20 @@ internal static partial class LifeManagerWidgetSelfTest
                 using var bitmap = NativeDesktopWidgetHost.RenderPreview(repo, config, calendar, new Size(376, 460), light ? WidgetPalette.Light : WidgetPalette.Dark, dpi);
                 bitmap.Save(Path.Combine(output, $"{(calendar ? "calendar" : "tasks")}-{(light ? "light" : "dark")}-{dpi * 100:0}.png"));
             }
+            Directory.CreateDirectory(AppDataPaths.ActiveDirectory);
+            File.WriteAllText(Path.Combine(AppDataPaths.ActiveDirectory, "calendar-settings.json"), "{\"content\":\"eventsOnly\"}");
+            using (var update = new SqliteConnection($"Data Source={repo.DatabasePath};Pooling=False"))
+            {
+                update.Open(); using var command = update.CreateCommand();
+                command.CommandText = "UPDATE fixed_events SET color_value=4290138994,icon_name='music'";
+                command.ExecuteNonQuery();
+            }
+            foreach (var light in new[] { false, true })
+            {
+                using var image = NativeDesktopWidgetHost.RenderPreview(repo, new WidgetConfiguration(), true, new Size(420, 640), light ? WidgetPalette.Light : WidgetPalette.Dark);
+                image.Save(Path.Combine(output, $"calendar-event-{(light ? "light" : "dark")}.png"));
+            }
+            File.Delete(Path.Combine(AppDataPaths.ActiveDirectory, "calendar-settings.json"));
             foreach (var position in new[] { "top", "left", "right", "bottom" }) foreach (var mode in new[] { "text", "icons", "both" }) foreach (var header in new[] { true, false })
             {
                 var config = new WidgetConfiguration { NavigationPosition = position, NavigationDisplay = mode, ShowTitle = header, ShowOpenButton = header };
@@ -160,6 +175,33 @@ internal static partial class LifeManagerWidgetSelfTest
             Require(list.Any(i => i.Day == date.AddDays(5) && i.Cancelled && i.Title == "Cancelled moved event"), "Cancelling a moved event reverted its date/title.");
             Require(!list.Any(i => i.Day == date.AddDays(3) && i.Kind == "Event"), "Cancelled moved occurrence duplicated its nominal date.");
             Require(list.Where(i => i.Day == date && i.Kind != "Task").Select(i => i.Kind).SequenceEqual(new[] { "Session", "Event" }), "Agenda did not sort scheduled instants chronologically.");
+            Require(list.Where(i => i.Kind == "Event").All(i => i.ColorValue == null && i.IconName == null), "Legacy calendar without customization columns cannot load.");
+            using (var update = new SqliteConnection($"Data Source={file};Pooling=False"))
+            {
+                update.Open(); using var command = update.CreateCommand();
+                command.CommandText = """
+                    ALTER TABLE categories ADD COLUMN event_color INTEGER;
+                    ALTER TABLE fixed_events ADD COLUMN color_value INTEGER;
+                    ALTER TABLE fixed_events ADD COLUMN icon_name TEXT;
+                    INSERT INTO categories(id,name,created_at,updated_at,deleted_at,event_color) VALUES('event-category','Event category','2026-10-26T00:00:00Z','2026-10-26T00:00:00Z',NULL,4278225275);
+                    UPDATE fixed_events SET category_id='event-category',icon_name='school';
+                    UPDATE event_occurrence_changes SET payload_json=json_set(payload_json,'$.colorValue',4290098034,'$.iconName','music') WHERE nominal_date='2026-10-28';
+                    """;
+                command.ExecuteNonQuery();
+            }
+            var styled = repo.LoadCalendarItems(date, date.AddDays(7)).Where(i => i.Kind == "Event").ToList();
+            Require(styled.Single(i => i.NominalDate == "2026-10-26").ColorValue == unchecked((int)4278225275) && styled[0].IconName == "school", "Inherited event color/icon were dropped.");
+            Require(styled.Single(i => i.NominalDate == "2026-10-28").ColorValue == unchecked((int)4290098034) && styled.Single(i => i.NominalDate == "2026-10-28").IconName == "music", "Occurrence customization did not override the template.");
+            using (var update = new SqliteConnection($"Data Source={file};Pooling=False"))
+            {
+                update.Open(); using var command = update.CreateCommand();
+                command.CommandText = "UPDATE fixed_events SET color_value=4294967295,icon_name='book'";
+                command.ExecuteNonQuery();
+            }
+            Require(repo.LoadCalendarItems(date, date.AddDays(1)).Single(i => i.Kind == "Event") is { ColorValue: -1, IconName: "book" }, "Refresh retained stale event customization.");
+            using (var reopened = LifeManagerWidgetRepository.OpenForTest(file))
+                Require(reopened.LoadCalendarItems(date, date.AddDays(1)).Single(i => i.Kind == "Event") is { ColorValue: -1, IconName: "book" }, "Reopened repository retained stale event customization.");
+            CalendarEventIconSelfTest.Verify();
             Directory.CreateDirectory(AppDataPaths.ActiveDirectory);
             File.WriteAllText(Path.Combine(AppDataPaths.ActiveDirectory,"appearance-settings.json"),"{\"firstWeekday\":\"invalid\"}");
             File.WriteAllText(Path.Combine(AppDataPaths.ActiveDirectory,"calendar-settings.json"),"{interrupted");
