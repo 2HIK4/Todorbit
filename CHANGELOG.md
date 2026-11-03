@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.19-beta.6+29 - calendar appearance and editor reliability
+
+- Honor selected event icons and explicit/category colors in mobile and native
+  Windows calendar agendas, with contrast backing for light/dark surfaces.
+- Preserve event/session duration when moving Start; retain deliberately edited
+  End values and present all-day End consistently with stored boundaries.
+- Keep color/icon, focus timer and manual-work dialogs usable in short windows,
+  at large text and with the keyboard visible.
+- Align mobile editor gutters, anchor settings selectors and refresh shared
+  select values without replacing focus or scroll identity.
+- Show More for unpinned mobile views and clarify habit repeat interval guidance.
+- Preserve schema 26, signing/profile/widget identities, backups and preferences.
+- Original Android error shaking remains unreproduced; physical launcher,
+  assistive-technology and Windows DPI/input acceptance remain limited.
+
 ## 1.0.19-beta.5+28 - UI hierarchy refinement
 
 - Unify page, section, item, body, helper and metadata typography; use semantic

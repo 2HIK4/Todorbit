@@ -1,5 +1,14 @@
 # Progress
 
+## UI quality beta 6 release preparation (2026-11-03)
+
+- User explicitly authorized publication after the Stage 2.1 local verification
+  checkpoint `9240364`. Selected unused `1.0.19-beta.6+29` after public release
+  and remote-tag inspection; schema 26 and production signer remain unchanged.
+- [Release checkpoint and mandatory gates](UI_UX_STAGE2_PUBLICATION.md),
+  [candidate notes](UI_UX_STAGE2_RELEASE_NOTES.md). Publication is pending exact
+  candidate CI, production artifacts, integrity, runtime and delivery gates.
+
 ## Stage 2.1 targeted UI follow-up (2026-11-03)
 
 - Clean baseline `41cd34f`; branch `fix/stage2-1-ui-verification`.
