@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.19-beta.8+31 - experimental Smart Sync
+
+- Continue Google sign-in through secure setup and manual synchronization.
+- Check on startup, throttled foreground return, active polling and debounced
+  committed edits, preserving in-flight changes and controlled offline retries.
+- Simplify Sync settings and one-time encrypted device authorization; retain
+  recovery keys securely and keep advanced controls separate.
+- Keep a counted conflict badge without automatic popups; provide individual
+  and bulk review, confirmation and durable offline resolution propagation.
+- Preserve schema 26, protocol 1, encrypted history, backups and signing identity.
+- Experimental: independent real Drive end-to-end verification and comprehensive
+  Windows/Android acceptance remain incomplete. Keep a verified backup and
+  recovery code; start with disposable profiles and synthetic data.
+
 ## 1.0.19-beta.7+30 - startup lock handling
 
 - Include the calendar appearance and editor reliability improvements below.
