@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.19-beta.9+32 - experimental Smart Sync reliability fixes
+
+- Accept authenticated encrypted history/proofs when an interrupted completed
+  Drive upload lacks the sender's mutable readback marker. Keep AES-GCM,
+  identity/digest/schema/causal checks and outgoing readback acknowledgement.
+- Treat socket/HTTP transport interruption as offline so reviewed conflict
+  decisions can be saved durably and uploaded after connectivity returns.
+- Preserve schema 26, sync protocol 1, keys, backups and Android signing identity.
+- Experimental: real Google Drive exchange remains unverified. Keep a verified
+  backup, use disposable test data initially and retain the recovery code.
+
 ## 1.0.19-beta.8+31 - experimental Smart Sync
 
 - Continue Google sign-in through secure setup and manual synchronization.
