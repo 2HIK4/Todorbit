@@ -56,7 +56,7 @@ class VerifyTest(unittest.TestCase):
         tests = next(s['arguments'] for s in steps if s['tool'] == 'flutter' and s['arguments'][0] == 'test')
         self.assertIn('test', tests[1:])
         flat = json.dumps(steps)
-        for name in ('test-android-update.ps1', 'build-windows-release.ps1', 'native-self-test.ps1', 'test_prepare_android_release.py'):
+        for name in ('test-android-update.ps1', 'build-windows-release.ps1', 'native-self-test.ps1', 'test_prepare_android_release.py', 'test_windows_sandbox_prepare.py'):
             self.assertIn(name, flat)
         self.assertNotIn('clean', flat)
 

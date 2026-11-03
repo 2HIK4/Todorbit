@@ -23,7 +23,8 @@ try {
   Install-Candidate
   $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8C3E7B4A-17A4-42D7-8C45-EBB4C79B6941}_is1'
   $registration = Get-ItemProperty -LiteralPath $key
-  if ($registration.DisplayVersion -ne $manifest.version -or $registration.InstallLocation.TrimEnd('\') -ne $installed) { throw 'Installer registration mismatch.' }
+  $installerVersion = if ($manifest.installerVersion) { $manifest.installerVersion } else { $manifest.version }
+  if ($registration.DisplayVersion -ne $installerVersion -or $registration.InstallLocation.TrimEnd('\') -ne $installed) { throw 'Installer registration mismatch.' }
   $checks.Add('Fresh per-user installer succeeds with matching registered version/path')
   $portableParent = Join-Path $work 'Portable With Spaces'
   Expand-Archive -LiteralPath (Join-Path $PSScriptRoot "Todorbit-$($manifest.version)-win-x64-portable.zip") -DestinationPath $portableParent

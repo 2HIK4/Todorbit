@@ -56,6 +56,7 @@ if ($Mode -eq 'Full' -or $Feature -eq 'android-updates') {
 }
 if ($Mode -eq 'Full') {
   Add-Step 'python' @('-m','unittest','discover','-s','tools','-p','test_dev_verify.py')
+  Add-Step 'python' @('-m','unittest','discover','-s','tools','-p','test_windows_sandbox_prepare.py')
   Add-Step 'python' @('tools/dev/check-docs.py')
 }
 if ($Platform -in @('Android','All')) {

@@ -8,8 +8,11 @@ $payload = Join-Path $stage 'payload'
 $results = Join-Path $stage 'results'
 $null = New-Item -ItemType Directory -Path $payload,$results
 $versionText = Get-Content -LiteralPath (Join-Path $repo 'pubspec.yaml') -Raw
-if ($versionText -notmatch '(?m)^version:\s*(\d+\.\d+\.\d+)') { throw 'Missing version.' }
+if ($versionText -notmatch '(?m)^version:\s*(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)(?:\+\d+)?\s*$') { throw 'Missing version.' }
 $version = $Matches[1]
+# Public asset names retain the prerelease identifier. The existing Inno
+# builder deliberately uses the numeric core for registration/PE metadata.
+$installerVersion = $version.Split('-')[0]
 $hashes = @{}
 foreach ($suffix in @('setup.exe','portable.zip')) {
   $name = "Todorbit-$version-win-x64-$suffix"
@@ -22,7 +25,7 @@ foreach ($suffix in @('setup.exe','portable.zip')) {
 }
 $schemaSource = Get-Content -LiteralPath (Join-Path $repo 'lib/data/app_database.dart') -Raw
 if ($schemaSource -notmatch 'currentSchemaVersion\s*=\s*(\d+)') { throw 'Missing schema version.' }
-@{version=$version; hashes=$hashes; schemaVersion=[int]$Matches[1]; tableCount=52} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $payload 'packages.json') -Encoding UTF8
+@{version=$version; installerVersion=$installerVersion; hashes=$hashes; schemaVersion=[int]$Matches[1]; tableCount=52} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $payload 'packages.json') -Encoding UTF8
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'windows-sandbox-acceptance.ps1') -Destination $payload
 # Map only the two packages and this runner; never map the repository, Desktop
 # OAuth JSON, profile roots, private build configuration or token storage.
