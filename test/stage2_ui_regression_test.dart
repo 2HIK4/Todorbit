@@ -20,6 +20,7 @@ import 'package:life_manager/features/shared/event_color_picker.dart';
 import 'package:life_manager/features/shared/icon_picker.dart';
 import 'package:life_manager/features/shared/draft_interval.dart';
 import 'package:life_manager/features/time_tracking/time_tracking_dialog.dart';
+import 'package:life_manager/features/workspace/task_editor.dart';
 
 void main() {
   late AppDatabase db;
@@ -519,6 +520,138 @@ void main() {
     );
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  for (final task in [false, true]) {
+    testWidgets(
+      '${task ? 'task' : 'event'} error with IME retains draft and scroll',
+      (tester) async {
+        await pump(
+          tester,
+          task
+              ? const TaskEditor()
+              : EventEditor(initialDay: day, onClose: () {}),
+          size: const Size(390, 760),
+          scale: 1.5,
+        );
+        final notes = task
+            ? find.byKey(const ValueKey('task-notes-field'))
+            : find.widgetWithText(TextField, 'Notes');
+        await tester.ensureVisible(notes);
+        await tester.enterText(
+          notes,
+          'Draft survives repeated errors and keyboard transitions',
+        );
+        for (final inset in [80.0, 160.0, 240.0]) {
+          tester.view.viewInsets = FakeViewPadding(bottom: inset);
+          await tester.pump(const Duration(milliseconds: 40));
+        }
+        addTearDown(tester.view.resetViewInsets);
+        await tester.pumpAndSettle();
+        final list = find
+            .descendant(
+              of: find.byType(task ? TaskEditor : EventEditor),
+              matching: find.byType(ListView),
+            )
+            .first;
+        await tester.drag(list, const Offset(0, -1800));
+        await tester.pumpAndSettle();
+        final scroll = tester.state<ScrollableState>(
+          find.descendant(of: list, matching: find.byType(Scrollable)).first,
+        );
+        final baseline = scroll.position.pixels;
+        final focused = FocusManager.instance.primaryFocus;
+        final save = task ? find.text('Create task') : find.text('Save event');
+        for (var repeat = 0; repeat < 2; repeat++) {
+          await tester.tap(save);
+          for (var frame = 0; frame < 12; frame++) {
+            await tester.pump(const Duration(milliseconds: 40));
+            expect(scroll.position.pixels, closeTo(baseline, 1));
+            expect(FocusManager.instance.primaryFocus, same(focused));
+            expect(tester.takeException(), isNull);
+          }
+          expect(find.byType(SnackBar), findsOneWidget);
+          await tester.pump(const Duration(seconds: 5));
+          await tester.pumpAndSettle();
+        }
+        for (final inset in [160.0, 80.0, 0.0]) {
+          tester.view.viewInsets = FakeViewPadding(bottom: inset);
+          await tester.pump(const Duration(milliseconds: 40));
+        }
+        await tester.pumpAndSettle();
+        await tester.drag(list, const Offset(0, 1800));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(notes);
+        expect(
+          tester.widget<TextField>(notes).controller!.text,
+          contains('Draft survives'),
+        );
+        final title = task
+            ? find.byKey(const ValueKey('task-title-field'))
+            : find.widgetWithText(TextField, 'Title *');
+        await tester.ensureVisible(title);
+        await tester.enterText(title, 'Valid after errors');
+        await tester.tap(save);
+        await tester.pumpAndSettle();
+        expect(
+          task ? controller.tasks.single.title : controller.events.single.title,
+          'Valid after errors',
+        );
+        await tester.pumpWidget(const SizedBox.shrink());
+      },
+    );
+  }
+
+  testWidgets(
+    'inline color errors settle without repeated scroll or cursor movement',
+    (tester) async {
+      await pump(
+        tester,
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => chooseEventColor(context, 0xFFB65372),
+            child: const Text('Open picker'),
+          ),
+        ),
+        size: const Size(390, 640),
+        scale: 2,
+      );
+      await tester.tap(find.text('Open picker'));
+      await tester.pumpAndSettle();
+      final hex = find.widgetWithText(TextField, 'HEX color');
+      await tester.ensureVisible(hex);
+      await tester.enterText(hex, '#wrong');
+      tester.view.viewInsets = const FakeViewPadding(bottom: 240);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(hex);
+      await tester.pumpAndSettle();
+      final field = tester.widget<TextField>(hex).controller!;
+      final focus = FocusManager.instance.primaryFocus;
+      for (final value in ['#oops', '#no']) {
+        await tester.enterText(hex, value);
+        final cursor = field.selection;
+        final positions = <double>[];
+        for (var frame = 0; frame < 12; frame++) {
+          await tester.pump(const Duration(milliseconds: 40));
+          positions.add(tester.getTopLeft(hex).dy);
+          expect(field.selection, cursor);
+          expect(FocusManager.instance.primaryFocus, same(focus));
+          expect(tester.takeException(), isNull);
+        }
+        debugPrint('Inline invalid edit $value positions=$positions');
+        for (final position in positions.skip(8)) {
+          expect(position, closeTo(positions.last, 1));
+        }
+      }
+      await tester.enterText(hex, '#3376A3');
+      await tester.pumpAndSettle();
+      expect(find.text('Enter a six-digit HEX color'), findsNothing);
+      await tester.tap(find.text('Use color'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 
   testWidgets('repeated event validation retains scroll, focus and draft', (
     tester,

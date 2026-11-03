@@ -356,12 +356,61 @@ Win+D, monitor migration, real process relaunch or wallpaper/DPI acceptance.
 | U09 | Release `--lifecycle-self-test` via isolated child → native-lifecycle.log | PASS: actual two Explorer child HWNDs, independent visibility/preview/reload/recreation | New current Release lifecycle evidence |
 | U10 | Release build → native-build-final.log and lifecycle → native-lifecycle-final.log | PASS; added assertions for live event-style file watcher and recreated calendar host | Rerun for new lifecycle assertions; product implementation unchanged |
 | U11 | Start retained disposable Stage2Audit AVD, port5586, no snapshot/window/audio; ADB boot/profile checks | Boot completed; only prior synthetic audit guest reused, no data reset | New runtime session; retained prior AVD identity/config |
-| U12 | `tools/test-android-widgets.ps1 -Device emulator-5586 -ApplicationApk build/app/outputs/flutter-apk/app-github-debug.apk -AndroidSdk .buildlog/android-sdk -JavaHome <existing JDK21> -GradleUserHome .buildlog/android-gradle-home` → android-widgets-01.log | In progress. Initial shell used a literal vswhere path; Gradle still launched. Result recorded below when complete | New footer glyph/global bounds, local renders and density/size matrix; native app source unchanged |
+| U12 | `tools/test-android-widgets.ps1 -Device emulator-5586 -ApplicationApk build/app/outputs/flutter-apk/app-github-debug.apk -AndroidSdk .buildlog/android-sdk -JavaHome <existing JDK21> -GradleUserHome .buildlog/android-gradle-home` → android-widgets-01.log | FAILED after 35m31s: JNI CXX1300 could not find existing CMake 3.31.6. Initial shell mistakenly quoted vswhere's environment expression literally, so its PATH additions were invalid. New instrumentation Kotlin compiled; no fixtures ran | New footer glyph/global bounds, local renders and density/size matrix; environment failure diagnosed, no dependency changes |
 | U13 | `flutter test --no-pub --concurrency=1 --reporter=expanded test/stage2_ui_regression_test.dart` → scroll-host-01.log | 15 pass / 3 new probe failures: two lazy-list finders after scrolling; one initial focused-field reveal | New IME/error/cursor probes; original 15 checks still pass |
-| U14 | Same test file with `--name 'error with IME\|inline color errors'` → scroll-host-02.log | In progress; corrected lazy visibility and initial reveal setup | Rerun only affected probes, no speculative app patch |
+| U14 | Same test file with `--name 'error with IME\|inline color errors'` → scroll-host-02.log | Event/task probes PASS including invalid→invalid→corrected save; inline probe's strict initial-offset assertion failed during a 9 px caret reveal | Rerun only affected probes; investigate intermediate frames before any app patch |
 | U15 | Computer Use skill/runtime `@oai/sky` initialization | BLOCKED: failed to write kernel assets, missing path | New availability check; no replacement input helper or tooling installation |
 | U16 | Task-local process/log inspection and `jcmd 27420 Thread.print` → gradle-threads.txt | Gradle worker reading cached JARs, not a demonstrated deadlock; Flutter front end subsequently advanced | New bounded diagnostic before considering retry; no cache cleanup |
 | U17 | Release build → native-build-captures.log; isolated `--capture-widgets` → native-captures-final.log | PASS; additional whole-calendar light/dark renders visibly show Rose music icons; both inspected | Rerun after extending only the capture fixture to show an event unobstructed by planned tasks |
+| U18 | Same Flutter test with `--name 'inline color errors'` → scroll-inline-diagnostic.log | PASS. First edit y=[24,24,29.52,32.78,33,…33], second y=[33,…33]; focus/cursor retained, correction accepted | New frame diagnostic and settling contract distinguish legitimate one-time caret reveal from oscillation; no app change |
+| U19 | `tools/build-windows-release.ps1` → windows-release.log | Interrupted before result to serialize verification after OS probe showed only 855,368 KiB free memory; resume recorded below | New packaging boundary; explicit CMake license installation into `data/licenses/MaterialIcons.txt`; no publication |
+| U20 | `flutter analyze --no-pub test/stage2_ui_regression_test.dart` → analysis.log | Interrupted before result with U19 to reduce resource contention; resume recorded below | New test-source analysis; unchanged app analysis reused |
+| U21 | Regenerate native icon assets after adding creator/source/modification attribution to distributed license; inspect generated CMake install script | PASS: font remains 5,316 bytes; license destined for Debug/Profile/Release `data/licenses/MaterialIcons.txt` | New packaging/attribution verification; full bundle remains pending U19 resume |
+| U22 | ADB `run-as … pwd`, font/density/profile checks; launch existing debug APK, then `am start -W` retry after reducing overlapping host work | First startup ANR; retry rendered Calendar but input-focus ANR followed. Guest also logged NexusLauncher startup ANR. `android-startup-*.log`, `android-input-anr.txt`, `android-anr-summary.log` | New native runtime attempt; prior APK SHA-256 still `d3db8e7…73f90`; do not infer cause solely from resource contention |
+| U23 | Connect DTD/VM, inspect Drift isolate profile, Driver tree/navigation/input, native ADB tap and two PNG captures; runtime-errors query | VM confirmed `/data/user/0/io.github.hik4.todorbit/files/TodoPilot/life_manager.sqlite`. Calendar screenshot shows saved Rose event. Editor/Save finders timed out; native focus was an ANR window. No Dart runtime errors; IME never shown, temporary hardware-keyboard setting restored to 0; test app force-stopped | New actual render sample, **not** a native keyboard/error pass. Driver and native-input limitations retained, no app patch |
+| U24 | Resolve actual Visual Studio with interpolated vswhere path; verify existing CMake/Ninja; rerun U12 → android-widgets-02.log | Build PASS in 6m39s, 167 tasks. Deployment then failed because the unstable guest had been deliberately shut down. Reuse this completed test APK for instrumentation | Rerun after correcting the build-shell PATH; no SDK/package/cache reset |
+| U25 | Dart MCP `analyze_files` on `test/stage2_ui_regression_test.dart` only | Tool timeout after 300s; no diagnostics accepted as a pass | Resume source diagnostics using connected tooling after U20 was interrupted |
+| U26 | Direct installed `dart.exe analyze test/stage2_ui_regression_test.dart` → analysis-resume.log | PASS: no issues | Fallback after connected analyzer timeout; unchanged app analysis retained |
+| U27 | Verified Stage2Audit identity/PIDs, `adb … emu kill`; attempted own-test display resize first | Android `window` service was missing; no resize applied. Emulator stopped gracefully, data retained. First config edit attempt was guarded out while old PID was still closing | New environment recovery after app and launcher ANRs; no data reset or speculative product patch |
+| U28 | `gradlew.bat --stop` scoped to workspace `.buildlog/android-gradle-home` → gradle-stop.log | One now-idle task daemon stopped | New resource recovery after successful build; no cache deletion |
+| U29 | Resume `tools/build-windows-release.ps1` with task-local TEMP/TMP → windows-release-resume.log | In progress | Resume packaging gate after emulator shutdown; preserve incremental output, keep compiler scratch in workspace |
+
+### F06 reproduction result and manual acceptance
+
+Confirmed host scope: 390×760/150% text, focused notes, IME insets animated
+80→160→240 and back, scroll to the bottom, two invalid event/task saves, 12
+intermediate 40 ms frames per error, natural snackbar dismissal, retained draft
+and focus, then corrected title and a successful save. Inline invalid HEX at
+390×640/200%/240 px inset settles after one 9 px caret reveal; another invalid
+edit is stationary. Cursor/focus survive and correction dismisses the picker.
+The original shaking has **not been reproduced** in these controlled cases.
+No offset/timer/reserved-height app patch is justified by that evidence. Native
+keyboard/error transitions are pending below; synthetic insets are not OS IME.
+
+Manual user acceptance (use synthetic records in a disposable profile):
+
+1. Android: repeat the original error sequence with the keyboard open and
+   closed. Record screen, active field, action, font/display scales and whether
+   movement is one focus reveal or repeated reversal. Draft/cursor must survive.
+2. Android: event custom icon, Rose/white/black/inherited category colors,
+   save/reopen, date move and return to agenda in light/dark/custom appearance.
+3. Android: place both widgets in the actual launcher, resize across compact,
+   wide/short and tall grids, empty/populated/updated data, 100/200% font and
+   larger display size. Check complete footer text, 48 dp actions and no overlap.
+   Repeat on the intended phone/OEM launcher; harness renders do not certify it.
+4. Android: TalkBack names/order/actions, Next/Done and two-stage Back (IME then
+   draft protection), portrait/landscape and app-closed widget activation.
+5. Windows: run the local bundle in an isolated profile; compare the calendar
+   agenda against Flutter for two icons/colors, category inheritance and an
+   occurrence override. Change while visible, close/relaunch the **process**,
+   then reopen main app. No stale color/icon or altered widget preferences.
+6. Windows: light/dark/custom agenda/shell colors and opacity over light/dark
+   wallpapers, hover/cancelled events; verify colored glyph plus contrast backing.
+   Calendar cell counts intentionally remain aggregate indicators.
+7. Windows: minimum/tall/wide window and both widget sizes; Tab/Shift+Tab,
+   Enter/Escape, visible focus and Narrator. Drag/resize, lock/unlock, Win+D,
+   cover/uncover, restart geometry; available 100/125/150/200% monitor scales and
+   monitor migration. Record actual OS build, monitor topology and scale.
 
 Reused: Stage 2 full-source analysis and 593 host passes/one opt-in skip on
 `cc20582`, plus the `69acf07` navigation follow-up and accessibility receipts.

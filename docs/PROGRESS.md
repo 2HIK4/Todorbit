@@ -15,6 +15,22 @@
 - Windows physical input automation remains blocked by missing kernel assets.
   Native rendering/lifecycle do not certify physical DPI, input or Win+D.
   No data reset, version bump, release or remote operation.
+- Native implementation checkpoint committed `49f8df0`. Current follow-up adds
+  CMake license distribution and three host error/IME probes: the original 15,
+  two repeated-save probes and one inline-frame diagnostic pass across scoped
+  runs. Inline movement is one 9 px caret reveal, then stationary.
+- Resume checkpoint: retained Stage2Audit AVD/port5586, synthetic Android profile
+  verified; guest now stopped gracefully (old PIDs19828/11680 gone). Harness first
+  failed JNI CMake discovery after a literal vswhere quoting error; corrected
+  environment retry `.buildlog/verify/stage21-ui/android-widgets-02.log` built
+  the new test APK successfully (6m39s); reuse it after guest recovery rather
+  than rebuild. Deployment was deferred by the deliberate shutdown.
+  Main-app native keyboard check is not passed: guest/app/launcher ANRs and
+  Driver input timeouts are retained in the ledger. IME preference restored.
+  Connected analyzer timed out; direct SDK analyzer passed with no issues.
+  Windows local Release resumed in `windows-release-resume.log`; once complete,
+  run packaged self-test, then boot the retained AVD with smaller physical
+  rendering dimensions and run the already-built native instrumentation.
 
 ## Windows/Android UI audit, Stage 2 (2026-11-02)
 
