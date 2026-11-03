@@ -15,6 +15,8 @@ class MigrationGate {
       mode: sqlite.OpenMode.readOnly,
     );
     try {
+      // Match the live connection's bounded wait for WAL recovery/other writers.
+      connection.execute('PRAGMA busy_timeout = 5000');
       final version =
           connection.select('PRAGMA user_version').single.values.single as int;
       if (version < 0 || version > AppDatabase.currentSchemaVersion) {

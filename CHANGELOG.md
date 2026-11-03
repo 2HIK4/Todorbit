@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.19-beta.7+30 - startup lock handling
+
+- Include the calendar appearance and editor reliability improvements below.
+- Wait up to five seconds for transient SQLite locks during startup schema and
+  backup integrity reads, matching live database connections. Persistent locks
+  still fail safely without replacing data or bypassing integrity checks.
+- Retain the unpublished beta 6 candidate and failed 16 KiB restart evidence;
+  prepare beta 7 for fresh exact-source CI and signed-artifact runtime checks.
+
 ## 1.0.19-beta.6+29 - calendar appearance and editor reliability
 
 - Honor selected event icons and explicit/category colors in mobile and native

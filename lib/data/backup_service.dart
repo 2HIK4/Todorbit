@@ -800,6 +800,9 @@ int _inspectSnapshot(String sourcePath) {
     mode: sqlite.OpenMode.readOnly,
   );
   try {
+    // Startup can overlap WAL recovery or a bounded background writer. Keep
+    // integrity checks mandatory, but allow the same wait as AppDatabase.
+    connection.execute('PRAGMA busy_timeout = 5000');
     final result = connection.select('PRAGMA quick_check');
     if (result.length != 1 || result.single.values.single != 'ok') {
       throw StateError('SQLite integrity check failed for $sourcePath');
@@ -820,6 +823,7 @@ int _writeSnapshot(
     mode: sqlite.OpenMode.readOnly,
   );
   try {
+    source.execute('PRAGMA busy_timeout = 5000');
     final result = source.select('PRAGMA quick_check');
     if (result.length != 1 || result.single.values.single != 'ok') {
       throw StateError('Source database integrity check failed');

@@ -1,3 +1,13 @@
+## 2026-11-03 ? beta 7 correction before publication
+
+Beta 6 remains a private rejected draft: its mandatory 16 KiB cold restart
+showed SQLite code 5 at startup `PRAGMA quick_check`. Added real-lock regressions
+(three reproduce before correction, all four pass after) and the existing bounded
+five-second wait on startup schema/backup read connections. Persistent locks
+still fail without replacing data. Preparing synchronized `1.0.19-beta.7+30`
+with fresh exact-source CI and signed runtime evidence; publication remains
+explicitly authorized but gated. See [publication checkpoint](UI_UX_STAGE2_PUBLICATION.md).
+
 # Progress
 
 ## UI quality beta 6 release preparation (2026-11-03)
@@ -8,6 +18,11 @@
 - [Release checkpoint and mandatory gates](UI_UX_STAGE2_PUBLICATION.md),
   [candidate notes](UI_UX_STAGE2_RELEASE_NOTES.md). Publication is pending exact
   candidate CI, production artifacts, integrity, runtime and delivery gates.
+- Runtime candidate `e8419c7` pushed. Exact Windows CI `41584177622` passes full
+  analysis, 597 tests/one existing skip, eight helper checks and native/package
+  gates. Android CI `41584178103` passes 72 host/11 preparation checks and two
+  real emulator integrations. Local enabled/signed artifacts and final 16 KiB
+  runtime/draft/public delivery gates remain pending.
 
 ## Stage 2.1 targeted UI follow-up (2026-11-03)
 

@@ -1,10 +1,13 @@
-# Todorbit v1.0.19-beta.6 — calendar appearance and editor reliability
+# Todorbit v1.0.19-beta.7 — calendar appearance and editor reliability
 
-Coordinated Windows and Android prerelease, version `1.0.19-beta.6+29`.
+Coordinated Windows and Android prerelease, version `1.0.19-beta.7+30`.
 This beta improves the existing interface while preserving tasks, events,
 preferences, backups, widget settings and schema 26.
 
 ## What changed
+
+- Startup and backup integrity checks wait briefly for SQLite locks while
+  retaining all safety checks. Persistent locks still stop startup safely.
 
 - Calendar agendas honor event icons and selected colors. Windows companion
   events also inherit category colors and occurrence-specific appearance;
@@ -35,5 +38,5 @@ Google Drive remains optional and experimental under the existing authorization
 and branding limitations. No new account, cloud service or telemetry is added.
 Real-account end-to-end exchange is not newly certified by this release.
 
-The [Stage 2 / 2.1 audit](UI_UX_STAGE2_AUDIT.md) records findings, exact check
+The [Stage 2 / 2.1 audit](https://github.com/2HIK4/Todorbit/blob/v1.0.19-beta.7/docs/UI_UX_STAGE2_AUDIT.md) records findings, exact check
 scopes, failed attempts, reused evidence and the manual acceptance checklist.

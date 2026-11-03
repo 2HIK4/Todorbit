@@ -134,6 +134,7 @@ if __name__ == '__main__':
             'failure-crash': ('logcat', '-d', '-b', 'crash'),
             'failure-events': ('logcat', '-d', '-b', 'events'),
             'failure-system': ('logcat', '-d', '-t', '1000'),
+            'failure-main': ('logcat', '-d', '-b', 'main'),
         }.items():
             try:
                 (ROOT / f'{name}.log').write_text(adb(*args), encoding='utf-8')
