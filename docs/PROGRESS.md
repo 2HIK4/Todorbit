@@ -1,6 +1,31 @@
 # Progress
 
-## Smart Sync implementation (2026-11-03; unpublished)
+## Experimental Smart Sync beta 8 published (2026-11-03)
+
+- Published [v1.0.19-beta.8](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.8)
+  at 17:45:51 UTC, version `1.0.19-beta.8+31`, application/tag source
+  `dd36189c74548b14ed49fea8b12344ba4d0966fe`; prerelease only, not latest Stable.
+  All five Smart Sync commits are included. Schema 26/protocol 1 remain unchanged.
+- Windows exact-source CI: 628 passes/one existing opt-in skip, analysis, native
+  checks, Release and packaging. Android exact-source CI and production APK/AAB
+  signing gates passed. Enabled Windows local build and isolated schema-26
+  startup passed. Eleven public assets passed integrity and anonymous checks.
+- Production beta 7 code 30 upgraded in place to beta 8 code 31 on the 16 KiB
+  Android guest; a synthetic task survived, completed and survived cold restart.
+  First runtime job failed on transient UIAutomator capture before candidate
+  upgrade. Harness-only `4ce4d37` fixes bounded capture/retry without changing
+  app bytes or weakening assertions; rerun passed with screenshots inspected.
+- Public production updater selectors accept beta 8 from beta 7 for Windows
+  installed/portable and Android ordered ABIs/universal fallback; Stable excludes
+  it. Previous published releases/assets/tags remain unchanged.
+- Real Drive end-to-end exchange and full physical Windows/Android acceptance
+  remain pending. No owner profile/account was used; Windows is unsigned.
+  Next task: comprehensive acceptance using disposable profiles and test data.
+- [Publication receipt, invocation ledger, hashes and limits](SMART_SYNC_BETA_8_PUBLICATION.md),
+  [release notes](SMART_SYNC_BETA_8_RELEASE_NOTES.md).
+
+
+## Smart Sync implementation checkpoint (2026-11-03; before beta 8 publication)
 
 - Branch `feature/smart-sync-redesign`, baseline `0dcfb5a` / published beta 7
   runtime `2919551`. Audit `4b26af5`, orchestration `eee62a6`, UI `c9784cf`,
