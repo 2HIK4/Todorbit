@@ -1,3 +1,10 @@
+Material Icons by Google
+Source: https://github.com/google/material-design-icons
+Modified: a 31-glyph subset for Todorbit's native calendar, taken from the
+Material Icons font distributed with the Flutter SDK. Glyph artwork is unchanged.
+License supplied with that font: Creative Commons Attribution 4.0 International
+https://creativecommons.org/licenses/by/4.0/
+
 Attribution 4.0 International
 
 =======================================================================
