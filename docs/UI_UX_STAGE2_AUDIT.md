@@ -485,3 +485,11 @@ Verified checkpoints: `49f8df0` native appearance, `3b61eb1` host IME/error
 probes, `f6fc308` font attribution/distribution, `1523d7e` Android footer probe.
 Ready for local Windows/Android acceptance builds, with the explicit manual
 boundaries above; this is not a completed physical-platform acceptance claim.
+
+Subsequent authorized publication: [v1.0.19-beta.7](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.7)
+provides fresh Windows/Android acceptance packages from runtime source `2919551`.
+Its release gate also found and corrected transient SQLite startup/backup
+read-lock handling; the exact signed APK passed save/cold-reopen/completion on a
+real 16 KiB guest. [Publication receipt](UI_UX_STAGE2_PUBLICATION.md) records the
+new CI, hashes, rejected beta 6 evidence and public delivery checks. Those runtime
+gates do not replace the seven physical/manual checklist items above.

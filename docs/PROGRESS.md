@@ -1,16 +1,32 @@
-## 2026-11-03 ? beta 7 correction before publication
-
-Beta 6 remains a private rejected draft: its mandatory 16 KiB cold restart
-showed SQLite code 5 at startup `PRAGMA quick_check`. Added real-lock regressions
-(three reproduce before correction, all four pass after) and the existing bounded
-five-second wait on startup schema/backup read connections. Persistent locks
-still fail without replacing data. Preparing synchronized `1.0.19-beta.7+30`
-with fresh exact-source CI and signed runtime evidence; publication remains
-explicitly authorized but gated. See [publication checkpoint](UI_UX_STAGE2_PUBLICATION.md).
-
 # Progress
 
-## UI quality beta 6 release preparation (2026-11-03)
+## UI quality beta 7 published (2026-11-03)
+
+- Published [v1.0.19-beta.7](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.7) at
+  `2026-11-03T10:35:16Z`, runtime/tag source `2919551`, version
+  `1.0.19-beta.7+30`, schema 26. Prerelease only; previous public releases/tags
+  preserved. The rejected beta 6 draft remains private and unchanged.
+- Mandatory 16 KiB beta 6 runtime found code-5 startup locking. Added the existing
+  bounded five-second wait to startup schema/backup read connections. Real-lock
+  tests reproduce before correction and pass after; persistent locks still fail
+  without replacing data or bypassing integrity checks. Focused startup,
+  migration and backup regressions: 39 pass.
+- Fresh exact-source Windows CI: 601 pass/one existing opt-in skip, eight helper
+  checks and all native/package gates. Android CI: 72 host/11 preparation/two
+  emulator integrations. Exact final signed APK passes the original 16 KiB
+  save/cold-reopen/completion/no-crash checks.
+- Enabled Windows Release, CRT, native self-test, writer/worker, Setup and
+  portable gates pass. Production-signed universal/ARM64/x64 APKs and private AAB
+  pass identity/alignment; signer retained. All eleven public files pass
+  integrity, anonymous delivery and actual production updater selection,
+  including Windows modes, Android ABIs/universal and Stable exclusion.
+- [Receipt, hashes and invocation ledger](UI_UX_STAGE2_PUBLICATION.md),
+  [notes](UI_UX_STAGE2_RELEASE_NOTES.md), [audit/manual checklist](UI_UX_STAGE2_AUDIT.md).
+  Original shaking remains unreproduced; wider launcher/IME, physical Windows
+  input/DPI and assistive-technology acceptance remain explicit manual gaps.
+  No owner-profile test, installer execution, Sandbox or Play publication.
+
+## Rejected beta 6 preparation history (2026-11-03)
 
 - User explicitly authorized publication after the Stage 2.1 local verification
   checkpoint `9240364`. Selected unused `1.0.19-beta.6+29` after public release

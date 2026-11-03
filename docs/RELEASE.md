@@ -2,9 +2,9 @@
 
 ## Current status
 
-The current coordinated release is **[v1.0.19-beta.5](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.5)**,
-Windows + Android, version `1.0.19-beta.5+28`, Android code 28, schema 26.
-[Publication evidence, exact checksums and limits](UI_HIERARCHY_PUBLICATION.md).
+The current coordinated release is **[v1.0.19-beta.7](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.7)**,
+Windows + Android, version `1.0.19-beta.7+30`, Android code 30, schema 26.
+[Publication evidence, exact checksums and limits](UI_UX_STAGE2_PUBLICATION.md).
 The Windows 1.0.18 checkpoint below is historical.
 
 As checked on 2026-10-28, the latest public release is the Windows x64
