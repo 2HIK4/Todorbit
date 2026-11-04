@@ -97,6 +97,10 @@ upload the complete Android APK/metadata/checksum set to the matching stable or
 pre-release GitHub tag; verify GitHub reports SHA-256 asset digests and the public
 updater sees the correct channel. The AAB belongs to Play's separate approved
 release process, not GitHub APK installation.
+For a GitHub-only local candidate, the same preparation helper accepts explicit
+`--apk-only` in place of `--aab`. All APK/signature/alignment/monotonic-version,
+metadata and checksum gates remain. Its normal default still requires a fully
+verified AAB; a supplied AAB cannot be silently skipped with `--apk-only`.
 
 ## Debug-to-production migration
 

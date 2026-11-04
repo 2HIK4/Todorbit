@@ -1,9 +1,9 @@
 # Progress
 
-## Experimental optional Sync encryption beta 10 preparation (2026-11-04)
+## Experimental optional Sync encryption beta 10 published (2026-11-04)
 
-- Owner authorizes publication of `1.0.19-beta.10+33` / `v1.0.19-beta.10`, based on `06b9ded`; tag/release were unused. Branch `maintenance/smart-sync-beta10-release`. Original storage-cleanup changes preserved and excluded.
-- Reuse targeted implementation checks; rebuild once per platform for version metadata. Owner explicitly skips broad CI/full suites/emulators; no live Google Drive or physical acceptance claimed. Existing signing/OAuth/installer/updater/integrity gates remain.
+- Published [v1.0.19-beta.10](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.10), experimental/prerelease and not Latest Stable, version `1.0.19-beta.10+33`, source/tag `ed23095` based on `06b9ded`. Branch `maintenance/smart-sync-beta10-release`; original three storage documents preserved and excluded.
+- First Windows/Android builds PASS; nine assets, Android production signature/code33, exact ZIP/runtime/licensing, updater beta9->beta10 selection/Stable exclusion and all anonymous full-download hashes PASS. Prior releases/tags unchanged. Three helper cases passed; one updater preview fixture was corrected and passed. A final historical comparison decoding error was diagnosed without repeating passed downloads. Owner explicitly skips broad CI/full suites/emulators; no live Drive or physical upgrade acceptance claimed.
 - [Release notes](SMART_SYNC_BETA_10_RELEASE_NOTES.md) and [publication receipt](SMART_SYNC_BETA_10_PUBLICATION.md) record actual outcomes and limitations, including unavailable mode conversion/passphrase changes.
 
 ## Local Sync manual builds (2026-11-04)
