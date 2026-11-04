@@ -621,3 +621,281 @@ Command substitutions are literal, preserving argument order:
 | 10:07:28 / `compact-warning-scroll-100728` | `F test/smart_reschedule_widget_test.dart --plain-name 'scheduling warnings remain reviewable before Apply (compact=true)'` | Exit 0. Compact case passes after scrollUntilVisible then ensureVisible. Preview remains non-mutating, Apply requires explicit review, and actual date/history persist. Reuse wide pass. |
 | 10:08:12 / `warning-final-format-100812` | `dart format test/smart_reschedule_widget_test.dart` | Exit 0. Format corrected lazy-scroll test; no production changes or behavioral rerun. |
 | 10:08:13 / `checkpoint-docs-100813` | `python tools/dev/check-docs.py docs/PROGRESS.md docs/TEST_RUN_LEDGER.md docs/UI_UX_PERMANENT_QUALITY_AUDIT.md` | Exit 0. Scoped documentation links/path validation after ledger and checkpoint edits; result is the recorded exit code. |
+
+
+## Batch 3: populated workflows and platform acceptance
+
+Continued on 2026-11-04 from `7a5d0ed` on `feature/permanent-ui-quality`.
+The canonical routing/skill work in `c32329c` remains unchanged. This is a
+completed implementation checkpoint, **not complete application acceptance**.
+Source identities below mean that commit plus the per-command dirty-file SHA-256
+manifests in `.buildlog/verify/permanent-ui-quality/pass3/`. Tests use memory
+SQLite and separate `APPDATA`/`LOCALAPPDATA` profiles. No personal profile,
+real cloud account, version, schema, encryption or synchronization protocol was
+changed. The unrelated three storage documents remain outside this batch.
+
+### Confirmed findings and experience decisions
+
+| Finding | Reproduction / first incorrect boundary | Correction and evidence |
+| --- | --- | --- |
+| U19 P1, nested draft loss | Enter a child title in new task > Add subtask > Escape/Cancel; unguarded nested route drops it | Reuse UnsavedEditorGuard; decline discard retains title/dates and Save returns the accepted child. Widget sequence persists parent/child; actual isolated Windows Driver sequence and read-only SQLite parent link verified |
+| U20 P1, recurring drafts | Shared series fields could close without review; successful series Apply closes its dirty parent occurrence editor without asking (source-confirmed parent closure hazard) | Guard series draft and call parent confirmLeave before applying. Escape/Keep editing, Cancel/discard, unapproved Apply with no DB writes and explicitly approved Apply/close/persistence pass. Initial parent tests stopped at unreviewed date collisions; those failures were fixture errors, not observed Apply data loss |
+| U21 P2, short child editor | 390x480/200% child dialog overflows; blank Save gives no feedback | Scrollable existing AlertDialog and inline title validation. Error and reachable Save/Cancel pass; offscreen render inspected |
+| U22 P2, false unsaved warning | Change and successfully save prerequisites, then close without other edits: discard prompt still appears | Track prerequisite baseline separately; update only after successful persistence. Saved dependency closes cleanly; unrelated notes still trigger guard. Final review reproduced an interim race where changes made during Save were marked clean: snapshot submitted IDs/key before awaiting. Three prerequisite cases now pass, including delayed persistence and retained newer edits |
+| U23 P2, series form access | 390x700/200% fixed safety explanation consumes most form space | Move existing explanation into the scrolling form; retain heading/actions and all safety text. Corrected render shows several editable fields with reachable Cancel/preview/Apply; draft remains protected |
+| U24 P2, dense Week readability | 800x700/200% seven narrow columns fragment event titles despite no overflow | Account for text scale in existing stacked-week breakpoint. Whole headings and populated scroll reachability pass; ordinary Calendar mode-control/month regressions pass |
+| U25 P2, overnight identification | Select continuation date of 23:00-01:00 event: desktop tile repeats yesterday's 23:00; mobile repeats full range without identifying continuation | Desktop uses existing calculated entry time label; mobile labels Continues until [end] or Continues. All-day and ordinary timing retained; desktop/mobile populated tests and corrected renders pass |
+| U26 P2, destructive review access | Long Trash record name at 390x700/200% makes full consequences unreachable in fixed confirmation | Enable existing AlertDialog scrolling. Cancel remains reachable and retains Trash item; no purge performed |
+
+Implementation review traced draft ownership, awaited writes, route results,
+stale-save failures, actual Calendar occurrence projections and confirmation
+cancellation. Experience review retained purposeful advanced controls and explicit
+collision/destructive decisions. No new routine step, decorative component or
+setting was added. Only dirty nested work requests discard confirmation; normal
+saves and navigation retain existing behavior. Existing theme roles/shared guards
+and layout branches are reused. No scheduling, recurrence or restore algorithm
+was rewritten.
+
+### Additional coverage in the existing 40 groups
+
+S/O/A/V below retain the earlier definitions: source inspection, offscreen render,
+automated behavior, and actual live Flutter runtime. Emulator/native OS evidence
+is called out separately. This supplements the existing inventory; rows not listed
+retain their earlier status and gaps.
+
+| Group | Additional completed evidence | Remaining acceptance |
+| --- | --- | --- |
+| S01 Today, S02 task list, S03 Task Editor | S/O/A long title/20-line notes rejected stale save, nested child validation/guard, prerequisite save with/without notes; V Windows parent+child saved and Android two tasks retained after restart. Six parent close/navigation/switch/search-view guard regressions pass | Very large collections, physical keyboard/IME/focus and all mixed-resource edit combinations |
+| S05 recurring series | S/O/A dirty shared-field Escape, reviewed collisions, parent guard decline and explicit approved Apply. DB changes only after approval; enlarged form render inspected | Every scope/collision choice and concurrent series edits on device |
+| S08 desktop Calendar | S/O/A eight overlapping events plus overnight/all-day/recurring fixtures and enlarged Week. Ordinary controls/month navigation pass | Actual pickers, full recurring-exception editing, timezone/DST and native Calendar renderer |
+| S09 mobile Calendar | S/O/A continuation agenda at 390/200%; V API35 Day/Week/Month at font scale1.5 with two tasks | Populated event creation/pickers and physical gestures/OEM layouts |
+| S18 Archive/Trash | S/O/A long permanent-delete review, accessible Cancel, synthetic deleted record retained | Actual restore/purge/error and populated Archive journeys |
+| S19 settings, S20 appearance, S21 preferences | V API35 Settings, light/system to dark at font scale1.5; dark and two tasks survive Debug rebuild/restart | Custom palette import/apply/cancel, redo, independent widget settings and full nested Back paths |
+| S32 settings transfer | A actual malformed JSON decoding via fake File IO boundary; visible error, no Apply, same preference object and Close. No persistence write | Successful merge/apply/restart, newer format, native chooser cancellation |
+| S38 Android widgets | Native API35 provider registration, actual Pixel launcher picker/search, native Tasks configuration at font1.5, Apply and populated home widget observed. System widget theme stays light independently of dark app. Tap task title opens correct full task in dark Flutter editor; Driver readback confirms exact title | Bound Calendar widget, OEM/physical launcher, resize/reboot, locked state, TalkBack and all independent settings |
+| S40 shared input/overlays | A nested guards and relevant existing composition consumers; V native Android system Back and rotation; no errors reported by live Flutter diagnostics | Physical Windows input/Narrator and actual Flutter soft-keyboard text entry remain unaccepted |
+
+Relevant earlier evidence reused: unchanged category/project/template/search/view
+guards from Batch 2; Smart Reschedule preview/explicit approval/history controls;
+settings Undo/Done, notification/privacy, Backup/Drive unavailable states and Sync
+conflict/recovery tests; data/codec/migration/native/release gates within their
+recorded source scope. TaskEditor changes required new parent navigation and
+composition checks above; Calendar layout changes required ordinary controls/month
+regressions. No unchanged broad suite, native build or release package was repeated.
+No native production source changed. Real Drive paired/offline/recovery remains
+blocked without disposable account configuration.
+
+### Actual runtime and platform receipt
+
+Windows owned Debug launch: `flutter --no-version-check --suppress-analytics run
+--no-pub -d windows --target lib/driver_main.dart --machine` at 12:57:09+03:00,
+launcher22724/app28760. VM confirmed child environment paths under
+`pass3/runtime-profile/{Roaming,Local}` and Drift's resolved
+`Roaming/TodoPilot/life_manager.sqlite` before input. Driver entered parent and
+nested child; Cancel > discard > Keep editing retained child text, Save/Create
+persisted two records. Hot reloads succeeded after affected UI edits. Runtime
+diagnostics reported no errors. Owned exit intentionally disconnected VM before
+reply; read-only final `profile-check.py` reports `quick_check=ok`, two tasks and
+one correct `task_parent_links` row. Personal installed app was not selected.
+`sky.list_apps()` failed with missing native pipe (`os error 2`); physical Windows
+mouse/keyboard/focus/DPI/Narrator/high contrast/Explorer widgets are **BLOCKED**.
+
+Android tools found at retained `.buildlog/android-sdk`, JDK21.0.8 under
+`C:/Program Files/Android/openjdk/jdk-21.0.8`. Launched documented synthetic
+`TodorbitProductionBeta` API35 Google Play x86_64 AVD on port5582 with
+`-read-only -no-snapshot-load -no-snapshot-save -no-window -no-audio
+-no-boot-anim -gpu swiftshader_indirect`; original userdata image retained.
+Fresh debug app installation was confined to that temporary overlay; the earlier
+synthetic APK was uninstalled there before installation to avoid certificate
+collision, never as an error fallback. No other device/profile was used.
+
+Debug build command: `flutter --no-version-check --suppress-analytics run --no-pub
+-d emulator-5582 --flavor github --target lib/driver_main.dart --machine`.
+13:07:05 attempt failed because retained Gradle configuration selected CMake3.31.6
+outside SDK/PATH. One environment correction added the existing Visual Studio
+CMake/Ninja directories to that process PATH; 14:13:22 retry built/installed and
+ran PID7696. No package/tool download or system configuration change was needed.
+The foreground worked, but background engine lookup failed for imported named
+entry points in Driver root library. Added debug-only forwarding entry points;
+production main.dart is unchanged. A same-profile rebuild/reinstall at14:35:37
+ran PID8550 with APK SHA-256
+`886a19b391f362f41fd8d29048757dc106ab42307b92fcad400e8372cf119c86`.
+Forced local reminder job2026 returned to waiting; rebuilt log contains neither
+entrypoint-resolution nor background-refresh failure. Sync jobs were not forced.
+This verifies harness worker startup, not notification delivery or cloud Sync.
+
+Before input, VM process/path and fresh Today zero state identified
+`/data/user/0/io.github.hik4.todorbit/files/TodoPilot/life_manager.sqlite`.
+Observed native system Back > discard prompt > Keep editing; Driver text retained.
+Saved task1; task2's draft survived native landscape rotation and was saved.
+Returned portrait, font scale1.5 (original1.0), navigated Day/Week/Month, opened
+Settings and selected dark. After debug reinstall/restart Today still shows both
+exact titles and dark palette. Driver frame-sync caused selector timeouts; disabling
+frame-sync allowed selection. Wrong current-value finders and intermediate/stale
+screenshots are tooling evidence, not app defects. Debug/headless skipped-frame
+logs do not establish release performance.
+
+Native text injection with Driver text emulation disabled retained only `n`;
+input-method dump reported `mInputShown=false` and an early native app capture was
+black. Later native captures show a keyboard, and launcher search accepts Todorbit,
+but actual Flutter soft-keyboard typing is **INCONCLUSIVE**, not accepted or
+proven data loss. TalkBack packages exist but speech/focus was **NOT TESTED**.
+All Android results are emulator evidence, not physical-device/OEM acceptance.
+
+Saved evidence in `pass3/`: `windows-nested-draft.png`,
+`android-system-back.png`, `android-landscape.png`, `android-dark-settings.png`,
+restarted Today capture; offscreen `renders/series-draft-large.png`,
+`nested-subtask-validation.png`, `dense-week-before-or-after.png`,
+`overnight-day.png`, `mobile-overnight.png`, `trash-long-confirmation.png` and
+`stale-task-save.png`. Offscreen renders have real Segoe text but missing icon
+glyphs in the test harness; actual runtime screenshots establish those icons.
+Geometry/behavior assertions and rendered/runtime inspections are distinct.
+
+Native launcher continuation: search Todorbit > two named widget previews >
+Tasks > Add > native configuration > Apply. The 2x3 home widget contains both
+synthetic tasks and named Open tasks/add controls; long names truncate at font1.5
+and disclose correctly on task tap. `tasks-widget-home-shot.png` is actual native
+RemoteViews, not Flutter/offscreen rendering. `android-widget-opened-task.png`
+and Driver `get_text(task-title-field)` confirm the selected complete title.
+One UIAutomator dump returned null root during configuration transition despite
+exit0; it is not an accessibility pass. No completion checkbox was pressed.
+The bound Calendar widget and real screen-reader reading remain untested.
+Final TaskEditor snapshot change was hot reloaded successfully on this app;
+the recorded APK hash predates that final Dart-only adjustment, so this is live
+hot-reloaded source evidence, not a fresh final release artifact.
+
+At14:49+03:00 stopped only the owned debug package on emulator5582, copied its
+SQLite/WAL/SHM using `ADB exec-out run-as io.github.hik4.todorbit cat
+files/TodoPilot/[life_manager.sqlite|-wal|-shm]` to ignored local snapshots,
+then opened that copy read-only. `quick_check=ok` and both exact synthetic task
+titles verified; no app-database query/migration/write was used for inspection.
+`profile-check.py` and `final-review.py` record these commands/results and hashes.
+Stopped the owned emulator with `ADB emu kill`; its read-only overlay (including
+font/rotation/widget settings) is discarded and original AVD userdata retained.
+Restored ignored `android/local.properties` byte-for-byte from its saved original
+after confirming only task build SDK/mode/comment escaping changes. Three
+unrelated document SHA-256 values match the initial baseline. Owned Windows Debug
+PID28760 is stopped. No personal process was stopped or profile opened.
+
+Final review commands: `git diff --stat`, focused `git diff`/`git diff -w`,
+`git diff --check` after implementation and after receipt updates, followed by
+explicit-path staging and `git diff --cached --check`/staged diff review. No build,
+cache, synthetic profile, screenshot, machine setting or unrelated document is
+included in the task commit. Scoped documentation links already pass; subsequent
+receipt rows and cleanup prose introduce no additional links.
+
+### Exact automated invocations, Batch 3
+
+Times are 2026-11-04 UTC+03:00. Each named JSON/log is in ignored `pass3/` and
+records full actual SDK command, environment, source and dirty-file SHA-256 values.
+`F = flutter --no-version-check --suppress-analytics test --no-pub
+--concurrency=1 --reporter=expanded`; `A = test/advanced_task_ui_quality_test.dart`;
+`P = test/populated_ui_journeys_test.dart`. Pipes in name filters are regex OR.
+All re-executions below follow a stated implementation, fixture or evidence change.
+
+| Time / receipt stem | Exact command (aliases above) | Result, purpose and reason |
+| --- | --- | --- |
+| 12:54:11 / `advanced-task-before-125412` | `F A` | FAIL compile: fixture used nonexistent parentTaskId; correct to repository parent map. |
+| 12:55:02 / `advanced-task-baseline-125502` | `F A` | FAIL: nested Escape/validation and series fixture. Stale-save passes. Establish actual child baseline; parent series Apply remained gated by collisions. |
+| 12:56:23 / `task-guard-format-125623` | `dart format lib/features/workspace/task_editor.dart lib/features/workspace/series_editor.dart A` | PASS format new nested guard, parent callback and assertions. |
+| 12:56:25 / `advanced-task-after-125625` | `F A --name "nested\|applying a series"` | Two nested cases PASS after fix; parent test FAIL before approval. Diagnose preview gate. |
+| 12:58:07 / `series-draft-before-125807` | `F A --name "series draft survives\|applying a series"` | FAIL own series Escape confirms loss; parent fixture still blocked. New own-draft reproduction. |
+| 12:59:24 / `series-preview-diagnostic-125924` | `F A --plain-name "applying a series edit protects the dirty occurrence editor"` | FAIL disabled Apply diagnostic, not data loss. Added enabled-state assertion. |
+| 13:01:37 / `series-guard-format-130138` | `dart format lib/features/workspace/series_editor.dart A` | PASS format own-series guard/assertions. |
+| 13:01:39 / `series-draft-after-130139` | `F A --name "series draft survives\|applying a series"` | Own series Escape PASS; parent fixture FAIL still disabled. Recheck own fix, retain failure. |
+| 13:03:33 / `series-preview-text-only-130333` | `F A --plain-name "applying a series edit protects the dirty occurrence editor"` | FAIL same gate after text-listener hypothesis; production listener experiment reverted. |
+| 13:04:42 / `series-state-diagnostic-130442` | `F A --plain-name "applying a series edit protects the dirty occurrence editor"` | FAIL compile diagnostic invalid tester.state<dynamic> bound; correct diagnostic cast. |
+| 13:05:09 / `series-state-readable-130509` | `F A --plain-name "applying a series edit protects the dirty occurrence editor"` | FAIL assertion; diagnostic establishes busy=false/error=null/three unreviewed collisions. No app error. |
+| 13:06:53 / `series-collisions-reviewed-130653` | `F A --plain-name "applying a series edit protects the dirty occurrence editor"` | PASS one after explicit Keep both on all. Declined parent discard preserves notes and DB. |
+| 13:09:09 / `prerequisite-baseline-130910` | `F A --plain-name "saving prerequisites clears only its own dirty state"` | FAIL notes=false false warning; notes=true PASS. New baseline for separate-save dirty tracking. |
+| 14:11:27 / `prerequisite-after-141127` | `F A --plain-name "saving prerequisites clears only its own dirty state"` | PASS two after updating only prerequisite baseline. |
+| 14:12:35 / `populated-baseline-141235` | `F P` | FAIL compile: fixture API mismatches EventRepeat.count and preferences.toJson. |
+| 14:13:24 / `populated-baseline-compiled-141324` | `F P` | FAIL compile: remaining nonexistent toJson fixture usage; correct identity assertion. |
+| 14:13:50 / `populated-baseline-ready-141350.log` | `F P` | INTERRUPTED after two Calendar failures and stalled async temporary-file fixture. Ctrl+C; no JSON completion receipt/pass. Replace IO fixture, then scope recovery diagnostics. |
+| 14:16:56 / `recovery-baseline-141657` | `F P --name "invalid settings\|long Trash"` | FAIL import async fixture feedback and Trash scroll; no malformed-format pass claimed. Completed with exit1 after78s. |
+| 14:19:14 / `recovery-fixture-memory-141914` | `F --timeout=40s P --name "invalid settings\|long Trash"` | FAIL Trash; import observation incomplete because fake exists() missing. Correct File boundary before accepting JSON evidence. |
+| 14:21:23 / `batch3-format-142124` | `dart format lib/features/calendar/calendar_view.dart lib/features/mobile/mobile_calendar.dart lib/features/workspace/task_editor.dart lib/features/workspace/series_editor.dart lib/features/workspace/trash_dialog.dart lib/driver_main.dart A P` | PASS format six product/harness files and two new tests. |
+| 14:21:26 / `populated-fixed-142126` | `F --timeout=40s P` | PASS five: dense Week, desktop/mobile overnight, actual malformed decode, Cancel-preserved Trash. Changed implementation and corrected File fixture. |
+| 14:34:01 / `advanced-final-143401` | `F A` | PASS seven after prerequisite/series viewport changes. Later submitted-snapshot change invalidates only prerequisite-save results; those cases are rechecked below. |
+| 14:35:23 / `accepted-series-format-143523` | `dart format A` | PASS format newly strengthened positive approval assertions. |
+| 14:35:25 / `accepted-series-and-consumers-143525` | `F A test/task_composition_widget_test.dart test/calendar_improvements_test.dart --name "applying a series\|draft subtask dialog\|task details add\|calendar controls stay\|month view and weekday"` | PASS five: parent decline plus approved actual series Apply, two existing checklist/subtask composition consumers, ordinary Calendar controls/month. New approval assertions and changed shared consumers. |
+| 14:37:58 / `source-analysis-fallback-143759` | `flutter --no-version-check --suppress-analytics analyze --no-pub lib/driver_main.dart lib/features/calendar/calendar_view.dart lib/features/mobile/mobile_calendar.dart lib/features/workspace/series_editor.dart lib/features/workspace/task_editor.dart lib/features/workspace/trash_dialog.dart A P` | PASS eight-item CLI analysis. Connected analyze_files request did not return and was interrupted; one CLI fallback, no mechanical fixes. |
+| 14:38:14 / `parent-navigation-regression-143814` | `F test/workspace_draft_safety_test.dart --name "desktop draft survives\|switching desktop tasks\|compact desktop Escape\|creating a saved view"` | PASS six existing close/Calendar/new/switch/Escape/saved-view cases; changed TaskEditor dirty fingerprint invalidates earlier parent-guard evidence. |
+| 14:44:56 / `docs-links-144456` | `python tools/dev/check-docs.py docs/PROGRESS.md docs/TEST_RUN_LEDGER.md docs/UI_UX_PERMANENT_QUALITY_AUDIT.md` | PASS scoped developer link/map/feature-catalog validation, zero errors. Later receipt-only additions do not change checked links. |
+| 14:46:00 / `prerequisite-race-before-144601` | `F A --plain-name "prerequisite edits made during a save remain unsaved"` | FAIL new delayed-save case reproduces interim guard regression: post-submit edits incorrectly considered clean. Controlled controller waits after real persistence; no mock DB write. |
+| 14:46:58 / `prerequisite-race-format-144658` | `dart format lib/features/workspace/task_editor.dart A` | PASS format submitted snapshot and new delayed-save regression. |
+| 14:47:01 / `prerequisite-race-after-144701` | `F A --name "prerequisite edits made\|saving prerequisites clears"` | PASS three: post-submit edits remain guarded and stored dependency unchanged; no-notes and unrelated-notes cases still pass. Snapshot change invalidates only prerequisite-save evidence. |
+| 14:47:28 / `final-editor-analysis-144728` | `flutter --no-version-check --suppress-analytics analyze --no-pub lib/features/workspace/task_editor.dart A` | PASS changed TaskEditor and advanced test; reuse unchanged six-file analysis above. |
+
+
+Other executed verification: connected `analyze_files` for the same eight paths
+at approximately14:36 was interrupted after no result (not Passed); CLI fallback
+above is authoritative. `get_runtime_errors` returned none for owned Windows and
+rebuilt Android apps. `hot_reload` succeeded for the running affected screens;
+APK rebuild is required for new background engine entry points. Driver calls use
+explicit appUri to avoid touching the other app. Recorded Windows/Android launch
+JSONs and Android runtime logs supply exact command/build/environment outcomes.
+`profile-check.py` passes read-only Windows integrity/task/parent assertions;
+its first inline-shell diagnostic failed quoting before opening SQLite, then the
+file-based script corrected shell quoting. This was not a data failure.
+
+### Exact Android platform actions
+
+Every row below is a separate invocation of the retained ADB, restricted to
+`emulator-5582`; `ADB = .buildlog/android-sdk/platform-tools/adb.exe -s
+emulator-5582`. `android-actions.jsonl` records full command/output/source and
+local timestamp; successful command dispatch alone does not establish UI success.
+Screenshots/state inspection above establish the stated observations. These are
+new platform probes; repeated captures settle intermediate frames, not product
+retries. Font/orientation settings affect only the temporary read-only overlay.
+
+| Time / receipt row | Exact command | Dispatch / purpose |
+| --- | --- | --- |
+| 14:23:01 / 1 | `ADB shell settings get secure show_ime_with_hard_keyboard` | Exit 0; platform probe; observations above |
+| 14:23:01 / 2 | `ADB shell settings put secure show_ime_with_hard_keyboard 1` | Exit 0; platform probe; observations above |
+| 14:23:02 / 3 | `ADB shell settings get system font_scale` | Exit 0; platform probe; observations above |
+| 14:23:08 / 4 | `ADB shell input text Android%ssynthetic%skeyboard%sdraft` | Exit 0; platform probe; observations above |
+| 14:23:19 / 5 | `ADB exec-out screencap -p` | Exit 0; keyboard-visible.png |
+| 14:24:01 / 6 | `ADB shell dumpsys input_method` | Exit 0; platform probe; observations above |
+| 14:25:21 / 7 | `ADB shell input keyevent 4` | Exit 0; platform probe; observations above |
+| 14:26:24 / 8 | `ADB shell settings put system accelerometer_rotation 0` | Exit 0; platform probe; observations above |
+| 14:26:25 / 9 | `ADB shell settings put system user_rotation 1` | Exit 0; platform probe; observations above |
+| 14:26:38 / 10 | `ADB shell settings put system user_rotation 0` | Exit 0; platform probe; observations above |
+| 14:26:38 / 11 | `ADB shell settings put system font_scale 1.5` | Exit 0; platform probe; observations above |
+| 14:29:13 / 12 | `ADB shell pm list packages com.google.android.marvin` | Exit 0; platform probe; observations above |
+| 14:29:14 / 13 | `ADB shell input keyevent 3` | Exit 0; platform probe; observations above |
+| 14:29:15 / 14 | `ADB exec-out screencap -p` | Exit 0; launcher-native.png |
+| 14:30:39 / 15 | `ADB shell am start -n io.github.hik4.todorbit/.MainActivity` | Exit 0; platform probe; observations above |
+| 14:35:35 / 16 | `ADB shell input keyevent 4` | Exit 0; platform probe; observations above |
+| 14:40:11 / 17 | `ADB shell cmd jobscheduler run -f io.github.hik4.todorbit 2026` | Exit 0; platform probe; observations above |
+| 14:40:13 / 18 | `ADB shell dumpsys appwidget io.github.hik4.todorbit` | Exit 0; platform probe; observations above |
+| 14:40:14 / 19 | `ADB shell input keyevent 3` | Exit 0; platform probe; observations above |
+| 14:40:15 / 20 | `ADB shell uiautomator dump /sdcard/window-b3.xml` | Exit 0; platform probe; observations above |
+| 14:40:33 / 21 | `ADB exec-out screencap -p` | Exit 0; home-screen.png |
+| 14:40:35 / 22 | `ADB shell cat /sdcard/window-b3.xml` | Exit 0; platform probe; observations above |
+| 14:40:45 / 23 | `ADB shell input swipe 350 500 350 500 900` | Exit 0; platform probe; observations above |
+| 14:40:48 / 24 | `ADB exec-out screencap -p` | Exit 0; launcher-menu-shot.png |
+| 14:41:14 / 25 | `ADB shell input tap 458 333` | Exit 0; platform probe; observations above |
+| 14:41:15 / 26 | `ADB exec-out screencap -p` | Exit 0; widget-picker-shot.png |
+| 14:41:33 / 27 | `ADB shell cmd jobscheduler get-job-state io.github.hik4.todorbit 2026` | Exit 0; platform probe; observations above |
+| 14:41:41 / 28 | `ADB exec-out screencap -p` | Exit 0; widget-picker-settled.png |
+| 14:42:11 / 29 | `ADB shell input tap 250 255` | Exit 0; platform probe; observations above |
+| 14:42:11 / 30 | `ADB shell input text Todorbit` | Exit 0; platform probe; observations above |
+| 14:42:14 / 31 | `ADB shell uiautomator dump /sdcard/widget-search-b3.xml` | Exit 0; platform probe; observations above |
+| 14:42:35 / 32 | `ADB exec-out screencap -p` | Exit 0; widget-search-shot.png |
+| 14:44:22 / 33 | `ADB shell input tap 350 390` | Exit 0; expand-todorbit-widgets |
+| 14:44:23 / 34 | `ADB shell uiautomator dump /sdcard/widgets-expanded-b3.xml` | Exit 0; widgets-expanded-tree |
+| 14:44:27 / 35 | `ADB exec-out screencap -p` | Exit 0; widgets-expanded-shot |
+| 14:44:49 / 36 | `ADB shell input tap 515 750` | Exit 0; choose-tasks-widget |
+| 14:44:50 / 37 | `ADB shell uiautomator dump /sdcard/tasks-preview-b3.xml` | Exit 0; tasks-widget-preview-tree |
+| 14:44:53 / 38 | `ADB exec-out screencap -p` | Exit 0; tasks-widget-preview-shot |
+| 14:45:28 / 39 | `ADB shell input tap 525 1070` | Exit 0; add-tasks-widget |
+| 14:45:28 / 40 | `ADB shell uiautomator dump /sdcard/bound-widget-b3.xml` | Exit 0; bound-widget-tree |
+| 14:45:33 / 41 | `ADB exec-out screencap -p` | Exit 0; bound-widget-shot |
+| 14:46:17 / 42 | `ADB shell input tap 365 888` | Exit 0; apply-tasks-widget |
+| 14:46:18 / 43 | `ADB shell uiautomator dump /sdcard/tasks-home-b3.xml` | Exit 0; tasks-widget-home-tree |
+| 14:46:24 / 44 | `ADB exec-out screencap -p` | Exit 0; tasks-widget-home-shot |
+| 14:46:54 / 45 | `ADB shell input tap 500 400` | Exit 0; exit-widget-resize |
+| 14:46:55 / 46 | `ADB shell input tap 215 370` | Exit 0; open-widget-task |
+| 14:49:01 / 47 | `ADB shell am force-stop io.github.hik4.todorbit` | Exit 0; stop-owned-debug |
+| 14:49:06 / 48 | `ADB emu kill` | Exit 0; stop-owned-emulator |

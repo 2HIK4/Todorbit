@@ -1,4 +1,4 @@
-// Debug-only entry point for isolated Windows UI acceptance.
+// Debug-only entry point for isolated Windows and Android UI acceptance.
 // Production builds continue to use main.dart. flutter_driver is a dev dependency.
 // ignore: depend_on_referenced_packages
 import 'package:flutter_driver/driver_extension.dart';
@@ -9,3 +9,9 @@ Future<void> main(List<String> args) async {
   enableFlutterDriverExtension();
   await app.main(args);
 }
+
+@pragma('vm:entry-point')
+Future<void> androidBackgroundMain() => app.androidBackgroundMain();
+
+@pragma('vm:entry-point')
+Future<void> androidSyncBackgroundMain() => app.androidSyncBackgroundMain();

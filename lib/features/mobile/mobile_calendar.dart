@@ -348,11 +348,7 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
               child: ListTile(
                 leading: _eventIcon(e, controller),
                 title: Text(e.title),
-                subtitle: Text(
-                  e.allDay
-                      ? 'All day'
-                      : '${TimeOfDay.fromDateTime(e.startsAt.toLocal()).format(context)} – ${TimeOfDay.fromDateTime(e.endsAt.toLocal()).format(context)}',
-                ),
+                subtitle: Text(_eventTimeLabel(e)),
                 onTap: () => event(e),
               ),
             ),
@@ -388,6 +384,17 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
         ],
       ],
     );
+  }
+
+  String _eventTimeLabel(FixedEvent event) {
+    if (event.allDay) return 'All day';
+    final start = event.startsAt.toLocal(), end = event.endsAt.toLocal();
+    if (start.isBefore(DateUtils.dateOnly(selected))) {
+      return localDate(end) == localDate(selected)
+          ? 'Continues until ${TimeOfDay.fromDateTime(end).format(context)}'
+          : 'Continues';
+    }
+    return '${TimeOfDay.fromDateTime(start).format(context)} – ${TimeOfDay.fromDateTime(end).format(context)}';
   }
 
   Widget _eventIcon(FixedEvent event, AppController controller) {

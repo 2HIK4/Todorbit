@@ -1,6 +1,7 @@
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 
 import 'dart:math' as math;
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,10 +11,16 @@ import '../shared/weekdays.dart';
 import '../../domain/models.dart';
 import '../../domain/recurrence.dart';
 import '../../domain/series_edit.dart';
+import '../shared/unsaved_editor_guard.dart';
 
 class SeriesEditorDialog extends ConsumerStatefulWidget {
-  const SeriesEditorDialog({super.key, required this.selected});
+  const SeriesEditorDialog({
+    super.key,
+    required this.selected,
+    this.beforeApply,
+  });
   final LifeTask selected;
+  final Future<bool> Function()? beforeApply;
 
   @override
   ConsumerState<SeriesEditorDialog> createState() => _SeriesEditorDialogState();
@@ -42,6 +49,28 @@ class _SeriesEditorDialogState extends ConsumerState<SeriesEditorDialog> {
   String? error;
   SeriesEditPreview? preview;
   Map<String, SeriesCollisionChoice> choices = {};
+  final guard = GlobalKey<UnsavedEditorGuardState>();
+  String? initialDraft;
+  bool applied = false;
+
+  String get draftKey => jsonEncode([
+    title.text,
+    notes.text,
+    interval.text,
+    count.text,
+    deadlineOffset.text,
+    plannedMinutes.text,
+    remainingMinutes.text,
+    scope.name,
+    kind.name,
+    weekdays.toList()..sort(),
+    anchorDate,
+    endDate,
+    categoryId,
+    projectId,
+    priority,
+    locked,
+  ]);
 
   @override
   void initState() {
@@ -100,6 +129,7 @@ class _SeriesEditorDialogState extends ConsumerState<SeriesEditorDialog> {
                 template.deadlineDate!,
               ).toString();
         loading = false;
+        initialDraft = draftKey;
       });
     } catch (failure) {
       if (mounted) {
@@ -255,9 +285,12 @@ class _SeriesEditorDialogState extends ConsumerState<SeriesEditorDialog> {
       error = null;
     });
     try {
+      if (widget.beforeApply != null && !await widget.beforeApply!()) return;
+      if (!mounted) return;
       await ref.read(appControllerProvider).applySeriesEdit(reviewed, choices);
       if (mounted) {
-        Navigator.pop(context, true);
+        applied = true;
+        await guard.currentState?.close(saved: true);
       }
     } catch (failure) {
       if (mounted) {
@@ -284,405 +317,414 @@ class _SeriesEditorDialogState extends ConsumerState<SeriesEditorDialog> {
     final projectChoices = controller.projects
         .where((item) => item.categoryId == categoryId)
         .toList();
-    return Dialog(
-      child: SizedBox(
-        width: math.min(MediaQuery.sizeOf(context).width - 48, 760),
-        height: math.min(MediaQuery.sizeOf(context).height - 48, 760),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Edit recurring series',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Completed work, recorded time, individual edits, and linked records '
-                'stay with their original occurrences. Review every date collision.',
-              ),
-              const SizedBox(height: 12),
-              if (loading)
-                const Expanded(
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              else
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
-                    children: [
-                      AnchoredSelectField<SeriesEditScope>(
-                        initialValue: scope,
-                        decoration: const InputDecoration(
-                          labelText: 'Edit scope',
+    return UnsavedEditorGuard(
+      key: guard,
+      enabled: true,
+      dirty: initialDraft != null && draftKey != initialDraft,
+      busy: busy,
+      onClose: () => Navigator.pop(context, applied),
+      child: Dialog(
+        child: SizedBox(
+          width: math.min(MediaQuery.sizeOf(context).width - 48, 760),
+          height: math.min(MediaQuery.sizeOf(context).height - 48, 760),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Edit recurring series',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                if (loading)
+                  const Expanded(
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
+                      children: [
+                        const Text(
+                          'Completed work, recorded time, individual edits, and linked records '
+                          'stay with their original occurrences. Review every date collision.',
                         ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: SeriesEditScope.thisAndFuture,
-                            child: Text('This and future occurrences'),
+                        const SizedBox(height: 12),
+                        AnchoredSelectField<SeriesEditScope>(
+                          initialValue: scope,
+                          decoration: const InputDecoration(
+                            labelText: 'Edit scope',
                           ),
-                          DropdownMenuItem(
-                            value: SeriesEditScope.entireSeries,
-                            child: Text('Entire series (pending occurrences)'),
-                          ),
-                        ],
-                        onChanged: busy
-                            ? null
-                            : (value) {
-                                if (value != null) {
-                                  setState(() {
-                                    scope = value;
-                                    anchorDate =
-                                        value == SeriesEditScope.thisAndFuture
-                                        ? widget.selected.nominalDate
-                                        : originalAnchorDate;
-                                  });
-                                  _invalidate();
-                                }
-                              },
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: title,
-                        decoration: const InputDecoration(
-                          labelText: 'Shared title',
-                        ),
-                      ),
-                      TextField(
-                        controller: notes,
-                        maxLines: 2,
-                        decoration: const InputDecoration(
-                          labelText: 'Shared notes',
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      AnchoredSelectField<RecurrenceKind>(
-                        key: ValueKey('kind:$kind'),
-                        initialValue: kind,
-                        decoration: const InputDecoration(
-                          labelText: 'Repeat rule',
-                        ),
-                        items: [
-                          for (final value in RecurrenceKind.values)
+                          items: const [
                             DropdownMenuItem(
-                              value: value,
-                              child: Text(_kindLabel(value)),
+                              value: SeriesEditScope.thisAndFuture,
+                              child: Text('This and future occurrences'),
                             ),
-                        ],
-                        onChanged: busy
-                            ? null
-                            : (value) {
-                                if (value != null) {
-                                  setState(() {
-                                    kind = value;
-                                    if (kind == RecurrenceKind.weekdays &&
-                                        weekdays.isEmpty) {
-                                      weekdays = {
-                                        DateTime.parse(
-                                          anchorDate ??
-                                              widget.selected.nominalDate!,
-                                        ).weekday,
-                                      };
-                                    }
-                                  });
-                                  _invalidate();
-                                }
-                              },
-                      ),
-                      TextField(
-                        controller: interval,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Repeat interval',
+                            DropdownMenuItem(
+                              value: SeriesEditScope.entireSeries,
+                              child: Text(
+                                'Entire series (pending occurrences)',
+                              ),
+                            ),
+                          ],
+                          onChanged: busy
+                              ? null
+                              : (value) {
+                                  if (value != null) {
+                                    setState(() {
+                                      scope = value;
+                                      anchorDate =
+                                          value == SeriesEditScope.thisAndFuture
+                                          ? widget.selected.nominalDate
+                                          : originalAnchorDate;
+                                    });
+                                    _invalidate();
+                                  }
+                                },
                         ),
-                      ),
-                      if (kind == RecurrenceKind.weekdays)
-                        WeekdayPickerRow(
-                          firstWeekday: ref
-                              .watch(appControllerProvider)
-                              .firstWeekday,
-                          selected: weekdays,
-                          onSelected: (day, selected) {
+                        const SizedBox(height: 10),
+                        TextField(
+                          controller: title,
+                          decoration: const InputDecoration(
+                            labelText: 'Shared title',
+                          ),
+                        ),
+                        TextField(
+                          controller: notes,
+                          maxLines: 2,
+                          decoration: const InputDecoration(
+                            labelText: 'Shared notes',
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        AnchoredSelectField<RecurrenceKind>(
+                          key: ValueKey('kind:$kind'),
+                          initialValue: kind,
+                          decoration: const InputDecoration(
+                            labelText: 'Repeat rule',
+                          ),
+                          items: [
+                            for (final value in RecurrenceKind.values)
+                              DropdownMenuItem(
+                                value: value,
+                                child: Text(_kindLabel(value)),
+                              ),
+                          ],
+                          onChanged: busy
+                              ? null
+                              : (value) {
+                                  if (value != null) {
+                                    setState(() {
+                                      kind = value;
+                                      if (kind == RecurrenceKind.weekdays &&
+                                          weekdays.isEmpty) {
+                                        weekdays = {
+                                          DateTime.parse(
+                                            anchorDate ??
+                                                widget.selected.nominalDate!,
+                                          ).weekday,
+                                        };
+                                      }
+                                    });
+                                    _invalidate();
+                                  }
+                                },
+                        ),
+                        TextField(
+                          controller: interval,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Repeat interval',
+                          ),
+                        ),
+                        if (kind == RecurrenceKind.weekdays)
+                          WeekdayPickerRow(
+                            firstWeekday: ref
+                                .watch(appControllerProvider)
+                                .firstWeekday,
+                            selected: weekdays,
+                            onSelected: (day, selected) {
+                              setState(() {
+                                if (selected) {
+                                  weekdays.add(day);
+                                } else {
+                                  weekdays.remove(day);
+                                }
+                              });
+                              _invalidate();
+                            },
+                          ),
+                        _dateButton(
+                          'Rule anchor day',
+                          anchorDate,
+                          () => _pickDate(anchor: true),
+                        ),
+                        _dateButton(
+                          'Repeat until',
+                          endDate,
+                          () => _pickDate(anchor: false),
+                          clear: () {
+                            setState(() => endDate = null);
+                            _invalidate();
+                          },
+                        ),
+                        TextField(
+                          controller: count,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText:
+                                'Stop after this many occurrences (optional)',
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        AnchoredSelectField<String?>(
+                          key: ValueKey('category:$categoryId'),
+                          initialValue: categoryId,
+                          decoration: const InputDecoration(
+                            labelText: 'Shared category',
+                          ),
+                          items: [
+                            const DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('None'),
+                            ),
+                            for (final item in controller.categories)
+                              DropdownMenuItem(
+                                value: item.id,
+                                child: Text(item.name),
+                              ),
+                          ],
+                          onChanged: (value) {
                             setState(() {
-                              if (selected) {
-                                weekdays.add(day);
-                              } else {
-                                weekdays.remove(day);
-                              }
+                              categoryId = value;
+                              projectId = null;
                             });
                             _invalidate();
                           },
                         ),
-                      _dateButton(
-                        'Rule anchor day',
-                        anchorDate,
-                        () => _pickDate(anchor: true),
-                      ),
-                      _dateButton(
-                        'Repeat until',
-                        endDate,
-                        () => _pickDate(anchor: false),
-                        clear: () {
-                          setState(() => endDate = null);
-                          _invalidate();
-                        },
-                      ),
-                      TextField(
-                        controller: count,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText:
-                              'Stop after this many occurrences (optional)',
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      AnchoredSelectField<String?>(
-                        key: ValueKey('category:$categoryId'),
-                        initialValue: categoryId,
-                        decoration: const InputDecoration(
-                          labelText: 'Shared category',
-                        ),
-                        items: [
-                          const DropdownMenuItem<String?>(
-                            value: null,
-                            child: Text('None'),
+                        AnchoredSelectField<String?>(
+                          key: ValueKey('project:$categoryId:$projectId'),
+                          initialValue: projectId,
+                          decoration: const InputDecoration(
+                            labelText: 'Shared project',
                           ),
-                          for (final item in controller.categories)
-                            DropdownMenuItem(
-                              value: item.id,
-                              child: Text(item.name),
+                          items: [
+                            const DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('None'),
                             ),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            categoryId = value;
-                            projectId = null;
-                          });
-                          _invalidate();
-                        },
-                      ),
-                      AnchoredSelectField<String?>(
-                        key: ValueKey('project:$categoryId:$projectId'),
-                        initialValue: projectId,
-                        decoration: const InputDecoration(
-                          labelText: 'Shared project',
-                        ),
-                        items: [
-                          const DropdownMenuItem<String?>(
-                            value: null,
-                            child: Text('None'),
-                          ),
-                          for (final item in projectChoices)
-                            DropdownMenuItem(
-                              value: item.id,
-                              child: Text(item.name),
-                            ),
-                        ],
-                        onChanged: categoryId == null
-                            ? null
-                            : (value) {
-                                setState(() => projectId = value);
-                                _invalidate();
-                              },
-                      ),
-                      AnchoredSelectField<int>(
-                        initialValue: priority,
-                        decoration: const InputDecoration(
-                          labelText: 'Shared priority',
-                        ),
-                        items: const [
-                          DropdownMenuItem(value: 0, child: Text('None')),
-                          DropdownMenuItem(value: 1, child: Text('Low')),
-                          DropdownMenuItem(value: 2, child: Text('Medium')),
-                          DropdownMenuItem(value: 3, child: Text('High')),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() => priority = value);
-                            _invalidate();
-                          }
-                        },
-                      ),
-                      TextField(
-                        controller: deadlineOffset,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          signed: true,
-                        ),
-                        decoration: const InputDecoration(
-                          labelText:
-                              'Deadline days after each planned day (optional)',
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: plannedMinutes,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: 'Planned minutes',
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextField(
-                              controller: remainingMinutes,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: 'Remaining minutes',
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Protect schedule'),
-                        value: locked,
-                        onChanged: (value) {
-                          setState(() => locked = value);
-                          _invalidate();
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      if (preview != null) ...[
-                        Text(
-                          'Preview from ${preview!.effectiveDate}',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        Text(
-                          '${preview!.impacts.where((i) => i.kind == SeriesImpactKind.preserve).length} preserved, '
-                          '${preview!.impacts.where((i) => i.kind == SeriesImpactKind.exclude).length} excluded, '
-                          '${preview!.impacts.where((i) => i.kind == SeriesImpactKind.create).length} new; '
-                          '${preview!.collisions.length} collisions',
-                        ),
-                        if (preview!.collisions.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            children: [
-                              TextButton(
-                                onPressed: () => setState(() {
-                                  for (final item in preview!.collisions) {
-                                    choices[item.nominalDate] =
-                                        SeriesCollisionChoice.keepBoth;
-                                  }
-                                }),
-                                child: const Text('Keep both on all'),
-                              ),
-                              TextButton(
-                                onPressed: () => setState(() {
-                                  for (final item in preview!.collisions) {
-                                    choices[item.nominalDate] =
-                                        SeriesCollisionChoice.skipNew;
-                                  }
-                                }),
-                                child: const Text('Skip new on all'),
-                              ),
-                              TextButton(
-                                onPressed: () => setState(() {
-                                  for (final item in preview!.collisions.where(
-                                    (c) => c.canCombine,
-                                  )) {
-                                    choices[item.nominalDate] =
-                                        SeriesCollisionChoice.combine;
-                                  }
-                                }),
-                                child: const Text('Combine compatible'),
-                              ),
-                            ],
-                          ),
-                          for (final collision in preview!.collisions)
-                            AnchoredSelectField<SeriesCollisionChoice>(
-                              key: ValueKey(
-                                'collision:${collision.nominalDate}:${choices[collision.nominalDate]}',
-                              ),
-                              initialValue: choices[collision.nominalDate],
-                              decoration: InputDecoration(
-                                labelText:
-                                    '${collision.nominalDate} • ${collision.existingTaskIds.length} existing',
-                              ),
-                              items: [
-                                const DropdownMenuItem(
-                                  value: SeriesCollisionChoice.keepBoth,
-                                  child: Text('Keep both'),
-                                ),
-                                const DropdownMenuItem(
-                                  value: SeriesCollisionChoice.skipNew,
-                                  child: Text('Skip new occurrence'),
-                                ),
-                                if (collision.canCombine)
-                                  const DropdownMenuItem(
-                                    value: SeriesCollisionChoice.combine,
-                                    child: Text('Combine into existing'),
-                                  ),
-                              ],
-                              onChanged: (value) {
-                                if (value != null) {
-                                  setState(
-                                    () =>
-                                        choices[collision.nominalDate] = value,
-                                  );
-                                }
-                              },
-                            ),
-                        ],
-                        ExpansionTile(
-                          title: const Text('Review affected occurrences'),
-                          children: [
-                            for (final impact in preview!.impacts)
-                              ListTile(
-                                dense: true,
-                                title: Text(
-                                  '${impact.nominalDate} • ${switch (impact.kind) {
-                                    SeriesImpactKind.preserve => 'Preserve existing',
-                                    SeriesImpactKind.exclude => 'Exclude unmodified',
-                                    SeriesImpactKind.create => 'Create new',
-                                    SeriesImpactKind.collision => 'Collision: choose outcome',
-                                  }}',
-                                ),
-                                subtitle: Text(impact.reason),
+                            for (final item in projectChoices)
+                              DropdownMenuItem(
+                                value: item.id,
+                                child: Text(item.name),
                               ),
                           ],
+                          onChanged: categoryId == null
+                              ? null
+                              : (value) {
+                                  setState(() => projectId = value);
+                                  _invalidate();
+                                },
                         ),
-                      ],
-                      if (error != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            error!,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.error,
-                            ),
+                        AnchoredSelectField<int>(
+                          initialValue: priority,
+                          decoration: const InputDecoration(
+                            labelText: 'Shared priority',
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 0, child: Text('None')),
+                            DropdownMenuItem(value: 1, child: Text('Low')),
+                            DropdownMenuItem(value: 2, child: Text('Medium')),
+                            DropdownMenuItem(value: 3, child: Text('High')),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => priority = value);
+                              _invalidate();
+                            }
+                          },
+                        ),
+                        TextField(
+                          controller: deadlineOffset,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            signed: true,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'Deadline days after each planned day (optional)',
                           ),
                         ),
-                    ],
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: plannedMinutes,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'Planned minutes',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextField(
+                                controller: remainingMinutes,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'Remaining minutes',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Protect schedule'),
+                          value: locked,
+                          onChanged: (value) {
+                            setState(() => locked = value);
+                            _invalidate();
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        if (preview != null) ...[
+                          Text(
+                            'Preview from ${preview!.effectiveDate}',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          Text(
+                            '${preview!.impacts.where((i) => i.kind == SeriesImpactKind.preserve).length} preserved, '
+                            '${preview!.impacts.where((i) => i.kind == SeriesImpactKind.exclude).length} excluded, '
+                            '${preview!.impacts.where((i) => i.kind == SeriesImpactKind.create).length} new; '
+                            '${preview!.collisions.length} collisions',
+                          ),
+                          if (preview!.collisions.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              children: [
+                                TextButton(
+                                  onPressed: () => setState(() {
+                                    for (final item in preview!.collisions) {
+                                      choices[item.nominalDate] =
+                                          SeriesCollisionChoice.keepBoth;
+                                    }
+                                  }),
+                                  child: const Text('Keep both on all'),
+                                ),
+                                TextButton(
+                                  onPressed: () => setState(() {
+                                    for (final item in preview!.collisions) {
+                                      choices[item.nominalDate] =
+                                          SeriesCollisionChoice.skipNew;
+                                    }
+                                  }),
+                                  child: const Text('Skip new on all'),
+                                ),
+                                TextButton(
+                                  onPressed: () => setState(() {
+                                    for (final item
+                                        in preview!.collisions.where(
+                                          (c) => c.canCombine,
+                                        )) {
+                                      choices[item.nominalDate] =
+                                          SeriesCollisionChoice.combine;
+                                    }
+                                  }),
+                                  child: const Text('Combine compatible'),
+                                ),
+                              ],
+                            ),
+                            for (final collision in preview!.collisions)
+                              AnchoredSelectField<SeriesCollisionChoice>(
+                                key: ValueKey(
+                                  'collision:${collision.nominalDate}:${choices[collision.nominalDate]}',
+                                ),
+                                initialValue: choices[collision.nominalDate],
+                                decoration: InputDecoration(
+                                  labelText:
+                                      '${collision.nominalDate} • ${collision.existingTaskIds.length} existing',
+                                ),
+                                items: [
+                                  const DropdownMenuItem(
+                                    value: SeriesCollisionChoice.keepBoth,
+                                    child: Text('Keep both'),
+                                  ),
+                                  const DropdownMenuItem(
+                                    value: SeriesCollisionChoice.skipNew,
+                                    child: Text('Skip new occurrence'),
+                                  ),
+                                  if (collision.canCombine)
+                                    const DropdownMenuItem(
+                                      value: SeriesCollisionChoice.combine,
+                                      child: Text('Combine into existing'),
+                                    ),
+                                ],
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(
+                                      () => choices[collision.nominalDate] =
+                                          value,
+                                    );
+                                  }
+                                },
+                              ),
+                          ],
+                          ExpansionTile(
+                            title: const Text('Review affected occurrences'),
+                            children: [
+                              for (final impact in preview!.impacts)
+                                ListTile(
+                                  dense: true,
+                                  title: Text(
+                                    '${impact.nominalDate} • ${switch (impact.kind) {
+                                      SeriesImpactKind.preserve => 'Preserve existing',
+                                      SeriesImpactKind.exclude => 'Exclude unmodified',
+                                      SeriesImpactKind.create => 'Create new',
+                                      SeriesImpactKind.collision => 'Collision: choose outcome',
+                                    }}',
+                                  ),
+                                  subtitle: Text(impact.reason),
+                                ),
+                            ],
+                          ),
+                        ],
+                        if (error != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              error!,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
+                const SizedBox(height: 12),
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 8,
+                  children: [
+                    TextButton(
+                      onPressed: busy
+                          ? null
+                          : () => guard.currentState?.close(),
+                      child: const Text('Cancel'),
+                    ),
+                    OutlinedButton(
+                      onPressed: busy || loading ? null : _generatePreview,
+                      child: const Text('Generate preview'),
+                    ),
+                    FilledButton(
+                      onPressed: canApply ? _apply : null,
+                      child: const Text('Apply series edit'),
+                    ),
+                  ],
                 ),
-              const SizedBox(height: 12),
-              Wrap(
-                alignment: WrapAlignment.end,
-                spacing: 8,
-                children: [
-                  TextButton(
-                    onPressed: busy
-                        ? null
-                        : () => Navigator.pop(context, false),
-                    child: const Text('Cancel'),
-                  ),
-                  OutlinedButton(
-                    onPressed: busy || loading ? null : _generatePreview,
-                    child: const Text('Generate preview'),
-                  ),
-                  FilledButton(
-                    onPressed: canApply ? _apply : null,
-                    child: const Text('Apply series edit'),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

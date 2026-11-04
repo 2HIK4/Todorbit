@@ -33,6 +33,7 @@ class _ArchiveTrashDialogState extends ConsumerState<ArchiveTrashDialog> {
     return await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
+            scrollable: true,
             title: const Text('Permanently delete?'),
             content: Text(
               'Permanently delete ${item.name}? This cannot be undone. '

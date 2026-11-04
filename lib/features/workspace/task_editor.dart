@@ -20,6 +20,7 @@ import '../shared/inline_spelling_controller.dart';
 import '../../domain/recurrence.dart';
 import '../calendar/session_editor.dart';
 import '../shared/app_spacing.dart';
+import '../shared/unsaved_editor_guard.dart';
 import '../time_tracking/time_tracking_dialog.dart';
 import '../templates/templates_dialog.dart';
 import 'series_editor.dart';
@@ -97,6 +98,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   late Set<String> prerequisiteIds;
   bool savingPrerequisites = false;
   late String initialDraft;
+  late String initialPrerequisites;
   bool leaving = false;
   bool confirmingClose = false;
 
@@ -122,7 +124,6 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     notification.toJson(),
     schedulingLocked,
     iconKey,
-    prerequisiteIds.toList()..sort(),
     draftChecklist,
     [
       for (final t in draftSubtasks)
@@ -134,8 +135,12 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     ],
   ]);
 
+  String get prerequisiteKey => jsonEncode(prerequisiteIds.toList()..sort());
+
   bool get canLeave =>
-      !widget.protectUnsavedEdits || leaving || draftKey == initialDraft;
+      !widget.protectUnsavedEdits ||
+      leaving ||
+      draftKey == initialDraft && prerequisiteKey == initialPrerequisites;
 
   void fieldChanged() {
     if (widget.protectUnsavedEdits && mounted) setState(() {});
@@ -257,6 +262,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         ? null
         : DateTime.parse(task!.deadlineDate!);
     initialDraft = draftKey;
+    initialPrerequisites = prerequisiteKey;
     widget.navigationController?._confirmLeave = confirmLeave;
     for (final field in [
       title,
@@ -428,94 +434,112 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     ModalRoute<dynamic>? dialogRoute;
     DateTime? plannedDay = previous?.plannedDay;
     DateTime? childDeadline = previous?.deadline;
+    final guard = GlobalKey<UnsavedEditorGuardState>();
+    _DraftSubtask? accepted;
+    String? titleError;
     final result = await showDialog<_DraftSubtask>(
       context: context,
       builder: (dialogContext) {
         dialogRoute ??= ModalRoute.of(dialogContext);
         return StatefulBuilder(
-          builder: (dialogContext, update) => AlertDialog(
-            title: Text(index == null ? 'Add subtask' : 'Edit subtask'),
-            content: SizedBox(
-              width: 420,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    key: const ValueKey('draft-subtask-title'),
-                    controller: field,
-                    autofocus: true,
-                    decoration: const InputDecoration(labelText: 'Title'),
-                  ),
-                  for (final isDeadline in [false, true])
-                    ListTile(
-                      title: Text(isDeadline ? 'Deadline' : 'Planned day'),
-                      subtitle: Text(
-                        (isDeadline ? childDeadline : plannedDay) == null
-                            ? 'No date'
-                            : localDate(
-                                (isDeadline ? childDeadline : plannedDay)!,
+          builder: (dialogContext, update) => UnsavedEditorGuard(
+            key: guard,
+            enabled: true,
+            dirty:
+                field.text != (previous?.title ?? '') ||
+                plannedDay != previous?.plannedDay ||
+                childDeadline != previous?.deadline,
+            busy: false,
+            onClose: () => Navigator.pop(dialogContext, accepted),
+            child: AlertDialog(
+              scrollable: true,
+              title: Text(index == null ? 'Add subtask' : 'Edit subtask'),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      key: const ValueKey('draft-subtask-title'),
+                      controller: field,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: 'Title',
+                        errorText: titleError,
+                      ),
+                      onChanged: (_) => update(() => titleError = null),
+                    ),
+                    for (final isDeadline in [false, true])
+                      ListTile(
+                        title: Text(isDeadline ? 'Deadline' : 'Planned day'),
+                        subtitle: Text(
+                          (isDeadline ? childDeadline : plannedDay) == null
+                              ? 'No date'
+                              : localDate(
+                                  (isDeadline ? childDeadline : plannedDay)!,
+                                ),
+                        ),
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: dialogContext,
+                            initialDate:
+                                (isDeadline ? childDeadline : plannedDay) ??
+                                DateTime.now(),
+                            firstDate: DateTime(1900),
+                            lastDate: DateTime(2100),
+                          );
+                          if (picked != null) {
+                            update(() {
+                              if (isDeadline) {
+                                childDeadline = picked;
+                              } else {
+                                plannedDay = picked;
+                              }
+                            });
+                          }
+                        },
+                        trailing:
+                            (isDeadline ? childDeadline : plannedDay) == null
+                            ? null
+                            : IconButton(
+                                tooltip:
+                                    'Clear ${isDeadline ? 'deadline' : 'planned day'}',
+                                icon: const Icon(Icons.close),
+                                onPressed: () => update(() {
+                                  if (isDeadline) {
+                                    childDeadline = null;
+                                  } else {
+                                    plannedDay = null;
+                                  }
+                                }),
                               ),
                       ),
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: dialogContext,
-                          initialDate:
-                              (isDeadline ? childDeadline : plannedDay) ??
-                              DateTime.now(),
-                          firstDate: DateTime(1900),
-                          lastDate: DateTime(2100),
-                        );
-                        if (picked != null) {
-                          update(() {
-                            if (isDeadline) {
-                              childDeadline = picked;
-                            } else {
-                              plannedDay = picked;
-                            }
-                          });
-                        }
-                      },
-                      trailing:
-                          (isDeadline ? childDeadline : plannedDay) == null
-                          ? null
-                          : IconButton(
-                              tooltip:
-                                  'Clear ${isDeadline ? 'deadline' : 'planned day'}',
-                              icon: const Icon(Icons.close),
-                              onPressed: () => update(() {
-                                if (isDeadline) {
-                                  childDeadline = null;
-                                } else {
-                                  plannedDay = null;
-                                }
-                              }),
-                            ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final cleaned = field.text.trim();
-                  if (cleaned.isNotEmpty) {
-                    Navigator.pop(
-                      dialogContext,
-                      _DraftSubtask(
+              actions: [
+                TextButton(
+                  onPressed: () => guard.currentState?.close(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final cleaned = field.text.trim();
+                    if (cleaned.isNotEmpty) {
+                      accepted = _DraftSubtask(
                         cleaned,
                         plannedDay: plannedDay,
                         deadline: childDeadline,
-                      ),
-                    );
-                  }
-                },
-                child: const Text('Save'),
-              ),
-            ],
+                      );
+                      guard.currentState?.close(saved: true);
+                    } else {
+                      update(() => titleError = 'Enter a subtask title.');
+                    }
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -1016,7 +1040,8 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     if (task == null) return;
     final applied = await showDialog<bool>(
       context: context,
-      builder: (context) => SeriesEditorDialog(selected: task),
+      builder: (context) =>
+          SeriesEditorDialog(selected: task, beforeApply: confirmLeave),
     );
     if (applied == true && mounted) finish();
   }
@@ -1045,11 +1070,14 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   Future<void> _savePrerequisites() async {
     final task = currentTask;
     if (task == null) return;
+    final submittedIds = {...prerequisiteIds};
+    final submittedKey = prerequisiteKey;
     setState(() => savingPrerequisites = true);
     try {
       final controller = ref.read(appControllerProvider);
-      await controller.setPrerequisites(task, prerequisiteIds);
+      await controller.setPrerequisites(task, submittedIds);
       currentTask = controller.tasks.firstWhere((item) => item.id == task.id);
+      initialPrerequisites = submittedKey;
       if (mounted) {
         ScaffoldMessenger.of(
           context,

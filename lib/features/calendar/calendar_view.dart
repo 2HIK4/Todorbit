@@ -456,7 +456,8 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
 
   Widget _weekGrid(AppController controller) => LayoutBuilder(
     builder: (context, bounds) {
-      if (bounds.maxWidth < 650) {
+      if (bounds.maxWidth <
+          650 * MediaQuery.textScalerOf(context).scale(14) / 14) {
         return ListView(
           children: List.generate(7, (index) {
             final date = DateTime(
@@ -684,6 +685,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
               '${event.allDay ? 'All day' : time} · ${event.title}'
               '${event.location.isEmpty ? '' : ' · ${event.location}'}',
               event: event,
+              timeLabel: event.allDay ? 'All day' : time,
             ),
           );
         }
@@ -929,7 +931,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                               ),
                             ),
                             Text(
-                              '${event.allDay ? 'All day' : '${event.startsAt.toLocal().hour.toString().padLeft(2, '0')}:${event.startsAt.toLocal().minute.toString().padLeft(2, '0')}'}${event.cancelled ? ' · Cancelled' : ''}',
+                              '${entry.timeLabel}${event.cancelled ? ' · Cancelled' : ''}',
                               style: TextStyle(
                                 fontSize: compact ? 10 : 12,
                                 color: scheme.onSurfaceVariant,
@@ -1031,12 +1033,14 @@ class _CalendarEntry {
     this.task,
     this.session,
     this.parentTitle,
+    this.timeLabel = '',
   });
   final String label;
   final FixedEvent? event;
   final LifeTask? task;
   final WorkSession? session;
   final String? parentTitle;
+  final String timeLabel;
 }
 
 const _months = [

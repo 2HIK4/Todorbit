@@ -1,5 +1,35 @@
 # Progress
 
+## UI quality Batch 3: populated workflows (2026-11-04; local)
+
+- Continued from `7a5d0ed` on `feature/permanent-ui-quality`. Fixed nested subtask
+  and recurring-series draft loss, protected occurrence edits before series Apply,
+  and cleared only successfully saved prerequisite changes from dirty tracking.
+  Submitted snapshots keep edits made during a pending prerequisite save dirty.
+- Corrected short enlarged subtask validation, recurring-form viewport, dense Week
+  readability, overnight continuation labels on both Calendar adapters and long
+  Trash confirmation scrolling. Existing components, tokens and safety decisions
+  retained; no data model, repository, scheduling, Sync or backup protocol changes.
+- Eight advanced task cases and five populated Calendar/recovery cases pass.
+  Explicit approved-series/composition/Calendar regressions and six parent
+  navigation cases pass. Focused eight-file CLI analysis passes; the connected
+  analyzer attempt was interrupted without a result. Detailed failures, fixture
+  corrections, source hashes and reused evidence are in the
+  [existing audit receipt](UI_UX_PERMANENT_QUALITY_AUDIT.md#batch-3-populated-workflows-and-platform-acceptance).
+- Actual isolated Windows Driver created a parent and nested child; read-only
+  SQLite `quick_check=ok` and parent link verified. Located the retained SDK/JDK
+  and ran an API35 Android emulator with a read-only temporary AVD overlay.
+  Native Back, rotation, Calendar modes, enlarged text, dark theme and task/theme
+  persistence through Debug rebuild/restart observed. Debug Driver entry points
+  now forward Android background workers; no production entry-point change.
+  Native launcher Tasks configuration/Apply/populated rendering and task-title
+  deep link observed; Calendar launcher widget remains unbound/untested.
+- Initiative remains **in progress**. Next: populated goal/habit/resource/template,
+  startup recovery and successful disposable backup/restore journeys, plus the
+  outstanding platform matrix. Windows physical keyboard/DPI/Narrator/native
+  widgets and Android physical devices/IME typing/TalkBack remain unaccepted.
+  No push, tag, release or version bump. Unrelated storage work preserved.
+
 ## Comprehensive UI quality continuation (2026-11-04; local checkpoint)
 
 - Verified and committed the prior 20 task files as `c32329c` on
