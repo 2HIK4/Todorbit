@@ -51,7 +51,12 @@ SyncController createSyncRuntime(
     recovery: recovery,
     auth: auth,
     storage: storage,
+    resetVault: SecureCloudTokenStore(profile, purpose: 'sync-reset-operation'),
     pairing: SyncPairingService(
+      resetVault: SecureCloudTokenStore(
+        profile,
+        purpose: 'sync-reset-operation',
+      ),
       storage: storage,
       vault: SecureCloudTokenStore(profile, purpose: 'sync-workspace-key'),
     ),

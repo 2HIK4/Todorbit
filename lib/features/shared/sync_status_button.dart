@@ -29,9 +29,15 @@ class SyncStatusButton extends ConsumerWidget {
         onPressed: controller == null || busy || !controller.isUnlocked()
             ? null
             : () async {
+                if (controller.problem != null || controller.resetPending) {
+                  await showSyncSettings(context);
+                  return;
+                }
                 await controller.syncNow(manual: true);
                 if (!context.mounted || !controller.isUnlocked()) return;
-                if (controller.needsRecoveryCode ||
+                if (controller.problem != null ||
+                    controller.resetPending ||
+                    controller.needsRecoveryCode ||
                     controller.recoveryReminder ||
                     controller.auth.account == null ||
                     controller.auth.needsReconnect ||

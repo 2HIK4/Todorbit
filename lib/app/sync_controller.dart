@@ -16,6 +16,8 @@ import '../data/cloud/google_drive_provider.dart';
 import '../data/cloud/sync_engine.dart';
 import '../data/cloud/sync_pairing_service.dart';
 import '../data/cloud/sync_batch_codec.dart';
+import '../data/cloud/sync_reset_service.dart';
+import '../data/cloud/sync_problem.dart';
 
 final syncControllerProvider = ChangeNotifierProvider<SyncController?>(
   (ref) => null,
@@ -32,9 +34,22 @@ class SyncController extends ChangeNotifier {
     required this.onApplied,
     this.scheduleBackground,
     this.closeTransport,
+    CloudTokenStore? resetVault,
     Duration? timeBudget,
     Future<bool> Function()? canExchange,
   }) {
+    if (resetVault != null)
+      reset = SyncResetService(
+        repository: repository,
+        recovery: recovery,
+        pairing: pairing,
+        vault: resetVault,
+        isUnlocked: isUnlocked,
+        onStage: (stage) {
+          resetStage = stage;
+          if (!_disposed) notifyListeners();
+        },
+      );
     engine = SyncEngine(
       repository: repository,
       storage: storage,
@@ -81,6 +96,7 @@ class SyncController extends ChangeNotifier {
   SyncExchangeStatus? snapshot;
   bool busy = false, _disposed = false;
   bool needsRecoveryCode = false;
+  bool reconnectingGeneration = false;
   bool recoveryReminder = false;
   bool? standardSync;
   bool standardIntroduction = false;
@@ -91,27 +107,51 @@ class SyncController extends ChangeNotifier {
   static const _decisionsSynced =
       'Decisions synced. Other devices will receive them on their next check.';
   String? message;
+  SyncResetService? reset;
+  Map<String, dynamic>? resetState;
+  String? resetStage;
+  SyncProblem? _problem;
+  SyncProblem? get problem =>
+      _problem ??
+      (resetState != null &&
+              !{'review', 'complete'}.contains(resetState!['phase'])
+          ? SyncProblem.from(
+              CloudFailure(
+                '',
+                kind: resetState!['phase'] == 'cleanup'
+                    ? CloudFailureKind.cleanup
+                    : CloudFailureKind.reset,
+              ),
+            )
+          : status.problem);
+  bool get resetPending =>
+      resetState != null && resetState!['phase'] != 'complete';
   SyncEngineStatus get status => engine.status;
 
-  String get label => auth.needsReconnect
-      ? 'Reconnect Google Drive'
-      : needsRecoveryCode
-      ? 'Authorize this device'
-      : snapshot?.binding == null && auth.account != null
-      ? 'Ready to set up sync'
-      : switch (status.phase) {
-          SyncPhase.disconnected => 'Sign-in required',
-          SyncPhase.idle =>
-            snapshot?.automatic == true
-                ? 'Sync paused'
-                : 'Automatic sync is off',
-          SyncPhase.syncing => 'Syncing',
-          SyncPhase.pending => 'Changes pending',
-          SyncPhase.upToDate => 'Up to date',
-          SyncPhase.needsAttention => 'Needs attention',
-          SyncPhase.offline => 'Waiting for connection',
-          SyncPhase.error => 'Sync error',
-        };
+  String get label =>
+      problem?.label ??
+      (auth.needsReconnect
+          ? 'Reconnect Google Drive'
+          : needsRecoveryCode
+          ? 'Password required'
+          : snapshot?.binding == null && auth.account != null
+          ? 'Ready to set up sync'
+          : switch (status.phase) {
+              SyncPhase.disconnected => 'Sign-in required',
+              SyncPhase.idle =>
+                snapshot?.automatic == true
+                    ? 'Sync paused'
+                    : 'Automatic sync is off',
+              SyncPhase.syncing => 'Syncing',
+              SyncPhase.pending => 'Changes pending',
+              SyncPhase.upToDate => 'Up to date',
+              SyncPhase.needsAttention =>
+                status.conflicts > 0
+                    ? 'Conflict needs review'
+                    : 'Recovery required',
+              SyncPhase.offline => 'Waiting for connection',
+              SyncPhase.error => 'Sync failed',
+            });
 
   int get conflictCount => status.conflicts;
 
@@ -120,6 +160,7 @@ class SyncController extends ChangeNotifier {
   Future<void> initialize() async {
     try {
       snapshot = await repository.syncExchangeStatus();
+      resetState = await reset?.state();
       try {
         await auth.load();
         final retained = await pairing.saved();
@@ -151,23 +192,96 @@ class SyncController extends ChangeNotifier {
     if (busy || !isUnlocked() || _disposed) return;
     busy = true;
     message = null;
+    _problem = null;
     notifyListeners();
     try {
       await action();
-    } on SyncRecoveryRequired {
-      needsRecoveryCode = true;
-    } on FormatException {
-      message = 'Cloud data or the entered credential could not be verified. Check your recovery copy and retry; all data and keys are retained.';
     } catch (error) {
-      message = error is CloudFailure ? error.message : 'Sync needs attention. Local data, pending changes and competing versions are retained.';
+      _problem = SyncProblem.from(error);
+      needsRecoveryCode =
+          error is SyncRecoveryRequired ||
+          (error is CloudFailure &&
+              {
+                CloudFailureKind.credentials,
+                CloudFailureKind.wrongCredential,
+              }.contains(error.kind));
     } finally {
       try {
         snapshot = await repository.syncExchangeStatus();
+        resetState = await reset?.state();
       } catch (_) {}
       busy = false;
       if (!_disposed) notifyListeners();
     }
   }
+
+  Future<void> reviewNewSync() => _action(() async {
+    if (reset == null) throw StateError('Recovery service unavailable');
+    await engine.pause();
+    try {
+      resetState = await reset!.review();
+    } finally {
+      engine.resume();
+    }
+  });
+
+  Future<void> cancelNewSyncReview() => _action(() async {
+    await reset?.cancelReview();
+    resetState = await reset?.state();
+  });
+
+  Future<void> startNewSync({String? password, SyncWorkspaceKey? privateKey}) =>
+      _action(() async {
+        if (reset == null) throw StateError('Recovery service unavailable');
+        await engine.pause();
+        try {
+          await reset!.confirm(password: password, privateKey: privateKey);
+          await reset!.resume();
+          needsRecoveryCode = false;
+          standardSync = (await pairing.saved())?.key.isStandard;
+          message = 'New sync is ready. Retired cloud data was removed. Other devices must reconnect. Your local recovery snapshot is kept.';
+        } finally {
+          engine.resume();
+        }
+        await _schedule(true);
+        await engine.syncNow(manual: true);
+      });
+
+  Future<void> resumeNewSync() => _action(() async {
+    if (reset == null) throw StateError('Recovery service unavailable');
+    await engine.pause();
+    try {
+      await reset!.resume();
+      needsRecoveryCode = false;
+      standardSync = (await pairing.saved())?.key.isStandard;
+      message =
+          'Setup completed. Your local data and recovery snapshot are kept.';
+    } finally {
+      engine.resume();
+    }
+    await _schedule(true);
+    await engine.syncNow(manual: true);
+  });
+
+  Future<void> reconnectGeneration({String? password, String? recoveryCode}) =>
+      _action(() async {
+        if (reset == null) throw StateError('Recovery service unavailable');
+        reconnectingGeneration = true;
+        await engine.pause();
+        try {
+          await reset!.reconnect(
+            password: password,
+            recoveryCode: recoveryCode,
+          );
+          needsRecoveryCode = false;
+          reconnectingGeneration = false;
+          standardSync = (await pairing.saved())?.key.isStandard;
+        } finally {
+          engine.resume();
+        }
+        await _schedule(true);
+        await engine.syncNow(manual: true);
+      });
 
   Future<void> connect() => _action(auth.connect);
 
@@ -317,6 +431,11 @@ class SyncController extends ChangeNotifier {
   Future<void> syncNow({bool manual = false}) => _action(() => _sync(manual));
 
   Future<void> _sync(bool manual) async {
+    if (resetPending && resetState?['phase'] != 'cleanup')
+      throw const CloudFailure(
+        'Finish replacement setup first',
+        kind: CloudFailureKind.reset,
+      );
     if (manual) {
       if (auth.account == null || auth.needsReconnect) {
         await auth.connect();

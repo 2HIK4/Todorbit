@@ -9,6 +9,8 @@ import '../sync_exchange_models.dart';
 import 'cloud_storage_provider.dart';
 import 'google_drive_provider.dart';
 import 'sync_batch_codec.dart';
+import 'sync_pairing_service.dart';
+import 'sync_problem.dart';
 
 enum SyncPhase {
   disconnected,
@@ -32,11 +34,13 @@ class SyncEngineStatus {
     this.conflicts = 0,
     this.lastSuccess,
     this.notice,
+    this.problem,
   });
   final SyncPhase phase;
   final int pending, conflicts;
   final DateTime? lastSuccess;
   final String? notice;
+  final SyncProblem? problem;
 }
 
 // Scheduling and authentication adapters call the same bounded exchange. It
@@ -73,7 +77,16 @@ class SyncEngine {
   SyncEngineStatus status = const SyncEngineStatus(SyncPhase.disconnected);
   Future<void>? _running;
   Timer? _poll, _debounce;
-  bool _closed = false, _started = false, _foreground = true;
+  bool _closed = false, _started = false, _foreground = true, _paused = false;
+  Future<void> pause() async {
+    _paused = true;
+    await _running;
+  }
+
+  void resume() {
+    _paused = false;
+  }
+
   bool _followup = false;
   bool _runningManual = false, _manualRequested = false;
   DateTime? _lastForegroundCheck;
@@ -125,7 +138,7 @@ class SyncEngine {
   }
 
   Future<void> syncNow({bool manual = false, bool localOnly = false}) {
-    if (_closed) return Future.value();
+    if (_closed || _paused) return Future.value();
     if (_running case final current?) {
       if (manual && !_runningManual) _manualRequested = true;
       return current;
@@ -237,6 +250,9 @@ class SyncEngine {
             pending: local.pending,
             conflicts: local.conflicts,
             notice: 'Reconnect the Google account paired with this profile.',
+            problem: SyncProblem.from(
+              const CloudFailure('', kind: CloudFailureKind.account),
+            ),
           ),
         );
         return;
@@ -250,6 +266,7 @@ class SyncEngine {
             conflicts: local.conflicts,
             notice:
                 'Enter the original workspace recovery code in Sync settings.',
+            problem: SyncProblem.from(const SyncRecoveryRequired()),
           ),
         );
         return;
@@ -273,6 +290,7 @@ class SyncEngine {
           throw const _SyncCycleYield();
         }
         if (_closed ||
+            _paused ||
             !isUnlocked() ||
             (canExchange != null && !await canExchange!()) ||
             storage.account?.id != binding.account ||
@@ -324,15 +342,26 @@ class SyncEngine {
       }
       var downloaded = 0;
       Future<bool> retain(List<CloudObject> objects) async {
+        if (objects.any(
+          (o) => {'head', 'workspace'}.contains(o.properties['kind']),
+        )) {
+          await network(() => verifyWorkspace(binding, key));
+        }
         for (final object in objects) {
           await guard();
+          if (object.properties['kind'] == 'head') {
+            continue;
+          }
+          if (object.properties['workspaceId'] != binding.workspace &&
+              binding.workspace !=
+                  SyncPairingService.workspaceFor(binding.account))
+            continue;
           if (object.properties['workspaceId'] != binding.workspace) {
             throw const FormatException(
               'A different encrypted workspace needs recovery',
             );
           }
           if (object.properties['kind'] == 'workspace') {
-            await network(() => verifyWorkspace(binding, key));
             continue;
           }
           if (object.properties['kind'] != 'operations') {
@@ -484,6 +513,7 @@ class SyncEngine {
           pending: local?.pending ?? status.pending,
           conflicts: local?.conflicts ?? status.conflicts,
           lastSuccess: local?.lastSuccess ?? status.lastSuccess,
+          problem: error is _SyncCycleYield ? null : SyncProblem.from(error),
           notice: error is FormatException
               ? 'Cloud data could not be verified. Keep your recovery credentials and snapshots; pending work and competing history are retained.'
               : error is CloudFailure

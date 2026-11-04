@@ -292,4 +292,44 @@ void main() {
           .setMockMethodCallHandler(AndroidPlatform.channel, null);
     }
   });
+  test('Android sync authorization errors retain typed recovery causes without native message contents', () async {
+    final client = MockClient(
+      (_) async => throw StateError('No HTTP expected'),
+    );
+    try {
+      for (final value in [
+        ('network', CloudFailureKind.offline),
+        ('reconnect', CloudFailureKind.authentication),
+        ('canceled', CloudFailureKind.authorization),
+        ('services', CloudFailureKind.services),
+      ]) {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              AndroidPlatform.channel,
+              (_) async => throw PlatformException(
+                code: value.$1,
+                message: 'SECRET native message',
+              ),
+            );
+        final auth = AndroidGoogleDriveAuth(
+          client: client,
+          store: _IdentityStore(),
+        );
+        await expectLater(
+          auth.connect(),
+          throwsA(
+            isA<CloudFailure>()
+                .having((e) => e.kind, 'kind', value.$2)
+                .having(
+                  (e) => e.message.contains('SECRET'),
+                  'no raw native message',
+                  false,
+                ),
+          ),
+        );
+      }
+    } finally {
+      client.close();
+    }
+  });
 }

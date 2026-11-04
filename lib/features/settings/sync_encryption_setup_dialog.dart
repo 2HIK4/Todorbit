@@ -9,14 +9,19 @@ Future<void> showPrivateSyncSetup(
   BuildContext context,
   SyncController controller,
 ) async {
-  final result = await showDialog<(String, SyncWorkspaceKey)>(
-    context: context,
-    builder: (_) => _PrivateSyncSetup(controller: controller),
-  );
+  final result = await collectPrivateSyncCredentials(context, controller);
   if (result != null && controller.isUnlocked()) {
     await controller.startPrivateSync(result.$1, result.$2);
   }
 }
+
+Future<(String, SyncWorkspaceKey)?> collectPrivateSyncCredentials(
+  BuildContext context,
+  SyncController controller,
+) => showDialog<(String, SyncWorkspaceKey)>(
+  context: context,
+  builder: (_) => _PrivateSyncSetup(controller: controller),
+);
 
 class _PrivateSyncSetup extends StatefulWidget {
   const _PrivateSyncSetup({required this.controller});

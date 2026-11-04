@@ -17,6 +17,7 @@ import 'package:life_manager/data/cloud/google_drive_provider.dart';
 import 'package:life_manager/data/cloud/sync_pairing_service.dart';
 import 'package:life_manager/data/cloud/sync_batch_codec.dart';
 import 'package:life_manager/data/cloud/sync_engine.dart';
+import 'package:life_manager/data/cloud/sync_reset_service.dart';
 import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/data/sync_exchange_models.dart';
 import 'package:life_manager/domain/models.dart';
@@ -31,6 +32,7 @@ class _DriveWire {
   final sessions = <String, Map<String, dynamic>>{};
   final changes = <String>[];
   int? rejectNext;
+  String? rejectReason;
   bool loseUploadReply = false;
   bool failMedia = false;
   bool clientFailure = false;
@@ -47,7 +49,13 @@ class _DriveWire {
     expect(request.headers['authorization'], 'Bearer synthetic-token');
     if (rejectNext case final status?) {
       rejectNext = null;
-      return json({'error': 'Synthetic provider rejection'}, status);
+      return json({
+        'error': {
+          'errors': [
+            {'reason': rejectReason ?? 'synthetic'},
+          ],
+        },
+      }, status);
     }
     final path = request.url.path;
     if (path.endsWith('/startPageToken')) {
@@ -108,13 +116,20 @@ class _DriveWire {
         'files': [
           for (final file in files.values)
             if (!query.contains("value='workspace'") ||
-                file['appProperties']['kind'] == 'workspace')
+                file['appProperties']['kind'] == 'workspace' ||
+                (query.contains("value='head'") &&
+                    file['appProperties']['kind'] == 'head'))
               file,
         ],
       });
     }
     final id = path.split('/').last;
     if (files.containsKey(id)) {
+      if (request.method == 'DELETE') {
+        files.remove(id);
+        payloads.remove(id);
+        return http.Response('', 204);
+      }
       if (request.method == 'PATCH') {
         files[id]!['appProperties'] =
             (jsonDecode(request.body) as Map)['appProperties'];
@@ -492,4 +507,48 @@ void main() {
       },
     );
   }
+  test('production adapter replacement commits head query, validates readback and deletes only retired sync objects; HTTP reasons classify safely', () async {
+    final drive = a.sync.pairing.storage;
+    for (final fixture in [
+      (403, 'storageQuotaExceeded', CloudFailureKind.quota),
+      (403, 'insufficientPermissions', CloudFailureKind.permission),
+      (401, 'authError', CloudFailureKind.authentication),
+      (503, 'backendError', CloudFailureKind.temporary),
+    ]) {
+      // _send retries one 401, so use the public classifier boundary via 403/503
+      // and leave token-refresh behavior to its unchanged auth receipt.
+      if (fixture.$1 == 401) continue;
+      wire.rejectNext = fixture.$1;
+      wire.rejectReason = fixture.$2;
+      await expectLater(
+        drive.list(),
+        throwsA(isA<CloudFailure>().having((e) => e.kind, 'kind', fixture.$3)),
+      );
+    }
+    await a.repo.addTask(const TaskDraft(title: 'Replacement seed'));
+    final old = a.sync.snapshot!.binding!;
+    final operation = MemoryTokenStore();
+    a.sync.reset = SyncResetService(
+      repository: a.repo,
+      recovery: a.sync.recovery,
+      pairing: a.sync.pairing,
+      vault: operation,
+      isUnlocked: () => true,
+    );
+    await a.sync.reviewNewSync();
+    expect(a.sync.resetState!['phase'], 'review');
+    await a.sync.startNewSync();
+    expect(a.sync.resetState!['phase'], 'complete');
+    expect(a.sync.problem, isNull);
+    final next = (await a.sync.pairing.saved())!;
+    await a.sync.pairing.verifyWorkspace(next.binding, next.key);
+    expect(
+      wire.files.values.any(
+        (f) => f['appProperties']['workspaceId'] == old.workspace,
+      ),
+      isFalse,
+    );
+    await b.sync.syncNow(manual: true);
+    expect(b.sync.problem?.label, 'Reconnect required');
+  });
 }

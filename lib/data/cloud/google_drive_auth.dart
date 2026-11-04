@@ -298,6 +298,7 @@ class GoogleDriveAuth {
       }
       throw CloudFailure(
         'Google authorization failed ($reason). Reconnect Google Drive. If this continues, contact the Todorbit publisher.',
+        kind: CloudFailureKind.authentication,
       );
     }
     final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -308,6 +309,7 @@ class GoogleDriveAuth {
             !(data['scope'] as String).split(' ').contains(scope))) {
       throw const CloudFailure(
         'Google did not grant the required backup permission.',
+        kind: CloudFailureKind.permission,
       );
     }
     return data;
@@ -415,7 +417,10 @@ class GoogleDriveAuth {
     }
     final data = _tokens;
     if (data == null || account == null) {
-      throw const CloudFailure('Connect Google Drive first.');
+      throw const CloudFailure(
+        'Connect Google Drive first.',
+        kind: CloudFailureKind.authentication,
+      );
     }
     if (!forceRefresh &&
         !needsReconnect &&
@@ -443,6 +448,7 @@ class GoogleDriveAuth {
       needsReconnect = true;
       throw const CloudFailure(
         'Google account changed. Disconnect and reconnect.',
+        kind: CloudFailureKind.account,
       );
     }
     final saved = {

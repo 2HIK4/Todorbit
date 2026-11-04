@@ -1,5 +1,11 @@
 # Progress
 
+## Start New Sync beta 11 candidate (2026-11-04)
+
+- Implemented isolated generations, verified local snapshot/seed, durable resume, explicit Standard/private confirmation, safe reconnect and retryable retired-cloud cleanup. Local histories and independent backups remain.
+- Targeted Critical checks, synthetic production Drive adapter and narrow 200% light/dark UI evidence pass; one UI harness invocation was interrupted and corrected. No full suite, emulator, live Drive or personal-profile test. [Detailed invocation receipt and limits](SYNC_START_NEW.md).
+- Next authorized step: one versioned Windows build/packages and one production universal APK, release integrity/updater/public delivery gates. Candidate beta11+34 tag is unused. Original three storage documents remain excluded.
+
 ## Experimental optional Sync encryption beta 10 published (2026-11-04)
 
 - Published [v1.0.19-beta.10](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.10), experimental/prerelease and not Latest Stable, version `1.0.19-beta.10+33`, source/tag `ed23095` based on `06b9ded`. Branch `maintenance/smart-sync-beta10-release`; original three storage documents preserved and excluded.

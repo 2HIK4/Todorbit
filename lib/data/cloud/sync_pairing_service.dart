@@ -12,6 +12,7 @@ import 'google_drive_auth.dart';
 import 'google_drive_provider.dart';
 import 'sync_batch_codec.dart';
 import 'sync_workspace_format.dart';
+import 'sync_generation.dart';
 
 class SyncPairing {
   const SyncPairing(
@@ -30,13 +31,19 @@ class SyncRecoveryRequired extends CloudFailure {
   const SyncRecoveryRequired()
     : super(
         'Unlock the existing encrypted workspace with its passphrase or recovery code.',
+        kind: CloudFailureKind.credentials,
       );
 }
 
 class SyncPairingService {
-  SyncPairingService({required this.storage, required this.vault});
+  SyncPairingService({
+    required this.storage,
+    required this.vault,
+    this.resetVault,
+  });
   final CloudStorageProvider storage;
   final CloudTokenStore vault;
+  final CloudTokenStore? resetVault;
   static const _proofFormat = 'todorbit-sync-workspace:1:aes256gcm';
   static const _uuid = Uuid();
   Future<SyncPairing>? _preparing;
@@ -52,8 +59,10 @@ class SyncPairingService {
     if (raw == null) return null;
     try {
       final value = jsonDecode(raw) as Map;
-      final standard = value['format'] == 2 && value['mode'] == 'standard';
-      final modernPrivate = value['format'] == 2 && value['mode'] == 'private';
+      final standard =
+          {2, 3}.contains(value['format']) && value['mode'] == 'standard';
+      final modernPrivate =
+          {2, 3}.contains(value['format']) && value['mode'] == 'private';
       if ((!standard && !modernPrivate && value['format'] != 1) ||
           value.length !=
               (standard
@@ -61,9 +70,13 @@ class SyncPairingService {
                   : modernPrivate
                   ? 8
                   : 5) ||
-          (value['format'] == 2 && value['introSeen'] is! bool) ||
+          ({2, 3}.contains(value['format']) && value['introSeen'] is! bool) ||
           value['account'] is! String ||
-          value['workspace'] != workspaceFor(value['account'] as String) ||
+          (value['workspace'] is! String ||
+              !Uuid.isValidUUID(fromString: value['workspace'] as String) ||
+              (value['format'] != 3 &&
+                  value['workspace'] !=
+                      workspaceFor(value['account'] as String))) ||
           value['device'] is! String ||
           !Uuid.isValidUUID(fromString: value['device'] as String)) {
         throw const FormatException();
@@ -100,9 +113,16 @@ class SyncPairingService {
     return current.key;
   }
 
+  Future<void> saveReplacement(SyncPairing pairing) => _save(pairing);
+
   Future<void> _save(SyncPairing pairing) => vault.write(
     jsonEncode({
-      'format': pairing.key.isStandard || pairing.proof != null ? 2 : 1,
+      'format':
+          pairing.binding.workspace != workspaceFor(pairing.binding.account)
+          ? 3
+          : pairing.key.isStandard || pairing.proof != null
+          ? 2
+          : 1,
       'workspace': pairing.binding.workspace,
       'account': pairing.binding.account,
       'device': pairing.binding.device,
@@ -125,10 +145,12 @@ class SyncPairingService {
     String? recoveryCode,
     String? password,
     SyncWorkspaceKey? privateKey,
+    bool joinGeneration = false,
   }) => _preparing ??= _prepare(
     recoveryCode,
     password,
     privateKey,
+    joinGeneration: joinGeneration,
   ).whenComplete(() => _preparing = null);
 
   Future<SyncPairing> _prepare(
@@ -136,30 +158,70 @@ class SyncPairingService {
     String? password,
     SyncWorkspaceKey? privateKey, {
     SyncBinding? retainedBinding,
+    bool joinGeneration = false,
   }) async {
+    if (!joinGeneration && resetVault != null) {
+      final raw = await resetVault!.read();
+      if (raw != null &&
+          !{
+            'complete',
+            'cleanup',
+          }.contains((jsonDecode(raw) as Map)['phase'])) {
+        throw const CloudFailure(
+          'Finish replacement setup first',
+          kind: CloudFailureKind.reset,
+        );
+      }
+    }
     final account = storage.account?.id;
     if (account == null) {
       throw const CloudFailure('Connect Google Drive before pairing.');
     }
-    final previous = await saved();
-    if (previous != null && previous.binding.account != account) {
+    final retained = await saved();
+    if (retained != null && retained.binding.account != account) {
       throw const CloudFailure(
         'This profile is paired with a different account. Its pending work and key are retained.',
+        kind: CloudFailureKind.account,
       );
     }
     // Only a successful complete listing can establish an empty workspace.
     final objects = await storage.list();
     _checkAccount(account);
-    final workspace = workspaceFor(account);
+    final generation = await SyncGeneration.read(storage, account, objects);
+    final workspace = generation.active ?? workspaceFor(account);
+    if (joinGeneration && generation.active == null)
+      throw const CloudFailure(
+        'No replacement generation to reconnect',
+        kind: CloudFailureKind.stale,
+      );
+    final previous = joinGeneration ? null : retained;
+    if (!joinGeneration &&
+        (previous?.binding.workspace ??
+                retainedBinding?.workspace ??
+                workspace) !=
+            workspace) {
+      throw const CloudFailure(
+        'Workspace replaced',
+        kind: CloudFailureKind.stale,
+      );
+    }
     if (objects.any(
-      (o) => o.accountId != account || o.properties['workspaceId'] != workspace,
+      (o) =>
+          o.accountId != account ||
+          (generation.heads.isEmpty &&
+              o.properties['workspaceId'] != workspace),
     )) {
       throw const CloudFailure(
-        'A different sync workspace is present. Reconcile it before creating or joining another.',
+        'Unfinished or unknown workspace setup',
+        kind: CloudFailureKind.reset,
       );
     }
     final proofs = objects
-        .where((o) => o.properties['kind'] == 'workspace')
+        .where(
+          (o) =>
+              o.properties['kind'] == 'workspace' &&
+              o.properties['workspaceId'] == workspace,
+        )
         .toList();
     if (proofs.any((proof) => proof.properties['state'] == 'migrating')) {
       throw const CloudFailure(
@@ -169,7 +231,7 @@ class SyncPairingService {
     }
     final binding =
         previous?.binding ??
-        retainedBinding ??
+        (joinGeneration ? null : retainedBinding) ??
         SyncBinding(workspace: workspace, account: account, device: _uuid.v4());
     SyncWorkspaceKey? key = previous?.key;
     Uint8List? retainedProof = previous?.proof;
@@ -251,13 +313,14 @@ class SyncPairingService {
           }
           if (key == null) {
             if (recoveryCode != null) {
-              key = SyncWorkspaceKey.fromRecoveryCode(recoveryCode);
+              key = _recoveryInput(recoveryCode);
             } else if (password != null) {
               try {
                 key = await SyncWorkspaceFormat.unlock(data, binding, password);
               } catch (_) {
                 throw const CloudFailure(
                   'The passphrase could not unlock this workspace. Try again or use its recovery code.',
+                  kind: CloudFailureKind.wrongCredential,
                 );
               }
             } else {
@@ -274,24 +337,24 @@ class SyncPairingService {
         }
         if (key == null) {
           if (recoveryCode == null) throw const SyncRecoveryRequired();
-          key = SyncWorkspaceKey.fromRecoveryCode(recoveryCode);
+          key = _recoveryInput(recoveryCode);
         }
       } else {
         throw const CloudFailure(
           'This cloud workspace needs a compatible Todorbit version. Nothing was replaced.',
+          kind: CloudFailureKind.incompatible,
         );
       }
       if (recoveryCode != null &&
           !key.isStandard &&
           key.exportRecoveryCode() !=
-              SyncWorkspaceKey.fromRecoveryCode(recoveryCode)
-                  .exportRecoveryCode()) {
+              _recoveryInput(recoveryCode).exportRecoveryCode()) {
         throw const CloudFailure(
           'The entered code differs from the retained workspace key. Nothing was replaced.',
         );
       }
     }
-    await verifyWorkspace(binding, key);
+    await verifyWorkspace(binding, key, ignoreReset: joinGeneration);
     _checkAccount(account);
     final result = SyncPairing(
       binding,
@@ -307,7 +370,7 @@ class SyncPairingService {
       proof: result.proof,
       introSeen: stored?.introSeen ?? result.introSeen,
     );
-    await _save(finalResult);
+    if (!joinGeneration) await _save(finalResult);
     return finalResult;
   }
 
@@ -317,11 +380,6 @@ class SyncPairingService {
     String? password,
   }) async {
     _checkAccount(binding.account);
-    if (binding.workspace != workspaceFor(binding.account)) {
-      throw const CloudFailure(
-        'Recover the original workspace before authorizing this profile.',
-      );
-    }
     final previous = await saved();
     if (previous != null &&
         (previous.binding.workspace != binding.workspace ||
@@ -377,10 +435,22 @@ class SyncPairingService {
     return SyncPairing(binding, existing.key);
   }
 
+  SyncWorkspaceKey _recoveryInput(String value) {
+    try {
+      return SyncWorkspaceKey.fromRecoveryCode(value);
+    } catch (_) {
+      throw const CloudFailure(
+        'Invalid entered recovery credential',
+        kind: CloudFailureKind.wrongCredential,
+      );
+    }
+  }
+
   void _checkAccount(String account) {
     if (storage.account?.id != account) {
       throw const CloudFailure(
         'Google account changed during pairing. No local data was paired.',
+        kind: CloudFailureKind.account,
       );
     }
   }
@@ -417,31 +487,58 @@ class SyncPairingService {
 
   Future<void> verifyWorkspace(
     SyncBinding binding,
-    SyncWorkspaceKey key,
-  ) async {
+    SyncWorkspaceKey key, {
+    bool ignoreReset = false,
+  }) async {
     _checkAccount(binding.account);
     final provider = storage;
     final objects = await (provider is SyncStorageProvider
         ? provider.listWorkspaceProofs()
         : provider.list());
     _checkAccount(binding.account);
+    final resetRaw = await resetVault?.read();
+    if (!ignoreReset && resetRaw != null) {
+      final reset = jsonDecode(resetRaw) as Map;
+      if (!{'complete', 'cleanup'}.contains(reset['phase']))
+        throw const CloudFailure(
+          'Replacement pending',
+          kind: CloudFailureKind.reset,
+        );
+    }
+    final generation = await SyncGeneration.read(
+      storage,
+      binding.account,
+      objects,
+    );
+    final active = generation.active ?? workspaceFor(binding.account);
+    if (active != binding.workspace)
+      throw const CloudFailure(
+        'Workspace replaced',
+        kind: CloudFailureKind.stale,
+      );
     if (objects.any(
       (o) =>
           o.accountId != binding.account ||
-          o.properties['workspaceId'] != binding.workspace,
+          (generation.heads.isEmpty &&
+              o.properties['workspaceId'] != binding.workspace),
     )) {
       throw const CloudFailure(
-        'Multiple workspace identities need recovery. Pending changes are retained.',
+        'Unfinished workspace setup',
+        kind: CloudFailureKind.reset,
       );
     }
     final proofs = objects
-        .where((o) => o.properties['kind'] == 'workspace')
+        .where(
+          (o) =>
+              o.properties['kind'] == 'workspace' &&
+              o.properties['workspaceId'] == binding.workspace,
+        )
         .toList();
-    if (proofs.isEmpty) {
+    if (proofs.isEmpty)
       throw const CloudFailure(
-        'The encrypted workspace proof is missing. Pending changes are retained.',
+        'Workspace proof missing',
+        kind: CloudFailureKind.missing,
       );
-    }
     await _verifyProofs(binding, key, proofs);
   }
 
@@ -481,6 +578,7 @@ class SyncPairingService {
         } catch (_) {
           throw const CloudFailure(
             'Cloud mode or private credentials differ. All local data and keys are retained.',
+            kind: CloudFailureKind.wrongCredential,
           );
         }
         continue;
@@ -520,6 +618,7 @@ class SyncPairingService {
       } catch (_) {
         throw const CloudFailure(
           'The recovery code cannot authenticate every workspace proof. Retain all keys/history and recover the original pairing.',
+          kind: CloudFailureKind.wrongCredential,
         );
       }
     }

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.19-beta.11+34 - experimental Start New Sync
+
+- Add an explicit Start New Sync flow with a verified local recovery snapshot, Standard/private setup, durable resume, complete seed readback and retryable retired-cloud cleanup.
+- Isolate replacement workspace generations, preserve local histories and offline edits, detect competing replacements and reconnect updated devices safely.
+- Replace vague Sync errors with typed causes and relevant actions, including Android Google sign-in and storage failures.
+- Experimental: back up first. Cloud-only data can be lost; non-content safety markers remain and old devices can recreate isolated files. Live Drive and physical upgrades remain unverified. Existing-workspace conversion/passphrase changes stay unavailable.
+
 ## 1.0.19-beta.10+33 - experimental Standard and private Sync
 
 - Default new Google Drive workspaces to Standard Sync without an extra password; detect existing modes and preserve legacy encrypted recovery.

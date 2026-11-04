@@ -5,6 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/sync_controller.dart';
 import '../../data/cloud/sync_engine.dart';
+import '../../data/cloud/sync_problem.dart';
+
+import 'package:url_launcher/url_launcher.dart';
+
+import 'sync_reset_dialog.dart';
 import 'sync_conflicts_dialog.dart';
 import 'sync_encryption_setup_dialog.dart';
 import '../shared/settings_section.dart';
@@ -124,7 +129,15 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
             !controller.pairing.passwordAvailable
         ? code.text.trim()
         : code.text;
-    if (controller.snapshot?.quarantined == true) {
+    if (controller.reconnectingGeneration ||
+        controller.problem?.action == SyncProblemAction.reconnect) {
+      await controller.reconnectGeneration(
+        recoveryCode: useRecoveryCode
+            ? (entered.isEmpty ? null : entered)
+            : null,
+        password: useRecoveryCode ? null : entered,
+      );
+    } else if (controller.snapshot?.quarantined == true) {
       await controller.reconcileRestored(
         recoveryCode: entered.isEmpty ? null : entered,
       );
@@ -161,6 +174,97 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
     }
   }
 
+  Future<void> _problemAction(
+    SyncController controller,
+    SyncProblem problem,
+  ) async {
+    switch (problem.action) {
+      case SyncProblemAction.retry:
+        if (controller.resetPending &&
+            controller.resetState?['phase'] != 'review') {
+          await controller.resumeNewSync();
+        } else {
+          await controller.syncNow(manual: true);
+        }
+      case SyncProblemAction.connect:
+        await controller.reconnectAndSync();
+      case SyncProblemAction.unlock:
+        recoveryFocus.requestFocus();
+        _revealRecoveryField();
+      case SyncProblemAction.conflicts:
+        if (controller.conflictCount > 0) {
+          await showSyncConflicts(context, controller);
+        } else {
+          await _instructions(
+            'Competing sync setups',
+            'Finish setup on its original device. If two replacements were activated concurrently, both cloud versions are retained. Export any needed local records before explicitly starting a replacement from the device you choose.',
+          );
+        }
+      case SyncProblemAction.update:
+        await _instructions(
+          'Update Todorbit',
+          'Open Settings > Software Updates, select Pre-release and install the latest experimental update on every device. Keep your backups and current profile. Then return here and retry.',
+        );
+      case SyncProblemAction.recovery:
+        await _instructions(
+          'Recover sync safely',
+          'Keep your local data, existing backups and original recovery code. If encrypted, try its original credential. Start New Sync below is an explicit alternative: it uses this device?s current records and can remove cloud-only data. No data is removed merely by viewing these options.',
+        );
+      case SyncProblemAction.resume:
+        if (controller.resetState?['phase'] == 'review') {
+          await showStartNewSync(context, controller);
+        } else if (controller.resetPending) {
+          await controller.resumeNewSync();
+        } else {
+          await _instructions(
+            'Resume on the original device',
+            'Open Sync settings on the device that started the replacement and choose Resume new sync. Keep its recovery snapshot. This device will reconnect after that setup completes.',
+          );
+        }
+      case SyncProblemAction.cleanup:
+        await controller.resumeNewSync();
+      case SyncProblemAction.reconnect:
+        await controller.reconnectGeneration();
+      case SyncProblemAction.storage:
+        final opened = await launchUrl(
+          Uri.parse('https://one.google.com/storage'),
+          mode: LaunchMode.externalApplication,
+        );
+        if (!opened && mounted)
+          await _instructions(
+            'Manage Google storage',
+            'Open one.google.com/storage for the selected Google account, free space, then return here and retry sync.',
+          );
+      case SyncProblemAction.services:
+        final opened = await launchUrl(
+          Uri.parse(
+            'https://play.google.com/store/apps/details?id=com.google.android.gms',
+          ),
+          mode: LaunchMode.externalApplication,
+        );
+        if (!opened && mounted)
+          await _instructions(
+            'Google Play services',
+            'Open Google Play Store and update Google Play services, then retry sign-in. Local backups remain available on devices without Play services.',
+          );
+    }
+  }
+
+  Future<void> _instructions(String title, String message) => showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      scrollable: true,
+      content: Text(message),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(syncControllerProvider);
@@ -180,6 +284,10 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
     final last =
         controller.status.lastSuccess ?? controller.snapshot?.lastSuccess;
     final conflicts = controller.conflictCount;
+    final problem = controller.problem;
+    final unlockRequired =
+        controller.needsRecoveryCode ||
+        problem?.action == SyncProblemAction.unlock;
     final notice =
         controller.message ??
         (controller.needsRecoveryCode ? null : controller.status.notice);
@@ -214,7 +322,9 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
         Semantics(
           liveRegion: true,
           child: Text(
-            busy ? 'Synchronizing' : controller.label,
+            busy
+                ? (controller.resetStage ?? 'Synchronizing')
+                : controller.label,
             style: theme.textTheme.titleMedium,
           ),
         ),
@@ -238,7 +348,10 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
             icon: Icons.restore,
           ),
         ],
-        if (controller.needsRecoveryCode || restored && connected) ...[
+        if (unlockRequired ||
+            (problem?.action == SyncProblemAction.reconnect &&
+                controller.pairing.passwordAvailable) ||
+            restored && connected) ...[
           if (!restored)
             const Text(
               'Unlock your encrypted cloud data once. This device will remember the key in protected storage.',
@@ -287,10 +400,14 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
           const SizedBox(height: 12),
         ],
         FilledButton.icon(
-          onPressed: busy || (!connected && !controller.auth.canConnect)
+          onPressed:
+              busy ||
+                  (controller.resetPending &&
+                      controller.resetState?['phase'] != 'cleanup') ||
+                  (!connected && !controller.auth.canConnect)
               ? null
               : () async {
-                  if (connected && (controller.needsRecoveryCode || restored)) {
+                  if (connected && (unlockRequired || restored)) {
                     await _authorize(controller);
                   } else {
                     await controller.syncNow(manual: true);
@@ -304,7 +421,7 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
                       : 'Connect Google Drive'
                 : restored
                 ? 'Reconcile restored profile'
-                : controller.needsRecoveryCode
+                : unlockRequired
                 ? 'Authorize this device'
                 : paired
                 ? 'Sync now'
@@ -327,7 +444,69 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
             child: const Text('Review conflicts'),
           ),
         ],
-        if (notice != null) ...[
+        if (problem != null) ...[
+          const SizedBox(height: 12),
+          StatusNotice(
+            title: problem.title,
+            message: problem.explanation,
+            error: true,
+          ),
+          OutlinedButton(
+            onPressed: busy ? null : () => _problemAction(controller, problem),
+            child: Text(problem.actionLabel),
+          ),
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            title: const Text('Safe diagnostic details'),
+            children: [
+              SelectableText(
+                'Status: ${problem.label}\nPhase: ${controller.resetState?['phase'] ?? controller.status.phase.name}\nLocal pending changes: ${controller.snapshot?.pending ?? controller.status.pending}\nNo private records or credentials are included.',
+              ),
+            ],
+          ),
+        ],
+        if (controller.reset != null && connected) ...[
+          const SizedBox(height: 16),
+          Text('Start New Sync', style: theme.textTheme.titleSmall),
+          const SizedBox(height: 6),
+          const SettingsHelperText(
+            'Replace cloud sync with this device?s data. Local records stay here. Cloud-only records may be lost. A verified recovery snapshot is required.',
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed:
+                busy ||
+                    restored ||
+                    (controller.resetPending &&
+                        controller.resetState?['phase'] != 'review' &&
+                        !(controller.resetState?['phase'] == 'activating' &&
+                            problem?.action == SyncProblemAction.conflicts))
+                ? null
+                : () => showStartNewSync(context, controller),
+            icon: const Icon(Icons.restart_alt),
+            label: Text(
+              controller.resetState?['phase'] == 'review'
+                  ? 'Review new sync setup'
+                  : 'Start New Sync',
+            ),
+          ),
+          if (controller.resetState?['phase'] == 'review')
+            TextButton(
+              onPressed: busy ? null : controller.cancelNewSyncReview,
+              child: const Text('Cancel new sync setup'),
+            ),
+          if (controller.resetState?['phase'] == 'complete' &&
+              (controller.resetState?['retired'] as List? ?? []).isNotEmpty)
+            TextButton(
+              onPressed: busy ? null : controller.resumeNewSync,
+              child: const Text('Check retired cloud cleanup'),
+            ),
+          if (restored)
+            const SettingsHelperText(
+              'Reconcile the restored profile before starting a replacement.',
+            ),
+        ],
+        if (notice != null && problem == null) ...[
           const SizedBox(height: 12),
           Text(notice, style: theme.textTheme.bodyMedium),
         ],
@@ -411,7 +590,9 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
               'Checks while open. Background checks depend on your device.',
             ),
             value: controller.snapshot?.automatic ?? false,
-            onChanged: busy ? null : controller.setAutomatic,
+            onChanged: busy || controller.resetPending
+                ? null
+                : controller.setAutomatic,
           ),
           if (controller.recoveryReminder && controller.standardSync != true)
             TextButton.icon(

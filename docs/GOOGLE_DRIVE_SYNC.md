@@ -1,5 +1,18 @@
 # Google Drive sync
 
+Beta 11 adds **Start New Sync** in Sync settings. A verified independent local
+snapshot and explicit cloud-loss acknowledgment precede a fresh workspace. It
+keeps current local portable records and retained histories, uploads and reads
+back the complete new seed, activates an immutable generation head, then removes
+only the selected retired workspace content. Cleanup failures have a separate
+retry action. Non-content heads remain to reject recreated legacy namespaces;
+old clients must update and explicitly reconnect. Concurrent heads stop exchange
+and cleanup until an explicitly reviewed replacement supersedes them. Interrupted
+setup resumes on its original device. Unknown/future ownership and foreign
+uncommitted staging block deletion. See [protocol, safety evidence and manual
+checks](SYNC_START_NEW.md). Physical devices and live Drive remain owner acceptance.
+
+
 Published baseline: 1.0.19-beta.9+32, schema 26, sync protocol 1. Beta 9 includes
 the interrupted-upload and offline-decision fixes from
 [comprehensive verification](SMART_SYNC_VERIFICATION.md). See the

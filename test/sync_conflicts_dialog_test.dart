@@ -16,6 +16,8 @@ import 'package:life_manager/data/cloud/google_drive_auth.dart';
 import 'package:life_manager/data/cloud/sync_pairing_service.dart';
 import 'package:life_manager/data/cloud/sync_batch_codec.dart';
 import 'package:life_manager/features/settings/sync_encryption_setup_dialog.dart';
+import 'package:life_manager/features/settings/sync_reset_dialog.dart';
+import 'package:life_manager/data/cloud/sync_problem.dart';
 import 'package:life_manager/domain/sync/causal_record.dart';
 import 'package:life_manager/features/settings/sync_conflicts_dialog.dart';
 import 'package:life_manager/features/settings/sync_settings_page.dart';
@@ -39,9 +41,20 @@ class _Controller extends SyncController {
     required bool Function() unlocked,
     required MockSyncDrive drive,
   }) : super(storage: drive, isUnlocked: unlocked, onApplied: () async {});
+  SyncProblem? injectedProblem;
+  @override
+  SyncProblem? get problem => injectedProblem ?? super.problem;
   int applied = 0;
   int requests = 0, privateRequests = 0;
-  String? authorizedPassword;
+  String? authorizedPassword, generationPassword;
+  @override
+  Future<void> reconnectGeneration({
+    String? password,
+    String? recoveryCode,
+  }) async {
+    generationPassword = password;
+  }
+
   @override
   Future<void> activate({String? recoveryCode, String? password}) async {
     authorizedPassword = password;
@@ -699,4 +712,163 @@ void main() {
     await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
   });
+  testWidgets(
+    'new sync confirmation wraps at 200 percent in both themes and requires explicit acknowledgment',
+    (tester) async {
+      final loader = FontLoader('Roboto');
+      loader.addFont(
+        Future.value(
+          ByteData.sublistView(
+            File('C:/Windows/Fonts/segoeui.ttf').readAsBytesSync(),
+          ),
+        ),
+      );
+      await loader.load();
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(380, 780);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      controller.auth.account = const CloudAccount(
+        'mock-only',
+        'Synthetic selected account',
+      );
+      controller.resetState = {
+        'phase': 'review',
+        'selected': ['f5b38e9c-f962-441e-a0fc-c057de8e1f88'],
+        'backup': 'Synthetic isolated recovery snapshot',
+      };
+      for (final brightness in Brightness.values) {
+        await tester.pumpWidget(
+          RepaintBoundary(
+            key: const ValueKey('reset-capture'),
+            child: MaterialApp(
+              theme: buildAppTheme(
+                brightness,
+                brightness == Brightness.dark
+                    ? ThemePalette.dark
+                    : ThemePalette.light,
+              ),
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context)
+                    .copyWith(textScaler: TextScaler.linear(2)),
+                child: child!,
+              ),
+              home: Scaffold(
+                body: Builder(
+                  builder: (context) => TextButton(
+                    onPressed: () => showDialog<bool>(
+                      context: context,
+                      builder: (_) =>
+                          SyncResetConfirmation(controller: controller),
+                    ),
+                    child: const Text('Open reset'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('Open reset'));
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<FilledButton>(
+                find.widgetWithText(FilledButton, 'Start New Sync'),
+              )
+              .onPressed,
+          isNull,
+        );
+        expect(find.textContaining('Cloud-only records'), findsOneWidget);
+        final capture = Platform.environment['TODORBIT_RESET_CAPTURE'];
+        if (capture != null) {
+          await tester.runAsync(() async {
+            final boundary = tester.renderObject<RenderRepaintBoundary>(
+              find.byKey(const ValueKey('reset-capture')),
+            );
+            final image = await boundary.toImage();
+            final bytes = await image.toByteData(format: ImageByteFormat.png);
+            await File('$capture-${brightness.name}.png')
+                .writeAsBytes(bytes!.buffer.asUint8List());
+            image.dispose();
+          });
+        }
+        await tester.ensureVisible(find.byType(CheckboxListTile));
+        await tester.tap(find.byType(CheckboxListTile));
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<FilledButton>(
+                find.widgetWithText(FilledButton, 'Start New Sync'),
+              )
+              .onPressed,
+          isNotNull,
+        );
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+      }
+    },
+  );
+
+  testWidgets(
+    'specific sync errors expose correct recovery action and status opens details without retrying',
+    (tester) async {
+      controller.auth.account = const CloudAccount(
+        'mock-only',
+        'Synthetic account',
+      );
+      controller.injectedProblem = SyncProblem.from(
+        const CloudFailure(
+          'PRIVATE SERVER TEXT',
+          kind: CloudFailureKind.offline,
+        ),
+      );
+      providerOwnsController = true;
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [syncControllerProvider.overrideWith((ref) => controller)],
+          child: MaterialApp(home: Scaffold(body: const SyncStatusButton())),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('sync-status-button')));
+      await tester.pumpAndSettle();
+      expect(controller.requests, 0);
+      expect(find.text("You're offline"), findsOneWidget);
+      expect(find.textContaining('PRIVATE SERVER TEXT'), findsNothing);
+      await tester.ensureVisible(
+        find.widgetWithText(OutlinedButton, 'Retry sync'),
+      );
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Retry sync'));
+      await tester.pumpAndSettle();
+      expect(controller.requests, 1);
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+      controller.injectedProblem = SyncProblem.from(
+        const CloudFailure('', kind: CloudFailureKind.credentials),
+      );
+      controller.reconnectingGeneration = true;
+      controller.needsRecoveryCode = true;
+      controller.pairing.passwordAvailable = true;
+      await tester.tap(find.byKey(const ValueKey('sync-status-button')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Use recovery code'));
+      await tester.tap(find.text('Use recovery code'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byType(TextField),
+        'new generation private phrase',
+      );
+      await tester.ensureVisible(
+        find.widgetWithText(FilledButton, 'Authorize this device'),
+      );
+      await tester.tap(
+        find.widgetWithText(FilledButton, 'Authorize this device'),
+      );
+      await tester.pumpAndSettle();
+      expect(controller.generationPassword, 'new generation private phrase');
+      expect(controller.authorizedPassword, isNull);
+
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

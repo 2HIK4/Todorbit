@@ -51,6 +51,17 @@ enum CloudFailureKind {
   corrupt,
   conflict,
   migrating,
+  offline,
+  quota,
+  missing,
+  credentials,
+  wrongCredential,
+  account,
+  stale,
+  reset,
+  cleanup,
+  authorization,
+  services,
 }
 
 class CloudFailure implements Exception {

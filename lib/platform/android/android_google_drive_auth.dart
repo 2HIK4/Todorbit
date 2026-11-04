@@ -69,6 +69,7 @@ class AndroidGoogleDriveAuth extends GoogleDriveAuth {
       needsReconnect = true;
       throw const CloudFailure(
         'Saved Android account is invalid. Disconnect and reconnect.',
+        kind: CloudFailureKind.authentication,
       );
     }
   }
@@ -95,7 +96,15 @@ class AndroidGoogleDriveAuth extends GoogleDriveAuth {
     } on PlatformException catch (failure) {
       if (failure.code == 'reconnect') needsReconnect = true;
       throw CloudFailure(
-        failure.message ?? 'Google authorization unavailable. Try again.',
+        'Android Google authorization did not complete.',
+        kind: switch (failure.code) {
+          'network' => CloudFailureKind.offline,
+          'reconnect' => CloudFailureKind.authentication,
+          'services' => CloudFailureKind.services,
+          'busy' => CloudFailureKind.temporary,
+          'canceled' => CloudFailureKind.authorization,
+          _ => CloudFailureKind.authorization,
+        },
       );
     } on TimeoutException {
       flow.cancel();
@@ -104,7 +113,10 @@ class AndroidGoogleDriveAuth extends GoogleDriveAuth {
     }
     if (value == null || value.isEmpty) {
       needsReconnect = true;
-      throw const CloudFailure('Google backup access requires reconnection.');
+      throw const CloudFailure(
+        'Google backup access requires reconnection.',
+        kind: CloudFailureKind.authentication,
+      );
     }
     final verified = await identity(value);
     if (generation != _generation) {
@@ -114,6 +126,7 @@ class AndroidGoogleDriveAuth extends GoogleDriveAuth {
       needsReconnect = true;
       throw const CloudFailure(
         'A different Google account was selected. Disconnect before switching accounts.',
+        kind: CloudFailureKind.account,
       );
     }
     await _writeIdentity(() async {
@@ -151,7 +164,10 @@ class AndroidGoogleDriveAuth extends GoogleDriveAuth {
   @override
   Future<String> accessToken({bool forceRefresh = false}) async {
     if (account == null) {
-      throw const CloudFailure('Connect Google Drive first.');
+      throw const CloudFailure(
+        'Connect Google Drive first.',
+        kind: CloudFailureKind.authentication,
+      );
     }
     if (!forceRefresh &&
         !needsReconnect &&

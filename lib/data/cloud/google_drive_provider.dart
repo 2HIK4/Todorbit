@@ -95,32 +95,58 @@ class GoogleDriveProvider implements CloudStorageProvider, SyncStorageProvider {
     final response = await http.Response.fromStream(stream)
         .timeout(const Duration(seconds: 60));
     _checkAccount(accountId);
-    if (!accepted.contains(response.statusCode)) _fail(response.statusCode);
+    if (!accepted.contains(response.statusCode))
+      _fail(response.statusCode, response.body);
     return response;
   }
 
-  Never _fail(int status) => throw CloudFailure(
-    switch (status) {
-      401 => 'Google session expired or was revoked. Reconnect Google Drive.',
-      403 => 'Google Drive denied access. Check permission and storage quota.',
-      404 => 'This cloud object is no longer available. Refresh and retry.',
-      429 => 'Google Drive is busy. Try again later.',
-      >= 500 => 'Google Drive is temporarily unavailable. Try again later.',
-      _ => 'Google Drive request failed (HTTP $status).',
-    },
-    kind: switch (status) {
-      401 => CloudFailureKind.authentication,
-      403 => CloudFailureKind.permission,
-      409 || 412 => CloudFailureKind.conflict,
-      429 || >= 500 => CloudFailureKind.temporary,
-      _ => CloudFailureKind.unknown,
-    },
-  );
+  Never _fail(int status, [String? body]) {
+    // Classify documented reason codes only; never display server messages.
+    var quota = false, rateLimit = false;
+    try {
+      if (body != null && body.length <= 16384) {
+        final errors =
+            ((jsonDecode(body) as Map)['error'] as Map)['errors'] as List;
+        final reasons = errors.whereType<Map>().map((e) => e['reason']).toSet();
+        quota = reasons.contains('storageQuotaExceeded');
+        rateLimit =
+            reasons.contains('rateLimitExceeded') ||
+            reasons.contains('userRateLimitExceeded');
+      }
+    } catch (_) {
+      /* Unknown bodies retain the HTTP classification. */
+    }
+    throw CloudFailure(
+      switch (status) {
+        401 => 'Google session expired or was revoked. Reconnect Google Drive.',
+        403 =>
+          'Google Drive denied access. Check permission and storage quota.',
+        404 => 'This cloud object is no longer available. Refresh and retry.',
+        429 => 'Google Drive is busy. Try again later.',
+        >= 500 => 'Google Drive is temporarily unavailable. Try again later.',
+        _ => 'Google Drive request failed (HTTP $status).',
+      },
+      kind: switch (status) {
+        401 => CloudFailureKind.authentication,
+        403 =>
+          quota
+              ? CloudFailureKind.quota
+              : rateLimit
+              ? CloudFailureKind.temporary
+              : CloudFailureKind.permission,
+        404 => CloudFailureKind.missing,
+        409 || 412 => CloudFailureKind.conflict,
+        429 || >= 500 => CloudFailureKind.temporary,
+        _ => CloudFailureKind.unknown,
+      },
+    );
+  }
 
   void _checkAccount(String id) {
     if (account?.id != id) {
       throw const CloudFailure(
         'Google account changed. Reload the backup list.',
+        kind: CloudFailureKind.account,
       );
     }
   }
@@ -155,9 +181,10 @@ class GoogleDriveProvider implements CloudStorageProvider, SyncStorageProvider {
   Future<List<CloudObject>> list() => _list();
 
   @override
-  Future<List<CloudObject>> listWorkspaceProofs() => _list(kind: 'workspace');
+  Future<List<CloudObject>> listWorkspaceProofs() =>
+      _list(kind: 'workspace', controls: true);
 
-  Future<List<CloudObject>> _list({String? kind}) async {
+  Future<List<CloudObject>> _list({String? kind, bool controls = false}) async {
     final accountId = account?.id;
     if (accountId == null) {
       throw const CloudFailure('Connect Google Drive first.');
@@ -171,7 +198,11 @@ class GoogleDriveProvider implements CloudStorageProvider, SyncStorageProvider {
         Uri.https('www.googleapis.com', '/drive/v3/files', {
           'spaces': 'appDataFolder',
           'q':
-              "trashed = false and appProperties has { key='application' and value='$_namespace' }${kind == null ? '' : " and appProperties has { key='kind' and value='$kind' }"}",
+              "trashed = false and appProperties has { key='application' and value='$_namespace' }${kind == null
+                  ? ''
+                  : controls
+                  ? " and (appProperties has { key='kind' and value='workspace' } or appProperties has { key='kind' and value='head' })"
+                  : " and appProperties has { key='kind' and value='$kind' }"}",
           'fields': 'nextPageToken,files($_fields)',
           'pageSize': '100',
           'orderBy': 'createdTime desc',
@@ -480,14 +511,28 @@ class GoogleDriveProvider implements CloudStorageProvider, SyncStorageProvider {
   @override
   Future<void> delete(CloudObject object) async {
     _checkAccount(object.accountId);
-    await _inspect(object.id, object.accountId);
+    CloudObject current;
+    try {
+      current = await _inspect(object.id, object.accountId);
+    } on CloudFailure catch (error) {
+      if (error.kind == CloudFailureKind.missing) return;
+      rethrow;
+    }
+    if (current.md5 != object.md5 ||
+        current.properties['workspaceId'] != object.properties['workspaceId'] ||
+        current.properties['kind'] != object.properties['kind'] ||
+        current.properties[_idProperty] != object.properties[_idProperty])
+      throw const CloudFailure(
+        'Cloud object changed before deletion',
+        kind: CloudFailureKind.conflict,
+      );
     await _request(
       'DELETE',
       Uri.https(
         'www.googleapis.com',
         '/drive/v3/files/${Uri.encodeComponent(object.id)}',
       ),
-      accepted: const {204},
+      accepted: const {204, 404},
     );
   }
 }

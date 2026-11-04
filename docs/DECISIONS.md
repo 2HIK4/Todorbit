@@ -1,5 +1,15 @@
 # Decisions
 
+## 2026-11-04: isolated sync replacement generations
+
+Start New Sync uses random workspace IDs and immutable append-only generation
+heads. No Drive multi-file atomicity/CAS is assumed. Forks block exchange and
+cleanup; a confirmed replacement can supersede all tips. Verify an independent
+local backup and complete readable seed before activation/deletion. Keep old
+local journals/conflicts and protected credentials, plus cloud non-content heads.
+Legacy writers remain isolated; permanent erasure outside Todorbit is not promised.
+See [implementation and evidence](SYNC_START_NEW.md).
+
 - **Authenticated sync versus upload receipts (2026-11-03):** treat Drive's
   mutable `verified` app property as a sender-side readback acknowledgement,
   not a substitute for authenticated content. A lost completed-upload reply can
