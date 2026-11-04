@@ -1,5 +1,18 @@
 # Progress
 
+## UI quality beta12 publication requested; further tests skipped (2026-11-04)
+
+- Owner explicitly requests skipping further tests and publishing any new app
+  changes. Six UI implementation batches are newer than public beta11. Preparing
+  coordinated Windows + Android experimental beta12/build35 on
+  `feature/ui-quality-beta12`; previous tags/releases remain unchanged.
+- Skip new test/analyzer/CI/manual/device execution under this candidate's explicit
+  owner exception. Preserve prior scoped evidence and all unresolved native/Drive
+  acceptance. Retain artifact identity, signing, packaging and checksum integrity.
+- [Release notes](UI_QUALITY_BETA_12_RELEASE_NOTES.md) and
+  [publication receipt](UI_QUALITY_BETA_12_PUBLICATION.md) record scope, skips,
+  commands and actual outcomes. Three unrelated storage documents stay excluded.
+
 ## Final platform acceptance: environment blocker and guided W01 (2026-11-04; local)
 
 - Continues `227ecf8` on `feature/final-platform-acceptance`. Existing W01-W11,

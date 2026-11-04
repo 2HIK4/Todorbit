@@ -95,7 +95,17 @@ ADB key events, Flutter Driver or a screen reader. A screenshot alone does not
 establish keyboard, focus, announcements, persistence or physical shell behavior.
 Add the completed receipt to [the test ledger](TEST_RUN_LEDGER.md).
 
-### Active guided substep: W01 file selection and return
+### Guided testing stopped at the owner's request
+
+The owner requested **“skip the tests and publish the app if any new changes have
+been added.”** Further guided/native/device test execution is stopped. The
+dark/100% attachment observations above remain scoped passes. The external-link
+stage and all other unexecuted W/N/A variants retain NOT TESTED, INCONCLUSIVE or
+BLOCKED as recorded; none becomes PASS or N/A because it was skipped. Publication
+does not establish app-wide acceptance. See the
+[beta12 publication receipt](UI_QUALITY_BETA_12_PUBLICATION.md).
+
+### Last guided substep, retained for later: W01 file selection and return
 
 Use only the checkout Debug app (current PID30008; original PID19636 closed), whose Data
 profile ends in `final-platform-acceptance/windows-profile/Roaming/TodoPilot`.

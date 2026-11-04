@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.19-beta.12+35 - UI reliability and recovery
+
+- Preserve task, nested subtask, recurring-series, Goal and Habit drafts through supported navigation and dismissal; retain edits after rejected saves.
+- Improve Calendar labels, overnight agenda, compact forms, large-text layouts, scheduling review, reports and work-entry controls.
+- Keep resource and template input available through validation/save failures; explain exclusions and duplicate names clearly.
+- Preserve damaged preference bytes during startup; provide bounded recovery and Retry without resetting data.
+- Retain full theme file paths, guard asynchronous transfer completion and clarify native-widget preview feedback.
+- Preserve schema 26, Sync protocol/recovery requirements, backup formats, profiles, widget identity and Android production signing.
+- Experimental pre-release: further tests skipped at the owner's explicit request. Earlier scoped evidence is retained; native Windows/Android and real Drive cross-device acceptance remain incomplete.
+
 ## 1.0.19-beta.11+34 - experimental Start New Sync
 
 - Add an explicit Start New Sync flow with a verified local recovery snapshot, Standard/private setup, durable resume, complete seed readback and retryable retired-cloud cleanup.

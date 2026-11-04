@@ -1963,3 +1963,11 @@ Next uses the exact **Link an existing file** tooltip and verifies External file
 kind before viewer/draft and subsequent persistence checks. Existing source,
 assertions, dependencies and link targets remain unchanged; no app tests/builds
 are repeated for this documentation checkpoint.
+
+The owner subsequently requested skipping further tests and publishing any new
+app changes. Guided acceptance is stopped; no external-link result was reported.
+All existing scoped observations and incomplete/blocked variants remain accurate.
+The six committed implementation batches contain changes since beta11. New
+publication authorization and explicit test skips are recorded in the
+[beta12 receipt](UI_QUALITY_BETA_12_PUBLICATION.md); this does not complete the
+40-group or native-platform acceptance work.
