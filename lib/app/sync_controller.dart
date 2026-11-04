@@ -209,6 +209,20 @@ class SyncController extends ChangeNotifier {
       try {
         snapshot = await repository.syncExchangeStatus();
         resetState = await reset?.state();
+        // Activation can succeed even when retired-cloud cleanup fails. Present
+        // the active protected pairing, never the previous workspace's privacy
+        // label or credential prompt. Staged/unverified operations stay blocked.
+        if (resetState != null &&
+            {'cleanup', 'complete'}.contains(resetState!['phase'])) {
+          final active = await pairing.saved();
+          if (active != null &&
+              active.binding.workspace == snapshot?.binding?.workspace &&
+              active.binding.account == snapshot?.binding?.account &&
+              active.binding.device == snapshot?.binding?.device) {
+            standardSync = active.key.isStandard;
+            needsRecoveryCode = false;
+          }
+        }
       } catch (_) {}
       busy = false;
       if (!_disposed) notifyListeners();

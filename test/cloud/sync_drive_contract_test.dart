@@ -35,6 +35,7 @@ class _DriveWire {
   String? rejectReason;
   bool loseUploadReply = false;
   bool failMedia = false;
+  bool denyDelete = false;
   bool clientFailure = false;
   int writes = 0;
 
@@ -126,6 +127,14 @@ class _DriveWire {
     final id = path.split('/').last;
     if (files.containsKey(id)) {
       if (request.method == 'DELETE') {
+        if (denyDelete)
+          return json({
+            'error': {
+              'errors': [
+                {'reason': 'insufficientPermissions'},
+              ],
+            },
+          }, 403);
         files.remove(id);
         payloads.remove(id);
         return http.Response('', 204);
@@ -537,7 +546,18 @@ void main() {
     );
     await a.sync.reviewNewSync();
     expect(a.sync.resetState!['phase'], 'review');
+    a.sync.needsRecoveryCode = true;
+    wire.denyDelete = true;
     await a.sync.startNewSync();
+    expect(a.sync.resetState!['phase'], 'cleanup');
+    expect(
+      a.sync.standardSync,
+      isTrue,
+      reason: 'New active Standard mode must replace previous Private label even if deletion fails',
+    );
+    expect(a.sync.needsRecoveryCode, isFalse);
+    wire.denyDelete = false;
+    await a.sync.resumeNewSync();
     expect(a.sync.resetState!['phase'], 'complete');
     expect(a.sync.problem, isNull);
     final next = (await a.sync.pairing.saved())!;

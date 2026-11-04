@@ -123,3 +123,30 @@ upgrade evidence only at these unchanged boundaries, not physical beta11 accepta
 `python tools/dev/check-docs.py` on the seven changed feature/release documents
 passes zero errors; `git diff --check` passes. Original storage/signing/OAuth
 hashes unchanged. Windows and Android build helpers remain unchanged.
+
+
+Initial candidate source was `574cd0dae7c6cbf0a6d17584439083c9fe241ab3` (superseded before publication). Release source commit
+includes version beta11+34. Documentation finishing will use a separate commit,
+without moving the eventual tag. No broad CI run is claimed.
+
+| Build / artifact invocation | Actual result and necessity |
+| --- | --- |
+| 2026-11-04T04:08:31.9760448+03:00 `.buildlog/verify/start-new-sync-beta11/build-windows.ps1` -> `tools/build-windows-release.ps1`, `installer/build-installer.ps1 -Compiler <existing Inno7>`, `tools/build-portable.ps1 -OutputDirectory <task/core-packages>` | PASS first Windows compile (184.5s), native companion/CRT/OAuth/version gates and both packages. Original config/local numeric installer restored. End 2026-11-04T04:12:47.1174038+03:00; `windows-result.json`, `logs/windows-build-package.log`. |
+| 2026-11-04T04:13:49.351326+03:00 `python .buildlog/verify/start-new-sync-beta11/audit-artifacts.py --windows-only` (recorded after execution) | PASS 28 bundle files, exact ZIP membership/content/CRC, licenses, five explicit Windows assets and matching sidecars/manifests. Reuse this audit after Android; no repeated ZIP read. `artifact-audit-windows.json`. |
+
+| 2026-11-04T04:13:10.6601057+03:00 initial Android build/preparer, existing production key/cache, `--apk-only --version 1.0.19-beta.11 --version-code 34` | PASS compile (243.4s), eight native libraries aligned, production package/certificate/code34 metadata. End 2026-11-04T04:17:56.4474438+03:00. Superseded before upload by the privacy-label fix below; no build success is discarded or relabeled. Existing Kotlin future-migration warning did not fail compilation. |
+
+### Reproduced privacy presentation failure and necessary rebuild
+
+Final review found that after Standard activation succeeds but old-cloud deletion
+fails, the controller could retain the old Private label and old unlock prompt.
+No cloud deletion ordering/data loss occurred, but showing the wrong encryption
+mode is unacceptable. The candidate was never tagged/pushed/published. This real
+failure requires one replacement build per platform under the owner's exception;
+no duplicate builds are run simply to refresh evidence.
+
+| 2026-11-04T04:16:54.242426+03:00 `flutter --no-version-check --suppress-analytics test --no-pub --concurrency=1 --reporter expanded --timeout=2m test/cloud/sync_drive_contract_test.dart --name production adapter replacement` | FAIL reproduced expected Standard=true, actual false after synthetic production Drive deletion was denied. `logs/privacy-regression-before.log` retained. Source manifest `privacy-regression-invocation.json`. |
+
+| 2026-11-04T04:18:12.307025+03:00 `flutter --no-version-check --suppress-analytics test --no-pub --concurrency=1 --reporter expanded --timeout=2m test/cloud/sync_drive_contract_test.dart --name production adapter replacement` | PASS same single grouped production adapter case, now including cleanup failure, active Standard label, cleared old credential prompt, cleanup retry and stale-device fencing. Fix only refreshes actual protected pairing after cleanup/complete and matching SQL binding. `logs/privacy-regression-fixed.log`. Source manifest `privacy-fix-invocation.json`. |
+
+Targeted MCP analysis on the two changed paths: PASS no errors; hot reload remains blocked by no running debug app. All other safety passes are reused at unchanged reset/protocol boundaries.
