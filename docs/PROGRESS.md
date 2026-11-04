@@ -1,10 +1,11 @@
 # Progress
 
-## Start New Sync beta 11 candidate (2026-11-04)
+## Experimental Start New Sync beta 11 published (2026-11-04)
 
-- Implemented isolated generations, verified local snapshot/seed, durable resume, explicit Standard/private confirmation, safe reconnect and retryable retired-cloud cleanup. Local histories and independent backups remain.
-- Targeted Critical checks, synthetic production Drive adapter and narrow 200% light/dark UI evidence pass; one UI harness invocation was interrupted and corrected. No full suite, emulator, live Drive or personal-profile test. [Detailed invocation receipt and limits](SYNC_START_NEW.md).
-- Next authorized step: one versioned Windows build/packages and one production universal APK, release integrity/updater/public delivery gates. Candidate beta11+34 tag is unused. Original three storage documents remain excluded.
+- Published [v1.0.19-beta.11](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.11), experimental/prerelease, not Latest Stable; version `1.0.19-beta.11+34`, source/tag `c8f1561`, branch `feature/start-new-sync-beta11`.
+- Start New Sync preserves current local records/history and a verified backup, uploads/readback-verifies a fresh Standard/private workspace, commits isolated generations and only then removes selected retired cloud content. Durable resume, stale-device reconnect, fork detection and cleanup retry; typed errors/actions and shared narrow/large-text UI.
+- Focused safety/legacy/controller/UI/production-adapter/Android error checks pass. A stalled UI harness was corrected; a reproduced privacy-label-after-cleanup-failure regression required replacement platform builds. Only corrected-source binaries uploaded. Nine anonymous hashes/metadata/Range checks and updater beta10->beta11/Stable exclusion pass; prior releases, private draft and tags unchanged.
+- [Release notes](SMART_SYNC_BETA_11_RELEASE_NOTES.md), [receipt, exact checksums, commands and manual checklist](SYNC_START_NEW.md). Full suites/broad CI/emulators deliberately skipped; live Drive/physical upgrades remain unverified. Original three storage documents preserved/excluded; no main merge or website deployment.
 
 ## Experimental optional Sync encryption beta 10 published (2026-11-04)
 

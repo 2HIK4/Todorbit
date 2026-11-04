@@ -150,3 +150,96 @@ no duplicate builds are run simply to refresh evidence.
 | 2026-11-04T04:18:12.307025+03:00 `flutter --no-version-check --suppress-analytics test --no-pub --concurrency=1 --reporter expanded --timeout=2m test/cloud/sync_drive_contract_test.dart --name production adapter replacement` | PASS same single grouped production adapter case, now including cleanup failure, active Standard label, cleared old credential prompt, cleanup retry and stale-device fencing. Fix only refreshes actual protected pairing after cleanup/complete and matching SQL binding. `logs/privacy-regression-fixed.log`. Source manifest `privacy-fix-invocation.json`. |
 
 Targeted MCP analysis on the two changed paths: PASS no errors; hot reload remains blocked by no running debug app. All other safety passes are reused at unchanged reset/protocol boundaries.
+
+
+### Corrected candidate artifacts
+
+Final application/tag candidate: `c8f15614eb05fcbd39f287418d1f4de61d39dfef` (`c8f1561`), version
+`1.0.19-beta.11+34`. This supersedes `574cd0d`; neither the first binaries nor
+its obsolete ZIP audit are reused as corrected-source evidence. Original build
+logs/identities/scripts are retained with `-first` names, without binary copies.
+
+| 2026-11-04T04:19:41.0059600+03:00 corrected Windows build via the same existing helper | PASS at 2026-11-04T04:22:45.6937244+03:00, source `c8f15614eb05fcbd39f287418d1f4de61d39dfef`. Necessary replacement after the reproduced privacy-label failure; no further builds. `logs/windows-build-package.log`. |
+
+| 2026-11-04T04:22:24.7224844+03:00 corrected Android build via the same existing helper | PASS at 2026-11-04T04:24:44.6259693+03:00, source `c8f15614eb05fcbd39f287418d1f4de61d39dfef`. Necessary replacement after the reproduced privacy-label failure; no further builds. `logs/android-build-prepare.log`. |
+
+| 2026-11-04T04:26:44.539716+03:00 final artifact audit (recorded after execution): `python .buildlog/verify/start-new-sync-beta11/audit-artifacts.py`; final source/preservation comparisons | PASS exact ZIP membership/CRC/content for 29 runtime files and licenses; nine explicit assets, sidecars/manifests; current Windows/Android source results match `c8f1561`; original storage/OAuth/signing hashes unchanged. `artifact-audit.json`, `logs/final-artifact-audit.log`. The corrected ZIP audit is performed once. |
+
+Android second compilation was 123.2s; actual package, production certificate,
+nondebuggable status, code34 monotonicity, API26+, ARM64/x64, and eight native
+libraries' ELF/ZIP alignment pass the existing helper/preparer. The unchanged
+preparer's APK-only tests from beta10 are reused. No AAB, splits, installs or
+Google requests. Windows OAuth/CRT/main/native version gates pass and original
+configuration/local numeric installer are restored. Actual physical upgrades
+remain unobserved; no CI/full-suite result is invented.
+
+
+## Published outcome
+
+Published **[v1.0.19-beta.11](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.11)**, experimental/pre-release,
+version `1.0.19-beta.11+34`, source/tag `c8f15614eb05fcbd39f287418d1f4de61d39dfef`, release ID
+`433407303`, at `2026-11-04T01:28:24Z`. Only corrected `c8f1561`
+artifacts were uploaded. The first candidate `574cd0d` was superseded before
+publication. No previous release or tag was edited. This new release alone was
+patched with draft=false, prerelease=true, make_latest="false".
+
+| Publication invocation | Actual result and evidence |
+| --- | --- |
+| 2026-11-04T04:27:30.372243+03:00 `python -u .buildlog/verify/start-new-sync-beta11/create-draft.py` -> atomic new branch/tag push, `gh release create v1.0.19-beta.11 --draft --prerelease --verify-tag --target c8f1561... --latest=false --notes-file docs/SMART_SYNC_BETA_11_RELEASE_NOTES.md <nine audited paths>`; release-ID GET | Upload and draft gate PASS. All nine asset sizes/digests match. Outer PowerShell reported exit 1/NativeCommandError because normal successful Git progress was written to stderr; Python continued through check=True calls and printed its final successful gate. No upload/push repeated. `draft-release.json`, `draft-gate.json`, `logs/draft-upload.log`. |
+| 2026-11-04T04:27:50.159991+03:00 `flutter --no-version-check --suppress-analytics test --no-pub --concurrency=1 --reporter expanded --timeout=2m .buildlog\verify\start-new-sync-beta11\updater_candidate_test.dart` | PASS one grouped production updater case: Windows beta10 installed/portable names, size/digest/version selection and current-version exclusion; Android code33->34 universal ARM64/x64; Stable excludes beta11. Draft classification/date and canonical public URLs projected before publication; identical actual public inputs matched afterward. `updater-invocation.json`, `logs/updater-candidate.log`. |
+| `gh api --method PATCH repos/2HIK4/Todorbit/releases/433407303 --input <publish-request.json>` | PASS this new release only, exact tag/source, prerelease=true, latest=false requested. `published-release.json`. |
+| `python -u .buildlog/verify/start-new-sync-beta11/verify-public.py` | PASS nine anonymous full downloads once each, byte counts/SHA-256, three binary Range requests, notes/metadata/checksums and exact updater-tested asset IDs/URLs/digests. All previous public releases and old tags unchanged. The one existing private draft is additionally compared read-only through authenticated CLI; no contents printed. `public-verification.json`, incremental transfer proof and `logs/public-verification.log`. |
+
+Final public gate recorded 2026-11-04T04:31:17.733510+03:00.
+No extra binary copies were saved by anonymous checks. Production Android package,
+certificate and code34 retain update identity; Windows AppId/profile paths and
+schema26 remain. Windows is unsigned. No live Drive, physical install/update,
+personal profile access, emulator, broad CI/full suite, website deploy or main merge.
+
+### Public assets
+
+| Asset | Bytes | SHA-256 |
+| --- | --- | --- |
+| [ANDROID-RELEASE-NOTES.md](https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.11/ANDROID-RELEASE-NOTES.md) | 4712 | `a1a4b803beabbee936cfccd257ea1bad3123a6f4ba324caf4b65572a38e44c00` |
+| [ANDROID-SHA256SUMS.txt](https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.11/ANDROID-SHA256SUMS.txt) | 316 | `290172a53967b66a7bb9ac1da547bafda89dec9854c50e3887b7e5778b9d9b0e` |
+| [Todorbit-1.0.19-beta.11-SHA256SUMS.txt](https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.11/Todorbit-1.0.19-beta.11-SHA256SUMS.txt) | 221 | `8f3e20a8832fa6984847fb12b26f2ccc2bd4af21e7043d44a00cf73164e5c6ff` |
+| [Todorbit-1.0.19-beta.11-android-universal.apk](https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.11/Todorbit-1.0.19-beta.11-android-universal.apk) | 53054271 | `1bbc262919501ee0fa383868fa33f248489d47f346efd4de31cf006246516162` |
+| [Todorbit-1.0.19-beta.11-android-update.json](https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.11/Todorbit-1.0.19-beta.11-android-update.json) | 421 | `6304688495e7adf1db12469665693ac11cf6f90738973b7bae922c08af54244f` |
+| [Todorbit-1.0.19-beta.11-win-x64-portable.zip](https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.11/Todorbit-1.0.19-beta.11-win-x64-portable.zip) | 63111545 | `11c92095f16161d499ad739640ce2f324808257a4c4a2823c5f32bc974bbc3c1` |
+| [Todorbit-1.0.19-beta.11-win-x64-portable.zip.sha256](https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.11/Todorbit-1.0.19-beta.11-win-x64-portable.zip.sha256) | 112 | `5c0584e745257318f2e9cef151fd2ab70360102666d77c6c3cc3d4e037308b4f` |
+| [Todorbit-1.0.19-beta.11-win-x64-setup.exe](https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.11/Todorbit-1.0.19-beta.11-win-x64-setup.exe) | 47708251 | `2332fba777fbaa8aca3a1fd6db3fefd6488e9175b5e921b48da41af7ee041fb2` |
+| [Todorbit-1.0.19-beta.11-win-x64-setup.exe.sha256](https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.11/Todorbit-1.0.19-beta.11-win-x64-setup.exe.sha256) | 109 | `8618bf10956a3ac3630d45ad3469743fad167d688023827981400e8168853cf6` |
+
+### Upgrade and handoff
+
+Back up first. Settings > Software Updates > **Pre-release** > check > download >
+install. Windows installed mode selects Setup; portable selects the entire ZIP.
+Keep the same Windows account, installation/portable path and profile. Android
+GitHub edition uses the production-signed universal APK, code34; approve source
+permission/system installation if prompted, then reopen. Checks may be cached for
+about ten minutes. Do not uninstall, clear data or force downgrade on mismatch.
+Debug/different-store signing may be incompatible; no AAB is published.
+
+Then Settings > Sync > **Start New Sync** only after reviewing the account,
+workspace, verified snapshot and cloud-loss confirmation. Resume on the original
+device; retry incomplete cleanup separately. Other updated devices explicitly
+reconnect with offline records preserved. Keep the new private credentials when
+choosing encryption; old keys do not unlock the replacement. Existing-workspace
+conversion/passphrase rotation remains unavailable. See the manual checklist above.
+
+Full commands, source manifests, failures, reuse and deliberate skips are retained
+above. Physical/live cloud behavior remains owner acceptance. Documentation is
+committed separately without moving the tag. The original three storage documents
+remain uncommitted and unchanged.
+
+
+Final documentation/preservation gate recorded 2026-11-04T04:31:44.361388+03:00:
+`python tools/dev/check-docs.py` on the eight changed feature/release routes reports
+zero errors; `git diff --check` passes. Original three storage documents and
+OAuth/signing hashes match the initial baseline. Application/build source matches
+c8f1561; local/remote release tag remains exactly pinned there. A long inline
+finishing command was rejected before execution by tool policy; the shorter
+helper-based documentation invocation completed, with no application check or
+publication repeated. Final documentation is committed/pushed on the feature
+branch with `[skip ci]`; only the original three storage changes remain outside
+this task. Public download assertions are reused, not repeated for doc edits.
