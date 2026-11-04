@@ -1,5 +1,34 @@
 # Progress
 
+## Final platform acceptance: environment blocker and guided W01 (2026-11-04; local)
+
+- Continues `227ecf8` on `feature/final-platform-acceptance`. Existing W01-W11,
+  N01-N08 and A01-A12 remain the authoritative plan; no repeated generic audit,
+  redesign or new product defect/fix. Three unrelated storage documents preserved.
+- Native Windows Computer Use still fails on missing pipe. Current-source Debug
+  launches in a verified disposable profile; VM environment, Drift, displayed
+  path and read-only SQLite agree. `B6 Today` is prepared, with no runtime errors.
+  Exact W01 file-picker/viewer/draft-return guidance sent; actual human observation
+  is pending. Test app PID19636 stays available for this handoff. Personal installed
+  app/companion are untouched. All native keyboard/Narrator/picker/widget/shell/
+  DPI variants remain open; no whole acceptance ID completed.
+- Retained Batch6 AVD initially passes two healthy service samples >2 minutes
+  apart and actual launcher input. Closed it for resource-safe compilation of a
+  current-source x64 development APK; build/native alignment pass, hash retained.
+  Its resumed boot then aborts system_server on WifiScanningSer **before install**;
+  boot1 coexists with missing package/input/IME/activity services. Failed separated
+  preflight stops installation. Guest stopped, data/logs/APK retained, no third
+  launch, wipe, uninstall, system workaround or product compensation.
+- Compared 417 source/assertion/dependency files with Batch6 manifests: unchanged;
+  scoped passes reused without new host suites/native Release/release gates.
+  Android `local.properties` restored byte-for-byte. No version/tag/push/release
+  or cloud operation; real Drive cross-device acceptance remains separate.
+- [Final continuation receipt](UI_UX_PERMANENT_QUALITY_AUDIT.md#final-platform-acceptance-continuation)
+  and [outcomes plus active guided W01](UI_UX_PLATFORM_ACCEPTANCE.md#final-acceptance-session-2026-11-04)
+  retain failures, exact evidence and remaining manual procedures. Windows is
+  awaiting native observations; Android is environment-blocked. App-wide
+  acceptance remains **incomplete**.
+
 ## UI quality Batch 6: platform acceptance and theme transfer (2026-11-04; local)
 
 - Based on `824332e`, branch `feature/ui-quality-batch6`; protected storage docs

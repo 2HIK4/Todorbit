@@ -8,6 +8,49 @@ eventually booted with package/connectivity services, but reliable operation was
 not established after offline periods and repeated Bluetooth-service aborts.
 No Todorbit installation or Android UI acceptance occurred in that AVD.
 
+## Final acceptance session, 2026-11-04
+
+Continues `227ecf8b6c720449003654fce15149ed92fdec26` on
+`feature/final-platform-acceptance`. The W/N/A procedures below remain the test
+plan. Detailed ignored evidence is in `.buildlog/verify/final-platform-acceptance/`;
+`baseline.json` records the three protected storage-document hashes and initial
+dirty patch. No application source, assertions or dependencies have changed.
+
+Windows Computer Use (`sky.list_apps()` and `cua.getState()`) reports the missing
+native pipe, os error 2. DTD discovery/connect succeeds, initially with no apps.
+The installed personal processes (app 31540, companion 17028) are excluded from
+all interaction. Native picker, keyboard, Narrator, shell, DPI and multi-monitor
+variants need human observations; Driver cannot close them.
+
+The retained disposable API35 `TodorbitBatch6` AVD was started once at
+17:58:33+03:00 on `emulator-5584`, using its existing userdata and unchanged host
+OpenGL/no-Vulkan configuration. Startup was initially offline and then lacked
+IME/real Home. At 18:01:59 and 18:04:33, boot=1, `system_server` PID592 remained
+unchanged, package/input/input_method/activity services were found, package
+queries succeeded and Home resolved to Pixel Launcher. Both crash buffers were
+empty. Actual ADB swipe opened the drawer, and tapping Settings eventually
+resumed its activity. An expansive IME diagnostic timed out while dumping the
+IME's internals; it is not an application failure. This establishes a bounded
+environment preflight only. No Todorbit installation or app acceptance occurred
+during that boot. The AVD was stopped at 18:06:10 to leave memory for a
+current-source development APK build; health must be rechecked after resuming.
+
+The current-source development x64 APK built and passed native alignment, SHA-256
+`0f0063f8328fcc72b73876c1ffbb8af20e3d915cb1ad0a0f28147c9a39376566`.
+The same AVD resumed at 18:19:20 after the build, with unchanged data/image/config.
+It passed one service sample at 18:21:34 (PID579), then **failed** the separated
+check at 18:24:00. Crash evidence records `system_server` SIGABRT in
+`WifiScanningSer` at 18:22:38, Pixel Launcher finalizer timeout and dependent
+`DeadSystemException`s. Package, input, IME and activity services are absent even
+though boot still reports1. No installation was attempted. Android app/native
+execution remains environment-blocked; A10's conditional rerun is separate below.
+The earlier first-boot preflight PASS is retained
+only for that bounded observation. There is no third launch or product workaround.
+
+No whole W/N/A ID is complete from these capability checks. See the session
+[receipt](UI_UX_PERMANENT_QUALITY_AUDIT.md#final-platform-acceptance-continuation)
+for invocations, reuse decisions and later outcomes.
+
 ## Record outcomes
 
 Use one row per ID **and substep** below; split theme, orientation, scale and
@@ -16,7 +59,16 @@ variant ran. Retain failures and later corrections, rather than replacing them.
 
 | ID / substep | Local time + offset | Revision / dirty hashes / artifact SHA-256 | Device / OS / scale / theme / input | Resolved disposable profile | Expected / actual | Outcome | Screenshot / log / reproduction | Retest reason |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Pending | | | | | | NOT TESTED | | |
+| Preparation / Android startup | 2026-11-04 17:58:52+03:00 | `227ecf8`; FPA `baseline.json` | API35 x64 AVD `TodorbitBatch6`, `emulator-5584` | Retained Batch6 AVD; no Todorbit installed | Expected available services; ADB offline | BLOCKED | FPA `sample1-*` | First sample in one bounded boot |
+| Preparation / Android partial boot | 2026-11-04 17:59:40+03:00 | Same source/configuration | Same AVD, native service probes | Same AVD | Package/input/activity found; IME absent, Home=`FallbackHome`, boot property empty | INCONCLUSIVE | FPA `sample2-*` | Distinguish partial startup from app readiness |
+| Preparation / Android separated health | 2026-11-04 18:01:59 and 18:04:33+03:00 | Same source/configuration | API35, 720×1280/240dpi, host OpenGL; ADB native gestures | Same AVD; no app-private profile yet | Boot1, PID592 stable, all required services/real Home present, empty crashes; drawer and Settings operate | PASS, environment preflight only | FPA `sample3-*`, `sample4-*`, `android-drawer-second.png`, `preflight-resumed.log` | First fully available sample followed by check >2 minutes later; no A-ID passed |
+| Preparation / Windows profile | 2026-11-04 18:17–18:19+03:00 | `227ecf8`; executable `07e3d879…369c`, kernel `1326d47d…912b`; full hashes in FPA | Win11 26200, Debug 1264×681, dark, Driver | FPA `windows-profile/Roaming/TodoPilot` | Actual VM APPDATA/LOCALAPPDATA both match; Drift, displayed Data profile and on-disk DB agree; synthetic `B6 Today` saved for 2026-11-04 | PASS, preparation only | FPA `windows-readback.json`, runtime tool transcript; PID19636, checkout Debug executable | Current-source fixture for human W01; not native picker/input evidence |
+| W01 / Link file, viewer and draft return | Guided 2026-11-04; observation pending | Same Windows source/artifact/profile above | Human keyboard/mouse; theme/scale to be reported | Same verified disposable Windows profile | Await real chooser/viewer, title and focus/caret observation | NOT TESTED | Guided request in session; see next substep below | Native Computer Use missing pipe; do not infer from Driver preparation |
+| Preparation / Android resumed healthy sample | 2026-11-04 18:21:34+03:00 | `227ecf8`; APK hash above, not installed | Same API35 AVD after deliberate stop/build/resume | Retained disposable AVD | Boot1, PID579, required services and Home present; empty crash buffer | INCONCLUSIVE | FPA `resume2-*` | One sample cannot qualify this new boot |
+| Preparation / Android resumed separated check | 2026-11-04 18:24:00+03:00 | Same source, APK not installed | Same API35 AVD | Same AVD; no Todorbit private data | Expected stable services; system_server gone, package/input/IME/activity absent; crash confirmed | FAIL, environment preflight | FPA `resume3-*`, `android-failure-details.log` | >2 minutes after previous sample; no install/retry permitted on this failed guest |
+| A01-A09,A11-A12 / application execution | 2026-11-04, after resumed preflight failure | Same source; retained APK not installed | No healthy disposable Android device; no physical device connected | None opened | Required Android app/native/IME/launcher/reader execution unavailable | BLOCKED | Failed environment rows above | No A-ID or variant executed |
+| A10 / conditional shared Tasks rerun | 2026-11-04 | 417 compared source/assertion/dependency files unchanged | No new app/native fix or shared defect observed | No Android app opened | New shared-dependency rerun is not applicable; retain earlier scoped Tasks evidence without expanding it | NOT TESTED | FPA `reuse.json`; earlier Batch3 Tasks receipt | N/A applies only to triggering a new shared Tasks run, not OEM/ARM64 acceptance |
+| A10 / physical OEM and ARM64 | 2026-11-04 | Same source | No disposable physical device connected | None | Physical acceptance requires a real device | BLOCKED | Initial ADB inventory | Emulator evidence cannot pass this variant |
 
 Allowed outcomes: PASS (observed assertion), FAIL (observed mismatch), BLOCKED
 (named environment/tool obstacle), NOT TESTED, INCONCLUSIVE. Applicability is
@@ -25,6 +77,37 @@ State whether input came from a physical keyboard, tapped Android IME keys,
 ADB key events, Flutter Driver or a screen reader. A screenshot alone does not
 establish keyboard, focus, announcements, persistence or physical shell behavior.
 Add the completed receipt to [the test ledger](TEST_RUN_LEDGER.md).
+
+### Active guided substep: W01 file selection and return
+
+Use only the checkout Debug app (session PID19636), after confirming the Data
+profile ends in `final-platform-acceptance/windows-profile/Roaming/TodoPilot`.
+The installed personal app and companion are excluded. If the session is closed,
+`python .buildlog/verify/final-platform-acceptance/session.py windows` relaunches
+the same isolated profile; record the new PID and reconfirm the displayed path.
+
+1. Open `B6 Today`; append ` W01 unsaved` to the title.
+2. Resources > Link file: select
+   `D:\AI_Projects\life_manager\.buildlog\verify\final-platform-acceptance\fixtures\resource.txt`
+   through the actual Windows chooser.
+3. Verify type/name, open the file in its real viewer, then return to Todorbit.
+4. Report chooser/viewer success or exact error, retained title, returned focus/
+   caret, theme and display scale. A screenshot may show the resource and title,
+   but focus/caret behavior needs an observation.
+
+Expected: correct resource identity, working viewer and intact unsaved title.
+Leave the draft open for the next guided Save/reopen/cold-restart substep. Neither
+that persistence substep nor attachment/removal, light/custom palette or Cancel/
+Escape variants pass from this initial observation. No human result has arrived.
+
+All W01-W11 and N01-N08 native variants remain open. Their automated execution
+is **BLOCKED** by native Computer Use; their human execution is **NOT TESTED**
+until observations arrive. In particular, no folder/Cancel/Escape (W02), missing
+target (W03), settings OS save/import (W04), native draft/focus return (W05),
+physical input/reader (W06-W09), OS scaling/monitors (W10-W11), or actual widget
+display/input/preview/menu/shell/persistence (N01-N08) is passed. The exact actions
+and expected results remain in the original W/N tables below. Sign-in/Explorer
+recovery needs a disposable Windows user/VM; no such environment was established.
 
 ## Isolated preparation
 

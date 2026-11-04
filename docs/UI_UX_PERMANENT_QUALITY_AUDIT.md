@@ -1688,3 +1688,166 @@ Final review: full affected source/test/doc diff, explicit-path staging,
 owned-process absence. No personal process or data was used as a test fixture.
 
 <!-- BATCH6_INVOCATIONS_END -->
+
+## Final platform acceptance continuation
+
+2026-11-04, UTC+03:00; source `227ecf8b6c720449003654fce15149ed92fdec26`,
+branch `feature/final-platform-acceptance`. This executes the existing
+[platform acceptance plan](UI_UX_PLATFORM_ACCEPTANCE.md), without another generic
+audit or redesign. Applied the canonical Ultimate UI/UX, Todorbit regression and
+Computer Use skills; read workflow/testing, the current audit/checklist and
+relevant platform/input/evidence references. Google Drive cross-device acceptance
+remains a separate task. No publication, version, tag or remote operation.
+
+Evidence root: ignored `.buildlog/verify/final-platform-acceptance/` (**FPA**).
+`baseline.json` records HEAD, initial dirty patch SHA-256 and each protected
+storage-document SHA-256. `commands.jsonl` retains exact command arguments,
+timestamps with offset, source and outcomes; per-command logs retain full output.
+Initial tool inventories are retained in the session transcript; their individual
+timestamps were not captured locally. Successful diagnostic dispatch is never
+treated as a product acceptance PASS.
+
+### Capability findings and evidence reuse
+
+- Windows 11 Pro 10.0.26200. Computer Use package initialization succeeds;
+  `sky.list_apps()` and alternate `cua.getState()` fail on the missing native
+  pipe, os error 2. No custom Win32/UIA input substitute. DTD
+  `listDtdUris`/`connect` succeeds to the existing IDE daemon, initially no apps.
+  Physical keyboard/Narrator, native dialogs/viewers, widget painting/menus,
+  Win+D/Alt+Tab, OS scaling and monitor movement are unobserved.
+- SDK/ADB/emulator are available under `.buildlog/android-sdk`, but absent from
+  PATH. Initial `adb devices -l` is empty. The retained Batch6 disposable AVD
+  remains registered; no personal/physical device is selected. One bounded boot
+  uses the existing data/image/configuration. Its eventual healthy separated
+  service checks and actual launcher input are recorded in the platform receipt;
+  earlier offline/missing-IME/fallback-Home samples remain in FPA logs. No guest
+  system crash was captured in this boot. Do not carry forward the old AVD's
+  crashes as a new failure.
+- At 18:01:17, `python FPA/session.py reuse` compares 417 relevant source,
+  assertion, native and dependency files against Batch6's original manifest plus
+  final reviewed edits: zero mismatches; protected documents match too.
+  The three bounded Batch6 host cases/analysis remain valid in their original
+  scope. They do not pass native picker, reader, shell, Android or physical/OEM
+  variants. Full host suites, native Release/self-test, installer/release gates
+  are not rerun for unchanged code. Mandatory future release gates remain.
+- Host free memory falls from roughly 3.4 GiB to below 1 GiB with the 2-GiB AVD.
+  Stop the now-preflighted guest for APK compilation rather than overlapping
+  builds/emulation. This is resource scheduling, not a proven guest-failure root
+  cause or a Todorbit workaround. No image replacement, wipe, uninstall, profile
+  deletion, SDK download, cloud access or personal app interaction.
+
+### Current-source builds, Windows preparation and Android blocker
+
+- At18:06, with the emulator stopped, built a **development x64-only APK** using
+  `flutter --no-version-check --suppress-analytics build apk --debug --no-pub --flavor github --target lib/driver_main.dart --target-platform android-x64`.
+  Existing SDK/JDK21/CMake/Ninja/Gradle caches were used; process-local Gradle
+  limits select 2-GiB heap and one worker. No version/source/dependency edit.
+  Build exit0, 498 seconds; APK SHA-256
+  `0f0063f8328fcc72b73876c1ffbb8af20e3d915cb1ad0a0f28147c9a39376566`.
+  Retained under FPA `apk/`. `python tools/verify-android-artifact.py
+  build/app/outputs/flutter-apk/app-github-debug.apk` passes three native libraries'
+  ELF/applicable ZIP alignment. This is neither a signed release nor ARM64/device
+  acceptance. A wrapper print of the successful build's checkmark failed cp1252
+  encoding **after** the exit0/hash receipt was saved; output encoding was fixed,
+  without repeating the build. `jcmd 27024 Thread.print` diagnosed local Gradle
+  file hashing during the quiet build; no app or guest failure inferred.
+- Current-source Windows Debug/Driver launch uses FPA
+  `windows-profile/{Roaming,Local}`. OS/VM PID19636 is the checkout's Debug
+  executable. VM environment equality returns `[true, true]`; Drift, on-disk DB
+  and actual Settings > Privacy & Data > Data profile and location all identify
+  the same disposable path. The first VM probe incorrectly requested
+  `ProcessInfo.pid`; removing that diagnostic succeeds (getVM already identifies
+  the PID). Fixture creation uses Driver and is **preparation only**:
+  task `B6 Today`, ID `c7475841-b729-46cc-9f04-ac056bf83a9f`, planned2026-11-04.
+  Read-only `windows-readback.json` reports `quick_check=ok`, exact task values,
+  full executable/kernel SHA-256. Runtime diagnostics report no errors. Driver
+  profile screenshot was inspected in the tool transcript, not saved as a local
+  PNG. No physical input/picker/focus claim follows from these operations.
+- Sent an exact short W01 Link file/viewer/dirty-title substep to the user, with
+  verified process/profile, synthetic absolute file path, expected identity/
+  viewer/draft behavior and required focus/caret/theme/scale observation.
+  **No human observation has arrived.** W01 remains NOT TESTED, including its
+  Save/reopen/cold-restart and attachment variants. All W01-W11/N01-N08 native
+  variants remain open; the original plan has exact remaining procedures.
+- After the successful APK build, stopped only the newly owned idle Gradle daemon
+  PID27024, then resumed the same preflighted AVD at18:19:20. This was resource
+  scheduling after a healthy first boot, not a retry of a failed guest. First
+  healthy resumed sample at18:21:34 has PID579, required services/real Home and
+  empty crashes. A metadata/package query times out after45 seconds. The
+  separated18:24:00 sample shows **boot1 but no system_server or package/input/
+  IME/activity services**. Crash log records system_server SIGABRT on
+  `WifiScanningSer` at18:22:38, launcher finalizer timeout and dependent
+  DeadSystemException. This is a **new confirmed guest-system failure before
+  installation**, not the historical Bluetooth aborts or a Todorbit crash.
+  The exact host/guest root cause is not proved. FPA `resume3-*` and
+  `android-failure-details.log` retain it.
+- No APK installation was attempted. At18:24:41, `adb -s emulator-5584 emu kill`
+  stops only this failed guest; its data/logs and the APK remain retained. There
+  is no third launch, wipe, clear-data, uninstall, image replacement, permission
+  expansion or production-code compensation. A01-A09/A11-A12 remain BLOCKED.
+  A10 has no triggered new Tasks rerun because no shared fix was made; existing
+  bounded Tasks evidence stays scoped. Physical OEM/ARM64 still needs a real
+  disposable device. No actual IME/SAF/Calendar-widget/TalkBack app acceptance
+  occurred in this session.
+
+No new application defect or regression was confirmed, so no product correction
+or new regression test is justified. Both implementation and experience
+inspection are limited to safe preparation/evidence boundaries. Necessary native
+journeys, focus/draft protections and per-widget independence remain the criteria;
+there is no new UI choice or redesign. Existing verified fixes are retained.
+
+### Invocation index and final handoff
+
+All new source is `227ecf8`; dirty changes are receipt/storage documentation only.
+FPA `commands.jsonl` is the per-invocation record with full expanded arguments,
+local timestamps and output log paths. `mcp-actions.json` retains the later DTD/
+VM/Driver arguments/results; its timestamps are result-recording times. The
+runtime-error result was persisted later, so that entry is not an exact call
+timestamp. Initial inventories and profile screenshot remain transcript evidence.
+
+`S` below means `python .buildlog/verify/final-platform-acceptance/session.py`;
+`ADB` is the workspace SDK's `platform-tools/adb.exe`. These are ignored receipt
+helpers, not another checklist or committed application tooling.
+
+| Local time +03:00 / invocation | Actual outcome and coverage | Necessity / reuse limit |
+| --- | --- | --- |
+| 17:58:33 / `S baseline`; `S emulator` | Baseline/protected hashes recorded; retained AVD starts PID1108 | One bounded investigation of Batch6's late recovery; no config/image change |
+| 17:58:52 / `S health sample1`; 17:59:40 / `S health sample2` | Offline, then partial boot/no IME/fallback Home; not accepted | Follow startup, not boot1 alone |
+| 18:01:17 / `S reuse` | PASS, 417 comparisons, zero mismatches, protected hashes match | Reuse three unchanged Batch6 host cases/analysis only |
+| 18:01:59 / `S health sample3`; 18:04:33 / `S health sample4` | Healthy bounded first-boot preflight >2 minutes apart; no crash | Original-plan environment gate; not an A-ID PASS |
+| 18:02:54–18:05:43 / `S screenshot android-launcher-preflight`, `android-drawer-preflight`, `android-drawer-second`, `android-settings-preflight`, `android-settings-settled`; `S command launcher-swipe`, `launcher-swipe-bottom`, `preflight-settings-open`, `preflight-resumed` | First swipe capture unchanged; bottom swipe later opens drawer, Settings resumes. Full exact ADB gestures/dumps in JSON/logs | Establish actual native input/launcher operation; slow responses retained, no IME/app assertion |
+| 18:06:10 / `S command stop-for-build ADB -s emulator-5584 emu kill` | Exit0, guest stops; data retained | Avoid compilation/emulator memory overlap after healthy preflight |
+| 18:06–18:14:40 / `S android-build`; 18:09 / JDK21 `jcmd.exe 27024 Thread.print` | APK build exit0; wrapper print exit1 after successful receipt; file-hashing stack captured | Current APK needed because retained old APK predates Batch5/6; no build rerun for wrapper error |
+| 18:14:59 / `S command apk-alignment python tools/verify-android-artifact.py build/app/outputs/flutter-apk/app-github-debug.apk`; 18:16:30 / `S apk-snapshot` | PASS alignment; exact APK hash/copy retained | New artifact, x64 development only |
+| 18:15:00 / `S windows`; 18:17–18:19 / DTD/VM/Driver actions; 18:19:57 / `S windows-readback` | Current-source Debug/profile/fixture preparation PASS; no runtime errors | New isolated human-test session; no repeat native claim. First invalid PID expression and correction retained |
+| 18:19:20 / stop owned idle Gradle PID27024; `S emulator resume` | Same AVD resumes PID1540 | Deliberate memory scheduling after healthy first boot, followed by fresh health gate |
+| 18:20:22 / `S health resume1`; 18:21:34 / `S health resume2` | Offline startup, then one healthy PID579 sample | One sample cannot pass new-boot reliability |
+| 18:22:48 / `S command android-environment`; 18:24:00 / `S health resume3` | Metadata query45s timeout; separated preflight FAIL, system_server crash/services gone | Exact compound metadata command in JSON; do not retry installation on a failed guest |
+| 18:24:41 / `S command android-failure-details ADB -s emulator-5584 logcat -b crash -d`; `S command stop-unstable-resume ADB -s emulator-5584 emu kill` | Crash details retained, exit0 shutdown; **no install** | Environment failure, no third boot or app workaround |
+| 18:27:33 / `S restore-local` | PASS restored `android/local.properties` SHA-256 `97b2432d…89df0d9` | Original bytes saved before build; reviewed only expected build-mode/SDK/comment changes, verified current hash before restoring |
+
+Native preflight's exact shell assertions are `getprop sys.boot_completed`,
+`pidof system_server`, `service check package`, `cmd package list packages android`,
+`service check input`, `service check input_method`, `service check activity`,
+Home `cmd package resolve-activity --brief -a android.intent.action.MAIN -c
+android.intent.category.HOME`, and crash logs. `commands.jsonl` also records the
+full activity/input dumps. Sample2's `head`-bounded activity dump emitted Broken
+pipe at dump truncation; it is not a PackageManager death. Later unbounded IME
+dump timed out; the final resumed SIGABRT/missing services have independent proof.
+
+Owned emulator/temporary Gradle daemon are stopped. Windows Debug PID19636 is
+deliberately retained for the guided human test; no isolated companion was started.
+Personal installed app31540/companion17028 are present and untouched. Profiles,
+fixtures and logs are retained. Android's original ignored configuration is restored.
+No W/N/A ID completed; W01 awaits observation, other exact W/N procedures remain
+NOT TESTED with automation BLOCKED, and Android app acceptance is BLOCKED. A10's
+new shared Tasks rerun is inapplicable absent a shared fix; its physical/OEM gate
+remains open. Windows/Android/application-wide readiness is **not established**.
+
+At18:29:18+03:00, `python tools/dev/check-docs.py docs/PROGRESS.md
+docs/TEST_RUN_LEDGER.md docs/UI_UX_PERMANENT_QUALITY_AUDIT.md
+docs/UI_UX_PLATFORM_ACCEPTANCE.md` passes, zero errors (`docs-links` entry
+in FPA `commands.jsonl`, `docs-links.log`). Later additions only record the result
+and correct spacing/serial notation; checked link targets are unchanged.
+Final diff/whitespace, protected-hash review and local commit/status are recorded
+at delivery. No app tests are rerun for these receipt-only edits.
