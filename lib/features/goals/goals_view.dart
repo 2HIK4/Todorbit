@@ -5,6 +5,7 @@ import '../../app/app_controller.dart';
 import '../../domain/goals.dart';
 import '../../domain/models.dart';
 import '../shared/about_view_button.dart';
+import '../shared/numeric_entry_dialog.dart';
 import 'goal_dialogs.dart';
 
 class GoalsView extends ConsumerStatefulWidget {
@@ -37,164 +38,27 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
     builder: (_) => GoalEditorDialog(goal: goal),
   );
 
-  Future<void> _manual(Goal goal) async {
-    var amount = '';
-    var notes = '';
-    final result = await showDialog<(double, String)>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Adjust ${goal.title}'),
-        scrollable: true,
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Enter a positive amount for progress or a negative amount to correct an earlier manual entry. Linked work stays separate.',
-            ),
-            TextField(
-              onChanged: (value) => amount = value,
-              autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-                signed: true,
-              ),
-              decoration: InputDecoration(
-                labelText:
-                    'Adjustment ${goal.unit.isEmpty ? '(units)' : goal.unit}',
-              ),
-            ),
-            TextField(
-              onChanged: (value) => notes = value,
-              decoration: const InputDecoration(labelText: 'Reason or note'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final parsed = double.tryParse(amount.trim());
-              if (parsed == null || !parsed.isFinite || parsed == 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Enter a nonzero number.')),
-                );
-                return;
-              }
-              Navigator.pop(context, (parsed, notes));
-            },
-            child: const Text('Save adjustment'),
-          ),
-        ],
-      ),
-    );
-    if (result == null) return;
-    await _run(
-      () => ref
-          .read(appControllerProvider)
-          .addGoalProgress(goal, result.$1, result.$2),
-    );
-  }
+  Future<void> _manual(Goal goal) => showDialog<void>(
+    context: context,
+    builder: (_) => NumericEntryDialog(
+      title: 'Adjust ${goal.title}',
+      label: 'Adjustment ${goal.unit.isEmpty ? '(units)' : goal.unit}',
+      submitLabel: 'Save adjustment',
+      signed: true,
+      help: 'Enter a positive amount for progress or a negative amount to correct an earlier manual entry. Linked work stays separate.',
+      validate: (value) => value == null || !value.isFinite || value == 0
+          ? 'Enter a nonzero number.'
+          : null,
+      save: (value, notes) =>
+          ref.read(appControllerProvider).addGoalProgress(goal, value, notes),
+    ),
+  );
 
-  Future<void> _milestone(Goal goal, [GoalMilestone? previous]) async {
-    var title = previous?.title ?? '';
-    var threshold = previous?.threshold.toString() ?? '';
-    String? deadline = previous?.deadlineDate;
-    final result = await showDialog<(String, double, String?)>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(
-            previous == null ? 'Milestone for ${goal.title}' : 'Edit milestone',
-          ),
-          scrollable: true,
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                initialValue: title,
-                onChanged: (value) => title = value,
-                decoration: const InputDecoration(labelText: 'Title *'),
-              ),
-              TextFormField(
-                initialValue: threshold,
-                onChanged: (value) => threshold = value,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: InputDecoration(
-                  labelText: 'Progress threshold (max ${goal.target})',
-                ),
-              ),
-              OutlinedButton(
-                onPressed: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: deadline == null
-                        ? DateTime.now()
-                        : DateTime.parse(deadline!),
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                  );
-                  if (picked != null) {
-                    setDialogState(() => deadline = localDate(picked));
-                  }
-                },
-                child: Text('Due: ${deadline ?? 'None'}'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final value = double.tryParse(threshold.trim());
-                if (title.trim().isEmpty ||
-                    value == null ||
-                    !value.isFinite ||
-                    value <= 0 ||
-                    value > goal.target) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Enter a title and threshold within the goal target.',
-                      ),
-                    ),
-                  );
-                  return;
-                }
-                Navigator.pop(context, (title, value, deadline));
-              },
-              child: Text(
-                previous == null ? 'Add milestone' : 'Save milestone',
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (result == null) return;
-    await _run(
-      () => previous == null
-          ? ref
-                .read(appControllerProvider)
-                .addGoalMilestone(goal, result.$1, result.$2, result.$3)
-          : ref
-                .read(appControllerProvider)
-                .updateGoalMilestone(
-                  goal,
-                  previous,
-                  result.$1,
-                  result.$2,
-                  result.$3,
-                ),
-    );
-  }
+  Future<void> _milestone(Goal goal, [GoalMilestone? previous]) =>
+      showDialog<void>(
+        context: context,
+        builder: (_) => GoalMilestoneDialog(goal: goal, previous: previous),
+      );
 
   Future<void> _history(Goal goal) async {
     final controller = ref.read(appControllerProvider);

@@ -1,5 +1,6 @@
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import '../../domain/models.dart';
 import '../../domain/recurrence.dart';
 import '../shared/weekdays.dart';
 import '../shared/dialog_action_bar.dart';
+import '../shared/unsaved_editor_guard.dart';
 
 class HabitEditorDialog extends ConsumerStatefulWidget {
   const HabitEditorDialog({super.key, this.habit});
@@ -32,7 +34,23 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
   late String startDate;
   String? endDate;
   bool busy = false;
+  bool saved = false;
   String? error;
+  final guard = GlobalKey<UnsavedEditorGuardState>();
+  late String baseline;
+  String get snapshot => jsonEncode([
+    title.text,
+    notes.text,
+    target.text,
+    unit.text,
+    interval.text,
+    kind.name,
+    scheduleKind.name,
+    weekdays.toList()..sort(),
+    startDate,
+    endDate,
+  ]);
+  void _changed() => setState(() {});
 
   @override
   void initState() {
@@ -48,6 +66,10 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
     startDate = habit?.rule.startDate ?? localDate(DateTime.now());
     endDate = habit?.rule.endDate;
     weekdays = {...?habit?.rule.weekdays};
+    baseline = snapshot;
+    for (final field in [title, notes, target, unit, interval]) {
+      field.addListener(_changed);
+    }
   }
 
   @override
@@ -68,7 +90,7 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (picked == null) return;
+    if (picked == null || !mounted) return;
     setState(() {
       if (start) {
         startDate = localDate(picked);
@@ -82,6 +104,7 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
   }
 
   Future<void> _save() async {
+    if (busy) return;
     setState(() {
       busy = true;
       error = null;
@@ -122,7 +145,10 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
       } else {
         await controller.updateHabit(widget.habit!, draft);
       }
-      if (mounted) Navigator.pop(context, true);
+      if (mounted) {
+        saved = true;
+        await guard.currentState?.close(saved: true);
+      }
     } catch (failure) {
       if (mounted) setState(() => error = '$failure');
     } finally {
@@ -131,202 +157,223 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => Dialog(
-    child: SizedBox(
-      width: math.min(MediaQuery.sizeOf(context).width - 48, 560),
-      height: math.min(
-        MediaQuery.sizeOf(context).height - 48,
-        widget.habit == null ? 550 : 580,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              widget.habit == null ? 'New habit' : 'Edit habit',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            if (widget.habit != null)
-              const Text(
-                'Changing the schedule preserves earlier logs and rest days.',
+  Widget build(BuildContext context) => UnsavedEditorGuard(
+    key: guard,
+    enabled: true,
+    dirty: snapshot != baseline,
+    busy: busy,
+    onClose: () => Navigator.pop(context, saved),
+    child: Dialog(
+      child: SizedBox(
+        width: math.min(MediaQuery.sizeOf(context).width - 48, 560),
+        height: math.min(
+          MediaQuery.sizeOf(context).height - 48,
+          widget.habit == null ? 550 : 580,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                widget.habit == null ? 'New habit' : 'Edit habit',
+                style: Theme.of(context).textTheme.titleLarge,
               ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: ListView(
-                key: const ValueKey('habit-editor-form-list'),
-                padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
-                children: [
-                  TextField(
-                    key: const ValueKey('habit-editor-title'),
-                    controller: title,
-                    decoration: const InputDecoration(labelText: 'Title *'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: notes,
-                    maxLines: 2,
-                    decoration: const InputDecoration(labelText: 'Notes'),
-                  ),
-                  const SizedBox(height: 12),
-                  AnchoredSelectField<HabitKind>(
-                    isExpanded: true,
-                    initialValue: kind,
-                    decoration: const InputDecoration(labelText: 'Measurement'),
-                    items: const [
-                      DropdownMenuItem(
-                        value: HabitKind.binary,
-                        child: Text('Yes / No'),
-                      ),
-                      DropdownMenuItem(
-                        value: HabitKind.minimum,
-                        child: Text('At least a target'),
-                      ),
-                      DropdownMenuItem(
-                        value: HabitKind.maximum,
-                        child: Text('At most a limit'),
-                      ),
-                    ],
-                    onChanged: busy
-                        ? null
-                        : (value) {
-                            if (value != null) setState(() => kind = value);
-                          },
-                  ),
-                  if (kind != HabitKind.binary) ...[
-                    const SizedBox(height: 12),
+              if (widget.habit != null)
+                const Text(
+                  'Changing the schedule preserves earlier logs and rest days.',
+                ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: ListView(
+                  key: const ValueKey('habit-editor-form-list'),
+                  padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
+                  children: [
                     TextField(
-                      controller: target,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(labelText: 'Target *'),
+                      enabled: !busy,
+                      key: const ValueKey('habit-editor-title'),
+                      controller: title,
+                      decoration: const InputDecoration(labelText: 'Title *'),
                     ),
                     const SizedBox(height: 12),
                     TextField(
-                      controller: unit,
+                      enabled: !busy,
+                      controller: notes,
+                      maxLines: 2,
+                      decoration: const InputDecoration(labelText: 'Notes'),
+                    ),
+                    const SizedBox(height: 12),
+                    AnchoredSelectField<HabitKind>(
+                      isExpanded: true,
+                      initialValue: kind,
                       decoration: const InputDecoration(
-                        labelText: 'Unit (optional)',
+                        labelText: 'Measurement',
                       ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: HabitKind.binary,
+                          child: Text('Yes / No'),
+                        ),
+                        DropdownMenuItem(
+                          value: HabitKind.minimum,
+                          child: Text('At least a target'),
+                        ),
+                        DropdownMenuItem(
+                          value: HabitKind.maximum,
+                          child: Text('At most a limit'),
+                        ),
+                      ],
+                      onChanged: busy
+                          ? null
+                          : (value) {
+                              if (value != null) setState(() => kind = value);
+                            },
                     ),
-                  ],
-                  const SizedBox(height: 12),
-                  AnchoredSelectField<RecurrenceKind>(
-                    isExpanded: true,
-                    key: ValueKey(scheduleKind),
-                    initialValue: scheduleKind,
-                    decoration: const InputDecoration(labelText: 'Schedule'),
-                    items: const [
-                      DropdownMenuItem(
-                        value: RecurrenceKind.daily,
-                        child: Text('Daily'),
+                    if (kind != HabitKind.binary) ...[
+                      const SizedBox(height: 12),
+                      TextField(
+                        enabled: !busy,
+                        controller: target,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Target *',
+                        ),
                       ),
-                      DropdownMenuItem(
-                        value: RecurrenceKind.weekly,
-                        child: Text('Weekly'),
-                      ),
-                      DropdownMenuItem(
-                        value: RecurrenceKind.weekdays,
-                        child: Text('Selected weekdays'),
-                      ),
-                      DropdownMenuItem(
-                        value: RecurrenceKind.monthly,
-                        child: Text('Monthly'),
-                      ),
-                      DropdownMenuItem(
-                        value: RecurrenceKind.yearly,
-                        child: Text('Yearly'),
+                      const SizedBox(height: 12),
+                      TextField(
+                        enabled: !busy,
+                        controller: unit,
+                        decoration: const InputDecoration(
+                          labelText: 'Unit (optional)',
+                        ),
                       ),
                     ],
-                    onChanged: busy
-                        ? null
-                        : (value) {
-                            if (value == null) return;
-                            setState(() {
-                              scheduleKind = value;
-                              if (value == RecurrenceKind.weekdays &&
-                                  weekdays.isEmpty) {
-                                weekdays.add(DateTime.parse(startDate).weekday);
-                              }
-                            });
-                          },
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: interval,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Repeat interval',
-                      helperText: 'Days, weeks, months or years, matching the schedule.',
-                    ),
-                  ),
-                  if (scheduleKind == RecurrenceKind.weekdays) ...[
                     const SizedBox(height: 12),
-                    WeekdayPickerRow(
-                      firstWeekday: ref
-                          .watch(appControllerProvider)
-                          .firstWeekday,
-                      selected: weekdays,
-                      onSelected: (day, selected) => setState(() {
-                        if (selected) {
-                          weekdays.add(day);
-                        } else {
-                          weekdays.remove(day);
-                        }
-                      }),
+                    AnchoredSelectField<RecurrenceKind>(
+                      isExpanded: true,
+                      key: ValueKey(scheduleKind),
+                      initialValue: scheduleKind,
+                      decoration: const InputDecoration(labelText: 'Schedule'),
+                      items: const [
+                        DropdownMenuItem(
+                          value: RecurrenceKind.daily,
+                          child: Text('Daily'),
+                        ),
+                        DropdownMenuItem(
+                          value: RecurrenceKind.weekly,
+                          child: Text('Weekly'),
+                        ),
+                        DropdownMenuItem(
+                          value: RecurrenceKind.weekdays,
+                          child: Text('Selected weekdays'),
+                        ),
+                        DropdownMenuItem(
+                          value: RecurrenceKind.monthly,
+                          child: Text('Monthly'),
+                        ),
+                        DropdownMenuItem(
+                          value: RecurrenceKind.yearly,
+                          child: Text('Yearly'),
+                        ),
+                      ],
+                      onChanged: busy
+                          ? null
+                          : (value) {
+                              if (value == null) return;
+                              setState(() {
+                                scheduleKind = value;
+                                if (value == RecurrenceKind.weekdays &&
+                                    weekdays.isEmpty) {
+                                  weekdays.add(
+                                    DateTime.parse(startDate).weekday,
+                                  );
+                                }
+                              });
+                            },
                     ),
-                  ],
-                  const SizedBox(height: 12),
-                  OutlinedButton(
-                    onPressed: busy ? null : () => _pickDate(start: true),
-                    child: Text('First scheduled day: $startDate'),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: busy
-                              ? null
-                              : () => _pickDate(start: false),
-                          child: Text('End day: ${endDate ?? 'None'}'),
-                        ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      enabled: !busy,
+                      controller: interval,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Repeat interval',
+                        helperText: 'Days, weeks, months or years, matching the schedule.',
                       ),
-                      if (endDate != null)
-                        IconButton(
-                          tooltip: 'Clear end day',
-                          onPressed: busy
-                              ? null
-                              : () => setState(() => endDate = null),
-                          icon: const Icon(Icons.close),
-                        ),
+                    ),
+                    if (scheduleKind == RecurrenceKind.weekdays) ...[
+                      const SizedBox(height: 12),
+                      WeekdayPickerRow(
+                        firstWeekday: ref
+                            .watch(appControllerProvider)
+                            .firstWeekday,
+                        selected: weekdays,
+                        onSelected: (day, selected) {
+                          if (busy) return;
+                          setState(() {
+                            if (selected) {
+                              weekdays.add(day);
+                            } else {
+                              weekdays.remove(day);
+                            }
+                          });
+                        },
+                      ),
                     ],
-                  ),
-                  if (error != null)
-                    Text(
-                      error!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
+                    const SizedBox(height: 12),
+                    OutlinedButton(
+                      onPressed: busy ? null : () => _pickDate(start: true),
+                      child: Text('First scheduled day: $startDate'),
                     ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: busy
+                                ? null
+                                : () => _pickDate(start: false),
+                            child: Text('End day: ${endDate ?? 'None'}'),
+                          ),
+                        ),
+                        if (endDate != null)
+                          IconButton(
+                            tooltip: 'Clear end day',
+                            onPressed: busy
+                                ? null
+                                : () => setState(() => endDate = null),
+                            icon: const Icon(Icons.close),
+                          ),
+                      ],
+                    ),
+                    if (error != null)
+                      Text(
+                        error!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              DialogActionBar(
+                children: [
+                  TextButton(
+                    onPressed: busy ? null : () => guard.currentState?.close(),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: busy ? null : _save,
+                    child: Text(
+                      widget.habit == null ? 'Create habit' : 'Save habit',
+                    ),
+                  ),
                 ],
               ),
-            ),
-            DialogActionBar(
-              children: [
-                TextButton(
-                  onPressed: busy ? null : () => Navigator.pop(context, false),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: busy ? null : _save,
-                  child: Text(
-                    widget.habit == null ? 'Create habit' : 'Save habit',
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     ),

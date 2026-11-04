@@ -31,6 +31,7 @@ import 'domain/models.dart';
 import 'features/workspace/workspace.dart';
 import 'features/settings/privacy_dialog.dart';
 import 'features/settings/settings_transfer.dart';
+import 'features/startup/startup_page.dart';
 import 'features/widget/desktop_widget.dart';
 import 'features/widget/native_widget_service.dart';
 import 'domain/widget_configuration.dart';
@@ -107,6 +108,19 @@ Future<void> _startApplication(
     }
     exit(0);
   }
+  runApp(
+    const MaterialApp(
+      home: StartupPage(
+        children: [
+          Text('Opening Todorbit'),
+          SizedBox(height: 16),
+          LinearProgressIndicator(semanticsLabel: 'Preparing local data'),
+          SizedBox(height: 12),
+          Text('Checking local data and backups…'),
+        ],
+      ),
+    ),
+  );
   if (Platform.isAndroid) {
     final root = await AndroidPlatform.channel.invokeMethod<String>('dataRoot');
     if (root == null) {
@@ -357,45 +371,34 @@ class _MigrationApprovalAppState extends State<_MigrationApprovalApp> {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-    home: Scaffold(
-      body: Center(
-        child: SizedBox(
-          width: 480,
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.storage_outlined, size: 40),
-                const SizedBox(height: 16),
-                const Text('Database upgrade required'),
-                const SizedBox(height: 12),
-                Text(
-                  'This database uses schema ${widget.olderSchema}. Todorbit will create and verify a Before upgrade backup, then migrate it to schema ${AppDatabase.currentSchemaVersion}. If backup or migration fails, the workspace will not open. Your data will not be reset.',
-                ),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: busy
-                      ? null
-                      : () async {
-                          setState(() => busy = true);
-                          await _startApplication(
-                            widget.arguments,
-                            migrationApproved: true,
-                          );
-                        },
-                  child: const Text('Back up and upgrade database'),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: busy ? null : () => exit(0),
-                  child: const Text('Exit without changes'),
-                ),
-              ],
-            ),
-          ),
+    home: StartupPage(
+      children: [
+        const Icon(Icons.storage_outlined, size: 40),
+        const SizedBox(height: 16),
+        const Text('Database upgrade required'),
+        const SizedBox(height: 12),
+        Text(
+          'This database uses schema ${widget.olderSchema}. Todorbit will create and verify a Before upgrade backup, then migrate it to schema ${AppDatabase.currentSchemaVersion}. If backup or migration fails, the workspace will not open. Your data will not be reset.',
         ),
-      ),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: busy
+              ? null
+              : () async {
+                  setState(() => busy = true);
+                  await _startApplication(
+                    widget.arguments,
+                    migrationApproved: true,
+                  );
+                },
+          child: const Text('Back up and upgrade database'),
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: busy ? null : () => exit(0),
+          child: const Text('Exit without changes'),
+        ),
+      ],
     ),
   );
 }
@@ -442,36 +445,26 @@ class _StartupFailureAppState extends State<_StartupFailureApp> {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-    home: Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                widget.databaseOpened
-                    ? 'The database opened, but restored personalization could not be applied. The main app was not started. Your Before Restore database and settings recovery files remain available.'
-                    : 'Todorbit could not prepare its database. The main app was not started. Review the error below before retrying.',
-              ),
-              const SizedBox(height: 12),
-              SelectableText(widget.failure),
-              const SizedBox(height: 12),
-              const Text(
-                'Check disk space and file access, then restart the app.',
-              ),
-              if (widget.hasPendingRestore)
-                OutlinedButton(
-                  onPressed: busy ? null : _cancelRestore,
-                  child: const Text(
-                    'Cancel scheduled restore and retry current database',
-                  ),
-                ),
-              if (error != null) Text(error!),
-            ],
-          ),
+    home: StartupPage(
+      children: [
+        Text(
+          widget.databaseOpened
+              ? 'The database opened, but restored personalization could not be applied. The main app was not started. Your Before Restore database and settings recovery files remain available.'
+              : 'Todorbit could not prepare its database. The main app was not started. Review the error below before retrying.',
         ),
-      ),
+        const SizedBox(height: 12),
+        SelectableText(widget.failure),
+        const SizedBox(height: 12),
+        const Text('Check disk space and file access, then restart the app.'),
+        if (widget.hasPendingRestore)
+          OutlinedButton(
+            onPressed: busy ? null : _cancelRestore,
+            child: const Text(
+              'Cancel scheduled restore and retry current database',
+            ),
+          ),
+        if (error != null) Text(error!),
+      ],
     ),
   );
 }

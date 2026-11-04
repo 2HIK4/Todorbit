@@ -36,6 +36,7 @@ class _BackupDialogState extends State<BackupDialog> {
   String? error;
   String? success;
   bool busy = false;
+  bool reviewing = false;
 
   @override
   void initState() {
@@ -63,9 +64,11 @@ class _BackupDialogState extends State<BackupDialog> {
   }
 
   Future<void> _create() async {
+    if (busy) return;
     setState(() {
       busy = true;
       error = null;
+      success = null;
     });
     try {
       await widget.service.createBackup(BackupKind.manual);
@@ -79,6 +82,7 @@ class _BackupDialogState extends State<BackupDialog> {
   }
 
   Future<void> _export() async {
+    if (busy) return;
     setState(() {
       busy = true;
       error = null;
@@ -126,6 +130,7 @@ class _BackupDialogState extends State<BackupDialog> {
   }
 
   Future<void> _import() async {
+    if (busy) return;
     setState(() {
       busy = true;
       error = null;
@@ -154,42 +159,41 @@ class _BackupDialogState extends State<BackupDialog> {
   }
 
   Future<void> _schedule(BackupRecord record, {String? importedFrom}) async {
-    BackupSummary summary;
-    try {
-      summary = await widget.service.summarize(record);
-    } catch (failure) {
-      if (mounted) setState(() => error = 'Could not preview backup: $failure');
-      return;
-    }
-    if (!mounted) return;
-    final approved = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Replace current data on next launch?'),
-        content: Text(
-          '${importedFrom == null ? 'Stored backup' : 'Imported backup'} from ${_date(dialogContext, record.createdAt)}.\n\n'
-          '${summary.description.isEmpty ? 'No records in this backup' : summary.description}.\n\n'
-          'When you next start Todorbit, this backup replaces your current tasks, events, and other database records. It does not merge them. Todorbit first saves your current database as a Before Restore backup so you can recover it.\n\n'
-          'Changes made since this backup will no longer appear in the active database.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Confirm replacement'),
-          ),
-        ],
-      ),
-    );
-    if (approved != true || !mounted) return;
+    if (busy && importedFrom == null) return;
     setState(() {
       busy = true;
       error = null;
+      success = null;
     });
     try {
+      final summary = await widget.service.summarize(record);
+      if (!mounted) return;
+      setState(() => reviewing = true);
+      final approved = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Replace current data on next launch?'),
+          scrollable: true,
+          content: Text(
+            '${importedFrom == null ? 'Stored backup' : 'Imported backup'} from ${_date(dialogContext, record.createdAt)}.\n\n'
+            '${summary.description.isEmpty ? 'No records in this backup' : summary.description}.\n\n'
+            'When you next start Todorbit, this backup replaces your current tasks, events, and other database records. It does not merge them. Todorbit first saves your current database as a Before Restore backup so you can recover it.\n\n'
+            'Changes made since this backup will no longer appear in the active database.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Confirm replacement'),
+            ),
+          ],
+        ),
+      );
+      if (approved != true || !mounted) return;
+      setState(() => reviewing = false);
       await widget.service.scheduleRestore(
         record,
         appSchemaVersion: AppDatabase.currentSchemaVersion,
@@ -198,11 +202,17 @@ class _BackupDialogState extends State<BackupDialog> {
     } catch (failure) {
       if (mounted) setState(() => error = '$failure');
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted) {
+        setState(() {
+          busy = false;
+          reviewing = false;
+        });
+      }
     }
   }
 
   Future<void> _cancelRestore() async {
+    if (busy) return;
     setState(() {
       busy = true;
       error = null;
@@ -254,8 +264,14 @@ class _BackupDialogState extends State<BackupDialog> {
               ],
             ),
             const Text(
-              'Backups include your tasks, events, and other database records.',
+              'Backups include database records such as tasks, events, goals, habits, templates, and managed attachments, plus saved widget appearance. External file contents and other profile files are not copied.',
             ),
+            if (busy && !reviewing) ...[
+              const SizedBox(height: 8),
+              const LinearProgressIndicator(
+                semanticsLabel: 'Working on backup or restore',
+              ),
+            ],
             const SizedBox(height: 16),
             Text(
               'Create or export',
@@ -269,7 +285,7 @@ class _BackupDialogState extends State<BackupDialog> {
                 FilledButton.icon(
                   onPressed: busy ? null : _create,
                   icon: const Icon(Icons.save_outlined),
-                  label: Text(busy ? 'Creating…' : 'Create backup now'),
+                  label: const Text('Create backup now'),
                 ),
                 OutlinedButton.icon(
                   onPressed: busy ? null : _export,
@@ -343,7 +359,15 @@ class _BackupDialogState extends State<BackupDialog> {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             records == null
-                ? const Center(child: CircularProgressIndicator())
+                ? error != null
+                      ? Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton(
+                            onPressed: busy ? null : _reload,
+                            child: const Text('Retry loading backups'),
+                          ),
+                        )
+                      : const Center(child: CircularProgressIndicator())
                 : records!.isEmpty
                 ? const Center(child: Text('No backups yet.'))
                 : ListView(

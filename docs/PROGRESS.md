@@ -1,5 +1,32 @@
 # Progress
 
+## UI quality Batch 4: advanced productivity and recovery (2026-11-04; local)
+
+- Continued from `8842598` on `feature/ui-quality-batch4`, preserving the three
+  unrelated storage documents. Goal/Habit editors and linked-work selection now
+  protect unsaved changes. Failed link loading cannot submit empty relationships;
+  Retry reloads the original selections. Linked progress fits short enlarged views.
+- Shared numeric progress/log entry and the milestone editor validate in the
+  dialog, retain drafts on write failure, and close only after successful saving.
+  Existing calculation rules and repository APIs remain unchanged. Backup history
+  failures offer Retry; replacement review scrolls and remains explicit. Startup
+  preparation has an opening indicator; upgrade/recovery content scrolls safely.
+  Synchronous activation guards prevent duplicate pending saves/review dialogs.
+- Populated habit correction/history/rest/archive and goal completion/archive/
+  linked-progress checks pass. A synthetic representative database round-trip and
+  actual Windows create/cancel/schedule/process-restart restore pass structural
+  comparison; all 46 product tables in the live sample match, with the changed
+  state retained in Before Restore. SQLite integrity and foreign keys pass.
+- Exact invocations, failures, reused evidence, platform observations and updated
+  40-group coverage are in the [Batch 4 receipt](UI_UX_PERMANENT_QUALITY_AUDIT.md#batch-4-advanced-productivity-and-local-recovery).
+  The initiative remains **in progress**: resource picker/open/relink failure and
+  template/routine workflows, actual legacy/interrupted migration recovery and
+  wider accessibility/device acceptance remain for the next coherent batch.
+  Android Debug compilation succeeded, but system_server/package-service crashes
+  prevented installation on the disposable API35 emulator. No app-runtime pass;
+  overlay stopped and original local.properties restored byte-for-byte.
+  No cloud account/data action, publication, version bump or schema change.
+
 ## UI quality Batch 3: populated workflows (2026-11-04; local)
 
 - Continued from `7a5d0ed` on `feature/permanent-ui-quality`. Fixed nested subtask

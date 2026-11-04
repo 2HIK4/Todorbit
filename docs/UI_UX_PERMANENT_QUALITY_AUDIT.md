@@ -899,3 +899,219 @@ retries. Font/orientation settings affect only the temporary read-only overlay.
 | 14:46:55 / 46 | `ADB shell input tap 215 370` | Exit 0; open-widget-task |
 | 14:49:01 / 47 | `ADB shell am force-stop io.github.hik4.todorbit` | Exit 0; stop-owned-debug |
 | 14:49:06 / 48 | `ADB emu kill` | Exit 0; stop-owned-emulator |
+
+## Batch 4: advanced productivity and local recovery
+
+Baseline `8842598`, branch `feature/ui-quality-batch4`, 2026-11-04 UTC+03:00.
+This is a coherent Fix/acceptance subset of the continuing initiative, not complete
+advanced-feature or application acceptance. The three unrelated storage documents
+remain excluded. Evidence is under ignored
+`.buildlog/verify/permanent-ui-quality/pass4/`; each runner JSON records exact
+SDK arguments, HEAD, dirty-file SHA-256 hashes, isolated environment, time, exit
+code and log. No database/domain/backup-format/Sync/native implementation changed.
+
+### Findings and the two inspections
+
+| Finding / severity | Reproduction and cause | Correction / observed result |
+| --- | --- | --- |
+| B4-01 P1, behavioral/lost work | Enter Goal or Habit title, Escape/Cancel. No guard; route drops the draft. Baseline tests fail for both. Linked-work selections and milestone/progress/log drafts have the same unguarded boundary. | Existing UnsavedEditorGuard now covers these forms, including Back/barrier closure. Keep editing retains input; explicit discard leaves records unchanged. Saved results preserve the existing bool contract. Inputs are unavailable during submission. In-memory protection does not promise recovery after process termination. |
+| B4-02 P1, behavioral/data integrity | Fail goalLinks read with an existing task relationship. Empty initial sets remain and Save links becomes enabled. Baseline confirms the unsafe callback. | Save requires a successful load, Retry restores original checked links, and selection edits are guarded. Regression checks unchanged stored links before explicit saving; deliberate removal still works. |
+| B4-03 P2, adaptive/usability | Linked progress at 640x360/200% overflows by 384px because help/filter consume fixed Column height. | Help, filter, errors and choices share the scroll area; existing DialogActionBar keeps actions reachable. Long linked title can be selected and persisted. |
+| B4-04 P2, behavioral/error recovery | Goal adjustment, numeric Habit log and milestone dialogs pop before awaiting the write; a rejected write discards input. Numeric validation uses an underlying snackbar. Source-confirmed. | Shared NumericEntryDialog plus owned milestone state retain values/errors through failure and retry. Inline validation rejects nonfinite/invalid values. Existing controllers/repository enforce domain limits; no calculation changes. Added Clear deadline to milestone editing. |
+| B4-05 P2, recovery/usability | Backup history load failure leaves an endless loading spinner, restore preview can be requested repeatedly, and replacement text lacks an explicit scroll policy. Export/restore also displays a misleading Creating label. Source-confirmed. | Failed history offers Retry. Review owns the busy boundary, readable replacement text scrolls, controls remain guarded, and activity feedback is neutral. The original confirmation, cancellation and next-launch replacement semantics remain. Included-data copy distinguishes managed attachments, external contents and profile files. |
+| B4-06 P2, adaptive/feedback | Startup failure/upgrade uses a non-scrolling Column. Preparation can show an empty window until runApp; observed during the actual restore restart. | Shared bounded StartupPage scrolls long errors/actions at 360x640 and 640x360/200%. Foreground startup shows Opening Todorbit while checking local data/backups. The background worker route still returns before any UI. Generic recovery-layout tests are not actual migration acceptance; the brief opening indicator was not captured in a settled runtime frame. |
+
+Implementation inspection traced draft -> controller -> transaction -> refreshed
+projection -> close, load-failure gating, scroll ownership and preflight/root-widget
+attachment. Experience inspection applied all ten UX Necessity questions: preserve
+the separate milestone/completion/manual/linked concepts, avoid extra normal-save
+steps, present validation where input is edited, keep recovery consequences, and
+remove misleading activity/unrecoverable-spinner states. The existing advanced
+link explanation is shorter but retains counting/deduplication rules. No decorative
+redesign, automatic completion/rescheduling, hidden capability or new account flow.
+
+### Backup acceptance and data boundaries
+
+`backup_integrity_acceptance_test.dart` creates only temporary synthetic files.
+It covers tasks/subtask/checklist/dependency, category/project, fixed event,
+planned session and separate actual work, Habit log/correction/history/rest day,
+Goal/manual history/two milestones/three link types, template, resource records and
+portable preference rows. Resources include managed bytes, external file/folder
+references and a URL; changing the original external file after the snapshot does
+not get undone by restore. Profile JSON stays at its later device-local value.
+Snapshot/export/import -> schedule/cancel -> deliberate
+later edits -> close database -> apply -> reopen -> second launch are exercised.
+All columns of all product tables are compared as sorted structured rows, including
+UUIDs, UTC timestamps, references, values and base64-normalized BLOB contents.
+`quick_check=ok` and empty `foreign_key_check` are required. Before Restore must
+match the later state. Second launch must retain two tasks and one recovery copy.
+Snapshot-only widget envelope and intentionally quarantined Sync bookkeeping are
+excluded from product-row equality, not silently declared identical.
+
+The Windows Debug journey used only
+`pass4/runtime-profile/Roaming/TodoPilot/life_manager.sqlite`; launch manifest and
+VM environment/Drift isolate paths establish APPDATA, LOCALAPPDATA and active DB.
+Observed Goal draft Cancel -> Keep editing -> create; manual adjustment 3; milestone
+5; manual history; Habit creation/log; local backup creation; replacement Cancel
+with no pending marker; addition of a second synthetic Habit; confirmation; owned
+process exit and actual relaunch. The initially attempted immediate second binary
+log tap was not accepted as correction evidence: readback showed one history row.
+Automated populated numeric correction/history provides that separate coverage.
+
+Selected manual snapshot SHA-256:
+`676664c81db404005c26063dc00e2d9d5778fc1f2b5c085d724df409d440a789`.
+After the restarted app opened, read-only comparison passed **46 product tables**:
+Goal, milestone, adjustment, Habit and entry/history each 1; portable preference
+rows 9. The later second Habit is absent from the active database and present in
+the exact Before Restore state. `restore-status.state=opened`, pending marker
+absent, integrity/foreign keys pass. Multiple snapshots (manual, automatic,
+Before Restore) remain. This verifies actual local replacement, not merely a
+success dialog. It does not establish live cloud restore, encryption or migration.
+
+### Coverage update across the existing 40 groups
+
+S = source review; A = automated; V = actual rendered Windows runtime; I = Driver
+interaction. Evidence applies only to the named samples. Host 200% tests use a
+synthetic text scaler; they are not physical Windows DPI or Android accessibility.
+
+| Groups | Additional Batch 4 evidence | Remaining acceptance |
+| --- | --- | --- |
+| S03 composition | A restored subtask/checklist/dependency IDs and all values/links | Populated composition interaction beyond Batch 3; bulk/concurrent edits |
+| S04 resources | S resource persistence boundary; A resource rows/managed bytes in round-trip | Actual pickers, opening/removal/relink, missing/broken/unavailable targets, permissions, Android picker |
+| S05 series/plans | Prior Batch 3 evidence retained; no changed dependency | No new series/routine/plan runtime coverage |
+| S12 templates/routines | S save/apply/delete definitions; A template identity/payload restored | Apply repeatedly/with drafts, invalid templates, dense lists; no standalone edit capability added |
+| S14 Habits | S/A numeric correction retains ID and 3 history operations through clear; rest/archive/restore; draft/log validation and retry; V/I empty/create/populated binary sample and restored record | Actual numeric Android/Windows IME, long dense lists at enlarged OS text, full historical/recurrence matrix |
+| S15 Goals | S/A dirty guards, read-failure Retry, selection save, invalid threshold, milestone save/edit, deduped project/direct progress, two milestones, completion cancellation/approval, archive/restore; V/I create/adjust/milestone/history | Concurrent/stale edits and failures on each real service; dense high-scale history and full keyboard/reader acceptance |
+| S18 related archive/restore | A Goal/Habit IDs, history, progress and relationships survive | General Trash/permanent deletion unchanged from prior evidence |
+| S25 startup/migration | S preflight/recovery boundaries; A generic long recovery/action layout at both 200% sizes; V/I actual valid-profile restart after restore | Actual legacy/partial migration, corruption/storage/invalid-preferences recovery, privacy-error page and interrupted migration; opening indicator visual capture |
+| S26 local backup/restore | S/A failure Retry/review Cancel/confirm/cancel-scheduled at 200%; A representative all-column round-trip; V/I actual create/cancel/replacement/relaunch plus independent readback | Native file-picker/export cancellation and OS permissions/storage failures; real interrupted restore UX; Android restore interaction |
+| S27 Drive backup | S disconnected/unavailable build state, V parent copy only | Live cloud BLOCKED: no authorized disposable account/configuration. No Google connection, Start New Sync, remote deletion or cloud experiment |
+| S32 settings transfer | A portable SQLite preference rows and device-file exclusion in local round-trip | JSON category/merge/apply and true customization/widget bundle population remain open |
+| S40 shared dialogs/input | S/A shared numeric draft/invalid/failure/retry and new milestone guard; prior consumers retained; V dark Windows forms and scroll/recovery actions | Narrator/TalkBack, physical Tab/Shift+Tab/IME and native DPI; complete theme/custom/RTL matrix |
+| S01-S02, S06-S11, S13, S16-S17, S19-S24, S28-S31, S33-S39 | The other 28 groups retain their previous recorded coverage; no new complete acceptance claim | Previous gaps remain |
+
+Seven dimensions: affected surfaces above; empty/dirty/loading/error/retry/saved/
+archived/restored states; Windows Debug and host normal/narrow/short 200%; Escape/
+Back/taps/text/scroll/confirmation; first/routine/interrupted/recovery journeys;
+synthetic Unicode/long/linked/invalid data; correctness, readability, decision cost
+and preservation. No performance, contrast-compliance or screen-reader certification.
+
+### Exact invocations and reuse, Batch 4
+
+`F = flutter --no-version-check --suppress-analytics test --no-pub
+--concurrency=1 --reporter=expanded`.
+`A = test/advanced_productivity_ui_test.dart`,
+`B = test/backup_integrity_acceptance_test.dart`,
+`U = test/backup_recovery_ui_test.dart`,
+`P = test/productivity_populated_journeys_test.dart`,
+`G = test/goals_widget_test.dart`, `H = test/habits_widget_test.dart`.
+Exact expanded commands/source/env hashes for formatting and analysis are in the
+named JSON receipts; no dependencies were installed or resolved for host checks.
+
+| Local time / receipt stem | Invocation | Outcome / reason |
+| --- | --- | --- |
+| 14:58:46 advanced-baseline | `F A` | FAIL four, new reproductions: two lost drafts, failed-load Save enabled, 384px overflow |
+| 15:00:01 guards-format | `dart format` Goal/Habit editors and A | PASS; format guard implementation |
+| 15:00:14 guards-after | `F A G H` | 4 pass/3 fail: existing journeys + link Retry pass; two tests needed a frame after text entry, long tile center was offscreen |
+| 15:01:37 backup-acceptance | `F B` | FAIL comparison included the snapshot-only widget envelope; fixture boundary corrected |
+| 15:02:16 guards-fixture-corrected | `F A B` | PASS five after frame/checkbox target and envelope exclusion corrections |
+| 15:04:47 progress-format | `dart format` eight product files + A/B | PASS after shared numeric, milestone, startup and backup changes |
+| 15:06:04 progress-recovery | `F A U G H` | 11 pass/1 fail: six advanced, two layout, three existing journeys pass; Retry lazy child not built in fixture |
+| 15:07:50 backup-ui-retry | `F U B` | 3 pass/1 fail: startup and enriched settings integrity pass; Restore tap preceded post-scroll layout |
+| 15:08:47 backup-ui-settled | `F U --plain-name "backup list failure"` | PASS one after pumping scroll layout; genuine Cancel/confirm/cancel-scheduled sequence |
+| 15:13:25 live-integrity-before | `python .../pass4/live-integrity.py before` | PASS read-only snapshot/current capture; expected one vs later two Habits |
+| 15:13:29 final-format | `dart format` eight product files + A/B/U | PASS; formatting only |
+| 15:13:55 final-input-regressions | `F A G --name "numeric entry\|milestone validation\|Goals view creates"` | PASS three after stable field keys/autofocus; reuses unaffected four guard cases and other existing journeys |
+| 15:13:55 scoped-analysis | `flutter --no-version-check --suppress-analytics analyze --no-pub` eight product files + A/B/U | FAIL two brace-style infos in Goal/Backup; no other findings |
+| 15:14:25 live-integrity-after | `python .../pass4/live-integrity.py after` | FAIL premature precondition: restarted build had not opened/apply run yet; no restore success claimed |
+| 15:15:51 populated-journeys | `F P` | PASS two new actual view/controller/repository workflows; no mocks for persistence |
+| 15:18:45 live-integrity-opened | `python .../pass4/live-integrity.py after` | PASS after actual opened state; exact 46-table/recovery-copy comparison |
+| 15:19:12 final-style | `dart format` main, Goal dialogs, Backup dialog and P | PASS; brace fixes and new opening indicator |
+| 15:19:42 corrected-analysis | `flutter --no-version-check --suppress-analytics analyze --no-pub` main, Goal dialogs, Backup dialog and P | PASS four; reuse other unchanged files' analysis from scoped invocation |
+| 15:23:38 backup-external-boundary | `F B` | FAIL compile: new fixture used folder instead of externalFolder enum. No product failure; correct fixture |
+| 15:26:29 backup-external-format | `dart format B` | PASS; enriched external-file boundary |
+| 15:26:30 backup-external-corrected | `F B` | PASS one; all-column round-trip with four resource types, external contents left changed and profile JSON excluded |
+| 15:27:24 submission-format | `dart format` NumericEntryDialog, Goal dialogs, Habit editor and A | PASS after explicit pending-save activation guard |
+| 15:27:30 pending-save | `F A --plain-name "numeric save rejects"` | PASS one; burst activation causes one write, Back cannot close during save |
+| 15:29:26 submission-analysis | `flutter --no-version-check --suppress-analytics analyze --no-pub` Goal dialogs, Habit editor, NumericEntryDialog, A and B | PASS five; changed guard/test boundaries |
+| 15:30:08 preview-format | `dart format` Backup dialog and U | PASS after preview activation guard |
+| 15:30:09 preview-activation | `F U --plain-name "backup preview rejects"` | PASS one; two activations produce one preview/review, Cancel schedules nothing |
+| 15:31:14 preview-analysis | `flutter --no-version-check --suppress-analytics analyze --no-pub` Backup dialog and U | PASS two; final preview guard/test changes |
+| 15:31:24 docs-links | `python tools/dev/check-docs.py docs/PROGRESS.md docs/TEST_RUN_LEDGER.md docs/UI_UX_PERMANENT_QUALITY_AUDIT.md` | PASS zero errors; subsequent receipt/progress text adds no links |
+
+Backend reuse comparison: `git diff 4987a46 --` BackupService, AppDatabase,
+MigrationGate, backup/startup/migration and Goal/Habit repository test files is
+empty. The recorded full-suite pass in SMART_SYNC_VERIFICATION remains evidence
+for those unchanged schema/restore/corruption/calculation assertions, not current
+UI acceptance. Shared guard, Sync, native painting/IPC, package/release boundaries
+are unchanged; their expensive suites/builds are not repeated. No release gate is
+claimed. New all-column acceptance is additional to that reused evidence.
+
+Windows launch procedure (twice for actual process restart): `flutter
+--no-version-check --suppress-analytics run --no-pub -d windows --target
+lib/driver_main.dart --machine`, child APPDATA/LOCALAPPDATA from launch JSON.
+Initial PID26880 was stopped only after read-only before-state capture; restored
+process PID28556 uses the same verified isolated path. MCP DTD connect, getVM/
+getIsolate/evaluate/Driver actions established process/profile identity. Hot reload
+and later hot restart pass. Current runtime diagnostics are clear after clearing
+only early Driver no-root-widget errors. Early screenshots requested before the
+startup root attached were tooling errors; they do not prove a recovery-page
+failure. Selector timeouts (input decoration/semantics, wrong Close Settings case),
+stale transition screenshots, and unavailable Node WebSocket/ws were corrected
+with existing MCP Driver, stable field keys and explicit waits. Image persistence
+first exceeded the tool's 64KiB review limit; chunked writes succeeded without
+changing image content. No tool/dependency installation or personal process action.
+
+Pending-save review additionally placed synchronous busy checks in the affected
+save handlers and backup actions. This closes the interval before the disabled
+button rebuilds; imported-backup review still uses its existing controlled entry.
+No additional normal-path step was added. Nominal validation/persistence tests
+retain their evidence; new delayed-save/preview tests cover the changed branch.
+
+### Android attempt and remaining acceptance
+
+One documented synthetic API35 x86_64 AVD was launched at15:16:37 on port5582,
+with `-read-only -no-snapshot-load -no-snapshot-save -no-window -no-audio
+-no-boot-anim -gpu swiftshader_indirect`. Original userdata is retained. Shell was
+initially offline/boot incomplete; by15:22:09 `sys.boot_completed=1` and bootanim
+was stopped. The existing synthetic application was deliberately removed only
+inside this disposable overlay before the Debug test installation, not as a
+fallback after an app/data error. No personal profile/account was selected.
+
+At15:22:36 launched `flutter --no-version-check --suppress-analytics run --no-pub
+-d emulator-5582 --flavor github --target lib/driver_main.dart --machine`, using
+the retained SDK/JDK21/Gradle cache and existing CMake/Ninja process PATH. Debug
+APK built, but streamed installation failed: package service Broken pipe (32).
+Diagnostic `ADB -s emulator-5582 logcat -b crash -d -t 100` records system_server
+SIGABRT on ConnectivityService at15:23:52, dependent DeadSystemException crashes,
+then PackageManager/system_server SIGABRT at15:27:10. The package service was
+absent. Todorbit never started; this is an **environment-blocked Android runtime
+attempt**, not an app crash or acceptance pass. The APK predates final Dart-only
+activation guards and is not claimed as a final release artifact.
+
+`android-actions.jsonl` records exact platform invocations: boot status, bootanim,
+two native screencaps, overlay preparation, crash log and `emu kill` at15:28:11.
+Initial direct ADB discovery/path probes are retained in the tool transcript;
+they performed no app interaction. No second emulator or installation retry.
+The overlay was discarded; ignored `android/local.properties` restored byte for
+byte to SHA-256 `97b2432de9e07660484239a75152ea6bc6ddc487bcc6633c519289c7989df0d9`.
+No real Google access, Sync replacement/deletion or cloud upload/restore occurred.
+
+Remaining next batch: complete Resources and Templates/routines journeys with
+native pickers and failure/cancel states; actual isolated legacy/interrupted/
+corrupt startup recovery; successful Android advanced-editor/backup journeys on
+a stable emulator/device. Physical Windows keyboard/DPI/Narrator, Android IME/
+TalkBack/OEM behavior and disposable-account cloud acceptance remain unverified.
+Main-window termination and process death during these modal drafts are not
+accepted by the dialog-closure tests; no new persisted draft recovery is promised.
+
+Final verification comprises **14 new regression cases** and three existing
+Goal/Habit cases across the focused invocations, with failures/reuse recorded
+above rather than summed as independent coverage. All changed Dart files have
+clean scoped analysis after their final semantic changes. Windows final hot reload
+succeeds and runtime errors are clear. Diff review includes source/state ownership,
+unchanged backend/formats, `git diff --check`, explicit-path staging and staged
+diff checks. Only task sources/tests and these three audit/ledger/progress files
+are included. Builds, profiles, logs, screenshots and machine settings remain
+ignored. The local commit identity and final Git status are reported in delivery;
+the comprehensive initiative is still **in progress**.

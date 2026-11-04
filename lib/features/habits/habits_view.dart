@@ -6,6 +6,7 @@ import '../../domain/habits.dart';
 import '../../domain/models.dart';
 import '../../domain/recurrence.dart';
 import '../shared/about_view_button.dart';
+import '../shared/numeric_entry_dialog.dart';
 import 'habit_editor.dart';
 
 class HabitsView extends ConsumerStatefulWidget {
@@ -50,71 +51,29 @@ class _HabitsViewState extends ConsumerState<HabitsView> {
     if (picked != null) setState(() => day = localDate(picked));
   }
 
-  Future<void> _numericLog(Habit habit, HabitEntry? previous) async {
-    var value = previous?.value.toString() ?? '';
-    var notes = previous?.notes ?? '';
-    final result = await showDialog<(double, String)>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('${habit.title} · $day'),
-        scrollable: true,
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              initialValue: value,
-              onChanged: (text) => value = text,
-              key: ValueKey('habit-value:${habit.id}:$day'),
-              autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
+  Future<void> _numericLog(Habit habit, HabitEntry? previous) =>
+      showDialog<void>(
+        context: context,
+        builder: (_) => NumericEntryDialog(
+          title: '${habit.title} · $day',
+          label: 'Actual ${habit.unit.isEmpty ? 'value' : habit.unit}',
+          submitLabel: 'Save log',
+          initialValue: previous?.value.toString() ?? '',
+          initialNotes: previous?.notes ?? '',
+          validate: (value) => value == null || !value.isFinite || value < 0
+              ? 'Enter a nonnegative number.'
+              : null,
+          save: (value, notes) => ref
+              .read(appControllerProvider)
+              .recordHabitDay(
+                habit,
+                day,
+                value,
+                notes: notes,
+                previous: previous,
               ),
-              decoration: InputDecoration(
-                labelText:
-                    'Actual ${habit.unit.isEmpty ? 'value' : habit.unit}',
-              ),
-            ),
-            TextFormField(
-              initialValue: notes,
-              onChanged: (text) => notes = text,
-              decoration: const InputDecoration(labelText: 'Note (optional)'),
-            ),
-          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final parsed = double.tryParse(value.trim());
-              if (parsed == null || !parsed.isFinite || parsed < 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Enter a nonnegative number.')),
-                );
-                return;
-              }
-              Navigator.pop(context, (parsed, notes));
-            },
-            child: const Text('Save log'),
-          ),
-        ],
-      ),
-    );
-    if (result == null) return;
-    await _run(
-      () => ref
-          .read(appControllerProvider)
-          .recordHabitDay(
-            habit,
-            day,
-            result.$1,
-            notes: result.$2,
-            previous: previous,
-          ),
-    );
-  }
+      );
 
   Future<void> _clear(HabitEntry entry) async {
     final approved = await showDialog<bool>(
