@@ -8,9 +8,17 @@
 - Native Windows Computer Use still fails on missing pipe. Current-source Debug
   launches in a verified disposable profile; VM environment, Drift, displayed
   path and read-only SQLite agree. `B6 Today` is prepared, with no runtime errors.
-  Exact W01 file-picker/viewer/draft-return guidance sent; actual human observation
-  is pending. Test app PID19636 stays available for this handoff. Personal installed
-  app/companion are untouched. All native keyboard/Narrator/picker/widget/shell/
+  Human subsequently confirms the profile, actual Windows picker, resource
+  addition and unsaved title preservation. A subsequent dark/100% report confirms
+  correct Notepad content, physical Alt+Tab return, title preservation and visible
+  caret, with no issues. User reports Save/editor-reopen passed, then closed the
+  app. Readback confirms title/resource, but kind is managed Attachment rather
+  than an external link. User confirms Attach a copy was used and cold title/
+  resource/kind/viewer checks pass, as expected. Exact focused control is unreported.
+  Same binary/profile cold-started as PID30008. User confirms attachment removal/
+  editor-reopen and intact original; read-only resource absence/hash corroborate.
+  Actual external-link journey is next; no whole W01 pass.
+  Personal installed app/companion are untouched. Other native keyboard/Narrator/picker/widget/shell/
   DPI variants remain open; no whole acceptance ID completed.
 - Retained Batch6 AVD initially passes two healthy service samples >2 minutes
   apart and actual launcher input. Closed it for resource-safe compilation of a

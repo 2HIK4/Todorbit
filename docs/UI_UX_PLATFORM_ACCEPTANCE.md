@@ -63,7 +63,24 @@ variant ran. Retain failures and later corrections, rather than replacing them.
 | Preparation / Android partial boot | 2026-11-04 17:59:40+03:00 | Same source/configuration | Same AVD, native service probes | Same AVD | Package/input/activity found; IME absent, Home=`FallbackHome`, boot property empty | INCONCLUSIVE | FPA `sample2-*` | Distinguish partial startup from app readiness |
 | Preparation / Android separated health | 2026-11-04 18:01:59 and 18:04:33+03:00 | Same source/configuration | API35, 720×1280/240dpi, host OpenGL; ADB native gestures | Same AVD; no app-private profile yet | Boot1, PID592 stable, all required services/real Home present, empty crashes; drawer and Settings operate | PASS, environment preflight only | FPA `sample3-*`, `sample4-*`, `android-drawer-second.png`, `preflight-resumed.log` | First fully available sample followed by check >2 minutes later; no A-ID passed |
 | Preparation / Windows profile | 2026-11-04 18:17–18:19+03:00 | `227ecf8`; executable `07e3d879…369c`, kernel `1326d47d…912b`; full hashes in FPA | Win11 26200, Debug 1264×681, dark, Driver | FPA `windows-profile/Roaming/TodoPilot` | Actual VM APPDATA/LOCALAPPDATA both match; Drift, displayed Data profile and on-disk DB agree; synthetic `B6 Today` saved for 2026-11-04 | PASS, preparation only | FPA `windows-readback.json`, runtime tool transcript; PID19636, checkout Debug executable | Current-source fixture for human W01; not native picker/input evidence |
-| W01 / Link file, viewer and draft return | Guided 2026-11-04; observation pending | Same Windows source/artifact/profile above | Human keyboard/mouse; theme/scale to be reported | Same verified disposable Windows profile | Await real chooser/viewer, title and focus/caret observation | NOT TESTED | Guided request in session; see next substep below | Native Computer Use missing pipe; do not infer from Driver preparation |
+| W01 / Save and editor reopen | Report recorded 2026-11-04 18:49:17+03:00; execution time unreported | Same Windows source/artifact/profile | Human report, dark/100% | Same disposable profile | User reports the scoped Save/reopen test passes, then reports accidentally closing the app | PASS, reported assertions only | Session user reply; FPA `w01-saved-before-cold-start.json` | Resource-kind qualification below; no cold-start result inferred from normal app exit |
+| Preparation / human profile confirmation | Report recorded 2026-11-04 18:40:50+03:00; execution time unreported | Same Windows source/artifact above; docs HEAD `fb19a42` | Human report; theme/scale unreported | Same disposable profile suffix from guidance | User explicitly replied “Matched” to the displayed database-path check | PASS, profile check only | Session user reply; FPA `human-w01-file-selection-184050.json` | Human confirmation after automated preparation; no app test inferred |
+| W01 / actual Windows picker opens | Report recorded 2026-11-04 18:40:50+03:00; execution time unreported | Same Windows source/artifact above | Human interaction; exact input mix/theme/scale unreported | Same human-confirmed disposable profile | User replied “yes it worked” to the scoped picker/file/title question; picker opened | PASS, reported assertion only | Same human receipt and preceding exact instructions | First human native-picker observation; no theme/scale variants inferred |
+| W01 / selected resource added | Same report time | Same source/artifact/profile | Same reported human run | Same disposable profile | Guided `resource.txt` selection/addition succeeded | PASS, file-add assertion only | Same human receipt | Earlier receipt called it a link before kind verification; later readback identifies a managed attachment |
+| W01 / dirty title after file selection | Same report time | Same source/artifact/profile | Same reported human run | Same disposable profile | Guided unsaved title survived the picker/file-add step | PASS, reported assertion only | Same human receipt | Does not pass viewer return, caret, Save/reopen or cold restart |
+| W01 / real viewer and correct content | Report recorded 2026-11-04 18:46:38+03:00; execution time unreported | Same Windows source/artifact; docs HEAD `fb19a42` | Human report, Notepad, dark, Windows display scale100% | Same human-confirmed disposable profile; current checkout PID19636 verified | User confirms correct fixture content displayed in Notepad | PASS, reported assertion | FPA `human-w01-viewer-return-184638.json`; session user reply | First real-viewer observation for this reported variant |
+| W01 / Alt+Tab return | Same report time | Same source/artifact/profile | Physical Alt+Tab, dark/100% | Same isolated window | User confirms returning to Todorbit with Alt+Tab | PASS, reported assertion | Same viewer-return receipt | Does not establish broad shell/keyboard acceptance |
+| W01 / dirty title after viewer return | Same report time | Same source/artifact/profile | Same human run, dark/100% | Same disposable profile | User confirms unsaved title preserved and draft remains open/unsaved | PASS, reported assertion | Same viewer-return receipt | Save/reopen/cold restart remain pending |
+| W01 / caret visibility after return | Same report time | Same source/artifact/profile | Same human run, dark/100% | Same disposable profile | User confirms text caret visible; no unexpected UI behavior | PASS, visible-caret assertion only | Same viewer-return receipt | Exact focused control was not identified; no W06/W09 acceptance inferred |
+| W01 / exact focused control after return | Same report time | Same source/artifact/profile | Same human run, dark/100% | Same disposable profile | Caret visible, but focused control not named | INCONCLUSIVE | Same viewer-return receipt | Do not infer a specific focus target from caret visibility alone |
+| W01 / saved title and resource identity | 2026-11-04 18:50:15+03:00 | Same source/artifact, read-only SQLite | Owned app already closed; no native input | Same disposable database | Stored title=`B6 TodayW01 unsaved`; resource ID `6a921743-ccdd-430f-87c3-fb1f97f8737f`, kind=`managed`, label=`resource.txt`,50 bytes, SHA-256 equals original fixture | PASS, persisted-record assertion | FPA `w01-saved-before-cold-start.json`; fixture hash in transcript | New saved data after human actions; correct prior unverified external-link classification |
+| W01 / external-link-specific journey | Qualified18:54:34; clarified19:21:52+03:00, 2026-11-04 | Same source/artifact | Prior human run, dark/100% | Same disposable profile | Initially INCONCLUSIVE; user confirms using Attach a copy of a file, consistent with the managed record. No external-file journey ran | NOT TESTED | Saved-record receipt and FPA `human-w01-attachment-cold-192152.json` | Retains initial classification uncertainty and its resolution; external-link variant still required |
+| W01 / actual cold process and title | 2026-11-04 18:51:52–18:54:34+03:00 | Original executable/kernel hashes match; no rebuild | New Debug PID30008, Driver read-only title check | Same supplied child APPDATA/LOCALAPPDATA; actual Drift path agrees | Old PID19636 absent before launch; existing binary/profile reopened, Today displays exact saved title | PASS, process/title assertion | FPA `w01-cold-launch.json`, `w01-cold-mcp-actions.json`, `w01-cold-runtime.log` | User's saved normal app close permits real restart; resource GUI/open after restart still pending |
+| W01 / attachment presence after cold restart | Report recorded2026-11-04 19:21:52+03:00; execution time unreported | Same source/artifact, cold PID30008 | Human report, preceding dark/100% variant | Same isolated profile | User reports the scoped cold check passes: task/title and resource remain | PASS, reported assertions | FPA `human-w01-attachment-cold-192152.json` | Attachment variant only |
+| W01 / attachment kind and original add control | Same report time | Same source/artifact/profile | Same human run | Same isolated profile | User explicitly identifies Attachment and original Attach a copy of a file action; agrees with DB kind=managed | PASS, reported assertion | Same human receipt | Resolves route uncertainty; no product defect |
+| W01 / attachment viewer after cold restart | Same report time | Same source/artifact/profile | Same human run | Same isolated profile | User reports scoped synthetic-content/viewer check passes | PASS, reported assertion | Same human receipt | Other resource types/themes/scales not inferred |
+| W01 / attachment removal persists | Report/readback recorded2026-11-04 19:25:27+03:00; human execution time unspecified | Same source/artifact/profile | Human, reported dark/100%; read-only corroboration | Same isolated task | User confirms removal survives editor reopen; DB has no resources for that task, saved title unchanged | PASS, scoped assertion | FPA `w01-attachment-removal.json` | Human removal changes profile state; prior presence readback cannot prove absence |
+| W01 / original survives attachment removal | Same report/readback time | Same source/artifact/profile | Same human run plus file hash | Same synthetic original under FPA `fixtures` | User confirms original opens with correct content; original SHA-256 remains `964fcd8e…7187` | PASS, scoped assertion | Same removal receipt, full hash retained | Completes reported attachment sequence only; external-link and other theme/scale variants remain |
 | Preparation / Android resumed healthy sample | 2026-11-04 18:21:34+03:00 | `227ecf8`; APK hash above, not installed | Same API35 AVD after deliberate stop/build/resume | Retained disposable AVD | Boot1, PID579, required services and Home present; empty crash buffer | INCONCLUSIVE | FPA `resume2-*` | One sample cannot qualify this new boot |
 | Preparation / Android resumed separated check | 2026-11-04 18:24:00+03:00 | Same source, APK not installed | Same API35 AVD | Same AVD; no Todorbit private data | Expected stable services; system_server gone, package/input/IME/activity absent; crash confirmed | FAIL, environment preflight | FPA `resume3-*`, `android-failure-details.log` | >2 minutes after previous sample; no install/retry permitted on this failed guest |
 | A01-A09,A11-A12 / application execution | 2026-11-04, after resumed preflight failure | Same source; retained APK not installed | No healthy disposable Android device; no physical device connected | None opened | Required Android app/native/IME/launcher/reader execution unavailable | BLOCKED | Failed environment rows above | No A-ID or variant executed |
@@ -80,29 +97,50 @@ Add the completed receipt to [the test ledger](TEST_RUN_LEDGER.md).
 
 ### Active guided substep: W01 file selection and return
 
-Use only the checkout Debug app (session PID19636), after confirming the Data
+Use only the checkout Debug app (current PID30008; original PID19636 closed), whose Data
 profile ends in `final-platform-acceptance/windows-profile/Roaming/TodoPilot`.
 The installed personal app and companion are excluded. If the session is closed,
 `python .buildlog/verify/final-platform-acceptance/session.py windows` relaunches
 the same isolated profile; record the new PID and reconfirm the displayed path.
 
-1. Open `B6 Today`; append ` W01 unsaved` to the title.
-2. Resources > Link file: select
-   `D:\AI_Projects\life_manager\.buildlog\verify\final-platform-acceptance\fixtures\resource.txt`
-   through the actual Windows chooser.
-3. Verify type/name, open the file in its real viewer, then return to Todorbit.
-4. Report chooser/viewer success or exact error, retained title, returned focus/
-   caret, theme and display scale. A screenshot may show the resource and title,
-   but focus/caret behavior needs an observation.
+Completed human stage: user confirmed the profile matched, then reported success
+to the scoped instructions to append ` W01 unsaved`, use Resources > Link file,
+select the synthetic fixture in the Windows picker, and check file addition/title
+preservation. The next report confirms correct Notepad content, physical Alt+Tab
+return, preserved unsaved title and a visible caret, with no unexpected behavior,
+in dark theme at100% Windows display scale. The focused control was not named.
+User then reports Save/editor-reopen passed and the app was closed accidentally.
+Readback confirms the saved title is `B6 TodayW01 unsaved` and the resource is a
+managed **Attachment**. Earlier wording called this a link before checking its
+kind. User has now confirmed the original action was **Attach a copy of a file**;
+the managed kind is correct. The external-link variant is NOT TESTED. No
+application defect is indicated.
 
-Expected: correct resource identity, working viewer and intact unsaved title.
-Leave the draft open for the next guided Save/reopen/cold-restart substep. Neither
-that persistence substep nor attachment/removal, light/custom palette or Cancel/
-Escape variants pass from this initial observation. No human result has arrived.
+The old test process was absent; the exact existing Debug binary/profile has
+been cold-started as PID30008. User confirms title/resource presence, displayed
+Attachment kind and viewer contents after cold restart. User also confirms
+removal persists after editor reopen and the original opens correctly; readback
+shows no remaining task resources and an unchanged original-file hash. The
+reported dark/100% attachment sequence is recorded. Next is the external-link
+variant in the same isolated window:
 
-All W01-W11 and N01-N08 native variants remain open. Their automated execution
-is **BLOCKED** by native Computer Use; their human execution is **NOT TESTED**
-until observations arrive. In particular, no folder/Cancel/Escape (W02), missing
+1. Append ` W01 link draft` to the task title and leave it unsaved.
+2. In Resources, hover the document icon and confirm tooltip **Link an existing
+   file**, then choose the same original `resource.txt` through the Windows picker:
+   `D:\AI_Projects\life_manager\.buildlog\verify\final-platform-acceptance\fixtures\resource.txt`.
+3. Confirm the row says **External file**. If it says Attachment, stop and report
+   that before further actions. Otherwise open it, confirm synthetic content,
+   Alt+Tab back and verify the new unsaved title suffix remains.
+4. Report displayed type, viewer content/result and retained draft suffix. Keep
+   the draft unsaved; external-link Save/reopen/cold checks follow the observation.
+
+Expected: an external-file resource with a working viewer and preserved dirty
+title. The attachment and external-link routes remain separate observations.
+Only the reported dark/100% attachment sequence is covered so far; no whole W01 pass.
+
+Every W01-W11 and N01-N08 group still has open native variants. Automated execution
+is **BLOCKED** by native Computer Use; human assertions other than those recorded
+above remain **NOT TESTED**. In particular, no folder/Cancel/Escape (W02), missing
 target (W03), settings OS save/import (W04), native draft/focus return (W05),
 physical input/reader (W06-W09), OS scaling/monitors (W10-W11), or actual widget
 display/input/preview/menu/shell/persistence (N01-N08) is passed. The exact actions

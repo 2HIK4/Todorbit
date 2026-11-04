@@ -1766,8 +1766,8 @@ treated as a product acceptance PASS.
 - Sent an exact short W01 Link file/viewer/dirty-title substep to the user, with
   verified process/profile, synthetic absolute file path, expected identity/
   viewer/draft behavior and required focus/caret/theme/scale observation.
-  **No human observation has arrived.** W01 remains NOT TESTED, including its
-  Save/reopen/cold-restart and attachment variants. All W01-W11/N01-N08 native
+  At the initial handoff, **no human observation had arrived**. W01 was NOT TESTED,
+  including its Save/reopen/cold-restart and attachment variants. All W01-W11/N01-N08 native
   variants remain open; the original plan has exact remaining procedures.
 - After the successful APK build, stopped only the newly owned idle Gradle daemon
   PID27024, then resumed the same preflighted AVD at18:19:20. This was resource
@@ -1839,7 +1839,8 @@ Owned emulator/temporary Gradle daemon are stopped. Windows Debug PID19636 is
 deliberately retained for the guided human test; no isolated companion was started.
 Personal installed app31540/companion17028 are present and untouched. Profiles,
 fixtures and logs are retained. Android's original ignored configuration is restored.
-No W/N/A ID completed; W01 awaits observation, other exact W/N procedures remain
+At the initial handoff no W/N/A ID completed; W01 awaited observation, and other
+exact W/N procedures remained
 NOT TESTED with automation BLOCKED, and Android app acceptance is BLOCKED. A10's
 new shared Tasks rerun is inapplicable absent a shared fix; its physical/OEM gate
 remains open. Windows/Android/application-wide readiness is **not established**.
@@ -1851,3 +1852,114 @@ in FPA `commands.jsonl`, `docs-links.log`). Later additions only record the resu
 and correct spacing/serial notation; checked link targets are unchanged.
 Final diff/whitespace, protected-hash review and local commit/status are recorded
 at delivery. No app tests are rerun for these receipt-only edits.
+
+### Guided W01 file-selection observations
+
+Report recorded 2026-11-04 18:40:50+03:00; actual execution time was not supplied.
+Same isolated Windows Debug/source/artifact as above; docs HEAD `fb19a42`.
+The user first explicitly answered “Matched” to the displayed database-path check,
+then “yes it worked” to the scoped next-stage question covering the actual Windows
+picker opening, adding the synthetic `resource.txt`, and retaining the unsaved
+title. Record PASS only for those three reported W01 assertions and profile
+confirmation. Exact input mix, current theme/display scale, resource type/viewer
+contents and focus/caret have not been reported. No screenshot was supplied.
+FPA `human-w01-file-selection-184050.json` retains the scoped prompts/raw replies.
+
+Next is the existing W01 real-viewer/open/return stage, keeping the draft unsaved.
+Save/reopen/cold restart, managed attachment/removal and all other variants remain
+open; no whole ID passes. No defect or app change is inferred. Prior source,
+regression and documentation-link evidence remains applicable: these updates alter
+only outcome prose/rows and do not change checked link targets. Review the changed
+diff/whitespace; no Flutter/native build or app test is justified by this receipt.
+
+### Guided W01 viewer and return observations
+
+Report recorded 2026-11-04 18:46:38+03:00; execution time not supplied. User reports
+correct fixture contents in **Notepad**, successful physical **Alt+Tab** return,
+preserved unsaved title, visible text caret, **dark theme /100% Windows display
+scale**, no unexpected behavior, and the draft still open/unsaved. Record PASS for
+those named assertions in that reported variant only. The exact focused control
+was not identified, so that narrower focus-target observation is INCONCLUSIVE.
+No screenshot was supplied; evidence is the explicit user report in FPA
+`human-w01-viewer-return-184638.json` and the session transcript.
+
+Read-only process inventory still identifies PID19636 as the checkout Debug
+executable. No UI action, save, exit or launch was performed by the agent while
+the user's draft remained unsaved. Next is manual Save/editor close/reopen and
+report, stopping on save failure. Todorbit stays running; cold restart is deferred
+until successful save confirmation and current-process verification, avoiding a
+second instance or loss of an unconfirmed draft. Attachment/removal and other
+variants remain unexecuted; no whole W01, keyboard or screen-reader pass follows.
+
+No product defect/change. Source/assertions/dependencies and linked documentation
+targets are unchanged; reuse earlier bounded regression/link evidence. The receipt
+diff/whitespace and protected-file hashes are checked without rebuilding/retesting
+the app. Detailed invocation records remain under FPA.
+
+### Guided W01 Save/reopen, resource-kind correction and cold start
+
+Report recorded2026-11-04 18:49:17+03:00: user says the scoped Save/editor-reopen
+test passes, but the app was closed accidentally. Exact title was not supplied by
+the user. OS inventory confirms original checkout PID19636 absent; only personal
+installed app31540/companion17028 remain, untouched. A new read-only inspection at
+18:50:15 of the isolated database finds title `B6 TodayW01 unsaved` and one resource:
+ID `6a921743-ccdd-430f-87c3-fb1f97f8737f`, label/original name `resource.txt`, kind
+**managed**,50 bytes, SHA-256 `964fcd8ebc0b066c76fea3f7375c775995fd40e430c9b2f6988693d4ee977187`.
+The original synthetic file has that same hash. This supports saved-record
+persistence and the reported Save/reopen assertions, not yet cold-start resource
+UI acceptance.
+
+**Receipt correction:** earlier guidance/rows called the added item a link before
+its kind was verified. The stored item is a managed attachment; no external-file
+row exists. Generic picker/add/viewer/draft assertions stand, but external-link-
+specific acceptance is INCONCLUSIVE until the actual selected control is known.
+Focused source inspection confirms separate callbacks: paperclip tooltip “Attach
+a copy of a file” calls `attachManagedFile`; document tooltip “Link an existing
+file” calls `addExternalResource(externalFile)`. The actual clicked control is not
+established, so no application defect is confirmed and no product fix is made.
+Read-only inspection required no personal DB, migration, record edit or reset.
+
+At18:51:52, `python FPA/cold-launch-w01.py` rechecks absence of any checkout Debug
+app, exact original executable/kernel SHA-256 and both original child environment
+paths; launches only that existing Debug executable into the same profile as
+**PID30008**. No build, new profile or fixture recreation. Old logs/receipts remain.
+`w01-cold-launch.json` retains exact command/environment and pre-launch inventory.
+VM getVM identifies PID30008 and the same actual Drift database path. Standalone
+Debug has no source-expression compilation service: the read-only environment
+`evaluate` diagnostic fails with that tooling error. Both values are supplied by
+the validated launch API; do not claim a new successful VM environment evaluation.
+Driver `get_text` reads `B6 TodayW01 unsaved` from cold Today without UI input;
+runtime diagnostics return no errors. These establish actual process/title
+restart only; the human resource/kind/open observation remains pending.
+
+FPA `inspect-w01-saved.py`, `w01-saved-before-cold-start.json`,
+`cold-launch-w01.py`, `w01-cold-launch.json`, `w01-cold-runtime.log` and
+`w01-cold-mcp-actions.json` record exact operations, source, local times, outcomes
+and the failed diagnostic. Existing host/analysis/link evidence remains scoped
+and unchanged. No screenshot, broad suite, native Release/self-test, app edit,
+Android relaunch or cloud operation. Next: inspect the same resource after cold
+start and clarify the original add action; preserve it until that observation.
+
+At19:21:52+03:00 (report recorded; actual execution time unspecified), the user
+confirms the scoped cold title/resource/kind/viewer checks pass and explicitly
+states **Attach a copy of a file** was used. This resolves the earlier route
+uncertainty: managed Attachment is expected; the external-link journey is NOT
+TESTED. Keep the earlier INCONCLUSIVE classification as historical qualification,
+not a product failure. FPA `human-w01-attachment-cold-192152.json` retains the reply
+and scoped assertions. Next is the original W01 attachment removal/original-file
+preservation step; no whole ID, extra theme/scale or exact focus-target pass.
+No app edit or new product test is warranted by this successful user report.
+
+At19:25:27+03:00, user “yes” confirms the scoped attachment-removal/editor-reopen
+and intact-original checks. `python FPA/inspect-w01-removal.py` reads only the
+isolated task: no remaining resource rows, unchanged title `B6 TodayW01 unsaved`.
+Original synthetic file SHA-256 remains
+`964fcd8ebc0b066c76fea3f7375c775995fd40e430c9b2f6988693d4ee977187`.
+FPA `w01-attachment-removal.json` records commands, source, result, profile, raw
+reply and why new data invalidated the earlier presence readback. This completes
+the reported dark/100% attachment sequence, not the full W01 group or additional
+theme/scale/focus-target variants. No agent deletion or app/database write.
+Next uses the exact **Link an existing file** tooltip and verifies External file
+kind before viewer/draft and subsequent persistence checks. Existing source,
+assertions, dependencies and link targets remain unchanged; no app tests/builds
+are repeated for this documentation checkpoint.
