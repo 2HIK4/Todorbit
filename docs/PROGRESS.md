@@ -1,5 +1,24 @@
 # Progress
 
+## Permanent UI quality and Sync usability (2026-11-04; local)
+
+- Branch `feature/permanent-ui-quality`, baseline `25874c0`; unrelated storage
+  documentation preserved. Root routing now mandates the canonical UI skill for
+  direct/indirect UX impact and recognizes approved Drive Sync separately from
+  snapshots. Expanded skill: 67 actionable categories, UX Necessity Review,
+  implementation/experience inspections, seven coverage dimensions and local-first
+  recovery guidance; small tasks load relevant references only.
+- Cohesive Sync pass corrects Android's encryption claim and code-only unlock
+  label, prioritizes routine controls, discloses replacement under Recovery with
+  automatic pending-review expansion, and reuses secondary text roles. Existing
+  guards/crypto/conflicts/data protocols remain; no version change or publication.
+- [Audit, 40-group inventory, routing scenarios and exact invocation ledger](UI_UX_PERMANENT_QUALITY_AUDIT.md):
+  focused widget/analysis and isolated Windows Debug/Driver/hot reload/restart
+  evidence, including failures/corrected fixtures and reuse. Physical Android,
+  native widget/input/DPI/reader and live two-device Drive acceptance remain open.
+  Next: paired disposable-account runtime acceptance, then populated advanced
+  forms/native widgets. No full-app polish/accessibility claim or release.
+
 ## Experimental Start New Sync beta 11 published (2026-11-04)
 
 - Published [v1.0.19-beta.11](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.11), experimental/prerelease, not Latest Stable; version `1.0.19-beta.11+34`, source/tag `c8f1561`, branch `feature/start-new-sync-beta11`.

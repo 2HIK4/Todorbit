@@ -1,6 +1,6 @@
 ---
 name: ultimate-ui-ux
-description: "Design, inspect, implement, audit, debug, and polish web, desktop, and mobile interfaces. Use for visual quality, accessibility, responsive layouts, themes, forms, overlays, interaction and UI state defects, or comprehensive UI reviews. Includes root-cause diagnosis and evidence-based regression verification."
+description: "Design, inspect, implement, audit, debug, refactor and polish user experiences. Use for UI, accessibility, interactions, themes, widgets, responsive layouts, and state/service/performance changes affecting visible behavior. Includes usability and complexity review, root-cause diagnosis and evidence-based verification."
 ---
 
 # Ultimate UI/UX: Design, Diagnose, Fix, Verify
@@ -9,6 +9,11 @@ Deliver coherent, operable, accessible and reliable interfaces. A checklist is a
 source of hypotheses; passing a compile or screenshot is not proof of correct
 behavior. Never claim perfect design, exhaustive defect detection, zero bugs or
 accessibility compliance from limited evidence.
+
+Treat four defect classes equally: **visual** (presentation/hierarchy),
+**behavioral** (wrong response/state/feedback), **usability** (works but confusing
+or costly), and **environmental/edge-case** (fails with different inputs, data,
+devices or application states). Automated passes do not establish good UX.
 
 ## Start and choose scope
 
@@ -21,7 +26,9 @@ accessibility compliance from limited evidence.
    does not authorize publication. A local fix is not a full app audit.
 3. Identify actual surfaces, owners and shared consumers from source/navigation
    and available runtime tools. Record supported platforms and critical journeys.
-   Read only the reference sections needed below.
+   Record affected states and the seven coverage dimensions in the audit workflow.
+   Read only the reference sections needed below. Reuse this entry point within
+   the session unless it changes or necessary context is unavailable.
 4. Inspect the rendered failing/baseline state when possible. Verify tooling and
    isolated test data/profile before launching. If unavailable, mark runtime
    coverage **NOT TESTED** or **BLOCKED**, and label code inspection as weaker
@@ -31,15 +38,23 @@ accessibility compliance from limited evidence.
 
 | Need | Read |
 | --- | --- |
+| Every affected screen, major component or journey | Relevant rules in [design standards](references/design-standards.md), including the mandatory UX Necessity Review and implementation/experience inspections |
+| Find checks by product area | [67-category coverage inventory](references/problem-coverage.md); choose numbered rows for local work, assess every row's applicability for comprehensive audits |
 | A symptom or small UI change | Relevant numbered sections of [issue catalog](references/issue-catalog.md); use its headings/search, not the entire catalog by default |
 | Color lost, dependent dates, popup placement, scroll jumping, shared root causes | Relevant investigation in [fix patterns](references/fix-patterns.md) |
-| Full audit / ship review | [Audit workflow](references/audit-workflow.md), all 28 catalog categories as applicable, [test matrix](references/test-matrix.md) and [report template](references/report-template.md) |
+| Full audit / ship review | [Audit workflow](references/audit-workflow.md), all 67 coverage categories as applicable, [test matrix](references/test-matrix.md) and [report template](references/report-template.md); detailed symptom catalog only where useful |
+| Sync, accounts, offline, conflicts, recovery or OS workers | [Local-first journeys](references/local-first-journeys.md), actual architecture/protocol and current project decisions; never simplify encryption/key/ownership semantics for appearance |
 | Select environments, severity, accessibility criteria or evidence | Relevant section of [test matrix](references/test-matrix.md) |
 | Flutter on Android/Windows | Relevant sections of [Flutter engineering](references/flutter-engineering.md); [Flutter verification](references/flutter-verification.md) for test selection/recipes |
 | Standards or provenance | [Sources](references/sources.md); consult current primary documentation only when the implementation depends on it |
 
 ## Diagnose and improve
 
+- Perform two distinct inspections: **Does it work correctly?** and **Should it
+  work this way?** The second includes the UX Necessity Review, terminology,
+  discoverability, decision/step cost and the user's actual goal. Record justified
+  simplification or why the existing complexity is necessary. Never remove a
+  capability silently or invent features/defects from the inventory.
 - State expected behavior and reproduce with context: platform, viewport, text
   scale, theme, input, data, sequence. Separate an observed defect from a hypothesis
   and a design preference. Prioritize user harm using P0-P3 in the matrix.

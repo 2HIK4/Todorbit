@@ -22,7 +22,9 @@ For change validation or a release checkpoint, invoke `$todorbit-regression` fro
 ## UI quality workflow
 
 [AGENTS.md](../AGENTS.md#skills-and-documentation-routing) requires
-[Ultimate UI/UX](../.agents/skills/ultimate-ui-ux/SKILL.md) for every UI task.
+[Ultimate UI/UX](../.agents/skills/ultimate-ui-ux/SKILL.md) for any UI/UX impact,
+including refactoring, optimization and indirect state/service changes. Work
+without a user-experience impact does not trigger a UI audit.
 It replaces the project-local UI review skill as the primary design workflow.
 Do not routinely load global design skills alongside it. The repository maintains
 the skill locally; keep changes scoped to a requested skill upgrade or a confirmed
@@ -31,16 +33,22 @@ loads only relevant sections for small changes. Full audits use the skill's
 reachable-surface inventory and coverage ledger, including separate untested and
 tooling/environment-blocked rows. See [integration and upgrade evidence](UI_SKILL_INTEGRATION.md).
 
-1. Read the skill and task-relevant project guidance. Choose Build, Audit, Fix,
+1. Read the canonical skill once per session (reload if changed/context missing)
+   and task-relevant references. Choose Build, Audit, Fix,
    Polish or Ship review; scope the inventory, issue-catalog checks, test matrix
-   and report to the affected interface and adjacent shared consumers. A small
-   change does not require an application-wide audit.
+   and report to the affected platforms, surfaces, states, journeys and adjacent
+   shared consumers. Use the skill's seven-dimensional model; full audits assess
+   all 67 category rows for applicability, while small changes load relevant rows.
+   A small change does not require an application-wide audit.
 2. Inspect the existing implementation and shared controls in `lib/features/shared/`.
    Use [Design](DESIGN.md), [Theming](THEMING.md) and relevant feature guidance.
    Identify requirements or confirmed causes before choosing a minimal solution.
    Preserve Todorbit's compact Fluent-inspired Windows identity, lavender default,
    semantic tokens, reusable components and working interactions. Functionality,
    drafts, preferences and data safety take precedence over appearance.
+   Perform both implementation and experience inspections, including the skill's
+   UX Necessity Review. Simplicity, understandable copy and fewer unnecessary
+   decisions are acceptance criteria alongside functional correctness.
 3. Identify shared Windows/Android components and affected platform-specific
    adapters. Respect Windows keyboard/mouse/focus and Android touch/Back/IME
    conventions; consult [Android parity](ANDROID.md) and the

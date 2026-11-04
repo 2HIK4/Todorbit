@@ -40,12 +40,26 @@ class _Controller extends SyncController {
     required super.pairing,
     required bool Function() unlocked,
     required MockSyncDrive drive,
-  }) : super(storage: drive, isUnlocked: unlocked, onApplied: () async {});
+  }) : super(
+         storage: drive,
+         isUnlocked: unlocked,
+         onApplied: () async {},
+         resetVault: MemoryTokenStore(),
+       );
   SyncProblem? injectedProblem;
   @override
   SyncProblem? get problem => injectedProblem ?? super.problem;
   int applied = 0;
   int requests = 0, privateRequests = 0;
+  int cancelledReviews = 0;
+  void refreshFixture() => notifyListeners();
+  @override
+  Future<void> cancelNewSyncReview() async {
+    cancelledReviews++;
+    resetState = null;
+    notifyListeners();
+  }
+
   String? authorizedPassword, generationPassword;
   @override
   Future<void> reconnectGeneration({
@@ -524,6 +538,10 @@ void main() {
             state == 'recovery' ? findsOneWidget : findsNothing,
           );
           expect(find.text('Pair your devices'), findsNothing);
+          if (state == 'recovery') {
+            expect(find.text('Unlock sync to continue'), findsOneWidget);
+            expect(find.text('Recovery code'), findsOneWidget);
+          }
           final primary = find.byType(FilledButton);
           await tester.ensureVisible(primary);
           await tester.pumpAndSettle();
@@ -558,6 +576,152 @@ void main() {
         },
       );
     }
+  }
+
+  for (final scenario in [
+    (Brightness.light, ThemePalette.light, const Size(1280, 800), 1.0),
+    (Brightness.dark, ThemePalette.dark, const Size(360, 640), 2.0),
+    (Brightness.dark, ThemePalette.dusk, const Size(360, 640), 2.0),
+  ]) {
+    testWidgets(
+      'routine Sync precedes recovery and pending review is revealed ${scenario.$2 == ThemePalette.dusk ? 'custom' : scenario.$1.name}',
+      (tester) async {
+        final font = FontLoader('Roboto');
+        font.addFont(
+          Future.value(
+            ByteData.sublistView(
+              File('C:/Windows/Fonts/segoeui.ttf').readAsBytesSync(),
+            ),
+          ),
+        );
+        await font.load();
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = scenario.$3;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        controller.auth.account = const CloudAccount(
+          'synthetic',
+          'Synthetic account',
+        );
+        controller.standardSync = true;
+        controller.snapshot = const SyncExchangeStatus(
+          binding: SyncBinding(
+            workspace: 'fixture',
+            account: 'synthetic',
+            device: 'fixture',
+          ),
+          enabled: true,
+          automatic: true,
+          quarantined: false,
+          pending: 0,
+          conflicts: 0,
+          waiting: 0,
+        );
+        providerOwnsController = true;
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              syncControllerProvider.overrideWith((ref) => controller),
+            ],
+            child: RepaintBoundary(
+              key: const ValueKey('routine-capture'),
+              child: MaterialApp(
+                theme: buildAppTheme(
+                  scenario.$1,
+                  scenario.$2,
+                  android: scenario.$3.width < 600,
+                ),
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(context)
+                      .copyWith(textScaler: TextScaler.linear(scenario.$4)),
+                  child: child!,
+                ),
+                home: Scaffold(
+                  body: Builder(
+                    builder: (context) => TextButton(
+                      onPressed: () => showSyncSettings(context),
+                      child: const Text('Open sync'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('Open sync'));
+        await tester.pumpAndSettle();
+        expect(find.text('Start New Sync'), findsNothing);
+        // Routine control precedes advanced choices in the actual layout.
+        expect(
+          tester.getTopLeft(find.text('Automatic sync')).dy,
+          lessThan(tester.getTopLeft(find.text('Encryption options')).dy),
+        );
+        await tester.ensureVisible(find.text('Recovery'));
+        await tester.tap(find.text('Recovery'));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text('Start New Sync'));
+        await tester.pumpAndSettle();
+        expect(find.text('Start New Sync').hitTestable(), findsOneWidget);
+        expect(
+          tester.getRect(find.text('Start New Sync')).bottom,
+          lessThan(tester.getTopLeft(find.text('Close')).dy),
+        );
+        expect(
+          find.textContaining('Cloud-only records may be lost'),
+          findsOneWidget,
+        );
+        final capture = Platform.environment['TODORBIT_UI_CAPTURE'];
+        if (capture != null) {
+          await tester.runAsync(() async {
+            final boundary = tester.renderObject<RenderRepaintBoundary>(
+              find.byKey(const ValueKey('routine-capture')),
+            );
+            final image = await boundary.toImage();
+            final bytes = await image.toByteData(format: ImageByteFormat.png);
+            await File(
+              '$capture/recovery-${scenario.$2 == ThemePalette.dusk ? 'custom' : scenario.$1.name}.png',
+            ).writeAsBytes(bytes!.buffer.asUint8List());
+            image.dispose();
+          });
+        }
+        // A pending review must reopen even after this section was collapsed.
+        await tester.ensureVisible(find.text('Recovery'));
+        await tester.tap(find.text('Recovery'));
+        await tester.pumpAndSettle();
+        controller.resetState = {
+          'phase': 'review',
+          'selected': ['synthetic'],
+          'backup': 'Synthetic recovery copy',
+        };
+        controller.refreshFixture();
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text('Review new sync setup'));
+        await tester.tap(find.text('Review new sync setup'));
+        await tester.pumpAndSettle();
+        expect(find.byType(SyncResetConfirmation), findsOneWidget);
+        expect(
+          tester
+              .widget<FilledButton>(
+                find.widgetWithText(FilledButton, 'Start New Sync'),
+              )
+              .onPressed,
+          isNull,
+        );
+        expect(
+          find.textContaining(
+            'Cloud-only records and unresolved cloud versions',
+          ),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Close'));
+        await tester.pumpAndSettle();
+        expect(controller.requests, 0);
+        expect(controller.cancelledReviews, 1);
+      },
+    );
   }
 
   testWidgets(
@@ -851,6 +1015,7 @@ void main() {
       controller.pairing.passwordAvailable = true;
       await tester.tap(find.byKey(const ValueKey('sync-status-button')));
       await tester.pumpAndSettle();
+      expect(find.text('Unlock sync to continue'), findsOneWidget);
       await tester.ensureVisible(find.text('Use recovery code'));
       await tester.tap(find.text('Use recovery code'));
       await tester.pumpAndSettle();

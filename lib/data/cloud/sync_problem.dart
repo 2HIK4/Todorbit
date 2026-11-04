@@ -82,7 +82,7 @@ class SyncProblem {
         'Enter the original passphrase or recovery code. Google sign-in alone cannot unlock this data. Starting new sync does not recover cloud-only records.',
         SyncProblemAction.unlock,
         'Unlock sync',
-        'Password required',
+        'Unlock sync to continue',
       ),
       CloudFailureKind.wrongCredential => const SyncProblem(
         'Sync could not be unlocked',

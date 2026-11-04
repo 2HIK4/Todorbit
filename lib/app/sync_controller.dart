@@ -133,7 +133,7 @@ class SyncController extends ChangeNotifier {
       (auth.needsReconnect
           ? 'Reconnect Google Drive'
           : needsRecoveryCode
-          ? 'Password required'
+          ? 'Unlock sync to continue'
           : snapshot?.binding == null && auth.account != null
           ? 'Ready to set up sync'
           : switch (status.phase) {

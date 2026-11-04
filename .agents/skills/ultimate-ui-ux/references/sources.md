@@ -1,6 +1,6 @@
 # Source inspiration, external standards, and licensing note
 
-The Ultimate UI/UX skill contains **original summarized rules and workflow** shaped by general UI engineering practice, the user's requested 28-category issue inventory, and the public high-level approaches of the following ten published agent skills. They are listed as reference links, **not** copied, installed or embedded with source code. The exact rank order is editorial, not scientifically established. Individual skill content and dependencies may change over time. Review each upstream skill's license and scripts if choosing to install it separately.
+The Ultimate UI/UX skill contains **original summarized rules and workflow** shaped by general UI engineering practice, the original 28-group symptom inventory, the user's 67-category expansion, and the public high-level approaches of the following ten published agent skills. The full named Problem Encyclopedia was unavailable in this upgrade; the supplied category inventory is the baseline. Upstream links below are provenance, not dependencies or a recommendation to load every skill. They are **not** copied, installed or embedded with source code. The exact rank order is editorial, not scientifically established. Individual skill content and dependencies may change over time. Review each upstream skill's license and scripts if choosing to install it separately.
 
 1. **UI/UX Pro Max**, nextlevelbuilder — design patterns, theme/style choices, UX guidelines: https://github.com/nextlevelbuilder/ui-ux-pro-max-skill
 2. **Frontend Design**, Anthropic — intentional visual identity, typography, UX writing: https://github.com/anthropics/skills/tree/main/skills/frontend-design
@@ -40,3 +40,10 @@ SDK/platform before using a new API. No upstream skill or dependency is required
 - [Flutter accessibility testing](https://docs.flutter.dev/ui/accessibility/accessibility-testing): available automated and native checks.
 - [Golden matcher](https://api.flutter.dev/flutter/flutter_test/matchesGoldenFile.html): capture boundary and platform/font/SDK limitations.
 - [Windows responsive design](https://learn.microsoft.com/en-us/windows/apps/design/layout/screen-sizes-and-breakpoints-for-responsive-design): available window space and effective pixels; do not copy XAML breakpoints blindly into Flutter.
+
+## Platform accessibility sources checked for the 2026-11-04 upgrade
+
+- [Windows accessibility overview](https://learn.microsoft.com/en-us/windows/apps/design/accessibility/accessibility-overview): keyboard, screen readers, customization and UI Automation.
+- [Android app accessibility](https://developer.android.com/guide/topics/ui/accessibility/apps): text contrast, 48dp touch targets and meaningful descriptions.
+- [Flutter accessibility](https://docs.flutter.dev/ui/accessibility-and-internationalization/accessibility): framework semantics and platform verification.
+- [WCAG 2.2](https://www.w3.org/TR/WCAG22/): applicable AA evaluation targets, with exceptions and web/native unit distinctions. These sources support checks, not a Todorbit compliance claim.

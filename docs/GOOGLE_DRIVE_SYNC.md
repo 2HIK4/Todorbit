@@ -1,6 +1,8 @@
 # Google Drive sync
 
-Beta 11 adds **Start New Sync** in Sync settings. A verified independent local
+Beta 11 adds **Start New Sync** in Sync settings (under **Recovery** in the current
+UI). Routine sync and Automatic sync precede encryption/advanced recovery options;
+pending replacement reviews expand Recovery automatically. A verified independent local
 snapshot and explicit cloud-loss acknowledgment precede a fresh workspace. It
 keeps current local portable records and retained histories, uploads and reads
 back the complete new seed, activates an immutable generation head, then removes
@@ -13,7 +15,10 @@ uncommitted staging block deletion. See [protocol, safety evidence and manual
 checks](SYNC_START_NEW.md). Physical devices and live Drive remain owner acceptance.
 
 
-Published baseline: 1.0.19-beta.9+32, schema 26, sync protocol 1. Beta 9 includes
+Latest recorded publication: **1.0.19-beta.11+34**, schema 26; see the exact source,
+artifacts and remaining acceptance in [the beta11 receipt](SYNC_START_NEW.md).
+The current UI refinements are local and are not included in that release.
+Historical beta9 baseline: 1.0.19-beta.9+32, schema 26, sync protocol 1. Beta 9 includes
 the interrupted-upload and offline-decision fixes from
 [comprehensive verification](SMART_SYNC_VERIFICATION.md). See the
 [publication receipt](SMART_SYNC_BETA_9_PUBLICATION.md) for exact artifact checks
@@ -26,7 +31,7 @@ connect Google Drive and sync without another password. A second updated device
 automatically detects Standard data and merges its existing local records.
 Existing encrypted workspaces still require their original recovery credential
 once; they are never replaced with Standard data. Published beta-9 behavior above
-remains historical until a new candidate is explicitly built and accepted.
+is historical; beta10/11 implement Standard/private setup as recorded in their receipts.
 
 For a **new empty** workspace, Settings > Sync > Encryption options offers Private
 Encrypted Sync. Choose a memorable passphrase, save the random recovery code and

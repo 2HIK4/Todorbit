@@ -208,7 +208,7 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
       case SyncProblemAction.recovery:
         await _instructions(
           'Recover sync safely',
-          'Keep your local data, existing backups and original recovery code. If encrypted, try its original credential. Start New Sync below is an explicit alternative: it uses this device?s current records and can remove cloud-only data. No data is removed merely by viewing these options.',
+          'Keep your local data, existing backups and original recovery code. If encrypted, try its original credential. Start New Sync below is an explicit alternative: it uses the current records on this device and can remove cloud-only data. No data is removed merely by viewing these options.',
         );
       case SyncProblemAction.resume:
         if (controller.resetState?['phase'] == 'review') {
@@ -230,11 +230,12 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
           Uri.parse('https://one.google.com/storage'),
           mode: LaunchMode.externalApplication,
         );
-        if (!opened && mounted)
+        if (!opened && mounted) {
           await _instructions(
             'Manage Google storage',
             'Open one.google.com/storage for the selected Google account, free space, then return here and retry sync.',
           );
+        }
       case SyncProblemAction.services:
         final opened = await launchUrl(
           Uri.parse(
@@ -242,11 +243,12 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
           ),
           mode: LaunchMode.externalApplication,
         );
-        if (!opened && mounted)
+        if (!opened && mounted) {
           await _instructions(
             'Google Play services',
             'Open Google Play Store and update Google Play services, then retry sign-in. Local backups remain available on devices without Play services.',
           );
+        }
     }
   }
 
@@ -309,7 +311,7 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
                 children: [
                   Text('Google Drive', style: theme.textTheme.titleSmall),
                   const SizedBox(height: 4),
-                  Text(
+                  SettingsHelperText(
                     controller.auth.account?.label ??
                         'Connect to sync across your devices',
                   ),
@@ -353,7 +355,7 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
                 controller.pairing.passwordAvailable) ||
             restored && connected) ...[
           if (!restored)
-            const Text(
+            const SettingsHelperText(
               'Unlock your encrypted cloud data once. This device will remember the key in protected storage.',
             ),
           if (!restored && controller.pairing.passwordAvailable)
@@ -465,47 +467,6 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
             ],
           ),
         ],
-        if (controller.reset != null && connected) ...[
-          const SizedBox(height: 16),
-          Text('Start New Sync', style: theme.textTheme.titleSmall),
-          const SizedBox(height: 6),
-          const SettingsHelperText(
-            'Replace cloud sync with this device?s data. Local records stay here. Cloud-only records may be lost. A verified recovery snapshot is required.',
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed:
-                busy ||
-                    restored ||
-                    (controller.resetPending &&
-                        controller.resetState?['phase'] != 'review' &&
-                        !(controller.resetState?['phase'] == 'activating' &&
-                            problem?.action == SyncProblemAction.conflicts))
-                ? null
-                : () => showStartNewSync(context, controller),
-            icon: const Icon(Icons.restart_alt),
-            label: Text(
-              controller.resetState?['phase'] == 'review'
-                  ? 'Review new sync setup'
-                  : 'Start New Sync',
-            ),
-          ),
-          if (controller.resetState?['phase'] == 'review')
-            TextButton(
-              onPressed: busy ? null : controller.cancelNewSyncReview,
-              child: const Text('Cancel new sync setup'),
-            ),
-          if (controller.resetState?['phase'] == 'complete' &&
-              (controller.resetState?['retired'] as List? ?? []).isNotEmpty)
-            TextButton(
-              onPressed: busy ? null : controller.resumeNewSync,
-              child: const Text('Check retired cloud cleanup'),
-            ),
-          if (restored)
-            const SettingsHelperText(
-              'Reconcile the restored profile before starting a replacement.',
-            ),
-        ],
         if (notice != null && problem == null) ...[
           const SizedBox(height: 12),
           Text(notice, style: theme.textTheme.bodyMedium),
@@ -541,6 +502,20 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
                 child: const Text('Encryption options'),
               ),
             ],
+          ),
+        ],
+        if (paired && !restored) ...[
+          const SizedBox(height: 12),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Automatic sync'),
+            subtitle: const Text(
+              'Checks while open. Background checks depend on your device.',
+            ),
+            value: controller.snapshot?.automatic ?? false,
+            onChanged: busy || controller.resetPending
+                ? null
+                : controller.setAutomatic,
           ),
         ],
         const SizedBox(height: 12),
@@ -583,17 +558,6 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
         ),
         if (paired && !restored) ...[
           const SizedBox(height: 12),
-          SwitchListTile.adaptive(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Automatic sync'),
-            subtitle: const Text(
-              'Checks while open. Background checks depend on your device.',
-            ),
-            value: controller.snapshot?.automatic ?? false,
-            onChanged: busy || controller.resetPending
-                ? null
-                : controller.setAutomatic,
-          ),
           if (controller.recoveryReminder && controller.standardSync != true)
             TextButton.icon(
               onPressed: busy ? null : () => _showCode(controller),
@@ -645,6 +609,58 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
               child: const Text('Hide code'),
             ),
           ],
+        ],
+        if (controller.reset != null && connected) ...[
+          const SizedBox(height: 12),
+          ExpansionTile(
+            // Reopen when replacement becomes pending after manual collapse.
+            key: ValueKey(('sync-recovery', controller.resetPending)),
+            tilePadding: EdgeInsets.zero,
+            expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+            title: const Text('Recovery'),
+            subtitle: const SettingsHelperText(
+              'Replace cloud sync using this device',
+            ),
+            initiallyExpanded: controller.resetPending,
+            children: [
+              const SettingsHelperText(
+                'Replace cloud sync with the data on this device. Local records stay here. Cloud-only records may be lost. A verified recovery snapshot is required.',
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed:
+                    busy ||
+                        restored ||
+                        (controller.resetPending &&
+                            controller.resetState?['phase'] != 'review' &&
+                            !(controller.resetState?['phase'] == 'activating' &&
+                                problem?.action == SyncProblemAction.conflicts))
+                    ? null
+                    : () => showStartNewSync(context, controller),
+                icon: const Icon(Icons.restart_alt),
+                label: Text(
+                  controller.resetState?['phase'] == 'review'
+                      ? 'Review new sync setup'
+                      : 'Start New Sync',
+                ),
+              ),
+              if (controller.resetState?['phase'] == 'review')
+                TextButton(
+                  onPressed: busy ? null : controller.cancelNewSyncReview,
+                  child: const Text('Cancel new sync setup'),
+                ),
+              if (controller.resetState?['phase'] == 'complete' &&
+                  (controller.resetState?['retired'] as List? ?? []).isNotEmpty)
+                TextButton(
+                  onPressed: busy ? null : controller.resumeNewSync,
+                  child: const Text('Check retired cloud cleanup'),
+                ),
+              if (restored)
+                const SettingsHelperText(
+                  'Reconcile the restored profile before starting a replacement.',
+                ),
+            ],
+          ),
         ],
       ],
     );

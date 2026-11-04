@@ -41,9 +41,17 @@ Track excluded or unsupported surfaces with rationale, never as passes.
 
 ## 3. Plan representative coverage
 
+Evaluate seven dimensions explicitly: **surface** (including transient/native),
+**state** (focus/selection/disabled/empty/pending/success/failure/offline/conflict),
+**environment** (OS, bounds, orientation, DPI, text, theme, accessibility),
+**interaction** (pointer/keyboard/touch/focus/scroll/navigation), **user journey**
+(first/routine/advanced/interrupted/recovered/repeated use), **data scenario**
+(empty/typical/large/unusual/old/concurrent), and **quality** (visual, simplicity,
+functionality, accessibility, responsiveness, trust, performance).
+
 Use [test matrix](test-matrix.md) to select pairwise combinations and targeted
 high-risk intersections. Record why omitted combinations are acceptable. Read
-the complete [catalog](issue-catalog.md) during a full audit; mark applicability
+the [67-category inventory](problem-coverage.md) during a full audit; mark applicability
 for each category and map relevant checks to surfaces. This is not a requirement
 to execute every Cartesian combination or invent nonexistent product states.
 
@@ -54,6 +62,13 @@ normal geometry test. A whole screen must not pass because one row did.
 ## 4. Inspect journeys and transitions
 
 For each selected surface:
+
+Perform both an **implementation inspection** (constraints, controls, data,
+state and technical correctness) and an **experience inspection** (user goal,
+hierarchy, vocabulary, discoverability and interaction cost). Apply the
+[UX Necessity Review](design-standards.md#ux-necessity-review) in the latter.
+A functioning screen can still have a confirmed usability problem; support the
+claim with a concrete journey, redundant decision or unclear consequence.
 
 1. Reach it by the real entry path; inspect hierarchy, spacing, baselines, wrapping,
    colors/icons and reachable actions at ordinary and stressed geometry.

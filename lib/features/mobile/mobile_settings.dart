@@ -389,9 +389,7 @@ class _MobileSettingsState extends ConsumerState<MobileSettings>
             ListTile(
               leading: const Icon(Icons.sync),
               title: const Text('Sync'),
-              subtitle: const Text(
-                'Encrypted incremental changes and conflict resolution',
-              ),
+              subtitle: const Text('Sync across devices with Google Drive'),
               onTap: () => showSyncSettings(context),
             ),
             ListTile(

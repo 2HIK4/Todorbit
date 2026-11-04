@@ -1,4 +1,9 @@
-# Issue catalog: 28 categories, symptom -> preferred fix
+# Detailed symptom investigations: 28 groups
+
+These original group numbers are local to this playbook. The canonical
+[67-category coverage inventory](problem-coverage.md) owns full-audit coverage;
+use this file for deeper symptom/root-cause investigations rather than loading
+both catalogs in full for every task.
 
 This is a **broad practical catalog, not literally every possible UI defect**. Treat all lines as hypotheses to verify in the running product. In each category audit default, long content, empty, disabled, loading, failure, theme variants and keyboard/touch if relevant. Prioritize actual user harm and product context over stylistic preferences.
 

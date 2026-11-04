@@ -21,11 +21,21 @@
 
 ## Findings and remediation ledger
 
+For each finding include platform, four-class classification, severity, observed
+versus expected experience, reproduction/evidence, confirmed versus suspected
+cause, correction, verification result and remaining acceptance. Keep hypotheses
+out of confirmed-defect counts. Record the UX Necessity Review outcome and both
+inspection perspectives for changed journeys.
+
 | ID | Priority | Screen/component + context | Steps / expected vs actual | Root cause / confidence | Fix or recommended fix | Status / related consumers | Evidence |
 |---|---|---|---|---|---|---|---|
 | UI-001 | P1 | Route, theme, viewport | Steps and observed divergence | Confirmed or hypothesis | Change or recommendation | Open / Changed pending verification / Fixed and verified; impacted variants | Screenshot/trace/test |
 
 ## Coverage matrix
+
+Record all seven coverage dimensions and category applicability. Source-inspected,
+automated-tested, runtime-visually-inspected and interactively-verified are
+separate evidence columns/rows; mark uninspected and blocked items explicitly.
 
 Use [coverage status definitions](audit-workflow.md#6-close-with-an-auditable-coverage-ledger).
 Separate evidence levels and unexecuted required acceptance into distinct rows.

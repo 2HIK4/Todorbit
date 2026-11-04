@@ -11,6 +11,7 @@ small manifest of SHA-256 hashes for the affected files, or a patch hash.
 
 | Date / task | Source / scope | Receipt and reuse limits |
 | --- | --- | --- |
+| 2026-11-04, permanent UI quality | `25874c0` plus focused UI/skill diff | [Audit, coverage and invocation receipt](UI_UX_PERMANENT_QUALITY_AUDIT.md). Presentation-only Sync pass; source hashes, current checks and explicit platform/live-cloud gaps. No release gate implied. |
 | 2026-11-04, Start New Sync / beta 11 | `c8f1561`; published beta11+34 generation/reset/error/UI | [Safety, failures, corrected builds and publication receipt](SYNC_START_NEW.md). Targeted checks and public integrity/updater gates pass; reuse/source/asset identities recorded. No broad suites, emulators or live Drive; physical acceptance unverified. |
 | 2026-11-04, experimental optional Sync encryption beta 10 | `ed23095` (implementation `06b9ded`); published beta10+33 | [Release receipt](SMART_SYNC_BETA_10_PUBLICATION.md). Owner explicitly requires minimal checks; broad CI/emulator runs skipped, package/signature/integrity/public-updater gates retained. |
 | 2026-11-04, local manual Sync builds | `06b9ded`; Windows Release + one production-signed GitHub APK | [Build inputs, outcomes and owner checklist](SYNC_MANUAL_BUILDS.md). Builds explicitly authorized for this task; reuse implementation tests. No live Google traffic or publication. |

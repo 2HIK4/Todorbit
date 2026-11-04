@@ -97,6 +97,10 @@ An automated zero-violation report proves only checks the specific tool could ex
 
 ## 5. Severity and acceptance
 
+Reports may use Critical = P0, High = P1, Medium = P2 and Low = P3. Record the
+four defect classes independently of severity; usability/environmental defects
+can be High even when no exception occurs. An audit does not authorize release.
+
 | Class | Meaning | Example | Gate |
 |---|---|---|---|
 | P0 | Data loss, privacy breach or widespread unusable core task | Draft is silently lost; login blocked | Stop release and fix |
