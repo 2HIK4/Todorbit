@@ -1115,3 +1115,282 @@ diff checks. Only task sources/tests and these three audit/ledger/progress files
 are included. Builds, profiles, logs, screenshots and machine settings remain
 ignored. The local commit identity and final Git status are reported in delivery;
 the comprehensive initiative is still **in progress**.
+
+## Batch 5: Resources, Templates and startup recovery
+
+Baseline `ec43e8e`, branch `feature/ui-quality-batch5`, 2026-11-04 UTC+03:00.
+This implements and verifies a bounded continuation of the existing inventory.
+It does not establish application-wide or physical-platform acceptance. All three
+unrelated storage documents match the Batch 4 SHA-256 values and are excluded.
+Applied the canonical Ultimate UI/UX and regression skills, relevant design,
+Flutter, recovery, audit and test-matrix references, repository workflow/testing,
+architecture/profile/resource/template/backup and Android guidance. No new
+migration algorithm, schema, permission, dependency, cloud service or template
+capability was introduced. Evidence is under ignored
+`.buildlog/verify/permanent-ui-quality/pass5/`.
+
+### Confirmed findings and the two inspections
+
+| Finding / severity / class | Reproduction and first incorrect boundary | Implemented correction and evidence |
+| --- | --- | --- |
+| B5-01 P1, recoverable preference loss | Start AppController with malformed appearance JSON. The reader silently returns defaults; startup projection writes those defaults over the damaged original. Baseline emits success where the preservation assertion requires a failure. Calendar's broad catch and invalid customization have the same projection risk. | Malformed/non-object JSON and invalid customization fail explicitly before projection. Calendar writes also check the existing file. Actual startup retains malformed bytes and existing task rows; invalid customization and direct write rejection are covered. Supported unknown scalar values retain existing default behavior; unrelated metadata survives normal projection. Recovery stops access until repair rather than silently resetting preferences. |
+| B5-02 P2, resource editing loss | Add URL, enter invalid text, Save. The route pops before the repository rejects it. Baseline cannot find the input dialog afterward. Rename/Edit URL share this boundary. | Existing TextPromptDialog accepts an awaited save callback, retains input/error through rejection, and prevents pending duplicate saves or Back. Resource edits close only after persistence succeeds. Invalid URL correction passes both automated and actual Windows Debug interaction. |
+| B5-03 P2, template activation | Invoke Create twice while draft approval is pending. Baseline requests approval twice because busy is set after the await. | Guard synchronously before awaiting approval and release it on declined approval/error. A burst invokes one approval; declined approval creates nothing. Existing workspace guard covers Keep editing and explicit discard before creation. Repeated deliberate task/routine applies remain available with independent identities. |
+| B5-04 P2, incomplete template and compact error access | Incomplete project payload reaches summary/build casts; source-confirmed crash risk. With 22 populated templates and 200% text, error above the fixed list produces a reproduced 124px short-window overflow. | Validate supported preview fields before opening Apply, preserve invalid rows for explicit deletion, and scroll help/error with the manager list. Valid Apply uses the existing bounded Dialog/action-bar pattern. Unsupported version, incomplete payload, stale/deleted revision, Cancel/delete, long names and both enlarged sizes pass. An interim scrollable AlertDialog change exposed selector intrinsic-layout errors; it was corrected, and nominal task/project regressions plus runtime rendering pass. |
+| B5-05 P2, duplicate-name recovery | Actual Windows second save using an existing template name exposes SQLite SQL, UUIDs and payload parameters. | Repository checks the existing case-insensitive name inside the existing save transaction and returns a useful choose-another-name error. TextPromptDialog displays ArgumentError.message. Rejected duplicate creates no row and retains the dialog input. The database uniqueness constraint remains authoritative. |
+| B5-06 P2, startup recovery access | Profile directory/storage setup happens outside the old startup catch; privacy failure uses a bare non-scrolling page; general failure has no Retry action. Source-confirmed. | An outer preparation boundary presents safe profile recovery, privacy failure uses StartupPage, and failure pages offer guarded Retry. Recovery retains the database path and asks users to preserve damaged profiles. Actual unavailable-directory, corrupt/future database, privacy and malformed preference fixtures reach these pages without a reset. |
+| B5-07 P3, misleading exclusions/recovery wording | Template copy describes general exclusions but omits checklist/subtask/attachment exclusions. Android asks for relinking, although no relink action exists in the current resource UI/repository. URL removal discusses an external file/folder. | Explicit existing template exclusions; Android offers the actual attach-new-copy/add-link alternatives; URL removal names the URL. File/folder removal still explicitly preserves originals. No relink capability or broad storage permission added. |
+
+Implementation inspection traced prompt -> callback -> repository transaction ->
+refresh -> close, template revision/identity and draft approval, native adapter
+return/error boundaries, and real startup preflight/backup/migration/controller
+initialization. Experience inspection applied the ten UX Necessity questions:
+retain one save-name step and one meaningful application preview, sensible source
+names/date defaults, explicit category selection for projects, clear exclusions,
+and actionable errors where the user can correct input. Scrolling shares existing
+content/action patterns; no decorative cards, extra configuration or new normal
+save confirmation. The existing template name constraint is preserved. Draft
+protection is in-memory; no process-death draft recovery is promised.
+
+### Verified journeys and safety boundaries
+
+- Resources: controlled picker file/folder Cancel, permission denial, managed
+  copy, external file, external folder and URL creation; open dispatch for all
+  four types; denied open; renamed/missing target; removal Cancel/approval;
+  external original and directory untouched; managed bytes, SHA-256 and original
+  name survive section reopen. Real filesystem operations use synthetic files;
+  actual external applications are replaced by an observable open adapter.
+- A 30-resource Unicode/long-name list and a 22-template list remain operable at
+  360x640/light and 640x360/dark with synthetic 200% text. Final template samples
+  additionally open/cancel valid Apply before invalid-template feedback and
+  delete cancellation/approval. These are host widget checks, not OS DPI/IME.
+- Resource dialogs/native adapter Cancel leave an unsaved task title intact and
+  leave the saved task and resource rows unchanged. Invalid URL remains editable
+  until corrected; awaited saves reject repeated activation.
+- Templates: create from a saved task; invalid name and delayed-save failure
+  boundary; repeated deliberate task and recurring-routine applications with new
+  task/series IDs; category/priority/notes/estimates and date-offset preservation;
+  project category selection and creation; intentional checklist/subtask/resource
+  exclusion with the source still intact; delete Cancel/approval leaves existing
+  tasks; unsupported/incomplete and stale/deleted recipe causes no partial work.
+  No standalone template editor or additional composition-copy capability exists.
+- Settings transfer: actual synthetic JSON export/import, preview, category
+  selection, Cancel, selected-category Apply, and a new controller reading the
+  same database/profile retain the selected Calendar change while keeping the
+  current theme. Existing codec tests cover malformed/newer/oversized input,
+  device exclusions and hotkey merge with numbered conflicts. This is controller
+  reopen persistence, not an observed OS-process restart of settings import.
+
+### Actual startup and migration outcomes
+
+`startup_recovery_journeys_test.dart` invokes the real `main` entry point using
+disposable child APPDATA/LOCALAPPDATA. The opt-in guard refuses ordinary personal
+environments. `tools/dev/test-profile-journeys.ps1` is the repeatable Windows
+invocation; it prints resolved storage, records command/source hashes/result and
+retains fixtures under `.buildlog/verify/profile-journeys/`. Ordinary host-suite
+skips do not establish this acceptance. The runner passed 13 cases before the
+separate Android adapter case was added; that adapter passed separately.
+
+| Required scenario | Observed outcome | Evidence limit |
+| --- | --- | --- |
+| A, valid profile | Windows Debug create, URL persistence, save/apply template, hot restart and read-only schema26/quick_check/foreign-key readback pass. Three task IDs, one recipe and only the source URL remain. Dark appearance survives restart; last Calendar mode/metadata are checked in the legacy fixture. | Hot restart recreates Dart state; it is not a cold Windows executable restart. Batch 4's actual valid-profile restore/process-restart evidence remains unchanged. |
+| B, supported legacy | Genuine supported schema1 task/category/project fixture enters upgrade approval without file mutation. Approval uses real Before upgrade backup and migration to schema26; IDs, relationships, notes, priority, theme, first weekday, last Calendar mode and unknown preference metadata survive. Snapshot remains schema1 with the original ID. Integrity and foreign keys pass. | Flutter host binding mocks native activation-ready only; background version-check MissingPluginException is handled and not updater acceptance. Successful fixture/snapshot retained. No production migration change. |
+| C, interrupted migration | Reuse unchanged database-initialization process-death assertions at SQL checkpoints 1, 35 and version update, plus partial-schema repair rollback/retry from the prior 635-pass serial receipt. Those assert old version/rows/integrity after killing the owned child and successful reopen. | `git diff 4987a46 --` AppDatabase, MigrationGate, BackupService, database-initialization/worker/gate tests and pubspec.lock is empty. This is real transaction-interruption evidence reused for unchanged code, not a newly observed physical startup after process death. |
+| D, corrupted database | Actual startup reaches failure, preserves exact damaged bytes, exposes Retry/path and keeps actions reachable at both 200% sizes. Retry leaves bytes unchanged. Future schema999 is also preserved and explained. | No salvage algorithm, automatic replacement, or reset. Generic recovery rendering is now supplemented by actual entry-point fixtures. |
+| E, preferences | Actual startup with malformed appearance or calendar JSON retains original bytes and existing records; invalid customization also rejects. Damaged privacy policy fails closed before DB creation. | Unknown supported scalar values still use existing defaults. No claim for every malformed field or cross-process concurrent writer. |
+| F, unavailable storage | A synthetic file blocking the profile directory reaches the outer recovery page and preserves the blocker. Resource picker/open permission failures surface through controlled adapters. | No physical ACL revocation, disk-full simulation or OS/database read-only-volume acceptance. Temporary access and damaged-file recovery guidance stay distinct. |
+
+The preference-overwrite defect's scope/safety implications were established by
+the failing baseline before correction: a reader fallback became a persistence
+write during controller startup. The correction changes preference error handling
+only; schema/migration transactions remain untouched. Targeted original-byte,
+existing-record, invalid-customization, persistence and settings-transfer checks
+cover the changed boundary. There is no reset/delete error fallback.
+
+### Windows, Android and visual evidence
+
+Windows launch at15:47:56: `flutter --no-version-check --suppress-analytics run
+--no-pub -d windows --target lib/driver_main.dart --machine`, launcher23800,
+app25072. Launch JSON, VM environment evaluation (both paths true) and Drift
+isolate establish `pass5/runtime-profile/{Roaming,Local}` and
+`Roaming/TodoPilot/life_manager.sqlite` before data interaction. Debug build,
+multiple hot reloads and hot restart succeed. Final runtime diagnostics are clear.
+Read-only `runtime-readback.json` independently confirms three distinct tasks,
+one template, exactly one URL attached to the source, quick_check=ok and no FK
+failures. No personal process/profile or native companion was selected.
+
+Live inspected sequence: create synthetic research task -> reopen -> Add URL ->
+invalid Save retains dialog -> focus input/correct -> Save -> save reusable
+template -> duplicate-name failure retains input -> Cancel -> Templates -> Apply
+-> create a copy; deliberate later Apply creates another independent copy.
+Saved screenshots: `windows-url-error.png`, `windows-template-apply.png`,
+`windows-valid-restart.png`. Intermediate animation frames were not accepted as
+final visual evidence. Wrong New task/field/Create finders and stale input focus
+produced Driver timeouts; source keys, observation and explicit waits corrected
+them. A transition yielded Driver guarded-call/RenderBox errors; after the
+confirmed bounded-layout fix and hot restart/reload, rendering and diagnostics
+are clear. No transient screenshot proves lost saved data.
+
+Computer-use skill initialization succeeded, but `sky.list_apps()` returned
+missing native pipe, os error2. **Actual Windows native file/folder selection,
+physical keyboard/DPI/Narrator are BLOCKED**. Windows MethodChannel selection,
+Cancel/error and open dispatch are adapter evidence only.
+
+Android investigation reused the existing SDK/AVD configuration and Batch 4 crash
+evidence. No devices were initially connected. The documented synthetic API35
+Google Play x86_64 AVD was launched once at15:44:56 on port5582 with `-read-only
+-no-snapshot-load -no-snapshot-save -no-window -no-audio -no-boot-anim -gpu
+swiftshader_indirect`; original userdata retained. `sys.boot_completed=1` and
+package service initially found, but `cmd package list packages
+io.github.hik4.todorbit` returned Broken pipe32. Crash log records system_server
+SIGABRT at15:48:09 and dependent DeadSystemException failures at15:48:40, before
+any Todorbit installation. Captured `android-crash.txt`, then `adb -s
+emulator-5582 emu kill`. No repeated restart, SDK/dependency download, userdata
+wipe, application uninstall, app-code workaround or Android compilation was used.
+**Android runtime remains environment-blocked**. Android importDocument
+selection/Cancel/provider-error tests are controlled MethodChannel evidence;
+actual SAF, picker return, denied/lost grants, IME, Back/rotation and persistence
+on a stable device remain unaccepted by this batch.
+
+### Coverage update across the existing 40 groups
+
+S = source implementation/experience inspection; A = host automated interaction,
+geometry or file/SQL evidence; V/I = actual Windows Debug/Driver. Every unlisted
+combination remains NOT TESTED; physical-platform blockers above remain BLOCKED.
+
+| Groups | Additional Batch 5 evidence | Remaining acceptance |
+| --- | --- | --- |
+| S01-S03 task shell/editor/composition | A resource dialogs/chooser Cancel retain unsaved title and saved record; recipe exclusions preserve source checklist/child/resource; V create/reopen/copies and SQL readback | Process-death drafts, very large task collections and full physical input remain open |
+| S04 Resources | S/A all four types, Cancel/denial/open dispatch/renamed target/remove, original-file safety, managed bytes/metadata, 30 Unicode resources/200%; V invalid/corrected URL and saved-source readback | Real native pickers/viewers, physical file ACL/storage failures and Android SAF. No relink exists; user can remove/add a resource |
+| S05 routines/series | A repeated routine applications retain definition values with independent series IDs | Full recurrence scope/collision/device matrix unchanged |
+| S12 Templates | S/A saved-task creation, intentional exclusions, repeat task/routine apply, project category, busy/draft guard, invalid/stale data, delete Cancel/approve, 22 long-name entries and valid Apply at both 200% sizes; V save/duplicate/manager/Apply/create | Physical keyboard/touch/reader and Android runtime. No new template capability added |
+| S19-S22 settings/appearance/preferences/hotkeys | A original malformed bytes preserved; normal store/persistence and existing shared prompt keyboard/close regressions pass; valid legacy metadata/navigation preferences retained | Broader settings invalid-value/device and physical keyboard/preset matrix unchanged |
+| S25 startup/migration | S/A real preflight, safe schema1 approval/upgrade/snapshot, corruption/retry, privacy, unavailable profile, malformed settings and future schema; reused actual transaction-interruption assertions; V valid-profile hot restart | Actual failed-upgrade UI after process termination, cold legacy runtime and physical storage permission/disk-full failures |
+| S32 settings transfer | A successful JSON export/import/category preview/Cancel/selected Apply/controller reopen; existing malformed/newer/oversized/exclusion/merge assertions remain valid | Actual native import/export pickers, full widget/customization bundle population, OS-process restart and Android transfer |
+| S35 widget settings | S shared TextPromptDialog consumer inspected; optional awaited callback preserves old result contract; shared keyboard-submit regression passes | No new live widget/preset acceptance; prior gaps remain |
+| S40 shared dialogs/input | S/A prompt validation/error/pending-save/keyboard/Back, bounded manager/Apply/delete and recovery actions; V normal dark prompt/manager/apply | Narrator/TalkBack, physical Tab/Shift+Tab, native IME/DPI and complete custom/RTL matrix |
+| S06-S11, S13-S18, S23-S24, S26-S31, S33-S34, S36-S39 | Other 26 groups retain earlier evidence and gaps; no new acceptance claimed | In particular no repeated 46-table backup restore, native widget build/self-test, updater, paired Sync or release gate |
+
+Seven dimensions are represented by the surfaces above; empty/populated/dirty/
+pending/invalid/stale/failed/retry/saved states; ordinary Windows plus host narrow/
+short/light/dark/200%; input/scroll/Escape/Cancel/approval; routine/recovery and
+repeat journeys; realistic Unicode/long/dense/legacy/corrupt data; and preservation,
+clarity and operation quality. No accessibility-compliance or performance claim.
+
+### Invocation ledger and evidence reuse, Batch 5
+
+<!-- BATCH5_INVOCATIONS -->
+
+All automated rows below are 2026-11-04 UTC+03:00, HEAD `ec43e8e` plus the
+named JSON's pre-invocation dirty-file SHA-256 manifest. Each JSON records exact
+SDK executable/arguments, child environment, duration, exit code and full log.
+Rows replace failed evidence only for the changed assertion/implementation; they
+are not summed as independent fresh suites.
+
+`F = flutter --no-version-check --suppress-analytics test --no-pub --concurrency=1 --reporter=expanded`.
+Aliases below are literal argument substitutions:
+
+- `m` = `lib/main.dart`.
+- `a` = `lib/data/appearance_preference_store.dart`.
+- `c` = `lib/data/calendar_preference_store.dart`.
+- `d` = `lib/data/template_repository.dart`.
+- `p` = `lib/features/shared/text_prompt_dialog.dart`.
+- `t` = `lib/features/templates/templates_dialog.dart`.
+- `r` = `lib/features/workspace/task_resources_section.dart`.
+- `n` = `lib/features/workspace/windows_resource_dialog.dart`.
+- `B` = `test/batch5_ui_journeys_test.dart`.
+- `R` = `test/resource_journeys_test.dart`.
+- `T` = `test/template_journeys_test.dart`.
+- `U` = `test/startup_recovery_journeys_test.dart`.
+- `J` = `test/settings_transfer_journeys_test.dart`.
+- `W` = `test/workspace_draft_safety_test.dart`.
+- `V` = `test/templates_widget_test.dart`.
+- `X` = `test/task_resources_widget_test.dart`.
+- `E` = `test/appearance_preference_store_test.dart`.
+- `D` = `test/template_repository_test.dart`.
+- `S` = `test/settings_ui_quality_test.dart`.
+- `K` = `test/settings_transfer_test.dart`.
+- `Z` = `test/support/profile_journey_environment.dart`.
+
+| Local time / receipt basename | Exact invocation (aliases above) | Result / new or rerun reason |
+| --- | --- | --- |
+| 15:44:46 / `baseline-154447` | `F B` | FAIL 3 new reproductions: lost URL input, duplicate draft approval, overwritten malformed preferences. |
+| 15:47:33 / `fixes-format-154733` | `dart format m p t r a c B` | PASS format initial fixes and reproductions. |
+| 15:47:47 / `focused-fixes-154747` | `F B V X E` | PASS 11; original corrections plus existing template/resource/store consumers. |
+| 15:52:09 / `recovery-resources-155209` | `F U R` | INTERRUPTED/exit1: fake-clock filesystem IO stalled first fixture; terminated only owned test tree. Correct IO boundary before rerun. |
+| 15:53:38 / `recovery-resources-io-corrected-155338` | `F --timeout=2m U R` | 5 pass/3 fail: retry real IO outside runAsync and resource cleanup masked unfinished operation; actual gate/privacy/storage/future cases pass. |
+| 15:55:08 / `recovery-resource-retry-fixtures-155508` | `F --timeout=2m U R --name 'real corrupt startup\|resource picker cancel'` | 2 corrupt/retry passes; resource fixture misses active dialog and cleanup locks. Retry only after operation completion is observed. |
+| 15:55:50 / `resource-await-state-155550` | `F --timeout=2m R --plain-name 'resource picker cancel'` | FAIL fixture: tooltip returns RawTooltip rather than IconButton; fix finder, no product change. |
+| 15:58:02 / `templates-density-probe-155802` | `F --timeout=2m T R` | 4 pass/2 fail: dense manager targets offscreen; resource journey and adapter now pass. |
+| 15:59:06 / `templates-density-scroll-corrected-155906` | `F --timeout=2m T --plain-name 'dense templates'` | FAIL 2: corrected scroll exposes real 124px manager overflow; first narrow tap still offscreen. |
+| 16:00:21 / `layout-format-160021` | `dart format p t d T R U` | PASS format template validation, prompt and fixture changes. |
+| 16:00:30 / `templates-layout-fixed-160030` | `F --timeout=2m T --plain-name 'dense templates'` | 1 pass/1 fail: landscape fixed, phone delete target lazily unbuilt; scrollUntilVisible required. |
+| 16:02:10 / `template-final-state-160210` | `F --timeout=2m T --plain-name 'dense templates'` | PASS 2 after correct lazy-list navigation; retain actions/error/records assertions. |
+| 16:04:21 / `integration-feature-check-160421` | `F --timeout=2m B U V J K` | 14 pass/6 fail: interim scrollable Apply exposes intrinsic selector layout; preferences fixture sharing violation and settings double-dispose are fixture errors. Correct before rerun. |
+| 16:05:36 / `apply-layout-format-160536` | `dart format t p m a B U J` | PASS format bounded Apply correction and new persistence fixtures. |
+| 16:05:50 / `apply-dialog-regression-160550` | `F --timeout=2m V B --name 'template burst\|saved task template\|project template asks'` | PASS 3 after bounded Dialog correction: burst guard and nominal task/project apply. |
+| 16:07:41 / `feature-final-160741` | `F --timeout=2m T U J B D S` | PASS 32: template save/routine/density, actual startup failures/preferences, settings transfer/reopen, duplicates and existing repository/shared keyboard consumers. |
+| 16:10:47 / `approved-legacy-startup-161047` | `F --timeout=2m U --plain-name 'real approved legacy'` | FAIL fixture: native activation-ready MissingPluginException and cleanup sharing violation after real migration. No migration defect inferred. |
+| 16:12:21 / `approved-legacy-retain-evidence-161222` | `F --timeout=2m U --plain-name 'real approved legacy'` | FAIL native activation-ready boundary; successful upgrade fixture retained, native boundary must be stubbed in host binding. |
+| 16:13:02 / `final-format-161302` | `dart format m a c d p t r n B R T U J` | PASS formatting only; no unchanged behavior rerun. |
+| 16:13:36 / `legacy-native-boundary-fixture-161336` | `F --timeout=2m U W --name 'real approved legacy\|template inspection'` | PASS 2: real approved schema1 upgrade/snapshot/records/preferences and existing template draft inspection/approval. |
+| 16:16:34 / `resources-final-boundaries-161634` | `F --timeout=2m R W --name 'resource\|native Windows picker'` | PASS 5: both 30-item Unicode/200% sizes, all-type real-file journey/adapter and unsaved parent preservation. |
+| 16:16:44 / `scoped-analysis-161644` | `flutter --no-version-check --suppress-analytics analyze --no-pub m a c d p t r n B R T U J W` | FAIL 3 new test brace-style infos; no other diagnostics. Product analysis reused after unchanged-boundary comparison. |
+| 16:18:28 / `recipe-composition-exclusions-161828` | `F --timeout=2m B --plain-name 'repeated task recipes'` | PASS 1 new repeated task recipe field/date/identity/exclusion/source-retention assertions. |
+| 16:21:41 / `enlarged-template-apply-162141` | `F --timeout=2m T --plain-name 'dense templates'` | FAIL 2 new valid-Apply probes: working recipe lazily unbuilt. Correct navigation, retain product assertions. |
+| 16:22:36 / `durable-profile-runner-162236` | `powershell -NoProfile -ExecutionPolicy Bypass -File tools/dev/test-profile-journeys.ps1` | PASS 13 with the committed isolated runner; validates its marker/environment and real profile tests. Result/command/hash log retained separately under profile-journeys/20261104-162236-73be9e27. |
+| 16:23:37 / `enlarged-and-android-adapter-162337` | `F --timeout=2m T R --name 'dense templates\|Android document adapter'` | PASS 3: corrected lazy scroll -> valid Apply Cancel at both 200% sizes; new Android importDocument selection/Cancel/denial adapter. |
+| 16:24:35 / `template-stale-unsupported-162435` | `F --timeout=2m T --plain-name 'unsupported and stale templates'` | PASS 1 new unsupported version and stale/deleted recipe, no partial records. |
+| 16:25:06 / `delivery-format-162507` | `dart format m a c d p t r n B R T U J W Z` | PASS final source/test formatting; no behavior changed. |
+| 16:25:09 / `analysis-corrected-162509` | `flutter --no-version-check --suppress-analytics analyze --no-pub B R T U J W Z` | FAIL 1 remaining brace-style info in new Android adapter; other six test/helper paths clear. |
+| 16:28:56 / `analysis-resource-final-162856` | `flutter --no-version-check --suppress-analytics analyze --no-pub R` | PASS after correcting only the remaining brace; other unchanged analysis reused. |
+| 16:29:05 / `delivery-source-format-162905` | `dart format m R` | PASS two files, zero format changes. |
+| 16:31:05 / `docs-links-163105` | `python tools/dev/check-docs.py docs/TESTING.md docs/PROGRESS.md docs/TEST_RUN_LEDGER.md docs/UI_UX_PERMANENT_QUALITY_AUDIT.md` | PASS; scoped verification, see named log. |
+
+Additional direct-tool verification: Dart MCP initially reported no roots; root
+registration corrected that setup, and scoped analysis returned No errors.
+CLI analysis above is authoritative for the later changed test/helper files.
+DTD/VM environment/Drift identity, Driver actions, final hot reload/restart and
+runtime diagnostics are the named runtime procedure above. `sky.list_apps()`
+failed with missing native pipe; ADB boot/package/crash/kill diagnostics and
+read-only SQLite readback establish the stated environment/data outcomes.
+Repeated `git diff --check`, final full diff/new-file review, protected-document
+hash checks, explicit-path staging and `git diff --cached --check` are the final
+source review procedure. Unobserved physical behavior is never counted as a pass.
+
+<!-- BATCH5_INVOCATIONS_END -->
+
+Additional Windows corruption launch at16:29:51 used the same exact Debug launch
+command with a separate `pass5/corrupt-runtime-profile/{Roaming,Local}` and only
+synthetic damaged bytes. Launcher22720/app31388, VM evaluation confirmed both
+child paths before interaction; no Drift database isolate opened. Actual rendered
+recovery shows the SQLite error, preservation guidance, profile path and Retry.
+Driver Retry returns to the failure page; `corrupt-runtime-readback.json` confirms
+the exact original bytes, SHA-256
+`b65e48196ee7658852dee4b6e89c9bad9f1f20c8b31e00a1be492d3374f2bbf2`.
+Runtime diagnostics are clear; `windows-corrupt-startup.png` is the actual ordinary
+Windows capture. This supplements scenario D and S25 with cold Windows runtime;
+200%/short/narrow checks remain host-widget evidence. Both owned apps were closed
+through `ext.flutter.exit`; service disposal/disappearance during intentional exit
+is not a crash. Process inspection confirms the owned PIDs stopped, without
+stopping the separate installed app. Profiles and evidence remain retained.
+
+Unchanged schema/transaction/fault-injection, backup/restore/managed-byte safety
+and dependency evidence is reused only after the empty boundary diff above.
+TemplateRepository changed only its duplicate-name check; its four existing
+tests were re-executed with new recipe-exclusion/duplicate/stale cases. Preference
+stores changed, so original-byte/startup/controller persistence/settings transfer
+and current existing store cases were executed. Shared prompt changed, so its
+keyboard/close and template/resource consumers were checked. No broad full suite,
+native Release/self-test, Android build or package/release gate is claimed.
+All final new regression cases have passing focused evidence; failed invocations
+and fixture/implementation corrections remain visible in the ledger. The safety
+runner and final analysis supplement the earlier opt-in and MCP evidence.
+
+Remaining next batch: real Windows native file/folder picker/viewer/cancel and
+physical accessibility; a stable disposable Android environment for SAF, denied
+or lost provider access, return/IME/Back/rotation and advanced journeys; physical
+storage failures and post-interruption recovery UI; complete portable settings
+widget/customization bundle and native transfer. Disposable-account cloud
+acceptance remains separate. No push, release, tag or version change authorized
+or performed. Local commit/status are reported in delivery; initiative **in progress**.

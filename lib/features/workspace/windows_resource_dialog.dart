@@ -37,7 +37,7 @@ class WindowsResourceDialog {
       if (uri == null ||
           !['https', 'http', 'mailto', 'tel', 'content'].contains(uri.scheme)) {
         throw UnsupportedError(
-          'Relink this resource using an Android document or web link.',
+          'Attach a new copy or add a supported web link on this device.',
         );
       }
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {

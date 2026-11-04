@@ -44,8 +44,10 @@ class AppearancePreferenceStore {
       return opacity is int && opacity >= 0 && opacity <= 100
           ? parsed.copyWith(widgetOpacity: opacity)
           : parsed;
-    } on FormatException {
-      return const ThemeCustomization();
+    } on FormatException catch (failure) {
+      throw FormatException(
+        'Appearance customization could not be read from ${file.path}: $failure',
+      );
     }
   }
 
@@ -125,13 +127,11 @@ class AppearancePreferenceStore {
 
   Future<Map<String, dynamic>> _read() async {
     if (!await file.exists()) return {};
-    try {
-      final value = jsonDecode(await file.readAsString());
-      if (value is Map<String, dynamic>) return value;
-    } on FormatException {
-      // Interrupted writes leave safe defaults in memory.
-    }
-    return {};
+    final value = jsonDecode(await file.readAsString());
+    if (value is Map<String, dynamic>) return value;
+    throw FormatException(
+      'Appearance settings must be a JSON object. Repair or restore ${file.path} before retrying.',
+    );
   }
 
   Future<void> _write(Map<String, dynamic> value) async {

@@ -9,11 +9,14 @@ class TextPromptDialog extends StatefulWidget {
     this.label,
     this.maxLength = 60,
     this.submitLabel = 'Continue',
+    this.help,
+    this.save,
   });
 
   final String title, initial, submitLabel;
-  final String? label;
-  final int maxLength;
+  final String? label, help;
+  final int? maxLength;
+  final Future<void> Function(String value)? save;
 
   @override
   State<TextPromptDialog> createState() => _TextPromptDialogState();
@@ -21,6 +24,30 @@ class TextPromptDialog extends StatefulWidget {
 
 class _TextPromptDialogState extends State<TextPromptDialog> {
   late final input = TextEditingController(text: widget.initial);
+  bool busy = false;
+  String? error;
+
+  Future<void> _submit() async {
+    if (busy) return;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      await widget.save?.call(input.text);
+      if (mounted) Navigator.pop(context, input.text);
+    } catch (failure) {
+      if (mounted) {
+        setState(
+          () => error = failure is ArgumentError
+              ? '${failure.message}'
+              : '$failure',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -29,25 +56,50 @@ class _TextPromptDialogState extends State<TextPromptDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: Text(widget.title),
-    scrollable: true,
-    content: TextField(
-      controller: input,
-      autofocus: true,
-      maxLength: widget.maxLength,
-      decoration: InputDecoration(labelText: widget.label),
-      onSubmitted: (_) => Navigator.pop(context, input.text),
+  Widget build(BuildContext context) => PopScope(
+    canPop: !busy,
+    child: AlertDialog(
+      title: Text(widget.title),
+      scrollable: true,
+      content: SizedBox(
+        width: widget.help == null ? null : 450,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (widget.help != null) ...[
+              Text(widget.help!),
+              const SizedBox(height: 12),
+            ],
+            TextFormField(
+              controller: input,
+              enabled: !busy,
+              autofocus: true,
+              maxLength: widget.maxLength,
+              decoration: InputDecoration(labelText: widget.label),
+              onFieldSubmitted: (_) => _submit(),
+            ),
+            if (error != null)
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: busy ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: busy ? null : _submit,
+          child: Text(widget.submitLabel),
+        ),
+      ],
     ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('Cancel'),
-      ),
-      FilledButton(
-        onPressed: () => Navigator.pop(context, input.text),
-        child: Text(widget.submitLabel),
-      ),
-    ],
   );
 }

@@ -61,6 +61,17 @@ extension TemplateRepository on LifeRepository {
   ) async {
     final cleaned = name.trim();
     if (cleaned.isEmpty) throw ArgumentError('Template name is required');
+    final existing = await db
+        .customSelect(
+          'SELECT 1 FROM templates WHERE name = ? COLLATE NOCASE',
+          variables: [Variable.withString(cleaned)],
+        )
+        .get();
+    if (existing.isNotEmpty) {
+      throw ArgumentError(
+        'A template with this name already exists. Choose another name.',
+      );
+    }
     final id = _uuid.v4();
     final now = DateTime.now().toUtc().toIso8601String();
     await db.customInsert(

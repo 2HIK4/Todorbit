@@ -42,6 +42,52 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets(
+    'resource dialogs and picker cancellation preserve unsaved task edits',
+    (tester) async {
+      final source = await controller.repository.addTask(
+        const TaskDraft(title: 'Resource source'),
+      );
+      await controller.refresh();
+      controller.navigate(WorkspaceView.all);
+      const picker = MethodChannel('life_manager/file_dialog');
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        picker,
+        (_) async => null,
+      );
+      try {
+        await open(tester);
+        await tester.tap(find.text('Resource source'));
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.byKey(const ValueKey('task-title-field')),
+          'Unsaved resource draft',
+        );
+        await tester.ensureVisible(find.byTooltip('Add a URL'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Add a URL'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Attach a copy of a file'));
+        await tester.pumpAndSettle();
+        expect(find.text('Discard unsaved changes?'), findsNothing);
+        expect(find.text('Unsaved resource draft'), findsOneWidget);
+        expect(
+          (await controller.repository.tasks()).single.title,
+          'Resource source',
+        );
+        expect(await controller.repository.taskResources(source.id), isEmpty);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          picker,
+          null,
+        );
+      }
+    },
+  );
+
   for (final target in ['close', 'Calendar', 'New task']) {
     testWidgets('desktop draft survives $target until explicit discard', (
       tester,

@@ -19,19 +19,21 @@ class CalendarPreferenceStore {
 
   Future<CalendarContent> load() async {
     if (!await file.exists()) return CalendarContent.both;
-    try {
-      final value =
-          jsonDecode(await file.readAsString()) as Map<String, dynamic>;
-      return CalendarContent.values.firstWhere(
-        (item) => item.name == value['content'],
-        orElse: () => CalendarContent.both,
+    final value = jsonDecode(await file.readAsString());
+    if (value is! Map<String, dynamic>) {
+      throw FormatException(
+        'Calendar settings must be a JSON object: ${file.path}',
       );
-    } catch (_) {
-      return CalendarContent.both;
     }
+    return CalendarContent.values.firstWhere(
+      (item) => item.name == value['content'],
+      orElse: () => CalendarContent.both,
+    );
   }
 
   Future<void> save(CalendarContent value) async {
+    // Never overwrite a recoverable malformed or unreadable preference file.
+    await load();
     await file.parent.create(recursive: true);
     final temporary = File('${file.path}.tmp');
     await temporary.writeAsString(

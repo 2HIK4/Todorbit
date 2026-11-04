@@ -99,6 +99,33 @@ Future<void> _startApplication(
   List<String> args, {
   bool migrationApproved = false,
 }) async {
+  try {
+    await _prepareApplication(args, migrationApproved: migrationApproved);
+  } catch (failure) {
+    runApp(
+      MaterialApp(
+        home: StartupPage(
+          children: [
+            const Text('Todorbit could not access its local profile.'),
+            const SizedBox(height: 12),
+            SelectableText('$failure'),
+            const SizedBox(height: 12),
+            const Text(
+              'Check available storage and file access, then retry. Your data has not been reset.',
+            ),
+            const SizedBox(height: 16),
+            _StartupRetry(arguments: args),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+Future<void> _prepareApplication(
+  List<String> args, {
+  bool migrationApproved = false,
+}) async {
   WidgetsFlutterBinding.ensureInitialized();
   if (Platform.isWindows && args.contains('--sync-background')) {
     try {
@@ -137,18 +164,22 @@ Future<void> _startApplication(
     }
   } catch (_) {
     runApp(
-      const MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: Text(
+      MaterialApp(
+        home: StartupPage(
+          children: [
+            const Text(
               'Privacy settings could not be read. Restore the settings from a trusted backup before opening Todorbit.',
             ),
-          ),
+            const SizedBox(height: 16),
+            _StartupRetry(arguments: args),
+          ],
         ),
       ),
     );
     return;
   }
+  final appearanceStore = await AppearancePreferenceStore.openDefault();
+  final calendarPreferenceStore = await CalendarPreferenceStore.openDefault();
   final root = ProfilePaths.dataRoot();
   final freshDatabase = AppDatabase.fileInDataRoot(root);
   final legacyDatabase = ProfilePaths.legacyDatabaseIn(root);
@@ -207,8 +238,6 @@ Future<void> _startApplication(
     await LifeRepository(database).quarantineRestoredSync();
   }
   privacy.startInactivityCheck();
-  final appearanceStore = await AppearancePreferenceStore.openDefault();
-  final calendarPreferenceStore = await CalendarPreferenceStore.openDefault();
   final controller = AppController(
     LifeRepository(database),
     appearanceStore: appearanceStore,
@@ -385,6 +414,7 @@ class _MigrationApprovalAppState extends State<_MigrationApprovalApp> {
           onPressed: busy
               ? null
               : () async {
+                  if (busy) return;
                   setState(() => busy = true);
                   await _startApplication(
                     widget.arguments,
@@ -425,7 +455,14 @@ class _StartupFailureAppState extends State<_StartupFailureApp> {
   bool busy = false;
   String? error;
 
+  Future<void> _retry() async {
+    if (busy) return;
+    setState(() => busy = true);
+    await _startApplication(widget.arguments);
+  }
+
   Future<void> _cancelRestore() async {
+    if (busy) return;
     setState(() {
       busy = true;
       error = null;
@@ -455,7 +492,16 @@ class _StartupFailureAppState extends State<_StartupFailureApp> {
         const SizedBox(height: 12),
         SelectableText(widget.failure),
         const SizedBox(height: 12),
-        const Text('Check disk space and file access, then restart the app.'),
+        const Text(
+          'Check disk space and file access. For a damaged database or settings file, preserve the profile and recover a known-good copy before retrying.',
+        ),
+        const SizedBox(height: 8),
+        SelectableText('Database: ${widget.backupService.databaseFile.path}'),
+        const SizedBox(height: 12),
+        FilledButton(
+          onPressed: busy ? null : _retry,
+          child: const Text('Retry opening Todorbit'),
+        ),
         if (widget.hasPendingRestore)
           OutlinedButton(
             onPressed: busy ? null : _cancelRestore,
@@ -466,6 +512,28 @@ class _StartupFailureAppState extends State<_StartupFailureApp> {
         if (error != null) Text(error!),
       ],
     ),
+  );
+}
+
+class _StartupRetry extends StatefulWidget {
+  const _StartupRetry({required this.arguments});
+  final List<String> arguments;
+  @override
+  State<_StartupRetry> createState() => _StartupRetryState();
+}
+
+class _StartupRetryState extends State<_StartupRetry> {
+  bool busy = false;
+  @override
+  Widget build(BuildContext context) => FilledButton(
+    onPressed: busy
+        ? null
+        : () async {
+            if (busy) return;
+            setState(() => busy = true);
+            await _startApplication(widget.arguments);
+          },
+    child: const Text('Retry opening Todorbit'),
   );
 }
 

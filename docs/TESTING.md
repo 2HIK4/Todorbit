@@ -109,6 +109,17 @@ changes invalidate prior evidence; do not blindly repeat passing gates.
 
 ## Commands
 
+Actual startup recovery and managed attachment opening use profile files. On
+Windows, run `./tools/dev/test-profile-journeys.ps1` to execute their acceptance
+fixtures with disposable child `APPDATA` and `LOCALAPPDATA`. The runner prints
+the resolved profile and retains exact commands, source hashes and results under
+ignored `.buildlog/verify/profile-journeys/`. It does not delete those receipts or
+the successful legacy upgrade and Before upgrade snapshot. The real-profile
+cases explicitly skip in ordinary host runs without this isolated environment;
+an ordinary full-suite pass therefore does not establish startup acceptance.
+Never substitute personal profile paths. Run this separately from other Flutter
+test processes to avoid native-asset contention.
+
 The optional helper preserves these commands and CI as the authority:
 
 ```powershell

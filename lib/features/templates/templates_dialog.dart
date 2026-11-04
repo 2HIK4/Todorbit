@@ -6,74 +6,24 @@ import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../../domain/recurrence.dart';
 import '../../domain/templates.dart';
+import '../shared/text_prompt_dialog.dart';
+import '../shared/dialog_action_bar.dart';
 
 Future<void> showSaveTemplateDialog(
   BuildContext context, {
   required String sourceName,
   required Future<void> Function(String name) save,
 }) async {
-  var name = sourceName;
-  var busy = false;
-  String? error;
-  await showDialog<void>(
+  await showDialog<String>(
     context: context,
-    builder: (dialogContext) => StatefulBuilder(
-      builder: (dialogContext, setDialogState) => AlertDialog(
-        title: const Text('Save reusable template'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Copies the current definition. Completion, work history, planned sessions, and external project links are not included.',
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              initialValue: sourceName,
-              decoration: const InputDecoration(labelText: 'Template name'),
-              onChanged: (value) => name = value,
-            ),
-            if (error != null)
-              Text(
-                error!,
-                style: TextStyle(
-                  color: Theme.of(dialogContext).colorScheme.error,
-                ),
-              ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: busy ? null : () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: busy
-                ? null
-                : () async {
-                    setDialogState(() {
-                      busy = true;
-                      error = null;
-                    });
-                    try {
-                      await save(name);
-                      if (dialogContext.mounted) {
-                        Navigator.pop(dialogContext);
-                      }
-                    } catch (failure) {
-                      if (dialogContext.mounted) {
-                        setDialogState(() => error = '$failure');
-                      }
-                    } finally {
-                      if (dialogContext.mounted) {
-                        setDialogState(() => busy = false);
-                      }
-                    }
-                  },
-            child: const Text('Save template'),
-          ),
-        ],
-      ),
+    builder: (_) => TextPromptDialog(
+      title: 'Save reusable template',
+      initial: sourceName,
+      label: 'Template name',
+      maxLength: null,
+      submitLabel: 'Save template',
+      help: 'Copies the current definition. Attachments, checklists, subtasks, completion, work history, planned sessions, and external project links are not included.',
+      save: save,
     ),
   );
 }
@@ -94,6 +44,7 @@ class _TemplatesDialogState extends ConsumerState<TemplatesDialog> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete template?'),
+        scrollable: true,
         content: Text(
           'Delete “${template.name}”? Existing tasks and projects remain.',
         ),
@@ -118,6 +69,14 @@ class _TemplatesDialogState extends ConsumerState<TemplatesDialog> {
   }
 
   Future<void> _apply(LifeTemplate template) async {
+    try {
+      _recipes(template);
+    } catch (_) {
+      setState(
+        () => error = 'This template has an unsupported or incomplete format. It cannot be applied.',
+      );
+      return;
+    }
     final created = await showDialog<bool>(
       context: context,
       builder: (_) => _ApplyTemplateDialog(
@@ -155,34 +114,47 @@ class _TemplatesDialogState extends ConsumerState<TemplatesDialog> {
                   ),
                 ],
               ),
-              Text(
-                'Save tasks or projects as templates, then reuse them here.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              if (error != null)
-                Text(
-                  error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
               const SizedBox(height: 12),
               Expanded(
-                child: templates.isEmpty
-                    ? const Center(child: Text('No templates saved yet.'))
-                    : ListView(
-                        children: [
-                          for (final template in templates)
-                            ListTile(
-                              title: Text(template.name),
-                              subtitle: Text(template.summary),
-                              onTap: () => _apply(template),
-                              trailing: IconButton(
-                                tooltip: 'Delete ${template.name}',
-                                onPressed: () => _remove(template),
-                                icon: const Icon(Icons.delete_outline),
-                              ),
-                            ),
-                        ],
+                child: ListView(
+                  children: [
+                    Text(
+                      'Save tasks or projects as templates, then reuse them here.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    if (error != null)
+                      Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          error!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
                       ),
+                    if (templates.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text('No templates saved yet.'),
+                      ),
+                    for (final template in templates)
+                      ListTile(
+                        title: Text(template.name),
+                        subtitle: Text(
+                          template.kind == TemplateKind.project &&
+                                  template.payload['tasks'] is! List
+                              ? 'Project'
+                              : template.summary,
+                        ),
+                        onTap: () => _apply(template),
+                        trailing: IconButton(
+                          tooltip: 'Delete ${template.name}',
+                          onPressed: () => _remove(template),
+                          icon: const Icon(Icons.delete_outline),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -223,14 +195,16 @@ class _ApplyTemplateDialogState extends ConsumerState<_ApplyTemplateDialog> {
   }
 
   Future<void> _create() async {
-    if (widget.beforeNavigate != null && !await widget.beforeNavigate!())
-      return;
-    if (!mounted) return;
+    if (busy) return;
     setState(() {
       busy = true;
       error = null;
     });
     try {
+      if (widget.beforeNavigate != null && !await widget.beforeNavigate!()) {
+        return;
+      }
+      if (!mounted) return;
       await ref
           .read(appControllerProvider)
           .instantiateTemplate(
@@ -257,136 +231,193 @@ class _ApplyTemplateDialogState extends ConsumerState<_ApplyTemplateDialog> {
     final projects = controller.projects.where(
       (item) => item.categoryId == categoryId,
     );
-    final recipes = template.kind == TemplateKind.project
-        ? [
-            for (final raw in template.payload['tasks'] as List)
-              (raw as Map).cast<String, dynamic>(),
-          ]
-        : [(template.payload['task'] as Map).cast<String, dynamic>()];
+    final recipes = _recipes(template);
     final linkCount = template.kind == TemplateKind.project
         ? (template.payload['dependencies'] as List).length
         : 0;
     final externalLinks = template.kind == TemplateKind.project
         ? (template.payload['external_link_count'] as int? ?? 0)
         : 0;
-    return AlertDialog(
-      title: Text('Apply ${template.name}'),
-      content: SizedBox(
-        width: 450,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'New IDs are created. Completion, actual work, planned sessions, and history are not copied. Date offsets are relative to the selected anchor; undated tasks stay undated.',
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: busy ? null : _pickDay,
-                icon: const Icon(Icons.calendar_today_outlined),
-                label: Text('Date anchor: ${localDate(day)}'),
-              ),
-              if (template.kind == TemplateKind.routine)
-                const Text(
-                  'For a selected-weekday routine, choose one of its scheduled weekdays.',
-                ),
-              if (externalLinks > 0)
-                Text(
-                  '$externalLinks prerequisite links to tasks outside the source project will not be copied.',
-                ),
-              const SizedBox(height: 12),
-              AnchoredSelectField<String?>(
-                isExpanded: true,
-                key: ValueKey('template-category:$categoryId'),
-                initialValue: categoryId,
-                decoration: InputDecoration(
-                  labelText: template.kind == TemplateKind.project
-                      ? 'Category *'
-                      : 'Category (optional)',
-                ),
-                items: [
-                  if (template.kind != TemplateKind.project)
-                    const DropdownMenuItem<String?>(
-                      value: null,
-                      child: Text('Inbox'),
+    return PopScope(
+      canPop: !busy,
+      child: Dialog(
+        child: SizedBox(
+          width: 530,
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Semantics(
+                          header: true,
+                          child: Text(
+                            'Apply ${template.name}',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Creates new tasks. Attachments, checklists, subtasks, completion, work history and planned sessions are not copied. Dates move with the date anchor; undated tasks stay undated.',
+                        ),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: busy ? null : _pickDay,
+                          icon: const Icon(Icons.calendar_today_outlined),
+                          label: Text('Date anchor: ${localDate(day)}'),
+                        ),
+                        if (template.kind == TemplateKind.routine)
+                          const Text(
+                            'For a selected-weekday routine, choose one of its scheduled weekdays.',
+                          ),
+                        if (externalLinks > 0)
+                          Text(
+                            '$externalLinks prerequisite links to tasks outside the source project will not be copied.',
+                          ),
+                        const SizedBox(height: 12),
+                        AnchoredSelectField<String?>(
+                          isExpanded: true,
+                          key: ValueKey('template-category:$categoryId'),
+                          initialValue: categoryId,
+                          decoration: InputDecoration(
+                            labelText: template.kind == TemplateKind.project
+                                ? 'Category *'
+                                : 'Category (optional)',
+                          ),
+                          items: [
+                            if (template.kind != TemplateKind.project)
+                              const DropdownMenuItem<String?>(
+                                value: null,
+                                child: Text('Inbox'),
+                              ),
+                            for (final category in controller.categories)
+                              DropdownMenuItem(
+                                value: category.id,
+                                child: Text(category.name),
+                              ),
+                          ],
+                          onChanged: (value) => setState(() {
+                            categoryId = value;
+                            projectId = null;
+                          }),
+                        ),
+                        if (template.kind == TemplateKind.project) ...[
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            initialValue: projectName,
+                            decoration: const InputDecoration(
+                              labelText: 'New project name *',
+                            ),
+                            onChanged: (value) => projectName = value,
+                          ),
+                        ] else if (categoryId != null) ...[
+                          const SizedBox(height: 12),
+                          AnchoredSelectField<String?>(
+                            isExpanded: true,
+                            key: ValueKey(
+                              'template-project:$categoryId:$projectId',
+                            ),
+                            initialValue: projectId,
+                            decoration: const InputDecoration(
+                              labelText: 'Project (optional)',
+                            ),
+                            items: [
+                              const DropdownMenuItem<String?>(
+                                value: null,
+                                child: Text('No project'),
+                              ),
+                              for (final project in projects)
+                                DropdownMenuItem(
+                                  value: project.id,
+                                  child: Text(project.name),
+                                ),
+                            ],
+                            onChanged: (value) =>
+                                setState(() => projectId = value),
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                        Text(
+                          'Creates ${recipes.length} ${recipes.length == 1 ? 'task' : 'tasks'}${linkCount == 0 ? '' : ' with $linkCount internal dependencies'}:',
+                        ),
+                        for (final recipe in recipes.take(12))
+                          Text(
+                            '• ${recipe['title']} '
+                            '${recipe['scheduled_offset'] == null ? '' : '· plan ${RecurrenceRule.shiftDate(localDate(day), recipe['scheduled_offset'] as int)}'}'
+                            '${recipe['deadline_offset'] == null ? '' : ' · due ${RecurrenceRule.shiftDate(localDate(day), recipe['deadline_offset'] as int)}'}',
+                          ),
+                        if (recipes.length > 12)
+                          Text('…and ${recipes.length - 12} more'),
+                        if (error != null)
+                          Text(
+                            error!,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                      ],
                     ),
-                  for (final category in controller.categories)
-                    DropdownMenuItem(
-                      value: category.id,
-                      child: Text(category.name),
-                    ),
-                ],
-                onChanged: (value) => setState(() {
-                  categoryId = value;
-                  projectId = null;
-                }),
-              ),
-              if (template.kind == TemplateKind.project) ...[
-                const SizedBox(height: 12),
-                TextFormField(
-                  initialValue: projectName,
-                  decoration: const InputDecoration(
-                    labelText: 'New project name *',
                   ),
-                  onChanged: (value) => projectName = value,
                 ),
-              ] else if (categoryId != null) ...[
-                const SizedBox(height: 12),
-                AnchoredSelectField<String?>(
-                  isExpanded: true,
-                  key: ValueKey('template-project:$categoryId:$projectId'),
-                  initialValue: projectId,
-                  decoration: const InputDecoration(
-                    labelText: 'Project (optional)',
-                  ),
-                  items: [
-                    const DropdownMenuItem<String?>(
-                      value: null,
-                      child: Text('No project'),
+                const SizedBox(height: 16),
+                DialogActionBar(
+                  children: [
+                    TextButton(
+                      onPressed: busy
+                          ? null
+                          : () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
                     ),
-                    for (final project in projects)
-                      DropdownMenuItem(
-                        value: project.id,
-                        child: Text(project.name),
-                      ),
+                    FilledButton(
+                      onPressed:
+                          busy ||
+                              (template.kind == TemplateKind.project &&
+                                  categoryId == null)
+                          ? null
+                          : _create,
+                      child: Text(busy ? 'Creating…' : 'Create from template'),
+                    ),
                   ],
-                  onChanged: (value) => setState(() => projectId = value),
                 ),
               ],
-              const SizedBox(height: 12),
-              Text(
-                'Creates ${recipes.length} ${recipes.length == 1 ? 'task' : 'tasks'}${linkCount == 0 ? '' : ' with $linkCount internal dependencies'}:',
-              ),
-              for (final recipe in recipes.take(12))
-                Text(
-                  '• ${recipe['title']} '
-                  '${recipe['scheduled_offset'] == null ? '' : '· plan ${RecurrenceRule.shiftDate(localDate(day), recipe['scheduled_offset'] as int)}'}'
-                  '${recipe['deadline_offset'] == null ? '' : ' · due ${RecurrenceRule.shiftDate(localDate(day), recipe['deadline_offset'] as int)}'}',
-                ),
-              if (recipes.length > 12) Text('…and ${recipes.length - 12} more'),
-              if (error != null)
-                Text(
-                  error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-            ],
+            ),
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: busy ? null : () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed:
-              busy ||
-                  (template.kind == TemplateKind.project && categoryId == null)
-              ? null
-              : _create,
-          child: Text(busy ? 'Creating…' : 'Create from template'),
-        ),
-      ],
     );
   }
+}
+
+List<Map<String, dynamic>> _recipes(LifeTemplate template) {
+  if (template.payload['version'] != 1) throw const FormatException();
+  final recipes = template.kind == TemplateKind.project
+      ? (template.payload['tasks'] as List)
+            .map((raw) => (raw as Map).cast<String, dynamic>())
+            .toList()
+      : [(template.payload['task'] as Map).cast<String, dynamic>()];
+  if (template.kind == TemplateKind.project &&
+      (template.payload['project_name'] is! String ||
+          template.payload['dependencies'] is! List ||
+          template.payload['external_link_count'] != null &&
+              template.payload['external_link_count'] is! int)) {
+    throw const FormatException();
+  }
+  for (final recipe in recipes) {
+    if (recipe['title'] is! String ||
+        recipe['notes'] is! String ||
+        recipe['priority'] is! int ||
+        recipe['locked'] is! bool ||
+        recipe['scheduled_offset'] != null &&
+            recipe['scheduled_offset'] is! int ||
+        recipe['deadline_offset'] != null &&
+            recipe['deadline_offset'] is! int) {
+      throw const FormatException();
+    }
+  }
+  return recipes;
 }

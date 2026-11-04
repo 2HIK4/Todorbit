@@ -7,6 +7,7 @@ import 'package:path/path.dart' as path;
 import '../../data/app_database.dart';
 import '../../data/life_repository.dart';
 import '../../domain/task_resources.dart';
+import '../shared/text_prompt_dialog.dart';
 import 'windows_resource_dialog.dart';
 
 class TaskResourcesSection extends StatefulWidget {
@@ -208,44 +209,30 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
     }
   }
 
-  Future<String?> _textDialog(
+  Future<void> _textDialog(
     String title,
     String initial,
     String label,
+    Future<void> Function(String value) save,
   ) async {
-    var value = initial;
-    return showDialog<String>(
+    await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: TextFormField(
-          initialValue: initial,
-          autofocus: true,
-          onChanged: (text) => value = text,
-          decoration: InputDecoration(labelText: label),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, value),
-            child: const Text('Save'),
-          ),
-        ],
+      builder: (context) => TextPromptDialog(
+        title: title,
+        initial: initial,
+        label: label,
+        maxLength: null,
+        submitLabel: 'Save',
+        save: save,
       ),
     );
+    if (mounted) await _reload();
   }
 
   Future<void> _addUrl() async {
-    final entered = await _textDialog(
-      'Add URL',
-      '',
-      'Website or application link',
-    );
-    if (entered == null) return;
-    await _run(() async {
+    await _textDialog('Add URL', '', 'Website or application link', (
+      entered,
+    ) async {
       await widget.repository.addExternalResource(
         widget.taskId,
         TaskResourceKind.url,
@@ -298,6 +285,7 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
             context: context,
             builder: (context) => AlertDialog(
               title: const Text('Open application link?'),
+              scrollable: true,
               content: Text(target),
               actions: [
                 TextButton(
@@ -337,9 +325,12 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Remove task resource?'),
+        scrollable: true,
         content: Text(
           resource.kind == TaskResourceKind.managed
               ? 'The stored copy of ${resource.label} will be removed from this task.'
+              : resource.kind == TaskResourceKind.url
+              ? 'The URL ${resource.label} will be removed from this task.'
               : 'The link to ${resource.label} will be removed. The external file or folder will not be changed.',
         ),
         actions: [
@@ -441,7 +432,7 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
         ),
         if (Platform.isAndroid)
           const Text(
-            'Attach a portable copy or add a URL. Windows file and folder links must be relinked on this device.',
+            'Attach a portable copy or add a URL. Windows file and folder links are unavailable on Android; add a new resource instead.',
           ),
         if (error != null)
           Text(
@@ -468,29 +459,22 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
                 if (action == 'open') await _open(resource);
                 if (action == 'remove') await _remove(resource);
                 if (action == 'rename') {
-                  final label = await _textDialog(
+                  await _textDialog(
                     'Rename resource',
                     resource.label,
                     'Label',
+                    (label) =>
+                        widget.repository.renameTaskResource(resource, label),
                   );
-                  if (label != null) {
-                    await _run(
-                      () =>
-                          widget.repository.renameTaskResource(resource, label),
-                    );
-                  }
                 }
                 if (action == 'edit') {
-                  final target = await _textDialog(
+                  await _textDialog(
                     'Edit URL',
                     resource.target!,
                     'URL',
+                    (target) =>
+                        widget.repository.updateTaskUrl(resource, target),
                   );
-                  if (target != null) {
-                    await _run(
-                      () => widget.repository.updateTaskUrl(resource, target),
-                    );
-                  }
                 }
               },
               itemBuilder: (_) => [

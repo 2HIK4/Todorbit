@@ -1,5 +1,32 @@
 # Progress
 
+## UI quality Batch 5: Resources, Templates and startup recovery (2026-11-04; local)
+
+- Continued from `ec43e8e` on `feature/ui-quality-batch5`; the three unrelated
+  storage documents remain byte-identical and excluded. Resource URL/label and
+  template name prompts now retain input through validation/write failures and
+  guard repeated saves. Template creation guards draft approval before awaiting,
+  rejects unsupported/incomplete previews, and keeps errors/lists/actions usable
+  at 200% text. Duplicate names give a correction instead of raw SQLite details.
+- Malformed appearance/calendar JSON and invalid customization stop startup
+  without overwriting recoverable bytes. Profile/preflight/privacy failures use
+  bounded recovery with Retry; the database path is available for recovery.
+  Migration algorithms, schema, backup formats and Sync remain unchanged.
+- Disposable fixtures exercise the real startup entry point, schema-1 approval
+  and Before upgrade backup, relationships/preferences/integrity, corruption,
+  future schema, inaccessible profile and malformed preferences. Existing
+  unchanged transaction-interruption evidence is reused. The repeatable Windows
+  runner is `tools/dev/test-profile-journeys.ps1`; ordinary runs skip profile-writing
+  cases unless explicitly isolated. Resource originals survive reference removal;
+  template/routine copies use independent IDs with explicit exclusions.
+- [Batch 5 evidence and coverage](UI_UX_PERMANENT_QUALITY_AUDIT.md#batch-5-resources-templates-and-startup-recovery)
+  distinguishes source, automated, live Windows and blocked physical acceptance.
+  Windows Debug URL correction/template save/apply/restart and read-only integrity
+  pass. A separate actual corrupted-profile launch and Retry preserve the exact
+  damaged bytes and render actionable recovery. API35 system_server again crashed before installation; native Windows
+  computer-use pipe is absent. No personal profile, cloud operation, release,
+  version bump, tag or push. The initiative remains **in progress**.
+
 ## UI quality Batch 4: advanced productivity and recovery (2026-11-04; local)
 
 - Continued from `8842598` on `feature/ui-quality-batch4`, preserving the three
