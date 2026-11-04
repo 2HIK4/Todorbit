@@ -2,14 +2,16 @@
 
 ## Current status
 
-The current coordinated release is **[v1.0.19-beta.11](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.11)**,
-Windows + Android, version `1.0.19-beta.11+34`, Android code 34, schema 26.
-[Implementation, publication evidence, checksums and limits](SYNC_START_NEW.md).
-This experimental beta has an explicit owner-requested minimal-check exception
-to broad CI/platform gates; it does not change the normal release sequence below.
-A reproduced privacy-label regression required one corrected build per platform;
-only corrected source `c8f1561` was published. Real Google Drive and physical
-beta11 upgrade acceptance remain unverified.
+The current coordinated release is **[v1.0.19-beta.12](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.12)**,
+Windows + Android, version `1.0.19-beta.12+35`, Android code 35, schema 26,
+source/tag `31a70d1dc922362fcc88d8a6b5c74cd321157d8c`.
+[Publication evidence, checksums, explicit test skips and limits](UI_QUALITY_BETA_12_PUBLICATION.md).
+It includes six UI reliability batches since beta11. The owner explicitly
+requested skipping further tests and publishing the changes; this candidate's
+exception does not change the normal release sequence below. Package identity,
+signing and integrity remain verified separately. Native-platform and real Drive
+cross-device acceptance remain incomplete; this is an experimental pre-release.
+[Beta11 publication](SYNC_START_NEW.md) is historical evidence for its own source.
 The Windows 1.0.18 checkpoint below is historical.
 
 As checked on 2026-10-28, the latest public release is the Windows x64

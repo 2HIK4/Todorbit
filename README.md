@@ -20,11 +20,11 @@ Todorbit is an offline Windows productivity app with an Android beta for tasks, 
 
 ## Android beta installation
 
-The production-signed [Android 1.0.19-beta.9 pre-release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.9) supports Android 8.0+ on ARM64/x86-64, with architecture-specific APKs, resumable updates, Tasks/Calendar widgets and encrypted incremental sync. Download the correct APK and verify its published SHA-256. Local Drive checks use synthetic provider fixtures; real Drive end-to-end acceptance remains unverified. Back up existing data and start with disposable profiles. Before replacing a debug-signed app, verify an external backup and recovery first. See [phone signing and backup testing](docs/ANDROID_BETA_2_PHONE_TESTING.md), [sync setup](docs/GOOGLE_DRIVE_SYNC.md) and [publication checks](docs/SMART_SYNC_BETA_9_PUBLICATION.md).
+The production-signed [Android 1.0.19-beta.12 pre-release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.12) supports Android 8.0+ with a universal ARM64/x86-64 APK, resumable updates, Tasks/Calendar widgets and incremental Sync with Standard or optional private encryption. Download the APK and verify its published SHA-256. Real Drive cross-device acceptance remains unverified. Back up existing data and start with disposable profiles. Before replacing a debug-signed app, verify an external backup and recovery first. See [phone signing and backup testing](docs/ANDROID_BETA_2_PHONE_TESTING.md), [sync setup](docs/GOOGLE_DRIVE_SYNC.md) and [publication evidence and test skips](docs/UI_QUALITY_BETA_12_PUBLICATION.md).
 
 ## Windows installation
 
-Todorbit v1.0.19-beta.9 is a free, MIT-licensed Windows x64 pre-release. Windows 11 is the main development and test platform; Windows 10 acceptance is limited. Download the unsigned installer or portable ZIP from [GitHub Releases](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.9) and compare it with the published SHA-256 checksum. Run the installer or extract the portable ZIP and run `Todorbit.exe`. Keep the full extracted folder together, including `TodorbitWidget.exe`, DLLs, and the `data` folder. Neither package requires Flutter or Visual Studio on the user's computer.
+Todorbit v1.0.19-beta.12 is a free, MIT-licensed Windows x64 pre-release. Windows 11 is the main development and test platform; Windows 10 acceptance is limited. Download the unsigned installer or portable ZIP from [GitHub Releases](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.12) and compare it with the published SHA-256 checksum. Run the installer or extract the portable ZIP and run `Todorbit.exe`. Keep the full extracted folder together, including `TodorbitWidget.exe`, DLLs, and the `data` folder. Neither package requires Flutter or Visual Studio on the user's computer.
 
 The portable ZIP does **not** store data beside the executable. Each extracted portable location uses its own `%APPDATA%\TodoPilot\portable-<location-id>` profile; copying or moving the extracted folder selects a new empty profile. An installer fresh profile uses `%APPDATA%\TodoPilot\life_manager.sqlite`. This legacy path remains stable through the rename. An older `%APPDATA%\Life Manager` database is never selected just because it exists; on first launch Todorbit offers a reviewed, explicit import. Upgrading an installed TodoPilot retains its existing profile and settings. Export/import data through Settings > Backups & Cloud before moving a portable folder, and do not delete either profile folder.
 
@@ -62,17 +62,17 @@ Creator: **Hussam Alkhatib**, Creator & Project Founder. Original concept, produ
 
 ## Current release status
 
-The coordinated v1.0.19-beta.9 pre-release fixes interrupted-upload history
-blocking and durable offline conflict decisions in experimental Smart Sync.
-Android versionCode is 32; schema 26, sync protocol 1, encryption, backups and
-production signing identity remain compatible. Exact-source CI, enabled Windows
-Release, production APK signing, actual Windows and signed 16 KiB Android beta 8
-to beta 9 upgrades, package integrity and public updater checks passed. Real
-Google Drive end-to-end exchange remains unverified; physical OEM/Windows
-input/DPI/accessibility acceptance is incomplete. Start with disposable data,
-preserve a verified backup and keep the recovery code secure. Windows is unsigned.
-See [release notes](docs/SMART_SYNC_BETA_9_RELEASE_NOTES.md),
-[publication evidence/checksums](docs/SMART_SYNC_BETA_9_PUBLICATION.md) and the
+The coordinated v1.0.19-beta.12 pre-release includes six UI reliability batches:
+draft protection, compact/large-text layouts, resource/template failure recovery,
+safe startup preference handling and theme transfer. Android versionCode is 35;
+schema 26, Sync protocol 1, backups, recovery requirements and production signing
+identity remain compatible. Further tests and CI were skipped at the owner's
+explicit request; previous scoped evidence remains limited to its recorded cases.
+Build, signing, package and checksum integrity are recorded separately. Native
+Windows/Android and real Google Drive cross-device acceptance remain incomplete.
+Preserve a verified backup and the credentials required by your Sync mode.
+Windows is unsigned. See [release notes](docs/UI_QUALITY_BETA_12_RELEASE_NOTES.md),
+[publication evidence/checksums](docs/UI_QUALITY_BETA_12_PUBLICATION.md) and the
 [preliminary naming review](docs/NAMING_REVIEW.md); formal trademark clearance
 remains open.
 
