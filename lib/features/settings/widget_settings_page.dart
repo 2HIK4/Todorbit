@@ -606,7 +606,7 @@ class _WidgetConfigurationEditorState extends State<WidgetConfigurationEditor> {
         );
         if (!delivered && mounted && !closing) {
           setState(
-            () => feedback = 'Live preview unavailable. Saved settings are safe; enable the widget to preview.',
+            () => feedback = 'Live preview unavailable. Saved settings are safe; check that the widget is running.',
           );
         } else if (delivered &&
             mounted &&

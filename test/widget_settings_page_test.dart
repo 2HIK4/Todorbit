@@ -141,7 +141,12 @@ void main() {
       await tester.pumpAndSettle();
       await tester.pump(const Duration(milliseconds: 100));
       await tester.pumpAndSettle();
-      expect(find.textContaining('Live preview unavailable'), findsOneWidget);
+      expect(
+        find.text(
+          'Live preview unavailable. Saved settings are safe; check that the widget is running.',
+        ),
+        findsOneWidget,
+      );
       service.previewAvailable = true;
       await tester.pump(const Duration(seconds: 2));
       await tester.pumpAndSettle();

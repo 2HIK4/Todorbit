@@ -1394,3 +1394,297 @@ storage failures and post-interruption recovery UI; complete portable settings
 widget/customization bundle and native transfer. Disposable-account cloud
 acceptance remains separate. No push, release, tag or version change authorized
 or performed. Local commit/status are reported in delivery; initiative **in progress**.
+
+## Batch 6: Platform acceptance and theme transfer
+
+2026-11-04 UTC+03:00; baseline `824332ebf811caaa81fa4d9ca11c0f2e86584d8c`,
+branch `feature/ui-quality-batch6`. This continues the existing 40 groups;
+there is no repeated generic 67-category audit or release-acceptance claim.
+Applied the canonical Ultimate UI/UX, regression, Computer Use and focused Flutter
+widget-test skills. Scope: Windows/Android native boundaries, settings/theme
+transfer, preview/cancel/apply/restart and the remaining accessibility/input gaps.
+Detailed evidence is retained under ignored
+`.buildlog/verify/permanent-ui-quality/pass6/` (abbreviated **P6** below).
+
+### Confirmed application findings
+
+| Finding / platform / severity | Reproduction and implementation correctness | Experience / UX Necessity Review / correction |
+| --- | --- | --- |
+| B6-01 Windows theme file paths, P2 | Customize Theme > Import/Export JSON uses the shared prompt's default 60-character name limit. A real synthetic full path is truncated before submission; the baseline regression reports the exact missing suffix. | A name limit is inappropriate for a filesystem path. The existing path prompt now accepts the full path; preset names retain their 60-character limit. Both import/export, file contents and saved palette are verified. No new picker or customization feature. |
+| B6-02 Windows theme transfer lifecycle, P2 | Export starts asynchronous filesystem work. Closing the parent before completion caused `setState() called after dispose()` in transfer's completion/error path. The first path-fixed run records the assertion. | Closing a completed/delayed transfer must not produce a spurious error. Check mounting after the path prompt and asynchronous import read, and before export/error feedback. Existing saved state stays intact. The regression holds the actual transfer future, removes the dialog, drains IO/fake microtasks and verifies the completed exported contents without a disposed-state exception. |
+| B6-03 Windows widget feedback, P3 | After deliberately stopping the isolated companion, cold-reopen Tasks customization with `enabled=true`. Live capture says “enable the widget to preview” despite the enabled switch. | Correct the diagnosis/action: “check that the widget is running.” Retain saved-settings reassurance and the disabled-widget guidance. Updated reconnect test verifies the exact wording, feedback clearing after reconnect and zero configuration writes. No automatic toggle, launch, native IPC or lifecycle change. |
+
+Both inspections preserved the existing controls, tokens and preview/commit
+boundaries. Ordinary path entry, visible failure recovery and necessary per-widget
+independence were retained; no broad redesign was justified. Async import/export
+does not newly save appearance, replace data or change Android SAF behavior.
+
+### Android environment diagnosis and bounded outcome
+
+- Reviewed Batch 4/5 crash receipts: the **old** API35 read-only overlay had
+  `system_server`, ConnectivityService and PackageManager failures before app
+  installation. No evidence makes those Todorbit crashes.
+- SDK tools resolve through the workspace SDK/junctions to the installed local
+  SDK; emulator **35.3.11**, API35 Google Play x86_64 image **revision 9** is
+  available. API30 contains only an incomplete installer directory, not a usable
+  alternate image. Default `java` is an old Java 8 entry; the existing **JDK
+  21.0.8** is selected only for the AVD tools. Existing Gradle **9.3.1**, API36,
+  CMake override and caches were inspected; no Android build was needed/run.
+  Gradle's checked-in 8-GiB heap is a resource consideration, not a proven cause
+  of the guest failures. No SDK/JDK/Gradle download or machine-wide change.
+- Host Windows 11 **10.0.26200**, approximately 16 GiB RAM; initial free physical
+  memory about 3.6 GiB, later about 1.3 GiB while emulator/Windows/test processes
+  overlapped. C/D initially had about 119/298 GiB free. WHPX acceleration reports
+  installed and usable. Intel UHD and NVIDIA RTX3050 graphics are present.
+  These are observations; no OOM, disk or driver root cause is proved.
+- Created **TodorbitBatch6** with separate userdata under P6/avd, using only the
+  installed API35 image. avdmanager generated config but warned about absent
+  `devices.xml` and failed to create its registration INI. The first emulator
+  invocation exited before guest launch. Created the missing INI only in the new
+  disposable AVD, then made **one guest boot attempt** on port5584: two cores,
+  2048 MiB, 720x1280/240dpi, host OpenGL, Vulkan disabled, no snapshots/window/audio.
+  Actual renderer: NVIDIA OpenGL ES Translator. This changes both userdata and
+  graphics from the earlier problematic SwiftShader overlay.
+- During startup, package service was initially missing and ADB later alternated
+  offline/online. Emulator reports boot at **196939 ms**. Crash logs record four
+  Bluetooth stack SIGABRTs (`HciHal` startup), all **before any Todorbit install**.
+  At16:47:34 boot_completed finally reads1; package queries work; at16:48:14
+  package, connectivity, input_method and appwidget are present. **Do not describe
+  this fresh attempt as another proved system_server/PackageManager crash**:
+  those crashes belong to the old AVD receipts. Core-service availability
+  improved, but a sustained reliable window was not established within this
+  bounded attempt. Environment reliability is **INCONCLUSIVE**, and application
+  acceptance is **BLOCKED**. No install, uninstall, SDK download, wipe, production
+  workaround or second guest-launch retry occurred.
+- `adb -s emulator-5584 emu kill` succeeds at16:48:16. Fresh userdata/logs are
+  retained. Original AVD file sizes/mtime-nanoseconds match the before snapshot;
+  it was never launched or copied over. Original ignored android/local.properties
+  remains SHA-256 `97b2432de9e07660484239a75152ea6bc6ddc487bcc6633c519289c7989df0d9`.
+
+No physical device was connected. Android IME, SAF, native activity return,
+Back/rotation, Calendar launcher widget, permissions and TalkBack were **not
+executed** in Batch 6. Their required runtime execution is BLOCKED by the
+unaccepted environment; no new Android runtime PASS is claimed. TalkBack package
+presence was not substituted for speech/action acceptance. Source inspection
+confirms SAF copies bytes to app-private cache rather than retaining a durable
+provider grant; managed resources use a retained copy. Grant-revocation/relink
+capabilities must not be invented when completing the manual cases.
+
+### Windows runtime, native boundary and accessibility outcomes
+
+Computer Use was initialized according to its skill. `sky.list_apps()` and the
+alternate `cua.getState()` native inventory both report missing native pipe,
+os error2. No custom Win32/UIA input fallback was built. **OS-native file/folder
+pickers, real external viewers, physical keyboard/focus, Narrator, high contrast,
+DPI/monitor movement, shell menus, Win+D and Alt+Tab remain BLOCKED/NOT TESTED.**
+No MethodChannel or Driver assertion is reported as native OS acceptance.
+
+Windows Debug launched at16:43:31 with exactly
+`flutter --no-version-check --suppress-analytics run --no-pub -d windows --target lib/driver_main.dart --machine`.
+Launcher3284/app13920; both child APPDATA/LOCALAPPDATA were evaluated in the VM
+and matched P6/runtime-profile/{Roaming,Local}. Drift independently identifies
+`Roaming/TodoPilot/life_manager.sqlite` before interaction.
+
+Observed through actual Flutter Driver: Settings > Customize Theme > full-path
+import > imported feedback > Cancel (saved palette unchanged) > reopen/import >
+Save changes. Saved light/dark accents become #006E82/#89C6E2. This is the theme's
+**text path prompt**, not a native file picker. Widget settings: Tasks draft
+change/Cancel leaves no config write; Apply saves title=false and stays open;
+later Open-button draft/Cancel retains the saved baseline. Calendar Apply saves
+its Open-button change separately. Apply-to-All confirmation/approval copies the
+shared title/Open appearance; persisted Tasks enabled=true and Calendar=false
+remain independent. Both configurations retain title=false/Open=false afterward.
+
+Apply/reload started the actual checkout companion PID25024, separate from the
+installed personal companion. Its executable, command line, inherited isolated
+launch environment and matching profile files were checked. This proves process/
+profile and Flutter settings operation; **actual desktop painting, preview pixels,
+HWND input, geometry and shell acceptance remain unobserved**. Calendar was
+disabled, and its editor correctly explains that live preview needs enabling.
+
+After exiting the app and issuing `--widget-command exit` with **the same isolated
+environment**, app13920/companion25024 are gone. A second identical Flutter launch
+at16:59:31 (launcher30136/app30620, new VM/Drift) verifies a real process restart.
+VM environment again matches both paths; UI and JSON retain the custom palette,
+widget appearance and enabled independence. `windows-profile-readback.json`
+asserts these values. Current preview feedback and both fixes were hot reloaded;
+final cold-session runtime diagnostics report **No runtime errors found**.
+Both owned apps/companion/emulator are stopped at handoff; the pre-existing
+installed app/companion were not selected or stopped.
+
+Evidence: `runtime-launch.json`, `cold-runtime-launch.json`, `runtime.log`,
+`cold-runtime.log`, `windows-driver-actions.json`, `windows-widget-calendar-editor.png`,
+`windows-cold-restart.png`, `native-exit.json`, `windows-profile-readback.json`.
+Some initial Driver selectors/timeouts, a missing scroll-frequency parameter and
+pending-command guarded-call conflict are **tool/fixture failures**, retained in
+the action log and original runtime log. A transitional theme screenshot had an
+incomplete paint and its attempted oversized save was rejected by the tool;
+subsequent captures used bounded writes. It is not a supported visual defect or
+a saved screenshot receipt. Final static/live findings above have independent
+state/file evidence; no physical Windows claim is inferred from these captures.
+
+### Automated settings outcomes and evidence reuse
+
+`test/platform_customization_journeys_test.dart` adds two substantive journeys:
+
+1. Actual synthetic theme files >60-character paths, import draft/preview,
+   Undo/Redo, export bytes, Cancel/no saved mutation, incompatible-version error,
+   corrected import/Save, store/dialog reopen and disposal during pending export.
+2. Full settings JSON exported from one disposable on-disk profile to another:
+   custom light/dark palette, hotkey preset, sidebar order, week start/Calendar
+   mode, nondefault task display, separate Tasks/Calendar configuration and custom
+   preset libraries. Close/reopen destination DB/controller; values persist.
+   Destination enabled/lock/geometry and a synthetic private-file sentinel stay
+   independent; source configuration remains intact. Invalid weekday is rejected
+   before Apply with no target-settings change. This is **automated filesystem/
+   controller evidence**, not native import/export picker or Android acceptance.
+
+The modified existing reconnect regression verifies the preview wording and
+unchanged no-write/recovery contract. Final evidence comprises **three focused
+passing cases**, not the sum of every debugging rerun. Theme and transfer cases
+passed separately; the final test-only task-display expansion did not invalidate
+the theme-case pass. Final formatting is mechanical; scoped analysis is clean.
+Drift logs its multiple-database debug warning in the cross-profile case; these
+are distinct NativeDatabase executors and separate fixture files, both closed.
+
+Baseline comparison `git diff 824332e --` for appearance/calendar/widget stores,
+appearance/widget/preset domain models, settings transfer, existing transfer
+tests and pubspec.yaml/lock is empty. Batch 5 settings-codec/category/cancel and
+reopen evidence remains valid **within those original assertions**. Other earlier
+40-group evidence remains historical and scoped; no transfer/native-device gap
+is retroactively passed. No full suite, Android build, native Release/self-test,
+package/updater/installer or cloud rerun is justified by these Flutter-only fixes.
+Native physical checks and mandatory future release/CI gates remain required.
+
+### Coverage update across all 40 groups
+
+S=source; A=host automated; W=live Windows Flutter Driver; N=native OS interaction;
+E=Android emulator app interaction; P=physical Android; AT=assistive technology.
+N/E/P/AT gains are **none** in this batch. Source/automated/live Flutter evidence
+must not be interpreted as these stronger levels.
+
+| Groups | New Batch 6 evidence | Remaining risk / outcome |
+| --- | --- | --- |
+| S04 Resources | S actual SAF copy semantics; native capability investigation; W01-W05/A04-A05 reproducible procedures | Native selection/cancel/open/folder/denial and parent focus remain BLOCKED; no new resource UI PASS |
+| S09 Mobile Calendar | Environment diagnosis only | Android app/rotation/IME/agenda runtime BLOCKED; physical device/TalkBack untested |
+| S19 Settings shells | W Settings/theme/widget navigation and cold reopen; A actual transfer journey | Physical focus/Back and nested Android settings remain open |
+| S20 Appearance | S/A/W confirmed path/lifecycle fixes; A import/Undo/Redo/Cancel/export/invalid/save/reopen; W imported custom accents and cold persistence | Native transfer picker, Android appearance/IME and complete palette/contrast/scale matrix unverified |
+| S21 Preferences | A nondefault task preferences, sidebar order and Calendar preferences survive cross-profile transfer and DB/controller reopen | Physical Undo/Redo/navigation preference dispatch and OS restart of the transferred profile need manual acceptance |
+| S22 Hotkeys | A named preset transferred/reopened; earlier unchanged conflict codec evidence retained | Physical key dispatch, reserved combinations and text-input conflicts NOT TESTED |
+| S23-S24 Notifications/privacy | No new product acceptance; no policy/security changes | Native delivery/permission/reader/authentication remain earlier scoped gaps |
+| S32 Portable settings | A populated bundle across different profiles, both widget libraries/local independence and invalid-value rejection | Native file chooser/save destination, Android transfer and physical process restart of imported destination pending |
+| S35 Widget settings | A reconnect feedback/no-write; W per-kind Apply, Cancel-after-Apply, Apply-to-All confirmation, independent enabled state and cold settings readback | Actual desktop preview pixels, preset physical interactions, keyboard and broad custom matrix pending |
+| S36-S37 Windows widgets | Actual isolated companion start/exit process and profile evidence | Native content/input, HWND/shell, menu/tooltip, geometry/DPI/monitor, five-minute painting and recovery remain BLOCKED/NOT TESTED |
+| S38 Android widgets | S grant/projection boundary context; fresh environment attempt; A07-A12 handoff | No new Tasks/Calendar launcher interaction; Calendar acceptance, reboot/update/resize and AT blocked |
+| S39 Support/contributors | No change or new acceptance | Existing runtime/external-return limits retained |
+| S40 Shared inputs/dialogs | A full path retention, asynchronous closure, recovery feedback and settings confirmation; W text path/confirmations and cold dialog | Physical Tab/Shift+Tab/IME, native picker return, screen readers/high contrast and DPI remain open |
+| S01-S03,S05-S08,S10-S18,S25-S31,S33-S34 | Other 25 groups retain previous scoped evidence; no new acceptance | No new backup/data/Sync/release or generic audit claims |
+
+### Remaining acceptance and exact manual handoff
+
+[Platform acceptance checklist](UI_UX_PLATFORM_ACCEPTANCE.md) provides safe
+Windows child-environment launch, actual profile verification, synthetic data,
+stable Android boot/package preflight, per-substep outcome/evidence template,
+and W01-W11/N01-N08/A01-A12 procedures. It distinguishes unsupported durable URI
+relink from copied SAF resources and physical/OEM/assistive-technology work.
+
+Priority: (1) a stable disposable Android environment or authorized physical test
+device for actual IME/SAF/Calendar widget/TalkBack; (2) human Windows native picker,
+physical keyboard/Narrator and native widget checks; (3) DPI/high-contrast/multiple
+monitors and OEM/update breadth. The fresh AVD's late service recovery is a useful
+diagnostic lead, not a reliable-environment PASS. Diagnose its HCI/host condition
+before another app attempt; do not modify Todorbit for that guest failure.
+
+The three protected storage documents retain their initial SHA-256 values and
+are excluded from staging. No schema, backup format, encryption, Sync protocol,
+native contract, permission, dependency, version, release/tag or publication
+change. Initiative remains **in progress**; application-wide acceptance is not
+complete. Commit/status appear in delivery.
+
+### Invocation ledger, Batch 6
+
+<!-- BATCH6_INVOCATIONS -->
+
+All rows are local UTC+03:00 on 2026-11-04, baseline `824332e`.
+The run.py entries record pre-invocation patch SHA-256, invocation-file hashes
+and baseline `source-manifest.json`; platform launch/exit rows retain their
+source/environment or artifact identity separately. The cold launch's theme
+hash/current native baseline are reconstructed from the recorded edit sequence
+in its JSON, rather than an original pre-launch patch manifest.
+`windows-profile-readback.json` records final source hashes.
+JSON/log basenames below are under P6; they retain exact executable,
+arguments, child environment, duration, exit and output. A successful diagnostic
+command is not a product-acceptance PASS.
+
+`ADB` = `.buildlog/android-sdk/platform-tools/adb.exe`;
+`EMU` = `.buildlog/android-sdk/emulator/emulator.exe`;
+`F` = `flutter --no-version-check --suppress-analytics test --no-pub --concurrency=1 --reporter=expanded --timeout=2m`.
+
+| Local timestamp / receipt | Exact command (aliases above) | Outcome / reason / reuse or rerun |
+| --- | --- | --- |
+| 16:41:32.793242+03:00 / `accel-164132` | `EMU -accel-check` | PASS WHPX usable; new host capability diagnostic; exit `0` |
+| 16:41:33.369784+03:00 / `renderer-help-164133` | `EMU -help-gpu` | PASS installed renderer help inspected; select supported host renderer; exit `0` |
+| 16:41:34.370106+03:00 / `devices-164134` | `ADB devices -l` | PASS inventory, zero devices; no physical device acceptance; exit `0` |
+| 16:41:43.640836+03:00 / `fresh-avd-164143` | `.buildlog/android-sdk/cmdline-tools/latest/bin/avdmanager.bat create avd --name TodorbitBatch6 --package 'system-images;android-35;google_apis_playstore;x86_64' --path D:/AI_Projects/life_manager/.buildlog/verify/permanent-ui-quality/pass6/avd/TodorbitBatch6.avd --device pixel_2` | FAIL runner path syntax before avdmanager; fixed batch path resolution; exit `1` |
+| 16:41:55.286071+03:00 / `fresh-avd-path-fixed-164155` | `.buildlog/android-sdk/cmdline-tools/latest/bin/avdmanager.bat create avd --name TodorbitBatch6 --package 'system-images;android-35;google_apis_playstore;x86_64' --path D:/AI_Projects/life_manager/.buildlog/verify/permanent-ui-quality/pass6/avd/TodorbitBatch6.avd --device pixel_2` | INCONCLUSIVE exit0 with missing devices.xml/registration; fresh config exists, add local INI; exit `0` |
+| 16:42:26.635559+03:00 / `emulator-bootstrap-failure` | `'EMU' -avd TodorbitBatch6 -port 5584 -no-snapshot -no-window -no-audio -no-boot-anim -gpu host -feature -Vulkan -memory 2048 -cores 2` | BLOCKED missing fresh AVD INI; no guest started, corrected before sole guest boot; exit `runtime` |
+| 16:42:36.298676+03:00 / `boot1-164236` | `ADB -s emulator-5584 shell getprop sys.boot_completed` | BLOCKED not ready/offline/absent package, or empty boot property; see exact diagnostic log; exit `1` |
+| 16:42:36.676447+03:00 / `package1-164236` | `ADB -s emulator-5584 shell service check package` | BLOCKED not ready/offline/absent package, or empty boot property; see exact diagnostic log; exit `1` |
+| 16:42:50.580092+03:00 / `emulator-launch` | `'EMU' -avd TodorbitBatch6 -port 5584 -no-snapshot -no-window -no-audio -no-boot-anim -gpu host -feature -Vulkan -memory 2048 -cores 2` | INCONCLUSIVE reliability; actual fresh guest boot, later service recovery and Bluetooth aborts; see diagnosis; exit `runtime` |
+| 16:43:00.647599+03:00 / `boot2-164300` | `ADB -s emulator-5584 shell getprop sys.boot_completed` | BLOCKED not ready/offline/absent package, or empty boot property; see exact diagnostic log; exit `1` |
+| 16:43:01.332372+03:00 / `package2-164301` | `ADB -s emulator-5584 shell cmd package list packages android` | BLOCKED not ready/offline/absent package, or empty boot property; see exact diagnostic log; exit `1` |
+| 16:43:31.741666+03:00 / `runtime-launch` | `cmd.exe /d /c flutter --no-version-check --suppress-analytics run --no-pub -d windows --target lib/driver_main.dart --machine` | PASS Windows Debug build/live app13920; launch metadata plus baseline/patch hashes; exit `runtime` |
+| 16:43:47.406535+03:00 / `boot3-164347` | `ADB -s emulator-5584 shell getprop sys.boot_completed` | BLOCKED not ready/offline/absent package, or empty boot property; see exact diagnostic log; exit `0` |
+| 16:43:48.902847+03:00 / `package3-164348` | `ADB -s emulator-5584 shell cmd package list packages android` | BLOCKED not ready/offline/absent package, or empty boot property; see exact diagnostic log; exit `20` |
+| 16:44:10.921228+03:00 / `boot4-164410` | `ADB -s emulator-5584 shell getprop sys.boot_completed` | BLOCKED not ready/offline/absent package, or empty boot property; see exact diagnostic log; exit `0` |
+| 16:44:12.469575+03:00 / `package4-164412` | `ADB -s emulator-5584 shell service check package` | BLOCKED not ready/offline/absent package, or empty boot property; see exact diagnostic log; exit `0` |
+| 16:44:13.303345+03:00 / `crash4-164413` | `ADB -s emulator-5584 logcat -b crash -d -t 80` | PASS diagnostic capture; guest crashes retained when present, no app installed; exit `0` |
+| 16:45:18.954151+03:00 / `boot5-164518` | `ADB -s emulator-5584 shell getprop sys.boot_completed` | BLOCKED not ready/offline/absent package, or empty boot property; see exact diagnostic log; exit `0` |
+| 16:45:20.800589+03:00 / `package5-164520` | `ADB -s emulator-5584 shell cmd package list packages io.github.hik4.todorbit` | BLOCKED not ready/offline/absent package, or empty boot property; see exact diagnostic log; exit `0` |
+| 16:45:21.380316+03:00 / `crash5-164521` | `ADB -s emulator-5584 logcat -b crash -d -t 100` | PASS diagnostic capture; guest crashes retained when present, no app installed; exit `0` |
+| 16:45:32.481501+03:00 / `format-164532` | `dart format test/platform_customization_journeys_test.dart` | PASS initial new test formatting; exit `0` |
+| 16:45:43.472188+03:00 / `customization-baseline-164543` | `F test/platform_customization_journeys_test.dart` | FAIL 2 fixture assumptions: lazy action unbuilt and preset JSON includes neutral lifecycle flags; no product finding yet; exit `1` |
+| 16:46:04.367641+03:00 / `boot6-164604` | `ADB -s emulator-5584 shell getprop sys.boot_completed` | BLOCKED not ready/offline/absent package, or empty boot property; see exact diagnostic log; exit `1` |
+| 16:46:05.508769+03:00 / `health6-164605` | `ADB -s emulator-5584 shell dumpsys activity processes` | BLOCKED not ready/offline/absent package, or empty boot property; see exact diagnostic log; exit `1` |
+| 16:46:34.297856+03:00 / `boot7-164634` | `ADB -s emulator-5584 shell getprop sys.boot_completed` | BLOCKED not ready/offline/absent package, or empty boot property; see exact diagnostic log; exit `1` |
+| 16:46:34.947538+03:00 / `package7-164634` | `ADB -s emulator-5584 shell cmd package list packages android` | BLOCKED not ready/offline/absent package, or empty boot property; see exact diagnostic log; exit `1` |
+| 16:46:35.401734+03:00 / `crash7-164635` | `ADB -s emulator-5584 logcat -b crash -d -t 100` | PASS diagnostic capture; guest crashes retained when present, no app installed; exit `0` |
+| 16:47:01.570062+03:00 / `customization-fixtures-corrected-164701` | `F test/platform_customization_journeys_test.dart` | FAIL theme path truncated at60 chars (B6-01); PASS cross-profile transfer; fixtures corrected; exit `1` |
+| 16:47:33.050613+03:00 / `crash-final-164733` | `ADB -s emulator-5584 logcat -b crash -d` | PASS diagnostic capture; guest crashes retained when present, no app installed; exit `0` |
+| 16:47:34.630028+03:00 / `boot-final-164734` | `ADB -s emulator-5584 shell getprop sys.boot_completed` | PASS late boot/package/service diagnostic only; reliability not established; exit `0` |
+| 16:47:35.949082+03:00 / `package-final-164735` | `ADB -s emulator-5584 shell cmd package list packages io.github.hik4.todorbit` | PASS late boot/package/service diagnostic only; reliability not established; exit `0` |
+| 16:48:14.587577+03:00 / `health-final-164814` | `ADB -s emulator-5584 shell dumpsys -l` | PASS late boot/package/service diagnostic only; reliability not established; exit `0` |
+| 16:48:16.449996+03:00 / `stop-emulator-164816` | `ADB -s emulator-5584 emu kill` | PASS stop only emulator5584; data retained; exit `0` |
+| 16:48:37.392516+03:00 / `theme-path-fixed-164837` | `F test/platform_customization_journeys_test.dart --plain-name 'theme file preview'` | FAIL B6-02 disposed-state completion; fake-clock Save wait also corrected; exit `1` |
+| 16:50:12.222692+03:00 / `theme-lifecycle-fixed-165012` | `F test/platform_customization_journeys_test.dart --plain-name 'theme file preview'` | FAIL reopened preset lazily unbuilt; import/save/store assertions pass; add scroll; exit `1` |
+| 16:51:01.139584+03:00 / `theme-reopen-scroll-fixed-165101` | `F test/platform_customization_journeys_test.dart --plain-name 'theme file preview'` | FAIL fixture cleanup races unfinished export; await actual completion; exit `1` |
+| 16:52:17.948304+03:00 / `theme-await-export-completion-165217` | `F test/platform_customization_journeys_test.dart --plain-name 'theme file preview'` | BLOCKED/INTERRUPTED fake-zone future awaited inside runAsync; only owned test tree stopped; pump completion instead; exit `INTERRUPTED` |
+| 16:54:03.570539+03:00 / `theme-export-fake-clock-corrected-165403` | `F test/platform_customization_journeys_test.dart --plain-name 'theme file preview'` | PASS 1 final theme journey, including completion after disposal; no unchanged transfer rerun; exit `0` |
+| 16:55:34.612121+03:00 / `final-format-165534` | `dart format lib/features/settings/theme_dialog.dart test/platform_customization_journeys_test.dart` | PASS formatting; test-only formatting, no semantic invalidation; exit `0` |
+| 16:55:36.398934+03:00 / `scoped-analysis-165536` | `flutter --no-version-check --suppress-analytics analyze --no-pub lib/features/settings/theme_dialog.dart test/platform_customization_journeys_test.dart` | PASS theme/new journey test after theme fixes; exit `0` |
+| 16:59:31.240742+03:00 / `native-exit` | `'D:\AI_Projects\life_manager\build\windows\x64\runner\Debug\TodorbitWidget.exe' --widget-command exit --app-exe 'D:\AI_Projects\life_manager\build\windows\x64\runner\Debug\Todorbit.exe'` | PASS isolated companion command exit0, owned process disappears; exit `0` |
+| 16:59:31.927454+03:00 / `cold-runtime-launch` | `cmd.exe /d /c flutter --no-version-check --suppress-analytics run --no-pub -d windows --target lib/driver_main.dart --machine` | PASS Windows Debug cold process30620, same profile; runtime and readback assertions; exit `runtime` |
+| 17:00:41.144795+03:00 / `transfer-nondefault-task-display-170041` | `F test/platform_customization_journeys_test.dart --plain-name 'populated settings transfer'` | PASS 1 expanded nondefault task-display and populated transfer/reopen; previous source-case evidence reused otherwise; exit `0` |
+| 17:05:35.941204+03:00 / `preview-feedback-170535` | `F test/widget_settings_page_test.dart --plain-name 'preview reconnect'` | PASS 1 changed feedback/reconnect/no-write case; reproduced enabled-but-companion-stopped live state; exit `0` |
+| 17:05:46.200301+03:00 / `delivery-format-170546` | `dart format lib/features/settings/theme_dialog.dart lib/features/settings/widget_settings_page.dart test/platform_customization_journeys_test.dart test/widget_settings_page_test.dart` | PASS final four Dart paths; mechanical test formatting only; exit `0` |
+| 17:06:50.271847+03:00 / `settings-readback-170650` | `python P6/final-evidence.py` | PASS actual cold-profile saved values, protected hashes and original AVD file-stat assertions; exit `0` |
+| 17:06:51.065039+03:00 / `final-analysis-170651` | `flutter --no-version-check --suppress-analytics analyze --no-pub lib/features/settings/widget_settings_page.dart test/widget_settings_page_test.dart test/platform_customization_journeys_test.dart` | PASS remaining changed widget/test paths after feedback/task-display assertions; exit `0` |
+| 17:12:22.540604+03:00 / `docs-links-171222` | `python tools/dev/check-docs.py docs/PROGRESS.md docs/TEST_RUN_LEDGER.md docs/UI_UX_PERMANENT_QUALITY_AUDIT.md docs/UI_UX_PLATFORM_ACCEPTANCE.md` | PASS scoped documentation links/paths; exit `0` |
+
+Direct MCP/tool procedures are recorded separately above: Computer Use init and
+two native inventories; DTD discovery/connect; VM getVM/getIsolate and read-only
+environment equality checks; Driver actions/screenshots; hot reloads; final
+runtime-error inspection and ext.flutter.exit. The latter disconnects/disappears
+as expected during intentional shutdown, with owned-PID absence verified.
+`windows-driver-actions.json` retains the later exact commands/results; initial
+Settings/Customize lookup timeouts and first environment/discovery calls are
+preserved in the task tool transcript, rather than a complete local event trace.
+Their individual local timestamps were not retained. This is a receipt limitation,
+not additional acceptance. The first failed AVD launch's overwritten logfile is
+explicitly identified in `emulator-bootstrap-failure.json` as transcript recovery.
+
+Final review: full affected source/test/doc diff, explicit-path staging,
+`git diff --check`, `git diff --cached --check`, protected SHA-256 comparison and
+owned-process absence. No personal process or data was used as a test fixture.
+
+<!-- BATCH6_INVOCATIONS_END -->

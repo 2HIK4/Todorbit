@@ -74,10 +74,18 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
     if (chosen != null && mounted) update(palette.withColor(key, chosen));
   }
 
-  Future<String?> askText(String title, {String initial = ''}) async {
+  Future<String?> askText(
+    String title, {
+    String initial = '',
+    int? maxLength = 60,
+  }) async {
     final result = await showDialog<String>(
       context: context,
-      builder: (_) => TextPromptDialog(title: title, initial: initial),
+      builder: (_) => TextPromptDialog(
+        title: title,
+        initial: initial,
+        maxLength: maxLength,
+      ),
     );
     return result?.trim();
   }
@@ -139,8 +147,9 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
     }
     final path = await askText(
       import ? 'Import theme JSON path' : 'Export theme JSON path',
+      maxLength: null,
     );
-    if (path == null || path.isEmpty) return;
+    if (!mounted || path == null || path.isEmpty) return;
     try {
       final file = File(path);
       if (import) {
@@ -150,6 +159,7 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
         final value = ThemeCustomization.fromJson(
           jsonDecode(await file.readAsString()),
         );
+        if (!mounted) return;
         setState(() {
           draft = value;
           message = 'Theme imported. Save changes to apply it.';
@@ -162,10 +172,10 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
           const JsonEncoder.withIndent('  ').convert(draft.toJson()),
           flush: true,
         );
-        setState(() => message = 'Theme exported.');
+        if (mounted) setState(() => message = 'Theme exported.');
       }
     } catch (error) {
-      setState(() => message = 'Theme file: $error');
+      if (mounted) setState(() => message = 'Theme file: $error');
     }
   }
 

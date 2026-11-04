@@ -1,5 +1,31 @@
 # Progress
 
+## UI quality Batch 6: platform acceptance and theme transfer (2026-11-04; local)
+
+- Based on `824332e`, branch `feature/ui-quality-batch6`; protected storage docs
+  preserved/excluded. Fixed reproduced Windows theme path truncation at 60 chars
+  and asynchronous feedback after dialog disposal. Corrected widget preview
+  wording when enabled but its companion is not running; no native behavior change.
+- Three focused host cases pass: theme import/Undo/Redo/Cancel/export/save/reopen/
+  disposal, populated portable settings across separate on-disk profiles with
+  nondefault task display and independent widget device state, and preview
+  reconnect/no-write feedback. Scoped analysis clean; unchanged evidence reused.
+- Live Windows Driver verifies custom import/Cancel/Save and widget Apply/Cancel/
+  Apply-to-All, actual isolated companion start/exit and cold app restart retaining
+  appearance/configuration. OS-native picker/physical keyboard/Narrator/DPI/shell
+  acceptance remains blocked by missing Computer Use pipe. No physical preview claim.
+- Fresh API35 AVD uses separate userdata/host graphics, preserving the original.
+  WHPX works; API30 is incomplete. New guest eventually boots/package services
+  recover, but offline periods and repeated Bluetooth/HciHal crashes prevent a
+  reliable-environment pass in the bounded attempt. No app install/build/wipe;
+  original userdata/local.properties preserved, owned processes stopped.
+- [Batch 6 receipt and 40-group coverage](UI_UX_PERMANENT_QUALITY_AUDIT.md#batch-6-platform-acceptance-and-theme-transfer)
+  and [exact human acceptance procedures](UI_UX_PLATFORM_ACCEPTANCE.md) preserve
+  failures, blockers and evidence limits. Next: stable Android IME/SAF/Calendar/
+  TalkBack, Windows native input/pickers/readers/widgets, then DPI/OEM breadth.
+  No push, version/tag/release, personal profile or cloud operation. App-wide
+  UI/UX acceptance remains **in progress**.
+
 ## UI quality Batch 5: Resources, Templates and startup recovery (2026-11-04; local)
 
 - Continued from `ec43e8e` on `feature/ui-quality-batch5`; the three unrelated
