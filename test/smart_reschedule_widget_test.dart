@@ -13,6 +13,90 @@ import 'package:life_manager/features/scheduling/smart_reschedule.dart';
 import 'package:life_manager/main.dart';
 
 void main() {
+  for (final compact in [false, true]) {
+    testWidgets(
+      'scheduling warnings remain reviewable before Apply (compact=$compact)',
+      (tester) async {
+        await tester.binding.setSurfaceSize(
+          compact ? const Size(390, 700) : const Size(1280, 800),
+        );
+        final database = AppDatabase(NativeDatabase.memory());
+        final repository = LifeRepository(database);
+        final yesterday = localDate(
+          DateTime.now().subtract(const Duration(days: 1)),
+        );
+        final task = await repository.addTask(
+          TaskDraft(
+            title: 'Review deadline warning',
+            scheduledDate: yesterday,
+            deadlineDate: yesterday,
+          ),
+        );
+        final controller = AppController(repository);
+        await controller.refresh();
+        try {
+          await tester.pumpWidget(
+            ProviderScope(
+              overrides: [
+                appControllerProvider.overrideWith((ref) => controller),
+              ],
+              child: MaterialApp(
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(context)
+                      .copyWith(textScaler: TextScaler.linear(compact ? 2 : 1)),
+                  child: child!,
+                ),
+                home: Scaffold(
+                  body: SmartRescheduleDialog(
+                    scope: 'Warning review',
+                    taskIds: [task.id],
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Generate preview'));
+          await tester.pumpAndSettle();
+          final apply = find.widgetWithText(FilledButton, 'Apply');
+          expect(tester.widget<FilledButton>(apply).onPressed, isNull);
+          final review = find.text(
+            'I reviewed the warnings and want to apply these changes.',
+          );
+          if (compact) {
+            await tester.scrollUntilVisible(
+              review,
+              160,
+              scrollable: find.byType(Scrollable).first,
+            );
+            await tester.ensureVisible(review);
+            await tester.pumpAndSettle();
+          }
+          expect(
+            review.hitTestable(),
+            findsOneWidget,
+            reason: 'The wide layout keeps warning review beside the action footer.',
+          );
+          await tester.tap(review);
+          await tester.pumpAndSettle();
+          expect(tester.widget<FilledButton>(apply).onPressed, isNotNull);
+          expect((await repository.tasks()).single.scheduledDate, yesterday);
+          await tester.tap(apply);
+          await tester.pumpAndSettle();
+          expect(
+            (await repository.tasks()).single.scheduledDate,
+            localDate(DateTime.now()),
+          );
+          expect((await repository.schedulingHistory()), hasLength(1));
+        } finally {
+          await tester.pumpWidget(const SizedBox());
+          await database.close();
+          await tester.binding.setSurfaceSize(null);
+        }
+      },
+    );
+  }
+
   testWidgets('Smart Reschedule asks before same-series date collision', (
     tester,
   ) async {

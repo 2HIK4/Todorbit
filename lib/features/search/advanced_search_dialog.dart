@@ -15,9 +15,11 @@ class AdvancedSearchDialog extends ConsumerStatefulWidget {
     super.key,
     this.savedView,
     this.creatingSavedView = false,
+    this.beforeNavigate,
   });
   final SavedView? savedView;
   final bool creatingSavedView;
+  final Future<bool> Function()? beforeNavigate;
 
   @override
   ConsumerState<AdvancedSearchDialog> createState() =>
@@ -100,6 +102,9 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
       setState(() => error = 'Enter a view name.');
       return;
     }
+    if (widget.beforeNavigate != null && !await widget.beforeNavigate!())
+      return;
+    if (!mounted) return;
     setState(() {
       busy = true;
       error = null;
@@ -358,7 +363,11 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                         subtitle: Text(
                           '${_statusLabel(task.status)}${task.scheduledDate == null ? '' : ' · ${task.scheduledDate}'}',
                         ),
-                        onTap: () {
+                        onTap: () async {
+                          if (widget.beforeNavigate != null &&
+                              !await widget.beforeNavigate!())
+                            return;
+                          if (!context.mounted) return;
                           controller.navigate(
                             task.isOpen
                                 ? WorkspaceView.all

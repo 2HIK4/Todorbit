@@ -104,6 +104,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
           width: 500,
           height: (MediaQuery.sizeOf(context).height - 48).clamp(0.0, 650.0),
           child: EventEditor(
+            protectUnsavedEdits: true,
             event: event,
             initialDay: initialDate ?? day,
             onClose: () => Navigator.pop(context),
@@ -254,6 +255,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
           width: 460,
           height: 550,
           child: SessionEditor(
+            protectUnsavedEdits: true,
             session: session,
             initialDay: day,
             onClose: () => Navigator.pop(context),
@@ -301,8 +303,9 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                 icon: const Icon(Icons.chevron_right),
               ),
               SizedBox(
-                width: 240,
+                width: 240 * MediaQuery.textScalerOf(context).scale(16) / 16,
                 child: Text(
+                  key: const ValueKey('calendar-period-label'),
                   _periodLabel(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -311,26 +314,26 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
               ),
               SegmentedButton<CalendarMode>(
                 showSelectedIcon: false,
-                segments: const [
+                segments: [
                   ButtonSegment(
                     value: CalendarMode.day,
-                    label: SizedBox(
-                      width: 48,
-                      child: Center(child: Text('Day')),
+                    label: ConstrainedBox(
+                      constraints: const BoxConstraints(minWidth: 48),
+                      child: const Center(child: Text('Day')),
                     ),
                   ),
                   ButtonSegment(
                     value: CalendarMode.week,
-                    label: SizedBox(
-                      width: 48,
-                      child: Center(child: Text('Week')),
+                    label: ConstrainedBox(
+                      constraints: const BoxConstraints(minWidth: 48),
+                      child: const Center(child: Text('Week')),
                     ),
                   ),
                   ButtonSegment(
                     value: CalendarMode.month,
-                    label: SizedBox(
-                      width: 48,
-                      child: Center(child: Text('Month')),
+                    label: ConstrainedBox(
+                      constraints: const BoxConstraints(minWidth: 48),
+                      child: const Center(child: Text('Month')),
                     ),
                   ),
                 ],

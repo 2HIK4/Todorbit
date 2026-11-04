@@ -11,6 +11,7 @@ import '../../domain/models.dart';
 import '../../domain/scheduling_engine.dart';
 import '../../domain/series_edit.dart';
 import '../shared/weekdays.dart';
+import '../shared/dialog_action_bar.dart';
 
 class SmartRescheduleDialog extends ConsumerStatefulWidget {
   const SmartRescheduleDialog({
@@ -365,354 +366,399 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
           included.contains(item.movedTaskId) &&
           !seriesChoices.containsKey(item.movedTaskId),
     );
-    return Dialog(
-      child: SizedBox(
-        width: math.min(880, MediaQuery.sizeOf(context).width - 48),
-        height: math.min(720, MediaQuery.sizeOf(context).height - 64),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.auto_fix_high),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Smart Reschedule',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                  ),
-                  TextButton.icon(
-                    onPressed: () => showDialog<void>(
-                      context: context,
-                      builder: (_) => const AvailabilityDialog(),
-                    ),
-                    icon: const Icon(Icons.access_time),
-                    label: const Text('Availability'),
-                  ),
-                  IconButton(
-                    tooltip: 'Close',
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
+    final sourceTiles = <Widget>[
+      const ListTile(
+        dense: true,
+        title: Text(
+          'Included items',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text('Changing selection clears the preview.'),
+      ),
+      for (final item in source)
+        CheckboxListTile(
+          dense: true,
+          value: selected.contains(_sourceId(item)),
+          title: Text(_sourceTitle(item, controller)),
+          subtitle: Text(_sourceSchedule(item)),
+          onChanged: (value) => setState(() {
+            value == true
+                ? selected.add(_sourceId(item))
+                : selected.remove(_sourceId(item));
+            preview = null;
+            seriesCollisions = const [];
+            seriesChoices.clear();
+          }),
+        ),
+    ];
+    final previewTiles = <Widget>[
+      if (preview == null)
+        const Padding(
+          padding: EdgeInsets.all(12),
+          child: Text('Generate a preview. Nothing is changed until Apply.'),
+        )
+      else ...[
+        for (final collision in seriesCollisions.where(
+          (item) => included.contains(item.movedTaskId),
+        ))
+          AnchoredSelectField<SeriesCollisionChoice>(
+            key: ValueKey(
+              'schedule-collision:${collision.movedTaskId}:${seriesChoices[collision.movedTaskId]}',
+            ),
+            initialValue: seriesChoices[collision.movedTaskId],
+            decoration: InputDecoration(
+              labelText: 'Recurring collision on ${collision.plannedDate}',
+              helperText:
+                  '${collision.existingTaskIds.length} occurrence(s) already planned. Combine is unavailable for distinct scheduled tasks.',
+            ),
+            items: [
+              const DropdownMenuItem(
+                value: SeriesCollisionChoice.keepBoth,
+                child: Text('Keep both occurrences'),
               ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 12,
-                runSpacing: 10,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 190,
-                    child: AnchoredSelectField<ScheduleOperationType>(
-                      initialValue: operation,
-                      decoration: const InputDecoration(labelText: 'Operation'),
-                      items: operations
-                          .map(
-                            (value) => DropdownMenuItem(
-                              value: value,
-                              child: Text(_operationName(value)),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) => setState(() {
-                        operation = value!;
-                        preview = null;
-                        seriesCollisions = const [];
-                        seriesChoices.clear();
-                      }),
-                    ),
-                  ),
-                  if ({
-                    ScheduleOperationType.move,
-                    ScheduleOperationType.reorder,
-                    ScheduleOperationType.repack,
-                  }.contains(operation))
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        final value = await showDatePicker(
-                          context: context,
-                          initialDate: targetDay,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime(2100),
-                        );
-                        if (value != null) setState(() => targetDay = value);
-                      },
-                      icon: const Icon(Icons.calendar_today_outlined),
-                      label: Text(localDate(targetDay)),
-                    ),
-                  if (sessionMode &&
-                      {
-                        ScheduleOperationType.move,
-                        ScheduleOperationType.reorder,
-                        ScheduleOperationType.repack,
-                      }.contains(operation))
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        final value = await showTimePicker(
-                          context: context,
-                          initialTime: targetTime,
-                        );
-                        if (value != null) setState(() => targetTime = value);
-                      },
-                      icon: const Icon(Icons.schedule),
-                      label: Text(targetTime.format(context)),
-                    ),
-                  if ({
-                    ScheduleOperationType.shift,
-                    ScheduleOperationType.push,
-                    ScheduleOperationType.pull,
-                  }.contains(operation))
-                    SizedBox(
-                      width: 150,
-                      child: TextFormField(
-                        initialValue: '$offsetDays',
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Days'),
-                        onChanged: (value) =>
-                            offsetDays = int.tryParse(value) ?? 0,
-                      ),
-                    ),
-                  if (sessionMode &&
-                      {
-                        ScheduleOperationType.move,
-                        ScheduleOperationType.reorder,
-                        ScheduleOperationType.repack,
-                        ScheduleOperationType.split,
-                      }.contains(operation))
-                    SizedBox(
-                      width: 150,
-                      child: TextFormField(
-                        initialValue: '$bufferMinutes',
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Buffer minutes',
-                        ),
-                        onChanged: (value) =>
-                            bufferMinutes = int.tryParse(value) ?? 0,
-                      ),
-                    ),
-                  if (operation == ScheduleOperationType.split)
-                    SizedBox(
-                      width: 170,
-                      child: TextFormField(
-                        initialValue: '$splitMinutes',
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'First session minutes',
-                        ),
-                        onChanged: (value) =>
-                            splitMinutes = int.tryParse(value) ?? 0,
-                      ),
-                    ),
-                  if (sessionMode &&
-                      {
-                        ScheduleOperationType.move,
-                        ScheduleOperationType.shift,
-                        ScheduleOperationType.push,
-                        ScheduleOperationType.pull,
-                        ScheduleOperationType.reorder,
-                      }.contains(operation))
-                    FilterChip(
-                      selected: allowOverlap,
-                      onSelected: (value) =>
-                          setState(() => allowOverlap = value),
-                      avatar: const Icon(Icons.layers_outlined, size: 18),
-                      label: const Text('Allow intentional overlap'),
-                    ),
-                  FilledButton.icon(
-                    onPressed: selected.isEmpty
-                        ? null
-                        : () => _generate(controller),
-                    icon: const Icon(Icons.preview_outlined),
-                    label: const Text('Generate preview'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      width: 280,
-                      child: Card(
-                        child: ListView(
-                          padding: const EdgeInsets.all(8),
-                          children: [
-                            const ListTile(
-                              dense: true,
-                              title: Text(
-                                'Included items',
-                                style: TextStyle(fontWeight: FontWeight.w700),
-                              ),
-                              subtitle: Text(
-                                'Changing selection clears the preview.',
-                              ),
-                            ),
-                            for (final item in source)
-                              CheckboxListTile(
-                                dense: true,
-                                value: selected.contains(_sourceId(item)),
-                                title: Text(_sourceTitle(item, controller)),
-                                subtitle: Text(_sourceSchedule(item)),
-                                onChanged: (value) => setState(() {
-                                  value == true
-                                      ? selected.add(_sourceId(item))
-                                      : selected.remove(_sourceId(item));
-                                  preview = null;
-                                  seriesCollisions = const [];
-                                  seriesChoices.clear();
-                                }),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Card(
-                        child: preview == null
-                            ? const Center(
-                                child: Text(
-                                  'Generate a preview. Nothing is changed until Apply.',
-                                ),
-                              )
-                            : ListView(
-                                padding: const EdgeInsets.all(12),
-                                children: [
-                                  for (final collision
-                                      in seriesCollisions.where(
-                                        (item) =>
-                                            included.contains(item.movedTaskId),
-                                      ))
-                                    AnchoredSelectField<SeriesCollisionChoice>(
-                                      key: ValueKey(
-                                        'schedule-collision:${collision.movedTaskId}:${seriesChoices[collision.movedTaskId]}',
-                                      ),
-                                      initialValue:
-                                          seriesChoices[collision.movedTaskId],
-                                      decoration: InputDecoration(
-                                        labelText:
-                                            'Recurring collision on ${collision.plannedDate}',
-                                        helperText:
-                                            '${collision.existingTaskIds.length} occurrence(s) already planned. Combine is unavailable for distinct scheduled tasks.',
-                                      ),
-                                      items: [
-                                        const DropdownMenuItem(
-                                          value: SeriesCollisionChoice.keepBoth,
-                                          child: Text('Keep both occurrences'),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: SeriesCollisionChoice.skipNew,
-                                          enabled: collision.canSkipMoved,
-                                          child: Text(
-                                            collision.canSkipMoved
-                                                ? 'Skip moved occurrence'
-                                                : 'Skip unavailable: linked or started work',
-                                          ),
-                                        ),
-                                        const DropdownMenuItem(
-                                          value: SeriesCollisionChoice.combine,
-                                          enabled: false,
-                                          child: Text('Combine unavailable'),
-                                        ),
-                                      ],
-                                      onChanged: (value) {
-                                        if (value != null) {
-                                          setState(
-                                            () =>
-                                                seriesChoices[collision
-                                                        .movedTaskId] =
-                                                    value,
-                                          );
-                                        }
-                                      },
-                                    ),
-                                  for (final issue in preview!.issues)
-                                    ListTile(
-                                      dense: true,
-                                      leading: Icon(
-                                        issue.isHard
-                                            ? Icons.error_outline
-                                            : Icons.warning_amber_rounded,
-                                        color: issue.isHard
-                                            ? Theme.of(context)
-                                                  .colorScheme
-                                                  .error
-                                            : Colors.amber.shade800,
-                                      ),
-                                      title: Text(issue.message),
-                                      subtitle: Text(
-                                        issue.isHard
-                                            ? 'Must be resolved'
-                                            : 'Warning',
-                                      ),
-                                    ),
-                                  if (preview!.changes.isEmpty)
-                                    const ListTile(
-                                      title: Text(
-                                        'No eligible scheduling changes.',
-                                      ),
-                                    ),
-                                  for (final change in preview!.changes)
-                                    CheckboxListTile(
-                                      value: included.contains(change.targetId),
-                                      onChanged: (value) => setState(() {
-                                        value == true
-                                            ? included.add(change.targetId)
-                                            : included.remove(change.targetId);
-                                      }),
-                                      title: Text(
-                                        _changeTitle(change, controller),
-                                      ),
-                                      subtitle: Text(
-                                        '${_before(change)}  →  ${_after(change)}',
-                                      ),
-                                    ),
-                                ],
-                              ),
-                      ),
-                    ),
-                  ],
+              DropdownMenuItem(
+                value: SeriesCollisionChoice.skipNew,
+                enabled: collision.canSkipMoved,
+                child: Text(
+                  collision.canSkipMoved
+                      ? 'Skip moved occurrence'
+                      : 'Skip unavailable: linked or started work',
                 ),
               ),
-              if (hasWarnings)
-                CheckboxListTile(
-                  value: allowWarnings,
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'I reviewed the warnings and want to apply these changes.',
-                  ),
-                  onChanged: (value) =>
-                      setState(() => allowWarnings = value ?? false),
-                ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    onPressed:
-                        applying ||
-                            unresolvedSeriesCollisions ||
-                            reviewed == null ||
-                            !reviewed.canApply ||
-                            (hasWarnings && !allowWarnings)
-                        ? null
-                        : () => _apply(controller),
-                    icon: const Icon(Icons.check),
-                    label: Text(applying ? 'Applying…' : 'Apply'),
-                  ),
-                ],
+              const DropdownMenuItem(
+                value: SeriesCollisionChoice.combine,
+                enabled: false,
+                child: Text('Combine unavailable'),
               ),
             ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => seriesChoices[collision.movedTaskId] = value);
+              }
+            },
+          ),
+        for (final issue in preview!.issues)
+          ListTile(
+            dense: true,
+            leading: Icon(
+              issue.isHard ? Icons.error_outline : Icons.warning_amber_rounded,
+              color: issue.isHard
+                  ? Theme.of(context).colorScheme.error
+                  : Colors.amber.shade800,
+            ),
+            title: Text(issue.message),
+            subtitle: Text(issue.isHard ? 'Must be resolved' : 'Warning'),
+          ),
+        if (preview!.changes.isEmpty)
+          const ListTile(title: Text('No eligible scheduling changes.')),
+        for (final change in preview!.changes)
+          CheckboxListTile(
+            value: included.contains(change.targetId),
+            onChanged: (value) => setState(() {
+              value == true
+                  ? included.add(change.targetId)
+                  : included.remove(change.targetId);
+            }),
+            title: Text(_changeTitle(change, controller)),
+            subtitle: Text('${_before(change)}  →  ${_after(change)}'),
+          ),
+      ],
+    ];
+    return Dialog(
+      insetPadding: const EdgeInsets.all(16),
+      child: SizedBox(
+        width: 880,
+        height: 720,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: LayoutBuilder(
+            builder: (context, bounds) {
+              final compact =
+                  bounds.maxWidth < 680 ||
+                  MediaQuery.textScalerOf(context).scale(14) > 20;
+              final warningReview = CheckboxListTile(
+                value: allowWarnings,
+                contentPadding: EdgeInsets.zero,
+                title: const Text(
+                  'I reviewed the warnings and want to apply these changes.',
+                ),
+                onChanged: (value) =>
+                    setState(() => allowWarnings = value ?? false),
+              );
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: CustomScrollView(
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                children: [
+                                  if (!compact) ...[
+                                    const Icon(Icons.auto_fix_high),
+                                    const SizedBox(width: 10),
+                                  ],
+                                  Expanded(
+                                    child: Text(
+                                      'Smart Reschedule',
+                                      style: compact
+                                          ? Theme.of(context)
+                                                .textTheme
+                                                .titleLarge
+                                          : Theme.of(context)
+                                                .textTheme
+                                                .headlineSmall,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Close',
+                                    onPressed: () => Navigator.pop(context),
+                                    icon: const Icon(Icons.close),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 12,
+                                runSpacing: 10,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  TextButton.icon(
+                                    onPressed: () => showDialog<void>(
+                                      context: context,
+                                      builder: (_) =>
+                                          const AvailabilityDialog(),
+                                    ),
+                                    icon: const Icon(Icons.access_time),
+                                    label: const Text('Availability'),
+                                  ),
+
+                                  SizedBox(
+                                    width: 190,
+                                    child:
+                                        AnchoredSelectField<
+                                          ScheduleOperationType
+                                        >(
+                                          initialValue: operation,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Operation',
+                                          ),
+                                          items: operations
+                                              .map(
+                                                (value) => DropdownMenuItem(
+                                                  value: value,
+                                                  child: Text(
+                                                    _operationName(value),
+                                                  ),
+                                                ),
+                                              )
+                                              .toList(),
+                                          onChanged: (value) => setState(() {
+                                            operation = value!;
+                                            preview = null;
+                                            seriesCollisions = const [];
+                                            seriesChoices.clear();
+                                          }),
+                                        ),
+                                  ),
+                                  if ({
+                                    ScheduleOperationType.move,
+                                    ScheduleOperationType.reorder,
+                                    ScheduleOperationType.repack,
+                                  }.contains(operation))
+                                    OutlinedButton.icon(
+                                      onPressed: () async {
+                                        final value = await showDatePicker(
+                                          context: context,
+                                          initialDate: targetDay,
+                                          firstDate: DateTime(2000),
+                                          lastDate: DateTime(2100),
+                                        );
+                                        if (value != null)
+                                          setState(() => targetDay = value);
+                                      },
+                                      icon: const Icon(
+                                        Icons.calendar_today_outlined,
+                                      ),
+                                      label: Text(localDate(targetDay)),
+                                    ),
+                                  if (sessionMode &&
+                                      {
+                                        ScheduleOperationType.move,
+                                        ScheduleOperationType.reorder,
+                                        ScheduleOperationType.repack,
+                                      }.contains(operation))
+                                    OutlinedButton.icon(
+                                      onPressed: () async {
+                                        final value = await showTimePicker(
+                                          context: context,
+                                          initialTime: targetTime,
+                                        );
+                                        if (value != null)
+                                          setState(() => targetTime = value);
+                                      },
+                                      icon: const Icon(Icons.schedule),
+                                      label: Text(targetTime.format(context)),
+                                    ),
+                                  if ({
+                                    ScheduleOperationType.shift,
+                                    ScheduleOperationType.push,
+                                    ScheduleOperationType.pull,
+                                  }.contains(operation))
+                                    SizedBox(
+                                      width: 150,
+                                      child: TextFormField(
+                                        initialValue: '$offsetDays',
+                                        keyboardType: TextInputType.number,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Days',
+                                        ),
+                                        onChanged: (value) => offsetDays =
+                                            int.tryParse(value) ?? 0,
+                                      ),
+                                    ),
+                                  if (sessionMode &&
+                                      {
+                                        ScheduleOperationType.move,
+                                        ScheduleOperationType.reorder,
+                                        ScheduleOperationType.repack,
+                                        ScheduleOperationType.split,
+                                      }.contains(operation))
+                                    SizedBox(
+                                      width: 150,
+                                      child: TextFormField(
+                                        initialValue: '$bufferMinutes',
+                                        keyboardType: TextInputType.number,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Buffer minutes',
+                                        ),
+                                        onChanged: (value) => bufferMinutes =
+                                            int.tryParse(value) ?? 0,
+                                      ),
+                                    ),
+                                  if (operation == ScheduleOperationType.split)
+                                    SizedBox(
+                                      width: 170,
+                                      child: TextFormField(
+                                        initialValue: '$splitMinutes',
+                                        keyboardType: TextInputType.number,
+                                        decoration: const InputDecoration(
+                                          labelText: 'First session minutes',
+                                        ),
+                                        onChanged: (value) => splitMinutes =
+                                            int.tryParse(value) ?? 0,
+                                      ),
+                                    ),
+                                  if (sessionMode &&
+                                      {
+                                        ScheduleOperationType.move,
+                                        ScheduleOperationType.shift,
+                                        ScheduleOperationType.push,
+                                        ScheduleOperationType.pull,
+                                        ScheduleOperationType.reorder,
+                                      }.contains(operation))
+                                    FilterChip(
+                                      selected: allowOverlap,
+                                      onSelected: (value) =>
+                                          setState(() => allowOverlap = value),
+                                      avatar: const Icon(
+                                        Icons.layers_outlined,
+                                        size: 18,
+                                      ),
+                                      label: const Text(
+                                        'Allow intentional overlap',
+                                      ),
+                                    ),
+                                  FilledButton.icon(
+                                    onPressed: selected.isEmpty
+                                        ? null
+                                        : () => _generate(controller),
+                                    icon: const Icon(Icons.preview_outlined),
+                                    label: const Text('Generate preview'),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 14),
+                            ],
+                          ),
+                        ),
+                        if (compact)
+                          SliverList.list(
+                            children: [
+                              ...sourceTiles,
+                              const Divider(),
+                              Text(
+                                'Preview',
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                              ...previewTiles,
+                            ],
+                          )
+                        else
+                          SliverFillRemaining(
+                            hasScrollBody: true,
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                SizedBox(
+                                  width: 280,
+                                  child: Card(
+                                    child: ListView(
+                                      padding: const EdgeInsets.all(8),
+                                      children: sourceTiles,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Card(
+                                    child: ListView(
+                                      padding: const EdgeInsets.all(12),
+                                      children: previewTiles,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        SliverToBoxAdapter(
+                          child: Column(
+                            children: [
+                              if (hasWarnings && compact) warningReview,
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (hasWarnings && !compact) warningReview,
+                  DialogActionBar(
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed:
+                            applying ||
+                                unresolvedSeriesCollisions ||
+                                reviewed == null ||
+                                !reviewed.canApply ||
+                                (hasWarnings && !allowWarnings)
+                            ? null
+                            : () => _apply(controller),
+                        icon: const Icon(Icons.check),
+                        label: Text(applying ? 'Applying…' : 'Apply'),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -850,24 +896,35 @@ class _AvailabilityDialogState extends ConsumerState<AvailabilityDialog> {
           for (final day in weekdaysFrom(
             ref.watch(appControllerProvider).firstWeekday,
           ))
-            Row(
-              children: [
-                Checkbox(
-                  value: enabled[day],
-                  onChanged: (value) =>
-                      setState(() => enabled[day] = value ?? false),
-                ),
-                SizedBox(width: 86, child: Text(_weekday(day))),
-                TextButton(
-                  onPressed: enabled[day]! ? () => _pick(day, true) : null,
-                  child: Text(starts[day]!.format(context)),
-                ),
-                const Text('to'),
-                TextButton(
-                  onPressed: enabled[day]! ? () => _pick(day, false) : null,
-                  child: Text(ends[day]!.format(context)),
-                ),
-              ],
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Checkbox(
+                        semanticLabel: 'Enable ${_weekday(day)}',
+                        value: enabled[day],
+                        onChanged: (value) =>
+                            setState(() => enabled[day] = value ?? false),
+                      ),
+                      Text(_weekday(day)),
+                    ],
+                  ),
+                  TextButton(
+                    onPressed: enabled[day]! ? () => _pick(day, true) : null,
+                    child: Text(starts[day]!.format(context)),
+                  ),
+                  const Text('to'),
+                  TextButton(
+                    onPressed: enabled[day]! ? () => _pick(day, false) : null,
+                    child: Text(ends[day]!.format(context)),
+                  ),
+                ],
+              ),
             ),
           const Divider(height: 24),
           Row(
@@ -968,10 +1025,11 @@ class ScheduleHistoryDialog extends ConsumerWidget {
                   Expanded(
                     child: Text(
                       'Schedule history',
-                      style: Theme.of(context).textTheme.headlineSmall,
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
                   ),
                   IconButton(
+                    tooltip: 'Close schedule history',
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close),
                   ),

@@ -79,7 +79,8 @@ Future<void> showSaveTemplateDialog(
 }
 
 class TemplatesDialog extends ConsumerStatefulWidget {
-  const TemplatesDialog({super.key});
+  const TemplatesDialog({super.key, this.beforeNavigate});
+  final Future<bool> Function()? beforeNavigate;
 
   @override
   ConsumerState<TemplatesDialog> createState() => _TemplatesDialogState();
@@ -119,7 +120,10 @@ class _TemplatesDialogState extends ConsumerState<TemplatesDialog> {
   Future<void> _apply(LifeTemplate template) async {
     final created = await showDialog<bool>(
       context: context,
-      builder: (_) => _ApplyTemplateDialog(template: template),
+      builder: (_) => _ApplyTemplateDialog(
+        template: template,
+        beforeNavigate: widget.beforeNavigate,
+      ),
     );
     if (created == true && mounted) Navigator.pop(context);
   }
@@ -189,8 +193,9 @@ class _TemplatesDialogState extends ConsumerState<TemplatesDialog> {
 }
 
 class _ApplyTemplateDialog extends ConsumerStatefulWidget {
-  const _ApplyTemplateDialog({required this.template});
+  const _ApplyTemplateDialog({required this.template, this.beforeNavigate});
   final LifeTemplate template;
+  final Future<bool> Function()? beforeNavigate;
 
   @override
   ConsumerState<_ApplyTemplateDialog> createState() =>
@@ -218,6 +223,9 @@ class _ApplyTemplateDialogState extends ConsumerState<_ApplyTemplateDialog> {
   }
 
   Future<void> _create() async {
+    if (widget.beforeNavigate != null && !await widget.beforeNavigate!())
+      return;
+    if (!mounted) return;
     setState(() {
       busy = true;
       error = null;

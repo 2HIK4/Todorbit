@@ -8,6 +8,7 @@ import '../shared/dialog_action_bar.dart';
 import '../shared/unsaved_editor_guard.dart';
 import '../shared/app_spacing.dart';
 import '../shared/draft_interval.dart';
+import '../shared/date_time_button_row.dart';
 
 class SessionEditor extends ConsumerStatefulWidget {
   const SessionEditor({
@@ -319,26 +320,14 @@ class _SessionEditorState extends ConsumerState<SessionEditor> {
 
   Widget _dateTimeRow(DateTime value, bool isStart) => Padding(
     padding: const EdgeInsets.only(top: 6),
-    child: Row(
-      children: [
-        Expanded(
-          child: OutlinedButton(
-            key: ValueKey('session-${isStart ? 'start' : 'end'}-date'),
-            onPressed: () => _pick(isStart, true),
-            child: Text(localDate(value)),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: OutlinedButton(
-            key: ValueKey('session-${isStart ? 'start' : 'end'}-time'),
-            onPressed: () => _pick(isStart, false),
-            child: Text(
-              '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}',
-            ),
-          ),
-        ),
-      ],
+    child: DateTimeButtonRow(
+      dateKey: ValueKey('session-${isStart ? 'start' : 'end'}-date'),
+      onDatePressed: () => _pick(isStart, true),
+      dateLabel: localDate(value),
+      timeKey: ValueKey('session-${isStart ? 'start' : 'end'}-time'),
+      onTimePressed: () => _pick(isStart, false),
+      timeLabel:
+          '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}',
     ),
   );
 }

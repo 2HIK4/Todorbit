@@ -36,6 +36,13 @@ class _DraftSubtask {
   DateTime? deadline;
 }
 
+class TaskEditorController {
+  Future<bool> Function()? _confirmLeave;
+  bool get isAttached => _confirmLeave != null;
+
+  Future<bool> confirmLeave() async => await _confirmLeave?.call() ?? true;
+}
+
 class TaskEditor extends ConsumerStatefulWidget {
   const TaskEditor({
     super.key,
@@ -45,6 +52,7 @@ class TaskEditor extends ConsumerStatefulWidget {
     this.onSaved,
     this.onCancel,
     this.protectUnsavedEdits = false,
+    this.navigationController,
   });
   final LifeTask? task;
   final String? parentTaskId;
@@ -52,6 +60,7 @@ class TaskEditor extends ConsumerStatefulWidget {
   final VoidCallback? onSaved;
   final VoidCallback? onCancel;
   final bool protectUnsavedEdits;
+  final TaskEditorController? navigationController;
 
   @override
   ConsumerState<TaskEditor> createState() => _TaskEditorState();
@@ -143,8 +152,8 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     });
   }
 
-  Future<void> cancel() async {
-    if (saving || confirmingClose) return;
+  Future<bool> confirmLeave() async {
+    if (saving || savingPrerequisites || confirmingClose) return false;
     if (!canLeave) {
       confirmingClose = true;
       final discard = await showDialog<bool>(
@@ -165,8 +174,13 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         ),
       );
       confirmingClose = false;
-      if (discard != true || !mounted) return;
+      if (discard != true || !mounted) return false;
     }
+    return mounted;
+  }
+
+  Future<void> cancel() async {
+    if (!await confirmLeave()) return;
     if (!widget.protectUnsavedEdits) {
       widget.onCancel?.call();
       return;
@@ -243,6 +257,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         ? null
         : DateTime.parse(task!.deadlineDate!);
     initialDraft = draftKey;
+    widget.navigationController?._confirmLeave = confirmLeave;
     for (final field in [
       title,
       notes,
@@ -258,7 +273,21 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   }
 
   @override
+  void didUpdateWidget(covariant TaskEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.navigationController != widget.navigationController) {
+      if (oldWidget.navigationController?._confirmLeave == confirmLeave) {
+        oldWidget.navigationController?._confirmLeave = null;
+      }
+      widget.navigationController?._confirmLeave = confirmLeave;
+    }
+  }
+
+  @override
   void dispose() {
+    if (widget.navigationController?._confirmLeave == confirmLeave) {
+      widget.navigationController?._confirmLeave = null;
+    }
     title.dispose();
     notes.dispose();
     plannedDuration.dispose();
@@ -841,6 +870,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
           width: math.min(520, MediaQuery.sizeOf(dialogContext).width - 48),
           height: math.min(620, MediaQuery.sizeOf(dialogContext).height - 64),
           child: TaskEditor(
+            protectUnsavedEdits: true,
             parentTaskId: parent.id,
             onSaved: () => Navigator.pop(dialogContext),
             onCancel: () => Navigator.pop(dialogContext),
@@ -1001,6 +1031,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
           width: math.min(460, MediaQuery.sizeOf(context).width - 48),
           height: math.min(550, MediaQuery.sizeOf(context).height - 64),
           child: SessionEditor(
+            protectUnsavedEdits: true,
             session: session,
             initialTaskId: task.id,
             initialDay: scheduled ?? DateTime.now(),

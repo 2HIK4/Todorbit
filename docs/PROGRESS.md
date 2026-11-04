@@ -1,5 +1,35 @@
 # Progress
 
+## Comprehensive UI quality continuation (2026-11-04; local checkpoint)
+
+- Verified and committed the prior 20 task files as `c32329c` on
+  `feature/permanent-ui-quality`; all three unrelated storage documents preserved.
+  Permanent skill routing/reference and unchanged Sync evidence reused.
+- Implemented draft protection across desktop close/navigation/task/search/view/
+  template/deletion paths and retained inline drafts across resize. Enabled
+  Calendar/nested editor guards and contextual task completion semantics.
+- Corrected enlarged Calendar labels/period, event/session date controls, Smart
+  Reschedule/availability, Task Preferences, sidebar reorder names, report metrics/
+  range/dates, Focus clock and schedule-history heading/close name. Reused current
+  typography, palette and action bars; shared DateTimeButtonRow uses AppSpacing.
+  No schema/protocol/repository/native/backup changes, push, build publication or
+  version bump.
+- [Existing audit ledger](UI_UX_PERMANENT_QUALITY_AUDIT.md#continuation-high-use-workflows-and-remaining-surfaces)
+  now contains per-finding fixes, 40-group progress/remaining samples, exact
+  invocations and source identities. New geometry/behavior checks and focused
+  existing regressions pass across recorded scopes; actual isolated Windows
+  Driver preserves/saves a draft, toggles/undoes settings and starts/pauses/stops
+  the timer. Reused passes are distinguished from reruns.
+- Comprehensive objective remains **in progress**. Next coherent batch: populated
+  composition/resources/series/goal/habit/history/transfer flows and isolated
+  startup-recovery short-window reproduction. P3 shell brand wrapping remains.
+  Physical Windows keyboard/Narrator/DPI/native widgets, Android device/launcher/
+  IME/TalkBack and disposable-account two-device Drive are unverified; computer-use
+  native pipe and adb-on-PATH were unavailable. Widget editor offscreen footer
+  capture is intermittent despite passed bounds/tap assertions; inspect live
+  before claiming paint stability. Do not rerun unchanged passing gates or treat
+  this checkpoint as complete app/release acceptance.
+
 ## Permanent UI quality and Sync usability (2026-11-04; local)
 
 - Branch `feature/permanent-ui-quality`, baseline `25874c0`; unrelated storage

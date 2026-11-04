@@ -1,7 +1,11 @@
 # Permanent UI quality: audit and implementation — 2026-11-04
 
-Baseline `25874c0`, branch `feature/permanent-ui-quality`. Audit + implementation,
-no publication/commit requested. Existing storage documentation changes in
+**Application-wide work remains in progress.** The first completed pass is now
+committed as `c32329c`. The continuation below advances the existing 40-group
+inventory; discovery-only rows are not completed quality reviews.
+
+Initial baseline `25874c0`, branch `feature/permanent-ui-quality`. Audit + implementation;
+the continuation authorizes local commits, with no push/publication. Storage changes in
 `DEVELOPMENT.md`, `STORAGE_CLEANUP_2026_11_04.md` and `STORAGE_MAINTENANCE.md`
 are unrelated and preserved. No version/schema/protocol/key changes authorized
 by this UI pass. Evidence: ignored `.buildlog/verify/permanent-ui-quality/`.
@@ -359,3 +363,261 @@ After review, VM `getVM` identified the task's Debug PID4036 and
 inspection confirms task Debug/Flutter processes stopped; personal installed
 PID21876 remains running. This was an owned-process shutdown, not a crash or
 interaction with the personal app. Synthetic profile/evidence files are retained.
+
+## Continuation: high-use workflows and remaining surfaces
+
+User authorized continuation and local commits, without push/publication. Initial
+20 files and all three unrelated storage documents match the earlier final-review
+hashes. Reused existing test/metadata/reference evidence; inspected staged paths,
+source diff and `git diff --cached --check`; committed only those 20 files as
+`c32329c`. Missing PyYAML is still an explicit bundled-validator limitation, not
+an app verification failure. No code/test rerun was justified by the commit alone.
+
+Batch 2 starts at `c32329c`: Today/task drafts/navigation, desktop/mobile Calendar,
+settings and widget controls, then other reachable surfaces. Desktop TaskEditor
+callers defaulted unsaved protection off; new baseline tests reproduced loss on
+close/switch/navigation before correction. Previous mobile Back receipts did not
+cover those desktop paths. Actual outcomes follow; plans are never passes.
+Evidence is under `.buildlog/verify/permanent-ui-quality/pass2/`.
+
+### Completed implementation checkpoint: main workflows and enlarged layouts
+
+Read the current working tree/diffs and applicable guidance before editing. The
+permanent routing, 67 category references and earlier Sync changes are committed
+and their unchanged evidence remains valid. This continuation changes presentation
+and draft navigation only. No repository/schema, scheduling calculation, timer
+ownership, backup, Sync, credential, native widget or stored preference format
+changed. Existing callbacks and explicit Apply/Save boundaries remain.
+
+| Finding | Reproduction / cause | Implemented correction / verification |
+| --- | --- | --- |
+| U06 P1, work preservation | Desktop task editor defaults protection off; close, sidebar/hotkey/task/search navigation can dispose edited fields. Saved-view creation and template application also navigate | Enable existing discard protection in desktop callers; a small editor controller coordinates confirmation before replacing an inline draft. Guard actual search/view/template navigation, category/project deletion; inspecting/cancelling dialogs adds no prompt. Thirteen draft integration cases collectively cover close, navigation, switching, accepted discard, Escape, search, saved view, template and category deletion plus Calendar editor dismissal. Live Windows Keep editing retains the draft, which then saves |
+| U07 P1, responsive state | Resizing an inline draft through the 1050px breakpoint removes the editor | Keep the same keyed editor mounted in the available content pane until it closes. 1280→900→1280 widget test verifies state identity, title and actual save. Physical window resizing remains NOT TESTED |
+| U08 P2, interrupted editing | Desktop Calendar and nested task/session editor callers leave unsaved guards off | Enable existing guards; Event/Work session dismissal tests pass. Existing mobile Back/save and composition save tests pass. No second draft implementation |
+| U09 P2, accessibility | Desktop completion checkbox has no task name; mobile completed checkbox still says Complete | Contextual Complete/Reopen labels. Desktop semantics plus persisted completion and existing mobile completion tests pass. Actual screen-reader output NOT TESTED |
+| U10 P2, Calendar identification | 200% Week label needs 68.65px but is fixed to 48px; period label needs 257.04px but is fixed to 240px | Intrinsic mode-label width with existing minimums; scale the period's reserved width with text size so mode controls stay stationary. Mode switching, whole-word/full-period geometry and stable ordinary-size controls pass |
+| U11 P2, scheduling operability | At 390×700/200%, fixed header/control area consumes the dialog, causing 410px overflow | One scrollable compact flow with fixed shared action bar; preserve two-pane wide view and preview/approval logic. Review caught an introduced wide-layout regression: acknowledgment scrolled out of view; restored beside the footer. Wide/compact warning-gated Apply, non-mutating preview, Cancel, actual Apply and recurring-collision approval pass |
+| U12 P2, availability layout | Enabled-day/time Row overflows horizontally by 103px at the same bounds | Wrap weekday/start/end controls, add contextual weekday checkbox names. Enable Monday → Save persists exactly 09:00–17:00 |
+| U13 P2, settings failure | Task Preferences AlertDialog intrinsic sizing reaches AnchoredSelectField's LayoutBuilder and throws | Bounded Dialog with scrolling settings and shared action bar. Compact 200% toggle/undo/Done and existing light/dark narrow setting changes pass |
+| U14 P2, report readability | 180px metrics break Completed inside a word while unused row space remains; selected period truncates to Last 3… | Metrics use available width and scale; selector grows; compact daily rows reflow date/value above the bar. Whole words, full range/date, switching period and persisted completion report tests pass. Calculations unchanged |
+| U15 P2, time readability | Focus clock wraps its final digit onto a new line at 200% | Choose a fitting existing typography role using actual scaled text measurement; keep tabular figures and system scaling. Exceptional longer values can scroll horizontally. Enlarged clock/start/pause and ordinary start/pause/manual-log tests pass; live Windows start/pause/stop observed |
+| U16 P2, destination names | Sidebar reorder controls squeeze Today/All tasks/Inbox into fragments at 200% | Put arrow actions below the named row when compact; retain drag and keyboard-operable arrows. Whole-word geometry and actual reorder pass; existing immediate navigation update test passes |
+| U17 P3, heading/name | Schedule history heading splits Schedule at 200%; close icon lacks a tooltip | Reuse titleLarge; name Close schedule history. Whole-word geometry and actual close pass |
+| U18 P2, date readability | Event/session date buttons split 2026-11-04 across lines at 200% | Shared DateTimeButtonRow uses AppSpacing and stacks date/time when needed. Both start/end values remain whole; corrected scrolled renders inspected. Existing event picker/title/category and narrow new/edit session actions pass. Picker callbacks, inclusive all-day display and interval logic unchanged |
+
+Implementation inspection checked ownership, save/cancel/error paths and shared
+consumers; experience inspection checked hierarchy and decision cost. The new
+confirmation appears only when leaving edited work. No routine step, setting,
+data field or recovery capability was removed. Report controls, timer controls,
+reorder arrows, date/time buttons and scheduling approval retain their meanings;
+the changes allocate room rather than shrink all text or hide required controls.
+Empty, disconnected and unavailable states use real controller/service state.
+
+### Coverage update across the existing 40 groups
+
+This table supplements the **historical first-pass inventory**, rather than
+turning its discovery rows into passes. S = implementation/experience source
+inspection; O = inspected offscreen render; A = automated interaction/geometry/
+semantics; V = actual isolated Windows Debug/Driver. None means physical input,
+Android device acceptance or accessibility certification. Each row records visual
+and hierarchy considerations, necessity/journey review, behavior/state evidence,
+responsive/input/accessibility scope and remaining important states. A bounded
+review is complete only for its stated sample, not every variant of that group.
+
+| Group | Inspection and necessity decision / evidence added | Outstanding acceptance or next sample |
+| --- | --- | --- |
+| S01 shell/Today/lists | S/O/A empty short 900×550 at 200%; main action and empty guidance fit. Existing seven workspace cases pass. V synthetic task saved and selected. Existing filters retained; no invented data | Populated unusual/large lists, physical Tab/Narrator, shell brand wraps at 200% (P3 follow-up) |
+| S02 task editor | U06/U07/U09; S/O/A/V draft→decline navigation→save. Ordinary/narrow inputs, identity and completion persisted | Rejected/stale saves with multiple drafts, OS close and physical IME/caret |
+| S03 composition | S draft key includes checklist/subtask edits; O editor; A draft subtask and persisted checklist/real subtask. Separate prerequisite save is existing deliberate behavior | Populated dependency/reorder/error journeys; nested dirty subtask dismissal beyond save |
+| S04 resources | S open/remove/unsafe-type/missing-file paths preserve external resources; O empty controls at 200%. Separate attachment copy versus external link retained | Native chooser/drop/relink, unavailable files, populated long labels on Android |
+| S05 series/sequences/plans | S scope/sequence distinction retained; O empty sequence chooser at 200%; A recurring-collision scheduling refuses unreviewed Apply | Populated sequence reorder, future/end/skip and progressive-plan editing |
+| S06 event editor | U08/U18; O/A 200% new form and start/end dates; actual close guard plus ordinary picker/category test | Populated recurrence/details/color, rejected save and all-day multi-date acceptance |
+| S07 sessions | U08/U18; O/A new form/dates; guard; existing new/edit 300×600/150% light/dark actions. Outcome remains manual | Overlap/error/delete and physical date/time picker navigation |
+| S08 desktop Calendar | U10; O/A day/week/month enlarged mode/full period and ordinary stable controls; V persisted task in Week | Dense overlapping entries, short day preview/context menus and physical keyboard |
+| S09 mobile Calendar | S separate touch shell, counts omit duplicated task/session commitments; O/A 390×700/200% Week/empty day, 7-column cells and explicit add actions retained | Device month/day/rotation/Back, populated agenda and TalkBack |
+| S10 organization | S category/project actions; A creation retains unsaved title/notes; category deletion cannot navigate through a declined draft guard | Project deletion equivalent source path inspected; category icon/color pickers and full restore journey |
+| S11 search/saved views | S/O/A compact filters and result count; actual quick-result and saved-view navigation guarded. Inspection is not itself navigation | Large results, advanced result guard on a populated query, physical focus/keyboard |
+| S12 templates | S/O empty manager; A opening/apply inspection preserves draft, denied Create writes nothing, accepted discard creates a new task. Definitions/history exclusions remain explicit | Project/routine apply, validation and deletion at large text |
+| S13 scheduling | U11/U12/U17; S/O/A compact empty/history, preview, availability save, actual Apply/collision decision and close; V ordinary scheduling layout | Populated history restore/failure, all session operations and warning review at short heights |
+| S14 habits | S/O/A empty overview and new editor at 200%; measurement/rest-day explanation retains domain distinction | Recorded values, correction/history/archive and validation feedback |
+| S15 goals | S/O/A empty overview/new form; separate milestones/manual progress retained | Linked tasks, populated milestones/history, invalid values/archive |
+| S16 focus/work | U15; S/O/A stopped→running→paused, persisted manual log regression; V start/pause/stop. Actual work remains distinct from task/session plans | Ownership handoff/checkpoint recovery, manual correction at large text |
+| S17 reports | U14; S/O/A enlarged metrics/date/range plus ordinary persisted completion. No decorative chart/value rewrite | Populated long project names, custom-range cancel/invalid and nonzero work detail |
+| S18 Archive/Trash | S/O/A empty Archive; source restore/permanent-delete safeguards and history retention inspected. Archive and Trash are distinct | Populated restore/purge/error and keyboard focus |
+| S19 settings shells | S desktop section/menu and mobile sections; earlier compact mobile settings evidence reused; V Settings→Task Preferences→nested dialog | Complete nested mobile navigation, physical Back/Tab/focus return |
+| S20 appearance | S/O/A 200% theme form; existing narrow light/dark changes pass; earlier V light/dark/restart evidence remains valid. Tokens/custom values preserved | Import/export/picker invalid/cancel with arbitrary custom palettes |
+| S21 preferences/navigation | U13/U16; S/O/A real preference toggle/undo/Done and sidebar reorder; V toggle/undo. Existing immediate navigation preference test passes | Redo and restart of changed preferences; opening-page/calendar-content on device |
+| S22 hotkeys | S/O/A search/preset/binding list at 200%; scoped keyboard controls retained | Rebind conflicts, reserved combinations, actual physical key dispatch |
+| S23 notifications | S/O/A enlarged off/default controls and Save/Cancel layout; accurate Windows-companion requirement | Delivery, permissions, quiet hours, reboot/Doze and OS settings return |
+| S24 privacy | S/O/A disabled PIN form at 200%; encryption limitation remains visible. Earlier lock/Sync closure passes reused | Actual PIN/Hello/biometric/idle/resume/Narrator/TalkBack |
+| S25 startup/profile | S profile selection, migration approval and failure/retry paths; V actual isolated schema26 profile, no personal DB opened. Explicit no-reset recovery wording retained | Startup recovery uses non-scrolling columns: short-height/large-text reproduction is a pending risk, not a verified defect/fix. Isolated old-schema/failure UI required |
+| S26 local backups | S/O/A unavailable-service parent and replacement confirmation at 200%; actual V profile safety established. Replacement wording/acknowledgment retained | Successful snapshot/import/restore/restart and interrupted/error states; no restore performed |
+| S27 Drive backups | S/O/A disconnected/unavailable parent; separate snapshots versus Sync preserved | BLOCKED live account/OAuth/upload/download/recovery without disposable account configuration |
+| S28 Sync status | Earlier source/widget/live evidence reused: no affected Sync presentation/controller/protocol change in this batch | Paired exchange/offline/reconnect remains BLOCKED; no repeated cloud operation |
+| S29 private Sync | Earlier setup/unlock/validation/lock evidence reused unchanged | Actual protected-storage recovery on another device NOT TESTED |
+| S30 Start New Sync | Earlier recovery disclosure, review/acknowledgment/cancel evidence reused unchanged | Real replacement/resume/cleanup NOT TESTED; no cloud destruction performed |
+| S31 conflicts | Earlier compact/landscape/full-record/defer/no-implicit-apply evidence reused unchanged | Concurrent two-client propagation NOT TESTED |
+| S32 settings transfer | S/O/A explanation/import/export/Close at 200%; portable preferences correctly distinguished from records/PIN/local paths | Chooser, merge preview, malformed/newer file and actual apply/reopen |
+| S33 Windows updater | S/O/A ready state, installed version, channel/automatic-check layout at 200%; memory preferences disable network checks | Download/pause/retry/helper/install and release-note links; no installer run |
+| S34 Android updater | S/O/A GitHub ready state at 200% with explicit fake sdk36/x64/version; store distribution distinctions inspected | Device permissions/install/Play action; no device, network or APK build |
+| S35 Flutter widget settings | S/O/A both 520×650/200% Configure editors; Apply/Cancel/Apply-to-All labels fully inside viewport; Cancel causes zero writes | Offscreen captures intermittently omit footer despite passed bounds/tap assertions; render evidence is inconclusive for paint stability. Live native preview, preset library, Apply/all/close dirty journey remain |
+| S36 native Tasks | S actual NativeDesktopWidgetHost/WidgetAccessibility (not just legacy LifeManagerWidget): named edit/complete/add actions, DPI/minimum/work-area handling, logical/pixel conversion | BLOCKED physical Explorer attachment, input, focus/UIA, menus, DPI/theme/empty/dense painting. No native code changed or rebuild performed |
+| S37 native Calendar | S CalendarWidget layout/date/agenda hit-test/tooltip and shared native accessibility paths; date/agenda split is deliberate for density | BLOCKED physical splitter/wheel/menu/multi-monitor/accessibility; no new native pass claimed |
+| S38 Android launcher widgets | S AndroidSurfaces bounded RemoteViews capacity measures actual font scale; contextual descriptions, explicit Open/add and one-use action token routes retained | BLOCKED device/launcher/OEM/locked/reboot/rotation/TalkBack; no native Kotlin/XML change |
+| S39 support/contributors | S/O/A both at 200%; optional support text retained; synthetic browser failure remains visible with enabled retry. Official destinations/registry unchanged; no real external link opened | Real browser/email return and focus. No messages/payment/network action sent |
+| S40 shared overlays/input | S/O/A shared selector, discard, action bar, date/time consumers; local spelling generation/disposal inspected. Reuse existing components and theme roles | Actual IME/composition, spelling popup, color/icon/native pickers, reduced motion/high contrast/RTL and screen readers |
+
+No group is certified complete across every requested dimension. The scoped fixes
+above are completed implementation work; populated advanced journeys and physical
+platform acceptance remain explicit. The inventory's 67-category applicability
+mapping still applies; this pass does not turn unexecuted combinations into passes.
+
+### Runtime and tooling receipt, continuation
+
+At 09:26:41+03:00 launched the owned Debug/Driver app with
+`flutter --no-version-check --suppress-analytics run --no-pub -d windows --target lib/driver_main.dart --machine`
+under `pass2/runtime-profile/{Roaming,Local}`. `runtime-launch.json` records the
+launcher PID27188; VM identifies actual Todorbit PID16636. Before input, VM
+evaluation confirmed both child environment paths; Drift's resolved database was
+`Roaming/TodoPilot/life_manager.sqlite`, schema26, `quick_check=ok`, zero tasks.
+This differs from the personal installed process and no personal window/profile
+was selected. Tests use memory SQLite and the runner's disposable profile paths.
+
+Live Driver journey: empty Today→new title→Calendar→Discard prompt→Keep editing→
+same title→Create→Calendar Week shows synthetic task. Settings→Task Preferences→
+toggle→Undo→Done. All tasks→Reschedule→Generate preview→Cancel (no Apply).
+Task details→Actual work and timer→start→pause→stop→close. Observed ordinary
+Windows visuals, saved synthetic task, feedback and zero reported runtime errors.
+Successful hot reloads cover the implementation changes; latest reload after the
+new date/time component also passed. Live 200% scaling was not injected.
+
+Saved Driver evidence: `guard-runtime-shot.png`, `pass2-calendar-shot.png`,
+`pass2-settings-live.png`, `pass2-scheduling-live.png`, `pass2-focus-live.png`,
+`pass2-focus-paused-live.png`. Offscreen `renders/` includes all 31 secondary
+states and corrected scrolled event/session date views. Segoe text is loaded for
+host geometry; missing offscreen Material icon glyphs remain a fixture limitation,
+not a claimed product icon defect (ordinary live Windows glyphs render).
+
+Computer-use entry `sky.list_windows()` failed because its native pipe was absent
+(`os error 2`); Driver fallback was used. A VM window resize attempt failed
+(`windowManager` is not imported in that evaluation library); no physical resize
+occurred. `Get-Command adb` found no executable on PATH; no Android device session
+was used. These block physical evidence, not the independent widget assertions.
+Three wrong Driver finders for `Actual work` timed out; source's actual text is
+`Actual work and timer`; scrolling its ListView and using that target succeeded.
+Screenshot persistence via a shell-quoted Python `-c` failed before writing due
+Windows argument quoting; bounded Node file writes then saved all six PNGs.
+
+Dart MCP analysis first returned no roots; explicitly added this project root.
+Analysis of the 12 initial affected paths returned **No errors**, then analysis of
+the eight additional/updated scheduling/report/timer/date/sidebar/test paths also
+returned **No errors**. The latter took ~26 seconds; no duplicate CLI analysis or
+unnecessary full test/build run followed. Test invocation details follow.
+
+### Verification reuse and final review, continuation
+
+51 newly added cases (13 draft navigation, five main-surface, 31 secondary-surface,
+two scheduling-warning) have valid passes across the receipts below, supplemented
+by the explicitly selected existing regressions. This is not a fresh full-suite
+pass. Reuse unchanged cases after each focused correction: initial secondary
+passes are replaced only for the seven corrected layout/readability samples;
+new editor samples only for the corrected date assertions; warning-wide pass is
+reused after the compact test's lazy-scroll correction. Final test formatting
+changes no assertions or product logic. New shared DateTimeButtonRow remained
+unchanged after its initial formatting; the final manifest supplements early
+runner manifests that did not include an untracked dependency automatically.
+
+Earlier Sync, skill metadata/67-category/local-reference and instruction-routing
+passes remain valid: those files, assertions, dependencies and relevant settings
+are unchanged. No PyYAML dependency installation, full host-suite rerun, release
+build, APK, installer, native rebuild/self-test or live cloud operation was
+justified by this presentation checkpoint. Native/manual/device gates remain
+required for their affected changes or release; they are not waived or passed.
+
+Final MCP analysis after the Calendar/test edits returned No errors for those
+three paths; the restored warning layout and its regression file likewise
+returned No errors. `checkpoint-docs-100813.json/log` records zero documentation
+link/path errors. Later additions are receipt prose and invocation rows only;
+validated link/anchor targets remain unchanged, so no repeat is needed.
+
+`python .buildlog/verify/permanent-ui-quality/pass2/final-review.py` checks the
+22-file task allowlist, full diff whitespace and unrelated-document hashes,
+including untracked new task code/tests, and writes `pass2/final-review.json`.
+Initial pre-stage run at 10:09+03 and final staged receipt refresh agree on
+production code. All three original unrelated documents match byte for byte.
+Read-only inspection of the owned runtime profile confirms schema26,
+`quick_check=ok`, exactly the named synthetic task/date and one stopped timer.
+The final RPC `ext.flutter.exit` intentionally disposed its connection; process
+inspection confirms owned PID16636 stopped and personal installed PID21876
+still running. No personal window/profile or native companion was operated.
+
+The local commit contains this completed, verified implementation batch and its
+checkpoint, not all outstanding acceptance in the 40-group table. Source/diff
+review, explicit staging and `git diff --cached --check` are required before
+commit; no push, release, tag or version operation is authorized/performed.
+
+### Exact invocation ledger, continuation
+
+All times below are 2026-11-04 **UTC+03:00**, source `c32329c` plus each
+invocation's recorded dirty-file SHA-256. Logs/JSON are in ignored
+`.buildlog/verify/permanent-ui-quality/pass2/`; the basename in each row identifies
+both files. These are individual executions, not one fresh all-tests pass.
+
+Command substitutions are literal, preserving argument order:
+
+- `F` = `flutter --no-version-check --suppress-analytics test --no-pub --concurrency=1 --reporter=expanded`.
+- `W` = `test/workspace_draft_safety_test.dart`; `H` = `test/high_use_ui_quality_test.dart`; `S` = `test/secondary_surface_quality_test.dart`.
+- Table `\|` is only a Markdown escape: the regex argument contains an ordinary `|`.
+- From `secondary-fixes-direct`, the wrapper invokes the existing SDK's
+  `dart.exe flutter_tools.snapshot` with these exact Flutter arguments to avoid
+  Windows batch-shell regex parsing. `actualCommand` records the full executable
+  paths; no SDK/package/dependency was installed or changed.
+- Each test uses memory SQLite; disposable child APPDATA/LOCALAPPDATA redirects
+  are recorded per invocation. Initial draft-only runs needed no profile-backed
+  services. No test used personal data. Formatting receipts record input hashes;
+  final review records output hashes, including the new shared component.
+
+| Time / receipt basename | Exact command (substitutions above) | Result / necessity or rerun cause |
+| --- | --- | --- |
+| 09:14:13 / `draft-before-091413` | `F W` | Exit 1. Baseline: 5 failures, including one ambiguous New task finder; remaining cases reproduce draft loss. |
+| 09:17:19 / `draft-format-091719` | `dart format lib/features/workspace/workspace.dart lib/features/workspace/task_editor.dart lib/features/workspace/quick_search.dart lib/features/search/advanced_search_dialog.dart W` | Exit 0. Format new draft/navigation implementation and test. |
+| 09:17:22 / `draft-after-091722` | `F W test/workspace_test.dart` | Exit 1. 10 pass, 2 fail: New task finder and Escape before PopScope rebuilt. Existing workspace seven pass. |
+| 09:19:39 / `high-use-before-091939` | `F H W` | Exit 1. Five draft cases pass; high-use file fails to compile: missing app-theme import. Corrected import only. |
+| 09:20:13 / `high-use-probe-092013` | `F H` | Exit 1. Two widget-editor cases pass; Today harness plugin failure, missing completion semantics and clipped Week are diagnosed separately. |
+| 09:21:25 / `high-use-after-092125` | `F H --name 'Today\|completion semantics\|Calendar mode'` | Exit 0. Three pass after corrected standalone Workspace harness, semantics and intrinsic mode labels. |
+| 09:23:40 / `batch2-format-092340` | `dart format lib/features/workspace/workspace.dart lib/features/workspace/task_editor.dart lib/features/workspace/quick_search.dart lib/features/search/advanced_search_dialog.dart lib/features/templates/templates_dialog.dart lib/features/calendar/calendar_view.dart lib/features/mobile/mobile_workspace.dart W H` | Exit 0. Format batch source and expanded regressions; no behavioral test repeated for formatting. |
+| 09:25:02 / `guard-checks-092503` | `F W` | Exit 1. 9 pass; Work session Upcoming finder ambiguous with sidebar. Limit corrected rerun to that case. |
+| 09:29:32 / `secondary-probe-092933` | `F --timeout=2m S` | Exit 1. 22 pass, 3 fail: scheduling overflow, availability overflow, preferences intrinsic-layout exception. New compact surface coverage. |
+| 09:34:05 / `scheduling-format-093405` | `dart format lib/features/scheduling/smart_reschedule.dart` | Exit 0. Format confirmed scheduling layout fix. |
+| 09:34:30 / `settings-format-093430` | `dart format lib/features/settings/task_view_settings_dialog.dart S W` | Exit 0. Format confirmed preferences fix and corrected test finders. |
+| 09:34:33 / `secondary-fixes-093433` | `F --timeout=2m S --name 'S13-reschedule\|S13-availability\|S21-task-preferences'` | Exit 255. Exit255 before tests: Windows cmd interpreted unquoted regex pipes. Runner now uses SDK Dart/Flutter snapshot directly. |
+| 09:35:03 / `secondary-fixes-direct-093503` | `F --timeout=2m S --name 'S13-reschedule\|S13-availability\|S21-task-preferences'` | Exit 0. Three pass after runner quoting correction; same failing product cases only. |
+| 09:39:14 / `actions-format-093915` | `dart format lib/features/scheduling/smart_reschedule.dart S` | Exit 0. Format compact scheduling title and additional persisted-state assertions. |
+| 09:39:18 / `focused-regressions-093918` | `F S W test/smart_reschedule_widget_test.dart test/settings_ui_quality_test.dart test/calendar_improvements_test.dart test/mobile_workspace_test.dart --name 'S13-reschedule\|S13-availability\|S21-task-preferences\|desktop Calendar Work session\|Smart Reschedule\|theme and task preferences\|calendar controls stay\|new task protects Back edits\|mobile task completion'` | Exit 0. 11 pass: compact scheduling/availability/preferences actions, corrected Work session finder, scheduler Apply/collision, both settings themes, Calendar and mobile. Existing collision-label tap emits nonfatal hit-test warning; actual choice and persisted Apply assertions pass. |
+| 09:41:32 / `navigation-format-094132` | `dart format lib/features/workspace/workspace.dart W` | Exit 0. Format saved-view/category/project guard and new integration assertions. |
+| 09:41:34 / `navigation-actions-094134` | `F W --name 'creating a saved view\|template inspection\|category deletion'` | Exit 1. Three fail: lazy sidebar targets not built and wrong Discard text in new tests. Source guards are not blamed for finder failures. |
+| 09:42:25 / `navigation-actions-corrected-094225` | `F W --name 'creating a saved view\|template inspection\|category deletion'` | Exit 1. Template and category cases pass. Saved-view target reached but tap preceded final scroll layout; add settle. |
+| 09:43:15 / `saved-view-settled-094315` | `F W --plain-name 'creating a saved view guards the desktop draft before saving'` | Exit 0. Saved-view case passes after ensureVisible plus settle; no product retry or duplicate write. |
+| 09:45:57 / `remaining-form-probe-094557` | `F S --name 'S02-S03\|S04-resources\|S06-event\|S07-session\|S09-mobile\|S39-support'` | Exit 0. Six new compact editor/resource/mobile-Calendar/support samples pass. No native pickers or external links operated. |
+| 09:47:15 / `final-format-094715` | `dart format lib/features/calendar/calendar_view.dart lib/features/mobile/mobile_workspace.dart lib/features/scheduling/smart_reschedule.dart lib/features/search/advanced_search_dialog.dart lib/features/settings/task_view_settings_dialog.dart lib/features/templates/templates_dialog.dart lib/features/workspace/quick_search.dart lib/features/workspace/task_editor.dart lib/features/workspace/workspace.dart H S W` | Exit 0. Format current 12-file scope; only test formatting changed. |
+| 09:48:12 / `composition-organization-094812` | `F test/task_composition_widget_test.dart test/round3_editor_test.dart --name 'draft subtask dialog\|task details add\|task editor keeps unsaved'` | Exit 0. Three pass: draft subtask, actual checklist/subtask and draft-preserving organization. Required for enabled nested guard/shared TaskEditor. |
+| 09:48:22 / `support-failure-094822` | `F S --plain-name 'S39-support compact enlarged state retains usable layout'` | Exit 0. One pass after adding browser-failure/retry assertion; stub throws, no browser or payment opened. |
+| 09:50:04 / `reports-focus-before-095004` | `F S --name 'S16-focus\|S17-reports'` | Exit 1. Two new readability assertions fail as observed: split metric word and wrapped time. Earlier no-overflow passes do not prove readability. |
+| 09:51:14 / `names-before-095114` | `F S --name 'S21-sidebar\|S13-history'` | Exit 1. Two new assertions fail as observed: compressed sidebar name and split history heading. |
+| 09:52:13 / `readability-format-095213` | `dart format lib/features/reports/reports_view.dart lib/features/time_tracking/time_tracking_dialog.dart lib/features/settings/sidebar_order_dialog.dart lib/features/scheduling/smart_reschedule.dart S` | Exit 0. Format four confirmed readability fixes and strengthened tests. |
+| 09:52:15 / `readability-after-095215` | `F S --name 'S16-focus\|S17-reports\|S21-sidebar\|S13-history'` | Exit 1. Compile failure: report width inferred num. Corrected literals to double; no test passes claimed. |
+| 09:52:36 / `readability-typed-095236` | `F S --name 'S16-focus\|S17-reports\|S21-sidebar\|S13-history'` | Exit 0. Four pass after type correction: history, focus, reports, sidebar readability. |
+| 09:53:46 / `date-values-before-095346` | `F S --name 'S06-event-editor\|S07-session-editor'` | Exit 1. Two new date-value assertions fail as observed in Event and Session at 200%. |
+| 09:54:49 / `date-actions-format-095449` | `dart format lib/features/shared/date_time_button_row.dart lib/features/calendar/event_editor.dart lib/features/calendar/session_editor.dart S` | Exit 0. Format shared responsive date/time component, both callers and action assertions. |
+| 09:54:51 / `final-journey-checks-095452` | `F S test/reports_widget_test.dart test/time_tracking_widget_test.dart test/calendar_improvements_test.dart test/session_editor_layout_test.dart test/event_editor_layout_test.dart --name 'S06-event-editor\|S07-session-editor\|S16-focus\|S17-reports\|S21-sidebar\|S13-history\|reports show persisted\|actual work dialog starts\|sidebar order controls\|new and edit session actions\|event form keeps'` | Exit 0. 11 pass: corrected dates/readability plus persisted report, timer/manual log, reorder and ordinary/narrow editor regressions. |
+| 09:57:48 / `date-render-confirmation-095748` | `F S --name 'S06-event-editor\|S07-session-editor'` | Exit 0. Two pass; added scrolled date captures to inspect correction beyond top-of-form frames. |
+| 09:59:05 / `calendar-widget-geometry-095905` | `F H --name 'Calendar mode\|widget customization'` | Exit 1. Both widget editors pass stronger whole-action bounds/Cancel checks. New Calendar full-period assertion fails at 240 versus 257.04px. |
+| 09:59:51 / `calendar-period-after-095951` | `F H test/calendar_improvements_test.dart --name 'Calendar mode\|calendar controls stay in place'` | Exit 1. New period assertion passes; ordinary stable-control regression fails because intrinsic period width moves controls. Retain regression; replace with text-scaled reserved width. |
+| 10:02:32 / `calendar-period-stable-100232` | `F H test/calendar_improvements_test.dart --name 'Calendar mode\|calendar controls stay in place'` | Exit 0. Both pass after preserving fixed width per text scale across modes. No unchanged widget cases repeated. |
+| 10:03:36 / `checkpoint-format-100336` | `dart format lib/features/calendar/calendar_view.dart lib/features/calendar/event_editor.dart lib/features/calendar/session_editor.dart lib/features/mobile/mobile_workspace.dart lib/features/reports/reports_view.dart lib/features/scheduling/smart_reschedule.dart lib/features/search/advanced_search_dialog.dart lib/features/settings/sidebar_order_dialog.dart lib/features/settings/task_view_settings_dialog.dart lib/features/shared/date_time_button_row.dart lib/features/templates/templates_dialog.dart lib/features/time_tracking/time_tracking_dialog.dart lib/features/workspace/quick_search.dart lib/features/workspace/task_editor.dart lib/features/workspace/workspace.dart H S W` | Exit 0. 18 files formatted; only high-use test formatting changed. Reuse relevant prior behavior passes. |
+| 10:05:47 / `wide-warning-before-100547` | `F test/smart_reschedule_widget_test.dart --plain-name 'scheduling warnings remain reviewable before Apply (compact=false)'` | Exit 1. New review regression fails: compact refactor put wide warning acknowledgment below the visible pane. Restore original wide placement; retain gate. |
+| 10:06:28 / `warning-format-100628` | `dart format lib/features/scheduling/smart_reschedule.dart test/smart_reschedule_widget_test.dart` | Exit 0. Format restored wide warning placement and two review-gate regression cases. |
+| 10:06:30 / `warning-approval-after-100630` | `F test/smart_reschedule_widget_test.dart --plain-name 'scheduling warnings remain reviewable before Apply'` | Exit 1. Wide case passes after restoring footer placement. Compact test fails to find lazily built acknowledgment before scrolling; correct test navigation, not approval logic. |
+| 10:07:28 / `compact-warning-scroll-100728` | `F test/smart_reschedule_widget_test.dart --plain-name 'scheduling warnings remain reviewable before Apply (compact=true)'` | Exit 0. Compact case passes after scrollUntilVisible then ensureVisible. Preview remains non-mutating, Apply requires explicit review, and actual date/history persist. Reuse wide pass. |
+| 10:08:12 / `warning-final-format-100812` | `dart format test/smart_reschedule_widget_test.dart` | Exit 0. Format corrected lazy-scroll test; no production changes or behavioral rerun. |
+| 10:08:13 / `checkpoint-docs-100813` | `python tools/dev/check-docs.py docs/PROGRESS.md docs/TEST_RUN_LEDGER.md docs/UI_UX_PERMANENT_QUALITY_AUDIT.md` | Exit 0. Scoped documentation links/path validation after ledger and checkpoint edits; result is the recorded exit code. |

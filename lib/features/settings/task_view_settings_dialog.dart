@@ -6,6 +6,7 @@ import '../../app/app_controller.dart';
 import '../../domain/task_view_preferences.dart';
 import '../../domain/settings_history.dart';
 import '../shared/settings_history_scope.dart';
+import '../shared/dialog_action_bar.dart';
 
 class TaskViewSettingsDialog extends ConsumerStatefulWidget {
   const TaskViewSettingsDialog({super.key});
@@ -59,97 +60,124 @@ class _TaskViewSettingsDialogState
     return SettingsHistoryScope(
       undo: () => travel(false),
       redo: () => travel(true),
-      child: AlertDialog(
-        title: const Text('Task display and defaults'),
-        scrollable: true,
-        content: SizedBox(
-          width: 430,
+      child: Dialog(
+        insetPadding: const EdgeInsets.all(16),
+        child: SizedBox(
+          width: 480,
+          height: 640,
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AnchoredSelectField<NewTaskPlannedDay>(
-                initialValue: preferences.newTaskPlannedDay,
-                decoration: const InputDecoration(
-                  labelText: 'New task planned day',
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    'Task display and defaults',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                 ),
-                items: const [
-                  DropdownMenuItem(
-                    value: NewTaskPlannedDay.today,
-                    child: Text('Today'),
-                  ),
-                  DropdownMenuItem(
-                    value: NewTaskPlannedDay.noDate,
-                    child: Text('No Date'),
-                  ),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    save(preferences.copyWith(newTaskPlannedDay: value));
-                  }
-                },
               ),
-              const SizedBox(height: 16),
-              SwitchListTile(
-                title: const Text('Keep completed tasks visible'),
-                subtitle: const Text(
-                  'Show them faded at the bottom of eligible lists.',
-                ),
-                value: preferences.keepCompletedVisible,
-                onChanged: (value) =>
-                    save(preferences.copyWith(keepCompletedVisible: value)),
-              ),
-              SwitchListTile(
-                title: const Text('Inline spelling'),
-                subtitle: const Text(
-                  'Underline likely misspellings using the local Windows English dictionary.',
-                ),
-                value: preferences.spellCheckEnabled,
-                onChanged: (value) =>
-                    save(preferences.copyWith(spellCheckEnabled: value)),
-              ),
-              const SizedBox(height: 12),
-              AnchoredSelectField<CompositionTextDisplay>(
-                key: ValueKey(preferences.compositionTextDisplay),
-                initialValue: preferences.compositionTextDisplay,
-                decoration: const InputDecoration(
-                  labelText: 'Checklist and subtask text',
-                ),
-                items: const [
-                  DropdownMenuItem(
-                    value: CompositionTextDisplay.full,
-                    child: Text('Show full text'),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 8,
                   ),
-                  DropdownMenuItem(
-                    value: CompositionTextDisplay.compact,
-                    child: Text('Compact (two lines, expandable)'),
-                  ),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    save(preferences.copyWith(compositionTextDisplay: value));
-                  }
-                },
+                  children: [
+                    AnchoredSelectField<NewTaskPlannedDay>(
+                      initialValue: preferences.newTaskPlannedDay,
+                      decoration: const InputDecoration(
+                        labelText: 'New task planned day',
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: NewTaskPlannedDay.today,
+                          child: Text('Today'),
+                        ),
+                        DropdownMenuItem(
+                          value: NewTaskPlannedDay.noDate,
+                          child: Text('No Date'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          save(preferences.copyWith(newTaskPlannedDay: value));
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    SwitchListTile(
+                      title: const Text('Keep completed tasks visible'),
+                      subtitle: const Text(
+                        'Show them faded at the bottom of eligible lists.',
+                      ),
+                      value: preferences.keepCompletedVisible,
+                      onChanged: (value) => save(
+                        preferences.copyWith(keepCompletedVisible: value),
+                      ),
+                    ),
+                    SwitchListTile(
+                      title: const Text('Inline spelling'),
+                      subtitle: const Text(
+                        'Underline likely misspellings using the local Windows English dictionary.',
+                      ),
+                      value: preferences.spellCheckEnabled,
+                      onChanged: (value) =>
+                          save(preferences.copyWith(spellCheckEnabled: value)),
+                    ),
+                    const SizedBox(height: 12),
+                    AnchoredSelectField<CompositionTextDisplay>(
+                      key: ValueKey(preferences.compositionTextDisplay),
+                      initialValue: preferences.compositionTextDisplay,
+                      decoration: const InputDecoration(
+                        labelText: 'Checklist and subtask text',
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: CompositionTextDisplay.full,
+                          child: Text('Show full text'),
+                        ),
+                        DropdownMenuItem(
+                          value: CompositionTextDisplay.compact,
+                          child: Text('Compact (two lines, expandable)'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          save(
+                            preferences.copyWith(compositionTextDisplay: value),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: DialogActionBar(
+                  children: [
+                    IconButton(
+                      tooltip: 'Undo setting (Ctrl+Z)',
+                      onPressed: history.canUndo ? () => travel(false) : null,
+                      icon: const Icon(Icons.undo),
+                    ),
+                    IconButton(
+                      tooltip: 'Redo setting (Ctrl+Shift+Z)',
+                      onPressed: history.canRedo ? () => travel(true) : null,
+                      icon: const Icon(Icons.redo),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Done'),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
-        actions: [
-          IconButton(
-            tooltip: 'Undo setting (Ctrl+Z)',
-            onPressed: history.canUndo ? () => travel(false) : null,
-            icon: const Icon(Icons.undo),
-          ),
-          IconButton(
-            tooltip: 'Redo setting (Ctrl+Shift+Z)',
-            onPressed: history.canRedo ? () => travel(true) : null,
-            icon: const Icon(Icons.redo),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Done'),
-          ),
-        ],
       ),
     );
   }

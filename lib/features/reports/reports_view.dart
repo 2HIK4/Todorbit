@@ -61,9 +61,15 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
     return hours == 0 ? '${minutes}m' : '${hours}h ${minutes % 60}m';
   }
 
-  Widget _metric(String label, String value, String detail, IconData icon) {
+  Widget _metric(
+    String label,
+    String value,
+    String detail,
+    IconData icon,
+    double width,
+  ) {
     return SizedBox(
-      width: 180,
+      width: width,
       child: Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -86,6 +92,7 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(appControllerProvider);
+    final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
     final today = localDate(DateTime.now());
     final through = period == _Period.custom && customRange != null
         ? localDate(customRange!.end)
@@ -125,7 +132,7 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
               description: 'Review completed tasks and work over a selected date range. Choose a recent period or a custom range to compare daily activity.',
             ),
             SizedBox(
-              width: 170,
+              width: 170 * textScale,
               child: AnchoredSelectField<_Period>(
                 key: ValueKey(period),
                 initialValue: period,
@@ -159,35 +166,47 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 18),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            _metric(
-              'Completed tasks',
-              '${report.completed}',
-              'Actual completion date',
-              Icons.task_alt_outlined,
-            ),
-            _metric(
-              'Created tasks',
-              '${report.created}',
-              'Creation date',
-              Icons.add_task_outlined,
-            ),
-            _metric(
-              'Planned tasks',
-              '${report.planned}',
-              'Planned date, independent of completion',
-              Icons.event_outlined,
-            ),
-            _metric(
-              'Actual work',
-              _duration(report.work),
-              'Overlaps counted once',
-              Icons.timer_outlined,
-            ),
-          ],
+        LayoutBuilder(
+          builder: (context, bounds) {
+            final preferred = 180.0 * math.max(1.0, textScale);
+            final width = bounds.maxWidth < preferred * 2 + 8
+                ? bounds.maxWidth
+                : preferred;
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _metric(
+                  'Completed tasks',
+                  '${report.completed}',
+                  'Actual completion date',
+                  Icons.task_alt_outlined,
+                  width,
+                ),
+                _metric(
+                  'Created tasks',
+                  '${report.created}',
+                  'Creation date',
+                  Icons.add_task_outlined,
+                  width,
+                ),
+                _metric(
+                  'Planned tasks',
+                  '${report.planned}',
+                  'Planned date, independent of completion',
+                  Icons.event_outlined,
+                  width,
+                ),
+                _metric(
+                  'Actual work',
+                  _duration(report.work),
+                  'Overlaps counted once',
+                  Icons.timer_outlined,
+                  width,
+                ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 20),
         Text('Daily activity', style: Theme.of(context).textTheme.titleLarge),
@@ -205,25 +224,41 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
               final day = report.days[report.days.length - index - 1];
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    SizedBox(width: 96, child: Text(day.date)),
-                    Expanded(
-                      child: LinearProgressIndicator(
-                        value: day.completed / maxCompleted,
-                        minHeight: 8,
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    SizedBox(
-                      width: 118,
-                      child: Text(
-                        '${day.completed} done · ${_duration(day.work)}',
-                        textAlign: TextAlign.end,
-                      ),
-                    ),
-                  ],
+                child: LayoutBuilder(
+                  builder: (context, bounds) {
+                    final bar = LinearProgressIndicator(
+                      value: day.completed / maxCompleted,
+                      minHeight: 8,
+                      borderRadius: BorderRadius.circular(5),
+                    );
+                    final summary =
+                        '${day.completed} done · ${_duration(day.work)}';
+                    if (bounds.maxWidth < 420 || textScale > 1.3) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Wrap(
+                            alignment: WrapAlignment.spaceBetween,
+                            spacing: 12,
+                            children: [Text(day.date), Text(summary)],
+                          ),
+                          const SizedBox(height: 6),
+                          bar,
+                        ],
+                      );
+                    }
+                    return Row(
+                      children: [
+                        SizedBox(width: 96, child: Text(day.date)),
+                        Expanded(child: bar),
+                        const SizedBox(width: 10),
+                        SizedBox(
+                          width: 118,
+                          child: Text(summary, textAlign: TextAlign.end),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               );
             },

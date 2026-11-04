@@ -735,7 +735,8 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
               ),
               leading: Checkbox(
                 value: t.status == TaskStatus.completed,
-                semanticLabel: 'Complete ${t.title}',
+                semanticLabel:
+                    '${t.status == TaskStatus.completed ? 'Reopen' : 'Complete'} ${t.title}',
                 onChanged: (v) => run(() => c.setComplete(t, v == true)),
               ),
               title: Text(

@@ -231,14 +231,44 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            _duration(session),
-                            style: Theme.of(context).textTheme.displaySmall
-                                ?.copyWith(
+                          LayoutBuilder(
+                            builder: (context, bounds) {
+                              final theme = Theme.of(context).textTheme;
+                              final value = _duration(session);
+                              TextStyle style = theme.titleLarge!;
+                              var fits = false;
+                              for (final candidate in [
+                                theme.displaySmall,
+                                theme.headlineMedium,
+                                theme.headlineSmall,
+                                theme.titleLarge,
+                              ].whereType<TextStyle>()) {
+                                style = candidate.copyWith(
                                   fontFeatures: const [
                                     FontFeature.tabularFigures(),
                                   ],
-                                ),
+                                );
+                                final measure = TextPainter(
+                                  text: TextSpan(text: value, style: style),
+                                  textDirection: Directionality.of(context),
+                                  textScaler: MediaQuery.textScalerOf(context),
+                                )..layout();
+                                fits = measure.width <= bounds.maxWidth;
+                                measure.dispose();
+                                if (fits) break;
+                              }
+                              final text = Text(
+                                value,
+                                style: style,
+                                softWrap: false,
+                              );
+                              return fits
+                                  ? Center(child: text)
+                                  : SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: text,
+                                    );
+                            },
                           ),
                           Text(
                             'Current focus session',

@@ -99,37 +99,65 @@ class _SidebarOrderDialogState extends ConsumerState<SidebarOrderDialog> {
                   onReorderItem: _move,
                   itemBuilder: (context, index) {
                     final view = order[index];
-                    return ListTile(
-                      key: ValueKey(view),
-                      dense: true,
-                      leading: Icon(sidebarIcon(view)),
-                      title: Text(sidebarName(view)),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            tooltip: 'Move ${sidebarName(view)} up',
-                            onPressed: index == 0
-                                ? null
-                                : () => _move(index, index - 1),
-                            icon: const Icon(Icons.keyboard_arrow_up),
-                          ),
-                          IconButton(
-                            tooltip: 'Move ${sidebarName(view)} down',
-                            onPressed: index == order.length - 1
-                                ? null
-                                : () => _move(index, index + 1),
-                            icon: const Icon(Icons.keyboard_arrow_down),
-                          ),
-                          ReorderableDragStartListener(
-                            index: index,
-                            child: const Icon(
-                              Icons.drag_handle,
-                              semanticLabel: 'Drag to reorder',
-                            ),
-                          ),
-                        ],
+                    final buttons = Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Move ${sidebarName(view)} up',
+                          onPressed: index == 0
+                              ? null
+                              : () => _move(index, index - 1),
+                          icon: const Icon(Icons.keyboard_arrow_up),
+                        ),
+                        IconButton(
+                          tooltip: 'Move ${sidebarName(view)} down',
+                          onPressed: index == order.length - 1
+                              ? null
+                              : () => _move(index, index + 1),
+                          icon: const Icon(Icons.keyboard_arrow_down),
+                        ),
+                      ],
+                    );
+                    final drag = ReorderableDragStartListener(
+                      index: index,
+                      child: const Icon(
+                        Icons.drag_handle,
+                        semanticLabel: 'Drag to reorder',
                       ),
+                    );
+                    return LayoutBuilder(
+                      key: ValueKey(view),
+                      builder: (context, bounds) {
+                        final compact =
+                            bounds.maxWidth < 380 ||
+                            MediaQuery.textScalerOf(context).scale(14) > 20;
+                        final tile = ListTile(
+                          dense: true,
+                          leading: Icon(sidebarIcon(view)),
+                          title: Text(sidebarName(view)),
+                          trailing: compact
+                              ? SizedBox(
+                                  width: 48,
+                                  height: 48,
+                                  child: Center(child: drag),
+                                )
+                              : Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [buttons, drag],
+                                ),
+                        );
+                        return compact
+                            ? Column(
+                                children: [
+                                  tile,
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: buttons,
+                                  ),
+                                ],
+                              )
+                            : tile;
+                      },
                     );
                   },
                 ),

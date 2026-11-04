@@ -195,6 +195,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           }
           if (!mounted) return;
           editor = EventEditor(
+            protectUnsavedEdits: true,
             event: event,
             initialDay: day,
             onClose: () => Navigator.of(context, rootNavigator: true).pop(),
@@ -207,6 +208,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
             throw StateError('Session is no longer available');
           }
           editor = SessionEditor(
+            protectUnsavedEdits: true,
             session: session,
             initialDay: day,
             onClose: () => Navigator.of(context, rootNavigator: true).pop(),
@@ -236,6 +238,39 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   }
 
   bool creating = false;
+  bool changingEditor = false;
+  int editorRevision = 0;
+  final editorNavigation = TaskEditorController();
+
+  Future<bool> _prepareEditorChange() async {
+    if (changingEditor) return false;
+    changingEditor = true;
+    try {
+      if (!await editorNavigation.confirmLeave() || !mounted) return false;
+      setState(() {
+        creating = false;
+        editorRevision++;
+      });
+      return true;
+    } finally {
+      changingEditor = false;
+    }
+  }
+
+  Future<void> _navigate(WorkspaceView view, {String? id}) async {
+    if (await _prepareEditorChange()) {
+      ref.read(appControllerProvider).navigate(view, id: id);
+    }
+  }
+
+  Future<void> _openTask(LifeTask task, bool wide) async {
+    final controller = ref.read(appControllerProvider);
+    if (wide && !creating && controller.selectedTaskId == task.id) return;
+    if (!await _prepareEditorChange()) return;
+    controller.select(task.id);
+    if (!wide) await _showNarrowEditor(task);
+  }
+
   DateTime? newTaskInitialDate;
   final nativeWidget = NativeWidgetService();
   Timer? _clock;
@@ -394,7 +429,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     );
   }
 
-  void _newTask() {
+  Future<void> _newTask() async {
+    if (!await _prepareEditorChange()) return;
     ref.read(appControllerProvider).select(null);
     newTaskInitialDate = null;
     if (MediaQuery.sizeOf(context).width < 1050) {
@@ -405,6 +441,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
             width: math.min(520, MediaQuery.sizeOf(dialogContext).width - 48),
             height: math.min(620, MediaQuery.sizeOf(dialogContext).height - 64),
             child: TaskEditor(
+              protectUnsavedEdits: true,
               onSaved: () => Navigator.pop(dialogContext),
               onCancel: () => Navigator.pop(dialogContext),
             ),
@@ -416,7 +453,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     setState(() => creating = true);
   }
 
-  void _newTaskOn(DateTime date) {
+  Future<void> _newTaskOn(DateTime date) async {
+    if (!await _prepareEditorChange()) return;
     ref.read(appControllerProvider).select(null);
     if (MediaQuery.sizeOf(context).width < 1050) {
       showDialog<void>(
@@ -426,6 +464,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
             width: math.min(520, MediaQuery.sizeOf(dialogContext).width - 48),
             height: math.min(620, MediaQuery.sizeOf(dialogContext).height - 64),
             child: TaskEditor(
+              protectUnsavedEdits: true,
               initialScheduled: date,
               onSaved: () => Navigator.pop(dialogContext),
               onCancel: () => Navigator.pop(dialogContext),
@@ -542,12 +581,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   Future<void> _showSearch() => showDialog<void>(
     context: context,
-    builder: (_) => const QuickSearchDialog(),
+    builder: (_) => QuickSearchDialog(beforeNavigate: _prepareEditorChange),
   );
 
   Future<void> _showTemplates() => showDialog<void>(
     context: context,
-    builder: (_) => const TemplatesDialog(),
+    builder: (_) => TemplatesDialog(beforeNavigate: _prepareEditorChange),
   );
 
   Future<void> _showArchiveTrash() => showDialog<void>(
@@ -557,7 +596,10 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   Future<void> _showAdvancedSearch([SavedView? savedView]) => showDialog<void>(
     context: context,
-    builder: (_) => AdvancedSearchDialog(savedView: savedView),
+    builder: (_) => AdvancedSearchDialog(
+      savedView: savedView,
+      beforeNavigate: _prepareEditorChange,
+    ),
   );
 
   Future<void> _deleteSavedView(SavedView savedView) async {
@@ -650,13 +692,13 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       case HotkeyAction.advancedSearch:
         _showAdvancedSearch();
       case HotkeyAction.today:
-        controller.navigate(WorkspaceView.today);
+        _navigate(WorkspaceView.today);
       case HotkeyAction.allTasks:
-        controller.navigate(WorkspaceView.all);
+        _navigate(WorkspaceView.all);
       case HotkeyAction.calendar:
-        controller.navigate(WorkspaceView.calendar);
+        _navigate(WorkspaceView.calendar);
       case HotkeyAction.anytime:
-        controller.navigate(WorkspaceView.anytime);
+        _navigate(WorkspaceView.anytime);
       case HotkeyAction.settings:
         showDialog<void>(
           context: context,
@@ -731,40 +773,52 @@ class _WorkspaceState extends ConsumerState<Workspace> {
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 1050;
               final editor = creating || controller.selectedTask != null;
+              final inlineEditor =
+                  editor && (wide || editorNavigation.isAttached);
+              final sidebarWidth = constraints.maxWidth < 760
+                  ? 190.0
+                  : controller.customization.sidebarWidth.toDouble();
               return Row(
                 children: [
-                  SizedBox(
-                    width: constraints.maxWidth < 760
-                        ? 190
-                        : controller.customization.sidebarWidth.toDouble(),
-                    child: _sidebar(controller),
-                  ),
+                  SizedBox(width: sidebarWidth, child: _sidebar(controller)),
                   VerticalDivider(
                     width: 1,
                     color: Theme.of(context).colorScheme.outlineVariant,
                   ),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: SyncStatusButton(allowAutomatic: !editor),
-                        ),
-                        Expanded(child: _mainPanel(controller, wide)),
-                      ],
+                  if (wide || !inlineEditor)
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: SyncStatusButton(allowAutomatic: !editor),
+                          ),
+                          Expanded(child: _mainPanel(controller, wide)),
+                        ],
+                      ),
                     ),
-                  ),
-                  if (wide && editor) ...[
+                  if (inlineEditor) ...[
                     VerticalDivider(
                       width: 1,
                       color: Theme.of(context).colorScheme.outlineVariant,
                     ),
                     SizedBox(
-                      width: constraints.maxWidth >= 1200 ? 440 : 370,
+                      key: const ValueKey('desktop-task-editor-panel'),
+                      width: wide
+                          ? constraints.maxWidth >= 1200
+                                ? 440
+                                : 370
+                          : math.max(
+                              0,
+                              constraints.maxWidth - sidebarWidth - 2,
+                            ),
                       child: TaskEditor(
-                        key: ValueKey(
+                        protectUnsavedEdits: true,
+                        key: ValueKey((
                           creating ? 'new' : controller.selectedTask!.id,
-                        ),
+                          editorRevision,
+                        )),
+                        navigationController: editorNavigation,
                         task: creating ? null : controller.selectedTask,
                         initialScheduled: creating ? newTaskInitialDate : null,
                         onSaved: _closeEditor,
@@ -974,9 +1028,10 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                             );
                           }
                         } else if (await _confirm(
-                          'Delete category?',
-                          'Move this category to Trash? Its projects and tasks will be hidden until restored.',
-                        )) {
+                              'Delete category?',
+                              'Move this category to Trash? Its projects and tasks will be hidden until restored.',
+                            ) &&
+                            await _prepareEditorChange()) {
                           _run(() => controller.deleteCategory(category.id));
                         }
                       },
@@ -1042,9 +1097,10 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                                 );
                               }
                             } else if (await _confirm(
-                              'Delete project?',
-                              'Move this project to Trash? Its tasks will be hidden until restored.',
-                            )) {
+                                  'Delete project?',
+                                  'Move this project to Trash? Its tasks will be hidden until restored.',
+                                ) &&
+                                await _prepareEditorChange()) {
                               _run(() => controller.deleteProject(project.id));
                             }
                           },
@@ -1072,8 +1128,10 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                       tooltip: 'Create saved view',
                       onPressed: () => showDialog<void>(
                         context: context,
-                        builder: (_) =>
-                            const AdvancedSearchDialog(creatingSavedView: true),
+                        builder: (_) => AdvancedSearchDialog(
+                          creatingSavedView: true,
+                          beforeNavigate: _prepareEditorChange,
+                        ),
                       ),
                       icon: const Icon(Icons.add, size: 19),
                     ),
@@ -1262,10 +1320,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
           trailing: trailing,
           selected: active,
-          onTap: () {
-            setState(() => creating = false);
-            controller.navigate(view, id: id);
-          },
+          onTap: () => _navigate(view, id: id),
         ),
       ),
     );
@@ -1289,10 +1344,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         key: ValueKey(navigationDay),
         initialDate: navigationDay,
         onAddTask: _newTaskOn,
-        onTaskTap: (task) {
-          controller.select(task.id);
-          if (!wide) _showNarrowEditor(task);
-        },
+        onTaskTap: (task) => _openTask(task, wide),
         onSmartReschedule: () {
           final sessions = controller.sessions
               .where(
@@ -1493,12 +1545,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 ActionChip(
                   avatar: const Icon(Icons.event_outlined, size: 17),
                   label: Text('$todayEvents events'),
-                  onPressed: () => controller.navigate(WorkspaceView.calendar),
+                  onPressed: () => _navigate(WorkspaceView.calendar),
                 ),
                 ActionChip(
                   avatar: const Icon(Icons.schedule_outlined, size: 17),
                   label: Text('$todaySessions work sessions'),
-                  onPressed: () => controller.navigate(WorkspaceView.calendar),
+                  onPressed: () => _navigate(WorkspaceView.calendar),
                 ),
                 if (overdueCount > 0)
                   ActionChip(
@@ -1506,7 +1558,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     label: Text(
                       '$overdueCount overdue deadline${overdueCount == 1 ? '' : 's'}',
                     ),
-                    onPressed: () => controller.navigate(WorkspaceView.overdue),
+                    onPressed: () => _navigate(WorkspaceView.overdue),
                   ),
                 if (controller.goals.any(
                   (goal) =>
@@ -1521,7 +1573,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   ActionChip(
                     avatar: const Icon(Icons.flag_outlined, size: 17),
                     label: const Text('Goals due soon'),
-                    onPressed: () => controller.navigate(WorkspaceView.goals),
+                    onPressed: () => _navigate(WorkspaceView.goals),
                   ),
               ],
             ),
@@ -1613,11 +1665,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           : null,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          setState(() => creating = false);
-          controller.select(task.id);
-          if (!wide) _showNarrowEditor(task);
-        },
+        onTap: () => _openTask(task, wide),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Row(
@@ -1640,6 +1688,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 message: done ? 'Reopen task' : 'Complete task',
                 child: Checkbox(
                   value: done,
+                  semanticLabel:
+                      '${done ? 'Reopen' : 'Complete'} ${task.title}',
                   onChanged: (value) =>
                       _run(() => controller.setComplete(task, value ?? false)),
                 ),
@@ -1819,9 +1869,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 ],
                 onSelected: (action) async {
                   if (action == 'edit') {
-                    setState(() => creating = false);
-                    controller.select(task.id);
-                    if (!wide) _showNarrowEditor(task);
+                    await _openTask(task, wide);
                   } else if (action == 'complete') {
                     _run(() => controller.setComplete(task, !done));
                   } else if (action == 'reschedule') {
@@ -1866,6 +1914,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           width: math.min(520, MediaQuery.sizeOf(context).width - 48),
           height: math.min(620, MediaQuery.sizeOf(context).height - 64),
           child: TaskEditor(
+            protectUnsavedEdits: true,
             task: task,
             onSaved: () => Navigator.pop(context),
             onCancel: () => Navigator.pop(context),

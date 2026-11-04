@@ -16,6 +16,7 @@ import '../shared/unsaved_editor_guard.dart';
 import '../shared/dialog_action_bar.dart';
 import '../shared/app_spacing.dart';
 import '../shared/draft_interval.dart';
+import '../shared/date_time_button_row.dart';
 import '../widget/native_widget_service.dart';
 
 enum _EventEditScope { occurrence, future, series }
@@ -1235,41 +1236,27 @@ class _EventEditorState extends ConsumerState<EventEditor> {
 
   Widget _dateTimeRow(DateTime value, bool isStart) => Padding(
     padding: const EdgeInsets.only(top: 6),
-    child: Row(
-      children: [
-        Expanded(
-          child: OutlinedButton(
-            key: ValueKey('event-${isStart ? 'start' : 'end'}-date'),
-            onPressed: () => _pick(isStart, true),
-            child: Text(
-              Platform.isAndroid
-                  ? MaterialLocalizations.of(context).formatMediumDate(
-                      allDay && !isStart
-                          ? value.subtract(const Duration(days: 1))
-                          : value,
-                    )
-                  : localDate(
-                      allDay && !isStart
-                          ? value.subtract(const Duration(days: 1))
-                          : value,
-                    ),
+    child: DateTimeButtonRow(
+      dateKey: ValueKey('event-${isStart ? 'start' : 'end'}-date'),
+      onDatePressed: () => _pick(isStart, true),
+      dateLabel: Platform.isAndroid
+          ? MaterialLocalizations.of(context).formatMediumDate(
+              allDay && !isStart
+                  ? value.subtract(const Duration(days: 1))
+                  : value,
+            )
+          : localDate(
+              allDay && !isStart
+                  ? value.subtract(const Duration(days: 1))
+                  : value,
             ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        if (!allDay)
-          Expanded(
-            child: OutlinedButton(
-              key: ValueKey('event-${isStart ? 'start' : 'end'}-time'),
-              onPressed: () => _pick(isStart, false),
-              child: Text(
-                Platform.isAndroid
-                    ? TimeOfDay.fromDateTime(value).format(context)
-                    : '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}',
-              ),
-            ),
-          ),
-      ],
+      timeKey: ValueKey('event-${isStart ? 'start' : 'end'}-time'),
+      onTimePressed: () => _pick(isStart, false),
+      timeLabel: allDay
+          ? null
+          : Platform.isAndroid
+          ? TimeOfDay.fromDateTime(value).format(context)
+          : '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}',
     ),
   );
 }

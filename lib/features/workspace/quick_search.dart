@@ -4,7 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_controller.dart';
 
 class QuickSearchDialog extends ConsumerStatefulWidget {
-  const QuickSearchDialog({super.key});
+  const QuickSearchDialog({super.key, this.beforeNavigate});
+  final Future<bool> Function()? beforeNavigate;
 
   @override
   ConsumerState<QuickSearchDialog> createState() => _QuickSearchDialogState();
@@ -100,7 +101,10 @@ class _QuickSearchDialogState extends ConsumerState<QuickSearchDialog> {
   Widget build(BuildContext context) {
     final controller = ref.watch(appControllerProvider);
     final matches = _matches(controller);
-    void open(_SearchMatch match) {
+    Future<void> open(_SearchMatch match) async {
+      if (widget.beforeNavigate != null && !await widget.beforeNavigate!())
+        return;
+      if (!context.mounted) return;
       match.open();
       Navigator.pop(context);
     }
