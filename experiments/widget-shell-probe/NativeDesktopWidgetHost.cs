@@ -101,6 +101,7 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
       host?.UpdatePrivacy(); calendarHost?.UpdatePrivacy();
       if (lastLocalDate != DateTime.Today) {
         calendarHost?.AdvanceToday(lastLocalDate);
+        host?.AdvanceToday(lastLocalDate);
         lastLocalDate = DateTime.Today;
         host?.RefreshFromDatabase(); calendarHost?.RefreshFromDatabase();
       }
@@ -703,6 +704,7 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     }
     if (calendar) { DrawCalendar(graphics, bodyFont, smallFont); return; }
     DrawViewSelector(graphics, bodyFont);
+    if (settings.View == WidgetTaskView.Today) DrawDateNavigation(graphics, smallFont);
 
     PaintSurface(graphics, "content", TaskArea, palette.Panel);
     if (tasks.Count == 0) {
@@ -1032,6 +1034,9 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
       return;
     }
     switch (target) {
+      case HitTarget.DatePrevious: MoveSelectedDate(-1); break;
+      case HitTarget.DateNext: MoveSelectedDate(1); break;
+      case HitTarget.DateToday: selectedDate = DateTime.Today; RefreshTasks(); break;
       case HitTarget.Refresh:
         RefreshTasks();
         break;
@@ -1071,6 +1076,11 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     if (configuration.ShowOpenButton && OpenRect.Contains(point)) return (HitTarget.Open, -1);
     if (privacy.IsLocked()) return AddRect.Contains(point) ? (HitTarget.Add,-1) : (HitTarget.None,-1);
     if (calendar) return CalendarHitTest(point);
+    if (settings.View == WidgetTaskView.Today) {
+      if (DatePrevious.Contains(point)) return (HitTarget.DatePrevious,-1);
+      if (DateNext.Contains(point)) return (HitTarget.DateNext,-1);
+      if (DateToday.Contains(point)) return (HitTarget.DateToday,-1);
+    }
     if (AddRect.Contains(point)) return (HitTarget.Add, -1);
     if (ViewRect(WidgetTaskView.Today).Contains(point)) return (HitTarget.ViewToday, -1);
     if (ViewRect(WidgetTaskView.Inbox).Contains(point)) return (HitTarget.ViewInbox, -1);
@@ -1214,7 +1224,7 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     }
     RunAction(() => {
       if (calendar) LoadCalendar();
-      else tasks = repository.LoadTasks(DateTime.Now, settings.View);
+      else tasks = repository.LoadTasks(settings.View == WidgetTaskView.Today ? selectedDate : DateTime.Now, settings.View);
       scrollOffset = Math.Min(scrollOffset,
         Math.Max(0, tasks.Count - VisibleTaskRows));
       statusText = $"Updated {DateTime.Now:h:mm tt}";
@@ -1231,8 +1241,8 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     }
     var saved = false;
     quickAdd = new InlineQuickAddForm(palette, QuickAddScreenBounds(),
-      ViewLabel(settings.View), title => {
-        repository.AddTask(title, DateTime.Now, settings.View);
+      settings.View == WidgetTaskView.Today && selectedDate != DateTime.Today ? selectedDate.ToString("ddd, MMM d, yyyy") : ViewLabel(settings.View), title => {
+        repository.AddTask(title, settings.View == WidgetTaskView.Today ? selectedDate : DateTime.Now, settings.View);
         saved = true;
       }, configuration.Surface("input"), configuration.TextScale);
     quickAdd.FormClosed += (_, _) => {
@@ -1438,14 +1448,14 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
 
   private RectangleF OpenRect => new(LogicalClientWidth - 46, 14, 30, 30);
   private Size MinimumSize => WidgetGeometry.MinimumSize(calendar,configuration.TextScale);
-  private float ContentTop => configuration.HasHeader ? Math.Max(50,20*configuration.TextScale+26) : 14;
+  private float ContentTop => (configuration.HasHeader ? Math.Max(50,20*configuration.TextScale+26) : 14) + (!calendar && settings.View == WidgetTaskView.Today ? 32 : 0);
   private WidgetTaskView[] VisibleViews => configuration.OrderedViews.Select(v => Enum.Parse<WidgetTaskView>(v, true)).ToArray();
   private bool VerticalNavigation => configuration.NavigationPosition is "left" or "right";
-  private string EffectiveNavigationDisplay => VerticalNavigation && LogicalClientWidth < 340 ? "icons" : configuration.NavigationDisplay;
+  private string EffectiveNavigationDisplay => (VerticalNavigation && LogicalClientWidth < 340 || !VerticalNavigation && LogicalClientHeight < 280 && settings.View == WidgetTaskView.Today) ? "icons" : configuration.NavigationDisplay;
   private float NavigationWidth => EffectiveNavigationDisplay == "icons" ? 38 : Math.Max(106, 90 * configuration.TextScale);
   private int NavigationColumns {
     get {
-      if (configuration.NavigationDisplay == "icons") return Math.Max(1,VisibleViews.Length);
+      if (EffectiveNavigationDisplay == "icons") return Math.Max(1,VisibleViews.Length);
       var minimum = configuration.NavigationDisplay == "text"
         ? Math.Max(72,50*configuration.TextScale) : Math.Max(90,26+50*configuration.TextScale);
       var columns = Math.Max(1,Math.Min(VisibleViews.Length,(int)((LogicalClientWidth-32)/minimum)));
@@ -1582,6 +1592,7 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
 
   private enum HitTarget {
     None,
+    DatePrevious, DateNext, DateToday,
     Refresh,
     Open,
     Close,

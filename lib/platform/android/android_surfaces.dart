@@ -214,23 +214,19 @@ Future<void> publishAndroidRepository(
       .loadCustomization();
   final preferences = await MobilePreferenceStore.forActiveProfile().load();
   final now = DateTime.now();
-  final today = localDate(now);
   final through = localDate(DateTime(now.year, now.month, now.day + 90));
+  final widgetFrom = localDate(DateTime(now.year, now.month, now.day - 14));
+  final widgetThrough = localDate(DateTime(now.year, now.month, now.day + 14));
   final tasks = await repository.tasks();
   final sessions = await repository.sessions();
   final categories = await repository.categories();
-  final events = await repository.eventOccurrences(
-    localDate(DateTime(now.year, now.month, now.day - 1)),
-    through,
-  );
+  final events = await repository.eventOccurrences(widgetFrom, through);
   final settings = await repository.notificationSettings();
   final receipts = await AndroidPlatform.channel
       .invokeMapMethod<String, dynamic>('reminderReceipts');
   final agenda = <Map<String, Object>>[
     for (final e in events.where(
-      (e) =>
-          !e.cancelled &&
-          e.endsAt.isAfter(DateTime(now.year, now.month, now.day)),
+      (e) => !e.cancelled && e.endsAt.isAfter(DateTime.parse(widgetFrom)),
     ))
       {
         'kind': 'event',
@@ -258,7 +254,9 @@ Future<void> publishAndroidRepository(
         ),
       },
     for (final s in sessions.where(
-      (s) => s.endsAt.isAfter(now) && s.outcome == SessionOutcome.upcoming,
+      (s) =>
+          s.endsAt.isAfter(DateTime.parse(widgetFrom)) &&
+          s.outcome != SessionOutcome.skipped,
     ))
       {
         'kind': 'session',
@@ -276,10 +274,22 @@ Future<void> publishAndroidRepository(
         ),
       },
   ]..sort((a, b) => (a['at'] as int).compareTo(b['at'] as int));
+  final widgetTasks = tasks
+      .where(
+        (t) =>
+            t.isOpen ||
+            t.status == TaskStatus.completed &&
+                t.scheduledDate != null &&
+                t.scheduledDate!.compareTo(widgetFrom) >= 0 &&
+                t.scheduledDate!.compareTo(widgetThrough) <= 0,
+      )
+      .toList();
   await AndroidPlatform.channel.invokeMethod<void>(
     'publish',
     jsonEncode({
       'version': 1,
+      'widgetFrom': widgetFrom,
+      'widgetThrough': widgetThrough,
       'palettes': {
         'light': appearance.light.toJson(),
         'dark': appearance.dark.toJson(),
@@ -288,16 +298,7 @@ Future<void> publishAndroidRepository(
       'hidePreview': privacy.enabled,
       'suppressNotifications': privacy.enabled && privacy.hideNotifications,
       'tasks': [
-        for (final t
-            in tasks
-                .where(
-                  (t) =>
-                      t.isOpen ||
-                      t.status == TaskStatus.completed &&
-                          (t.scheduledDate == today ||
-                              localDate(t.updatedAt.toLocal()) == today),
-                )
-                .take(500))
+        for (final t in widgetTasks.take(500))
           {
             'id': t.id,
             'revision': t.revision,
@@ -320,6 +321,8 @@ Future<void> publishAndroidRepository(
           },
       ],
       'agenda': agenda.take(100).toList(),
+      'tasksTruncated': widgetTasks.length > 500,
+      'agendaTruncated': agenda.length > 100,
       'reminders': androidReminderPlan(
         tasks: tasks,
         sessions: sessions,

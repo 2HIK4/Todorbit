@@ -12,6 +12,8 @@ internal sealed partial class NativeDesktopWidgetHost
         if (privacy.IsLocked()) { items.Add(new("Unlock in Todorbit", AddRect, () => OpenMainApp())); return items; }
         if (calendar)
         {
+            items.Add(new("Previous day", DayPrevious, () => MoveSelectedDate(-1)));
+            items.Add(new("Next day", DayNext, () => MoveSelectedDate(1)));
             items.Add(new("Previous month", MonthPrevious, () => CalendarClick(Center(MonthPrevious))));
             items.Add(new("Next month", MonthNext, () => CalendarClick(Center(MonthNext))));
             items.Add(new("Return to today", MonthToday, () => CalendarClick(Center(MonthToday))));
@@ -30,6 +32,11 @@ internal sealed partial class NativeDesktopWidgetHost
         }
         else
         {
+            if (settings.View == WidgetTaskView.Today) {
+              items.Add(new("Previous day", DatePrevious, () => MoveSelectedDate(-1)));
+              items.Add(new("Next day", DateNext, () => MoveSelectedDate(1)));
+              items.Add(new($"{selectedDate:D}. Return to today", DateToday, () => { selectedDate=DateTime.Today; RefreshTasks(); }));
+            }
             foreach (var view in VisibleViews) items.Add(new(ViewLabel(view), ViewRect(view), () => SetView(view), view == settings.View));
             for (var i = scrollOffset; i < Math.Min(tasks.Count, scrollOffset + VisibleTaskRows); i++)
             {

@@ -10,6 +10,11 @@
             </LinearLayout>
             <TextView android:id="@+id/widget_add" android:layout_width="48dp" android:layout_height="48dp" android:gravity="center" android:text="+" android:textSize="28sp" android:contentDescription="@string/add_task" android:background="?android:attr/selectableItemBackground" />
         </LinearLayout>
+        <LinearLayout android:id="@+id/widget_dates" android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal" android:gravity="center_vertical">
+            <TextView android:id="@+id/widget_previous" android:layout_width="48dp" android:layout_height="48dp" android:gravity="center" android:text="&#x2039;" android:textSize="26sp" android:contentDescription="Previous day" android:background="?android:attr/selectableItemBackground" />
+            <TextView android:id="@+id/widget_today" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" android:gravity="center" android:textSize="13sp" android:maxLines="1" android:ellipsize="end" android:contentDescription="Return to today" android:background="?android:attr/selectableItemBackground" />
+            <TextView android:id="@+id/widget_next" android:layout_width="48dp" android:layout_height="48dp" android:gravity="center" android:text="&#x203a;" android:textSize="26sp" android:contentDescription="Next day" android:background="?android:attr/selectableItemBackground" />
+        </LinearLayout>
         <LinearLayout android:id="@+id/widget_week" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingVertical="8dp" />
         <LinearLayout android:id="@+id/widget_rows" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
         <TextView android:id="@+id/widget_empty" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingVertical="12dp" android:textSize="14sp" android:maxLines="3" android:ellipsize="end" />

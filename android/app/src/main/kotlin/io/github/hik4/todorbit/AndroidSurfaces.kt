@@ -175,6 +175,31 @@ object AndroidSurfaces {
             } else item.optString("detail")
     }
 
+    const val DATE_ACTION = "io.github.hik4.todorbit.WIDGET_DATE"
+    private fun dateIntent(context: Context, id: Int, calendar: Boolean, date: String): PendingIntent {
+        val intent = Intent(context, if(calendar) CalendarWidget::class.java else TasksWidget::class.java)
+            .setAction(DATE_ACTION).setData(Uri.parse("todorbit-widget://date/$id/$date"))
+            .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id)
+        return PendingIntent.getBroadcast(context,id,intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    }
+    fun navigateDate(context: Context, intent: Intent, calendar: Boolean) {
+        val id=intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,AppWidgetManager.INVALID_APPWIDGET_ID)
+        val manager=AppWidgetManager.getInstance(context)
+        val provider=manager.getAppWidgetInfo(id)?.provider?.className ?: return
+        if(provider!=(if(calendar) CalendarWidget::class.java.name else TasksWidget::class.java.name)) return
+        val raw=intent.data?.lastPathSegment ?: return
+        val data=snapshot(context)
+        val today=LocalDate.now()
+        val first=try { LocalDate.parse(data.optString("widgetFrom")) } catch(_: Exception) { today }
+        val last=try { LocalDate.parse(data.optString("widgetThrough")) } catch(_: Exception) { today }
+        val selected=if(raw=="today") today else try {LocalDate.parse(raw)} catch(_: Exception) {return}
+        if(selected<first || selected>last) return
+        val edit=preferences(context).edit()
+        if(raw=="today") edit.remove("date-$id") else edit.putString("date-$id",selected.toString())
+        edit.apply()
+        render(context,manager,id,calendar)
+    }
+
     private fun widgetView(context: Context, id: Int, calendar: Boolean, width: Int, height: Int, actions: JSONObject): RemoteViews {
         val prefs = preferences(context)
         val data = snapshot(context)
@@ -202,7 +227,11 @@ object AndroidSurfaces {
         remote.setInt(R.id.widget_shell,"setImageAlpha",opacity*255/100)
         remote.setInt(R.id.widget_surface,"setColorFilter",surface)
         val today = LocalDate.now()
-        val day = today.toString()
+        val first=try { LocalDate.parse(data.optString("widgetFrom")) } catch(_: Exception) { today }
+        val last=try { LocalDate.parse(data.optString("widgetThrough")) } catch(_: Exception) { today }
+        val selected=try { LocalDate.parse(prefs.getString("date-$id",null)) } catch(_: Exception) { today }
+        val selectedDay=if(selected<first || selected>last) today else selected
+        val day = selectedDay.toString()
         val filter = prefs.getString("filter-$id","today")
         fun link(kind: String) = "todorbit://$kind?day=$day&widget=$id"
         val destination = if(calendar) link("calendar") else link("tasks")+"&filter=$filter"
@@ -216,9 +245,11 @@ object AndroidSurfaces {
         remote.removeAllViews(R.id.widget_week)
         val hidden = privacy(context).optBoolean("enabled",true) || data.optBoolean("private",true)
         val source = data.optJSONArray(if(calendar) "agenda" else "tasks") ?: JSONArray()
-        val midnight = today.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        val items = if(hidden) emptyList() else (0 until source.length()).map { source.getJSONObject(it) }.filter {
-            if(calendar) it.optLong("until",0L)>midnight
+        val truncated = data.optBoolean(if(calendar) "agendaTruncated" else "tasksTruncated")
+        val midnight = selectedDay.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val available = if(hidden) emptyList() else (0 until source.length()).map { source.getJSONObject(it) }
+        val items = available.filter {
+            if(calendar) it.optLong("until",0L)>midnight && it.optLong("at",0L)<selectedDay.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
             else when(filter) { "inbox" -> it.optBoolean("inbox"); "all" -> true; else -> it.optString("day")==day }
         }
         val expanded = calendar && height >= 330 && context.resources.configuration.fontScale <= 1.3f
@@ -226,13 +257,13 @@ object AndroidSurfaces {
         if(expanded) {
             val days = if(width >= 360) 7 else 3
             for(n in 0 until days) {
-                val date=today.plusDays(n.toLong())
+                val date=selectedDay.plusDays(n.toLong())
                 val cell=RemoteViews(context.packageName,R.layout.todorbit_widget_day)
-                val count=items.count { it.optString("kind")=="event" && it.optString("day")<=date.toString() && it.optString("through")>=date.toString() }
+                val count=available.count { it.optString("kind")=="event" && it.optString("day")<=date.toString() && it.optString("through")>=date.toString() }
                 cell.setTextViewText(R.id.widget_day,date.format(DateTimeFormatter.ofPattern("EEE"))+"\n"+date.dayOfMonth+if(count>0) " \u00b7 $count" else "")
                 cell.setTextColor(R.id.widget_day,if(n==0) accent else secondary)
                 cell.setContentDescription(R.id.widget_day,"${date.format(DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.FULL))}, $count events")
-                cell.setOnClickPendingIntent(R.id.widget_day,open(context,"todorbit://calendar?day=$date&widget=$id"))
+                cell.setOnClickPendingIntent(R.id.widget_day,if(date>=first && date<=last) dateIntent(context,id,calendar,date.toString()) else open(context,"todorbit://calendar?day=$date&widget=$id"))
                 remote.addView(R.id.widget_week,cell)
             }
         }
@@ -259,8 +290,10 @@ object AndroidSurfaces {
         val headerWidth=(width-72).coerceAtLeast(1)
         val headerHeight=dp(24)+maxOf(dp(48),textHeight("Ag",18f,1,true,headerWidth)+
             if(compact && scale>1.3f) 0 else textHeight("Ag",12f,1,false,headerWidth))
-        val footerHeight=maxOf(dp(48),textHeight("${items.size} more \u00b7 Open ${if(calendar) "calendar" else "tasks"}",12f,2,false,width-24))
-        var used=headerHeight+footerHeight+if(expanded) dp(64) else 0
+        val compactDates=height<250 && (calendar || filter=="today")
+        remote.setViewVisibility(R.id.widget_footer,if(compactDates) View.GONE else View.VISIBLE)
+        val footerHeight=if(compactDates) 0 else maxOf(dp(48),textHeight("${items.size} more \u00b7 Open ${if(calendar) "calendar" else "tasks"}",12f,2,false,width-24))
+        var used=headerHeight+footerHeight+(if(calendar || filter=="today") dp(48) else 0)+(if(expanded) dp(64) else 0)
         var capacity=0
         val bodyWidth=width-24-if(calendar) 15 else 48
         for(item in items.take(16)) {
@@ -270,7 +303,19 @@ object AndroidSurfaces {
             used+=rowHeight
             capacity++
         }
-        remote.setTextViewText(R.id.widget_context, today.format(DateTimeFormatter.ofPattern("EEE, MMM d")) + if(hidden) "" else if(calendar) " \u00b7 ${items.size} ${if(items.size==1) "item" else "items"}" else " \u00b7 ${items.count {!it.optBoolean("done")}} remaining")
+        remote.setViewVisibility(R.id.widget_dates,if(calendar || filter=="today") View.VISIBLE else View.GONE)
+        remote.setTextViewText(R.id.widget_today,(if(selectedDay==today) "Today, " else "")+selectedDay.format(DateTimeFormatter.ofPattern("MMM d")))
+        remote.setContentDescription(R.id.widget_today,"${selectedDay.format(DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.FULL))}. Return to today")
+        remote.setOnClickPendingIntent(R.id.widget_today,dateIntent(context,id,calendar,"today"))
+        remote.setTextColor(R.id.widget_today,accent)
+        for((view,step) in listOf(R.id.widget_previous to -1L,R.id.widget_next to 1L)) {
+            val target=selectedDay.plusDays(step)
+            val allowed=target>=first && target<=last
+            remote.setBoolean(view,"setEnabled",allowed)
+            remote.setTextColor(view,if(allowed) foreground else secondary)
+            remote.setOnClickPendingIntent(view,dateIntent(context,id,calendar,target.toString()))
+        }
+        remote.setTextViewText(R.id.widget_context, selectedDay.format(DateTimeFormatter.ofPattern("EEE, MMM d")) + if(hidden) "" else if(calendar) " \u00b7 ${items.size} ${if(items.size==1) "item" else "items"}" else " \u00b7 ${items.count {!it.optBoolean("done")}} remaining")
         remote.setTextColor(R.id.widget_context,secondary)
         for(item in items.take(capacity)) {
             val row=RemoteViews(context.packageName,R.layout.todorbit_widget_row)
@@ -297,10 +342,10 @@ object AndroidSurfaces {
         }
         remote.setViewVisibility(R.id.widget_empty,if(items.isEmpty() || capacity==0) View.VISIBLE else View.GONE)
         remote.setTextColor(R.id.widget_empty,secondary)
-        remote.setTextViewText(R.id.widget_empty,if(hidden) if(compact) "Locked" else "Details hidden by app lock. Open Todorbit to unlock." else if(capacity==0 && items.isNotEmpty()) "Resize" else if(calendar) if(compact) "No events" else "No upcoming events. Make room for what matters." else if(compact) "All clear." else "All clear here. Add a task when you are ready.")
+        remote.setTextViewText(R.id.widget_empty,if(hidden) if(compact) "Locked" else "Details hidden by app lock. Open Todorbit to unlock." else if(capacity==0 && items.isNotEmpty()) "Resize" else if(truncated) "Open Todorbit for the full list" else if(calendar) if(compact) "No events" else "No upcoming events. Make room for what matters." else if(compact) "All clear." else "All clear here. Add a task when you are ready.")
         remote.setTextColor(R.id.widget_footer,accent)
-        remote.setTextViewText(R.id.widget_footer,if(hidden) "Open Todorbit" else if(items.isEmpty()) if(calendar) "Add event  +" else "Add task  +" else if(items.size>capacity) "${items.size-capacity} more \u00b7 Open ${if(calendar) "calendar" else "tasks"}" else "Open ${if(calendar) "calendar" else "tasks"}  \u203a")
-        remote.setOnClickPendingIntent(R.id.widget_footer,open(context,if(!hidden && items.isEmpty()) link(if(calendar) "add-event" else "add") else destination))
+        remote.setTextViewText(R.id.widget_footer,if(hidden) "Open Todorbit" else if(truncated) "Full list in Todorbit" else if(items.isEmpty()) if(calendar) "Add event  +" else "Add task  +" else if(items.size>capacity) "${items.size-capacity} more \u00b7 Open ${if(calendar) "calendar" else "tasks"}" else "Open ${if(calendar) "calendar" else "tasks"}  \u203a")
+        remote.setOnClickPendingIntent(R.id.widget_footer,open(context,if(!hidden && !truncated && items.isEmpty()) link(if(calendar) "add-event" else "add") else destination))
         return remote
     }
 
@@ -370,6 +415,11 @@ class SurfaceRefreshReceiver : BroadcastReceiver() {
 }
 
 class TasksWidget : AppWidgetProvider() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if(intent.action!=AndroidSurfaces.DATE_ACTION) { super.onReceive(context,intent); return }
+        val pending=goAsync()
+        AndroidSurfaces.enqueue { try { AndroidSurfaces.navigateDate(context,intent,false) } catch(error: Exception) { android.util.Log.w("TodorbitWidgets","Date selection failed",error) } finally {pending.finish()} }
+    }
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         val pending=goAsync()
         AndroidSurfaces.enqueue { try { for(id in ids) AndroidSurfaces.render(context,manager,id,false) } catch (error: Exception) { android.util.Log.w("TodorbitWidgets","Widget refresh failed",error) } finally { pending.finish() } }
@@ -378,9 +428,14 @@ class TasksWidget : AppWidgetProvider() {
         val pending=goAsync()
         AndroidSurfaces.enqueue { try { AndroidSurfaces.render(context,manager,id,false) } catch (error: Exception) { android.util.Log.w("TodorbitWidgets","Widget refresh failed",error) } finally { pending.finish() } }
     }
-    override fun onDeleted(context: Context, ids: IntArray) { for(id in ids) AndroidSurfaces.preferences(context).edit().remove("theme-$id").remove("filter-$id").remove("opacity-$id").remove("actions-$id").apply() }
+    override fun onDeleted(context: Context, ids: IntArray) { for(id in ids) AndroidSurfaces.preferences(context).edit().remove("theme-$id").remove("filter-$id").remove("opacity-$id").remove("actions-$id").remove("date-$id").apply() }
 }
 class CalendarWidget : AppWidgetProvider() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if(intent.action!=AndroidSurfaces.DATE_ACTION) { super.onReceive(context,intent); return }
+        val pending=goAsync()
+        AndroidSurfaces.enqueue { try { AndroidSurfaces.navigateDate(context,intent,true) } catch(error: Exception) { android.util.Log.w("TodorbitWidgets","Date selection failed",error) } finally {pending.finish()} }
+    }
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         val pending=goAsync()
         AndroidSurfaces.enqueue { try { for(id in ids) AndroidSurfaces.render(context,manager,id,true) } catch (error: Exception) { android.util.Log.w("TodorbitWidgets","Widget refresh failed",error) } finally { pending.finish() } }
@@ -389,7 +444,7 @@ class CalendarWidget : AppWidgetProvider() {
         val pending=goAsync()
         AndroidSurfaces.enqueue { try { AndroidSurfaces.render(context,manager,id,true) } catch (error: Exception) { android.util.Log.w("TodorbitWidgets","Widget refresh failed",error) } finally { pending.finish() } }
     }
-    override fun onDeleted(context: Context, ids: IntArray) { for(id in ids) AndroidSurfaces.preferences(context).edit().remove("theme-$id").remove("filter-$id").remove("opacity-$id").remove("actions-$id").apply() }
+    override fun onDeleted(context: Context, ids: IntArray) { for(id in ids) AndroidSurfaces.preferences(context).edit().remove("theme-$id").remove("filter-$id").remove("opacity-$id").remove("actions-$id").remove("date-$id").apply() }
 }
 
 class WidgetConfigurationActivity : Activity() {

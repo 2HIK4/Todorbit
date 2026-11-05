@@ -33,7 +33,7 @@ internal sealed partial class NativeDesktopWidgetHost
 
     internal void AdvanceToday(DateTime previous)
     {
-        if (!calendar || selectedDate != previous) return;
+        if (selectedDate != previous) return;
         selectedDate = DateTime.Today;
         if (calendarMonth.Year == previous.Year && calendarMonth.Month == previous.Month)
             calendarMonth = new(selectedDate.Year, selectedDate.Month, 1);
@@ -41,11 +41,11 @@ internal sealed partial class NativeDesktopWidgetHost
     }
     private RectangleF CalendarControl(int index) => index switch
     {
-        0 => MonthPrevious, 1 => MonthNext, _ => MonthToday,
+        0 => MonthPrevious, 1 => MonthNext, 3 => DayPrevious, 4 => DayNext, _ => MonthToday,
     };
     private (HitTarget Target, int Index) CalendarHitTest(PointF point)
     {
-        for (var i = 0; i < 3; i++) if (CalendarControl(i).Contains(point)) return (HitTarget.CalendarControl, i);
+        for (var i = 0; i < 5; i++) if (CalendarControl(i).Contains(point)) return (HitTarget.CalendarControl, i);
         for (var i = 0; i < CalendarDays; i++) if (CalendarCell(i).Contains(point)) return (HitTarget.CalendarDate, i);
         var agenda = SelectedAgenda;
         for (var i = 0; i < AgendaVisibleRows; i++)
@@ -59,7 +59,7 @@ internal sealed partial class NativeDesktopWidgetHost
         if (target == HitTarget.CalendarControl)
         {
             bounds = CalendarControl(index);
-            label = index switch { 0 => "Previous month", 1 => "Next month", _ => "Return to today" };
+            label = index switch { 0 => "Previous month", 1 => "Next month", 3 => "Previous day", 4 => "Next day", _ => "Return to today" };
         }
         else if (target == HitTarget.CalendarDate && index >= 0 && index < CalendarDays)
         {
@@ -113,6 +113,8 @@ internal sealed partial class NativeDesktopWidgetHost
         DrawText(g, calendarMonth.ToString("MMMM yyyy"), monthFont, text, new RectangleF(52, CalendarTop, LogicalClientWidth - 104, 32), center, "shell");
         using (var todayFill = new SolidBrush(Color.FromArgb(32, palette.Accent))) FillRoundedRectangle(g, todayFill, MonthToday, 8);
         DrawText(g, "Today", small, text, MonthToday, center, "shell");
+        DrawText(g, "\u2039", small, text, DayPrevious, center, "shell");
+        DrawText(g, "\u203a", small, text, DayNext, center, "shell");
         DrawCalendarArrow(g, MonthPrevious, -1, false, text.Color);
         DrawCalendarArrow(g, MonthNext, 1, false, text.Color);
         if (hoverTarget == HitTarget.CalendarControl)
@@ -242,6 +244,8 @@ internal sealed partial class NativeDesktopWidgetHost
     private bool CalendarClick(PointF point)
     {
         if (configuration.ShowOpenButton && OpenRect.Contains(point)) return false;
+        if (DayPrevious.Contains(point)) { MoveSelectedDate(-1); return true; }
+        if (DayNext.Contains(point)) { MoveSelectedDate(1); return true; }
         if (MonthPrevious.Contains(point) || MonthNext.Contains(point))
         {
             if (calendarMonth.Year <= 1 && MonthPrevious.Contains(point) || calendarMonth.Year >= 9998 && MonthNext.Contains(point)) return true;

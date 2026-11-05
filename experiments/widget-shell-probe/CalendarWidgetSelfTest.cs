@@ -26,6 +26,11 @@ internal sealed partial class NativeDesktopWidgetHost
                 throw new InvalidOperationException("Extra height must grow the agenda, not the month cells.");
         }
         using var calendar = new NativeDesktopWidgetHost(repository, new WidgetConfiguration(), true, new Size(980, 620), WidgetPalette.Dark);
+        calendar.selectedDate = new DateTime(2026,12,31);
+        calendar.MoveSelectedDate(1);
+        if(calendar.selectedDate != new DateTime(2027,1,1) || calendar.calendarMonth != new DateTime(2027,1,1)) throw new InvalidOperationException("Day navigation lost year boundary.");
+        calendar.MoveSelectedDate(-1);
+        if(calendar.selectedDate != new DateTime(2026,12,31)) throw new InvalidOperationException("Previous day did not return across year boundary.");
         calendar.calendarMonth = new DateTime(2026, 10, 1); calendar.LoadCalendar();
         var selectedIndex = (new DateTime(2026, 10, 26) - calendar.CalendarGridStart).Days;
         calendar.agendaOffset = 2;
