@@ -127,7 +127,7 @@ class _DriveWire {
     final id = path.split('/').last;
     if (files.containsKey(id)) {
       if (request.method == 'DELETE') {
-        if (denyDelete)
+        if (denyDelete) {
           return json({
             'error': {
               'errors': [
@@ -135,6 +135,7 @@ class _DriveWire {
               ],
             },
           }, 403);
+        }
         files.remove(id);
         payloads.remove(id);
         return http.Response('', 204);

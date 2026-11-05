@@ -144,6 +144,57 @@ void main() {
       'Edited',
     );
   });
+  test('matching offline deletions converge without losing causal heads', () {
+    final original = base({
+      'id': 'task',
+      'title': 'Deleted task',
+      'deleted_at': null,
+    });
+    final windows = branch('windows', {
+      ...original.value!,
+      'deleted_at': '2026-11-04T10:00:00Z',
+    });
+    final android = branch('android', {
+      ...original.value!,
+      'deleted_at': '2026-11-04T11:00:00Z',
+    });
+    for (final history in [
+      [original, windows, android],
+      [android, windows, original],
+    ]) {
+      final review = reviewPortableRecord('tasks', history);
+      expect(review.needsDecision, isFalse);
+      expect(review.merged!['deleted_at'], '2026-11-04T11:00:00.000Z');
+      expect(review.heads, {'windows', 'android'});
+    }
+  });
+  test('soft deletion never silently wins an offline edit or restoration', () {
+    final original = base({
+      'title': 'Original',
+      'notes': '',
+      'deleted_at': null,
+    });
+    final deleted = branch('windows', {
+      ...original.value!,
+      'deleted_at': '2026-11-04T10:00:00Z',
+    });
+    for (final value in [
+      {...original.value!, 'notes': 'Offline edit'},
+      {
+        ...original.value!,
+        'title': 'Changed then deleted',
+        'deleted_at': '2026-11-04T11:00:00Z',
+      },
+    ]) {
+      final review = reviewPortableRecord('tasks', [
+        original,
+        deleted,
+        branch('android', value),
+      ]);
+      expect(review.needsDecision, isTrue);
+      expect(review.conflicts.single.field, SyncConflict.record);
+    }
+  });
   test(
     'invalid modification metadata does not fabricate a successful merge',
     () {

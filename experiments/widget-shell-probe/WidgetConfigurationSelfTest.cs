@@ -195,6 +195,17 @@ internal static partial class LifeManagerWidgetSelfTest
             using (var update = new SqliteConnection($"Data Source={file};Pooling=False"))
             {
                 update.Open(); using var command = update.CreateCommand();
+                command.CommandText = """
+                    UPDATE fixed_events SET color_value=4294967295,icon_name='book';
+                    UPDATE event_occurrence_changes SET payload_json=json_set(payload_json,'$.categoryId',NULL,'$.colorValue',NULL,'$.iconName',NULL) WHERE nominal_date='2026-10-29';
+                    """;
+                command.ExecuteNonQuery();
+            }
+            Require(repo.LoadCalendarItems(date, date.AddDays(7)).Single(i => i.NominalDate == "2026-10-29") is { ColorValue: null, IconName: null },
+                "Explicitly clearing occurrence customization retained the template category, color or icon.");
+            using (var update = new SqliteConnection($"Data Source={file};Pooling=False"))
+            {
+                update.Open(); using var command = update.CreateCommand();
                 command.CommandText = "UPDATE fixed_events SET color_value=4294967295,icon_name='book'";
                 command.ExecuteNonQuery();
             }

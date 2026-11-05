@@ -75,14 +75,28 @@ String? _syncStoredIncomingValue(
   }
   final value = operation.revision.value;
   if (value == null) return null;
-  if (value.length != columns.length ||
-      columns.any((column) => !value.containsKey(column['name'])) ||
+  final optionalColumn = switch (operation.entity) {
+    'fixed_events' => 'project_id',
+    'task_checklist' => 'group_id',
+    _ => null,
+  };
+  final legacyColumn =
+      optionalColumn != null && !value.containsKey(optionalColumn)
+      ? optionalColumn
+      : null;
+  if (value.length != columns.length - (legacyColumn != null ? 1 : 0) ||
+      columns.any(
+        (column) =>
+            !value.containsKey(column['name']) &&
+            column['name'] != legacyColumn,
+      ) ||
       key.entries.any((entry) => !_syncSame(entry.value, value[entry.key]))) {
     throw const FormatException('Portable record columns or identity differ');
   }
   final stored = <String, Object?>{};
   for (final column in columns) {
     final name = column['name'] as String;
+    if (name == legacyColumn) continue;
     final field = value[name];
     final type = (column['type'] as String).toUpperCase();
     if (field == null) {

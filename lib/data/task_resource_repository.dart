@@ -3,6 +3,27 @@ part of 'life_repository.dart';
 extension TaskResourceRepository on LifeRepository {
   static const maxAttachmentBytes = 16 * 1024 * 1024;
 
+  Future<void> addDraftResources(
+    String taskId,
+    List<DraftTaskResource> drafts,
+  ) async {
+    for (final draft in drafts) {
+      if (draft.kind == TaskResourceKind.managed) {
+        final resource = await attachManagedFile(taskId, File(draft.target));
+        if (resource.label != draft.label) {
+          await renameTaskResource(resource, draft.label);
+        }
+      } else {
+        await addExternalResource(
+          taskId,
+          draft.kind,
+          draft.target,
+          label: draft.label,
+        );
+      }
+    }
+  }
+
   Future<List<TaskResource>> taskResources(String taskId) async {
     final rows = await db
         .customSelect(

@@ -1,7 +1,8 @@
+import '../app_database.dart';
+
 import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as path;
@@ -53,8 +54,9 @@ class SyncResetService {
           'cleanup',
           'complete',
           'reconnect',
-        }.contains(value['phase']))
+        }.contains(value['phase'])) {
       throw const FormatException('Invalid protected replacement operation');
+    }
     return value;
   }
 
@@ -70,23 +72,26 @@ class SyncResetService {
   }
 
   void _guard(String account) {
-    if (!isUnlocked())
+    if (!isUnlocked()) {
       throw const CloudFailure(
         'Unlock the app before continuing',
         kind: CloudFailureKind.reset,
       );
-    if (storage.account?.id != account)
+    }
+    if (storage.account?.id != account) {
       throw const CloudFailure(
         'Account changed',
         kind: CloudFailureKind.account,
       );
+    }
   }
 
   Future<void> _save(Map<String, dynamic> operation) async {
     final raw = jsonEncode(operation);
     await vault.write(raw);
-    if (await vault.read() != raw)
+    if (await vault.read() != raw) {
       throw StateError('Recovery state was not durably retained');
+    }
   }
 
   Future<String> _hash(File file) async =>
@@ -98,35 +103,40 @@ class SyncResetService {
           recovery.backupDirectory.absolute.path,
           file.absolute.path,
         ) ||
-        await _hash(file) != op['backupHash'])
+        await _hash(file) != op['backupHash']) {
       throw StateError('Recovery checkpoint cannot be verified');
-    if (await recovery.hasScheduledRestore())
+    }
+    if (await recovery.hasScheduledRestore()) {
       throw StateError('Finish pending restore first');
+    }
   }
 
   /// Read-only cloud inventory and verified manual snapshot, before confirmation.
   Future<Map<String, dynamic>> review() => _exclusive(() async {
     final previous = await state();
     if (previous != null &&
-        !{'complete', 'activating'}.contains(previous['phase']))
+        !{'complete', 'activating'}.contains(previous['phase'])) {
       throw const CloudFailure(
         'An operation is already pending',
         kind: CloudFailureKind.reset,
       );
+    }
     final account = storage.account?.id;
-    if (account == null)
+    if (account == null) {
       throw const CloudFailure(
         'Sign in required',
         kind: CloudFailureKind.authentication,
       );
+    }
     _guard(account);
     final local = await repository.syncExchangeStatus();
     if (local.quarantined ||
-        (local.binding != null && local.binding!.account != account))
+        (local.binding != null && local.binding!.account != account)) {
       throw const CloudFailure(
         'Resolve profile or account first',
         kind: CloudFailureKind.account,
       );
+    }
     onStage?.call('Inspecting the selected cloud workspace');
     final objects = await storage.list();
     _guard(account);
@@ -151,11 +161,12 @@ class SyncResetService {
           !{'1', '2', '3'}.contains(o.properties['protocol']) ||
           (o.properties['kind'] == 'head'
               ? o.properties['protocol'] != '3'
-              : !{'1', '2'}.contains(o.properties['protocol'])))
+              : !{'1', '2'}.contains(o.properties['protocol']))) {
         throw const CloudFailure(
           'Unknown or unfinished cloud generation',
           kind: CloudFailureKind.reset,
         );
+      }
     }
     onStage?.call('Creating and verifying your local recovery snapshot');
     final backup = await recovery.createBackup(BackupKind.manual);
@@ -200,8 +211,9 @@ class SyncResetService {
     SyncWorkspaceKey? privateKey,
   }) => _exclusive(() async {
     final op = await state();
-    if (op == null || op['phase'] != 'review')
+    if (op == null || op['phase'] != 'review') {
       throw StateError('Review required');
+    }
     final account = op['account'] as String;
     _guard(account);
     await _checkpoint(op);
@@ -231,11 +243,12 @@ class SyncResetService {
 
   Future<void> resume() => _exclusive(() async {
     final op = await state();
-    if (op == null || op['phase'] == 'review')
+    if (op == null || op['phase'] == 'review') {
       throw const CloudFailure(
         'Confirm the new setup first',
         kind: CloudFailureKind.reset,
       );
+    }
     final binding = _binding(op), key = _key(op);
     _guard(binding.account);
     await _checkpoint(op);
@@ -255,11 +268,12 @@ class SyncResetService {
           !_same(
             generation.tips,
             (op['parents'] as List).cast<String>().toSet(),
-          ))
+          )) {
         throw const CloudFailure(
           'Another replacement was started',
           kind: CloudFailureKind.conflict,
         );
+      }
       onStage?.call('Preparing a fresh copy of this device’s records');
       await repository.replaceSyncCapture(
         binding,
@@ -292,11 +306,12 @@ class SyncResetService {
       }
       onStage?.call('Uploading your current local data');
       final lease = await repository.acquireSyncLease(binding);
-      if (lease == null)
+      if (lease == null) {
         throw const CloudFailure(
           'Another sync is finishing',
           kind: CloudFailureKind.reset,
         );
+      }
       var ownershipLost = false, heartbeatBusy = false;
       final heartbeat = Timer.periodic(const Duration(seconds: 8), (_) async {
         if (heartbeatBusy) return;
@@ -313,19 +328,21 @@ class SyncResetService {
         final deadline = DateTime.now().add(const Duration(minutes: 3));
         while (true) {
           _guard(binding.account);
-          if (ownershipLost || !await repository.renewSyncLease(lease))
+          if (ownershipLost || !await repository.renewSyncLease(lease)) {
             throw StateError('Sync ownership changed');
+          }
           final batch = await repository.prepareNextSyncBatch(
             binding,
             key,
             lease: lease,
           );
           if (batch == null) break;
-          if (DateTime.now().isAfter(deadline))
+          if (DateTime.now().isAfter(deadline)) {
             throw const CloudFailure(
               'Continue uploading on resume',
               kind: CloudFailureKind.reset,
             );
+          }
           final remote = await storage.upload(
             batch.bytes,
             batch.properties,
@@ -334,11 +351,12 @@ class SyncResetService {
           _guard(binding.account);
           // A long HTTP call may outlive the SQL lease; never acknowledge it
           // after losing ownership. Immutable bytes are retried on resume.
-          if (ownershipLost || !await repository.renewSyncLease(lease))
+          if (ownershipLost || !await repository.renewSyncLease(lease)) {
             throw const CloudFailure(
               'Upload interrupted',
               kind: CloudFailureKind.reset,
             );
+          }
           await repository.acknowledgeSyncBatch(batch, remote, lease: lease);
         }
       } finally {
@@ -357,8 +375,9 @@ class SyncResetService {
                 o.properties['workspaceId'] == binding.workspace,
           )
           .toList();
-      if (proofs.isEmpty)
+      if (proofs.isEmpty) {
         throw const FormatException('New workspace proof missing');
+      }
       for (final p in proofs) {
         final data = await storage.download(p, (_, _, _) {});
         _guard(binding.account);
@@ -367,8 +386,10 @@ class SyncResetService {
           binding,
           key,
         );
-        if (sha256.convert(data).toString() != sha256.convert(proof).toString())
+        if (sha256.convert(data).toString() !=
+            sha256.convert(proof).toString()) {
           throw const FormatException('New workspace proof differs');
+        }
       }
       final codec = SyncBatchCodec();
       for (final object in objects.where(
@@ -381,27 +402,32 @@ class SyncResetService {
             .firstOrNull;
         // After an ambiguous activation another updated device may have joined.
         // Its independently authenticated ops are exchanged by the normal engine.
-        if (row == null && generation.heads.containsKey(binding.workspace))
+        if (row == null && generation.heads.containsKey(binding.workspace)) {
           continue;
-        if (row == null)
+        }
+        if (row == null) {
           throw const FormatException('Unexpected staged operations');
+        }
         final bytes = await storage.download(object, (_, _, _) {});
         _guard(binding.account);
-        if (sha256.convert(bytes).toString() != row['sha256'])
+        if (sha256.convert(bytes).toString() != row['sha256']) {
           throw const FormatException('Seed readback differs');
+        }
         final decoded = await codec.decrypt(
           bytes,
           key,
           workspace: binding.workspace,
           account: binding.account,
-          expectedSchema: 26,
+          expectedSchema: AppDatabase.currentSchemaVersion,
         );
-        if (decoded.id != row['id'])
+        if (decoded.id != row['id']) {
           throw const FormatException('Seed identity differs');
+        }
         verified.add(row['id'] as String);
       }
-      if (verified.length != expected.length)
+      if (verified.length != expected.length) {
         throw const FormatException('Incomplete seed readback');
+      }
       final digest = sha256
           .convert(
             utf8.encode(
@@ -428,11 +454,12 @@ class SyncResetService {
         if (!_same(
           generation.tips,
           (op['parents'] as List).cast<String>().toSet(),
-        ))
+        )) {
           throw const CloudFailure(
             'Concurrent replacements',
             kind: CloudFailureKind.conflict,
           );
+        }
         _guard(binding.account);
         onStage?.call('Activating the verified new workspace');
         await storage.upload(base64Decode(op['head'] as String), {
@@ -471,8 +498,9 @@ class SyncResetService {
         if (object.accountId != binding.account ||
             object.properties['application'] != 'todorbit-sync' ||
             !{'operations', 'workspace'}.contains(object.properties['kind']) ||
-            !{'1', '2'}.contains(object.properties['protocol']))
+            !{'1', '2'}.contains(object.properties['protocol'])) {
           throw const FormatException('Unknown retired object');
+        }
         await _requireActive(binding);
         await storage.delete(object);
       }
@@ -482,11 +510,12 @@ class SyncResetService {
         (o) =>
             retired.contains(o.properties['workspaceId']) &&
             o.properties['kind'] != 'head',
-      ))
+      )) {
         throw const CloudFailure(
           'Old files remain',
           kind: CloudFailureKind.cleanup,
         );
+      }
       await _requireActive(binding);
       op['phase'] = 'complete';
       await _save(op);
@@ -496,8 +525,9 @@ class SyncResetService {
         CloudFailureKind.account,
         CloudFailureKind.stale,
         CloudFailureKind.conflict,
-      }.contains(error.kind))
+      }.contains(error.kind)) {
         rethrow;
+      }
       throw const CloudFailure(
         'New sync active; old cleanup incomplete',
         kind: CloudFailureKind.cleanup,
@@ -535,11 +565,12 @@ class SyncResetService {
       objects,
     );
     _guard(binding.account);
-    if (generation.active != binding.workspace)
+    if (generation.active != binding.workspace) {
       throw const CloudFailure(
         'Workspace changed',
         kind: CloudFailureKind.stale,
       );
+    }
   }
 
   /// Explicit stale-device reconciliation: current rows become new-generation
@@ -549,14 +580,16 @@ class SyncResetService {
     String? recoveryCode,
   }) => _exclusive(() async {
     final previous = await state();
-    if (previous != null && previous['phase'] != 'complete')
+    if (previous != null && previous['phase'] != 'complete') {
       throw const CloudFailure(
         'Finish pending operation',
         kind: CloudFailureKind.reset,
       );
+    }
     final local = await repository.syncExchangeStatus();
-    if (local.binding == null || local.quarantined)
+    if (local.binding == null || local.quarantined) {
       throw StateError('Review restored profile first');
+    }
     _guard(local.binding!.account);
     final old = await pairing.vault.read();
     final backup = await recovery.createBackup(BackupKind.manual);
@@ -577,10 +610,7 @@ class SyncResetService {
       'previous': local.binding!.workspace,
       'backup': backup.file.absolute.path,
       'backupHash': await _hash(backup.file),
-      'oldPairings': [
-        ...?previous?['oldPairings'] as List?,
-        if (old != null) old,
-      ],
+      'oldPairings': [...?previous?['oldPairings'] as List?, ?old],
       'standard': next.key.isStandard,
       'key': next.key.isStandard ? null : next.key.exportRecoveryCode(),
       'proof': next.proof == null ? null : base64Encode(next.proof!),

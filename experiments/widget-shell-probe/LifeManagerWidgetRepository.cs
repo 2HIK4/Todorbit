@@ -26,7 +26,7 @@ internal sealed class DependencyReviewRequiredException(
 
 internal sealed partial class LifeManagerWidgetRepository : IDisposable {
   private const int MinimumSchemaVersion = 4;
-  private const int MaximumSchemaVersion = 26;
+  private const int MaximumSchemaVersion = 27;
   private const string ActiveTaskClause = """
      AND deleted_at IS NULL AND archived_at IS NULL
      AND (category_id IS NULL OR EXISTS
@@ -214,9 +214,9 @@ internal sealed partial class LifeManagerWidgetRepository : IDisposable {
         var start = DateTimeOffset.Parse(startValue.GetString()!,
           CultureInfo.InvariantCulture).LocalDateTime;
         var reminder = item.ReminderMinutes;
-        if (data.TryGetProperty("reminderMinutes", out var reminderValue) &&
-            reminderValue.ValueKind == JsonValueKind.Number)
-          reminder = reminderValue.GetInt32();
+        if (data.TryGetProperty("reminderMinutes", out var reminderValue))
+          reminder = reminderValue.ValueKind == JsonValueKind.Number
+              ? reminderValue.GetInt32() : null;
         if (reminder is not int overrideMinutes || overrideMinutes < 0 ||
             overrideMinutes > 10080 ||
             !ReminderDue(start, overrideMinutes, lower, upper)) continue;

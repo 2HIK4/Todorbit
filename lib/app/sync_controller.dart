@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -38,7 +40,7 @@ class SyncController extends ChangeNotifier {
     Duration? timeBudget,
     Future<bool> Function()? canExchange,
   }) {
-    if (resetVault != null)
+    if (resetVault != null) {
       reset = SyncResetService(
         repository: repository,
         recovery: recovery,
@@ -50,6 +52,7 @@ class SyncController extends ChangeNotifier {
           if (!_disposed) notifyListeners();
         },
       );
+    }
     engine = SyncEngine(
       repository: repository,
       storage: storage,
@@ -84,6 +87,52 @@ class SyncController extends ChangeNotifier {
     });
   }
   final LifeRepository repository;
+  Future<void> _draftWrite = Future.value();
+  File get _decisionDraft =>
+      File('${recovery.databaseFile.parent.path}/sync-decision-draft.json');
+
+  Future<Map<String, SyncResolutionChoice>> loadDecisionDraft(
+    SyncConflictReview review,
+  ) async {
+    await _draftWrite;
+    if (!await _decisionDraft.exists()) return {};
+    final json = jsonDecode(await _decisionDraft.readAsString());
+    if (json is! Map || json['token'] != review.token) return {};
+    final saved = json['choices'];
+    if (saved is! Map) return {};
+    return {
+      for (final record in review.records)
+        if (saved.containsKey(record.id) &&
+            (saved[record.id] == null ||
+                record.remoteHeads.contains(saved[record.id])))
+          record.id: saved[record.id] == null
+              ? const SyncResolutionChoice.local()
+              : SyncResolutionChoice.revision(saved[record.id] as String),
+    };
+  }
+
+  Future<void> saveDecisionDraft(
+    SyncConflictReview review,
+    Map<String, SyncResolutionChoice> choices,
+  ) {
+    // Device-only IDs and a review fingerprint; no entity values or keys. Queue
+    // rapid selections so an older disk write cannot replace a newer draft.
+    final bytes = jsonEncode({
+      'token': review.token,
+      'choices': {
+        for (final entry in choices.entries) entry.key: entry.value.revision,
+      },
+    });
+    final operation = _draftWrite.catchError((Object _) {}).then((_) async {
+      await _decisionDraft.parent.create(recursive: true);
+      final temporary = File('${_decisionDraft.path}.tmp');
+      await temporary.writeAsString(bytes, flush: true);
+      await temporary.rename(_decisionDraft.path);
+    });
+    _draftWrite = operation;
+    return operation;
+  }
+
   final BackupService recovery;
   final GoogleDriveAuth auth;
   final SyncPairingService pairing;
@@ -395,7 +444,9 @@ class SyncController extends ChangeNotifier {
     }
     if (original != null &&
         original.schemaVersion >= 23 &&
-        original.schemaVersion != AppDatabase.currentSchemaVersion) {
+        !AppDatabase.compatibleSyncHistorySchemas.contains(
+          original.schemaVersion,
+        )) {
       message = 'This private prototype snapshot needs a reviewed schema conversion. Its immutable history and recovery files are retained.';
       return;
     }
@@ -406,7 +457,9 @@ class SyncController extends ChangeNotifier {
     AppDatabase? source;
     try {
       if (original != null &&
-          original.schemaVersion == AppDatabase.currentSchemaVersion) {
+          AppDatabase.compatibleSyncHistorySchemas.contains(
+            original.schemaVersion,
+          )) {
         source = AppDatabase(
           NativeDatabase.opened(
             sqlite.sqlite3.open(
@@ -445,11 +498,12 @@ class SyncController extends ChangeNotifier {
   Future<void> syncNow({bool manual = false}) => _action(() => _sync(manual));
 
   Future<void> _sync(bool manual) async {
-    if (resetPending && resetState?['phase'] != 'cleanup')
+    if (resetPending && resetState?['phase'] != 'cleanup') {
       throw const CloudFailure(
         'Finish replacement setup first',
         kind: CloudFailureKind.reset,
       );
+    }
     if (manual) {
       if (auth.account == null || auth.needsReconnect) {
         await auth.connect();

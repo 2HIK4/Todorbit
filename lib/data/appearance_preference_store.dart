@@ -125,6 +125,26 @@ class AppearancePreferenceStore {
     await _write({...await _read(), 'sidebarOrder': value});
   }
 
+  Future<Map<String, dynamic>> loadNavigationState() async {
+    final value = (await _read())['navigationState'];
+    if (value == null) return {};
+    if (value is! Map<String, dynamic> ||
+        (value['hidden'] != null &&
+            (value['hidden'] is! List ||
+                (value['hidden'] as List).any((v) => v is! String))) ||
+        (value['customOrder'] != null &&
+            (value['customOrder'] is! List ||
+                (value['customOrder'] as List).any((v) => v is! String))) ||
+        (value['categoriesExpanded'] != null &&
+            value['categoriesExpanded'] is! bool)) {
+      throw const FormatException('Navigation settings could not be read');
+    }
+    return value;
+  }
+
+  Future<void> saveNavigationState(Map<String, dynamic> value) async =>
+      _write({...await _read(), 'navigationState': value});
+
   Future<Map<String, dynamic>> _read() async {
     if (!await file.exists()) return {};
     final value = jsonDecode(await file.readAsString());

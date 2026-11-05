@@ -104,8 +104,9 @@ extension SyncRepository on LifeRepository {
         .getSingle();
     if (current.readNullable<String>('workspace_id') == next.workspace &&
         current.readNullable<String>('account_id') == next.account &&
-        current.readNullable<String>('device_id') == next.device)
+        current.readNullable<String>('device_id') == next.device) {
       return;
+    }
     if (!Uuid.isValidUUID(fromString: next.workspace) ||
         !Uuid.isValidUUID(fromString: next.device) ||
         current.readNullable<String>('workspace_id') != expectedWorkspace ||

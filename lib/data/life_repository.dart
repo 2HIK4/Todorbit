@@ -130,7 +130,7 @@ class LifeRepository {
               o.disposition AS recurrence_disposition,
               o.is_edited AS recurrence_edited,
               o.is_rescheduled AS recurrence_rescheduled,
-              s.kind AS recurrence_kind
+              s.kind AS recurrence_kind, s.family_id AS recurrence_family_id
             FROM tasks t LEFT JOIN recurrence_occurrences o ON o.task_id=t.id
             LEFT JOIN recurrence_series s ON s.id=o.series_id
             LEFT JOIN categories c ON c.id=t.category_id
@@ -366,26 +366,28 @@ class LifeRepository {
   }
 
   Future<List<FixedEvent>> events() async {
-    final rows = await db
-        .customSelect(
-          'SELECT * FROM fixed_events WHERE deleted_at IS NULL ORDER BY starts_at',
-        )
-        .get();
+    final rows = await db.customSelect(
+      '''SELECT e.* FROM fixed_events e LEFT JOIN projects p ON p.id=e.project_id
+          LEFT JOIN categories c ON c.id=e.category_id
+          WHERE e.deleted_at IS NULL AND (e.project_id IS NULL OR (p.deleted_at IS NULL))
+          AND (e.category_id IS NULL OR (c.deleted_at IS NULL)) ORDER BY e.starts_at''',
+    ).get();
     return rows.map(_eventFromRow).toList();
   }
 
-  Future<FixedEvent> addEvent(EventDraft draft) async {
+  Future<FixedEvent> addEvent(EventDraft draft) => db.transaction(() async {
     _validateEvent(draft);
+    await _checkAssignment(draft.categoryId, draft.projectId);
     final id = _uuid.v4();
     final now = DateTime.now().toUtc().toIso8601String();
     await db.customInsert(
       '''
       INSERT INTO fixed_events(
         id,title,notes,starts_at,ends_at,created_at,updated_at,
-        location,all_day,category_id,color_value,icon_name,reminder_minutes,
+        location,all_day,category_id,project_id,color_value,icon_name,reminder_minutes,
         recurrence_kind,recurrence_interval,recurrence_weekdays,recurrence_until,
         series_family_id,active_from_date,details_json)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ''',
       variables: [
         Variable.withString(id),
@@ -404,34 +406,36 @@ class LifeRepository {
       ],
     );
     return (await events()).firstWhere((event) => event.id == id);
-  }
+  });
 
-  Future<void> updateEvent(FixedEvent previous, EventDraft draft) async {
-    _validateEvent(draft);
-    final changed = await db.customUpdate(
-      '''
+  Future<void> updateEvent(FixedEvent previous, EventDraft draft) =>
+      db.transaction(() async {
+        _validateEvent(draft);
+        await _checkAssignment(draft.categoryId, draft.projectId);
+        final changed = await db.customUpdate(
+          '''
       UPDATE fixed_events SET title=?,notes=?,starts_at=?,ends_at=?,updated_at=?,
-        location=?,all_day=?,category_id=?,color_value=?,icon_name=?,
+        location=?,all_day=?,category_id=?,project_id=?,color_value=?,icon_name=?,
         reminder_minutes=?,recurrence_kind=?,recurrence_interval=?,
         recurrence_weekdays=?,recurrence_until=?,details_json=?
       WHERE id=? AND updated_at=? AND deleted_at IS NULL
     ''',
-      variables: [
-        Variable.withString(draft.title.trim()),
-        Variable.withString(draft.notes),
-        Variable.withString(draft.startsAt.toUtc().toIso8601String()),
-        Variable.withString(draft.endsAt.toUtc().toIso8601String()),
-        Variable.withString(DateTime.now().toUtc().toIso8601String()),
-        ..._eventExtraVariables(draft),
-        Variable.withString(
-          jsonEncode(draft.details.map((item) => item.toJson()).toList()),
-        ),
-        Variable.withString(previous.id),
-        Variable.withString(previous.updatedAt.toUtc().toIso8601String()),
-      ],
-    );
-    if (changed != 1) throw StateError('Event changed or is in Trash');
-  }
+          variables: [
+            Variable.withString(draft.title.trim()),
+            Variable.withString(draft.notes),
+            Variable.withString(draft.startsAt.toUtc().toIso8601String()),
+            Variable.withString(draft.endsAt.toUtc().toIso8601String()),
+            Variable.withString(DateTime.now().toUtc().toIso8601String()),
+            ..._eventExtraVariables(draft),
+            Variable.withString(
+              jsonEncode(draft.details.map((item) => item.toJson()).toList()),
+            ),
+            Variable.withString(previous.id),
+            Variable.withString(previous.updatedAt.toUtc().toIso8601String()),
+          ],
+        );
+        if (changed != 1) throw StateError('Event changed or is in Trash');
+      });
 
   Future<void> deleteEvent(String id) async {
     await moveToTrash(TrashKind.event, id);
@@ -621,6 +625,7 @@ class LifeRepository {
     remainingWorkMinutes: r.read<int?>('remaining_work_minutes'),
     schedulingLocked: r.read<int>('scheduling_locked') == 1,
     recurrenceSeriesId: r.read<String?>('recurrence_series_id'),
+    recurrenceFamilyId: r.data['recurrence_family_id'] as String?,
     recurrenceOrdinal: r.read<int?>('recurrence_ordinal'),
     nominalDate: r.read<String?>('nominal_date'),
     recurrenceDisposition: r.read<String?>('recurrence_disposition'),

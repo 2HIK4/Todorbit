@@ -70,6 +70,7 @@ internal sealed partial class LifeManagerWidgetRepository
           {(eventColumns.Contains("icon_name") ? "e.icon_name" : "NULL")},e.category_id
         FROM fixed_events e LEFT JOIN categories c ON c.id=e.category_id
         WHERE e.deleted_at IS NULL AND (c.id IS NULL OR c.deleted_at IS NULL)
+          {(eventColumns.Contains("project_id") ? "AND (e.project_id IS NULL OR EXISTS(SELECT 1 FROM projects p WHERE p.id=e.project_id AND p.deleted_at IS NULL))" : "")}
         """;
             using var r = command.ExecuteReader();
             while (r.Read())
@@ -105,9 +106,12 @@ internal sealed partial class LifeManagerWidgetRepository
                     var movedEnd = data.TryGetProperty("endsAt", out var ev) ? Local(ev.GetString()!) : movedStart + duration;
                     var title = data.TryGetProperty("title", out var tv) ? tv.GetString() ?? template.Title : template.Title;
                     var fullDay = data.TryGetProperty("allDay", out var av) ? av.GetBoolean() : allDay;
-                    var changedColor = data.TryGetProperty("colorValue", out var cv) && cv.ValueKind == JsonValueKind.Number ? unchecked((int)cv.GetInt64()) : explicitColor;
-                    var changedCategory = data.TryGetProperty("categoryId", out var cat) && cat.ValueKind == JsonValueKind.String ? cat.GetString() : category;
-                    var changedIcon = data.TryGetProperty("iconName", out var iv) && iv.ValueKind == JsonValueKind.String ? iv.GetString() : icon;
+                    var changedColor = data.TryGetProperty("colorValue", out var cv) ?
+                        (cv.ValueKind == JsonValueKind.Number ? unchecked((int)cv.GetInt64()) : (int?)null) : explicitColor;
+                    var changedCategory = data.TryGetProperty("categoryId", out var cat) ?
+                        (cat.ValueKind == JsonValueKind.String ? cat.GetString() : null) : category;
+                    var changedIcon = data.TryGetProperty("iconName", out var iv) ?
+                        (iv.ValueKind == JsonValueKind.String ? iv.GetString() : null) : icon;
                     AddSpan(result, first, through, movedStart, movedEnd, "Event", title, null, fullDay, change.Cancelled,id:template.Id,nominal:change.NominalDate,color:EffectiveColor(changedColor, changedCategory),icon:changedIcon);
                 }
             }

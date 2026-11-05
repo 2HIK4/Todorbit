@@ -95,8 +95,9 @@ class GoogleDriveProvider implements CloudStorageProvider, SyncStorageProvider {
     final response = await http.Response.fromStream(stream)
         .timeout(const Duration(seconds: 60));
     _checkAccount(accountId);
-    if (!accepted.contains(response.statusCode))
+    if (!accepted.contains(response.statusCode)) {
       _fail(response.statusCode, response.body);
+    }
     return response;
   }
 
@@ -521,11 +522,12 @@ class GoogleDriveProvider implements CloudStorageProvider, SyncStorageProvider {
     if (current.md5 != object.md5 ||
         current.properties['workspaceId'] != object.properties['workspaceId'] ||
         current.properties['kind'] != object.properties['kind'] ||
-        current.properties[_idProperty] != object.properties[_idProperty])
+        current.properties[_idProperty] != object.properties[_idProperty]) {
       throw const CloudFailure(
         'Cloud object changed before deletion',
         kind: CloudFailureKind.conflict,
       );
+    }
     await _request(
       'DELETE',
       Uri.https(

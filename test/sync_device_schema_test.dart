@@ -47,7 +47,7 @@ void main() {
             .data
             .values
             .single,
-        26,
+        AppDatabase.currentSchemaVersion,
       );
     } finally {
       await db.close();

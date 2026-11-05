@@ -1,3 +1,5 @@
+import 'package:life_manager/domain/task_composition.dart';
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -129,6 +131,140 @@ void main() {
     await right.close();
     await root.delete(recursive: true);
   });
+
+  for (final standard in [true, false]) {
+    test(
+      'event project and named checklist exchange is idempotent (${standard ? 'Standard' : 'Private'})',
+      () async {
+        if (standard) key = SyncWorkspaceKey.standard();
+        final category = await sender.addCategory('University');
+        final project = await sender.addProject(category.id, 'Course');
+        final event = await sender.addEvent(
+          EventDraft(
+            title: 'Lecture',
+            startsAt: DateTime(2026, 11, 5, 9),
+            endsAt: DateTime(2026, 11, 5, 10),
+            categoryId: category.id,
+            projectId: project.id,
+          ),
+        );
+        final task = await sender.addTaskWithComposition(
+          const TaskDraft(title: 'Prepare'),
+          const [],
+          const [],
+          groups: [
+            DraftChecklistGroup('Packing', ['Book', 'Pen']),
+          ],
+        );
+        final batches = await exchange();
+        while ((await apply()).state == SyncApplyState.applied) {}
+        expect((await receiver.events()).single.projectId, project.id);
+        expect((await receiver.checklistGroups()).single.taskId, task.id);
+        expect((await receiver.checklistItems()).map((i) => i.title), [
+          'Book',
+          'Pen',
+        ]);
+        for (final batch in batches) {
+          expect(
+            await receiver.retainIncomingSyncBatch(
+              b,
+              key,
+              remote(batch),
+              batch.bytes,
+              lease: rightLease,
+            ),
+            0,
+          );
+        }
+        expect((await receiver.events()).single.id, event.id);
+        expect(await receiver.checklistGroups(), hasLength(1));
+        await sender.deleteEvent(event.id);
+        await exchange();
+        while ((await apply()).state == SyncApplyState.applied) {}
+        expect(await receiver.events(), isEmpty);
+      },
+    );
+  }
+
+  for (final standard in [true, false]) {
+    test(
+      'schema 26 event and checklist facts apply unchanged and replay safely ($standard)',
+      () async {
+        if (standard) key = SyncWorkspaceKey.standard();
+        final event = await sender.addEvent(
+          EventDraft(
+            title: 'Legacy event',
+            startsAt: DateTime(2026, 11, 5, 9),
+            endsAt: DateTime(2026, 11, 5, 10),
+          ),
+        );
+        final task = (await sender.tasks()).single;
+        await sender.addChecklistItem(task.id, 'Legacy checklist item');
+        final codec = SyncBatchCodec();
+        var received = <PendingSyncBatch>[];
+        while (true) {
+          final original = await sender.prepareNextSyncBatch(a, key);
+          if (original == null) break;
+          final decoded = (await codec.decrypt(
+            original.bytes,
+            key,
+            workspace: a.workspace,
+            account: a.account,
+            expectedSchema: AppDatabase.currentSchemaVersion,
+          )).toJson();
+          decoded['schema'] = 26;
+          for (final operation in decoded['operations'] as List) {
+            final entity = operation['entity'];
+            final revision = operation['revision'] as Map;
+            final originalValue = revision['value'];
+            if (originalValue is Map) {
+              final value = Map<String, Object?>.from(originalValue);
+              revision['value'] = value;
+              if (entity == 'fixed_events') value.remove('project_id');
+              if (entity == 'task_checklist') value.remove('group_id');
+            }
+          }
+          final bytes = await codec.encrypt(
+            SyncBatch.fromJson(decoded),
+            key,
+            workspace: a.workspace,
+            account: a.account,
+          );
+          final legacy = PendingSyncBatch(
+            id: original.id,
+            binding: a,
+            bytes: bytes,
+            sha256: crypto.sha256.convert(bytes).toString(),
+          );
+          await receiver.retainIncomingSyncBatch(
+            b,
+            key,
+            remote(legacy),
+            legacy.bytes,
+          );
+          await sender.acknowledgeSyncBatch(original, remote(original));
+          received.add(legacy);
+        }
+        while ((await apply()).state == SyncApplyState.applied) {}
+        expect((await receiver.events()).single.id, event.id);
+        expect((await receiver.events()).single.projectId, isNull);
+        expect((await receiver.checklistItems()).single.groupId, isNull);
+        for (final batch in received) {
+          expect(
+            await receiver.retainIncomingSyncBatch(
+              b,
+              key,
+              remote(batch),
+              batch.bytes,
+              lease: rightLease,
+            ),
+            0,
+          );
+        }
+        expect((await apply()).state, SyncApplyState.idle);
+      },
+    );
+  }
 
   test(
     'authenticated bootstrap applies once without creating a sync echo',

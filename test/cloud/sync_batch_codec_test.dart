@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:life_manager/data/cloud/sync_batch_codec.dart';
 import 'package:life_manager/domain/sync/causal_record.dart';
+import 'package:life_manager/domain/sync/sync_visibility.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -45,6 +46,63 @@ void main() {
     expectedSchema: schema,
   );
 
+  for (final mode in [
+    SyncWorkspaceKey.standard(),
+    SyncWorkspaceKey.generate(),
+  ]) {
+    test(
+      'schema 27 accepts unchanged schema 26 envelopes (${mode.isStandard})',
+      () async {
+        final legacy = SyncBatch(
+          id: 'legacy',
+          device: 'windows',
+          schema: 26,
+          operations: [
+            SyncRecordOperation(
+              entity: 'fixed_events',
+              recordKey: '{"id":"event"}',
+              group: SyncMutationGroup(id: 'legacy-group', first: 1, last: 1),
+              revision: SyncRevision(
+                id: 'op',
+                device: 'windows',
+                sequence: 1,
+                parents: [],
+                visible: SyncVisibility(const {}),
+                value: {'id': 'event', 'title': 'Legacy'},
+              ),
+            ),
+          ],
+        );
+        final bytes = await codec.encrypt(
+          legacy,
+          mode,
+          workspace: 'workspace',
+          account: 'account',
+        );
+        expect(
+          (await codec.decrypt(
+            bytes,
+            mode,
+            workspace: 'workspace',
+            account: 'account',
+            expectedSchema: 27,
+          )).toJson(),
+          legacy.toJson(),
+        );
+        await expectLater(
+          codec.decrypt(
+            bytes,
+            mode,
+            workspace: 'workspace',
+            account: 'account',
+            expectedSchema: 25,
+          ),
+          throwsA(isA<SyncSchemaMismatch>()),
+        );
+      },
+    );
+  }
+
   test(
     'pairing recovery code round-trips encrypted per-device operations',
     () async {
@@ -70,10 +128,13 @@ void main() {
         () => decrypt(encrypted, usingKey: SyncWorkspaceKey.generate()),
         () => decrypt(encrypted, workspace: 'another-workspace'),
         () => decrypt(encrypted, account: 'another-account'),
-        () => decrypt(encrypted, schema: 23),
       ]) {
         await expectLater(attempt(), throwsFormatException);
       }
+      await expectLater(
+        decrypt(encrypted, schema: 23),
+        throwsA(isA<SyncSchemaMismatch>()),
+      );
       final envelope =
           jsonDecode(utf8.decode(encrypted)) as Map<String, dynamic>;
       final cipher = base64Decode(envelope['ciphertext'] as String);

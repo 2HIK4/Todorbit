@@ -436,10 +436,13 @@ extension TrashRepository on LifeRepository {
           'tasks:project_id',
           'recurrence_series:project_id',
           'goal_project_links:project_id',
+          'fixed_events:project_id',
+          r"event_occurrence_changes:json_extract(payload_json,'$.projectId')",
         ],
         TrashKind.category => <String>[
           'tasks:category_id',
           'projects:category_id',
+          'fixed_events:category_id',
           'recurrence_series:category_id',
         ],
         TrashKind.event => <String>[],
@@ -544,7 +547,9 @@ extension TrashRepository on LifeRepository {
         throw StateError('Restore the parent category first');
       }
     }
-    if (table == 'tasks' || table == 'recurrence_series') {
+    if (table == 'tasks' ||
+        table == 'recurrence_series' ||
+        table == 'fixed_events') {
       final projectId = row.read<String?>('project_id');
       if (projectId != null) {
         final project = await db

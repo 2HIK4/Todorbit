@@ -191,11 +191,12 @@ void main() {
         await expectLater(
           auth.connect(),
           throwsA(
-            isA<CloudFailure>().having(
-              (e) => e.message,
-              'message',
-              contains(code),
-            ),
+            isA<CloudFailure>().having((e) => e.kind, 'kind', switch (code) {
+              'network' => CloudFailureKind.offline,
+              'reconnect' => CloudFailureKind.authentication,
+              'services' => CloudFailureKind.services,
+              _ => CloudFailureKind.authorization,
+            }),
           ),
         );
         expect(store.value, isNull);

@@ -745,12 +745,25 @@ internal static partial class LifeManagerWidgetSelfTest {
         command.Parameters.AddWithValue("$event", cancelledId);
         command.Parameters.AddWithValue("$day", lectureDay);
         command.ExecuteNonQuery();
+        command.Parameters.Clear();
+        command.CommandText = """
+          INSERT INTO fixed_events(id,title,starts_at,reminder_minutes)
+          VALUES('disabled-occurrence','Disabled occurrence reminder',$start,15);
+          INSERT INTO event_occurrence_changes(event_id,nominal_date,cancelled,payload_json)
+          VALUES('disabled-occurrence',$day,0,$payload);
+          """;
+        command.Parameters.AddWithValue("$start", lectureStart.ToUniversalTime().ToString("O"));
+        command.Parameters.AddWithValue("$day", lectureDay);
+        command.Parameters.AddWithValue("$payload", System.Text.Json.JsonSerializer.Serialize(new {
+          startsAt = lectureStart.ToUniversalTime().ToString("O"), reminderMinutes = (int?)null
+        }));
+        command.ExecuteNonQuery();
       }
       using (var v20Repository =
           LifeManagerWidgetRepository.OpenForTest(databasePath)) {
         var now = DateTime.Now;
         if (v20Repository.ClaimEventReminders(now).Count != 2)
-          throw new InvalidOperationException("One-off/weekly reminder or cancellation failed.");
+          throw new InvalidOperationException("One-off/weekly reminder, cancellation or explicitly disabled occurrence failed.");
         if (v20Repository.ClaimEventReminders(now).Count != 0)
           throw new InvalidOperationException("Event reminder fired twice.");
       }

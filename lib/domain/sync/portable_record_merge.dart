@@ -9,6 +9,7 @@ const _coupledFields = <String, List<Set<String>>>{
     {'category_id', 'project_id'},
   ],
   'fixed_events': [
+    {'category_id', 'project_id'},
     {
       'starts_at',
       'ends_at',
@@ -87,7 +88,22 @@ SyncRecordReview reviewPortableRecord(
   String entity,
   Iterable<SyncRevision> history,
 ) {
-  final revisions = history.toList();
+  // Schema-26 journal facts stay immutable on disk and on the wire. Only the
+  // semantic projection supplies the new nullable relationship.
+  final revisions = history
+      .map(
+        (r) => SyncRevision(
+          id: r.id,
+          device: r.device,
+          sequence: r.sequence,
+          parents: r.parents,
+          observed: r.observed,
+          visible: r.visible,
+          intent: r.intent,
+          value: normalizePortableRecord(entity, r.value),
+        ),
+      )
+      .toList();
   final fields = {for (final revision in revisions) ...?revision.value?.keys};
   final graph = CausalRecord(
     coupledFields: [
@@ -111,7 +127,7 @@ SyncRecordReview reviewPortableRecord(
       ),
     );
   }
-  final review = graph.review();
+  var review = graph.review();
   final originals = {for (final revision in revisions) revision.id: revision};
   final heads = [for (final id in review.heads) originals[id]!];
   Object? canonical(Object? value) => switch (value) {
@@ -122,7 +138,45 @@ SyncRecordReview reviewPortableRecord(
     List() => value.map(canonical).toList(),
     _ => value,
   };
+  // Two devices may delete the same unchanged row while offline. The deletion
+  // time is metadata, not a competing user value. Retain every causal head and
+  // all history; only coalesce when the complete remaining payload agrees.
+  // A deletion versus an edit/restore, or edits preceding either deletion,
+  // must still be reviewed. Never infer obsolescence or compact tombstones.
+  var equivalentDeletions = false;
   if (heads.length > 1 &&
+      heads.every((head) => head.value?['deleted_at'] != null)) {
+    final payloads = heads.map((head) {
+      final payload = {...head.value!}
+        ..remove('updated_at')
+        ..remove('deleted_at');
+      return jsonEncode(canonical(payload));
+    }).toSet();
+    if (payloads.length == 1) {
+      equivalentDeletions = true;
+      DateTime deletionTime(SyncRevision head) {
+        final raw = head.value!['deleted_at'];
+        final parsed = raw is String ? DateTime.tryParse(raw) : null;
+        if (parsed == null || !parsed.isUtc) {
+          throw const FormatException(
+            'Portable deletion timestamp must be UTC',
+          );
+        }
+        return parsed;
+      }
+
+      final latest = heads
+          .map(deletionTime)
+          .reduce((a, b) => a.isAfter(b) ? a : b);
+      review = SyncRecordReview(
+        heads: review.heads,
+        merged: {...heads.first.value!, 'deleted_at': latest.toIso8601String()},
+        conflicts: const [],
+      );
+    }
+  }
+  if (heads.length > 1 &&
+      !equivalentDeletions &&
       heads.any(
         (r) =>
             r.value?['deleted_at'] != null || r.value?['archived_at'] != null,
@@ -202,3 +256,14 @@ SyncRecordReview reviewPortableRecord(
     conflicts: conflicts,
   );
 }
+
+Map<String, Object?>? normalizePortableRecord(
+  String entity,
+  Map<String, Object?>? value,
+) => value == null
+    ? null
+    : switch (entity) {
+        'fixed_events' => {'project_id': null, ...value},
+        'task_checklist' => {'group_id': null, ...value},
+        _ => value,
+      };

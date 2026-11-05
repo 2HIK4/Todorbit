@@ -189,11 +189,12 @@ class SyncPairingService {
     _checkAccount(account);
     final generation = await SyncGeneration.read(storage, account, objects);
     final workspace = generation.active ?? workspaceFor(account);
-    if (joinGeneration && generation.active == null)
+    if (joinGeneration && generation.active == null) {
       throw const CloudFailure(
         'No replacement generation to reconnect',
         kind: CloudFailureKind.stale,
       );
+    }
     final previous = joinGeneration ? null : retained;
     if (!joinGeneration &&
         (previous?.binding.workspace ??
@@ -499,11 +500,12 @@ class SyncPairingService {
     final resetRaw = await resetVault?.read();
     if (!ignoreReset && resetRaw != null) {
       final reset = jsonDecode(resetRaw) as Map;
-      if (!{'complete', 'cleanup'}.contains(reset['phase']))
+      if (!{'complete', 'cleanup'}.contains(reset['phase'])) {
         throw const CloudFailure(
           'Replacement pending',
           kind: CloudFailureKind.reset,
         );
+      }
     }
     final generation = await SyncGeneration.read(
       storage,
@@ -511,11 +513,12 @@ class SyncPairingService {
       objects,
     );
     final active = generation.active ?? workspaceFor(binding.account);
-    if (active != binding.workspace)
+    if (active != binding.workspace) {
       throw const CloudFailure(
         'Workspace replaced',
         kind: CloudFailureKind.stale,
       );
+    }
     if (objects.any(
       (o) =>
           o.accountId != binding.account ||
@@ -534,11 +537,12 @@ class SyncPairingService {
               o.properties['workspaceId'] == binding.workspace,
         )
         .toList();
-    if (proofs.isEmpty)
+    if (proofs.isEmpty) {
       throw const CloudFailure(
         'Workspace proof missing',
         kind: CloudFailureKind.missing,
       );
+    }
     await _verifyProofs(binding, key, proofs);
   }
 

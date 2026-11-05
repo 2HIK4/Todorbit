@@ -16,7 +16,9 @@ import 'sync_device_schema.dart';
 class AppDatabase extends GeneratedDatabase {
   AppDatabase(super.executor);
 
-  static const currentSchemaVersion = 26;
+  static const currentSchemaVersion = 27;
+  // These versions have identical immutable Sync recovery-table layouts.
+  static const compatibleSyncHistorySchemas = {26, 27};
   bool _syncGroupingReady = false;
   final Object _syncGroupZone = Object();
 
@@ -264,6 +266,8 @@ class AppDatabase extends GeneratedDatabase {
         await _createEventReminderDeliveries();
         await _createEventDetails();
         await _createTaskNotifications();
+        await _createEventProjects();
+        await _createChecklistGroups();
         await createSyncPortableFields(this);
         await createSyncSchema(this, installTriggers: false);
         await upgradeSyncExchangeSchema(this);
@@ -294,6 +298,24 @@ class AppDatabase extends GeneratedDatabase {
             from >= currentSchemaVersion ||
             to != currentSchemaVersion) {
           throw StateError('No migration registered from schema $from to $to');
+        }
+        if (from == 26) {
+          await _createEventProjects();
+          await _createChecklistGroups();
+          final triggers = await customSelect(
+            "SELECT name FROM sqlite_schema WHERE type='trigger' AND name GLOB 'sync_capture_*'",
+          ).get();
+          for (final trigger in triggers) {
+            final name = trigger.read<String>('name');
+            await customStatement('DROP TRIGGER "$name"');
+          }
+          await installSyncCaptureTriggers(
+            this,
+            causal: true,
+            visibility: true,
+          );
+          await customStatement('PRAGMA user_version = $currentSchemaVersion');
+          return;
         }
         if (from == 1) {
           await _createEvents();
@@ -340,6 +362,8 @@ class AppDatabase extends GeneratedDatabase {
         await _createEventReminderDeliveries();
         await _createEventDetails();
         await _createTaskNotifications();
+        await _createEventProjects();
+        await _createChecklistGroups();
         await createSyncPortableFields(this);
         if (from < 23) await createSyncSchema(this, installTriggers: false);
         if (from < 24) await upgradeSyncExchangeSchema(this);
@@ -356,6 +380,32 @@ class AppDatabase extends GeneratedDatabase {
         "SELECT type, name, tbl_name, sql FROM sqlite_schema "
         "WHERE name NOT GLOB 'sqlite_*' ORDER BY type, name",
       ).get()).map((row) => row.data).toList();
+
+  Future<void> _createChecklistGroups() async {
+    await customStatement('''CREATE TABLE IF NOT EXISTS task_checklist_groups (
+      id TEXT PRIMARY KEY, task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      title TEXT NOT NULL CHECK(length(trim(title))>0), position INTEGER NOT NULL,
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL)''');
+    await _addColumnIfMissing(
+      'task_checklist',
+      'group_id',
+      'TEXT REFERENCES task_checklist_groups(id) ON DELETE RESTRICT',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS checklist_groups_task ON task_checklist_groups(task_id,position)',
+    );
+  }
+
+  Future<void> _createEventProjects() async {
+    await _addColumnIfMissing(
+      'fixed_events',
+      'project_id',
+      'TEXT REFERENCES projects(id) ON DELETE RESTRICT',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS events_project ON fixed_events(project_id)',
+    );
+  }
 
   Future<void> _createTaskNotifications() async {
     await _addColumnIfMissing(

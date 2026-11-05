@@ -7,6 +7,7 @@ import 'package:life_manager/data/backup_service.dart';
 import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/data/migration_gate.dart';
 import 'package:life_manager/domain/models.dart';
+import 'package:life_manager/domain/task_resources.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 import 'support/legacy_sync_fixture.dart';
@@ -240,8 +241,33 @@ void main() {
         final before = await repository.addTask(
           const TaskDraft(title: 'Before'),
         );
+        final category = await repository.addCategory('Backup category');
+        final project = await repository.addProject(
+          category.id,
+          'Backup project',
+        );
+        final group = await repository.addChecklistGroup(
+          before.id,
+          'Backup checklist',
+        );
+        await repository.addChecklistItem(
+          before.id,
+          'Backup item',
+          groupId: group.id,
+        );
+        final originalFile = File('${directory.path}/sentinel.txt');
+        await originalFile.writeAsString('backup attachment bytes');
+        await repository.attachManagedFile(before.id, originalFile);
+        await repository.addExternalResource(
+          before.id,
+          TaskResourceKind.url,
+          'https://example.com',
+          label: 'Reference',
+        );
         await repository.addEvent(
           EventDraft(
+            categoryId: category.id,
+            projectId: project.id,
             title: 'Restore sentinel event',
             startsAt: DateTime(2026, 10, 25, 9),
             endsAt: DateTime(2026, 10, 25, 10),
@@ -282,6 +308,25 @@ void main() {
           final events = await LifeRepository(restored).events();
           expect(events.single.title, 'Restore sentinel event');
           expect(events.single.repeat?.kind, EventRepeatKind.weekly);
+          expect(events.single.projectId, project.id);
+          final restoredRepo = LifeRepository(restored);
+          expect((await restoredRepo.checklistGroups()).single.id, group.id);
+          expect(
+            (await restoredRepo.checklistItems()).single.groupId,
+            group.id,
+          );
+          final resources = await restoredRepo.taskResources(before.id);
+          expect(resources, hasLength(2));
+          final managed = resources.singleWhere(
+            (r) => r.kind == TaskResourceKind.managed,
+          );
+          expect(
+            String.fromCharCodes(
+              await restoredRepo.managedAttachmentBytes(managed),
+            ),
+            'backup attachment bytes',
+          );
+          expect(await originalFile.readAsString(), 'backup attachment bytes');
         } finally {
           await restored.close();
         }
@@ -307,6 +352,56 @@ void main() {
       }
     },
   );
+
+  test('schema 27 rejects cross-task checklist membership and incomplete groups before restore', () async {
+    final root = await Directory.systemTemp.createTemp(
+      'todorbit-bad-group-snapshot-',
+    );
+    final file = File('${root.path}/live.sqlite');
+    final db = AppDatabase(NativeDatabase(file));
+    final repo = LifeRepository(db);
+    try {
+      final first = await repo.addTask(const TaskDraft(title: 'First'));
+      final second = await repo.addTask(const TaskDraft(title: 'Second'));
+      final group = await repo.addChecklistGroup(first.id, 'Checklist');
+      await repo.addChecklistItem(first.id, 'Item', groupId: group.id);
+      final service = BackupService(file);
+      final snapshot = await service.createBackup(BackupKind.manual);
+      final bad = File('${root.path}/bad.sqlite');
+      await snapshot.file.copy(bad.path);
+      var raw = sqlite.sqlite3.open(bad.path);
+      raw.execute('UPDATE task_checklist SET task_id=?', [second.id]);
+      raw.close();
+      await expectLater(
+        service.importSnapshot(
+          bad,
+          appSchemaVersion: AppDatabase.currentSchemaVersion,
+        ),
+        throwsStateError,
+      );
+      expect((await repo.checklistItems()).single.taskId, first.id);
+      raw = sqlite.sqlite3.open(bad.path);
+      raw.execute('PRAGMA foreign_keys=OFF');
+      raw.execute('DROP TABLE task_checklist_groups');
+      raw.execute('CREATE TABLE task_checklist_groups(id TEXT PRIMARY KEY)');
+      raw.close();
+      await expectLater(
+        service.importSnapshot(
+          bad,
+          appSchemaVersion: AppDatabase.currentSchemaVersion,
+        ),
+        throwsA(anyOf(isA<StateError>(), isA<sqlite.SqliteException>())),
+      );
+      expect(await service.hasScheduledRestore(), isFalse);
+      expect(
+        (await repo.tasks()).map((t) => t.title),
+        unorderedEquals(['First', 'Second']),
+      );
+    } finally {
+      await db.close();
+      await root.delete(recursive: true);
+    }
+  });
 
   test(
     'changed scheduled backup is rejected without altering live data',

@@ -1,5 +1,13 @@
 enum TaskResourceKind { managed, externalFile, externalFolder, url }
 
+// A form owns these references until its task and resources commit together.
+// Managed files are read/validated by the existing attachment writer at Save.
+class DraftTaskResource {
+  const DraftTaskResource(this.kind, this.target, this.label);
+  final TaskResourceKind kind;
+  final String target, label;
+}
+
 class TaskResource {
   const TaskResource({
     required this.id,

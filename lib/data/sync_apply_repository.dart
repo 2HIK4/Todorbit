@@ -852,7 +852,9 @@ extension SyncApplyRepository on LifeRepository {
     final identity = (jsonDecode(record.key) as Map).cast<String, Object?>();
     final value = record.review.merged == null
         ? null
-        : Map<String, Object?>.from(record.review.merged!);
+        : Map<String, Object?>.from(
+            normalizePortableRecord(record.entity, record.review.merged)!,
+          );
     if (value == null) {
       if (record.entity == 'tasks') {
         final local = await db
@@ -970,6 +972,29 @@ extension SyncApplyRepository on LifeRepository {
       WHERE t.category_id IS NOT p.category_id LIMIT 1''',
     ).get();
     if (assignment.isNotEmpty) throw const _SyncDomainBlock('taskAssignment');
+    final invalidEvent = await db
+        .customSelect(
+          "SELECT 1 FROM fixed_events e JOIN projects p ON p.id=e.project_id WHERE e.category_id IS NOT p.category_id LIMIT 1",
+        )
+        .get();
+    if (invalidEvent.isNotEmpty) {
+      throw const _SyncDomainBlock('eventAssignment');
+    }
+    final badOverride = await db.customSelect(
+      r'''SELECT 1 FROM event_occurrence_changes o
+      LEFT JOIN projects p ON p.id=json_extract(o.payload_json,'$.projectId')
+      WHERE json_extract(o.payload_json,'$.projectId') IS NOT NULL AND
+      (p.id IS NULL OR p.category_id IS NOT json_extract(o.payload_json,'$.categoryId')) LIMIT 1''',
+    ).get();
+    if (badOverride.isNotEmpty) throw const _SyncDomainBlock('eventAssignment');
+    final invalidGroup = await db
+        .customSelect(
+          "SELECT 1 FROM task_checklist i JOIN task_checklist_groups g ON g.id=i.group_id WHERE i.task_id != g.task_id LIMIT 1",
+        )
+        .get();
+    if (invalidGroup.isNotEmpty) {
+      throw const _SyncDomainBlock('checklistAssignment');
+    }
     for (final record in records.where(
       (r) => r.entity == 'tasks' && r.review.merged != null,
     )) {

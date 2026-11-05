@@ -42,6 +42,7 @@ const portableSyncTables = <String>{
   'entity_icons',
   'task_parent_links',
   'task_checklist',
+  'task_checklist_groups',
   'progressive_plans',
   'progressive_plan_steps',
   'progressive_plan_assignments',

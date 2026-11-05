@@ -1,5 +1,21 @@
 part of 'life_repository.dart';
 
+String? _occurrenceCategory(FixedEvent template, Map<String, dynamic>? value) =>
+    value != null && value.containsKey('categoryId')
+    ? value['categoryId'] as String?
+    : template.categoryId;
+
+String? _occurrenceProject(FixedEvent template, Map<String, dynamic>? value) {
+  if (value != null && value.containsKey('projectId')) {
+    return value['projectId'] as String?;
+  }
+  // Older payloads have no project field. Inherit only when their effective
+  // category still matches; a project cannot cross a category boundary.
+  return _occurrenceCategory(template, value) == template.categoryId
+      ? template.projectId
+      : null;
+}
+
 FixedEvent _eventFromRow(QueryRow row) {
   final kind = row.read<String?>('recurrence_kind');
   final weekdays = row.read<String?>('recurrence_weekdays');
@@ -21,6 +37,7 @@ FixedEvent _eventFromRow(QueryRow row) {
         : savedDetails,
     allDay: row.read<int>('all_day') == 1,
     categoryId: row.read<String?>('category_id'),
+    projectId: row.read<String?>('project_id'),
     colorValue: row.read<int?>('color_value'),
     iconName: row.read<String?>('icon_name'),
     reminderMinutes: row.read<int?>('reminder_minutes'),
@@ -46,6 +63,7 @@ List<Variable> _eventExtraVariables(EventDraft draft) => [
   Variable.withString(draft.location.trim()),
   Variable.withInt(draft.allDay ? 1 : 0),
   Variable<String>(draft.categoryId),
+  Variable<String>(draft.projectId),
   Variable<int>(draft.colorValue),
   Variable<String>(draft.iconName),
   Variable<int>(draft.reminderMinutes),
@@ -199,6 +217,7 @@ extension EventRepository on LifeRepository {
       details: draft.details,
       allDay: draft.allDay,
       categoryId: draft.categoryId,
+      projectId: draft.projectId,
       colorValue: draft.colorValue,
       iconName: draft.iconName,
       reminderMinutes: draft.reminderMinutes,
@@ -358,13 +377,17 @@ extension EventRepository on LifeRepository {
                       .toList()
                 : template.details,
             allDay: override?['allDay'] as bool? ?? template.allDay,
-            categoryId:
-                override?['categoryId'] as String? ?? template.categoryId,
-            colorValue: override?['colorValue'] as int? ?? template.colorValue,
-            iconName: override?['iconName'] as String? ?? template.iconName,
-            reminderMinutes:
-                override?['reminderMinutes'] as int? ??
-                template.reminderMinutes,
+            categoryId: _occurrenceCategory(template, override),
+            projectId: _occurrenceProject(template, override),
+            colorValue: override?.containsKey('colorValue') == true
+                ? override!['colorValue'] as int?
+                : template.colorValue,
+            iconName: override?.containsKey('iconName') == true
+                ? override!['iconName'] as String?
+                : template.iconName,
+            reminderMinutes: override?.containsKey('reminderMinutes') == true
+                ? override!['reminderMinutes'] as int?
+                : template.reminderMinutes,
             repeat: repeat,
             nominalDate: slot.nominalDate,
             cancelled: cancelled,
@@ -415,10 +438,17 @@ extension EventRepository on LifeRepository {
                       .toList()
                 : template.details,
             allDay: override['allDay'] as bool,
-            categoryId: override['categoryId'] as String?,
-            colorValue: override['colorValue'] as int?,
-            iconName: override['iconName'] as String?,
-            reminderMinutes: override['reminderMinutes'] as int?,
+            categoryId: _occurrenceCategory(template, override),
+            projectId: _occurrenceProject(template, override),
+            colorValue: override.containsKey('colorValue')
+                ? override['colorValue'] as int?
+                : template.colorValue,
+            iconName: override.containsKey('iconName')
+                ? override['iconName'] as String?
+                : template.iconName,
+            reminderMinutes: override.containsKey('reminderMinutes')
+                ? override['reminderMinutes'] as int?
+                : template.reminderMinutes,
             repeat: repeat,
             nominalDate: nominal,
             cancelled: cancelled,
@@ -449,34 +479,34 @@ extension EventRepository on LifeRepository {
     );
   }
 
-  Future<void> updateEventOccurrence(
-    FixedEvent occurrence,
-    EventDraft draft,
-  ) async {
-    final date = occurrence.nominalDate;
-    if (date == null) throw ArgumentError('Choose a recurring occurrence');
-    _validateEvent(draft);
-    final now = DateTime.now().toUtc().toIso8601String();
-    final payload = jsonEncode({
-      'title': draft.title.trim(),
-      'notes': draft.notes,
-      'startsAt': draft.startsAt.toUtc().toIso8601String(),
-      'endsAt': draft.endsAt.toUtc().toIso8601String(),
-      'location': draft.location.trim(),
-      'details': draft.details.map((item) => item.toJson()).toList(),
-      'allDay': draft.allDay,
-      'categoryId': draft.categoryId,
-      'colorValue': draft.colorValue,
-      'iconName': draft.iconName,
-      'reminderMinutes': draft.reminderMinutes,
-    });
-    await db.customStatement(
-      '''INSERT INTO event_occurrence_changes
+  Future<void> updateEventOccurrence(FixedEvent occurrence, EventDraft draft) =>
+      db.transaction(() async {
+        final date = occurrence.nominalDate;
+        if (date == null) throw ArgumentError('Choose a recurring occurrence');
+        _validateEvent(draft);
+        await _checkAssignment(draft.categoryId, draft.projectId);
+        final now = DateTime.now().toUtc().toIso8601String();
+        final payload = jsonEncode({
+          'title': draft.title.trim(),
+          'notes': draft.notes,
+          'startsAt': draft.startsAt.toUtc().toIso8601String(),
+          'endsAt': draft.endsAt.toUtc().toIso8601String(),
+          'location': draft.location.trim(),
+          'details': draft.details.map((item) => item.toJson()).toList(),
+          'allDay': draft.allDay,
+          'categoryId': draft.categoryId,
+          'projectId': draft.projectId,
+          'colorValue': draft.colorValue,
+          'iconName': draft.iconName,
+          'reminderMinutes': draft.reminderMinutes,
+        });
+        await db.customStatement(
+          '''INSERT INTO event_occurrence_changes
       (event_id,nominal_date,cancelled,payload_json,created_at,updated_at)
       VALUES(?,?,0,?,?,?) ON CONFLICT(event_id,nominal_date) DO UPDATE SET
       cancelled=0,payload_json=excluded.payload_json,
       updated_at=excluded.updated_at''',
-      [occurrence.id, date, payload, now, now],
-    );
-  }
+          [occurrence.id, date, payload, now, now],
+        );
+      });
 }

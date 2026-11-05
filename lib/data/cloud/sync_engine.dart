@@ -354,8 +354,9 @@ class SyncEngine {
           }
           if (object.properties['workspaceId'] != binding.workspace &&
               binding.workspace !=
-                  SyncPairingService.workspaceFor(binding.account))
+                  SyncPairingService.workspaceFor(binding.account)) {
             continue;
+          }
           if (object.properties['workspaceId'] != binding.workspace) {
             throw const FormatException(
               'A different encrypted workspace needs recovery',

@@ -5,6 +5,15 @@ import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 
 import '../../domain/sync/causal_record.dart';
+import 'cloud_storage_provider.dart';
+
+class SyncSchemaMismatch extends CloudFailure {
+  const SyncSchemaMismatch()
+    : super(
+        'Update Todorbit on all devices before syncing this workspace. Local data and pending history are retained.',
+        kind: CloudFailureKind.incompatible,
+      );
+}
 
 class SyncMutationGroup {
   SyncMutationGroup({
@@ -303,7 +312,10 @@ class SyncBatchCodec {
         final batch = SyncBatch.fromJson(
           (envelope['batch'] as Map).cast<String, dynamic>(),
         );
-        if (batch.schema != expectedSchema) throw const FormatException();
+        if (batch.schema != expectedSchema &&
+            !(expectedSchema == 27 && batch.schema == 26)) {
+          throw const SyncSchemaMismatch();
+        }
         return batch;
       }
       if (envelope.length != 4 || envelope['format'] != header) {
@@ -325,8 +337,13 @@ class SyncBatchCodec {
       final batch = SyncBatch.fromJson(
         (jsonDecode(utf8.decode(clear)) as Map).cast<String, dynamic>(),
       );
-      if (batch.schema != expectedSchema) throw const FormatException();
+      if (batch.schema != expectedSchema &&
+          !(expectedSchema == 27 && batch.schema == 26)) {
+        throw const SyncSchemaMismatch();
+      }
       return batch;
+    } on SyncSchemaMismatch {
+      rethrow;
     } catch (_) {
       // Never include decrypted values, tokens or the recovery code in errors.
       throw const FormatException(

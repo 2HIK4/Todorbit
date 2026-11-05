@@ -1,3 +1,5 @@
+import '../domain/task_resources.dart';
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart' hide Category;
@@ -72,12 +74,21 @@ class AppController extends ChangeNotifier {
   List<Project> projects = [];
   List<LifeTask> tasks = [];
   List<FixedEvent> events = [];
+  List<FixedEvent> todayEvents = [];
   Map<String, String> iconKeys = {};
   Map<String, String> taskParents = {};
   List<TaskChecklistItem> checklistItems = [];
+  List<TaskChecklistGroup> checklistGroups = [];
   Map<String, ProgressiveAssignment> progressiveAssignments = {};
   String? _eventWindowFrom;
   String? _eventWindowThrough;
+  String get eventWindowFrom =>
+      _eventWindowFrom ??
+      RecurrenceRule.shiftDate(localDate(DateTime.now()), -30);
+  String get eventWindowThrough =>
+      _eventWindowThrough ??
+      RecurrenceRule.shiftDate(localDate(DateTime.now()), 90);
+  String get eventWindowLabel => '$eventWindowFrom to $eventWindowThrough';
   List<WorkSession> sessions = [];
   List<TaskDependency> dependencies = [];
   List<TaskSequence> sequences = [];
@@ -124,6 +135,37 @@ class AppController extends ChangeNotifier {
     WorkspaceView.completed,
   ];
   List<WorkspaceView> sidebarOrder = List.of(defaultSidebarOrder);
+  Set<String> hiddenNavigation = {};
+  List<String> customNavigationOrder = [];
+  bool categoriesExpanded = false;
+  List<SavedView> get orderedSavedViews {
+    final byId = {for (final view in savedViews) view.id: view};
+    return [
+      for (final id in customNavigationOrder)
+        if (byId.containsKey(id)) byId.remove(id)!,
+      ...byId.values,
+    ];
+  }
+
+  Future<void> setNavigationState({
+    Set<String>? hidden,
+    List<String>? customOrder,
+    bool? expanded,
+  }) async {
+    final nextHidden = hidden ?? hiddenNavigation;
+    final nextOrder = customOrder ?? customNavigationOrder;
+    final nextExpanded = expanded ?? categoriesExpanded;
+    await appearanceStore?.saveNavigationState({
+      'hidden': nextHidden.toList(),
+      'customOrder': nextOrder,
+      'categoriesExpanded': nextExpanded,
+    });
+    hiddenNavigation = Set.of(nextHidden);
+    customNavigationOrder = List.of(nextOrder);
+    categoriesExpanded = nextExpanded;
+    notifyListeners();
+  }
+
   bool loading = true;
 
   LifeTask? get selectedTask {
@@ -139,14 +181,20 @@ class AppController extends ChangeNotifier {
       RecurrenceRule.shiftDate(today, -14),
       RecurrenceRule.shiftDate(today, 30),
     );
+    final windowEvents = repository.eventOccurrences(
+      eventWindowFrom,
+      eventWindowThrough,
+    );
+    final todayEventsLoad =
+        today.compareTo(eventWindowFrom) >= 0 &&
+            today.compareTo(eventWindowThrough) <= 0
+        ? windowEvents
+        : repository.eventOccurrences(today, today);
     final result = await Future.wait<Object?>([
       repository.categories(),
       repository.projects(),
       repository.tasks(),
-      repository.eventOccurrences(
-        _eventWindowFrom ?? RecurrenceRule.shiftDate(today, -30),
-        _eventWindowThrough ?? RecurrenceRule.shiftDate(today, 90),
-      ),
+      windowEvents,
       repository.sessions(),
       repository.availability(),
       repository.schedulingHistory(),
@@ -169,11 +217,14 @@ class AppController extends ChangeNotifier {
       repository.taskParents(),
       repository.checklistItems(),
       repository.progressiveAssignments(),
+      repository.checklistGroups(),
+      todayEventsLoad,
     ]);
     categories = result[0] as List<Category>;
     projects = result[1] as List<Project>;
     tasks = result[2] as List<LifeTask>;
     events = result[3] as List<FixedEvent>;
+    todayEvents = result[27] as List<FixedEvent>;
     sessions = result[4] as List<WorkSession>;
     availability = result[5] as AvailabilityPlan;
     schedulingHistory = result[6] as List<SchedulingOperation>;
@@ -195,6 +246,7 @@ class AppController extends ChangeNotifier {
     iconKeys = result[22] as Map<String, String>;
     taskParents = result[23] as Map<String, String>;
     checklistItems = result[24] as List<TaskChecklistItem>;
+    checklistGroups = result[26] as List<TaskChecklistGroup>;
     progressiveAssignments = result[25] as Map<String, ProgressiveAssignment>;
     _syncTimerHeartbeat();
     if (selectedTaskId != null && selectedTask == null) selectedTaskId = null;
@@ -264,6 +316,13 @@ class AppController extends ChangeNotifier {
     if (appearanceStore != null) {
       theme = await appearanceStore!.load();
       customization = await appearanceStore!.loadCustomization();
+      final navigation = await appearanceStore!.loadNavigationState();
+      hiddenNavigation = (navigation['hidden'] as List? ?? [])
+          .cast<String>()
+          .toSet();
+      customNavigationOrder = (navigation['customOrder'] as List? ?? [])
+          .cast<String>();
+      categoriesExpanded = navigation['categoriesExpanded'] == true;
       taskViewPreferences = await appearanceStore!.loadTaskViewPreferences();
       hotkeys = await appearanceStore!.loadHotkeys();
       firstWeekday = await appearanceStore!.loadFirstWeekday();
@@ -420,14 +479,35 @@ class AppController extends ChangeNotifier {
     await refresh();
   }
 
-  Future<void> addSubtask(LifeTask parent, TaskDraft draft) async {
-    final child = await repository.addSubtask(parent, draft);
+  Future<void> addSubtask(
+    LifeTask parent,
+    TaskDraft draft, {
+    List<DraftTaskResource> resources = const [],
+    ValueChanged<LifeTask>? onCommitted,
+    List<DraftChecklistGroup> groups = const [],
+  }) async {
+    final child = await repository.db.transaction(() async {
+      final task = await repository.addSubtask(parent, draft);
+      for (final group in groups) {
+        final saved = await repository.addChecklistGroup(task.id, group.title);
+        for (final title in group.items) {
+          await repository.addChecklistItem(task.id, title, groupId: saved.id);
+        }
+      }
+      await repository.addDraftResources(task.id, resources);
+      return task;
+    });
+    onCommitted?.call(child);
     await refresh();
     select(child.id);
   }
 
-  Future<void> addChecklistItem(String taskId, String title) async {
-    await repository.addChecklistItem(taskId, title);
+  Future<void> addChecklistItem(
+    String taskId,
+    String title, {
+    String? groupId,
+  }) async {
+    await repository.addChecklistItem(taskId, title, groupId: groupId);
     await refresh();
   }
 
@@ -509,19 +589,62 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  final _viewFilters = <String, TaskFilter>{};
+  String get _filterKey => '${view.name}:$scopeId';
+  TaskFilter get activeFilter => _viewFilters[_filterKey] ?? const TaskFilter();
+  void setFilter(TaskFilter filter) {
+    _viewFilters[_filterKey] = filter;
+    notifyListeners();
+  }
+
+  List<LifeTask> get filteredTasks =>
+      activeFilter.isActive ? searchTasks(activeFilter) : tasks;
+  List<FixedEvent> get filteredEvents {
+    final saved = view == WorkspaceView.saved
+        ? savedViews.where((v) => v.id == scopeId).firstOrNull?.filter
+        : null;
+    final categoryNames = {for (final item in categories) item.id: item};
+    final projectNames = {for (final item in projects) item.id: item};
+    return (view == WorkspaceView.today ? todayEvents : events)
+        .where(
+          (event) =>
+              activeFilter.matchesEvent(
+                event,
+                categories: categoryNames,
+                projects: projectNames,
+              ) &&
+              (view != WorkspaceView.project || event.projectId == scopeId) &&
+              (view != WorkspaceView.category || event.categoryId == scopeId) &&
+              (saved == null ||
+                  saved.matchesEvent(
+                    event,
+                    categories: categoryNames,
+                    projects: projectNames,
+                  )),
+        )
+        .toList();
+  }
+
+  List<WorkSession> get filteredSessions {
+    if (!activeFilter.isActive) return sessions;
+    final ids = filteredTasks.map((task) => task.id).toSet();
+    return sessions.where((session) => ids.contains(session.taskId)).toList();
+  }
+
   List<LifeTask> get visibleTasks {
     final today = localDate(DateTime.now());
     bool active(LifeTask task) =>
         task.isOpen ||
         (taskViewPreferences.keepCompletedVisible &&
-            task.status == TaskStatus.completed);
+            task.status == TaskStatus.completed) ||
+        activeFilter.statuses.contains(task.status);
     final selectedView = savedViews
         .where((item) => item.id == scopeId)
         .firstOrNull;
     final savedIds = view == WorkspaceView.saved && selectedView != null
         ? searchTasks(selectedView.filter).map((task) => task.id).toSet()
         : <String>{};
-    final items = tasks.where((task) {
+    final items = filteredTasks.where((task) {
       switch (view) {
         case WorkspaceView.today:
           return active(task) && task.scheduledDate == today;
@@ -666,13 +789,22 @@ class AppController extends ChangeNotifier {
   Future<void> addTaskWithComposition(
     TaskDraft draft,
     List<String> checklist,
-    List<TaskDraft> subtasks,
-  ) async {
-    final task = await repository.addTaskWithComposition(
-      draft,
-      checklist,
-      subtasks,
-    );
+    List<TaskDraft> subtasks, {
+    List<DraftTaskResource> resources = const [],
+    ValueChanged<LifeTask>? onCommitted,
+    List<DraftChecklistGroup> groups = const [],
+  }) async {
+    final task = await repository.db.transaction(() async {
+      final task = await repository.addTaskWithComposition(
+        draft,
+        checklist,
+        subtasks,
+        groups: groups,
+      );
+      await repository.addDraftResources(task.id, resources);
+      return task;
+    });
+    onCommitted?.call(task);
     await refresh();
     select(task.id);
   }
@@ -682,13 +814,35 @@ class AppController extends ChangeNotifier {
     RecurrenceRule rule, {
     List<String> progressiveSteps = const [],
     bool repeatPlanAtEnd = false,
+    List<DraftTaskResource> resources = const [],
+    ValueChanged<LifeTask>? onCommitted,
+    List<DraftChecklistGroup> groups = const [],
+    List<String> checklist = const [],
+    List<TaskDraft> subtasks = const [],
   }) async {
-    final task = await repository.addRecurringTask(
-      draft,
-      rule,
-      progressiveSteps: progressiveSteps,
-      repeatPlanAtEnd: repeatPlanAtEnd,
-    );
+    final task = await repository.db.transaction(() async {
+      final task = await repository.addRecurringTask(
+        draft,
+        rule,
+        progressiveSteps: progressiveSteps,
+        repeatPlanAtEnd: repeatPlanAtEnd,
+      );
+      for (final group in groups) {
+        final saved = await repository.addChecklistGroup(task.id, group.title);
+        for (final title in group.items) {
+          await repository.addChecklistItem(task.id, title, groupId: saved.id);
+        }
+      }
+      for (final title in checklist) {
+        await repository.addChecklistItem(task.id, title);
+      }
+      for (final child in subtasks) {
+        await repository.addSubtask(task, child);
+      }
+      await repository.addDraftResources(task.id, resources);
+      return task;
+    });
+    onCommitted?.call(task);
     await refresh();
     select(task.id);
   }
@@ -1075,8 +1229,11 @@ class AppController extends ChangeNotifier {
     await refresh();
   }
 
-  Future<void> addGoal(GoalDraft draft) async {
-    await repository.addGoal(draft);
+  Future<void> addGoal(GoalDraft draft, {GoalLinks? links}) async {
+    await repository.db.transaction(() async {
+      final goal = await repository.addGoal(draft);
+      if (links != null) await repository.setGoalLinks(goal, links);
+    });
     await refresh();
   }
 

@@ -729,6 +729,47 @@ void _validateLifeManagerSnapshot(String filePath) {
     if (connection.select('PRAGMA foreign_key_check').isNotEmpty) {
       throw StateError('Snapshot has broken record relationships');
     }
+    if (schema >= 27) {
+      final groupColumns = connection
+          .select('PRAGMA table_info(task_checklist_groups)')
+          .map((r) => r['name'])
+          .toSet();
+      if (!names.contains('task_checklist_groups') ||
+          !groupColumns.containsAll({
+            'id',
+            'task_id',
+            'title',
+            'position',
+            'created_at',
+            'updated_at',
+          }) ||
+          !connection
+              .select('PRAGMA table_info(fixed_events)')
+              .any((r) => r['name'] == 'project_id') ||
+          !connection
+              .select('PRAGMA table_info(task_checklist)')
+              .any((r) => r['name'] == 'group_id')) {
+        throw StateError(
+          'Snapshot has incomplete event project or checklist relationships',
+        );
+      }
+      if (connection.select('''SELECT 1 FROM task_checklist i
+          JOIN task_checklist_groups g ON g.id=i.group_id
+          WHERE i.task_id != g.task_id LIMIT 1''').isNotEmpty ||
+          connection.select('''SELECT 1 FROM fixed_events e
+          JOIN projects p ON p.id=e.project_id
+          WHERE e.category_id IS NOT p.category_id LIMIT 1''').isNotEmpty ||
+          connection.select(
+            r'''SELECT 1 FROM event_occurrence_changes o
+          LEFT JOIN projects p ON p.id=json_extract(o.payload_json,'$.projectId')
+          WHERE json_extract(o.payload_json,'$.projectId') IS NOT NULL AND
+          (p.id IS NULL OR p.category_id IS NOT json_extract(o.payload_json,'$.categoryId')) LIMIT 1''',
+          ).isNotEmpty) {
+        throw StateError(
+          'Snapshot has inconsistent event project or checklist assignments',
+        );
+      }
+    }
     if (schema >= 26 &&
         (!names.contains('portable_preferences') ||
             !connection

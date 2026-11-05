@@ -14,7 +14,6 @@ import 'package:life_manager/data/cloud/sync_pairing_service.dart';
 import 'package:life_manager/data/cloud/sync_problem.dart';
 import 'package:life_manager/data/cloud/sync_reset_service.dart';
 import 'package:life_manager/data/cloud/sync_engine.dart';
-import 'package:life_manager/data/sync_exchange_models.dart';
 import 'package:life_manager/domain/models.dart';
 import 'package:uuid/uuid.dart';
 
@@ -30,8 +29,9 @@ class _Drive extends MockSyncDrive {
   Future<Uint8List> download(CloudObject object, CloudProgress progress) async {
     final bytes = await super.download(object, progress);
     readBack.add(object.id);
-    if (corruptSeed && object.properties['kind'] == 'operations')
+    if (corruptSeed && object.properties['kind'] == 'operations') {
       return Uint8List.fromList([0]);
+    }
     return bytes;
   }
 
@@ -73,11 +73,12 @@ class _Drive extends MockSyncDrive {
       reason: 'Never delete before activation',
     );
     events.add('delete');
-    if (failDelete)
+    if (failDelete) {
       throw const CloudFailure(
         'Synthetic denied',
         kind: CloudFailureKind.permission,
       );
+    }
     objects.removeWhere((o) => o.id == object.id);
     payloads.remove(object.id);
   }

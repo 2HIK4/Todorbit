@@ -13,6 +13,8 @@ class SyncWorkspaceFormat {
   static const standard = 'todorbit-sync-workspace:2:standard';
   static const private = 'todorbit-sync-workspace:2:private';
   static const wrapper = 'todorbit-sync-key:1:argon2id:19456:2:1:aes256gcm';
+  // Cryptographic proof/AAD version remains 26 for existing Standard/Private
+  // workspaces. Database and batch schemas evolve independently.
   static const schema = 26;
 
   static String? passwordError(String password) {

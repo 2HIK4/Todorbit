@@ -70,6 +70,7 @@ class FixedEvent {
     this.location = '',
     this.allDay = false,
     this.categoryId,
+    this.projectId,
     this.colorValue,
     this.iconName,
     this.reminderMinutes,
@@ -91,6 +92,7 @@ class FixedEvent {
   final String location;
   final bool allDay;
   final String? categoryId;
+  final String? projectId;
   final int? colorValue;
   final String? iconName;
   final int? reminderMinutes;
@@ -163,6 +165,7 @@ class EventDraft {
     this.location = '',
     this.allDay = false,
     this.categoryId,
+    this.projectId,
     this.colorValue,
     this.iconName,
     this.reminderMinutes,
@@ -176,6 +179,7 @@ class EventDraft {
   final String location;
   final bool allDay;
   final String? categoryId;
+  final String? projectId;
   final int? colorValue;
   final String? iconName;
   final int? reminderMinutes;
@@ -253,6 +257,7 @@ class LifeTask {
     this.remainingWorkMinutes,
     this.schedulingLocked = false,
     this.recurrenceSeriesId,
+    this.recurrenceFamilyId,
     this.recurrenceOrdinal,
     this.nominalDate,
     this.recurrenceDisposition,
@@ -281,6 +286,7 @@ class LifeTask {
   final int? remainingWorkMinutes;
   final bool schedulingLocked;
   final String? recurrenceSeriesId;
+  final String? recurrenceFamilyId;
   final int? recurrenceOrdinal;
   final String? nominalDate;
   final String? recurrenceDisposition;
