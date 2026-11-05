@@ -1,3 +1,6 @@
+import '../shared/scroll_edge_fade.dart';
+import '../shared/app_motion.dart';
+
 import 'package:flutter/material.dart';
 
 import 'dart:io';
@@ -171,12 +174,14 @@ class _BackupDialogState extends State<BackupDialog> {
       setState(() => reviewing = true);
       final approved = await showDialog<bool>(
         context: context,
+        animationStyle: AppMotion.style(context),
         builder: (dialogContext) => AlertDialog(
           title: const Text('Replace current data on next launch?'),
           scrollable: true,
           content: Text(
             '${importedFrom == null ? 'Stored backup' : 'Imported backup'} from ${_date(dialogContext, record.createdAt)}.\n\n'
             '${summary.description.isEmpty ? 'No records in this backup' : summary.description}.\n\n'
+            'Counts include archived and deleted records retained for recovery.\n\n'
             'When you next start Todorbit, this backup replaces your current tasks, events, and other database records. It does not merge them. Todorbit first saves your current database as a Before Restore backup so you can recover it.\n\n'
             'Changes made since this backup will no longer appear in the active database.',
           ),
@@ -241,7 +246,7 @@ class _BackupDialogState extends State<BackupDialog> {
             ),
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: ListView(
+        child: FadingListView(
           shrinkWrap: widget.embedded,
           physics: widget.embedded
               ? const NeverScrollableScrollPhysics()
@@ -370,7 +375,7 @@ class _BackupDialogState extends State<BackupDialog> {
                       : const Center(child: CircularProgressIndicator())
                 : records!.isEmpty
                 ? const Center(child: Text('No backups yet.'))
-                : ListView(
+                : FadingListView(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     children: [

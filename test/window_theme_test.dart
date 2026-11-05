@@ -1,3 +1,5 @@
+import 'support/editor_disclosure.dart';
+
 import 'dart:io';
 
 import 'test_privacy.dart';
@@ -122,6 +124,7 @@ void main() {
               ),
             );
             await tester.pumpAndSettle();
+            await expandEditorSection(tester, 'Checklist and subtasks');
             final entry = find.byType(ChecklistEntry);
             await tester.scrollUntilVisible(
               entry,

@@ -1,3 +1,5 @@
+import 'support/editor_disclosure.dart';
+
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -50,10 +52,12 @@ void main() {
           find.widgetWithText(TextField, 'Title *'),
           'Keep this title',
         );
+        await expandEditorSection(tester, 'Notes');
         await tester.enterText(
           find.widgetWithText(TextField, 'Notes'),
           'Draft notes',
         );
+        await expandEditorSection(tester, 'Organization');
         await tester.ensureVisible(
           find.widgetWithText(AnchoredSelectField<String?>, 'Category'),
         );

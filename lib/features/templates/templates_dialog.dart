@@ -1,3 +1,6 @@
+import '../shared/scroll_edge_fade.dart';
+import '../shared/app_motion.dart';
+
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +19,7 @@ Future<void> showSaveTemplateDialog(
 }) async {
   await showDialog<String>(
     context: context,
+    animationStyle: AppMotion.style(context),
     builder: (_) => TextPromptDialog(
       title: 'Save reusable template',
       initial: sourceName,
@@ -42,6 +46,7 @@ class _TemplatesDialogState extends ConsumerState<TemplatesDialog> {
   Future<void> _remove(LifeTemplate template) async {
     final approved = await showDialog<bool>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete template?'),
         scrollable: true,
@@ -79,6 +84,7 @@ class _TemplatesDialogState extends ConsumerState<TemplatesDialog> {
     }
     final created = await showDialog<bool>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (_) => _ApplyTemplateDialog(
         template: template,
         beforeNavigate: widget.beforeNavigate,
@@ -116,7 +122,7 @@ class _TemplatesDialogState extends ConsumerState<TemplatesDialog> {
               ),
               const SizedBox(height: 12),
               Expanded(
-                child: ListView(
+                child: FadingListView(
                   children: [
                     Text(
                       'Save tasks or projects as templates, then reuse them here.',
@@ -250,7 +256,7 @@ class _ApplyTemplateDialogState extends ConsumerState<_ApplyTemplateDialog> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Flexible(
-                  child: SingleChildScrollView(
+                  child: FadingScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [

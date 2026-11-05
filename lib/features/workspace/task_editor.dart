@@ -1,8 +1,17 @@
+import '../shared/app_motion.dart';
+import '../../domain/task_composition.dart';
+import 'checklist_groups_section.dart';
+import '../shared/scroll_edge_fade.dart';
+import '../../domain/task_resources.dart';
+import 'draft_resources_section.dart';
+import '../shared/settings_section.dart';
+
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 
 import 'dart:math' as math;
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -77,6 +86,8 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   late final TextEditingController progressiveSteps;
   late final InlineSpellingController checklistEntry;
   final List<String> draftChecklist = [];
+  List<DraftTaskResource> draftResources = [];
+  List<DraftChecklistGroup> draftChecklistGroups = [];
   final List<_DraftSubtask> draftSubtasks = [];
   final ScrollController editorScroll = ScrollController();
   late TaskStatus status;
@@ -126,6 +137,13 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     iconKey,
     draftChecklist,
     [
+      for (final group in draftChecklistGroups) [group.title, group.items],
+    ],
+    [
+      for (final resource in draftResources)
+        [resource.kind.name, resource.target, resource.label],
+    ],
+    [
       for (final t in draftSubtasks)
         [
           t.title,
@@ -163,6 +181,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
       confirmingClose = true;
       final discard = await showDialog<bool>(
         context: context,
+        animationStyle: AppMotion.style(context),
         builder: (context) => AlertDialog(
           title: const Text('Discard unsaved changes?'),
           content: const Text('Your changes to this task have not been saved.'),
@@ -291,6 +310,16 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
 
   @override
   void dispose() {
+    if (Platform.isAndroid) {
+      for (final resource in draftResources.where(
+        (r) => r.kind == TaskResourceKind.managed,
+      )) {
+        unawaited(
+          AndroidPlatform.releaseImportedDocument(File(resource.target))
+              .catchError((Object _) {}),
+        );
+      }
+    }
     if (widget.navigationController?._confirmLeave == confirmLeave) {
       widget.navigationController?._confirmLeave = null;
     }
@@ -310,6 +339,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     var name = '';
     return showDialog<String>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (dialogContext) => AlertDialog(
         title: Text('New $kind'),
         content: TextField(
@@ -439,6 +469,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     String? titleError;
     final result = await showDialog<_DraftSubtask>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (dialogContext) {
         dialogRoute ??= ModalRoute.of(dialogContext);
         return StatefulBuilder(
@@ -657,6 +688,25 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     ],
   );
 
+  void adoptCommittedTask(LifeTask task) {
+    if (mounted) setState(() => currentTask = task);
+  }
+
+  List<TaskDraft> get draftChildren => [
+    for (final child in draftSubtasks)
+      TaskDraft(
+        title: child.title,
+        categoryId: categoryId,
+        projectId: projectId,
+        scheduledDate: child.plannedDay == null
+            ? null
+            : localDate(child.plannedDay!),
+        deadlineDate: child.deadline == null
+            ? null
+            : localDate(child.deadline!),
+      ),
+  ];
+
   Future<void> _save() async {
     if (title.text.trim().isEmpty) {
       ScaffoldMessenger.of(context)
@@ -745,6 +795,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
           if (!mounted) return;
           final proceed = await showDialog<bool>(
             context: context,
+            animationStyle: AppMotion.style(context),
             builder: (context) => AlertDialog(
               title: const Text('Plan before prerequisites?'),
               content: Text(
@@ -773,7 +824,13 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
               .where((task) => task.id == widget.parentTaskId)
               .firstOrNull;
           if (parent == null) throw StateError('Parent task is unavailable');
-          await controller.addSubtask(parent, draft);
+          await controller.addSubtask(
+            parent,
+            draft,
+            resources: draftResources,
+            onCommitted: adoptCommittedTask,
+            groups: draftChecklistGroups,
+          );
         } else if (recurrenceKind == null) {
           await controller.addTaskWithComposition(
             draft,
@@ -796,15 +853,11 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                       : localDate(child.deadline!),
                 ),
             ],
+            resources: draftResources,
+            onCommitted: adoptCommittedTask,
+            groups: draftChecklistGroups,
           );
         } else {
-          if (draftChecklist.isNotEmpty ||
-              checklistEntry.text.trim().isNotEmpty ||
-              draftSubtasks.isNotEmpty) {
-            throw const FormatException(
-              'Draft checklist items and subtasks cannot be added to a recurring task yet',
-            );
-          }
           if (draft.scheduledDate == null) {
             throw const FormatException(
               'Select a scheduled day for recurrence',
@@ -838,6 +891,15 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                       .where((s) => s.isNotEmpty)
                       .toList(),
             repeatPlanAtEnd: repeatPlanAtEnd,
+            checklist: [
+              ...draftChecklist,
+              if (checklistEntry.text.trim().isNotEmpty)
+                checklistEntry.text.trim(),
+            ],
+            subtasks: draftChildren,
+            resources: draftResources,
+            onCommitted: adoptCommittedTask,
+            groups: draftChecklistGroups,
           );
         }
       } else {
@@ -847,9 +909,15 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
           reviewedPrerequisiteIds: reviewedPrerequisiteIds,
         );
       }
-      final saved = controller.selectedTask;
+      final saved =
+          controller.tasks
+              .where((task) => task.id == currentTask?.id)
+              .firstOrNull ??
+          currentTask ??
+          controller.selectedTask;
+      if (saved != null) currentTask = saved;
       if (saved != null) {
-        final kind = currentTask == null && recurrenceKind != null
+        final kind = widget.task == null && recurrenceKind != null
             ? 'series'
             : 'task';
         final id = kind == 'series'
@@ -889,6 +957,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   Future<void> _newSubtask(LifeTask parent) async {
     await showDialog<void>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (dialogContext) => Dialog(
         child: SizedBox(
           width: math.min(520, MediaQuery.sizeOf(dialogContext).width - 48),
@@ -969,6 +1038,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         .containsKey(task.id);
     final carry = await showDialog<bool>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => AlertDialog(
         title: const Text('Skip this occurrence?'),
         content: Text(
@@ -1040,6 +1110,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     if (task == null) return;
     final applied = await showDialog<bool>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) =>
           SeriesEditorDialog(selected: task, beforeApply: confirmLeave),
     );
@@ -1051,6 +1122,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     if (task == null) return;
     await showDialog<void>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => Dialog(
         child: SizedBox(
           width: math.min(460, MediaQuery.sizeOf(context).width - 48),
@@ -1136,7 +1208,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
               child: Scrollbar(
                 controller: editorScroll,
                 thumbVisibility: true,
-                child: ListView(
+                child: FadingListView(
                   key: ValueKey(
                     'task-editor:${widget.task?.id ?? widget.parentTaskId ?? 'new'}',
                   ),
@@ -1190,12 +1262,18 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    TextField(
-                      key: const ValueKey('task-notes-field'),
-                      controller: notes,
-                      minLines: 2,
-                      maxLines: 4,
-                      decoration: const InputDecoration(labelText: 'Notes'),
+                    SettingsSection(
+                      title: 'Notes',
+                      initiallyExpanded: notes.text.isNotEmpty,
+                      children: [
+                        TextField(
+                          key: const ValueKey('task-notes-field'),
+                          controller: notes,
+                          minLines: 2,
+                          maxLines: 4,
+                          decoration: const InputDecoration(labelText: 'Notes'),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -1231,76 +1309,82 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    Text(
-                      'Organization',
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    AnchoredSelectField<String?>(
-                      key: ValueKey(
-                        'category:$categoryId:$organizationPickerRevision',
-                      ),
-                      initialValue: categoryId,
-                      decoration: const InputDecoration(labelText: 'Category'),
-                      items: [
-                        const DropdownMenuItem<String?>(
-                          value: null,
-                          child: Text('None / Inbox'),
-                        ),
-                        ...controller.categories.map(
-                          (category) => DropdownMenuItem<String?>(
-                            value: category.id,
-                            child: Text(category.name),
+                    SettingsSection(
+                      title: 'Organization',
+                      initiallyExpanded:
+                          categoryId != null || projectId != null,
+                      children: [
+                        AnchoredSelectField<String?>(
+                          key: ValueKey(
+                            'category:$categoryId:$organizationPickerRevision',
                           ),
+                          initialValue: categoryId,
+                          decoration: const InputDecoration(
+                            labelText: 'Category',
+                          ),
+                          items: [
+                            const DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('None / Inbox'),
+                            ),
+                            ...controller.categories.map(
+                              (category) => DropdownMenuItem<String?>(
+                                value: category.id,
+                                child: Text(category.name),
+                              ),
+                            ),
+                            const DropdownMenuItem<String?>(
+                              value: '__new_category__',
+                              child: Text('+ New Category'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value == '__new_category__') {
+                              _createCategory();
+                              return;
+                            }
+                            setState(() {
+                              categoryId = value;
+                              projectId = null;
+                            });
+                          },
                         ),
-                        const DropdownMenuItem<String?>(
-                          value: '__new_category__',
-                          child: Text('+ New Category'),
+                        const SizedBox(height: 12),
+                        AnchoredSelectField<String?>(
+                          key: ValueKey(
+                            'project:$projectId:$categoryId:$organizationPickerRevision',
+                          ),
+                          initialValue: projectId,
+                          decoration: const InputDecoration(
+                            labelText: 'Project',
+                          ),
+                          items: [
+                            const DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('None'),
+                            ),
+                            ...projectChoices.map(
+                              (project) => DropdownMenuItem<String?>(
+                                value: project.id,
+                                child: Text(project.name),
+                              ),
+                            ),
+                            const DropdownMenuItem<String?>(
+                              value: '__new_project__',
+                              child: Text('+ New Project'),
+                            ),
+                          ],
+                          onChanged: categoryId == null
+                              ? null
+                              : (value) {
+                                  if (value == '__new_project__') {
+                                    _createProject();
+                                  } else {
+                                    setState(() => projectId = value);
+                                  }
+                                },
                         ),
                       ],
-                      onChanged: (value) {
-                        if (value == '__new_category__') {
-                          _createCategory();
-                          return;
-                        }
-                        setState(() {
-                          categoryId = value;
-                          projectId = null;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    AnchoredSelectField<String?>(
-                      key: ValueKey(
-                        'project:$projectId:$categoryId:$organizationPickerRevision',
-                      ),
-                      initialValue: projectId,
-                      decoration: const InputDecoration(labelText: 'Project'),
-                      items: [
-                        const DropdownMenuItem<String?>(
-                          value: null,
-                          child: Text('None'),
-                        ),
-                        ...projectChoices.map(
-                          (project) => DropdownMenuItem<String?>(
-                            value: project.id,
-                            child: Text(project.name),
-                          ),
-                        ),
-                        const DropdownMenuItem<String?>(
-                          value: '__new_project__',
-                          child: Text('+ New Project'),
-                        ),
-                      ],
-                      onChanged: categoryId == null
-                          ? null
-                          : (value) {
-                              if (value == '__new_project__') {
-                                _createProject();
-                              } else {
-                                setState(() => projectId = value);
-                              }
-                            },
                     ),
                     if (widget.task == null) ...[
                       const SizedBox(height: 12),
@@ -1452,6 +1536,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                           child: OutlinedButton.icon(
                             onPressed: () => showDialog<void>(
                               context: context,
+                              animationStyle: AppMotion.style(context),
                               builder: (context) =>
                                   ProgressivePlanDialog(task: widget.task!),
                             ),
@@ -1484,31 +1569,83 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                           ),
                         ),
                     ],
-                    const Divider(),
+                    const SizedBox(height: AppSpacing.related),
                     if (currentTask case final task?) ...[
-                      TaskResourcesSection(
-                        key: ValueKey('resources:${task.id}'),
-                        taskId: task.id,
-                        repository: controller.repository,
+                      SettingsSection(
+                        title: 'Resources',
+                        description: 'Resource changes save immediately.',
+                        children: [
+                          TaskResourcesSection(
+                            key: ValueKey('resources:${task.id}'),
+                            taskId: task.id,
+                            repository: controller.repository,
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
-                      TaskCompositionSection(
-                        task: task,
-                        onAddSubtask:
-                            ref
-                                .watch(appControllerProvider)
-                                .taskParents
-                                .containsKey(task.id)
-                            ? null
-                            : () => _newSubtask(task),
+                      SettingsSection(
+                        title: 'Checklist and subtasks',
+                        description:
+                            'Checklist and subtask changes save immediately.',
+                        children: [
+                          TaskCompositionSection(
+                            task: task,
+                            onAddSubtask:
+                                ref
+                                    .watch(appControllerProvider)
+                                    .taskParents
+                                    .containsKey(task.id)
+                                ? null
+                                : () => _newSubtask(task),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                     ],
-                    if (currentTask == null && widget.parentTaskId == null) ...[
-                      const SizedBox(height: 16),
-                      _draftCompositionSection(),
-                    ],
-                    const Divider(),
+                    if (currentTask == null)
+                      SettingsSection(
+                        title: 'Checklist and subtasks',
+                        children: [
+                          if (recurrenceKind != null)
+                            const Text(
+                              'Checklists, subtasks and resources belong to the first occurrence.',
+                            ),
+                          DraftChecklistGroups(
+                            groups: draftChecklistGroups,
+                            onChanged: (value) =>
+                                setState(() => draftChecklistGroups = value),
+                          ),
+                          if (widget.parentTaskId == null)
+                            _draftCompositionSection(),
+                        ],
+                      ),
+                    if (currentTask == null)
+                      SettingsSection(
+                        title: 'Resources',
+                        children: [
+                          DraftResourcesSection(
+                            resources: draftResources,
+                            onChanged: (value) {
+                              if (Platform.isAndroid) {
+                                for (final removed in draftResources.where(
+                                  (r) =>
+                                      r.kind == TaskResourceKind.managed &&
+                                      !value.any(
+                                        (next) => next.target == r.target,
+                                      ),
+                                )) {
+                                  unawaited(
+                                    AndroidPlatform.releaseImportedDocument(
+                                      File(removed.target),
+                                    ).catchError((Object _) {}),
+                                  );
+                                }
+                              }
+                              setState(() => draftResources = value);
+                            },
+                          ),
+                        ],
+                      ),
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       child: TaskNotificationField(
@@ -1626,6 +1763,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                       OutlinedButton.icon(
                         onPressed: () => showDialog<void>(
                           context: context,
+                          animationStyle: AppMotion.style(context),
                           builder: (_) =>
                               TimeTrackingDialog(taskId: widget.task!.id),
                         ),

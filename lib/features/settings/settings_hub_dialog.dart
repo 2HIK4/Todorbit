@@ -1,3 +1,4 @@
+import '../shared/app_motion.dart';
 import '../shared/scroll_edge_fade.dart';
 
 import 'package:life_manager/features/shared/anchored_select_field.dart';
@@ -80,8 +81,11 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
     super.dispose();
   }
 
-  Future<void> _open(Widget dialog) =>
-      showDialog<void>(context: context, builder: (_) => dialog);
+  Future<void> _open(Widget dialog) => showDialog<void>(
+    context: context,
+    animationStyle: AppMotion.style(context),
+    builder: (_) => dialog,
+  );
 
   Widget _action(
     String title,
@@ -158,7 +162,7 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
                       children: [
                         SizedBox(
                           width: 205,
-                          child: ListView(
+                          child: FadingListView(
                             padding: const EdgeInsets.all(8),
                             children: [
                               for (final item in _SettingsPage.values)

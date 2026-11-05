@@ -1,3 +1,6 @@
+import '../shared/scroll_edge_fade.dart';
+import '../shared/app_motion.dart';
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -162,6 +165,7 @@ class _SettingsTransferDialogState
     if (transfer == null || selected.isEmpty) return;
     final confirmed = await showDialog<bool>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => AlertDialog(
         title: const Text('Apply selected settings?'),
         content: Text(
@@ -226,7 +230,7 @@ class _SettingsTransferDialogState
           constraints: BoxConstraints(
             maxHeight: MediaQuery.sizeOf(context).height * 0.65,
           ),
-          child: SingleChildScrollView(
+          child: FadingScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,

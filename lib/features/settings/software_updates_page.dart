@@ -1,3 +1,6 @@
+import '../shared/scroll_edge_fade.dart';
+import '../shared/app_motion.dart';
+
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 
 import 'dart:async';
@@ -279,6 +282,7 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
     setState(() => _installing = true);
     final approved = await showDialog<bool>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => AlertDialog(
         title: Text('Install Todorbit ${release.tag}?'),
         content: const Text(
@@ -574,7 +578,7 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
           if (_detailsExpanded)
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 320),
-              child: SingleChildScrollView(
+              child: FadingScrollView(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: MarkdownBody(

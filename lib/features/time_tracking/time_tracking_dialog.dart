@@ -1,3 +1,5 @@
+import '../shared/app_motion.dart';
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -34,6 +36,7 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
   Future<void> _takeControl(TimerRun previous) async {
     final selected = await showDialog<bool>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => AlertDialog(
         title: const Text('Take control at the last synced checkpoint?'),
         content: const Text(
@@ -89,6 +92,7 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
   Future<void> _edit([TimeEntry? entry]) async {
     final changed = await showDialog<_TimeDraft>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (_) => _TimeEntryEditor(entry: entry),
     );
     if (changed == null || !mounted) return;
@@ -113,6 +117,7 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
   Future<void> _clear(TimeEntry entry) async {
     final approved = await showDialog<bool>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (dialogContext) => AlertDialog(
         title: const Text('Clear manual work log?'),
         content: const Text(

@@ -103,6 +103,8 @@ void main() {
       );
       await tester.tap(find.text('All tasks'));
       await tester.pumpAndSettle();
+      await tester.tap(find.text('One day routine'));
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Task actions').first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Archive entire series'));

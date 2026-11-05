@@ -1,3 +1,5 @@
+import 'support/editor_disclosure.dart';
+
 import 'dart:io';
 
 import 'package:drift/native.dart';
@@ -281,15 +283,31 @@ void main() {
       find.widgetWithText(TextField, 'Title *'),
       'Picker result',
     );
+    await expandEditorSection(
+      tester,
+      'Organization and appearance',
+      editor: EventEditor,
+    );
     final color = find.byTooltip('Choose event color');
     await tester.ensureVisible(color);
+    await tester.pumpAndSettle();
     await tester.tap(color);
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Rose'));
     await tester.tap(find.text('Rose'));
     await tester.pumpAndSettle();
     final icon = find.byTooltip('Choose event icon');
-    await tester.ensureVisible(icon);
+    await tester.scrollUntilVisible(
+      icon,
+      -150,
+      scrollable: find
+          .descendant(
+            of: find.byType(EventEditor),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(icon);
     await tester.pumpAndSettle();
     await tester.enterText(
@@ -533,6 +551,11 @@ void main() {
           size: const Size(390, 760),
           scale: 1.5,
         );
+        await expandEditorSection(
+          tester,
+          task ? 'Notes' : 'Details',
+          editor: task ? TaskEditor : EventEditor,
+        );
         final notes = task
             ? find.byKey(const ValueKey('task-notes-field'))
             : find.widgetWithText(TextField, 'Notes');
@@ -580,15 +603,52 @@ void main() {
         await tester.pumpAndSettle();
         await tester.drag(list, const Offset(0, 1800));
         await tester.pumpAndSettle();
-        await tester.ensureVisible(notes);
+        await expandEditorSection(
+          tester,
+          task ? 'Notes' : 'Details',
+          editor: task ? TaskEditor : EventEditor,
+        );
+        await tester.scrollUntilVisible(
+          notes,
+          120,
+          scrollable: find
+              .descendant(
+                of: find.byType(task ? TaskEditor : EventEditor),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        );
+        await tester.pumpAndSettle();
         expect(
           tester.widget<TextField>(notes).controller!.text,
           contains('Draft survives'),
         );
+        FocusManager.instance.primaryFocus?.unfocus();
+        await tester.pumpAndSettle();
         final title = task
             ? find.byKey(const ValueKey('task-title-field'))
             : find.widgetWithText(TextField, 'Title *');
-        await tester.ensureVisible(title);
+        final formScroll = find
+            .descendant(
+              of: find.byType(task ? TaskEditor : EventEditor),
+              matching: find.byType(Scrollable),
+            )
+            .first;
+        // Drag the form gutter, rather than the multiline field's own viewport.
+        final bounds = tester.getRect(formScroll);
+        final before = tester
+            .state<ScrollableState>(formScroll)
+            .position
+            .pixels;
+        await tester.dragFrom(
+          Offset(bounds.left + 3, bounds.center.dy),
+          const Offset(0, 1800),
+        );
+        await tester.pumpAndSettle();
+        debugPrint(
+          'Return to title: task=$task, outer scroll $before -> ${tester.state<ScrollableState>(formScroll).position.pixels}, titles=${title.evaluate().length}',
+        );
+        expect(title, findsOneWidget);
         await tester.enterText(title, 'Valid after errors');
         await tester.tap(save);
         await tester.pumpAndSettle();
@@ -662,6 +722,7 @@ void main() {
       size: const Size(390, 540),
       scale: 2,
     );
+    await expandEditorSection(tester, 'Details', editor: EventEditor);
     await tester.enterText(
       find.widgetWithText(TextField, 'Notes'),
       'Retained validation draft',

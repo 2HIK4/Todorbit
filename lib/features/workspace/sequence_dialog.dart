@@ -1,3 +1,6 @@
+import '../shared/scroll_edge_fade.dart';
+import '../shared/app_motion.dart';
+
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,6 +25,7 @@ class _SequenceDialogState extends ConsumerState<SequenceDialog> {
     try {
       return await showDialog<String>(
         context: context,
+        animationStyle: AppMotion.style(context),
         builder: (context) => AlertDialog(
           title: Text(title),
           content: TextField(
@@ -84,6 +88,7 @@ class _SequenceDialogState extends ConsumerState<SequenceDialog> {
         .toList();
     final taskId = await showDialog<String>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => SimpleDialog(
         title: const Text('Add task to sequence'),
         children: available.isEmpty
@@ -200,6 +205,7 @@ class _SequenceDialogState extends ConsumerState<SequenceDialog> {
                           : () async {
                               final confirmed = await showDialog<bool>(
                                 context: context,
+                                animationStyle: AppMotion.style(context),
                                 builder: (context) => AlertDialog(
                                   title: const Text('Delete sequence?'),
                                   content: const Text(
@@ -248,6 +254,7 @@ class _SequenceDialogState extends ConsumerState<SequenceDialog> {
                           ? null
                           : () => showDialog<bool>(
                               context: context,
+                              animationStyle: AppMotion.style(context),
                               barrierDismissible: false,
                               builder: (_) => SmartRescheduleDialog(
                                 scope: 'sequence:${selected.id}',
@@ -263,7 +270,7 @@ class _SequenceDialogState extends ConsumerState<SequenceDialog> {
                 Expanded(
                   child: selected.taskIds.isEmpty
                       ? const Center(child: Text('No tasks in this sequence.'))
-                      : ListView.builder(
+                      : FadingListView.builder(
                           itemCount: selected.taskIds.length,
                           itemBuilder: (context, index) {
                             final taskId = selected.taskIds[index];

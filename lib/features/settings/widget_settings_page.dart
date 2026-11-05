@@ -1,3 +1,4 @@
+import '../shared/app_motion.dart';
 import '../shared/scroll_edge_fade.dart';
 
 import 'dart:async';
@@ -335,6 +336,7 @@ class _WidgetConfigurationEditorState extends State<WidgetConfigurationEditor> {
   Future<void> namePreset({String? source, bool rename = false}) async {
     final name = await showDialog<String>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (_) => TextPromptDialog(
         title: rename ? 'Rename preset' : 'Save as preset',
         initial: rename ? source! : '',
@@ -452,61 +454,63 @@ class _WidgetConfigurationEditorState extends State<WidgetConfigurationEditor> {
     change(draft.copyWith(navigationOrder: order));
   }
 
-  Widget navigationOrder() => ReorderableListView.builder(
-    shrinkWrap: true,
-    physics: const NeverScrollableScrollPhysics(),
-    buildDefaultDragHandles: false,
-    itemCount: draft.navigationOrder.length,
-    onReorderItem: (oldIndex, newIndex) =>
-        moveView(oldIndex, newIndex > oldIndex ? newIndex + 1 : newIndex),
-    itemBuilder: (context, index) {
-      final view = draft.navigationOrder[index];
-      final label = {
-        'today': 'Today',
-        'inbox': 'Inbox',
-        'all': 'All Tasks',
-        'upcoming': 'Upcoming',
-      }[view]!;
-      return Row(
-        key: ValueKey('view-$view'),
-        children: [
-          ReorderableDragStartListener(
-            index: index,
-            child: Semantics(
-              label: 'Drag to reorder $label',
-              child: const Padding(
-                padding: EdgeInsets.all(8),
-                child: Icon(Icons.drag_handle),
-              ),
-            ),
-          ),
-          Expanded(
-            child: CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(label),
-              value: draft.views.contains(view),
-              onChanged: (v) => change(
-                draft.copyWith(
-                  views: v == true
-                      ? [...draft.views, view]
-                      : draft.views.where((x) => x != view).toList(),
+  Widget navigationOrder() => ScrollEdgeFade(
+    child: ReorderableListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      buildDefaultDragHandles: false,
+      itemCount: draft.navigationOrder.length,
+      onReorderItem: (oldIndex, newIndex) =>
+          moveView(oldIndex, newIndex > oldIndex ? newIndex + 1 : newIndex),
+      itemBuilder: (context, index) {
+        final view = draft.navigationOrder[index];
+        final label = {
+          'today': 'Today',
+          'inbox': 'Inbox',
+          'all': 'All Tasks',
+          'upcoming': 'Upcoming',
+        }[view]!;
+        return Row(
+          key: ValueKey('view-$view'),
+          children: [
+            ReorderableDragStartListener(
+              index: index,
+              child: Semantics(
+                label: 'Drag to reorder $label',
+                child: const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Icon(Icons.drag_handle),
                 ),
               ),
             ),
-          ),
-          IconButton(
-            tooltip: 'Move $label up',
-            onPressed: index > 0 ? () => moveView(index, index - 1) : null,
-            icon: const Icon(Icons.arrow_upward, size: 18),
-          ),
-          IconButton(
-            tooltip: 'Move $label down',
-            onPressed: index < 3 ? () => moveView(index, index + 2) : null,
-            icon: const Icon(Icons.arrow_downward, size: 18),
-          ),
-        ],
-      );
-    },
+            Expanded(
+              child: CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(label),
+                value: draft.views.contains(view),
+                onChanged: (v) => change(
+                  draft.copyWith(
+                    views: v == true
+                        ? [...draft.views, view]
+                        : draft.views.where((x) => x != view).toList(),
+                  ),
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Move $label up',
+              onPressed: index > 0 ? () => moveView(index, index - 1) : null,
+              icon: const Icon(Icons.arrow_upward, size: 18),
+            ),
+            IconButton(
+              tooltip: 'Move $label down',
+              onPressed: index < 3 ? () => moveView(index, index + 2) : null,
+              icon: const Icon(Icons.arrow_downward, size: 18),
+            ),
+          ],
+        );
+      },
+    ),
   );
   final formKey = GlobalKey<FormState>();
   final previewSession = const Uuid().v4();
@@ -688,6 +692,7 @@ class _WidgetConfigurationEditorState extends State<WidgetConfigurationEditor> {
     prompting = true;
     final action = await showDialog<String>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => AlertDialog(
         title: const Text('Unsaved widget changes'),
         scrollable: true,
@@ -857,6 +862,7 @@ class _WidgetConfigurationEditorState extends State<WidgetConfigurationEditor> {
     if (formKey.currentState?.validate() != true) return;
     final yes = await showDialog<bool>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => AlertDialog(
         title: const Text('Apply shared appearance to both widgets?'),
         scrollable: true,
@@ -1213,6 +1219,7 @@ class _ColorField extends StatelessWidget {
           onPressed: () async {
             final selected = await showDialog<Color>(
               context: context,
+              animationStyle: AppMotion.style(context),
               builder: (_) => ColorPickerDialog(
                 title: label,
                 initialColor: value == null

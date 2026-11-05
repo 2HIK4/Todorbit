@@ -124,7 +124,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Batch 6 custom'), findsOneWidget);
       await transfer('Export JSON', output);
-      await finishWhen(output.existsSync);
+      await finishWhen(
+        () => find.text('Theme exported.').evaluate().isNotEmpty,
+      );
       expect(
         ThemeCustomization.fromJson(jsonDecode(output.readAsStringSync()))
             .toJson(),
@@ -198,7 +200,7 @@ void main() {
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
       await database.close();
-      root.deleteSync(recursive: true);
+      await tester.runAsync(() => root.delete(recursive: true));
     }
   });
 

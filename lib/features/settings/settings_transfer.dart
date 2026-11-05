@@ -57,6 +57,9 @@ class SettingsTransfer {
         'lastMode': controller.lastCalendarMode,
       },
       SettingsCategory.navigation: {
+        'hidden': controller.hiddenNavigation.toList(),
+        'customOrder': controller.customNavigationOrder,
+        'categoriesExpanded': controller.categoriesExpanded,
         'sidebarOrder': controller.sidebarOrder
             .map((item) => item.name)
             .toList(),
@@ -210,6 +213,20 @@ class SettingsTransfer {
           throw const FormatException('Invalid calendar display settings');
         }
       case SettingsCategory.navigation:
+        for (final field in ['hidden', 'customOrder']) {
+          if (value[field] != null &&
+              (value[field] is! List ||
+                  (value[field] as List).length > 500 ||
+                  (value[field] as List).any(
+                    (v) => v is! String || v.length > 200,
+                  ))) {
+            throw const FormatException('Invalid navigation settings');
+          }
+        }
+        if (value['categoriesExpanded'] != null &&
+            value['categoriesExpanded'] is! bool) {
+          throw const FormatException('Invalid category expansion');
+        }
         final order = value['sidebarOrder'];
         if (order is! List ||
             order.length != AppController.defaultSidebarOrder.length ||
@@ -298,6 +315,11 @@ class SettingsTransfer {
                 .cast<String>()
                 .map(WorkspaceView.values.byName)
                 .toList(),
+          );
+          await controller.setNavigationState(
+            hidden: (value['hidden'] as List? ?? []).cast<String>().toSet(),
+            customOrder: (value['customOrder'] as List? ?? []).cast<String>(),
+            expanded: value['categoriesExpanded'] == true,
           );
         case SettingsCategory.taskDisplay:
           await controller.setTaskViewPreferences(

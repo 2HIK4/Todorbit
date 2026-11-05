@@ -1,3 +1,5 @@
+import '../shared/scroll_edge_fade.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -114,7 +116,7 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
     final projectNames = {
       for (final project in controller.projects) project.id: project.name,
     };
-    return ListView(
+    return FadingListView(
       padding: const EdgeInsets.fromLTRB(28, 26, 28, 30),
       children: [
         Wrap(
@@ -218,7 +220,7 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
         const SizedBox(height: 8),
         SizedBox(
           height: math.min(430.0, report.days.length * 54.0),
-          child: ListView.builder(
+          child: FadingListView.builder(
             itemCount: report.days.length,
             itemBuilder: (context, index) {
               final day = report.days[report.days.length - index - 1];

@@ -1,3 +1,5 @@
+import '../shared/scroll_edge_fade.dart';
+
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -79,7 +81,7 @@ class _TaskViewSettingsDialogState
                 ),
               ),
               Expanded(
-                child: ListView(
+                child: FadingListView(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
                     vertical: 8,

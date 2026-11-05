@@ -39,9 +39,24 @@ void main() {
               .withBinding(HotkeyAction.newTask, const HotkeyBinding('T')),
         );
         await controller.setFirstWeekday(1);
+        await controller.setNavigationState(
+          hidden: {'habits'},
+          customOrder: ['fixture-view'],
+          expanded: true,
+        );
         final transfer = SettingsTransfer.fromController(controller);
         final encoded = transfer.encode(SettingsCategory.values.toSet());
         expect(encoded, isNot(contains('pinHash')));
+        final all = SettingsTransfer.decode(encoded);
+        await controller.setNavigationState(
+          hidden: {},
+          customOrder: [],
+          expanded: false,
+        );
+        await all.applyTo(controller, {SettingsCategory.navigation});
+        expect(controller.hiddenNavigation, {'habits'});
+        expect(controller.customNavigationOrder, ['fixture-view']);
+        expect(controller.categoriesExpanded, isTrue);
         expect(encoded, isNot(contains('life_manager.sqlite')));
         expect(encoded, isNot(contains('tasks":')));
         final file = File('${directory.path}/settings.json');

@@ -1,3 +1,6 @@
+import '../shared/scroll_edge_fade.dart';
+import '../shared/app_motion.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -89,7 +92,7 @@ class _ProgressivePlanDialogState extends ConsumerState<ProgressivePlanDialog> {
         width: 520,
         child: loading
             ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
+            : FadingScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,6 +132,7 @@ class _ProgressivePlanDialogState extends ConsumerState<ProgressivePlanDialog> {
                           final choices = savedSteps;
                           final selected = await showDialog<int>(
                             context: context,
+                            animationStyle: AppMotion.style(context),
                             builder: (context) => SimpleDialog(
                               title: const Text('Assign this occurrence'),
                               children: [

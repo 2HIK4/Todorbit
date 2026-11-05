@@ -1,3 +1,7 @@
+import '../shared/scroll_edge_fade.dart';
+import '../shared/app_motion.dart';
+import '../search/advanced_search_dialog.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -59,6 +63,41 @@ class _SidebarOrderDialogState extends ConsumerState<SidebarOrderDialog> {
     _save(next);
   }
 
+  Future<void> visibility(String id, bool visible) async {
+    final c = ref.read(appControllerProvider);
+    final hidden = {...c.hiddenNavigation};
+    visible ? hidden.remove(id) : hidden.add(id);
+    await navigationSave(hidden: hidden);
+  }
+
+  Future<void> customMove(int from, int to) async {
+    final custom = ref
+        .read(appControllerProvider)
+        .orderedSavedViews
+        .map((v) => v.id)
+        .toList();
+    custom.insert(to, custom.removeAt(from));
+    await navigationSave(order: custom);
+  }
+
+  Future<void> navigationSave({
+    Set<String>? hidden,
+    List<String>? order,
+  }) async {
+    try {
+      await ref
+          .read(appControllerProvider)
+          .setNavigationState(hidden: hidden, customOrder: order);
+      if (mounted) setState(() {});
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not save navigation: $error')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => SettingsHistoryScope(
     undo: () => travel(false),
@@ -78,7 +117,7 @@ class _SidebarOrderDialogState extends ConsumerState<SidebarOrderDialog> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Sidebar order',
+                      'Customize navigation',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                   ),
@@ -89,84 +128,208 @@ class _SidebarOrderDialogState extends ConsumerState<SidebarOrderDialog> {
                   ),
                 ],
               ),
-              const Text('Drag a row, or use the arrow buttons to move it.'),
+              const Text(
+                'Show, hide or reorder views. Settings and customization remain available.',
+              ),
               const SizedBox(height: 12),
               Flexible(
-                child: ReorderableListView.builder(
-                  shrinkWrap: true,
-                  buildDefaultDragHandles: false,
-                  itemCount: order.length,
-                  onReorderItem: _move,
-                  itemBuilder: (context, index) {
-                    final view = order[index];
-                    final buttons = Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          tooltip: 'Move ${sidebarName(view)} up',
-                          onPressed: index == 0
-                              ? null
-                              : () => _move(index, index - 1),
-                          icon: const Icon(Icons.keyboard_arrow_up),
-                        ),
-                        IconButton(
-                          tooltip: 'Move ${sidebarName(view)} down',
-                          onPressed: index == order.length - 1
-                              ? null
-                              : () => _move(index, index + 1),
-                          icon: const Icon(Icons.keyboard_arrow_down),
-                        ),
-                      ],
-                    );
-                    final drag = ReorderableDragStartListener(
-                      index: index,
-                      child: const Icon(
-                        Icons.drag_handle,
-                        semanticLabel: 'Drag to reorder',
-                      ),
-                    );
-                    return LayoutBuilder(
-                      key: ValueKey(view),
-                      builder: (context, bounds) {
-                        final compact =
-                            bounds.maxWidth < 380 ||
-                            MediaQuery.textScalerOf(context).scale(14) > 20;
-                        final tile = ListTile(
-                          dense: true,
-                          leading: Icon(sidebarIcon(view)),
+                child: ScrollEdgeFade(
+                  child: ReorderableListView.builder(
+                    shrinkWrap: true,
+                    buildDefaultDragHandles: false,
+                    itemCount:
+                        order.length +
+                        ref
+                            .watch(appControllerProvider)
+                            .orderedSavedViews
+                            .length +
+                        2,
+                    onReorderItem: (from, to) {
+                      if (from < order.length && to < order.length) {
+                        _move(from, to);
+                      }
+                    },
+                    itemBuilder: (context, index) {
+                      final c = ref.watch(appControllerProvider);
+                      final custom = c.orderedSavedViews;
+                      if (index >= order.length + custom.length) {
+                        final view = [
+                          WorkspaceView.reports,
+                          WorkspaceView.contributors,
+                        ][index - order.length - custom.length];
+                        return CheckboxListTile(
+                          key: ValueKey('optional:${view.name}'),
+                          value: !c.hiddenNavigation.contains(view.name),
                           title: Text(sidebarName(view)),
-                          trailing: compact
-                              ? SizedBox(
-                                  width: 48,
-                                  height: 48,
-                                  child: Center(child: drag),
-                                )
-                              : Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [buttons, drag],
-                                ),
+                          onChanged: (visible) =>
+                              visibility(view.name, visible == true),
                         );
-                        return compact
-                            ? Column(
-                                children: [
-                                  tile,
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: buttons,
+                      }
+                      if (index >= order.length) {
+                        final custom = c.orderedSavedViews;
+                        final i = index - order.length;
+                        final saved = custom[i];
+                        return ListTile(
+                          key: ValueKey(saved.id),
+                          leading: Checkbox(
+                            value: !c.hiddenNavigation.contains(saved.id),
+                            onChanged: (visible) =>
+                                visibility(saved.id, visible == true),
+                          ),
+                          title: Text(saved.name),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: 'Move ${saved.name} up',
+                                icon: const Icon(Icons.keyboard_arrow_up),
+                                onPressed: i == 0
+                                    ? null
+                                    : () => customMove(i, i - 1),
+                              ),
+                              IconButton(
+                                tooltip: 'Move ${saved.name} down',
+                                icon: const Icon(Icons.keyboard_arrow_down),
+                                onPressed: i == custom.length - 1
+                                    ? null
+                                    : () => customMove(i, i + 1),
+                              ),
+                              IconButton(
+                                tooltip: 'Delete ${saved.name}',
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: () async {
+                                  final confirmed = await showDialog<bool>(
+                                    context: context,
+                                    animationStyle: AppMotion.style(context),
+                                    builder: (context) => AlertDialog(
+                                      title: const Text('Delete saved view?'),
+                                      content: Text(
+                                        'Delete ${saved.name}? Tasks and events are kept.',
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, false),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        FilledButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, true),
+                                          child: const Text('Delete view'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                  if (confirmed == true) {
+                                    try {
+                                      await c.deleteSavedView(saved);
+                                    } catch (error) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Could not delete view: $error',
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      final view = order[index];
+                      final buttons = Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: 'Move ${sidebarName(view)} up',
+                            onPressed: index == 0
+                                ? null
+                                : () => _move(index, index - 1),
+                            icon: const Icon(Icons.keyboard_arrow_up),
+                          ),
+                          IconButton(
+                            tooltip: 'Move ${sidebarName(view)} down',
+                            onPressed: index == order.length - 1
+                                ? null
+                                : () => _move(index, index + 1),
+                            icon: const Icon(Icons.keyboard_arrow_down),
+                          ),
+                        ],
+                      );
+                      final drag = ReorderableDragStartListener(
+                        index: index,
+                        child: const Icon(
+                          Icons.drag_handle,
+                          semanticLabel: 'Drag to reorder',
+                        ),
+                      );
+                      return LayoutBuilder(
+                        key: ValueKey(view),
+                        builder: (context, bounds) {
+                          final compact =
+                              bounds.maxWidth < 380 ||
+                              MediaQuery.textScalerOf(context).scale(14) > 20;
+                          final tile = ListTile(
+                            dense: true,
+                            leading: Checkbox(
+                              value: !c.hiddenNavigation.contains(view.name),
+                              onChanged: (visible) =>
+                                  visibility(view.name, visible == true),
+                            ),
+                            title: Text(sidebarName(view)),
+                            trailing: compact
+                                ? SizedBox(
+                                    width: 48,
+                                    height: 48,
+                                    child: Center(child: drag),
+                                  )
+                                : Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [buttons, drag],
                                   ),
-                                ],
-                              )
-                            : tile;
-                      },
-                    );
-                  },
+                          );
+                          return compact
+                              ? Column(
+                                  children: [
+                                    tile,
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: buttons,
+                                    ),
+                                  ],
+                                )
+                              : tile;
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ),
+              TextButton.icon(
+                icon: const Icon(Icons.add),
+                label: const Text('Add category / project view'),
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  animationStyle: AppMotion.style(context),
+                  builder: (_) =>
+                      const AdvancedSearchDialog(creatingSavedView: true),
                 ),
               ),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () =>
-                      _save(List.of(AppController.defaultSidebarOrder)),
+                  onPressed: () async {
+                    await _save(List.of(AppController.defaultSidebarOrder));
+                    await navigationSave(hidden: {}, order: []);
+                    if (mounted) setState(() {});
+                  },
                   child: const Text('Reset to default'),
                 ),
               ),

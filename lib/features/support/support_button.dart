@@ -1,3 +1,5 @@
+import '../shared/app_motion.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -79,6 +81,7 @@ class _SupportButtonState extends State<SupportButton>
       tooltip: 'Support Todorbit',
       onPressed: () => showDialog<void>(
         context: context,
+        animationStyle: AppMotion.style(context),
         builder: (_) => const SupportDialog(),
       ),
       icon: const Icon(Icons.volunteer_activism_outlined, size: 20),

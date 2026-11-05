@@ -1,3 +1,6 @@
+import '../shared/scroll_edge_fade.dart';
+import '../shared/app_motion.dart';
+
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -160,6 +163,7 @@ class _SessionEditorState extends ConsumerState<SessionEditor> {
     final confirmed =
         await showDialog<bool>(
           context: context,
+          animationStyle: AppMotion.style(context),
           builder: (context) => AlertDialog(
             title: const Text('Delete planned session?'),
             content: const Text(
@@ -230,7 +234,7 @@ class _SessionEditorState extends ConsumerState<SessionEditor> {
             ),
             const SizedBox(height: 14),
             Expanded(
-              child: ListView(
+              child: FadingListView(
                 padding: AppSpacing.editorScrollPadding(context),
                 children: [
                   AnchoredSelectField<String>(

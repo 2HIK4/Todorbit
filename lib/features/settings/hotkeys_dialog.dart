@@ -1,3 +1,6 @@
+import '../shared/scroll_edge_fade.dart';
+import '../shared/app_motion.dart';
+
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -52,6 +55,7 @@ class _HotkeysDialogState extends ConsumerState<HotkeysDialog> {
   Future<String?> _nameDialog(String title, String initial) async {
     return showDialog<String>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (_) => TextPromptDialog(
         title: title,
         initial: initial,
@@ -225,7 +229,7 @@ class _HotkeysDialogState extends ConsumerState<HotkeysDialog> {
               ),
             const SizedBox(height: 8),
             Expanded(
-              child: ListView(
+              child: FadingListView(
                 children: [
                   for (final action in actions)
                     Padding(

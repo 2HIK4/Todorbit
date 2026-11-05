@@ -1,3 +1,6 @@
+import '../shared/scroll_edge_fade.dart';
+import '../shared/app_motion.dart';
+
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 
 import 'dart:math' as math;
@@ -43,6 +46,10 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
       widget.savedView?.filter.scheduled ?? ScheduledFilter.any;
   late DeadlineFilter deadline =
       widget.savedView?.filter.deadline ?? DeadlineFilter.any;
+  late final String? fromDate = widget.savedView?.filter.fromDate;
+  late final String? throughDate = widget.savedView?.filter.throughDate;
+  late final bool nonRecurringOnly =
+      widget.savedView?.filter.nonRecurringOnly ?? false;
   late bool recurringOnly = widget.savedView?.filter.recurringOnly ?? false;
   late bool blockedOnly = widget.savedView?.filter.blockedOnly ?? false;
   bool busy = false;
@@ -64,6 +71,9 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
     scheduled: scheduled,
     deadline: deadline,
     recurringOnly: recurringOnly,
+    nonRecurringOnly: nonRecurringOnly && !recurringOnly,
+    fromDate: fromDate,
+    throughDate: throughDate,
     blockedOnly: blockedOnly,
     sort: sort,
   );
@@ -73,6 +83,7 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
     if (!widget.creatingSavedView && widget.savedView == null) {
       final dialogName = await showDialog<String>(
         context: context,
+        animationStyle: AppMotion.style(context),
         builder: (dialogContext) => AlertDialog(
           title: Text(
             widget.savedView == null ? 'Save view' : 'Update saved view',
@@ -102,8 +113,9 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
       setState(() => error = 'Enter a view name.');
       return;
     }
-    if (widget.beforeNavigate != null && !await widget.beforeNavigate!())
+    if (widget.beforeNavigate != null && !await widget.beforeNavigate!()) {
       return;
+    }
     if (!mounted) return;
     setState(() {
       busy = true;
@@ -165,7 +177,7 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                 ],
               ),
               Expanded(
-                child: ListView(
+                child: FadingListView(
                   key: const ValueKey('advanced-search-form-list'),
                   padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
                   children: [
@@ -365,8 +377,9 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                         ),
                         onTap: () async {
                           if (widget.beforeNavigate != null &&
-                              !await widget.beforeNavigate!())
+                              !await widget.beforeNavigate!()) {
                             return;
+                          }
                           if (!context.mounted) return;
                           controller.navigate(
                             task.isOpen

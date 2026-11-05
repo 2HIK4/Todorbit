@@ -1,3 +1,5 @@
+import '../shared/app_motion.dart';
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -113,6 +115,7 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
     if (!mounted) return;
     final choice = await showDialog<String>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => AlertDialog(
         title: Text(
           'Add ${unique.length} file${unique.length == 1 ? '' : 's'}?',
@@ -217,6 +220,7 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
   ) async {
     await showDialog<String>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => TextPromptDialog(
         title: title,
         initial: initial,
@@ -283,6 +287,7 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
         if (scheme != 'http' && scheme != 'https') {
           final approved = await showDialog<bool>(
             context: context,
+            animationStyle: AppMotion.style(context),
             builder: (context) => AlertDialog(
               title: const Text('Open application link?'),
               scrollable: true,
@@ -323,6 +328,7 @@ class _TaskResourcesSectionState extends State<TaskResourcesSection> {
   Future<void> _remove(TaskResource resource) async {
     final approved = await showDialog<bool>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => AlertDialog(
         title: const Text('Remove task resource?'),
         scrollable: true,

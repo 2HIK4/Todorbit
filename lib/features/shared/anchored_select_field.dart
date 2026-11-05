@@ -1,3 +1,5 @@
+import 'scroll_edge_fade.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -157,7 +159,7 @@ class _AnchoredSelectBodyState<T> extends State<_AnchoredSelectBody<T>> {
                 child: Scrollbar(
                   controller: _scrollController,
                   thumbVisibility: widget.items.length > 6,
-                  child: SingleChildScrollView(
+                  child: FadingScrollView(
                     controller: _scrollController,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,

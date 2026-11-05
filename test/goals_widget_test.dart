@@ -1,3 +1,5 @@
+import 'package:life_manager/features/goals/goal_dialogs.dart';
+
 import 'test_privacy.dart';
 
 import 'package:drift/native.dart';
@@ -118,11 +120,34 @@ void main() {
         'Write goal',
       );
       await tester.enterText(find.widgetWithText(TextField, 'Target *'), '2');
+      final linkDraft = find.textContaining('Link tasks, projects or habits');
+      await tester.scrollUntilVisible(
+        linkDraft,
+        100,
+        scrollable: find
+            .descendant(
+              of: find.byType(GoalEditorDialog),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(linkDraft);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(CheckboxListTile, 'Write'));
+      await tester.tap(find.text('Save links'));
+      await tester.pumpAndSettle();
+      expect(await repository.goals(), isEmpty);
+
       await tester.tap(find.text('Create goal'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Link work'));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(CheckboxListTile, 'Write'));
+      final choice = find.widgetWithText(CheckboxListTile, 'Write');
+      expect(tester.widget<CheckboxListTile>(choice).value, isTrue);
+      await tester.tap(choice);
+      await tester.pumpAndSettle();
+      await tester.tap(choice);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Save links'));
       await tester.pumpAndSettle();

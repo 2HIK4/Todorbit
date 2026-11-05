@@ -168,6 +168,8 @@ void main() {
         find.widgetWithText(TextField, 'Title *'),
         'Daily reading',
       );
+      await tester.pumpAndSettle();
+      expect(find.byType(TaskEditor), findsOneWidget);
       final editorScroll = find
           .descendant(
             of: find.byType(TaskEditor),
@@ -179,7 +181,8 @@ void main() {
         200,
         scrollable: editorScroll,
       );
-      await tester.tap(find.text('Does not repeat'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Does not repeat').hitTestable());
       await tester.pumpAndSettle();
       await tester.tap(find.text('Daily').last);
       await tester.pumpAndSettle();
@@ -262,14 +265,24 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('Estimates and schedule protection'),
         220,
-        scrollable: find.byType(Scrollable).last,
+        scrollable: find
+            .descendant(
+              of: find.byType(TaskEditor),
+              matching: find.byType(Scrollable),
+            )
+            .first,
       );
       await tester.tap(find.text('Estimates and schedule protection'));
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
         find.widgetWithText(TextField, 'Planned minutes'),
         220,
-        scrollable: find.byType(Scrollable).last,
+        scrollable: find
+            .descendant(
+              of: find.byType(TaskEditor),
+              matching: find.byType(Scrollable),
+            )
+            .first,
       );
       await tester.enterText(
         find.widgetWithText(TextField, 'Planned minutes'),
@@ -391,7 +404,7 @@ void main() {
       await tester.enterText(
         find.widgetWithText(
           TextField,
-          'Search tasks, categories, and projects',
+          'Search tasks, events, categories, and projects',
         ),
         'astronomy',
       );
@@ -407,7 +420,7 @@ void main() {
       expect(
         find.widgetWithText(
           TextField,
-          'Search tasks, categories, and projects',
+          'Search tasks, events, categories, and projects',
         ),
         findsOneWidget,
       );

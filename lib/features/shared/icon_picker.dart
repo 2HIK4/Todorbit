@@ -1,3 +1,5 @@
+import 'app_motion.dart';
+
 import 'package:flutter/material.dart';
 
 const builtInIcons = <String, IconData>{
@@ -43,6 +45,7 @@ Future<(bool, String?)> chooseBuiltInIcon(
   String query = '';
   final result = await showDialog<String>(
     context: context,
+    animationStyle: AppMotion.style(context),
     builder: (context) => StatefulBuilder(
       builder: (context, refresh) {
         final matches = builtInIcons.entries

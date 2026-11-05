@@ -1,3 +1,5 @@
+import 'features/shared/app_motion.dart';
+
 import 'dart:async';
 import 'dart:io';
 
@@ -705,6 +707,15 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
         if (Platform.isAndroid || widget.mobileLayout)
           ...GlobalMaterialLocalizations.delegates,
       ],
+      themeAnimationDuration:
+          ref.watch(appControllerProvider).customization.reducedMotion ||
+              WidgetsBinding
+                  .instance
+                  .platformDispatcher
+                  .accessibilityFeatures
+                  .disableAnimations
+          ? Duration.zero
+          : AppMotion.duration,
       title: 'Todorbit',
       debugShowCheckedModeBanner: false,
       themeMode: mode,
@@ -732,8 +743,14 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
                 data: existing.copyWith(
                   size: Size(390, existing.size.height),
                   textScaler: TextScaler.linear(systemScale * preferenceScale),
+                  disableAnimations:
+                      ref
+                          .read(appControllerProvider)
+                          .customization
+                          .reducedMotion ||
+                      existing.disableAnimations,
                 ),
-                child: child ?? const SizedBox.shrink(),
+                child: AppMotionTheme(child: child ?? const SizedBox.shrink()),
               ),
             ),
           );
@@ -745,23 +762,25 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
                 ref.read(appControllerProvider).customization.reducedMotion ||
                 existing.disableAnimations,
           ),
-          child: Platform.isAndroid
-              ? Stack(
-                  children: [
-                    ExcludeSemantics(
-                      excluding: privacy.locked,
-                      child: AbsorbPointer(
-                        absorbing: privacy.locked,
-                        child: child ?? const SizedBox.shrink(),
+          child: AppMotionTheme(
+            child: Platform.isAndroid
+                ? Stack(
+                    children: [
+                      ExcludeSemantics(
+                        excluding: privacy.locked,
+                        child: AbsorbPointer(
+                          absorbing: privacy.locked,
+                          child: child ?? const SizedBox.shrink(),
+                        ),
                       ),
-                    ),
-                    if (privacy.locked)
-                      const Positioned.fill(
-                        child: PopScope(canPop: false, child: LockScreen()),
-                      ),
-                  ],
-                )
-              : child ?? const SizedBox.shrink(),
+                      if (privacy.locked)
+                        const Positioned.fill(
+                          child: PopScope(canPop: false, child: LockScreen()),
+                        ),
+                    ],
+                  )
+                : child ?? const SizedBox.shrink(),
+          ),
         );
       },
       home: privacy.locked && !Platform.isAndroid

@@ -1,3 +1,5 @@
+import '../shared/app_motion.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -11,6 +13,7 @@ Future<String?> editChecklistItem(
   required bool spellCheckEnabled,
 }) => showDialog<String>(
   context: context,
+  animationStyle: AppMotion.style(context),
   builder: (_) => _ChecklistItemEditorDialog(
     title: title,
     initialValue: initialValue,

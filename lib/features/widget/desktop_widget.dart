@@ -1,3 +1,5 @@
+import '../shared/scroll_edge_fade.dart';
+
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -187,7 +189,7 @@ class _DesktopWidgetHomeState extends ConsumerState<_DesktopWidgetHome>
               Expanded(
                 child: tasks.isEmpty
                     ? const Center(child: Text('No tasks for today or Inbox'))
-                    : ListView.builder(
+                    : FadingListView.builder(
                         itemCount: tasks.length,
                         itemBuilder: (context, index) {
                           final task = tasks[index];

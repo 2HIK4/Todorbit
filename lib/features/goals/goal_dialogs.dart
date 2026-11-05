@@ -1,3 +1,7 @@
+import '../shared/app_motion.dart';
+import '../shared/settings_section.dart';
+import '../shared/scroll_edge_fade.dart';
+
 import 'dart:convert';
 import 'dart:math' as math;
 
@@ -30,6 +34,11 @@ class _GoalEditorDialogState extends ConsumerState<GoalEditorDialog> {
   bool busy = false;
   bool saved = false;
   final guard = GlobalKey<UnsavedEditorGuardState>();
+  GoalLinks draftLinks = const GoalLinks(
+    taskIds: {},
+    projectIds: {},
+    habitIds: {},
+  );
   late String baseline;
 
   String get snapshot => jsonEncode([
@@ -39,6 +48,9 @@ class _GoalEditorDialogState extends ConsumerState<GoalEditorDialog> {
     unit.text,
     startDate,
     deadlineDate,
+    draftLinks.taskIds.toList()..sort(),
+    draftLinks.projectIds.toList()..sort(),
+    draftLinks.habitIds.toList()..sort(),
   ]);
 
   void _changed() => setState(() {});
@@ -107,7 +119,7 @@ class _GoalEditorDialogState extends ConsumerState<GoalEditorDialog> {
       );
       final controller = ref.read(appControllerProvider);
       if (widget.goal == null) {
-        await controller.addGoal(draft);
+        await controller.addGoal(draft, links: draftLinks);
       } else {
         await controller.updateGoal(widget.goal!, draft);
       }
@@ -144,7 +156,7 @@ class _GoalEditorDialogState extends ConsumerState<GoalEditorDialog> {
               ),
               const SizedBox(height: 8),
               Expanded(
-                child: ListView(
+                child: FadingListView(
                   key: const ValueKey('goal-editor-form-list'),
                   padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
                   children: [
@@ -155,13 +167,19 @@ class _GoalEditorDialogState extends ConsumerState<GoalEditorDialog> {
                       decoration: const InputDecoration(labelText: 'Title *'),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
-                      enabled: !busy,
-                      controller: description,
-                      maxLines: 2,
-                      decoration: const InputDecoration(
-                        labelText: 'Description',
-                      ),
+                    SettingsSection(
+                      title: 'Description',
+                      initiallyExpanded: description.text.isNotEmpty,
+                      children: [
+                        TextField(
+                          enabled: !busy,
+                          controller: description,
+                          maxLines: 2,
+                          decoration: const InputDecoration(
+                            labelText: 'Description',
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -215,6 +233,24 @@ class _GoalEditorDialogState extends ConsumerState<GoalEditorDialog> {
                           ),
                       ],
                     ),
+                    if (widget.goal == null)
+                      TextButton.icon(
+                        icon: const Icon(Icons.link),
+                        label: Text(
+                          'Link tasks, projects or habits (${draftLinks.taskIds.length + draftLinks.projectIds.length + draftLinks.habitIds.length})',
+                        ),
+                        onPressed: busy
+                            ? null
+                            : () => showDialog<void>(
+                                context: context,
+                                animationStyle: AppMotion.style(context),
+                                builder: (_) => GoalLinksDialog(
+                                  initialLinks: draftLinks,
+                                  onSelected: (links) =>
+                                      setState(() => draftLinks = links),
+                                ),
+                              ),
+                      ),
                     if (error != null)
                       Text(
                         error!,
@@ -421,8 +457,15 @@ class _GoalMilestoneDialogState extends ConsumerState<GoalMilestoneDialog> {
 }
 
 class GoalLinksDialog extends ConsumerStatefulWidget {
-  const GoalLinksDialog({super.key, required this.goal});
-  final Goal goal;
+  const GoalLinksDialog({
+    super.key,
+    this.goal,
+    this.initialLinks,
+    this.onSelected,
+  }) : assert(goal != null || onSelected != null);
+  final Goal? goal;
+  final GoalLinks? initialLinks;
+  final ValueChanged<GoalLinks>? onSelected;
   @override
   ConsumerState<GoalLinksDialog> createState() => _GoalLinksDialogState();
 }
@@ -457,9 +500,10 @@ class _GoalLinksDialogState extends ConsumerState<GoalLinksDialog> {
       error = null;
     });
     try {
-      final links = await ref
-          .read(appControllerProvider)
-          .goalLinks(widget.goal.id);
+      final links = widget.goal == null
+          ? widget.initialLinks ??
+                const GoalLinks(taskIds: {}, projectIds: {}, habitIds: {})
+          : await ref.read(appControllerProvider).goalLinks(widget.goal!.id);
       if (!mounted) return;
       setState(() {
         taskIds = {...links.taskIds};
@@ -486,16 +530,16 @@ class _GoalLinksDialogState extends ConsumerState<GoalLinksDialog> {
       error = null;
     });
     try {
-      await ref
-          .read(appControllerProvider)
-          .setGoalLinks(
-            widget.goal,
-            GoalLinks(
-              taskIds: taskIds,
-              projectIds: projectIds,
-              habitIds: habitIds,
-            ),
-          );
+      final links = GoalLinks(
+        taskIds: taskIds,
+        projectIds: projectIds,
+        habitIds: habitIds,
+      );
+      if (widget.goal == null) {
+        widget.onSelected!(links);
+      } else {
+        await ref.read(appControllerProvider).setGoalLinks(widget.goal!, links);
+      }
       if (mounted) {
         saved = true;
         await guard.currentState?.close(saved: true);
@@ -542,7 +586,7 @@ class _GoalLinksDialogState extends ConsumerState<GoalLinksDialog> {
                 Expanded(
                   child: loading
                       ? const Center(child: CircularProgressIndicator())
-                      : ListView(
+                      : FadingListView(
                           children: [
                             const Text(
                               'Each completed task and successful Yes/No habit day adds one unit. Tasks linked through a project count only once.',

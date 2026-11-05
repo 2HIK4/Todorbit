@@ -1,3 +1,5 @@
+import '../shared/scroll_edge_fade.dart';
+
 import 'package:flutter/material.dart';
 
 /// Bounded, scrollable startup content remains reachable before the app opens.
@@ -9,7 +11,7 @@ class StartupPage extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
     body: SafeArea(
       child: Center(
-        child: SingleChildScrollView(
+        child: FadingScrollView(
           padding: const EdgeInsets.all(24),
           child: SizedBox(
             width: 480,

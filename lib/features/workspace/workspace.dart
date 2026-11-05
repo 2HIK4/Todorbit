@@ -1,3 +1,9 @@
+import '../shared/app_motion.dart';
+import '../shared/item_filters.dart';
+import '../shared/scroll_edge_fade.dart';
+import '../../domain/task_list_projection.dart';
+import '../shared/task_list_group.dart';
+
 import 'dart:io';
 import 'dart:async';
 import 'dart:math' as math;
@@ -81,9 +87,11 @@ String _viewDescription(WorkspaceView view) => switch (view) {
 };
 
 class _WorkspaceState extends ConsumerState<Workspace> {
+  final categoryDisclosure = ExpansibleController();
   Future<void> _chooseCategoryEventColor(Category category) async {
     final selected = await showDialog<int>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => SimpleDialog(
         title: Text('Default event color for ${category.name}'),
         children: [
@@ -217,6 +225,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         if (!mounted || deferIfEditing(request)) return;
         await showDialog<void>(
           context: context,
+          animationStyle: AppMotion.style(context),
           builder: (_) => Dialog(
             child: SizedBox(
               width: 520,
@@ -266,7 +275,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   Future<void> _openTask(LifeTask task, bool wide) async {
     final controller = ref.read(appControllerProvider);
     if (wide && !creating && controller.selectedTaskId == task.id) return;
-    if (!await _prepareEditorChange()) return;
+    if (!await _prepareEditorChange() || !mounted) return;
     controller.select(task.id);
     if (!wide) await _showNarrowEditor(task);
   }
@@ -274,7 +283,6 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   DateTime? newTaskInitialDate;
   final nativeWidget = NativeWidgetService();
   Timer? _clock;
-  final Set<String> _expandedTaskIds = {};
 
   @override
   void initState() {
@@ -324,6 +332,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         if (!mounted) return;
         final review = await showDialog<bool>(
           context: context,
+          animationStyle: AppMotion.style(context),
           builder: (dialogContext) => AlertDialog(
             title: const Text('Older Life Manager data found'),
             content: const Text(
@@ -346,6 +355,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           if (service != null) {
             await showDialog<void>(
               context: context,
+              animationStyle: AppMotion.style(context),
               builder: (_) => BackupDialog(
                 service: service,
                 chooseImport: () async => legacyFile,
@@ -370,6 +380,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     try {
       await showDialog<void>(
         context: context,
+        animationStyle: AppMotion.style(context),
         builder: (_) => SettingsHubDialog(
           nativeWidget: nativeWidget,
           showDataProfile: _showDataProfile,
@@ -388,6 +399,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     try {
       await showDialog<void>(
         context: context,
+        animationStyle: AppMotion.style(context),
         builder: (_) => const ThemeDialog(),
       );
     } finally {
@@ -397,6 +409,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   @override
   void dispose() {
+    categoryDisclosure.dispose();
     _widgetSettingsController.dispose();
     HardwareKeyboard.instance.removeHandler(_handleHotkey);
     _clock?.cancel();
@@ -409,6 +422,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     if (!mounted) return;
     await showDialog<void>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => AlertDialog(
         title: const Text('Data profile'),
         content: SelectableText(
@@ -430,12 +444,13 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   }
 
   Future<void> _newTask() async {
-    if (!await _prepareEditorChange()) return;
+    if (!await _prepareEditorChange() || !mounted) return;
     ref.read(appControllerProvider).select(null);
     newTaskInitialDate = null;
     if (MediaQuery.sizeOf(context).width < 1050) {
       showDialog<void>(
         context: context,
+        animationStyle: AppMotion.style(context),
         builder: (dialogContext) => Dialog(
           child: SizedBox(
             width: math.min(520, MediaQuery.sizeOf(dialogContext).width - 48),
@@ -454,11 +469,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   }
 
   Future<void> _newTaskOn(DateTime date) async {
-    if (!await _prepareEditorChange()) return;
+    if (!await _prepareEditorChange() || !mounted) return;
     ref.read(appControllerProvider).select(null);
     if (MediaQuery.sizeOf(context).width < 1050) {
       showDialog<void>(
         context: context,
+        animationStyle: AppMotion.style(context),
         builder: (dialogContext) => Dialog(
           child: SizedBox(
             width: math.min(520, MediaQuery.sizeOf(dialogContext).width - 48),
@@ -503,6 +519,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     var name = initial;
     return showDialog<String>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => AlertDialog(
         title: Text(title),
         content: TextFormField(
@@ -534,6 +551,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   }) async {
     return await showDialog<bool>(
           context: context,
+          animationStyle: AppMotion.style(context),
           builder: (context) => AlertDialog(
             title: Text(title),
             content: Text(message),
@@ -560,6 +578,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     final controller = ref.read(appControllerProvider);
     await showDialog<bool>(
       context: context,
+      animationStyle: AppMotion.style(context),
       barrierDismissible: false,
       builder: (_) => SmartRescheduleDialog(
         scope: scope ?? _scheduleScope(controller),
@@ -576,26 +595,58 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   Future<void> _showHistory() => showDialog<void>(
     context: context,
+    animationStyle: AppMotion.style(context),
     builder: (_) => const ScheduleHistoryDialog(),
   );
 
-  Future<void> _showSearch() => showDialog<void>(
-    context: context,
-    builder: (_) => QuickSearchDialog(beforeNavigate: _prepareEditorChange),
-  );
+  Future<void> _openEventDetails(FixedEvent event) async {
+    if (!await _prepareEditorChange() || !mounted) return;
+    await showDialog<void>(
+      context: context,
+      animationStyle: AppMotion.style(context),
+      builder: (dialogContext) => Dialog(
+        child: SizedBox(
+          width: 600,
+          height: (MediaQuery.sizeOf(context).height - 64).clamp(240, 750),
+          child: EventEditor(
+            event: event,
+            initialDay: event.startsAt.toLocal(),
+            protectUnsavedEdits: true,
+            onClose: () => Navigator.pop(dialogContext),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showSearch() async {
+    FixedEvent? selected;
+    await showDialog<void>(
+      context: context,
+      animationStyle: AppMotion.style(context),
+      builder: (_) => QuickSearchDialog(
+        beforeNavigate: _prepareEditorChange,
+        onEventTap: (event) => selected = event,
+      ),
+    );
+    if (mounted && selected != null) await _openEventDetails(selected!);
+  }
 
   Future<void> _showTemplates() => showDialog<void>(
     context: context,
+    animationStyle: AppMotion.style(context),
     builder: (_) => TemplatesDialog(beforeNavigate: _prepareEditorChange),
   );
 
   Future<void> _showArchiveTrash() => showDialog<void>(
     context: context,
+    animationStyle: AppMotion.style(context),
     builder: (_) => const ArchiveTrashDialog(),
   );
 
   Future<void> _showAdvancedSearch([SavedView? savedView]) => showDialog<void>(
     context: context,
+    animationStyle: AppMotion.style(context),
     builder: (_) => AdvancedSearchDialog(
       savedView: savedView,
       beforeNavigate: _prepareEditorChange,
@@ -615,6 +666,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   Future<void> _showActiveTimer(String taskId) => showDialog<void>(
     context: context,
+    animationStyle: AppMotion.style(context),
     builder: (_) => TimeTrackingDialog(taskId: taskId),
   );
 
@@ -630,6 +682,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   Future<void> _quickStart(LifeTask task) async {
     final choice = await showDialog<String>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => AlertDialog(
         title: Text(
           task.status == TaskStatus.inProgress
@@ -702,6 +755,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       case HotkeyAction.settings:
         showDialog<void>(
           context: context,
+          animationStyle: AppMotion.style(context),
           builder: (_) => SettingsHubDialog(
             nativeWidget: nativeWidget,
             showDataProfile: _showDataProfile,
@@ -936,131 +990,91 @@ class _WorkspaceState extends ConsumerState<Workspace> {
             ),
           ),
           Expanded(
-            child: ListView(
+            child: FadingListView(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               children: [
-                for (final view in controller.sidebarOrder)
+                for (final view in controller.sidebarOrder.where(
+                  (v) => !controller.hiddenNavigation.contains(v.name),
+                ))
                   _nav(controller, view, sidebarName(view), sidebarIcon(view)),
                 const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 12),
-                        child: Semantics(
-                          header: true,
-                          child: Text(
-                            'Categories',
-                            style: Theme.of(context).textTheme.titleSmall,
+                ExpansionTile(
+                  key: const PageStorageKey('sidebar-categories'),
+                  controller: categoryDisclosure,
+                  tilePadding: EdgeInsets.zero,
+                  initiallyExpanded: controller.categoriesExpanded,
+                  onExpansionChanged: (expanded) {
+                    if (expanded != controller.categoriesExpanded) {
+                      _run(
+                        () => controller.setNavigationState(expanded: expanded),
+                      );
+                    }
+                  },
+                  title: Row(
+                    children: [
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 12),
+                          child: Semantics(
+                            header: true,
+                            child: Text(
+                              'Categories (${controller.categories.length})',
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    IconButton(
-                      tooltip: 'Add category',
-                      icon: const Icon(Icons.add, size: 19),
-                      onPressed: () async {
-                        final name = await _nameDialog('New category');
-                        if (name != null && name.isNotEmpty) {
-                          _run(() => controller.addCategory(name));
-                        }
-                      },
-                    ),
-                  ],
-                ),
-                if (controller.categories.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 2, 8, 10),
-                    child: Text(
-                      'Organize tasks with categories',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-                for (final category in controller.categories) ...[
-                  _nav(
-                    controller,
-                    WorkspaceView.category,
-                    category.name,
-                    iconForKey(
-                      controller.iconKeys['category:${category.id}'],
-                      Icons.folder_outlined,
-                    ),
-                    id: category.id,
-                    trailing: PopupMenuButton<String>(
-                      tooltip: 'Category actions',
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(
-                          value: 'project',
-                          child: Text('Add project'),
-                        ),
-                        PopupMenuItem(value: 'rename', child: Text('Rename')),
-                        PopupMenuItem(
-                          value: 'event-color',
-                          child: Text('Default event color'),
-                        ),
-                        PopupMenuItem(
-                          value: 'icon',
-                          child: Text('Change icon'),
-                        ),
-                        PopupMenuItem(value: 'delete', child: Text('Delete')),
-                      ],
-                      onSelected: (action) async {
-                        if (action == 'project') {
-                          final name = await _nameDialog('New project');
+                      IconButton(
+                        tooltip: 'Add category',
+                        icon: const Icon(Icons.add, size: 19),
+                        onPressed: () async {
+                          final name = await _nameDialog('New category');
                           if (name != null && name.isNotEmpty) {
-                            _run(
-                              () => controller.addProject(category.id, name),
-                            );
+                            await _run(() async {
+                              await controller.addCategory(name);
+                              await controller.setNavigationState(
+                                expanded: true,
+                              );
+                              if (mounted) categoryDisclosure.expand();
+                            });
                           }
-                        } else if (action == 'icon') {
-                          await _changeIcon('category', category.id);
-                        } else if (action == 'event-color') {
-                          await _chooseCategoryEventColor(category);
-                        } else if (action == 'rename') {
-                          final name = await _nameDialog(
-                            'Rename category',
-                            initial: category.name,
-                          );
-                          if (name != null && name.isNotEmpty) {
-                            _run(
-                              () =>
-                                  controller.renameCategory(category.id, name),
-                            );
-                          }
-                        } else if (await _confirm(
-                              'Delete category?',
-                              'Move this category to Trash? Its projects and tasks will be hidden until restored.',
-                            ) &&
-                            await _prepareEditorChange()) {
-                          _run(() => controller.deleteCategory(category.id));
-                        }
-                      },
-                    ),
+                        },
+                      ),
+                    ],
                   ),
-                  for (final project in controller.projects.where(
-                    (p) => p.categoryId == category.id,
-                  ))
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16),
-                      child: _nav(
+                  children: [
+                    if (controller.categories.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 2, 8, 10),
+                        child: Text(
+                          'Organize tasks with categories',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    for (final category in controller.categories) ...[
+                      _nav(
                         controller,
-                        WorkspaceView.project,
-                        project.name,
+                        WorkspaceView.category,
+                        category.name,
                         iconForKey(
-                          controller.iconKeys['project:${project.id}'],
-                          Icons.segment_outlined,
+                          controller.iconKeys['category:${category.id}'],
+                          Icons.folder_outlined,
                         ),
-                        id: project.id,
+                        id: category.id,
                         trailing: PopupMenuButton<String>(
-                          tooltip: 'Project actions',
+                          tooltip: 'Category actions',
                           itemBuilder: (_) => const [
                             PopupMenuItem(
-                              value: 'template',
-                              child: Text('Save as template'),
+                              value: 'project',
+                              child: Text('Add project'),
                             ),
                             PopupMenuItem(
                               value: 'rename',
                               child: Text('Rename'),
+                            ),
+                            PopupMenuItem(
+                              value: 'event-color',
+                              child: Text('Default event color'),
                             ),
                             PopupMenuItem(
                               value: 'icon',
@@ -1072,42 +1086,116 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                             ),
                           ],
                           onSelected: (action) async {
-                            if (action == 'template') {
-                              await showSaveTemplateDialog(
-                                context,
-                                sourceName: project.name,
-                                save: (name) => controller.saveProjectTemplate(
-                                  project,
-                                  name,
-                                ),
-                              );
+                            if (action == 'project') {
+                              final name = await _nameDialog('New project');
+                              if (name != null && name.isNotEmpty) {
+                                _run(
+                                  () =>
+                                      controller.addProject(category.id, name),
+                                );
+                              }
                             } else if (action == 'icon') {
-                              await _changeIcon('project', project.id);
+                              await _changeIcon('category', category.id);
+                            } else if (action == 'event-color') {
+                              await _chooseCategoryEventColor(category);
                             } else if (action == 'rename') {
                               final name = await _nameDialog(
-                                'Rename project',
-                                initial: project.name,
+                                'Rename category',
+                                initial: category.name,
                               );
                               if (name != null && name.isNotEmpty) {
                                 _run(
-                                  () => controller.renameProject(
-                                    project.id,
+                                  () => controller.renameCategory(
+                                    category.id,
                                     name,
                                   ),
                                 );
                               }
                             } else if (await _confirm(
-                                  'Delete project?',
-                                  'Move this project to Trash? Its tasks will be hidden until restored.',
+                                  'Delete category?',
+                                  'Move this category to Trash? Its projects and tasks will be hidden until restored.',
                                 ) &&
                                 await _prepareEditorChange()) {
-                              _run(() => controller.deleteProject(project.id));
+                              _run(
+                                () => controller.deleteCategory(category.id),
+                              );
                             }
                           },
                         ),
                       ),
-                    ),
-                ],
+                      for (final project in controller.projects.where(
+                        (p) => p.categoryId == category.id,
+                      ))
+                        Padding(
+                          padding: const EdgeInsets.only(left: 16),
+                          child: _nav(
+                            controller,
+                            WorkspaceView.project,
+                            project.name,
+                            iconForKey(
+                              controller.iconKeys['project:${project.id}'],
+                              Icons.segment_outlined,
+                            ),
+                            id: project.id,
+                            trailing: PopupMenuButton<String>(
+                              tooltip: 'Project actions',
+                              itemBuilder: (_) => const [
+                                PopupMenuItem(
+                                  value: 'template',
+                                  child: Text('Save as template'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'rename',
+                                  child: Text('Rename'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'icon',
+                                  child: Text('Change icon'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'delete',
+                                  child: Text('Delete'),
+                                ),
+                              ],
+                              onSelected: (action) async {
+                                if (action == 'template') {
+                                  await showSaveTemplateDialog(
+                                    context,
+                                    sourceName: project.name,
+                                    save: (name) => controller
+                                        .saveProjectTemplate(project, name),
+                                  );
+                                } else if (action == 'icon') {
+                                  await _changeIcon('project', project.id);
+                                } else if (action == 'rename') {
+                                  final name = await _nameDialog(
+                                    'Rename project',
+                                    initial: project.name,
+                                  );
+                                  if (name != null && name.isNotEmpty) {
+                                    _run(
+                                      () => controller.renameProject(
+                                        project.id,
+                                        name,
+                                      ),
+                                    );
+                                  }
+                                } else if (await _confirm(
+                                      'Delete project?',
+                                      'Move this project to Trash? Its tasks will be hidden until restored.',
+                                    ) &&
+                                    await _prepareEditorChange()) {
+                                  _run(
+                                    () => controller.deleteProject(project.id),
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                    ],
+                  ],
+                ),
                 const SizedBox(height: 18),
                 Row(
                   children: [
@@ -1128,6 +1216,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                       tooltip: 'Create saved view',
                       onPressed: () => showDialog<void>(
                         context: context,
+                        animationStyle: AppMotion.style(context),
                         builder: (_) => AdvancedSearchDialog(
                           creatingSavedView: true,
                           beforeNavigate: _prepareEditorChange,
@@ -1137,7 +1226,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     ),
                   ],
                 ),
-                for (final savedView in controller.savedViews)
+                for (final savedView in controller.orderedSavedViews.where(
+                  (v) => !controller.hiddenNavigation.contains(v.id),
+                ))
                   _nav(
                     controller,
                     WorkspaceView.saved,
@@ -1161,18 +1252,20 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                           : _deleteSavedView(savedView),
                     ),
                   ),
-                _nav(
-                  controller,
-                  WorkspaceView.reports,
-                  'Reports',
-                  Icons.bar_chart_outlined,
-                ),
-                _nav(
-                  controller,
-                  WorkspaceView.contributors,
-                  'Contributors',
-                  Icons.groups_outlined,
-                ),
+                if (!controller.hiddenNavigation.contains('reports'))
+                  _nav(
+                    controller,
+                    WorkspaceView.reports,
+                    'Reports',
+                    Icons.bar_chart_outlined,
+                  ),
+                if (!controller.hiddenNavigation.contains('contributors'))
+                  _nav(
+                    controller,
+                    WorkspaceView.contributors,
+                    'Contributors',
+                    Icons.groups_outlined,
+                  ),
               ],
             ),
           ),
@@ -1208,6 +1301,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   tooltip: 'Task sequences',
                   onPressed: () => showDialog<void>(
                     context: context,
+                    animationStyle: AppMotion.style(context),
                     builder: (_) => const SequenceDialog(),
                   ),
                   icon: const Icon(Icons.format_list_numbered),
@@ -1285,6 +1379,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => showDialog<void>(
                 context: context,
+                animationStyle: AppMotion.style(context),
                 builder: (_) => SettingsHubDialog(
                   nativeWidget: nativeWidget,
                   showDataProfile: _showDataProfile,
@@ -1360,15 +1455,25 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         },
       );
     }
-    final activeIds = controller.tasks.map((task) => task.id).toSet();
-    final items = controller.visibleTasks.where((task) {
-      final parentId = controller.taskParents[task.id];
-      return parentId == null || activeIds.contains(parentId);
-    }).toList();
-    final itemIds = items.map((task) => task.id).toSet();
-    final roots = items
-        .where((task) => !itemIds.contains(controller.taskParents[task.id]))
-        .toList();
+    final items = controller.visibleTasks;
+    final roots = projectTaskList(
+      items,
+      controller.taskParents,
+      groupRecurrence: controller.view == WorkspaceView.all,
+      relatedOccurrences:
+          controller.view == WorkspaceView.all &&
+              !controller.activeFilter.isActive
+          ? controller.tasks
+          : const [],
+    );
+    final scopedEvents =
+        {
+          WorkspaceView.project,
+          WorkspaceView.category,
+          WorkspaceView.saved,
+        }.contains(controller.view)
+        ? controller.filteredEvents.where((event) => !event.cancelled).toList()
+        : <FixedEvent>[];
     final today = localDate(DateTime.now());
     final todayStart = DateTime.now();
     final dayStart = DateTime(
@@ -1377,7 +1482,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       todayStart.day,
     );
     final dayEnd = dayStart.add(const Duration(days: 1));
-    final todayEvents = controller.events.where((event) {
+    final todayEvents = controller.filteredEvents.where((event) {
       final start = event.startsAt.toLocal();
       final end = event.endsAt.toLocal();
       return !event.cancelled &&
@@ -1431,224 +1536,266 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 ?.name ??
             'Project',
     };
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(28, 26, 24, 16),
-          child: LayoutBuilder(
-            builder: (context, constraints) => Wrap(
-              crossAxisAlignment: WrapCrossAlignment.center,
-              runSpacing: 6,
+    return ScrollEdgeFade(
+      child: CustomScrollView(
+        key: PageStorageKey(
+          'task-list:${controller.view.name}:${controller.scopeId}',
+        ),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SizedBox(
-                  width: constraints.maxWidth < 700
-                      ? constraints.maxWidth
-                      : math.max(180, constraints.maxWidth - 430),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        '${items.length} ${items.length == 1 ? 'task' : 'tasks'}',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(28, 26, 24, 16),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      runSpacing: 6,
+                      children: [
+                        SizedBox(
+                          width: constraints.maxWidth < 700
+                              ? constraints.maxWidth
+                              : math.max(180, constraints.maxWidth - 430),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineMedium
+                                    ?.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                '${items.length} ${items.length == 1 ? 'task' : 'tasks'}',
+                                style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                        AboutViewButton(
+                          description: _viewDescription(controller.view),
+                        ),
+                        PopupMenuButton<TaskSort>(
+                          tooltip: 'Sort tasks',
+                          onSelected: controller.setSort,
+                          itemBuilder: (_) => const [
+                            PopupMenuItem(
+                              value: TaskSort.schedule,
+                              child: Text('Scheduled date'),
+                            ),
+                            PopupMenuItem(
+                              value: TaskSort.priority,
+                              child: Text('Priority'),
+                            ),
+                            PopupMenuItem(
+                              value: TaskSort.title,
+                              child: Text('Title'),
+                            ),
+                            PopupMenuItem(
+                              value: TaskSort.created,
+                              child: Text('Newest first'),
+                            ),
+                          ],
+                          icon: const Icon(Icons.sort),
+                        ),
+                        IconButton(
+                          key: const ValueKey('schedule-history-button'),
+                          tooltip: 'Schedule History',
+                          onPressed: _showHistory,
+                          style: ButtonStyle(
+                            foregroundColor: WidgetStateProperty.resolveWith((
+                              states,
+                            ) {
+                              if (states.contains(WidgetState.disabled)) {
+                                return Theme.of(context).colorScheme.onSurface
+                                    .withValues(alpha: 0.38);
+                              }
+                              return Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant;
+                            }),
+                            overlayColor: WidgetStateProperty.resolveWith((
+                              states,
+                            ) {
+                              if (states.contains(WidgetState.hovered)) {
+                                return Theme.of(context).colorScheme.onSurface
+                                    .withValues(alpha: 0.08);
+                              }
+                              if (states.contains(WidgetState.focused) ||
+                                  states.contains(WidgetState.pressed)) {
+                                return Theme.of(context).colorScheme.onSurface
+                                    .withValues(alpha: 0.12);
+                              }
+                              return null;
+                            }),
+                          ),
+                          icon: const Icon(
+                            Icons.restore_rounded,
+                            semanticLabel: 'Schedule History',
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: items.any((task) => task.isOpen)
+                              ? () => _showSmart()
+                              : null,
+                          icon: const Icon(Icons.auto_fix_high),
+                          label: const Text('Reschedule'),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.icon(
+                          onPressed: _newTask,
+                          icon: const Icon(Icons.add),
+                          label: const Text('New task'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                AboutViewButton(description: _viewDescription(controller.view)),
-                PopupMenuButton<TaskSort>(
-                  tooltip: 'Sort tasks',
-                  onSelected: controller.setSort,
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(
-                      value: TaskSort.schedule,
-                      child: Text('Scheduled date'),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
+                  child: ItemFilters(),
+                ),
+                if ({
+                  WorkspaceView.project,
+                  WorkspaceView.category,
+                  WorkspaceView.saved,
+                }.contains(controller.view))
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 0, 24, 12),
+                    child: Text(
+                      'Events: ${controller.eventWindowLabel}',
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
-                    PopupMenuItem(
-                      value: TaskSort.priority,
-                      child: Text('Priority'),
+                  ),
+                if (controller.view == WorkspaceView.today)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 0, 24, 16),
+                    child: Wrap(
+                      spacing: 10,
+                      runSpacing: 8,
+                      children: [
+                        Chip(
+                          avatar: const Icon(Icons.today, size: 17),
+                          label: Text('$today · ${items.length} planned tasks'),
+                        ),
+                        ActionChip(
+                          avatar: const Icon(Icons.event_outlined, size: 17),
+                          label: Text('$todayEvents events'),
+                          onPressed: () => _navigate(WorkspaceView.calendar),
+                        ),
+                        ActionChip(
+                          avatar: const Icon(Icons.schedule_outlined, size: 17),
+                          label: Text('$todaySessions work sessions'),
+                          onPressed: () => _navigate(WorkspaceView.calendar),
+                        ),
+                        if (overdueCount > 0)
+                          ActionChip(
+                            avatar: const Icon(
+                              Icons.warning_amber_rounded,
+                              size: 17,
+                            ),
+                            label: Text(
+                              '$overdueCount overdue deadline${overdueCount == 1 ? '' : 's'}',
+                            ),
+                            onPressed: () => _navigate(WorkspaceView.overdue),
+                          ),
+                        if (controller.goals.any(
+                          (goal) =>
+                              !goal.archived &&
+                              !goal.completed &&
+                              goal.deadlineDate != null &&
+                              goal.deadlineDate!.compareTo(
+                                    RecurrenceRule.shiftDate(today, 7),
+                                  ) <=
+                                  0,
+                        ))
+                          ActionChip(
+                            avatar: const Icon(Icons.flag_outlined, size: 17),
+                            label: const Text('Goals due soon'),
+                            onPressed: () => _navigate(WorkspaceView.goals),
+                          ),
+                      ],
                     ),
-                    PopupMenuItem(value: TaskSort.title, child: Text('Title')),
-                    PopupMenuItem(
-                      value: TaskSort.created,
-                      child: Text('Newest first'),
+                  ),
+              ],
+            ),
+          ),
+          if (items.isEmpty && scopedEvents.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.task_alt_outlined,
+                      size: 42,
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      controller.activeFilter.isActive
+                          ? 'No matching items'
+                          : controller.view == WorkspaceView.today
+                          ? 'No tasks planned for today'
+                          : 'Nothing here yet',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      controller.activeFilter.isActive
+                          ? 'Change filters or clear them to see more items.'
+                          : controller.view == WorkspaceView.today
+                          ? 'Add a task or review today’s calendar.'
+                          : 'Create a task or choose another view.',
                     ),
                   ],
-                  icon: const Icon(Icons.sort),
                 ),
-                IconButton(
-                  key: const ValueKey('schedule-history-button'),
-                  tooltip: 'Schedule History',
-                  onPressed: _showHistory,
-                  style: ButtonStyle(
-                    foregroundColor: WidgetStateProperty.resolveWith((states) {
-                      if (states.contains(WidgetState.disabled)) {
-                        return Theme.of(context).colorScheme.onSurface
-                            .withValues(alpha: 0.38);
-                      }
-                      return Theme.of(context).colorScheme.onSurfaceVariant;
-                    }),
-                    overlayColor: WidgetStateProperty.resolveWith((states) {
-                      if (states.contains(WidgetState.hovered)) {
-                        return Theme.of(context).colorScheme.onSurface
-                            .withValues(alpha: 0.08);
-                      }
-                      if (states.contains(WidgetState.focused) ||
-                          states.contains(WidgetState.pressed)) {
-                        return Theme.of(context).colorScheme.onSurface
-                            .withValues(alpha: 0.12);
-                      }
-                      return null;
-                    }),
-                  ),
-                  icon: const Icon(
-                    Icons.restore_rounded,
-                    semanticLabel: 'Schedule History',
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: items.any((task) => task.isOpen)
-                      ? () => _showSmart()
-                      : null,
-                  icon: const Icon(Icons.auto_fix_high),
-                  label: const Text('Reschedule'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton.icon(
-                  onPressed: _newTask,
-                  icon: const Icon(Icons.add),
-                  label: const Text('New task'),
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (controller.view == WorkspaceView.today)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(28, 0, 24, 16),
-            child: Wrap(
-              spacing: 10,
-              runSpacing: 8,
-              children: [
-                Chip(
-                  avatar: const Icon(Icons.today, size: 17),
-                  label: Text('$today · ${items.length} planned tasks'),
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.event_outlined, size: 17),
-                  label: Text('$todayEvents events'),
-                  onPressed: () => _navigate(WorkspaceView.calendar),
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.schedule_outlined, size: 17),
-                  label: Text('$todaySessions work sessions'),
-                  onPressed: () => _navigate(WorkspaceView.calendar),
-                ),
-                if (overdueCount > 0)
-                  ActionChip(
-                    avatar: const Icon(Icons.warning_amber_rounded, size: 17),
-                    label: Text(
-                      '$overdueCount overdue deadline${overdueCount == 1 ? '' : 's'}',
-                    ),
-                    onPressed: () => _navigate(WorkspaceView.overdue),
-                  ),
-                if (controller.goals.any(
-                  (goal) =>
-                      !goal.archived &&
-                      !goal.completed &&
-                      goal.deadlineDate != null &&
-                      goal.deadlineDate!.compareTo(
-                            RecurrenceRule.shiftDate(today, 7),
-                          ) <=
-                          0,
-                ))
-                  ActionChip(
-                    avatar: const Icon(Icons.flag_outlined, size: 17),
-                    label: const Text('Goals due soon'),
-                    onPressed: () => _navigate(WorkspaceView.goals),
-                  ),
-              ],
-            ),
-          ),
-        Expanded(
-          child: items.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.task_alt_outlined,
-                        size: 42,
-                        color: Theme.of(context).colorScheme.outline,
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+              sliver: SliverList.builder(
+                itemCount: roots.length + scopedEvents.length,
+                itemBuilder: (context, index) {
+                  if (index < scopedEvents.length) {
+                    final event = scopedEvents[index];
+                    return Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.event_outlined),
+                        title: Text(event.title),
+                        subtitle: Text(localDate(event.startsAt.toLocal())),
+                        onTap: () => _openEventDetails(event),
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                        controller.view == WorkspaceView.today
-                            ? 'No tasks planned for today'
-                            : 'Nothing here yet',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        controller.view == WorkspaceView.today
-                            ? 'Add a task or review today’s calendar.'
-                            : 'Create a task or choose another view.',
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                  itemCount: roots.length,
-                  itemBuilder: (context, index) {
-                    final task = roots[index];
-                    final children = controller.tasks
-                        .where(
-                          (child) =>
-                              controller.taskParents[child.id] == task.id,
-                        )
-                        .toList();
-                    final expanded = _expandedTaskIds.contains(task.id);
-                    return Column(
-                      children: [
-                        _taskRow(
-                          controller,
-                          task,
-                          wide,
-                          childCount: children.length,
-                          expanded: expanded,
-                        ),
-                        if (expanded)
-                          for (final child in children)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 26),
-                              child: _taskRow(controller, child, wide),
-                            ),
-                      ],
                     );
-                  },
-                ),
-        ),
-      ],
+                  }
+                  return TaskListGroupView(
+                    group: roots[index - scopedEvents.length],
+                    items: items,
+                    parents: controller.taskParents,
+                    row: (task) => _taskRow(controller, task, wide),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
     );
   }
 
-  Widget _taskRow(
-    AppController controller,
-    LifeTask task,
-    bool wide, {
-    int childCount = 0,
-    bool expanded = false,
-  }) {
+  Widget _taskRow(AppController controller, LifeTask task, bool wide) {
     final scheme = Theme.of(context).colorScheme;
+    final childCount = controller.taskParents.values
+        .where((id) => id == task.id)
+        .length;
     final done = task.status == TaskStatus.completed;
     final focusActive = controller.activeTimer?.taskId == task.id;
     final unmetPrerequisites = controller.unmetPrerequisites(task.id);
@@ -1670,20 +1817,6 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Row(
             children: [
-              if (childCount > 0)
-                IconButton(
-                  tooltip: expanded ? 'Collapse subtasks' : 'Expand subtasks',
-                  onPressed: () => setState(() {
-                    if (expanded) {
-                      _expandedTaskIds.remove(task.id);
-                    } else {
-                      _expandedTaskIds.add(task.id);
-                    }
-                  }),
-                  icon: Icon(
-                    expanded ? Icons.expand_more : Icons.chevron_right,
-                  ),
-                ),
               Tooltip(
                 message: done ? 'Reopen task' : 'Complete task',
                 child: Checkbox(
@@ -1909,6 +2042,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   Future<void> _showNarrowEditor(LifeTask task) async {
     await showDialog<void>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => Dialog(
         child: SizedBox(
           width: math.min(520, MediaQuery.sizeOf(context).width - 48),

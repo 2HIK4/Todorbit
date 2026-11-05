@@ -1,3 +1,7 @@
+import '../shared/scroll_edge_fade.dart';
+import '../shared/app_motion.dart';
+import '../shared/item_filters.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -99,6 +103,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
   Future<void> _editEvent([FixedEvent? event, DateTime? initialDate]) async {
     await showDialog<void>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => Dialog(
         child: SizedBox(
           width: 500,
@@ -145,6 +150,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
         .clamp(0.0, size.height - 16);
     await showDialog<void>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (popupContext) => Dialog(
         child: SizedBox(
           width: (size.width - 16).clamp(0.0, 350.0),
@@ -160,7 +166,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                 ),
               ),
               Expanded(
-                child: ListView(
+                child: FadingListView(
                   children: [
                     for (final entry in entries)
                       ListTile(
@@ -250,6 +256,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
   Future<void> _editSession([WorkSession? session]) async {
     await showDialog<void>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => Dialog(
         child: SizedBox(
           width: 460,
@@ -292,6 +299,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                 },
                 child: const Text('Today'),
               ),
+              const ItemFilters(),
               IconButton(
                 tooltip: 'Previous period',
                 onPressed: () => _move(-1),
@@ -417,7 +425,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
 
   Widget _dayList(AppController controller, DateTime date) {
     final entries = _entries(controller, date);
-    return ListView(
+    return FadingListView(
       padding: const EdgeInsets.all(20),
       children: [
         if (entries.isEmpty)
@@ -458,7 +466,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
     builder: (context, bounds) {
       if (bounds.maxWidth <
           650 * MediaQuery.textScalerOf(context).scale(14) / 14) {
-        return ListView(
+        return FadingListView(
           children: List.generate(7, (index) {
             final date = DateTime(
               weekStart.year,
@@ -536,7 +544,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                       ),
                     ),
                     Expanded(
-                      child: ListView(
+                      child: FadingListView(
                         children: entries
                             .map((entry) => _entryTile(entry, compact: true))
                             .toList(),
@@ -670,7 +678,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
     final key = localDate(date);
     final list = <_CalendarEntry>[];
     if (controller.calendarContent != CalendarContent.tasksOnly) {
-      for (final event in controller.events) {
+      for (final event in controller.filteredEvents) {
         final start = event.startsAt.toLocal();
         final end = event.endsAt.toLocal();
         final dayStart = DateTime(date.year, date.month, date.day);
@@ -692,7 +700,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
       }
     }
     if (controller.calendarContent != CalendarContent.eventsOnly) {
-      for (final task in controller.tasks) {
+      for (final task in controller.filteredTasks) {
         final parentId = controller.taskParents[task.id];
         final parent = controller.tasks
             .where((item) => item.id == parentId)
@@ -718,7 +726,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
           );
         }
       }
-      for (final session in controller.sessions) {
+      for (final session in controller.filteredSessions) {
         final start = session.startsAt.toLocal();
         final end = session.endsAt.toLocal();
         final dayStart = DateTime(date.year, date.month, date.day);
@@ -1014,7 +1022,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
               other.endsAt.isAfter(event.startsAt),
         )
         .length;
-    final sessions = controller.sessions
+    final sessions = controller.filteredSessions
         .where(
           (session) =>
               session.outcome != SessionOutcome.skipped &&

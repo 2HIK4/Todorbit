@@ -1,3 +1,6 @@
+import '../shared/scroll_edge_fade.dart';
+import '../shared/app_motion.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -42,7 +45,7 @@ class ContributorsView extends StatelessWidget {
         } else if (snapshot.hasError) {
           error = '${snapshot.error}';
         }
-        return ListView(
+        return FadingListView(
           padding: const EdgeInsets.all(28),
           children: [
             Text(
@@ -122,6 +125,7 @@ class ContributorsView extends StatelessWidget {
             TextButton.icon(
               onPressed: () => showDialog<void>(
                 context: context,
+                animationStyle: AppMotion.style(context),
                 builder: (context) => AlertDialog(
                   title: const Text('How to contribute'),
                   content: const Text(

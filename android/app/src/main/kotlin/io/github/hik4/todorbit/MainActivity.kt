@@ -87,6 +87,18 @@ class MainActivity : FlutterActivity() {
                 "googleCancel" -> { googleResult?.error("canceled","Google authorization canceled",null); googleResult=null; result.success(null) }
                 "googleDisconnect" -> { googleToken?.let {Identity.getAuthorizationClient(this).clearToken(ClearTokenRequest.builder().setToken(it).build())}; googleToken=null; result.success(null) }
                 "importDocument" -> document(result, null, call.arguments as? String ?: "*/*", null)
+                "releaseImportedDocument" -> {
+                    try {
+                        val file=File(call.arguments as String).canonicalFile
+                        val imports=File(cacheDir,"imports").canonicalFile
+                        val parent=file.parentFile
+                        require(parent != null && parent.parentFile==imports)
+                        UUID.fromString(parent.name)
+                        if(file.exists()) check(file.isFile && file.delete())
+                        if(parent.listFiles()?.isEmpty()==true) parent.delete()
+                        result.success(null)
+                    } catch (_: Exception) { result.error("document","Temporary import could not be released",null) }
+                }
                 "openPrivateFile" -> {
                     try {
                         val file=File(call.arguments as String).canonicalFile

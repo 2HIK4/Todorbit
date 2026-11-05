@@ -1,3 +1,6 @@
+import '../shared/scroll_edge_fade.dart';
+import '../shared/app_motion.dart';
+
 import 'dart:async';
 import 'dart:io';
 
@@ -180,6 +183,7 @@ class _AndroidSoftwareUpdatesPageState
       if (!mounted) return;
       final allow = await showDialog<bool>(
         context: context,
+        animationStyle: AppMotion.style(context),
         builder: (context) => AlertDialog(
           title: const Text('Allow updates from Todorbit'),
           content: const Text(
@@ -232,7 +236,7 @@ class _AndroidSoftwareUpdatesPageState
       appBar: AppBar(title: const Text('Software Updates')),
       body: SafeArea(
         top: false,
-        child: ListView(
+        child: FadingListView(
           padding: const EdgeInsets.all(16),
           children: [
             Text(

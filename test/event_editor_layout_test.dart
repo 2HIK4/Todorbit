@@ -1,3 +1,5 @@
+import 'support/editor_disclosure.dart';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -53,8 +55,15 @@ void main() {
           tester.getTopLeft(find.text('Title *')).dy,
           greaterThan(tester.getTopLeft(find.byType(Dialog)).dy),
         );
+        await tester.enterText(title, 'Lecture');
+        await expandEditorSection(
+          tester,
+          'Organization and appearance',
+          editor: EventEditor,
+        );
         final trigger = find.byTooltip('Choose category');
         await tester.ensureVisible(trigger);
+        await tester.pumpAndSettle();
         await tester.tap(trigger);
         await tester.pumpAndSettle();
         expect(
@@ -66,6 +75,7 @@ void main() {
         await tester.tap(find.widgetWithText(PopupMenuItem<String>, 'Class'));
         await tester.pumpAndSettle();
         expect(find.text('Class'), findsOneWidget);
+        await expandEditorSection(tester, 'Details', editor: EventEditor);
         await tester.tap(find.byTooltip('Add detail'));
         await tester.pumpAndSettle();
         await tester.tap(find.widgetWithText(PopupMenuItem<String>, 'Room'));
@@ -74,7 +84,6 @@ void main() {
           find.widgetWithText(TextFormField, 'Room'),
           'Room 204',
         );
-        await tester.enterText(title, 'Lecture');
         await tester.ensureVisible(find.text('Save event'));
         await tester.tap(find.text('Save event'));
         await tester.pumpAndSettle();

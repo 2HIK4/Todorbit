@@ -1,3 +1,7 @@
+import '../shared/app_motion.dart';
+import '../shared/settings_section.dart';
+import '../shared/scroll_edge_fade.dart';
+
 import 'dart:async';
 import 'dart:io';
 
@@ -19,9 +23,7 @@ import '../settings/notification_dialog.dart';
 import '../shared/sidebar_items.dart';
 import '../shared/anchored_select_field.dart';
 import '../shared/weekdays.dart';
-import '../support/support_button.dart';
 import '../contributors/contributors_view.dart';
-import 'mobile_ui.dart';
 import '../workspace/windows_resource_dialog.dart';
 
 class MobileSettings extends ConsumerStatefulWidget {
@@ -43,27 +45,12 @@ class _MobileSettingsState extends ConsumerState<MobileSettings>
   late MobilePreferences preferences = widget.preferences;
   bool? notifications;
   bool saving = false;
-  bool supportAvailable = !Platform.isAndroid;
-
-  Future<void> loadDistribution() async {
-    try {
-      final info = await AndroidPlatform.channel
-          .invokeMapMethod<String, dynamic>('updateInfo');
-      if (mounted) {
-        setState(() => supportAvailable = info?['distribution'] == 'github');
-      }
-    } catch (_) {
-      /* Unknown/store builds keep the non-payment support entry. */
-    }
-  }
-
   @override
   void initState() {
     super.initState();
     if (Platform.isAndroid) {
       WidgetsBinding.instance.addObserver(this);
       unawaited(run(refreshPermissions));
-      unawaited(loadDistribution());
     }
   }
 
@@ -112,8 +99,11 @@ class _MobileSettingsState extends ConsumerState<MobileSettings>
     }
   }
 
-  Future<void> show(Widget child) =>
-      showDialog<void>(context: context, builder: (_) => child);
+  Future<void> show(Widget child) => showDialog<void>(
+    context: context,
+    animationStyle: AppMotion.style(context),
+    builder: (_) => child,
+  );
 
   Future<void> navigation() async {
     var draft = List.of(preferences.destinations);
@@ -200,279 +190,294 @@ class _MobileSettingsState extends ConsumerState<MobileSettings>
       appBar: AppBar(title: const Text('Settings')),
       body: SafeArea(
         top: false,
-        child: ListView(
+        child: FadingListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
-            const MobileSectionTitle(
-              'Appearance',
-              subtitle: 'Make Todorbit feel at home',
-            ),
-            AnchoredSelectField<ThemeModePreference>(
-              isExpanded: true,
-              initialValue: c.theme,
-              decoration: const InputDecoration(labelText: 'Theme'),
-              items: [
-                for (final t in ThemeModePreference.values)
-                  DropdownMenuItem(
-                    value: t,
-                    child: Text(
-                      t == ThemeModePreference.system
-                          ? 'Follow system'
-                          : t.name,
-                    ),
-                  ),
-              ],
-              onChanged: (v) {
-                if (v != null) run(() => c.setTheme(v));
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.palette_outlined),
-              title: const Text('Colors and custom themes'),
-              onTap: () => show(const ThemeDialog()),
-            ),
-            ListTile(
-              leading: const Icon(Icons.checklist),
-              title: const Text('Task display and defaults'),
-              onTap: () => show(const TaskViewSettingsDialog()),
-            ),
-            const MobileSectionTitle('Planning and navigation'),
-            ListTile(
-              leading: const Icon(Icons.navigation_outlined),
-              title: const Text('Mobile navigation'),
-              subtitle: const Text('Destinations and order'),
-              onTap: saving ? null : navigation,
-            ),
-            AnchoredSelectField<WorkspaceView>(
-              isExpanded: true,
-              initialValue: preferences.start,
-              decoration: const InputDecoration(labelText: 'Open on launch'),
-              items: [
-                for (final v in MobilePreferences.supported)
-                  DropdownMenuItem(value: v, child: Text(sidebarName(v))),
-              ],
-              onChanged: saving
-                  ? null
-                  : (v) {
-                      if (v != null) {
-                        run(() => save(preferences.copyWith(start: v)));
-                      }
-                    },
-            ),
-            const SizedBox(height: 16),
-            AnchoredSelectField<CalendarContent>(
-              isExpanded: true,
-              initialValue: c.calendarContent,
-              decoration: const InputDecoration(labelText: 'Calendar content'),
-              items: [
-                for (final v in CalendarContent.values)
-                  DropdownMenuItem(
-                    value: v,
-                    child: Text(switch (v) {
-                      CalendarContent.both => 'Tasks and events',
-                      CalendarContent.eventsOnly => 'Events',
-                      CalendarContent.tasksOnly => 'Tasks and sessions',
-                    }),
-                  ),
-              ],
-              onChanged: (v) {
-                if (v != null) run(() => c.setCalendarContent(v));
-              },
-            ),
-            const SizedBox(height: 16),
-            AnchoredSelectField<int>(
-              isExpanded: true,
-              initialValue: c.firstWeekday,
-              decoration: const InputDecoration(labelText: 'First day of week'),
-              items: [
-                for (var i = 1; i <= 7; i++)
-                  DropdownMenuItem(value: i, child: Text(weekdayNames[i - 1])),
-              ],
-              onChanged: (v) {
-                if (v != null) run(() => c.setFirstWeekday(v));
-              },
-            ),
-            const Divider(height: 32),
-            const MobileSectionTitle('Notifications and privacy'),
-            ListTile(
-              leading: const Icon(Icons.notifications_outlined),
-              title: const Text('Notification permission'),
-              subtitle: Text(
-                notifications == true
-                    ? 'Allowed. Enable reminders separately on each task or event.'
-                    : 'Off until you allow notifications. Task reminders are off by default.',
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: Platform.isAndroid
-                  ? () => run(() async {
-                      await AndroidPlatform.requestNotifications();
-                      await refreshPermissions();
-                    })
-                  : null,
-            ),
-            if (Platform.isAndroid)
-              ListTile(
-                leading: const Icon(Icons.settings_outlined),
-                title: const Text('Android notification settings'),
-                subtitle: const Text(
-                  'Allow previously denied permission, or change channel sound and visibility.',
-                ),
-                trailing: const Icon(Icons.open_in_new),
-                onTap: () => run(AndroidPlatform.openNotificationSettings),
-              ),
-            ListTile(
-              leading: const Icon(Icons.event_available_outlined),
-              title: const Text('Daily summary and due reminders'),
-              subtitle: const Text(
-                'Optional daily reminders and delivery time',
-              ),
-              onTap: () => show(const NotificationDialog()),
-            ),
-            SwitchListTile(
-              title: const Text('Quiet hours'),
-              subtitle: const Text('Hold reminders until quiet hours end.'),
-              value: preferences.quietHours,
-              onChanged: saving
-                  ? null
-                  : (v) => run(() => save(preferences.copyWith(quietHours: v))),
-            ),
-            if (preferences.quietHours)
-              for (final start in [true, false])
-                ListTile(
-                  title: Text(start ? 'Quiet hours start' : 'Quiet hours end'),
-                  subtitle: Text(
-                    TimeOfDay(
-                      hour:
-                          (start
-                              ? preferences.quietStart
-                              : preferences.quietEnd) ~/
-                          60,
-                      minute:
-                          (start
-                              ? preferences.quietStart
-                              : preferences.quietEnd) %
-                          60,
-                    ).format(context),
-                  ),
-                  onTap: () async {
-                    final current = start
-                        ? preferences.quietStart
-                        : preferences.quietEnd;
-                    final t = await showTimePicker(
-                      context: context,
-                      initialTime: TimeOfDay(
-                        hour: current ~/ 60,
-                        minute: current % 60,
-                      ),
-                    );
-                    if (t != null) {
-                      await run(
-                        () => save(
-                          start
-                              ? preferences.copyWith(
-                                  quietStart: t.hour * 60 + t.minute,
-                                )
-                              : preferences.copyWith(
-                                  quietEnd: t.hour * 60 + t.minute,
-                                ),
+            SettingsSection(
+              title: 'Appearance',
+              initiallyExpanded: true,
+              children: [
+                AnchoredSelectField<ThemeModePreference>(
+                  isExpanded: true,
+                  initialValue: c.theme,
+                  decoration: const InputDecoration(labelText: 'Theme'),
+                  items: [
+                    for (final t in ThemeModePreference.values)
+                      DropdownMenuItem(
+                        value: t,
+                        child: Text(
+                          t == ThemeModePreference.system
+                              ? 'Follow system'
+                              : t.name,
                         ),
-                      );
-                    }
+                      ),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) run(() => c.setTheme(v));
                   },
                 ),
-            ListTile(
-              leading: const Icon(Icons.lock_outline),
-              title: const Text('PIN and app lock'),
-              onTap: () => show(const PrivacyDialog()),
+                ListTile(
+                  leading: const Icon(Icons.palette_outlined),
+                  title: const Text('Colors and custom themes'),
+                  onTap: () => show(const ThemeDialog()),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.checklist),
+                  title: const Text('Task display and defaults'),
+                  onTap: () => show(const TaskViewSettingsDialog()),
+                ),
+              ],
             ),
-            const MobileSectionTitle('Data and app'),
-            ListTile(
-              leading: const Icon(Icons.sync),
-              title: const Text('Sync'),
-              subtitle: const Text('Sync across devices with Google Drive'),
-              onTap: () => showSyncSettings(context),
+            SettingsSection(
+              title: 'Planning and navigation',
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.navigation_outlined),
+                  title: const Text('Mobile navigation'),
+                  subtitle: const Text('Destinations and order'),
+                  onTap: saving ? null : navigation,
+                ),
+                AnchoredSelectField<WorkspaceView>(
+                  isExpanded: true,
+                  initialValue: preferences.start,
+                  decoration: const InputDecoration(
+                    labelText: 'Open on launch',
+                  ),
+                  items: [
+                    for (final v in MobilePreferences.supported)
+                      DropdownMenuItem(value: v, child: Text(sidebarName(v))),
+                  ],
+                  onChanged: saving
+                      ? null
+                      : (v) {
+                          if (v != null) {
+                            run(() => save(preferences.copyWith(start: v)));
+                          }
+                        },
+                ),
+                const SizedBox(height: 16),
+                AnchoredSelectField<CalendarContent>(
+                  isExpanded: true,
+                  initialValue: c.calendarContent,
+                  decoration: const InputDecoration(
+                    labelText: 'Calendar content',
+                  ),
+                  items: [
+                    for (final v in CalendarContent.values)
+                      DropdownMenuItem(
+                        value: v,
+                        child: Text(switch (v) {
+                          CalendarContent.both => 'Tasks and events',
+                          CalendarContent.eventsOnly => 'Events',
+                          CalendarContent.tasksOnly => 'Tasks and sessions',
+                        }),
+                      ),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) run(() => c.setCalendarContent(v));
+                  },
+                ),
+                const SizedBox(height: 16),
+                AnchoredSelectField<int>(
+                  isExpanded: true,
+                  initialValue: c.firstWeekday,
+                  decoration: const InputDecoration(
+                    labelText: 'First day of week',
+                  ),
+                  items: [
+                    for (var i = 1; i <= 7; i++)
+                      DropdownMenuItem(
+                        value: i,
+                        child: Text(weekdayNames[i - 1]),
+                      ),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) run(() => c.setFirstWeekday(v));
+                  },
+                ),
+              ],
             ),
-            ListTile(
-              leading: const Icon(Icons.backup_outlined),
-              title: const Text('Backups and Google Drive'),
-              subtitle: const Text(
-                'Verified snapshots. Restore replaces local data; Sync is managed separately.',
-              ),
-              onTap: () => Navigator.push<void>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => Scaffold(
-                    appBar: AppBar(title: const Text('Backups')),
-                    body: const SafeArea(
-                      top: false,
-                      child: SingleChildScrollView(
-                        padding: EdgeInsets.all(16),
-                        child: BackupsCloudPage(),
+            SettingsSection(
+              title: 'Notifications and privacy',
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.notifications_outlined),
+                  title: const Text('Notification permission'),
+                  subtitle: Text(
+                    notifications == true
+                        ? 'Allowed. Enable reminders separately on each task or event.'
+                        : 'Off until you allow notifications. Task reminders are off by default.',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: Platform.isAndroid
+                      ? () => run(() async {
+                          await AndroidPlatform.requestNotifications();
+                          await refreshPermissions();
+                        })
+                      : null,
+                ),
+                if (Platform.isAndroid)
+                  ListTile(
+                    leading: const Icon(Icons.settings_outlined),
+                    title: const Text('Android notification settings'),
+                    subtitle: const Text(
+                      'Allow previously denied permission, or change channel sound and visibility.',
+                    ),
+                    trailing: const Icon(Icons.open_in_new),
+                    onTap: () => run(AndroidPlatform.openNotificationSettings),
+                  ),
+                ListTile(
+                  leading: const Icon(Icons.event_available_outlined),
+                  title: const Text('Daily summary and due reminders'),
+                  subtitle: const Text(
+                    'Optional daily reminders and delivery time',
+                  ),
+                  onTap: () => show(const NotificationDialog()),
+                ),
+                SwitchListTile(
+                  title: const Text('Quiet hours'),
+                  subtitle: const Text('Hold reminders until quiet hours end.'),
+                  value: preferences.quietHours,
+                  onChanged: saving
+                      ? null
+                      : (v) => run(
+                          () => save(preferences.copyWith(quietHours: v)),
+                        ),
+                ),
+                if (preferences.quietHours)
+                  for (final start in [true, false])
+                    ListTile(
+                      title: Text(
+                        start ? 'Quiet hours start' : 'Quiet hours end',
+                      ),
+                      subtitle: Text(
+                        TimeOfDay(
+                          hour:
+                              (start
+                                  ? preferences.quietStart
+                                  : preferences.quietEnd) ~/
+                              60,
+                          minute:
+                              (start
+                                  ? preferences.quietStart
+                                  : preferences.quietEnd) %
+                              60,
+                        ).format(context),
+                      ),
+                      onTap: () async {
+                        final current = start
+                            ? preferences.quietStart
+                            : preferences.quietEnd;
+                        final t = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay(
+                            hour: current ~/ 60,
+                            minute: current % 60,
+                          ),
+                        );
+                        if (t != null) {
+                          await run(
+                            () => save(
+                              start
+                                  ? preferences.copyWith(
+                                      quietStart: t.hour * 60 + t.minute,
+                                    )
+                                  : preferences.copyWith(
+                                      quietEnd: t.hour * 60 + t.minute,
+                                    ),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                ListTile(
+                  leading: const Icon(Icons.lock_outline),
+                  title: const Text('PIN and app lock'),
+                  onTap: () => show(const PrivacyDialog()),
+                ),
+              ],
+            ),
+            SettingsSection(
+              title: 'Data and app',
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.sync),
+                  title: const Text('Sync'),
+                  subtitle: const Text('Sync across devices with Google Drive'),
+                  onTap: () => showSyncSettings(context),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.backup_outlined),
+                  title: const Text('Backups and Google Drive'),
+                  subtitle: const Text(
+                    'Verified snapshots. Restore replaces local data; Sync is managed separately.',
+                  ),
+                  onTap: () => Navigator.push<void>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => Scaffold(
+                        appBar: AppBar(title: const Text('Backups')),
+                        body: const SafeArea(
+                          top: false,
+                          child: FadingScrollView(
+                            padding: EdgeInsets.all(16),
+                            child: BackupsCloudPage(),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.system_update_outlined),
-              title: const Text('Software Updates'),
-              subtitle: const Text(
-                'Check Android releases, download and install updates.',
-              ),
-              onTap: () => Navigator.push<void>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const AndroidSoftwareUpdatesPage(),
-                ),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.widgets_outlined),
-              title: const Text('Home-screen widgets'),
-              subtitle: const Text(
-                'Long press your launcher, choose Widgets, then Todorbit Tasks or Calendar. Configure each widget when adding it.',
-              ),
-            ),
-            const MobileSectionTitle('About and support'),
-            ListTile(
-              leading: const Icon(Icons.volunteer_activism_outlined),
-              title: const Text('Support Todorbit'),
-              subtitle: Text(
-                supportAvailable
-                    ? 'Optional support for the independent project'
-                    : 'Help with feedback and bug reports',
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => show(
-                supportAvailable
-                    ? const SupportDialog()
-                    : const ProjectSupportDialog(),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.people_outline),
-              title: const Text('Contributors'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push<void>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => Scaffold(
-                    appBar: AppBar(title: const Text('Contributors')),
-                    body: const SafeArea(child: ContributorsView()),
+                ListTile(
+                  leading: const Icon(Icons.system_update_outlined),
+                  title: const Text('Software Updates'),
+                  subtitle: const Text(
+                    'Check Android releases, download and install updates.',
+                  ),
+                  onTap: () => Navigator.push<void>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const AndroidSoftwareUpdatesPage(),
+                    ),
                   ),
                 ),
-              ),
+                ListTile(
+                  leading: const Icon(Icons.widgets_outlined),
+                  title: const Text('Home-screen widgets'),
+                  subtitle: const Text(
+                    'Long press your launcher, choose Widgets, then Todorbit Tasks or Calendar. Configure each widget when adding it.',
+                  ),
+                ),
+              ],
             ),
-            const ListTile(
-              leading: Icon(Icons.info_outline),
-              title: Text(
-                'Todorbit ${String.fromEnvironment('FLUTTER_BUILD_NAME', defaultValue: 'development')} '
-                '(${String.fromEnvironment('FLUTTER_BUILD_NUMBER', defaultValue: 'unknown')})',
-              ),
-              subtitle: Text(
-                'Local-first productivity\nOpen Software Updates to check for Android releases.',
-              ),
+            SettingsSection(
+              title: 'About',
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.people_outline),
+                  title: const Text('Contributors'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push<void>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => Scaffold(
+                        appBar: AppBar(title: const Text('Contributors')),
+                        body: const SafeArea(child: ContributorsView()),
+                      ),
+                    ),
+                  ),
+                ),
+                const ListTile(
+                  leading: Icon(Icons.info_outline),
+                  title: Text(
+                    'Todorbit ${String.fromEnvironment('FLUTTER_BUILD_NAME', defaultValue: 'development')} '
+                    '(${String.fromEnvironment('FLUTTER_BUILD_NUMBER', defaultValue: 'unknown')})',
+                  ),
+                  subtitle: Text(
+                    'Local-first productivity\nOpen Software Updates to check for Android releases.',
+                  ),
+                ),
+              ],
             ),
           ],
         ),

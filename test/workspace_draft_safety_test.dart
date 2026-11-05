@@ -1,3 +1,5 @@
+import 'support/editor_disclosure.dart';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -63,6 +65,7 @@ void main() {
           find.byKey(const ValueKey('task-title-field')),
           'Unsaved resource draft',
         );
+        await expandEditorSection(tester, 'Resources');
         await tester.ensureVisible(find.byTooltip('Add a URL'));
         await tester.pumpAndSettle();
         await tester.tap(find.byTooltip('Add a URL'));
@@ -72,6 +75,17 @@ void main() {
         await tester.tap(find.byTooltip('Attach a copy of a file'));
         await tester.pumpAndSettle();
         expect(find.text('Discard unsaved changes?'), findsNothing);
+        await tester.scrollUntilVisible(
+          find.byKey(const ValueKey('task-title-field')),
+          -180,
+          scrollable: find
+              .descendant(
+                of: find.byType(TaskEditor),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        );
+        await tester.pumpAndSettle();
         expect(find.text('Unsaved resource draft'), findsOneWidget);
         expect(
           (await controller.repository.tasks()).single.title,
@@ -348,6 +362,14 @@ void main() {
       find.byKey(const ValueKey('task-title-field')),
       'Category-safe draft',
     );
+    await tester.scrollUntilVisible(
+      find.text('Categories (1)'),
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Categories (1)'));
+    await tester.pumpAndSettle();
     final categoryActions = find.byTooltip('Category actions');
     await tester.scrollUntilVisible(
       categoryActions,

@@ -1,6 +1,7 @@
-import 'package:life_manager/features/shared/anchored_select_field.dart';
+import '../shared/scroll_edge_fade.dart';
+import '../shared/app_motion.dart';
 
-import 'dart:math' as math;
+import 'package:life_manager/features/shared/anchored_select_field.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -529,6 +530,7 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
                                   TextButton.icon(
                                     onPressed: () => showDialog<void>(
                                       context: context,
+                                      animationStyle: AppMotion.style(context),
                                       builder: (_) =>
                                           const AvailabilityDialog(),
                                     ),
@@ -577,8 +579,9 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
                                           firstDate: DateTime(2000),
                                           lastDate: DateTime(2100),
                                         );
-                                        if (value != null)
+                                        if (value != null) {
                                           setState(() => targetDay = value);
+                                        }
                                       },
                                       icon: const Icon(
                                         Icons.calendar_today_outlined,
@@ -597,8 +600,9 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
                                           context: context,
                                           initialTime: targetTime,
                                         );
-                                        if (value != null)
+                                        if (value != null) {
                                           setState(() => targetTime = value);
+                                        }
                                       },
                                       icon: const Icon(Icons.schedule),
                                       label: Text(targetTime.format(context)),
@@ -706,7 +710,7 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
                                 SizedBox(
                                   width: 280,
                                   child: Card(
-                                    child: ListView(
+                                    child: FadingListView(
                                       padding: const EdgeInsets.all(8),
                                       children: sourceTiles,
                                     ),
@@ -715,7 +719,7 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Card(
-                                    child: ListView(
+                                    child: FadingListView(
                                       padding: const EdgeInsets.all(12),
                                       children: previewTiles,
                                     ),
@@ -886,7 +890,7 @@ class _AvailabilityDialogState extends ConsumerState<AvailabilityDialog> {
     title: const Text('Weekly availability'),
     content: SizedBox(
       width: 480,
-      child: ListView(
+      child: FadingListView(
         shrinkWrap: true,
         children: [
           const Text(
@@ -1003,6 +1007,7 @@ class ScheduleHistoryDialog extends ConsumerWidget {
     if (!context.mounted) return;
     await showDialog<void>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (_) => _RestorePreviewDialog(preview: preview),
     );
   }
@@ -1040,7 +1045,7 @@ class ScheduleHistoryDialog extends ConsumerWidget {
             Expanded(
               child: controller.schedulingHistory.isEmpty
                   ? const Center(child: Text('No scheduling changes yet.'))
-                  : ListView.builder(
+                  : FadingListView.builder(
                       padding: const EdgeInsets.all(12),
                       itemCount: controller.schedulingHistory.length,
                       itemBuilder: (context, index) {
@@ -1131,7 +1136,7 @@ class _RestorePreviewDialogState extends ConsumerState<_RestorePreviewDialog> {
       title: Text(_operationName(widget.preview.operation)),
       content: SizedBox(
         width: 650,
-        child: ListView(
+        child: FadingListView(
           shrinkWrap: true,
           children: [
             const Text(

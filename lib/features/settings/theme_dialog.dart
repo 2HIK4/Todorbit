@@ -1,3 +1,4 @@
+import '../shared/app_motion.dart';
 import '../shared/scroll_edge_fade.dart';
 
 import 'dart:convert';
@@ -65,6 +66,7 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
   Future<void> editColor(String key) async {
     final chosen = await showDialog<Color>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (_) => ColorPickerDialog(
         title: _label(key),
         initialColor: palette[key],
@@ -81,6 +83,7 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
   }) async {
     final result = await showDialog<String>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (_) => TextPromptDialog(
         title: title,
         initial: initial,
@@ -503,11 +506,13 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
                       ),
                     ),
                     SwitchListTile(
-                      title: const Text('Reduce motion'),
-                      subtitle: const Text('Use fewer interface animations'),
-                      value: draft.reducedMotion,
+                      title: const Text('Interface animations'),
+                      subtitle: const Text(
+                        'Enable subtle transitions and visual effects',
+                      ),
+                      value: !draft.reducedMotion,
                       onChanged: (value) => setState(
-                        () => draft = draft.copyWith(reducedMotion: value),
+                        () => draft = draft.copyWith(reducedMotion: !value),
                       ),
                     ),
                     if (!Platform.isAndroid)

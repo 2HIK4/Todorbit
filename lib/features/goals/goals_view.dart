@@ -1,3 +1,6 @@
+import '../shared/scroll_edge_fade.dart';
+import '../shared/app_motion.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -35,11 +38,13 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
 
   Future<void> _edit(Goal? goal) => showDialog<bool>(
     context: context,
+    animationStyle: AppMotion.style(context),
     builder: (_) => GoalEditorDialog(goal: goal),
   );
 
   Future<void> _manual(Goal goal) => showDialog<void>(
     context: context,
+    animationStyle: AppMotion.style(context),
     builder: (_) => NumericEntryDialog(
       title: 'Adjust ${goal.title}',
       label: 'Adjustment ${goal.unit.isEmpty ? '(units)' : goal.unit}',
@@ -57,6 +62,7 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
   Future<void> _milestone(Goal goal, [GoalMilestone? previous]) =>
       showDialog<void>(
         context: context,
+        animationStyle: AppMotion.style(context),
         builder: (_) => GoalMilestoneDialog(goal: goal, previous: previous),
       );
 
@@ -67,12 +73,13 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
     if (!mounted) return;
     await showDialog<void>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => AlertDialog(
         title: Text('${goal.title} progress'),
         content: SizedBox(
           width: 490,
           height: 380,
-          child: ListView(
+          child: FadingListView(
             children: [
               ListTile(
                 title: const Text('Current linked contributions'),
@@ -120,6 +127,7 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
     if (!goal.completed && goal.progress.total < goal.target) {
       final accepted = await showDialog<bool>(
         context: context,
+        animationStyle: AppMotion.style(context),
         builder: (context) => AlertDialog(
           title: const Text('Complete below target?'),
           content: Text(
@@ -150,6 +158,7 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
     if (!goal.archived) {
       final accepted = await showDialog<bool>(
         context: context,
+        animationStyle: AppMotion.style(context),
         builder: (context) => AlertDialog(
           title: Text('Archive ${goal.title}?'),
           content: const Text(
@@ -221,7 +230,7 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
                         : 'No goals yet. Create one to track progress.',
                   ),
                 )
-              : ListView.builder(
+              : FadingListView.builder(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                   itemCount: goals.length,
                   itemBuilder: (context, index) =>
@@ -325,6 +334,7 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
                       ? null
                       : () => showDialog<bool>(
                           context: context,
+                          animationStyle: AppMotion.style(context),
                           builder: (_) => GoalLinksDialog(goal: goal),
                         ),
                   child: const Text('Link work'),

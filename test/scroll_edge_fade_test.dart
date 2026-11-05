@@ -45,12 +45,14 @@ void main() {
         controller.jumpTo(controller.position.maxScrollExtent);
         await tester.pumpAndSettle();
         expect(find.byKey(const ValueKey('scroll-bottom-fade')), findsNothing);
+        expect(find.byKey(const ValueKey('scroll-top-fade')), findsOneWidget);
         controller.jumpTo(0);
         await tester.pumpAndSettle();
         expect(
           find.byKey(const ValueKey('scroll-bottom-fade')),
           findsOneWidget,
         );
+        expect(find.byKey(const ValueKey('scroll-top-fade')), findsNothing);
         expect(tester.takeException(), isNull);
       },
     );

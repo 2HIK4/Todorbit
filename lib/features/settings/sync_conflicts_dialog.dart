@@ -1,4 +1,8 @@
+import '../shared/disclosure_tile.dart';
+import '../shared/app_motion.dart';
+
 import 'dart:convert';
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -7,6 +11,7 @@ import '../../app/sync_controller.dart';
 import '../../data/sync_exchange_models.dart';
 import '../shared/status_notice.dart';
 import '../shared/dialog_action_bar.dart';
+import '../shared/scroll_edge_fade.dart';
 
 Future<void> showSyncConflicts(
   BuildContext context,
@@ -23,6 +28,7 @@ Future<void> showSyncConflicts(
   }
   await showDialog<void>(
     context: context,
+    animationStyle: AppMotion.style(context),
     barrierDismissible: false,
     builder: (_) => SyncConflictsDialog(controller: controller, review: review),
   );
@@ -45,11 +51,51 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
   final choices = <String, SyncResolutionChoice>{};
   bool applying = false, handled = false, confirming = false;
   String? error;
+  bool loadingDraft = true;
+  List<SyncConflictRecord> get decisionRecords => review.records
+      .where(
+        (r) => review.structural || r.review.needsDecision || r.consequence,
+      )
+      .toList();
   @override
   void initState() {
     super.initState();
     widget.controller.addListener(_privacy);
+    unawaited(_loadDraft());
   }
+
+  Future<void> _loadDraft() async {
+    try {
+      final saved = await widget.controller.loadDecisionDraft(review);
+      if (mounted) setState(() => choices.addAll(saved));
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => error =
+              'Saved selections could not be read. Review each choice again.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => loadingDraft = false);
+    }
+  }
+
+  void _saveDraft() {
+    unawaited(
+      widget.controller.saveDecisionDraft(review, Map.of(choices)).catchError((
+        Object _,
+      ) {
+        if (mounted) {
+          setState(
+            () => error = 'Selections could not be saved for later. Keep this review open or choose again next time.',
+          );
+        }
+      }),
+    );
+  }
+
+  bool _deleted(Map<String, Object?>? value) =>
+      value == null || value['deleted_at'] != null;
 
   void _privacy() {
     if (!widget.controller.isUnlocked() && mounted) {
@@ -75,10 +121,45 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
     _ => const JsonEncoder.withIndent('  ').convert(value),
   };
 
-  void _choose(String id, SyncResolutionChoice choice) => setState(() {
-    choices[id] = choice;
-    confirming = false;
-  });
+  String _fieldLabel(String field) =>
+      const {
+        'scheduled_date': 'Planned day',
+        'deadline_date': 'Deadline',
+        'starts_at': 'Starts',
+        'ends_at': 'Ends',
+        'deleted_at': 'Deleted',
+        'updated_at': 'Last modified',
+        'category_id': 'Category',
+        'project_id': 'Project',
+        'group_id': 'Checklist',
+        'recurrence_series_id': 'Recurring series',
+      }[field] ??
+      field.replaceAll('_', ' ');
+
+  String _entityLabel(String entity) =>
+      const {
+        'tasks': 'Task',
+        'fixed_events': 'Event',
+        'goals': 'Goal',
+        'habits': 'Habit',
+        'categories': 'Category',
+        'projects': 'Project',
+        'task_checklist': 'Checklist item',
+        'task_checklist_groups': 'Checklist',
+        'task_parents': 'Subtask relationship',
+        'task_resources': 'Resource',
+        'recurrence_series': 'Recurring task',
+        'deletion_tombstones': 'Deletion record',
+      }[entity] ??
+      'Related item';
+
+  void _choose(String id, SyncResolutionChoice choice) {
+    setState(() {
+      choices[id] = choice;
+      confirming = false;
+    });
+    _saveDraft();
+  }
 
   Widget _version(
     SyncConflictRecord record,
@@ -118,15 +199,17 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(title, style: theme.textTheme.titleSmall),
+              if (value?['updated_at'] != null)
+                Text(
+                  'Modified: ${value!['updated_at']}',
+                  style: theme.textTheme.bodySmall,
+                ),
               const SizedBox(height: 12),
               if (value == null)
                 const Text('Deleted / not present')
               else
                 for (final field in visibleFields) ...[
-                  Text(
-                    field.replaceAll('_', ' '),
-                    style: theme.textTheme.bodySmall,
-                  ),
+                  Text(_fieldLabel(field), style: theme.textTheme.bodySmall),
                   const SizedBox(height: 4),
                   SelectableText(
                     _value(value[field], field: field),
@@ -135,22 +218,23 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
                   const SizedBox(height: 12),
                 ],
               OutlinedButton.icon(
-                onPressed: applying ? null : select,
+                onPressed: applying || loadingDraft ? null : select,
                 icon: Icon(
                   selected ? Icons.check_circle : Icons.radio_button_unchecked,
                 ),
                 label: Text(
-                  value == null
+                  _deleted(value)
                       ? 'Keep deletion'
-                      : record.local == null ||
-                            record.candidates.values.any((v) => v == null)
+                      : _deleted(record.local) ||
+                            record.candidates.values.any(_deleted)
                       ? 'Restore this record'
                       : title.startsWith('This')
                       ? 'Keep this device'
                       : 'Keep cloud version',
                 ),
               ),
-              ExpansionTile(
+              DisclosureTile(
+                key: PageStorageKey('complete:${record.id}:$title'),
                 tilePadding: EdgeInsets.zero,
                 title: const Text('Complete record'),
                 children: [
@@ -179,102 +263,210 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
         record.local?['name'] ??
         cloud?['title'] ??
         cloud?['name'] ??
-        record.key;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            record.entity.replaceAll('_', ' '),
-            style: theme.textTheme.bodySmall,
-          ),
-          Semantics(
-            header: true,
-            child: Text('$title', style: theme.textTheme.titleMedium),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            record.review.needsDecision
-                ? 'Changed: ${record.review.conflicts.map((c) => c.field == r'$record' ? 'record / deletion' : c.field.replaceAll('_', ' ')).join(', ')}'
-                : 'Related record. Compatible changes are preserved unless a whole-record decision is needed.',
-            style: theme.textTheme.bodySmall,
-          ),
-          if (record.consequence)
-            const StatusNotice(
-              title: 'Related change',
-              message: 'This record is affected by the cloud action. Review its outcome before applying.',
-              icon: Icons.account_tree_outlined,
-            ),
-          if (record.review.conflicts.any((c) => c.field == r'$record'))
-            const StatusNotice(
-              title: 'Whole-record decision',
-              message: 'This choice may delete or replace the record. Review both complete records.',
-              icon: Icons.warning_amber_outlined,
-            ),
-          const SizedBox(height: 8),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final versions = <Widget>[
-                _version(
-                  record,
-                  'This Device',
-                  record.local,
-                  choices.containsKey(record.id) &&
-                      choices[record.id]!.revision == null,
-                  () => _choose(record.id, const SyncResolutionChoice.local()),
-                ),
-                for (final id in record.remoteHeads)
-                  _version(
-                    record,
-                    record.consequence
-                        ? 'If the cloud action is applied'
-                        : record.remoteHeads.length == 1
-                        ? 'Cloud'
-                        : 'Cloud ${id.substring(0, math.min(8, id.length))}',
-                    record.candidates[id],
-                    choices[record.id]?.revision == id,
-                    () => _choose(record.id, SyncResolutionChoice.revision(id)),
-                  ),
-              ];
-              if (constraints.maxWidth < 720 ||
-                  MediaQuery.textScalerOf(context).scale(14) > 21) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: versions,
-                );
-              }
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: versions.first),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: versions.skip(1).toList(),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-          if (record.review.conflicts.isNotEmpty)
-            ExpansionTile(
-              title: const Text('Previous / base values'),
+        _entityLabel(record.entity);
+    final deleted =
+        _deleted(record.local) || record.candidates.values.any(_deleted);
+    final fields = record.review.conflicts
+        .where((c) => c.field != r'$record')
+        .map((c) => _fieldLabel(c.field))
+        .toSet();
+    final icon = switch (record.entity) {
+      'tasks' => Icons.task_alt_outlined,
+      'fixed_events' => Icons.event_outlined,
+      'goals' => Icons.flag_outlined,
+      'habits' => Icons.insights_outlined,
+      'deletion_tombstones' => Icons.delete_outline,
+      _ => Icons.account_tree_outlined,
+    };
+    Widget choice(
+      String label,
+      SyncResolutionChoice choice,
+      Map<String, Object?>? value,
+    ) {
+      final selected =
+          choices.containsKey(record.id) &&
+          choices[record.id]!.revision == choice.revision;
+      return OutlinedButton.icon(
+        onPressed: applying || loadingDraft
+            ? null
+            : () => _choose(record.id, choice),
+        style: _deleted(value)
+            ? OutlinedButton.styleFrom(foregroundColor: theme.colorScheme.error)
+            : null,
+        icon: Icon(
+          selected
+              ? Icons.check_circle
+              : _deleted(value)
+              ? Icons.delete_outline
+              : Icons.radio_button_unchecked,
+          size: 18,
+        ),
+        label: Text(
+          '${_deleted(value)
+              ? 'Keep deletion'
+              : deleted
+              ? 'Restore'
+              : 'Keep'} - $label',
+        ),
+      );
+    }
+
+    return Card(
+      key: ValueKey(record.id),
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
               children: [
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: SelectableText(
-                    _value({
-                      for (final conflict in record.review.conflicts)
-                        conflict.field: conflict.base,
-                    }),
-                    style: theme.textTheme.bodySmall,
+                Icon(icon, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text('$title', style: theme.textTheme.titleMedium),
                   ),
                 ),
               ],
             ),
-        ],
+            const SizedBox(height: 4),
+            Text(
+              _entityLabel(record.entity),
+              style: theme.textTheme.labelMedium,
+            ),
+            Text(
+              deleted
+                  ? 'Deleted on one or more devices'
+                  : record.consequence
+                  ? 'Affected by a related change'
+                  : 'Edited on multiple devices',
+              style: theme.textTheme.bodySmall,
+            ),
+            if (fields.isNotEmpty)
+              Text(
+                'Differs: ${fields.take(3).join(', ')}${fields.length > 3 ? ' and ${fields.length - 3} more' : ''}',
+                style: theme.textTheme.bodySmall,
+              ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                choice(
+                  'This device',
+                  const SyncResolutionChoice.local(),
+                  record.local,
+                ),
+                for (final id in record.remoteHeads)
+                  choice(
+                    record.remoteHeads.length == 1
+                        ? 'Cloud'
+                        : 'Cloud ${id.substring(0, math.min(8, id.length))}',
+                    SyncResolutionChoice.revision(id),
+                    record.candidates[id],
+                  ),
+              ],
+            ),
+            DisclosureTile(
+              key: PageStorageKey('details:${record.id}'),
+              tilePadding: EdgeInsets.zero,
+              title: const Text('View details'),
+              children: [
+                Text(
+                  '${_entityLabel(record.entity)} - ${record.key}',
+                  style: theme.textTheme.bodySmall,
+                ),
+                if (record.local?['updated_at'] != null)
+                  Text(
+                    'This device modified: ${record.local!['updated_at']}',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                if (record.consequence)
+                  const StatusNotice(
+                    title: 'Related change',
+                    message: 'This record is affected by the cloud action. Review its outcome before applying.',
+                    icon: Icons.account_tree_outlined,
+                  ),
+                if (record.review.conflicts.any((c) => c.field == r'$record'))
+                  const StatusNotice(
+                    title: 'Whole-record decision',
+                    message: 'This choice may delete or replace the record. Review both complete records.',
+                    icon: Icons.warning_amber_outlined,
+                  ),
+                const SizedBox(height: 8),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final versions = <Widget>[
+                      _version(
+                        record,
+                        'This Device',
+                        record.local,
+                        choices.containsKey(record.id) &&
+                            choices[record.id]!.revision == null,
+                        () => _choose(
+                          record.id,
+                          const SyncResolutionChoice.local(),
+                        ),
+                      ),
+                      for (final id in record.remoteHeads)
+                        _version(
+                          record,
+                          record.consequence
+                              ? 'If the cloud action is applied'
+                              : record.remoteHeads.length == 1
+                              ? 'Cloud'
+                              : 'Cloud ${id.substring(0, math.min(8, id.length))}',
+                          record.candidates[id],
+                          choices[record.id]?.revision == id,
+                          () => _choose(
+                            record.id,
+                            SyncResolutionChoice.revision(id),
+                          ),
+                        ),
+                    ];
+                    if (constraints.maxWidth < 720 ||
+                        MediaQuery.textScalerOf(context).scale(14) > 21) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: versions,
+                      );
+                    }
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: versions.first),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: versions.skip(1).toList(),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                if (record.review.conflicts.isNotEmpty)
+                  DisclosureTile(
+                    title: const Text('Previous / base values'),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: SelectableText(
+                          _value({
+                            for (final conflict in record.review.conflicts)
+                              conflict.field: conflict.base,
+                          }),
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -285,6 +477,12 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
       final result = await widget.controller.resolve(review, choices);
       if (!mounted) return;
       if (result?.state == SyncApplyState.applied) {
+        // The database decision has committed. Draft cleanup must not report
+        // that a committed decision failed; its old review token is stale.
+        try {
+          await widget.controller.saveDecisionDraft(review, const {});
+        } catch (_) {}
+        if (!mounted) return;
         handled = true;
         Navigator.of(context).pop();
         return;
@@ -364,28 +562,30 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
         runSpacing: 8,
         children: [
           TextButton(
-            onPressed: applying
+            onPressed: applying || loadingDraft
                 ? null
                 : () => setState(() {
                     confirming = false;
-                    for (final record in review.records) {
+                    for (final record in decisionRecords) {
                       choices[record.id] = const SyncResolutionChoice.local();
                     }
+                    _saveDraft();
                   }),
-            child: Text('Keep this device for all (${review.records.length})'),
+            child: Text('Keep this device for all (${decisionRecords.length})'),
           ),
           TextButton(
-            onPressed: applying || !canBulkCloud
+            onPressed: applying || loadingDraft || !canBulkCloud
                 ? null
                 : () => setState(() {
                     confirming = false;
-                    for (final record in review.records) {
+                    for (final record in decisionRecords) {
                       choices[record.id] = SyncResolutionChoice.revision(
                         record.remoteHeads.single,
                       );
                     }
+                    _saveDraft();
                   }),
-            child: Text('Keep cloud for all (${review.records.length})'),
+            child: Text('Keep cloud for all (${decisionRecords.length})'),
           ),
         ],
       ),
@@ -395,10 +595,12 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
   @override
   Widget build(BuildContext context) {
     final screen = MediaQuery.sizeOf(context);
-    final canBulkCloud = review.records.every((r) => r.remoteHeads.length == 1);
+    final canBulkCloud = decisionRecords.every(
+      (r) => r.remoteHeads.length == 1,
+    );
     final compactReview =
         screen.width >= 800 &&
-        review.records.length == 1 &&
+        decisionRecords.length == 1 &&
         MediaQuery.textScalerOf(context).scale(14) <= 18.2;
     final scrollingTitle =
         screen.height < 500 || MediaQuery.textScalerOf(context).scale(14) > 21;
@@ -412,12 +614,15 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
     final requiredRecords = review.records.where(
       (r) => review.structural || r.review.needsDecision,
     );
-    final ready = requiredRecords.every((r) => choices.containsKey(r.id));
+    final ready =
+        !loadingDraft &&
+        requiredRecords.every((r) => choices.containsKey(r.id));
     final deletions = review.records.where((r) {
       final choice = choices[r.id];
       return choice != null &&
-          (choice.revision == null ? r.local : r.candidates[choice.revision]) ==
-              null;
+          _deleted(
+            choice.revision == null ? r.local : r.candidates[choice.revision],
+          );
     }).length;
     return PopScope(
       canPop: !applying,
@@ -430,7 +635,12 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
         insetPadding: const EdgeInsets.all(16),
         child: SizedBox(
           width: math.min(1050, screen.width - 32),
-          height: math.min(compactReview ? 640 : 850, screen.height - 48),
+          height: math.min(
+            compactReview
+                ? 500 * MediaQuery.textScalerOf(context).scale(14) / 14
+                : 850,
+            screen.height - 48,
+          ),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -438,48 +648,52 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
               children: [
                 if (!scrollingTitle) ...[title, const SizedBox(height: 8)],
                 Expanded(
-                  child: confirming
-                      ? SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              if (scrollingTitle) ...[
-                                title,
+                  child: ScrollEdgeFade(
+                    child: confirming
+                        ? FadingScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                if (scrollingTitle) ...[
+                                  title,
+                                  const SizedBox(height: 12),
+                                ],
+                                Text(
+                                  'Apply ${choices.length} decisions?',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium,
+                                ),
                                 const SizedBox(height: 12),
+                                Text(
+                                  'The chosen values will replace competing changes on your synced devices.${deletions > 0 ? ' $deletions records will be deleted.' : ''} Your separate backups are kept.',
+                                ),
                               ],
-                              Text(
-                                'Apply ${choices.length} decisions?',
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'The chosen values will replace competing changes on your synced devices.${deletions > 0 ? ' $deletions records will be deleted.' : ''} Your separate backups are kept.',
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          itemCount: review.records.length + 1,
-                          itemBuilder: (_, i) => i == 0
-                              ? Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    if (scrollingTitle) ...[
-                                      title,
-                                      const SizedBox(height: 12),
+                            ),
+                          )
+                        : FadingListView.builder(
+                            itemCount: decisionRecords.length + 1,
+                            itemBuilder: (_, i) => i == 0
+                                ? Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      if (scrollingTitle) ...[
+                                        title,
+                                        const SizedBox(height: 12),
+                                      ],
+                                      _header(canBulkCloud),
                                     ],
-                                    _header(canBulkCloud),
-                                  ],
-                                )
-                              : _record(review.records[i - 1]),
-                        ),
+                                  )
+                                : _record(decisionRecords[i - 1]),
+                          ),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Semantics(
                   liveRegion: true,
                   child: Text(
-                    '${choices.length} of ${review.records.length} records selected',
+                    '${choices.length} of ${decisionRecords.length} records selected',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),

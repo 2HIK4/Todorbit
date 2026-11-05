@@ -1,3 +1,5 @@
+import '../shared/app_motion.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -17,6 +19,7 @@ import '../shared/status_notice.dart';
 
 Future<void> showSyncSettings(BuildContext context) => showDialog<void>(
   context: context,
+  animationStyle: AppMotion.style(context),
   builder: (context) => NotificationListener<ScrollMetricsNotification>(
     onNotification: (_) {
       final focused = FocusManager.instance.primaryFocus?.context;
@@ -254,6 +257,7 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
 
   Future<void> _instructions(String title, String message) => showDialog<void>(
     context: context,
+    animationStyle: AppMotion.style(context),
     builder: (context) => AlertDialog(
       title: Text(title),
       scrollable: true,

@@ -1,3 +1,5 @@
+import 'app_motion.dart';
+
 import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -23,6 +25,7 @@ String eventColorLabel(int? value) {
 Future<int?> chooseEventColor(BuildContext context, int initial) =>
     showDialog<int>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (_) => _EventColorDialog(initial: initial),
     );
 

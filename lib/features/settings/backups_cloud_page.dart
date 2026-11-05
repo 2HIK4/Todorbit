@@ -1,3 +1,6 @@
+import '../shared/scroll_edge_fade.dart';
+import '../shared/app_motion.dart';
+
 import 'dart:async';
 import 'dart:io';
 
@@ -215,9 +218,10 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
   Future<bool> _confirm(String title, String text, String action) async =>
       await showDialog<bool>(
         context: context,
+        animationStyle: AppMotion.style(context),
         builder: (context) => AlertDialog(
           title: Text(title),
-          content: SingleChildScrollView(child: Text(text)),
+          content: FadingScrollView(child: Text(text)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -237,6 +241,7 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
     final repeat = TextEditingController();
     final result = await showDialog<String>(
       context: context,
+      animationStyle: AppMotion.style(context),
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, update) => AlertDialog(
@@ -245,7 +250,7 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
           ),
           content: SizedBox(
             width: 430,
-            child: SingleChildScrollView(
+            child: FadingScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -333,6 +338,7 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
   Future<void> _settingsUpload() async {
     await showDialog<void>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (_) => SettingsTransferDialog(
         cloudProgress: cloudProgress,
         uploadSettings: (settings) async {
@@ -386,12 +392,14 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
       if (object.kind == CloudBackupKind.settings) {
         await showDialog<void>(
           context: context,
+          animationStyle: AppMotion.style(context),
           builder: (_) => SettingsTransferDialog(initialTransfer: settings),
         );
       } else {
         final approved =
             await showDialog<bool>(
               context: context,
+              animationStyle: AppMotion.style(context),
               builder: (_) => RestoreConfirmationDialog(
                 backupLabel: 'Backup: ${_date(object.createdAt)}',
                 summary: preview.summary?.description ?? 'Full profile backup',
@@ -438,6 +446,7 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
     if (!mounted) return;
     final selected = await showDialog<CloudObject>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => AlertDialog(
         title: Text(
           kind == CloudBackupKind.full
@@ -447,7 +456,7 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
         content: SizedBox(
           width: 480,
           height: 300,
-          child: ListView(
+          child: FadingListView(
             children: [
               if (!objects.any((item) => item.kind == kind))
                 const Text('No backups of this kind in this account.'),
@@ -833,6 +842,7 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
                   ? null
                   : () => showDialog<void>(
                       context: context,
+                      animationStyle: AppMotion.style(context),
                       builder: (_) => const SettingsTransferDialog(),
                     ),
               child: const Text('Import / Export Settings JSON'),

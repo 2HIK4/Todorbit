@@ -1,3 +1,5 @@
+import 'app_motion.dart';
+
 import 'package:flutter/material.dart';
 
 /// Keeps platform Back and the visible close action on the same draft boundary.
@@ -29,6 +31,7 @@ class UnsavedEditorGuardState extends State<UnsavedEditorGuard> {
       confirming = true;
       final discard = await showDialog<bool>(
         context: context,
+        animationStyle: AppMotion.style(context),
         builder: (context) => AlertDialog(
           title: const Text('Discard unsaved changes?'),
           content: const Text('Your changes have not been saved.'),

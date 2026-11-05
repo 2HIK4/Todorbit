@@ -1,3 +1,5 @@
+import 'support/editor_disclosure.dart';
+
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui' show ImageByteFormat;
@@ -198,6 +200,7 @@ void main() {
         find.byKey(const ValueKey('task-title-field')),
         'Parent with a long description and multiple planned steps',
       );
+      await expandEditorSection(tester, 'Checklist and subtasks');
       await reveal(tester, find.text('Add subtask'));
       await tester.tap(find.text('Add subtask'));
       await tester.pumpAndSettle();
@@ -239,6 +242,7 @@ void main() {
         find.byKey(const ValueKey('task-title-field')),
         'Parent draft',
       );
+      await expandEditorSection(tester, 'Checklist and subtasks');
       await reveal(tester, find.text('Add subtask'));
       await tester.tap(find.text('Add subtask'));
       await tester.pumpAndSettle();
@@ -273,6 +277,7 @@ void main() {
     await controller.refresh();
     var closed = false;
     await open(tester, task: task, onSaved: () => closed = true);
+    await expandEditorSection(tester, 'Notes');
     await tester.enterText(
       find.widgetWithText(TextField, 'Notes'),
       'Occurrence-only notes that are not saved yet',
@@ -426,6 +431,7 @@ void main() {
         var closed = false;
         await open(tester, task: task, onCancel: () => closed = true);
         if (keepNotes) {
+          await expandEditorSection(tester, 'Notes');
           await tester.enterText(
             find.widgetWithText(TextField, 'Notes'),
             'Retain unrelated notes',
@@ -474,6 +480,7 @@ void main() {
         find.byKey(const ValueKey('task-title-field')),
         longTitle,
       );
+      await expandEditorSection(tester, 'Notes');
       await tester.enterText(
         find.widgetWithText(TextField, 'Notes'),
         List.filled(20, 'Detailed notes.').join('\n'),

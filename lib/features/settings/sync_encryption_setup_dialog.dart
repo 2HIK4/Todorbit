@@ -1,3 +1,5 @@
+import '../shared/app_motion.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../app/sync_controller.dart';
@@ -20,6 +22,7 @@ Future<(String, SyncWorkspaceKey)?> collectPrivateSyncCredentials(
   SyncController controller,
 ) => showDialog<(String, SyncWorkspaceKey)>(
   context: context,
+  animationStyle: AppMotion.style(context),
   builder: (_) => _PrivateSyncSetup(controller: controller),
 );
 

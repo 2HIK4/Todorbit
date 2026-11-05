@@ -30,6 +30,11 @@ void main() {
           ),
         ),
       );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Checklist and subtasks'));
+      await tester.tap(find.text('Checklist and subtasks'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Add subtask'));
       await tester.tap(find.text('Add subtask'));
       await tester.pumpAndSettle();
       await tester.enterText(
@@ -72,6 +77,9 @@ void main() {
       await tester.tap(find.widgetWithText(ListTile, 'All tasks'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Course'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Checklist and subtasks'));
+      await tester.tap(find.text('Checklist and subtasks'));
       await tester.pumpAndSettle();
       final checklist = find.widgetWithText(TextField, 'New checklist item');
       final editorScroll = find

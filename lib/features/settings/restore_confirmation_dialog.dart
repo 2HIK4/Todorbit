@@ -26,6 +26,9 @@ class RestoreConfirmationDialog extends StatelessWidget {
           Text(backupLabel, style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           Text(summary),
+          const SettingsHelperText(
+            'Counts include archived and deleted records retained for recovery.',
+          ),
           StatusNotice(
             title: 'Before you restore',
             message: localWarning,

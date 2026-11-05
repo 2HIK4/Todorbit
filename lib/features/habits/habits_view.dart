@@ -1,3 +1,6 @@
+import '../shared/scroll_edge_fade.dart';
+import '../shared/app_motion.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -38,6 +41,7 @@ class _HabitsViewState extends ConsumerState<HabitsView> {
 
   Future<void> _edit(Habit? habit) => showDialog<bool>(
     context: context,
+    animationStyle: AppMotion.style(context),
     builder: (_) => HabitEditorDialog(habit: habit),
   );
 
@@ -54,6 +58,7 @@ class _HabitsViewState extends ConsumerState<HabitsView> {
   Future<void> _numericLog(Habit habit, HabitEntry? previous) =>
       showDialog<void>(
         context: context,
+        animationStyle: AppMotion.style(context),
         builder: (_) => NumericEntryDialog(
           title: '${habit.title} · $day',
           label: 'Actual ${habit.unit.isEmpty ? 'value' : habit.unit}',
@@ -78,6 +83,7 @@ class _HabitsViewState extends ConsumerState<HabitsView> {
   Future<void> _clear(HabitEntry entry) async {
     final approved = await showDialog<bool>(
       context: context,
+      animationStyle: AppMotion.style(context),
       builder: (context) => AlertDialog(
         title: const Text('Clear habit log?'),
         content: Text(
@@ -104,6 +110,7 @@ class _HabitsViewState extends ConsumerState<HabitsView> {
     if (habit.archivedAt == null) {
       final approved = await showDialog<bool>(
         context: context,
+        animationStyle: AppMotion.style(context),
         builder: (context) => AlertDialog(
           title: Text('Archive ${habit.title}?'),
           content: const Text(
@@ -214,7 +221,7 @@ class _HabitsViewState extends ConsumerState<HabitsView> {
                         : 'No habits yet. Create one to track daily progress.',
                   ),
                 )
-              : ListView.builder(
+              : FadingListView.builder(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                   itemCount: habits.length,
                   itemBuilder: (context, index) =>

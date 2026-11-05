@@ -1,3 +1,6 @@
+import '../shared/settings_section.dart';
+import '../shared/scroll_edge_fade.dart';
+
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 
 import 'dart:convert';
@@ -185,7 +188,7 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
                 ),
               const SizedBox(height: 10),
               Expanded(
-                child: ListView(
+                child: FadingListView(
                   key: const ValueKey('habit-editor-form-list'),
                   padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
                   children: [
@@ -196,11 +199,17 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
                       decoration: const InputDecoration(labelText: 'Title *'),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
-                      enabled: !busy,
-                      controller: notes,
-                      maxLines: 2,
-                      decoration: const InputDecoration(labelText: 'Notes'),
+                    SettingsSection(
+                      title: 'Notes',
+                      initiallyExpanded: notes.text.isNotEmpty,
+                      children: [
+                        TextField(
+                          enabled: !busy,
+                          controller: notes,
+                          maxLines: 2,
+                          decoration: const InputDecoration(labelText: 'Notes'),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
                     AnchoredSelectField<HabitKind>(

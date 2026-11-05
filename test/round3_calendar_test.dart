@@ -1,3 +1,5 @@
+import 'support/editor_disclosure.dart';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
@@ -146,7 +148,13 @@ void main() {
         find.widgetWithText(TextField, 'Title *'),
         'Ocean event',
       );
+      await expandEditorSection(
+        tester,
+        'Organization and appearance',
+        editor: EventEditor,
+      );
       await tester.ensureVisible(find.byType(PopupMenuButton<int>));
+      await tester.pumpAndSettle();
       await tester.tap(find.byType(PopupMenuButton<int>));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Ocean').last);

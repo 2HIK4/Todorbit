@@ -1,3 +1,5 @@
+import '../shared/app_motion.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../app/sync_controller.dart';
@@ -7,14 +9,17 @@ Future<void> showStartNewSync(
   BuildContext context,
   SyncController controller,
 ) async {
-  if (controller.resetState?['phase'] != 'review')
+  if (controller.resetState?['phase'] != 'review') {
     await controller.reviewNewSync();
+  }
   if (!context.mounted ||
       !controller.isUnlocked() ||
-      controller.resetState?['phase'] != 'review')
+      controller.resetState?['phase'] != 'review') {
     return;
+  }
   final private = await showDialog<bool>(
     context: context,
+    animationStyle: AppMotion.style(context),
     barrierDismissible: false,
     builder: (_) => SyncResetConfirmation(controller: controller),
   );
@@ -29,11 +34,12 @@ Future<void> showStartNewSync(
       await controller.cancelNewSyncReview();
       return;
     }
-    if (controller.isUnlocked())
+    if (controller.isUnlocked()) {
       await controller.startNewSync(
         password: credential.$1,
         privateKey: credential.$2,
       );
+    }
   } else {
     await controller.startNewSync();
   }

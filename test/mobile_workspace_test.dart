@@ -83,6 +83,52 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets(
+    'project event edit keeps the project destination and assignment',
+    (tester) async {
+      final category = await controller.repository.addCategory('University');
+      final project = await controller.repository.addProject(
+        category.id,
+        'Thesis',
+      );
+      await controller.repository.addEvent(
+        EventDraft(
+          title: 'Project lecture',
+          startsAt: DateTime.now(),
+          endsAt: DateTime.now().add(const Duration(hours: 1)),
+          categoryId: category.id,
+          projectId: project.id,
+        ),
+      );
+      await controller.refresh();
+      try {
+        await open(tester);
+        controller.navigate(WorkspaceView.project, id: project.id);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Project lecture'));
+        await tester.pumpAndSettle();
+        expect(find.byType(EventEditor), findsOneWidget);
+        await tester.enterText(
+          find.widgetWithText(TextField, 'Title *'),
+          'Revised lecture',
+        );
+        await tester.tap(find.text('Save event'));
+        await tester.pumpAndSettle();
+        expect(controller.view, WorkspaceView.project);
+        expect(controller.scopeId, project.id);
+        expect(
+          (await controller.repository.events()).single.projectId,
+          project.id,
+        );
+        expect(find.text('Revised lecture'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.binding.setSurfaceSize(null);
+      }
+    },
+  );
+
   testWidgets('cold task link wins over launch preference and opens exact ID', (
     tester,
   ) async {
@@ -243,7 +289,8 @@ void main() {
             rtl: scenario.$3,
             dark: scenario.$4,
           );
-          expect(find.text('Your day, in focus'), findsOneWidget);
+          expect(find.text('Your day, in focus'), findsNothing);
+          expect(find.textContaining('planned tasks complete'), findsOneWidget);
           controller.navigate(WorkspaceView.calendar);
           await tester.pumpAndSettle();
           expect(find.text('Month'), findsOneWidget);
@@ -372,19 +419,33 @@ void main() {
             )
             .first;
         await tester.scrollUntilVisible(
-          find.text('Daily summary and due reminders'),
+          find.text('Notifications and privacy'),
           250,
+          scrollable: list,
+        );
+        await tester.tap(find.text('Notifications and privacy'));
+        await tester.pumpAndSettle();
+        await tester.scrollUntilVisible(
+          find.text('Daily summary and due reminders'),
+          150,
           scrollable: list,
         );
         expect(find.text('Daily summary and due reminders'), findsOneWidget);
+        expect(find.text('Support Todorbit'), findsNothing);
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        tester.state<ScaffoldState>(find.byType(Scaffold).first).openDrawer();
+        await tester.pumpAndSettle();
         await tester.scrollUntilVisible(
           find.text('Support Todorbit'),
-          250,
-          scrollable: list,
+          200,
+          scrollable: find
+              .descendant(
+                of: find.byType(Drawer),
+                matching: find.byType(Scrollable),
+              )
+              .first,
         );
-        await tester.ensureVisible(find.text('Support Todorbit'));
-        await tester.pumpAndSettle();
-        expect(find.byIcon(Icons.volunteer_activism_outlined), findsOneWidget);
         await tester.tap(find.text('Support Todorbit'));
         await tester.pumpAndSettle();
         expect(find.text('Enjoying Todorbit?'), findsOneWidget);

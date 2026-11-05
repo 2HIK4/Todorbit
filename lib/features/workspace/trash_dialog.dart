@@ -1,3 +1,6 @@
+import '../shared/scroll_edge_fade.dart';
+import '../shared/app_motion.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -32,6 +35,7 @@ class _ArchiveTrashDialogState extends ConsumerState<ArchiveTrashDialog> {
   Future<bool> _confirmPurge(TrashItem item) async {
     return await showDialog<bool>(
           context: context,
+          animationStyle: AppMotion.style(context),
           builder: (context) => AlertDialog(
             scrollable: true,
             title: const Text('Permanently delete?'),
@@ -106,7 +110,7 @@ class _ArchiveTrashDialogState extends ConsumerState<ArchiveTrashDialog> {
                     controller.archivedTasks.isEmpty &&
                             controller.archivedSeries.isEmpty
                         ? const Center(child: Text('Archive is empty'))
-                        : ListView(
+                        : FadingListView(
                             children: [
                               for (final series in controller.archivedSeries)
                                 ListTile(
@@ -148,7 +152,7 @@ class _ArchiveTrashDialogState extends ConsumerState<ArchiveTrashDialog> {
                           ),
                     controller.trashItems.isEmpty
                         ? const Center(child: Text('Trash is empty'))
-                        : ListView.builder(
+                        : FadingListView.builder(
                             itemCount: controller.trashItems.length,
                             itemBuilder: (context, index) {
                               final item = controller.trashItems[index];

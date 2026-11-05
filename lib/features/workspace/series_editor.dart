@@ -1,3 +1,5 @@
+import '../shared/scroll_edge_fade.dart';
+
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 
 import 'dart:math' as math;
@@ -343,7 +345,7 @@ class _SeriesEditorDialogState extends ConsumerState<SeriesEditorDialog> {
                   )
                 else
                   Expanded(
-                    child: ListView(
+                    child: FadingListView(
                       padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
                       children: [
                         const Text(

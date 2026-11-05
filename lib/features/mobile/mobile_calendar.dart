@@ -1,3 +1,6 @@
+import '../shared/scroll_edge_fade.dart';
+import '../shared/item_filters.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -130,7 +133,7 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
         : ((offset + DateUtils.getDaysInMonth(first.year, first.month)) / 7)
                   .ceil() *
               7;
-    List<FixedEvent> eventsOn(DateTime d) => controller.events
+    List<FixedEvent> eventsOn(DateTime d) => controller.filteredEvents
         .where(
           (e) =>
               !e.cancelled &&
@@ -140,11 +143,11 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
               e.endsAt.toLocal().isAfter(d),
         )
         .toList();
-    final tasks = controller.tasks
+    final tasks = controller.filteredTasks
         .where((t) => t.scheduledDate == dayKey)
         .toList();
     final sessions =
-        controller.sessions
+        controller.filteredSessions
             .where((s) => localDate(s.startsAt.toLocal()) == dayKey)
             .toList()
           ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
@@ -152,9 +155,10 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
       ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
     final showTasks = controller.calendarContent != CalendarContent.eventsOnly;
     final showEvents = controller.calendarContent != CalendarContent.tasksOnly;
-    return ListView(
+    return FadingListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
       children: [
+        const ItemFilters(),
         SegmentedButton<String>(
           segments: const [
             ButtonSegment(value: 'day', label: Text('Day')),
@@ -238,14 +242,14 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
               final key = localDate(date);
               final eventCount = showEvents ? eventsOn(date).length : 0;
               final daySessions = showTasks
-                  ? controller.sessions
+                  ? controller.filteredSessions
                         .where((s) => localDate(s.startsAt.toLocal()) == key)
                         .toList()
                   : <WorkSession>[];
               // A task with a session on this day is represented by its session;
               // do not present its plan as a second calendar commitment.
               final taskCount = showTasks
-                  ? controller.tasks
+                  ? controller.filteredTasks
                         .where(
                           (t) =>
                               t.scheduledDate == key &&
@@ -359,7 +363,7 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
               child: ListTile(
                 leading: const Icon(Icons.schedule),
                 title: Text(
-                  controller.tasks
+                  controller.filteredTasks
                           .where((t) => t.id == s.taskId)
                           .firstOrNull
                           ?.title ??

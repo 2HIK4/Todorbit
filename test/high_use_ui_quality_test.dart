@@ -100,7 +100,7 @@ void main() {
   }
 
   testWidgets(
-    'Today empty content and primary action fit a short enlarged window',
+    'Today empty content and primary action stay reachable in a short enlarged window',
     (tester) async {
       await open(tester, const Workspace());
       expect(tester.takeException(), isNull);
@@ -108,6 +108,17 @@ void main() {
         find.widgetWithText(FilledButton, 'New task').hitTestable(),
         findsOneWidget,
       );
+      await tester.scrollUntilVisible(
+        find.text('No tasks planned for today'),
+        100,
+        scrollable: find
+            .descendant(
+              of: find.byType(CustomScrollView),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.pumpAndSettle();
       expect(
         tester.getRect(find.text('No tasks planned for today')).bottom,
         lessThan(550),
@@ -223,4 +234,39 @@ void main() {
       },
     );
   }
+  testWidgets(
+    'task routes keep separate scroll positions and restore their own history',
+    (tester) async {
+      for (var i = 0; i < 20; i++) {
+        await controller.repository.addTask(
+          TaskDraft(title: 'Synthetic list item $i'),
+        );
+      }
+      await controller.refresh();
+      controller.navigate(WorkspaceView.all);
+      await open(tester, const Workspace());
+      Finder scroll() => find
+          .descendant(
+            of: find.byType(CustomScrollView),
+            matching: find.byType(Scrollable),
+          )
+          .first;
+      var position = tester.state<ScrollableState>(scroll()).position;
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      final original = position.pixels;
+      expect(original, greaterThan(100));
+      controller.navigate(WorkspaceView.today);
+      await tester.pumpAndSettle();
+      expect(tester.state<ScrollableState>(scroll()).position.pixels, 0);
+      controller.navigate(WorkspaceView.all);
+      await tester.pumpAndSettle();
+      expect(
+        tester.state<ScrollableState>(scroll()).position.pixels,
+        closeTo(original, 1),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 }

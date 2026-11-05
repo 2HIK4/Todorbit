@@ -46,6 +46,19 @@ class _Controller extends SyncController {
          onApplied: () async {},
          resetVault: MemoryTokenStore(),
        );
+  final draftSelections = <String, Map<String, SyncResolutionChoice>>{};
+  @override
+  Future<Map<String, SyncResolutionChoice>> loadDecisionDraft(
+    SyncConflictReview review,
+  ) async => draftSelections[review.token] ?? {};
+  @override
+  Future<void> saveDecisionDraft(
+    SyncConflictReview review,
+    Map<String, SyncResolutionChoice> choices,
+  ) async {
+    draftSelections[review.token] = Map.of(choices);
+  }
+
   SyncProblem? injectedProblem;
   @override
   SyncProblem? get problem => injectedProblem ?? super.problem;
@@ -365,8 +378,14 @@ void main() {
     tester,
   ) async {
     await open(tester, const Size(1100, 800), 1, Brightness.light);
+    expect(find.text('Study Chapter 3'), findsNothing);
+    await tester.tap(find.text('View details'));
+    await tester.pumpAndSettle();
     expect(find.text('Study Chapter 3'), findsOneWidget);
     expect(find.textContaining('Long synthetic notes.'), findsNothing);
+    await tester.ensureVisible(find.text('Complete record').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Complete record').first.hitTestable(), findsOneWidget);
     await tester.tap(find.text('Complete record').first);
     await tester.pumpAndSettle();
     expect(find.textContaining('Long synthetic notes.'), findsOneWidget);

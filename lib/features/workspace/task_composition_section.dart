@@ -1,3 +1,5 @@
+import 'checklist_groups_section.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -77,7 +79,7 @@ class _TaskCompositionSectionState
       }
     });
     final items = controller.checklistItems
-        .where((item) => item.taskId == widget.task.id)
+        .where((item) => item.taskId == widget.task.id && item.groupId == null)
         .toList();
     final children = controller.tasks
         .where((task) => controller.taskParents[task.id] == widget.task.id)
@@ -89,6 +91,7 @@ class _TaskCompositionSectionState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        ChecklistGroupsSection(taskId: widget.task.id),
         Text(
           'Checklist${items.isEmpty ? '' : ' · $done/${items.length}'}',
           style: Theme.of(context).textTheme.titleSmall,

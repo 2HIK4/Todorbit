@@ -1,3 +1,11 @@
+import '../shared/app_motion.dart';
+import '../support/support_button.dart';
+import '../shared/item_filters.dart';
+import '../settings/sidebar_order_dialog.dart';
+import '../../domain/task_list_projection.dart';
+import '../shared/task_list_group.dart';
+import '../shared/scroll_edge_fade.dart';
+
 import 'dart:async';
 import 'dart:io';
 
@@ -53,14 +61,28 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
   final search = TextEditingController();
   bool searching = false, editing = false, delivering = false;
   bool preferencesReady = false;
+  bool supportAvailable = !Platform.isAndroid;
   String? pendingLink;
   DateTime? calendarDay;
+
+  Future<void> loadDistribution() async {
+    try {
+      final info = await AndroidPlatform.channel
+          .invokeMapMethod<String, dynamic>('updateInfo');
+      if (mounted) {
+        setState(() => supportAvailable = info?['distribution'] == 'github');
+      }
+    } catch (_) {
+      /* Store/unknown distributions retain non-payment support. */
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     pendingLink = widget.initialLink;
     unawaited(loadPreferences());
+    if (Platform.isAndroid) unawaited(loadDistribution());
     if (Platform.isAndroid) {
       AndroidPlatform.channel.setMethodCallHandler((call) async {
         if (call.method == 'openLink') {
@@ -127,7 +149,11 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
   Future<void> dialog(Widget child) async {
     editing = true;
     try {
-      await showDialog<void>(context: context, builder: (_) => child);
+      await showDialog<void>(
+        context: context,
+        animationStyle: AppMotion.style(context),
+        builder: (_) => child,
+      );
     } finally {
       editing = false;
       if (mounted) await deliverSelection();
@@ -147,6 +173,25 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
           protectUnsavedEdits: true,
           onSaved: () => Navigator.pop(route),
           onCancel: () => Navigator.pop(route),
+        ),
+      );
+    } finally {
+      editing = false;
+      if (mounted) await deliverLink();
+    }
+  }
+
+  Future<void> openEvent(FixedEvent value) async {
+    if (editing || widget.locked) return;
+    editing = true;
+    try {
+      await openMobileEditor(
+        context,
+        (route) => EventEditor(
+          event: value,
+          initialDay: value.startsAt.toLocal(),
+          protectUnsavedEdits: true,
+          onClose: () => Navigator.pop(route),
         ),
       );
     } finally {
@@ -393,7 +438,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                 controller: search,
                 autofocus: true,
                 decoration: const InputDecoration(
-                  hintText: 'Search tasks',
+                  hintText: 'Search tasks and events',
                   border: InputBorder.none,
                 ),
                 onChanged: (_) => setState(() {}),
@@ -402,7 +447,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
         actions: [
           SyncStatusButton(allowAutomatic: !searching),
           IconButton(
-            tooltip: searching ? 'Close search' : 'Search tasks',
+            tooltip: searching ? 'Close search' : 'Search tasks and events',
             onPressed: () => setState(() {
               searching = !searching;
               if (!searching) {
@@ -539,7 +584,36 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
               ),
         )
         .toList();
-    final overdue = c.tasks
+    final groups = projectTaskList(
+      tasks,
+      c.taskParents,
+      groupRecurrence: c.view == WorkspaceView.all && search.text.isEmpty,
+      relatedOccurrences:
+          c.view == WorkspaceView.all &&
+              search.text.isEmpty &&
+              !c.activeFilter.isActive
+          ? c.tasks
+          : const [],
+    );
+    final scopedEvents =
+        {
+              WorkspaceView.project,
+              WorkspaceView.category,
+              WorkspaceView.saved,
+            }.contains(c.view) ||
+            searching && search.text.trim().isNotEmpty
+        ? c.filteredEvents
+              .where(
+                (e) =>
+                    !e.cancelled &&
+                    (search.text.isEmpty ||
+                        '${e.title} ${e.notes} ${c.categories.where((v) => v.id == e.categoryId).firstOrNull?.name ?? ''} ${c.projects.where((v) => v.id == e.projectId).firstOrNull?.name ?? ''}'
+                            .toLowerCase()
+                            .contains(search.text.toLowerCase())),
+              )
+              .toList()
+        : <FixedEvent>[];
+    final overdue = c.filteredTasks
         .where(
           (t) =>
               t.isOpen &&
@@ -547,16 +621,18 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
               t.deadlineDate!.compareTo(today) < 0,
         )
         .length;
-    final todayTasks = c.tasks.where((t) => t.scheduledDate == today).toList();
+    final todayTasks = c.filteredTasks
+        .where((t) => t.scheduledDate == today)
+        .toList();
     final done = todayTasks
         .where((t) => t.status == TaskStatus.completed)
         .length;
     final sessions =
-        c.sessions
+        c.filteredSessions
             .where((s) => localDate(s.startsAt.toLocal()) == today)
             .toList()
           ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
-    final events = c.events
+    final events = c.filteredEvents
         .where(
           (e) =>
               !e.cancelled &&
@@ -572,44 +648,38 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
         .toList();
     return RefreshIndicator(
       onRefresh: () => c.refresh(),
-      child: ListView.builder(
+      child: FadingListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
-        itemCount: tasks.length + 1,
+        itemCount: groups.length + scopedEvents.length + 1,
         itemBuilder: (context, index) {
           if (index == 0) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const ItemFilters(),
+                if ({
+                      WorkspaceView.project,
+                      WorkspaceView.category,
+                      WorkspaceView.saved,
+                    }.contains(c.view) ||
+                    searching && search.text.trim().isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      'Events: ${c.eventWindowLabel}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
                 if (c.view == WorkspaceView.today) ...[
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            MaterialLocalizations.of(context)
-                                .formatFullDate(DateTime.now()),
-                            style: Theme.of(context).textTheme.labelLarge,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Your day, in focus',
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            '$done of ${todayTasks.length} planned tasks complete',
-                          ),
-                          const SizedBox(height: 8),
-                          LinearProgressIndicator(
-                            value: todayTasks.isEmpty
-                                ? 0
-                                : done / todayTasks.length,
-                          ),
-                        ],
-                      ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    child: Text(
+                      '$done of ${todayTasks.length} planned tasks complete',
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
                   if (overdue > 0)
@@ -641,19 +711,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                               : TimeOfDay.fromDateTime(e.startsAt.toLocal())
                                     .format(context),
                         ),
-                        onTap: () {
-                          pendingLink = Uri(
-                            scheme: 'todorbit',
-                            host: 'event',
-                            queryParameters: {
-                              'id': e.id,
-                              'day': today,
-                              if (e.nominalDate != null)
-                                'nominal': e.nominalDate!,
-                            },
-                          ).toString();
-                          deliverLink();
-                        },
+                        onTap: () => openEvent(e),
                       ),
                     for (final s in sessions)
                       ListTile(
@@ -686,7 +744,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                         ? 'Matching your search'
                         : 'Tap a task for details; check it off when finished',
                   ),
-                if (tasks.isEmpty)
+                if (tasks.isEmpty && scopedEvents.isEmpty)
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: 40, horizontal: 16),
                     child: Column(
@@ -694,15 +752,17 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                         const Icon(Icons.check_circle_outline, size: 40),
                         const SizedBox(height: 12),
                         Text(
-                          searching && search.text.isNotEmpty
+                          (c.activeFilter.isActive ||
+                                  searching && search.text.isNotEmpty)
                               ? 'No matching tasks'
                               : 'No tasks here yet',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          searching && search.text.isNotEmpty
-                              ? 'Try another title or clear your search.'
+                          (c.activeFilter.isActive ||
+                                  searching && search.text.isNotEmpty)
+                              ? 'Change the filters or clear your search.'
                               : 'A little space for what comes next.',
                           textAlign: TextAlign.center,
                         ),
@@ -718,55 +778,71 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
               ],
             );
           }
-          final t = tasks[index - 1];
-          final category = c.categories
-              .where((v) => v.id == t.categoryId)
-              .firstOrNull
-              ?.name;
-          final project = c.projects
-              .where((v) => v.id == t.projectId)
-              .firstOrNull
-              ?.name;
-          return Card(
-            child: ListTile(
-              contentPadding: const EdgeInsetsDirectional.only(
-                start: 4,
-                end: 4,
+          if (index <= scopedEvents.length) {
+            final event = scopedEvents[index - 1];
+            return Card(
+              child: ListTile(
+                leading: const Icon(Icons.event_outlined),
+                title: Text(event.title),
+                subtitle: Text(localDate(event.startsAt.toLocal())),
+                onTap: () => openEvent(event),
               ),
-              leading: Checkbox(
-                value: t.status == TaskStatus.completed,
-                semanticLabel:
-                    '${t.status == TaskStatus.completed ? 'Reopen' : 'Complete'} ${t.title}',
-                onChanged: (v) => run(() => c.setComplete(t, v == true)),
-              ),
-              title: Text(
-                t.title,
-                style: t.status == TaskStatus.completed
-                    ? const TextStyle(decoration: TextDecoration.lineThrough)
-                    : null,
-              ),
-              subtitle: Text(
-                [
-                  if (t.priority > 0) 'Priority ${t.priority}',
-                  if (t.status != TaskStatus.notStarted) t.status.name,
-                  if (t.scheduledDate != null)
-                    'Planned ${MaterialLocalizations.of(context).formatMediumDate(DateTime.parse(t.scheduledDate!))}',
-                  if (t.deadlineDate != null)
-                    'Due ${MaterialLocalizations.of(context).formatMediumDate(DateTime.parse(t.deadlineDate!))}',
-                  ?category,
-                  ?project,
-                ].join(' · '),
-              ),
-              onTap: () => task(t),
-              onLongPress: () => actions(t, c),
-              trailing: IconButton(
-                tooltip: 'Actions for ${t.title}',
-                icon: const Icon(Icons.more_vert),
-                onPressed: () => actions(t, c),
-              ),
-            ),
+            );
+          }
+          return TaskListGroupView(
+            group: groups[index - 1 - scopedEvents.length],
+            items: tasks,
+            parents: c.taskParents,
+            row: (t) => mobileTaskRow(t, c),
           );
         },
+      ),
+    );
+  }
+
+  Widget mobileTaskRow(LifeTask t, AppController c) {
+    final category = c.categories
+        .where((v) => v.id == t.categoryId)
+        .firstOrNull
+        ?.name;
+    final project = c.projects
+        .where((v) => v.id == t.projectId)
+        .firstOrNull
+        ?.name;
+    return Card(
+      child: ListTile(
+        contentPadding: const EdgeInsetsDirectional.only(start: 4, end: 4),
+        leading: Checkbox(
+          value: t.status == TaskStatus.completed,
+          semanticLabel:
+              '${t.status == TaskStatus.completed ? 'Reopen' : 'Complete'} ${t.title}',
+          onChanged: (v) => run(() => c.setComplete(t, v == true)),
+        ),
+        title: Text(
+          t.title,
+          style: t.status == TaskStatus.completed
+              ? const TextStyle(decoration: TextDecoration.lineThrough)
+              : null,
+        ),
+        subtitle: Text(
+          [
+            if (t.priority > 0) 'Priority ${t.priority}',
+            if (t.status != TaskStatus.notStarted) t.status.name,
+            if (t.scheduledDate != null)
+              'Planned ${MaterialLocalizations.of(context).formatMediumDate(DateTime.parse(t.scheduledDate!))}',
+            if (t.deadlineDate != null)
+              'Due ${MaterialLocalizations.of(context).formatMediumDate(DateTime.parse(t.deadlineDate!))}',
+            ?category,
+            ?project,
+          ].join(' · '),
+        ),
+        onTap: () => task(t),
+        onLongPress: () => actions(t, c),
+        trailing: IconButton(
+          tooltip: 'Actions for ${t.title}',
+          icon: const Icon(Icons.more_vert),
+          onPressed: () => actions(t, c),
+        ),
       ),
     );
   }
@@ -774,9 +850,10 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
   Future<void> actions(LifeTask t, AppController c) async {
     final choice = await showModalBottomSheet<String>(
       context: context,
+      sheetAnimationStyle: AppMotion.style(context),
       useSafeArea: true,
       showDragHandle: true,
-      builder: (context) => ListView(
+      builder: (context) => FadingListView(
         shrinkWrap: true,
         children: [
           ListTile(
@@ -833,7 +910,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
 
   Widget drawer(AppController c) => Drawer(
     child: SafeArea(
-      child: ListView(
+      child: FadingListView(
         children: [
           Padding(
             padding: const EdgeInsets.all(24),
@@ -842,7 +919,9 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
               style: Theme.of(context).textTheme.headlineMedium,
             ),
           ),
-          for (final v in AppController.defaultSidebarOrder)
+          for (final v in c.sidebarOrder.where(
+            (v) => !c.hiddenNavigation.contains(v.name),
+          ))
             ListTile(
               leading: Icon(sidebarIcon(v)),
               title: Text(sidebarName(v)),
@@ -852,14 +931,15 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                 navigate(v);
               },
             ),
-          ListTile(
-            leading: const Icon(Icons.bar_chart),
-            title: const Text('Statistics'),
-            onTap: () {
-              Navigator.pop(context);
-              navigate(WorkspaceView.reports);
-            },
-          ),
+          if (!c.hiddenNavigation.contains('reports'))
+            ListTile(
+              leading: const Icon(Icons.bar_chart),
+              title: const Text('Statistics'),
+              onTap: () {
+                Navigator.pop(context);
+                navigate(WorkspaceView.reports);
+              },
+            ),
           const Divider(),
           for (final category in c.categories)
             ExpansionTile(
@@ -891,7 +971,9 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                   ),
               ],
             ),
-          for (final saved in c.savedViews)
+          for (final saved in c.orderedSavedViews.where(
+            (v) => !c.hiddenNavigation.contains(v.id),
+          ))
             ListTile(
               leading: const Icon(Icons.bookmark_outline),
               title: Text(saved.name),
@@ -908,6 +990,14 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                 },
               ),
             ),
+          ListTile(
+            leading: const Icon(Icons.tune),
+            title: const Text('Customize navigation'),
+            onTap: () {
+              Navigator.pop(context);
+              dialog(const SidebarOrderDialog());
+            },
+          ),
           ListTile(
             leading: const Icon(Icons.create_new_folder_outlined),
             title: const Text('Manage projects and categories'),
@@ -957,6 +1047,18 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.volunteer_activism_outlined),
+            title: const Text('Support Todorbit'),
+            onTap: () {
+              Navigator.pop(context);
+              dialog(
+                supportAvailable
+                    ? const SupportDialog()
+                    : const ProjectSupportDialog(),
+              );
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.delete_outline),
             title: const Text('Archive and Trash'),
             onTap: () {
@@ -1001,6 +1103,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
   Future<void> organization(AppController c) async {
     await showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: AppMotion.style(context),
       useSafeArea: true,
       isScrollControlled: true,
       showDragHandle: true,
@@ -1009,7 +1112,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
           final current = ref.watch(appControllerProvider);
           return FractionallySizedBox(
             heightFactor: .85,
-            child: ListView(
+            child: FadingListView(
               padding: const EdgeInsets.all(16),
               children: [
                 Text(
@@ -1022,6 +1125,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                   onTap: () async {
                     final name = await showDialog<String>(
                       context: context,
+                      animationStyle: AppMotion.style(context),
                       builder: (_) => const TextPromptDialog(
                         title: 'New category',
                         label: 'Name',
@@ -1086,6 +1190,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                         onTap: () async {
                           final name = await showDialog<String>(
                             context: context,
+                            animationStyle: AppMotion.style(context),
                             builder: (_) => TextPromptDialog(
                               title: 'Rename category',
                               initial: category.name,
@@ -1104,6 +1209,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                         onTap: () async {
                           final name = await showDialog<String>(
                             context: context,
+                            animationStyle: AppMotion.style(context),
                             builder: (_) => const TextPromptDialog(
                               title: 'New project',
                               label: 'Name',
@@ -1123,6 +1229,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                           onTap: () async {
                             final name = await showDialog<String>(
                               context: context,
+                              animationStyle: AppMotion.style(context),
                               builder: (_) => TextPromptDialog(
                                 title: 'Rename project',
                                 initial: p.name,

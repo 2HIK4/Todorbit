@@ -1,11 +1,15 @@
+import '../shared/scroll_edge_fade.dart';
+import '../../domain/models.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
 
 class QuickSearchDialog extends ConsumerStatefulWidget {
-  const QuickSearchDialog({super.key, this.beforeNavigate});
+  const QuickSearchDialog({super.key, this.beforeNavigate, this.onEventTap});
   final Future<bool> Function()? beforeNavigate;
+  final ValueChanged<FixedEvent>? onEventTap;
 
   @override
   ConsumerState<QuickSearchDialog> createState() => _QuickSearchDialogState();
@@ -88,6 +92,38 @@ class _QuickSearchDialogState extends ConsumerState<QuickSearchDialog> {
         ),
       );
     }
+    if (widget.onEventTap != null) {
+      final seen = <String>{};
+      final events = List.of(controller.events)
+        ..sort((a, b) {
+          final pastA = a.endsAt.isBefore(DateTime.now()),
+              pastB = b.endsAt.isBefore(DateTime.now());
+          return pastA != pastB
+              ? pastA
+                    ? 1
+                    : -1
+              : a.startsAt.compareTo(b.startsAt);
+        });
+      for (final event in events) {
+        if (event.cancelled || !seen.add(event.id)) continue;
+        final project = projects[event.projectId]?.name ?? '';
+        if (!'${event.title} ${event.notes} $project ${categories[event.categoryId]?.name ?? ''}'
+            .toLowerCase()
+            .contains(needle)) {
+          continue;
+        }
+        matches.add(
+          _SearchMatch(
+            title: event.title,
+            subtitle:
+                'Event ? ${localDate(event.startsAt.toLocal())}${project.isEmpty ? '' : ' ? $project'}',
+            icon: Icons.event_outlined,
+            rank: event.title.toLowerCase().startsWith(needle) ? 0 : 3,
+            open: () => widget.onEventTap!(event),
+          ),
+        );
+      }
+    }
     matches.sort((a, b) {
       final rank = a.rank.compareTo(b.rank);
       return rank != 0
@@ -102,8 +138,9 @@ class _QuickSearchDialogState extends ConsumerState<QuickSearchDialog> {
     final controller = ref.watch(appControllerProvider);
     final matches = _matches(controller);
     Future<void> open(_SearchMatch match) async {
-      if (widget.beforeNavigate != null && !await widget.beforeNavigate!())
+      if (widget.beforeNavigate != null && !await widget.beforeNavigate!()) {
         return;
+      }
       if (!context.mounted) return;
       match.open();
       Navigator.pop(context);
@@ -122,7 +159,7 @@ class _QuickSearchDialogState extends ConsumerState<QuickSearchDialog> {
                 autofocus: true,
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.search),
-                  labelText: 'Search tasks, categories, and projects',
+                  labelText: 'Search tasks, events, categories, and projects',
                   suffixIcon: IconButton(
                     tooltip: 'Close search',
                     onPressed: () => Navigator.pop(context),
@@ -135,12 +172,16 @@ class _QuickSearchDialogState extends ConsumerState<QuickSearchDialog> {
                 },
               ),
               const SizedBox(height: 8),
+              Text(
+                'Events: ${controller.eventWindowLabel}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
               Expanded(
                 child: query.text.trim().isEmpty
                     ? const Center(child: Text('Type to find a task or place.'))
                     : matches.isEmpty
                     ? const Center(child: Text('No matches.'))
-                    : ListView.builder(
+                    : FadingListView.builder(
                         itemCount: matches.length,
                         itemBuilder: (context, index) {
                           final match = matches[index];

@@ -57,7 +57,7 @@ class _SettingsSectionState extends State<SettingsSection> {
               ? null
               : SettingsHelperText(widget.description!),
           children: [
-            const Divider(height: 16),
+            const SizedBox(height: AppSpacing.gap),
             PageStorage(
               bucket: contentStorage,
               child: Column(

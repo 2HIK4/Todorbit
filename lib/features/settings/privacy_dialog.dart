@@ -1,3 +1,5 @@
+import '../shared/scroll_edge_fade.dart';
+
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:flutter/material.dart';
 
@@ -64,7 +66,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     body: Center(
-      child: SingleChildScrollView(
+      child: FadingScrollView(
         padding: const EdgeInsets.all(24),
         child: SizedBox(
           width: 340,
@@ -181,7 +183,7 @@ class _PrivacyDialogState extends ConsumerState<PrivacyDialog> {
       title: const Text('Privacy and app lock'),
       content: SizedBox(
         width: 480,
-        child: SingleChildScrollView(
+        child: FadingScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
