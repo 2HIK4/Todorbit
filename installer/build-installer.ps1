@@ -1,5 +1,6 @@
 param(
-  [string]$Compiler = ''
+  [string]$Compiler = '',
+  [string]$GoogleDriveConfigPath = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -12,7 +13,7 @@ $version = $Matches[1]
 $bundle = Join-Path $repo 'build\windows\x64\runner\Release'
 . (Join-Path $repo 'tools\google-drive-release-config.ps1')
 . (Join-Path $repo 'tools\windows-crt.ps1')
-Assert-GoogleDriveReleaseBundle $bundle $repo
+Assert-GoogleDriveReleaseBundle $bundle $repo $GoogleDriveConfigPath
 Assert-TodorbitWindowsCrtBundle $bundle
 $mainExe = Join-Path $bundle 'Todorbit.exe'
 $widgetExe = Join-Path $bundle 'TodorbitWidget.exe'

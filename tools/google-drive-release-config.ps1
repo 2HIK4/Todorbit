@@ -1,6 +1,11 @@
 # Public Desktop OAuth configuration only. Never accept user credentials here.
 function Read-GoogleDriveReleaseConfig([string]$Path) {
-  $config = Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json
+  try {
+    $config = Get-Content -Raw -LiteralPath $Path -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+  } catch {
+    # Parser errors may echo the JSON, including the Desktop parameter.
+    throw 'OAuth build config could not be read as JSON. Keep its contents private and check the local file.'
+  }
   $expected = @('GOOGLE_DRIVE_ENABLED', 'GOOGLE_DRIVE_CLIENT_ID', 'GOOGLE_DRIVE_CLIENT_SECRET')
   $keys = @($config.PSObject.Properties.Name)
   if ($keys.Count -ne 3 -or @($keys | Where-Object { $_ -cnotin $expected }).Count -ne 0 -or
@@ -21,7 +26,7 @@ function Read-GoogleDriveReleaseConfig([string]$Path) {
   return $config
 }
 
-function Assert-GoogleDriveReleaseBundle([string]$Bundle, [string]$Repo) {
+function Assert-GoogleDriveReleaseBundle([string]$Bundle, [string]$Repo, [string]$ConfigPath = '') {
   $privateFiles = Get-ChildItem -LiteralPath $Bundle -Recurse -File | Where-Object {
     $_.Name -match '(?i)\.(sqlite|db)(-(wal|shm))?$|\.tdbackup$|\.log$|\.(pfx|p12|pem|key)$|client_secret.*\.json$|(?:credentials|tokens|desktop-oauth)\.json$|(-settings|privacy-session|pending-restore|restore-status)\.json$' -or
     $_.FullName -match '(?i)[\\/]backups[\\/]'
@@ -32,10 +37,12 @@ function Assert-GoogleDriveReleaseBundle([string]$Bundle, [string]$Repo) {
     throw 'OAuth build receipt missing. Build with tools/build-windows-release.ps1 before packaging.'
   }
   $receipt = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
-  $configPath = Join-Path $Repo 'config\google-drive.json'
-  $config = Read-GoogleDriveReleaseConfig $configPath
+  $selectedConfigPath = if ($ConfigPath) {
+    (Resolve-Path -LiteralPath $ConfigPath -ErrorAction Stop).Path
+  } else { Join-Path $Repo 'config\google-drive.json' }
+  $config = Read-GoogleDriveReleaseConfig $selectedConfigPath
   $aotHash = (Get-FileHash -LiteralPath (Join-Path $Bundle 'data\app.so') -Algorithm SHA256).Hash
-  $configHash = (Get-FileHash -LiteralPath $configPath -Algorithm SHA256).Hash
+  $configHash = (Get-FileHash -LiteralPath $selectedConfigPath -Algorithm SHA256).Hash
   $mainHash = (Get-FileHash -LiteralPath (Join-Path $Bundle 'Todorbit.exe') -Algorithm SHA256).Hash
   if ($receipt.configSha256 -ne $configHash -or $receipt.aotSha256 -ne $aotHash -or
       $receipt.mainSha256 -ne $mainHash -or $receipt.googleDriveEnabled -ne $config.GOOGLE_DRIVE_ENABLED -or

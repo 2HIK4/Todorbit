@@ -1,11 +1,11 @@
-param([string]$OutputDirectory = '')
+param([string]$OutputDirectory = '', [string]$GoogleDriveConfigPath = '')
 
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $bundle = Join-Path $repo 'build\windows\x64\runner\Release'
 . (Join-Path $PSScriptRoot 'google-drive-release-config.ps1')
 . (Join-Path $PSScriptRoot 'windows-crt.ps1')
-Assert-GoogleDriveReleaseBundle $bundle $repo
+Assert-GoogleDriveReleaseBundle $bundle $repo $GoogleDriveConfigPath
 Assert-TodorbitWindowsCrtBundle $bundle
 $releaseRoot = if ($OutputDirectory) { [IO.Path]::GetFullPath($OutputDirectory) } else { Join-Path $repo 'release' }
 $versionText = Get-Content -Raw (Join-Path $repo 'pubspec.yaml')
