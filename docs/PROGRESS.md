@@ -1,5 +1,28 @@
 # Progress
 
+## Final private acceptance (2026-11-06)
+
+- Continued `feature/sync-ux-refinement` at `2262ede`; application source and all
+  prior artifact identities match. Reused unchanged host, Sync, UI, native and
+  live Windows Debug passes; no full Flutter suite or app rebuild repeated.
+- Prepared private Windows setup/portable and Android debug APK with SHA-256
+  sidecars. Actual clean Sandbox setup/registration, installed/portable schema 27
+  (53 tables), integrity, packaged native self-test, in-place setup and
+  uninstall/reinstall database preservation pass. No host installer execution.
+- Fixed stale Sandbox table-count expectation (26:52, 27:53; unknown schemas
+  fail closed). Five harness tests pass; extended two-profile backup round trip
+  passes for event projects, named groups/items, attachment bytes and return task.
+  No application defect or production-code change was required.
+  Acceptance-only commit: `6ba6d81`; binaries retain application source `2262ede`.
+- Native Windows automation still reports missing pipe; no Android device.
+  Physical input/launcher/IME/accessibility remain open. Windows Release OAuth
+  is disabled/empty; Android debug certificate/account registration needs owner
+  confirmation. Real Drive testing stops before account authorization/configuration.
+  No production profile/cloud, version, tag, push or publication changed.
+- [Private artifacts, workflow coverage, acceptance logs, manual checklist and
+  exact owner actions](PRIVATE_ACCEPTANCE_2026_11_06.md). Local isolated testing is
+  ready; a private beta release claiming full Sync/platform acceptance is not.
+
 ## Sync and cross-platform refinement (2026-11-05/06)
 
 - Branch `feature/sync-ux-refinement`, baseline `501e748`. Implements compact
