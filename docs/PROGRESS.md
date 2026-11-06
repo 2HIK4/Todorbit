@@ -1,5 +1,29 @@
 # Progress
 
+## Real Drive OAuth audit and authorization boundary (2026-11-06)
+
+- Continued `feature/sync-ux-refinement` from `8ef2d98`; application source,
+  tracked disabled OAuth configuration, version and private artifact hashes remain
+  unchanged. Reused exact-APK package/signature evidence and previous test passes.
+- Audited Desktop PKCE/loopback, Android GIS, secure token storage/refresh,
+  pairing, error/recovery UI and current official Google setup guidance. Console
+  project/client registration and named disposable accounts are not verified.
+  Standard is readable JSON; Private encrypts payloads. Both-mode real testing
+  without replacing a workspace needs separate fresh approved accounts, one per
+  mode and shared across Windows/Android within that mode.
+- Build and package guards accept an optional outside-Git OAuth config path;
+  defaults, receipt checks and tracked config remain unchanged. A synthetic probe
+  confirmed malformed JSON errors could echo field contents; generic parser/read
+  errors now prevent that. Sixteen focused fixture/config checks pass, alongside
+  the retained default-bundle guard and five script parses.
+  Tooling commit: `cdc7229`; documentation follows separately.
+  No app build/full Flutter suite/emulator boot was repeated; ADB has no device.
+- Real scenarios A–L are BLOCKED before authorization: no Google sign-in, Drive
+  request, upload, account data access, reset or cleanup occurred. Existing
+  unfamiliar-task incident remains not reproduced. No publication/push/tag.
+- [Verified facts, current Console checks, secure private configuration,
+  artifact identities, test matrix and exact owner action](REAL_DRIVE_ACCEPTANCE_2026_11_06.md).
+
 ## Final private acceptance (2026-11-06)
 
 - Continued `feature/sync-ux-refinement` at `2262ede`; application source and all

@@ -1,5 +1,10 @@
 # Google Drive sync
 
+Current local schema-27 OAuth/real-service status and owner setup actions are in
+[the 2026-11-06 real Drive audit](REAL_DRIVE_ACCEPTANCE_2026_11_06.md).
+All real cross-device scenarios remain blocked before approved test-account
+authorization; deterministic passes do not establish live Google behavior.
+
 Beta 11 adds **Start New Sync** in Sync settings (under **Recovery** in the current
 UI). Routine sync and Automatic sync precede encryption/advanced recovery options;
 pending replacement reviews expand Recovery automatically. A verified independent local
