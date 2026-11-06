@@ -1,5 +1,22 @@
 # Progress
 
+## Owner-approved Drive-enabled private Windows candidate (2026-11-06)
+
+- Owner confirms project/API/scope/audience and Android debug registration; branding
+  stays outstanding, production consent unchanged. Only the explicitly approved
+  Desktop JSON was read locally; installed structure/client/project validate.
+  Converted strict three-field build config remains outside Git with protected ACLs.
+- Built exact `d8abbec` in a separate private source archive. Existing outputs,
+  profiles, version, tracked disabled config and unrelated storage docs remain
+  unchanged. Plugin-junction and UTF-8 log-runner issues were handled without
+  changing OS settings or repeating the completed 237.7s Release compilation.
+- Enabled config/AOT, signed CRT, packaged native self-test and private
+  setup/portable checks pass. No app launch/account/Drive request occurred;
+  no Android rebuild, full-suite rerun, publication, push or tag.
+- [Exact private paths, identities, validation and owner next steps](PRIVATE_DRIVE_ENABLED_BUILD_2026_11_06.md).
+  Await a named approved disposable account/mode and isolated test environments
+  before owner-performed Google account selection/consent and A–L execution.
+
 ## Real Drive OAuth audit and authorization boundary (2026-11-06)
 
 - Continued `feature/sync-ux-refinement` from `8ef2d98`; application source,

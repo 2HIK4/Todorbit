@@ -1,5 +1,12 @@
 # Real Drive acceptance and OAuth audit — 2026-11-06
 
+Later owner-authorized continuation: Cloud configuration inspection is reported
+complete and the existing approved Desktop JSON has been validated locally.
+A separate Drive-enabled private Windows candidate is now prepared; see
+[the enabled-build receipt](PRIVATE_DRIVE_ENABLED_BUILD_2026_11_06.md).
+No account/Drive action was authorized or performed. The historical disabled
+artifacts below remain intact; A–L real-cloud outcomes remain BLOCKED.
+
 **Real-cloud acceptance: BLOCKED before authorization. No real Drive request,
 Google account connection or Cloud Console change was performed.** All scenarios
 A–L below remain blocked; deterministic passes are a separate evidence class.
