@@ -102,3 +102,22 @@ for selection, signing diagnostics and the next-beta acceptance limits.
 
 Build/test/device results and exact outstanding acceptance must be recorded here
 before claiming the Android definition of done.
+
+## Current refinement (unpublished schema 27)
+
+The shared task/event filters, event projects, named checklists, draft resource
+creation and recurrence/subtask grouping also serve Android. Today uses a
+compact completion line; Settings uses grouped disclosure. Support is in the
+main drawer, with distribution-specific payment/project-support behavior.
+Optional drawer rows and named category/project views share desktop navigation
+preferences; pinned mobile destinations retain their independent existing scope.
+
+Tasks Today and Calendar launcher widgets provide previous/next day and Today
+without opening Flutter, within 14 days before or after the cached current day.
+Each widget stores its own explicit selection; Today follows local midnight by
+default. Refresh occurs through existing publish/resume/midnight opportunities,
+not a new polling loop. Over-capacity snapshots show a full-list hint. The app
+still owns database writes and reminder semantics. Actual launcher/OEM,
+accessibility, rotation, midnight and reboot acceptance is required; host tests
+and an APK build are not proof of those interactions. See
+[implementation and evidence](REFINEMENT_2026_11.md).

@@ -1,5 +1,36 @@
 # Progress
 
+## Sync and cross-platform refinement (2026-11-05/06)
+
+- Branch `feature/sync-ux-refinement`, baseline `501e748`. Implements compact
+  durable Sync decisions; safe identical-deletion handling; additive schema 27
+  for event projects/named checklists; draft attachments, shared filters,
+  recurrence/subtask disclosure, navigation visibility and mobile Settings/home.
+  Both widget implementations gain date navigation; shared motion and scroll
+  treatments retain existing palettes/accessibility preferences.
+- No production profile/cloud, release version, tags or publication changed.
+  Three unrelated storage documents remain untouched and excluded.
+- Full serial integration: 751 passed, 24 failed, 3 opt-in skipped; all 24 failures
+  now have passing focused follow-ups. Current analysis is clean; final event/mobile
+  batch passes all 50. Reuse unchanged full-suite assertions, with exact invalidation
+  and correction evidence in the receipt. Additive migration/journal, Standard/Private
+  replay and draft preservation checks pass.
+- Windows Release, standalone/packaged native self-tests, isolated startup/resource
+  journeys (14) and actual packaged companion launch/reload IPC (1) pass.
+  Android Debug (arm64/x64, seven-library alignment) and isolated live Windows
+  create/URL-resource/theme/filter journey pass. Live hot reload succeeds with no
+  subsequent runtime errors; read-only SQLite confirms schema 27 and saved records.
+  Physical Windows/Android and real Drive acceptance stay separate. Computer Use
+  initialization fails on missing kernel assets, os error 3; ADB has no device.
+- Implementation commits: `9fd95b5` (data/Sync), `6ca103a` (UI/journeys),
+  `f26f6b0` (widget date navigation). Source is unchanged since final checks.
+  Ready for isolated private testing; release remains gated on physical acceptance,
+  real authorized cloud recovery/exchange, exact-candidate CI and release packaging.
+  The local Windows Release uses the existing Drive-disabled configuration.
+- [Implementation, capability matrix, compatibility, audit and invocation receipt](REFINEMENT_2026_11.md)
+  owns the continuation. Resume against its latest source manifest, not dated
+  beta12 or earlier platform receipts. Do not publish.
+
 ## UI quality beta12 published; further tests skipped (2026-11-04)
 
 - Owner explicitly requests skipping further tests and publishing any new app

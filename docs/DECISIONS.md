@@ -1,5 +1,25 @@
 # Decisions
 
+## 2026-11-05: additive relationships and presentation-only grouping
+
+Schema 27 adds optional event projects and named task checklists. Schema-26
+Sync journals, queued payloads and workspace proofs remain immutable; defaults
+are supplied only in semantic projections/final SQL writes. Both encryption
+modes share this path. All connected clients must update before receiving new
+schema-27 batches. Compatible Before Restore history stays read-only.
+Equivalent concurrent soft deletions may coalesce only when all other user
+values agree; retain every causal head and tombstone. Delete/edit is still a
+reviewed whole-record decision. No metadata compaction is inferred from age.
+
+Task recurrence families/subtasks group only in presentation, by stable IDs.
+Filters use AND across dimensions and OR within task statuses. Draft resources
+and named checklists commit with a new task transaction; cancellation leaves
+original files untouched. Existing saved-record resource/composition actions
+remain immediate and disclose this. Navigation visibility and motion remain
+device preferences with explicit shareable transfer. Android widget dates use
+bounded cached snapshots and per-widget selection, without new polling.
+See [implementation, limits and evidence](REFINEMENT_2026_11.md).
+
 ## 2026-11-04: isolated sync replacement generations
 
 Start New Sync uses random workspace IDs and immutable append-only generation

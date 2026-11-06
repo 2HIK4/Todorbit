@@ -265,3 +265,25 @@ notification suppression and the optional generic-only message. Then unlock,
 change/remove the PIN, and verify the widget updates within one second. The
 native self-test covers policy/session parsing and disposable APPDATA routing,
 but does not prove these visual interactions or workstation lock behavior.
+
+## Schema-27 refinement acceptance additions (unpublished)
+
+On a disposable profile with synthetic tasks/events, verify these alongside the
+existing checklist; record the exact native binary/profile/theme/DPI:
+
+- Tasks Today: previous/next day updates heading/content; Today returns to the
+  real date; Quick Add saves only the displayed planned day. Inbox/All retain
+  their meaning. Short/wide and headerless variants retain usable controls.
+- Calendar: previous/next day selects the adjacent date across month/year
+  boundaries; month arrows retain month navigation; Today selects the real day.
+  Verify pointer and keyboard/accessibility names, agenda and deep-link target.
+- Both widget hosts keep independent selections; a host following Today moves
+  at local midnight, while another selected date stays selected. Check timezone
+  change and sleep/resume without duplicate background processes.
+- Verify physical shell attachment, hit testing, Narrator, custom theme contrast,
+  live resize and 100/150/200% DPI. Native offscreen/self-test evidence does not
+  satisfy these physical checks.
+
+The native reader accepts schema 27 but never migrates it; older event tables
+without project_id retain their guarded read path. See the current
+[refinement receipt](REFINEMENT_2026_11.md).

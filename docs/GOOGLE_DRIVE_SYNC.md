@@ -161,3 +161,20 @@ automated cloud evidence uses mocks. Do not test against personal data.
 
 Physical devices, OEM behavior, real authorization and final live UI acceptance
 remain distinct from mocked exchange, host fixtures and widget-test rendering.
+
+## Schema 27 refinement compatibility (unpublished source)
+
+Current refinement adds optional event-project assignment and named checklists.
+Upgrade all participating installations before using these relationships.
+Schema-27 clients accept unchanged schema-26 batches; older clients retain but
+refuse newer batches. Existing Standard/Private workspace proof formats and
+recovery requirements are unchanged. Immutable journals and queued ciphertext
+are never rewritten to add fields. Equivalent concurrent deletions with no
+other value differences no longer require a decision, but all tombstones and
+causal heads stay retained. Delete/edit conflicts remain explicit.
+
+The compact decision interface reveals full values on demand and remembers
+selections only for the exact review fingerprint. Restored databases still
+require explicit reconciliation; snapshot absence never infers a cloud delete.
+The cause of the owner's unfamiliar items is not proven from personal data.
+See [diagnosis and validation](REFINEMENT_2026_11.md).
