@@ -38,8 +38,16 @@ void main() {
           startsAt: DateTime.utc(2026, 10, 28, 12),
           endsAt: DateTime.utc(2026, 10, 28, 13),
           repeat: const EventRepeat(kind: EventRepeatKind.weekly),
+          categoryId: category.id,
+          projectId: project.id,
         ),
       );
+      final group = await source.addChecklistGroup(task.id, 'Travel');
+      await source.addChecklistItem(task.id, 'Pack notes', groupId: group.id);
+      final item = (await source.checklistItems()).single;
+      final attachment = File('${root.path}/reference.txt');
+      await attachment.writeAsString('Synthetic cross-profile attachment');
+      final resource = await source.attachManagedFile(task.id, attachment);
       final mobileService = BackupService(android);
       await LifeRepository(mobile)
           .addTask(const TaskDraft(title: 'Recoverable old mobile data'));
@@ -68,6 +76,25 @@ void main() {
       expect(restored.projectId, project.id);
       expect(restored.scheduledDate, '2026-10-28');
       expect(restored.deadlineDate, '2026-11-01');
+      expect((await target.events()).single.projectId, project.id);
+      expect((await target.events()).single.categoryId, category.id);
+      expect((await target.checklistGroups()).single.id, group.id);
+      expect((await target.checklistItems()).single.id, item.id);
+      expect((await target.checklistItems()).single.groupId, group.id);
+      expect(
+        (await target.taskResources(task.id)).single.sha256,
+        resource.sha256,
+      );
+      expect(
+        (await mobile
+                .customSelect('SELECT content FROM task_resources')
+                .getSingle())
+            .read<List<int>>('content'),
+        'Synthetic cross-profile attachment'.codeUnits,
+      );
+      final returnedTask = await target.addTask(
+        const TaskDraft(title: 'Mobile return sentinel'),
+      );
       expect(
         (await target.events()).single.repeat!.kind,
         EventRepeatKind.weekly,
@@ -97,7 +124,32 @@ void main() {
         appSchemaVersion: AppDatabase.currentSchemaVersion,
       );
       desktop = AppDatabase(NativeDatabase(windows));
-      expect((await LifeRepository(desktop).tasks()).single.id, task.id);
+      final returnedRepository = LifeRepository(desktop);
+      expect(
+        (await returnedRepository.tasks()).map((t) => t.id),
+        containsAll([task.id, returnedTask.id]),
+      );
+      expect((await returnedRepository.events()).single.projectId, project.id);
+      expect((await returnedRepository.checklistGroups()).single.id, group.id);
+      expect(
+        (await returnedRepository.checklistItems()).single.groupId,
+        group.id,
+      );
+      expect(
+        (await returnedRepository.taskResources(task.id)).single.sha256,
+        resource.sha256,
+      );
+      expect(
+        (await desktop
+                .customSelect('SELECT content FROM task_resources')
+                .getSingle())
+            .read<List<int>>('content'),
+        'Synthetic cross-profile attachment'.codeUnits,
+      );
+      expect(
+        await desktop.customSelect('PRAGMA foreign_key_check').get(),
+        isEmpty,
+      );
     } finally {
       await desktop.close();
       await mobile.close();
