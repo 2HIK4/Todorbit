@@ -52,7 +52,7 @@ jobs:
           flutter test --no-pub --concurrency=1 test_driver/native_sync_writer_test.dart
       - name: Verify hidden background sync barriers
         shell: pwsh
-        run: python tools/test-background-sync.py --executable build/windows/x64/runner/Release/Todorbit.exe --schema 26
+        run: python tools/test-background-sync.py --executable build/windows/x64/runner/Release/Todorbit.exe
       - name: Native widget self-test in disposable profile
         shell: pwsh
         run: |

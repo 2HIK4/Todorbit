@@ -1,5 +1,13 @@
 # Persistent test run ledger
 
+## Beta13 release verification (2026-11-07)
+
+See [continuation receipt](FINAL_STABILIZATION_2026_11_07.md#beta13-release-verification-continuation-2026-11-07).
+Exact artifact/source hashes reused; no builds/full suites/Sync matrices. New
+config-fixture gate: initial failure then18 passes after fixture correction.
+New background-schema helper:2 passes; actual guest worker barriers pending.
+Offline genuine Beta12-to13 installer acceptance is checkpointed outside Git.
+
 ## Beta13 stabilization follow-up (2026-11-07)
 
 [Single receipt/inventory](FINAL_STABILIZATION_2026_11_07.md); detailed exact

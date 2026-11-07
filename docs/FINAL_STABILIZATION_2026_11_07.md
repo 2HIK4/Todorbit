@@ -249,3 +249,36 @@ Local commits since87e976f: `0e04028` (mode/workspace approval), `abf8049`
 (automatic restore restart), `bb9749b` (native identity guard), `7783af8` (motion).
 The following documentation checkpoint records these results without changing
 compiled implementation. The three unrelated storage-document edits stay excluded.
+
+
+## Beta13 release verification continuation (2026-11-07)
+
+Starting checkpoint `3700185`, branch `feature/sync-ux-refinement`. Evidence is
+outside Git at `D:/AI_Projects/TodorbitPrivateBuilds/stabilization-20261107/release-verification/`.
+`001-continuity.json` matches the recorded implementation/native source and all
+four final package hashes; no application changes or rebuilds. Standard/Private,
+restore/reconciliation, native self-test, analysis and package evidence above is
+reused for unchanged boundaries. `005-production-protection.json` confirms all
+18 production baseline files unchanged; protected storage documents also match.
+
+Two CI verification defects were corrected without changing shipped binaries:
+- Release-config test still used fake executable text and lacked source-version
+  metadata after the bundle identity guard was added. Initial invocation failed;
+  corrected real-PE fixtures and two negative version cases pass all18 checks
+  (`002-config-gate-corrected.log`).
+- Windows CI passed schema26 to background-worker fixtures although the candidate
+  uses27. Privacy/restore checks therefore stopped at the earlier migration gate.
+  The helper now derives/checks the source schema; CI removes the stale argument.
+  Two focused schema-selector tests pass. Exact worker execution remains pending.
+
+Offline Windows Sandbox is running solely for installer/upgrade acceptance:
+2GiB, networking/clipboard disabled, only verified packages/synthetic fixtures
+mapped. Authentic published Beta12 installer SHA-256 is
+`e8f4a454dbc378dc70f2829d6a96227e8b2542cc43c34ec758b505b827e4e8ab`
+(receipt003). Guest runner checkpoints `sandbox-results/acceptance.json`; guest
+identity `WDAGUtilityAccount`, host production profiles/credentials not mapped.
+It installs12, seeds synthetic schema26 task/event/checklist, then installs13.
+Migration approval must use the application's actual confirmation; native Windows
+UI automation remains unavailable. Do not claim migration/uninstall passed until
+this checkpoint reports PASS. Signed Android runtime in a separate clean AVD and
+exact-source remote CI remain pending. No emulator or Google exchange launched.

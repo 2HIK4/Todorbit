@@ -5,6 +5,7 @@ from ctypes import wintypes
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import sqlite3
 import subprocess
@@ -16,11 +17,23 @@ def digest(file):
     return hashlib.sha256(file.read_bytes()).hexdigest()
 
 
+def checked_schema(requested=None):
+    source = Path(__file__).resolve().parents[1] / "lib/data/app_database.dart"
+    match = re.search(r"static const currentSchemaVersion = (\d+);", source.read_text())
+    if not match:
+        raise RuntimeError("Cannot determine current database schema")
+    current = int(match.group(1))
+    if requested is not None and requested != current:
+        raise ValueError("Barrier fixtures must use the current database schema")
+    return current
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--executable', required=True, type=Path)
-    parser.add_argument('--schema', required=True, type=int)
+    parser.add_argument('--schema', type=int)
     args = parser.parse_args()
+    args.schema = checked_schema(args.schema)
     executable = args.executable.resolve(strict=True)
     if os.name != 'nt':
         raise RuntimeError('This check requires the Windows Release runner.')

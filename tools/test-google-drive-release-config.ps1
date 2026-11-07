@@ -11,6 +11,20 @@ function Expect-Rejected([scriptblock]$Action) {
   try { & $Action | Out-Null } catch { $rejected = $true }
   if (-not $rejected) { throw 'Invalid or stale OAuth release configuration was accepted.' }
 }
+function New-VersionFixture([string]$File, [string]$FileVersion = '1.2.3.42') {
+  # Real PE metadata exercises the bundle guard; this stub is never launched.
+  $compiler = Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
+  if (!(Test-Path -LiteralPath $compiler)) { throw 'Windows C# fixture compiler unavailable.' }
+  $source = Join-Path $testRoot 'version-fixture.cs'
+  @"
+using System.Reflection;
+[assembly: AssemblyFileVersion("$FileVersion")]
+[assembly: AssemblyInformationalVersion("1.2.3-test.1+42")]
+public static class Program { public static void Main() {} }
+"@ | Set-Content -LiteralPath $source -Encoding UTF8
+  & $compiler /nologo /target:winexe "/out:$File" $source
+  if ($LASTEXITCODE -ne 0) { throw 'Version fixture compilation failed.' }
+}
 try {
   $configRoot = New-Item -ItemType Directory -Path (Join-Path $testRoot 'config') -Force
   $configPath = Join-Path $configRoot.FullName 'google-drive.json'
@@ -53,7 +67,9 @@ try {
   $checks++
   $bundle = Join-Path $testRoot 'bundle'
   $null = New-Item -ItemType Directory -Path (Join-Path $bundle 'data') -Force
-  Set-Content -LiteralPath (Join-Path $bundle 'Todorbit.exe') -Value 'fixture executable'
+  'version: 1.2.3-test.1+42' | Set-Content -LiteralPath (Join-Path $testRoot 'pubspec.yaml') -Encoding UTF8
+  New-VersionFixture (Join-Path $bundle 'Todorbit.exe')
+  Copy-Item -LiteralPath (Join-Path $bundle 'Todorbit.exe') -Destination (Join-Path $bundle 'TodorbitWidget.exe')
   Set-Content -LiteralPath (Join-Path $bundle 'data\app.so') -Value 'fixture compiled Dart'
   Expect-Rejected { Assert-GoogleDriveReleaseBundle $bundle $testRoot }
   $checks++
@@ -66,6 +82,14 @@ try {
   } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $bundle 'data\todorbit-build.json') -Encoding UTF8
   Assert-GoogleDriveReleaseBundle $bundle $testRoot
   $checks++
+  New-VersionFixture (Join-Path $bundle 'TodorbitWidget.exe') '1.2.3.0'
+  Expect-Rejected { Assert-GoogleDriveReleaseBundle $bundle $testRoot }
+  $checks++
+  Copy-Item -LiteralPath (Join-Path $bundle 'Todorbit.exe') -Destination (Join-Path $bundle 'TodorbitWidget.exe') -Force
+  'version: 1.2.3-test.1+43' | Set-Content -LiteralPath (Join-Path $testRoot 'pubspec.yaml') -Encoding UTF8
+  Expect-Rejected { Assert-GoogleDriveReleaseBundle $bundle $testRoot }
+  $checks++
+  'version: 1.2.3-test.1+42' | Set-Content -LiteralPath (Join-Path $testRoot 'pubspec.yaml') -Encoding UTF8
   # An approved private build can use an outside config without modifying the
   # repository default. The package still requires that exact config and AOT.
   $externalPath = Join-Path $testRoot 'approved outside config.json'
@@ -101,6 +125,7 @@ function Invoke-TodorbitNative {
   $fixtureBundle = Join-Path $testRoot 'build/windows/x64/runner/Release'
   $null = New-Item -ItemType Directory -Path (Join-Path $fixtureBundle 'data') -Force
   Copy-Item -LiteralPath (Join-Path $bundle 'Todorbit.exe') -Destination $fixtureBundle
+  Copy-Item -LiteralPath (Join-Path $bundle 'TodorbitWidget.exe') -Destination $fixtureBundle
   Copy-Item -LiteralPath (Join-Path $bundle 'data/app.so') -Destination (Join-Path $fixtureBundle 'data')
   & (Join-Path $fixtureTools 'build-windows-release.ps1') -GoogleDriveConfigPath $externalPath
   $arguments = Get-Content -LiteralPath (Join-Path $testRoot 'fixture-build-arguments.json') -Raw | ConvertFrom-Json

@@ -3087,3 +3087,11 @@ opened, modified, or uninstalled.
   performed because those operations would change the normal Windows account.
   They require a disposable Windows user or VM. Visual taskbar, Explorer,
   shortcut, DPI, and installer-wizard icon checks remain manual acceptance.
+
+
+Beta13 release verification continuation: see
+[resumable receipt](FINAL_STABILIZATION_2026_11_07.md#beta13-release-verification-continuation-2026-11-07).
+At3700185, source/packages match retained evidence. CI fixture/schema coverage
+corrections pass focused checks; no app rebuild. Offline Sandbox installer/upgrade
+runner prepared; actual migration consent and clean signed-APK runtime pending.
+No publication, real Sync or production-profile changes.
