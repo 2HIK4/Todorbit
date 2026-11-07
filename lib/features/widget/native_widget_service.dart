@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 
 import '../../data/app_database.dart';
 import '../../data/profile_paths.dart';
+import '../../data/private_test_environment.dart';
 import '../../domain/widget_configuration.dart';
 
 class WidgetControlState {
@@ -38,7 +39,9 @@ class NativeWidgetService {
   final String? appExecutable;
 
   bool get isAvailable =>
-      Platform.isWindows && File(executablePath).existsSync();
+      !PrivateTestEnvironment.enabled &&
+      Platform.isWindows &&
+      File(executablePath).existsSync();
 
   String get executablePath =>
       widgetExecutable ??
@@ -64,6 +67,7 @@ class NativeWidgetService {
     required WidgetConfiguration configuration,
     bool end = false,
   }) async {
+    if (PrivateTestEnvironment.enabled) return false;
     final directory = ProfilePaths.activeDirectory().path;
     final suffix = sha256
         .convert(utf8.encode(p.normalize(p.absolute(directory)).toLowerCase()))
@@ -133,6 +137,11 @@ class NativeWidgetService {
       _run(['--widget-command', command, '--app-exe', appExecutablePath]);
 
   Future<void> _run(List<String> arguments) async {
+    if (PrivateTestEnvironment.enabled) {
+      throw StateError(
+        'Native companion disabled in private Drive test builds.',
+      );
+    }
     if (!Platform.isWindows) {
       throw UnsupportedError('The native widget is available on Windows only.');
     }

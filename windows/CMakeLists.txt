@@ -55,6 +55,7 @@ add_subdirectory("runner")
 # Package the Windows-only native widget companion beside the Flutter runner.
 # It is a self-contained single file so debug and packaged builds resolve the
 # same sibling path without relying on a developer machine's .NET install.
+if(NOT "$ENV{TODORBIT_PRIVATE_DRIVE_TEST_BUILD}" STREQUAL "1")
 find_program(DOTNET_EXECUTABLE dotnet REQUIRED)
 set(WIDGET_PROJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/../experiments/widget-shell-probe/widget-shell-probe.csproj")
@@ -76,6 +77,7 @@ add_custom_target(life_manager_widget ALL
   COMMENT "Publishing native Todorbit widget companion"
   VERBATIM)
 add_dependencies(${BINARY_NAME} life_manager_widget)
+endif()
 
 
 # Generated plugin build rules, which manage building the plugins and adding
@@ -103,8 +105,10 @@ set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}")
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
 
-install(FILES "${WIDGET_PUBLISH_DIR}/TodorbitWidget.exe"
-  DESTINATION "${CMAKE_INSTALL_PREFIX}" COMPONENT Runtime)
+if(NOT "$ENV{TODORBIT_PRIVATE_DRIVE_TEST_BUILD}" STREQUAL "1")
+  install(FILES "${WIDGET_PUBLISH_DIR}/TodorbitWidget.exe"
+    DESTINATION "${CMAKE_INSTALL_PREFIX}" COMPONENT Runtime)
+endif()
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../experiments/widget-shell-probe/Icons/LICENSE.txt"
   DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/licenses" RENAME "MaterialIcons.txt"
   COMPONENT Runtime)

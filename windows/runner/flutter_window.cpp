@@ -15,6 +15,7 @@
 #include "flutter/generated_plugin_registrant.h"
 #include "utils.h"
 #include "widget_diagnostics.h"
+#include "private_credential_store.h"
 
 namespace {
 
@@ -310,6 +311,35 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  private_credentials_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(), "life_manager/private_credentials",
+          &flutter::StandardMethodCodec::GetInstance());
+  private_credentials_channel_->SetMethodCallHandler(
+      [](const auto& call, auto result) {
+        try {
+          const auto* values = std::get_if<flutter::EncodableMap>(call.arguments());
+          if (!values) throw std::runtime_error("Private credential arguments invalid.");
+          const auto directory = std::get<std::string>(values->at(flutter::EncodableValue("directory")));
+          const auto key = std::get<std::string>(values->at(flutter::EncodableValue("key")));
+          wchar_t root[32768];
+          const DWORD length = GetEnvironmentVariableW(L"TODORBIT_PRIVATE_TEST_ROOT", root, 32768);
+          if (!length || length >= 32768) throw std::runtime_error("Private test root required.");
+          todorbit_private::CredentialStore store(std::wstring(root, length), Utf16FromUtf8(directory), key);
+          if (call.method_name() == "read") {
+            const auto value = store.Read();
+            if (value) result->Success(flutter::EncodableValue(*value)); else result->Success();
+          } else if (call.method_name() == "write") {
+            store.Write(std::get<std::string>(values->at(flutter::EncodableValue("value"))));
+            result->Success();
+          } else if (call.method_name() == "delete") {
+            store.Delete(); result->Success();
+          } else { result->NotImplemented(); }
+        } catch (...) {
+          // Never expose values, decrypted bytes, paths, or native exception text.
+          result->Error("private_credentials_failed", "Private test credentials unavailable. Existing files were retained; retry or disconnect this test profile.");
+        }
+      });
   widget_preview_channel_ =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
           flutter_controller_->engine()->messenger(),
@@ -506,6 +536,7 @@ void FlutterWindow::OnDestroy() {
     spell_check_channel_.reset();
     file_drop_channel_.reset();
     widget_preview_channel_.reset();
+    private_credentials_channel_.reset();
     flutter_controller_ = nullptr;
   }
 

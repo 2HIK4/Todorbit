@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as path;
 
+import 'private_test_environment.dart';
+
 /// A fresh TodoPilot profile never selects Life Manager data by its presence.
 /// The installer writes this marker only when upgrading an installed TodoPilot.
 class ProfilePaths {
@@ -26,6 +28,7 @@ class ProfilePaths {
           (throw StateError('Android profile has not been initialized'));
     }
     if (Platform.isWindows) {
+      if (PrivateTestEnvironment.enabled) PrivateTestEnvironment.validate();
       return Platform.environment['APPDATA'] ??
           (throw StateError('Windows APPDATA directory is unavailable'));
     }
@@ -71,6 +74,14 @@ class ProfilePaths {
   }
 
   static Directory activeDirectoryIn(String root, {String? executablePath}) {
+    if (PrivateTestEnvironment.enabled) {
+      final expected = PrivateTestEnvironment.validate();
+      if (!path.equals(root, path.join(expected.path, 'Roaming'))) {
+        throw StateError('Private test data cannot use another root.');
+      }
+      // Fixed across private rebuilds; no legacy-profile selection.
+      return Directory(path.join(expected.path, 'Profile'));
+    }
     final portable = portableDirectoryIn(
       root,
       executablePath ?? Platform.resolvedExecutable,

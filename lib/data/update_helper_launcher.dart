@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'private_test_environment.dart';
+
 /// Starts the Windows helper and waits until it has accepted the handoff.
 /// The caller may close the app only after this future completes.
 Future<void> startUpdateHelper({
@@ -10,6 +12,9 @@ Future<void> startUpdateHelper({
   required File resultFile,
   Duration timeout = const Duration(seconds: 20),
 }) async {
+  if (PrivateTestEnvironment.enabled) {
+    throw StateError('Updates disabled in private Drive test builds.');
+  }
   if (await readyFile.exists()) await readyFile.delete();
   if (await resultFile.exists()) await resultFile.delete();
   // On the tested Windows setup, Dart's detached mode returned a PID without

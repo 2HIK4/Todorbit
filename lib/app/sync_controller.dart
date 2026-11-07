@@ -1,4 +1,7 @@
 import 'dart:async';
+
+import '../data/private_test_environment.dart';
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -388,6 +391,12 @@ class SyncController extends ChangeNotifier {
     String? password,
     SyncWorkspaceKey? privateKey,
   }) async {
+    if (PrivateTestEnvironment.enabled &&
+        !PrivateTestEnvironment.syncApproved(auth.account?.id)) {
+      throw const CloudFailure(
+        'Verify the disposable account and workspace before private-test Sync.',
+      );
+    }
     final firstDevice = recoveryCode == null && await pairing.saved() == null;
     final prepared = await pairing.prepare(
       recoveryCode: recoveryCode,

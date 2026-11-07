@@ -20,6 +20,7 @@ import '../shared/status_notice.dart';
 import 'package:path/path.dart' as path;
 
 import '../../data/profile_paths.dart';
+import '../../data/private_test_environment.dart';
 import '../../data/software_update_service.dart';
 import '../../data/resumable_update_download.dart';
 import '../../data/update_helper_launcher.dart';
@@ -77,6 +78,7 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
   @override
   void initState() {
     super.initState();
+    if (PrivateTestEnvironment.enabled) return;
     _store = widget.preferenceStore ?? UpdatePreferenceStore.forActiveProfile();
     _initialize();
   }
@@ -410,6 +412,12 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (PrivateTestEnvironment.enabled) {
+      return const StatusNotice(
+        title: 'Private test build',
+        message: 'Software updates are disabled for this isolated candidate.',
+      );
+    }
     final release = _release;
     final total = release?.size ?? 0;
     final statusText = switch (_status) {

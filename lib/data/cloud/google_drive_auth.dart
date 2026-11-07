@@ -9,6 +9,8 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 import 'cloud_storage_provider.dart';
+import '../private_test_environment.dart';
+import 'private_windows_token_store.dart';
 
 abstract interface class CloudTokenStore {
   Future<String?> read();
@@ -21,15 +23,23 @@ abstract interface class CloudTokenStore {
 class SecureCloudTokenStore implements CloudTokenStore {
   SecureCloudTokenStore(String profilePath, {String purpose = 'tokens'})
     : key =
-          'todorbit.drive.${sha256.convert(utf8.encode(profilePath))}.$purpose';
+          'todorbit.drive.${sha256.convert(utf8.encode(profilePath))}.$purpose',
+      privateProfile = profilePath;
   final String key;
+  final String privateProfile;
   final FlutterSecureStorage storage = const FlutterSecureStorage();
   @override
-  Future<String?> read() => storage.read(key: key);
+  Future<String?> read() => PrivateTestEnvironment.enabled
+      ? PrivateWindowsTokenStore(privateProfile, key).read()
+      : storage.read(key: key);
   @override
-  Future<void> write(String value) => storage.write(key: key, value: value);
+  Future<void> write(String value) => PrivateTestEnvironment.enabled
+      ? PrivateWindowsTokenStore(privateProfile, key).write(value)
+      : storage.write(key: key, value: value);
   @override
-  Future<void> delete() => storage.delete(key: key);
+  Future<void> delete() => PrivateTestEnvironment.enabled
+      ? PrivateWindowsTokenStore(privateProfile, key).delete()
+      : storage.delete(key: key);
 }
 
 abstract interface class GoogleAuthorizationFlow {
@@ -342,6 +352,9 @@ class GoogleDriveAuth {
   }
 
   Future<void> connect() async {
+    if (PrivateTestEnvironment.enabled) {
+      PrivateTestEnvironment.requireAuthorizationReady();
+    }
     if (!canConnect) {
       throw const CloudFailure(
         'Google Drive connection is unavailable in this build. Local backups remain available.',
@@ -407,6 +420,16 @@ class GoogleDriveAuth {
     _tokens = saved;
     account = verified;
     needsReconnect = false;
+    if (PrivateTestEnvironment.enabled) {
+      await File(
+        '${PrivateTestEnvironment.validate().path}/account-status.json',
+      ).writeAsString(
+        jsonEncode({
+          'account': verified.id,
+          'observedAt': DateTime.now().toUtc().toIso8601String(),
+        }),
+      );
+    }
   }
 
   Future<String> accessToken({bool forceRefresh = false}) async {

@@ -5,6 +5,9 @@ import '../../domain/task_list_projection.dart';
 import '../shared/task_list_group.dart';
 
 import 'dart:io';
+
+import '../../data/private_test_environment.dart';
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -325,6 +328,19 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     if (widget.openAppearance) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _openAppearanceDialog();
+      });
+    }
+    if (PrivateTestEnvironment.enabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        showDialog<void>(
+          context: context,
+          builder: (_) => SettingsHubDialog(
+            nativeWidget: nativeWidget,
+            showDataProfile: _showDataProfile,
+            openBackups: true,
+          ),
+        );
       });
     }
     if (widget.legacyImportFile case final legacyFile?) {

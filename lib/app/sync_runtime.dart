@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import '../data/private_test_environment.dart';
+
 import 'package:flutter/foundation.dart';
 
 import 'package:http/http.dart' as http;
@@ -46,7 +48,10 @@ SyncController createSyncRuntime(
   late final SyncController sync;
   sync = SyncController(
     timeBudget: timeBudget,
-    canExchange: canExchange,
+    canExchange: () async =>
+        (!PrivateTestEnvironment.enabled ||
+            PrivateTestEnvironment.syncApproved(auth.account?.id)) &&
+        (canExchange == null || await canExchange()),
     repository: controller.repository,
     recovery: recovery,
     auth: auth,

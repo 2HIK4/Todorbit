@@ -1,6 +1,7 @@
 import 'features/shared/app_motion.dart';
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -16,6 +17,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'app/app_controller.dart';
 import 'app/sync_controller.dart';
 import 'app/sync_runtime.dart';
+import 'app/private_acceptance_probe.dart';
 import 'app/sync_background.dart';
 import 'app/privacy_manager.dart';
 import 'data/app_database.dart';
@@ -27,6 +29,8 @@ import 'data/life_repository.dart';
 import 'data/migration_gate.dart';
 import 'data/privacy_store.dart';
 import 'data/profile_paths.dart';
+import 'data/private_test_environment.dart';
+import 'data/cloud/google_drive_auth.dart';
 import 'data/software_update_service.dart';
 import 'domain/appearance.dart';
 import 'domain/models.dart';
@@ -129,6 +133,13 @@ Future<void> _prepareApplication(
   bool migrationApproved = false,
 }) async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (PrivateTestEnvironment.enabled) {
+    PrivateTestEnvironment.validate();
+    if (args.contains('--sync-background') ||
+        args.contains('--legacy-flutter-widget')) {
+      throw StateError('Private test builds require the foreground app.');
+    }
+  }
   if (Platform.isWindows && args.contains('--sync-background')) {
     try {
       await runBackgroundSync();
@@ -281,8 +292,10 @@ Future<void> _prepareApplication(
   } catch (_) {
     // A status receipt must never block access to a verified database.
   }
-  if (Platform.isWindows) unawaited(_checkUpdatesInBackground());
-  if (Platform.isWindows) {
+  if (Platform.isWindows && !PrivateTestEnvironment.enabled) {
+    unawaited(_checkUpdatesInBackground());
+  }
+  if (Platform.isWindows && !PrivateTestEnvironment.enabled) {
     final companion = NativeWidgetService();
     if (companion.isAvailable && kReleaseMode) {
       try {
@@ -308,6 +321,43 @@ Future<void> _prepareApplication(
     }
   }
   final taskArgument = args.indexOf('--task-id');
+  if (PrivateTestEnvironment.enabled) {
+    final root = PrivateTestEnvironment.validate();
+    var nativeProbe = false;
+    if (args.contains('--private-store-probe')) {
+      final store = SecureCloudTokenStore(
+        databaseFile.absolute.path,
+        purpose: 'oauth-client',
+      );
+      if (await store.read() != null) {
+        throw StateError('Probe requires an unused private store.');
+      }
+      await store.write('synthetic-private-profile-probe');
+      if (await store.read() != 'synthetic-private-profile-probe') {
+        throw StateError('Private credential round trip failed.');
+      }
+      await store.delete();
+      if (await store.read() != null) {
+        throw StateError('Private credential cleanup failed.');
+      }
+      nativeProbe = true;
+    }
+    await File('${root.path}/runtime-paths.json').writeAsString(
+      jsonEncode({
+        'privateDriveTest': true,
+        'appdata': Platform.environment['APPDATA'],
+        'localAppdata': Platform.environment['LOCALAPPDATA'],
+        'database': databaseFile.absolute.path,
+        'credentialDirectory':
+            '${databaseFile.parent.path}${Platform.pathSeparator}private-credentials',
+        'executable': Platform.resolvedExecutable,
+        'nativeCredentialProbePassed': nativeProbe,
+        'nativeCompanionEnabled': false,
+        'updaterEnabled': false,
+        'observedAt': DateTime.now().toUtc().toIso8601String(),
+      }),
+    );
+  }
   if (taskArgument >= 0 && taskArgument + 1 < args.length) {
     controller.select(args[taskArgument + 1]);
   }
@@ -316,7 +366,16 @@ Future<void> _prepareApplication(
   final sync = (Platform.isWindows || Platform.isAndroid)
       ? createSyncRuntime(controller, privacy)
       : null;
-  if (sync != null) unawaited(sync.initialize());
+  if (sync != null) {
+    if (PrivateTestEnvironment.enabled &&
+        (args.contains('--private-cloud-preflight') ||
+            args.contains('--private-sync-now'))) {
+      await sync.initialize();
+      await runPrivateAcceptanceProbe(args, sync);
+    } else {
+      unawaited(sync.initialize());
+    }
+  }
   runApp(
     ProviderScope(
       overrides: [
