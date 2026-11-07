@@ -1,4 +1,4 @@
-# Todorbit 1.0.19-beta.13+36 ? unpublished experimental candidate
+# Todorbit 1.0.19-beta.13+36: unpublished experimental candidate
 
 Refines task/event planning across Windows and Android: shared filters, recurring
 families and subtasks, richer creation, customizable navigation and grouped

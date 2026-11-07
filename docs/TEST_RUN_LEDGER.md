@@ -1,5 +1,22 @@
 # Persistent test run ledger
 
+## Beta13 stabilization follow-up (2026-11-07)
+
+[Single receipt/inventory](FINAL_STABILIZATION_2026_11_07.md); detailed exact
+commands, times/offsets, hashes, failures and closures in external evidence001-045.
+New: isolated live wrong-code/unlock, GUI restore/reconciliation/decision readback,
+automatic profile restart UI/startup, motion on/off and synthetic render captures;
+final current analysis, packages/signing/alignment/versions and bounded native UI.
+Reuse: real Standard and scoped Private43-table round trips, unchanged protocol/
+crypto/retry/schema/native behavior, plus exact native self-test binary by hash.
+No full Flutter suite, fresh workspace, cloud snapshot or publication. Failed
+fixture settling/account omissions/frame-boundary assertions and corrected narrow
+reruns remain recorded, including intermediate build supersession reasons.
+
+## Final stabilization (2026-11-07)
+
+[Current receipt](FINAL_STABILIZATION_2026_11_07.md). New checks 001, 005, 007, 008 and 009; exact logs/hashes outside Git. Reused Standard/Private matrices; GUI restore and final beta artifacts pending. Recovery app and emulator closed; recovery approval held.
+
 Consult this index **before every test** with [Testing](TESTING.md#verification-ledger).
 Keep existing detailed task receipts authoritative; add one linked receipt per
 task, rather than another testing framework or copied historical outputs. Every
@@ -11,6 +28,15 @@ small manifest of SHA-256 hashes for the affected files, or a patch hash.
 
 | Date / task | Source / scope | Receipt and reuse limits |
 | --- | --- | --- |
+| 2026-11-07, Private cross-platform scoped closure | Same verified candidate/APK/source; corrected pinned Private scope | [REAL43-table/28-op/4-encrypted-batch round trip and retained-key restart PASS; OFFLINE actual-proof recovery/negative/backup key checks PASS](PRIVATE_SYNC_ACCEPTANCE_2026_11_07.md#scoped-private-acceptance-outcome-2026-11-07). Native fixture/inspection timing failures retained, no full Standard matrix/build/suite repeat; live key-loss/GUI restore and CI remain unverified. |
+| 2026-11-07, Android Private account/preflight | Same user10/PID/APK and corrected private workspace | [Stable ID match, actual Android read-only3-object metadata match, supported private unlock discovery](PRIVATE_SYNC_ACCEPTANCE_2026_11_07.md#android-accountprivate-preflight-pass-unlock-required). No exchange/build/restart/repeated sign-in; two inspector corrections retained in receipt058, prior cipher proof reused. |
+| 2026-11-07, real Private Windows / Android readiness | Existing corrected candidate/APK, unchanged product source | [Real proof/key-retention/ciphertext/rich fixture and exact bytes PASS; Android isolated native/DB ready at Google sign-in](PRIVATE_SYNC_ACCEPTANCE_2026_11_07.md#real-windows-private-pass-android-authorization-boundary-2026-11-07). Readback verifier wrapper failure retained, corrected offline only; Standard/native/crypto evidence reused, no full suite/rebuild/repeated cloud download. |
+| 2026-11-07, Private activation diagnosis | Current product format code in offline Windows Dart AOT; synthetic keys only | [AOT crypto PASS, wrong local UUID namespace confirmed, metadata corrected and workspace-only check PASS](PRIVATE_SYNC_ACCEPTANCE_2026_11_07.md#p2-activation-failure-diagnosed-test-approval-namespace). No application build/Google request/full suite; crypto pass reused after correction. |
+| 2026-11-07, Private recovery-code copy control | Two scoped UI/test files; hashes/argv in external020/021 | [Targeted analysis and3 copy/light/dark/privacy assertions PASS; one affected Windows build and isolated restart](PRIVATE_SYNC_ACCEPTANCE_2026_11_07.md#recovery-code-copy-control-and-fresh-setup-2026-11-07). Mocked synthetic clipboard; no chat-secret reuse/cloud request/full suite/Android rebuild. |
+| 2026-11-07, Private P1 / Windows account switch | Same signed-in isolated profile; two scoped UI/test files | [Distinct account, real read-only empty Sync preflight, unchanged Sync tables; desktop switch UI/auth pinning focused passes](PRIVATE_SYNC_ACCEPTANCE_2026_11_07.md#p1-resolved-and-windows-account-switch-fix-2026-11-07). Fixture codepage failure/correction retained; affected Windows build only, no Android/full suite/Standard matrix repeat. |
+| 2026-11-07, Private P1 identity gate | Same tested/built guard and isolated candidate | [BLOCKED: new account receipt matches Standard; zero Google requests; production18/protected3 match](PRIVATE_SYNC_ACCEPTANCE_2026_11_07.md#p1-identity-stop-2026-11-07-1058-utc03). Reuse completed tests/build; manual selection of different spare account required. |
+| 2026-11-07, Private acceptance P0 | `87e976f` + five scoped guard/test hashes; new Windows AOT, unchanged Android APK | [Six focused tests/analysis/build PASS, isolated live DPAPI/schema/path probe, secondary Android user, unchanged production/Standard hashes; sign-in boundary](PRIVATE_SYNC_ACCEPTANCE_2026_11_07.md). Prior crypto/native/Standard evidence reused; no Private cloud exchange or full suite. |
+| 2026-11-07, Private Sync preparation only | `87e976f`; no implementation/config changes | [Source continuity, evidence reuse, profile/approval blockers and resumable gates](PRIVATE_SYNC_ACCEPTANCE_PLAN_2026_11_07.md). Documentation checks only; no tests/builds/launches or Google calls. No real Private acceptance claimed. |
 | 2026-11-07, repository safety checkpoint | `e6a95ca`, `3e2e0e5`; unchanged verified source and artifacts | [Hash comparison, artifact continuity, staging/credential exclusion and local commit receipt](CROSS_PLATFORM_STANDARD_SYNC_2026_11_06.md#local-repository-checkpoint-2026-11-07). Existing tests/build/real-service passes reused; none rerun. Protected three docs excluded. |
 | 2026-11-06/07, real Windows/Android Standard acceptance | `4dcda12` plus recorded dirty-source hashes, now secured in local implementation commits | [Final scoped PASS:383 operations/43 tables, corrected real restore, repeat checks and restart](CROSS_PLATFORM_STANDARD_SYNC_2026_11_06.md#final-outcome-2026-11-07-utc03). Historical failures/limits preserved; both corrected private artifacts verified. Physical/platform, Windows GUI restore and CI remain separate. |
 | 2026-11-06, Android account / read-only Standard preflight | Same running emulator37.2.13/API35 and exact APK; unchanged app source | [Live account match, auth-only reconnect, REAL Android paginated Sync metadata GET:11 exact Windows object matches, unchanged proof/protocol2, private DB/WAL unchanged and18 production hashes preserved](ANDROID_DRIVE_READINESS_2026_11_06.md). External VM CastMap reader first misparsed empty metadata; failed log/source retained, backing-map correction and one justified read-only rerun pass. No Android pairing/exchange/writes/payload download, app rebuild, suite repeat or account interaction needed. Owner exchange authorization pending. |
@@ -40,3 +66,11 @@ small manifest of SHA-256 hashes for the affected files, or a patch hash.
 
 Older feature receipts remain discoverable from [Progress](PROGRESS.md). Add their
 links when relevant; no repository-wide scan or historical migration is required.
+
+Final closure for this task: external043/044/046 record the post-motion packages
+and source/bundle identity;047/048-050 record bounded final source hot restart,
+user-unlock readiness correction and graceful network/profile preservation.051
+protects production/startup/keys/docs;052 analyzes the corrected final fixture;
+053 proves native staged-source continuity. Native030 is reused by exact binary
+hash after043. No further full suite, signing/build or real exchange is justified
+by the final documentation-only checkpoint.

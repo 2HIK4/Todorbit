@@ -1,5 +1,165 @@
 # Progress
 
+## Beta13 private-review candidate complete (2026-11-07)
+
+[Final results, exact artifacts and remaining gates](FINAL_STABILIZATION_2026_11_07.md#final-outcome-and-owner-review).
+Source `7783af8`; schema27/version13+36. Compact themed transient Sync/copy feedback
+honors reduced motion; owner-confirmed automatic local restore restart passes.
+Real independent Private recovery, GUI restore/reconciliation/decision ciphertext
+readback pass. Final Windows public/private and production-signed Android packages
+pass scoped gates. Current live debug-source Android hot restart/runtime pass;
+production/Standard profiles, keys, recovery copies and protected docs verified.
+All task apps/emulator/Gradle/SDK attachment closed; held approval/quarantine retained.
+Documentation checkpoint records the completed implementation and scoped evidence. No push/tag/release; exact CI, signed APK
+runtime/installer upgrade and physical checks remain explicit owner-review gates.
+
+## Beta13 final polish checkpoint: recovery/restore/UI pass (2026-11-07)
+
+[Durable evidence and remaining final-package steps](FINAL_STABILIZATION_2026_11_07.md).
+Local source `7783af8`: scoped Private approval, account/copy UI, compact success,
+automatic reviewed local-restore restart and explicit reduced-motion handling.
+Live independent key recovery and Private GUI restore/reconcile/decision upload
+pass; final Release automatic restart confirmed by owner and verified locally.
+Native version wiring fixed `bb9749b`; exact companion self-test reused by hash.
+Retained AVD healthy; changed-source offline native UI/input/Back checks pass,
+28 Private operations and Standard user0 DB/WAL unchanged. AVD/apps closed and
+network preferences restored. New motion tests/captures pass. Windows refresh043
+completed; Android refresh044 running with child heap2GiB/workers2. Preserve all
+prior packages; no additional Sync, account, source redesign or full-suite run.
+Next: audit044 artifacts, final current-source hot reload if available, production/
+protected-file hashes, documentation/local commits. No push/tag/publication.
+
+## Live Private GUI restore/reconciliation PASS; automatic restart requested (2026-11-07)
+
+[Stabilization checkpoint](FINAL_STABILIZATION_2026_11_07.md#live-gui-restore-and-new-automatic-restart-request).
+User recovery-code unlock, synthetic GUI restore, Before Restore, quarantine,
+retained-key reconciliation, conflict choice and decision clock/upload pass.
+Recovery app/emulator closed, approval held. New Apply replacement automatic
+restart is under focused verification; intermediate beta13 builds are preserved,
+but predate this requested change. No publication or repeated Sync matrix.
+
+## Final stabilization: live isolated Private recovery PASS (2026-11-07)
+
+[Current receipt](FINAL_STABILIZATION_2026_11_07.md). New checks 001, 005, 007, 008 and 009; exact logs/hashes outside Git. Reused Standard/Private matrices; GUI restore and final beta artifacts pending. Recovery app and emulator closed; recovery approval held.
+
+## Scoped Private round trip PASS; recovery limits explicit (2026-11-07)
+
+- [Real/offline/reused results and remaining limits](PRIVATE_SYNC_ACCEPTANCE_2026_11_07.md#scoped-private-acceptance-outcome-2026-11-07).
+- Actual passphrase Android pairing, representative Windows graph/attachment and
+  native Android completion returned to Windows PASS:43 tables/28 immutable ops/
+  4 encrypted batches equal, no pending/conflicts/integrity issues. Key restarts pass.
+- Offline actual-proof code recovery/wrong-credential rejection and real local
+  backup key exclusion/history decrypt PASS. Not live key-loss/full GUI restore.
+- Native text fixture attempts did not persist; synthetic draft discarded; final
+  completion verified after frame settling. Harness failures retained, no app
+  defect asserted. No new suite/build/AVD restart; source evidence unchanged.
+- Production18/startup/protected3/Standard user0 DB-WAL match. Both apps closed,
+  signed-in user10 emulator retained. Receipt075; next scoped local checkpoint.
+
+
+## Android Private identity/preflight PASS; user unlock required (2026-11-07)
+
+- [Existing private workspace verified; exact next action](PRIVATE_SYNC_ACCEPTANCE_2026_11_07.md#android-accountprivate-preflight-pass-unlock-required).
+- User10 account matches Windows Private; actual read-only listing of3 objects
+  matches verified private proof/batches. Native setup detects encryption and asks
+  for passphrase, still unpaired/automatic off/pending0. No new workspace/write.
+- Next user enters SAME Windows Private passphrase only in Android and taps
+  Authorize this device. No restart/rebuild/sign-in repeat or secret capture.
+  Production18/protected3 match; Windows remains closed. Receipt058 resumes here.
+
+
+## Windows Private real readback PASS; Android Google sign-in waiting (2026-11-07)
+
+- [Current Private-only evidence and next user action](PRIVATE_SYNC_ACCEPTANCE_2026_11_07.md#real-windows-private-pass-android-authorization-boundary-2026-11-07).
+- Real proof/private batch authentication, retained-key restart and one rich
+  fixture encrypted upload/readback PASS, including canary and exact managed bytes.
+  Verifier blob-wrapper mistake corrected OFFLINE with retained ciphertext.
+- Android user10 UID/path and empty schema27 verified; Google sign-in open.
+  Windows closed; Standard user0 DB/WAL, production18 and protected3 unchanged.
+- Next: user completes Google/Drive consent with SECOND Private account, returns
+  connected. Verify IDs/workspace before Android pairing/exchange; no secret capture.
+
+
+## Private activation gate corrected; user setup retry required (2026-11-07)
+
+- [Cause and next action](PRIVATE_SYNC_ACCEPTANCE_2026_11_07.md#p2-activation-failure-diagnosed-test-approval-namespace):
+  operator's local approval used DNS UUID namespace; product uses URL namespace.
+  App rejected safely before pairing; no confirmed crypto/application defect.
+- Offline Windows AOT actual crypto create/verify/unlock PASS; workspace comparison
+  independently failed, corrected local scope026 and workspace-only recheck PASS.
+  No Google request, application rebuild/full suite or credential inspection.
+- Next: reopen private setup, enter passphrase locally, save NEW code and connect.
+  No restart or sign-in needed. Historical wrong scope/approval retained unchanged.
+
+
+## Private setup copy icon loaded; fresh local credentials required (2026-11-07)
+
+- [Copy control, focused evidence and current build](PRIVATE_SYNC_ACCEPTANCE_2026_11_07.md#recovery-code-copy-control-and-fresh-setup-2026-11-07).
+- Icon copies exact displayed recovery code; light/dark large-text and privacy
+  closure PASS3, targeted analysis clean. Affected Windows build only; unchanged
+  Android/native/crypto/Standard evidence reused, originals preserved.
+- User cancelled old unsaved setup; updated owned PID32004 keeps same isolated
+  signed-in profile. Scoped approval held/restored unchanged; no cloud requests.
+- Next: fresh setup/passphrase and NEW recovery code handled only inside app,
+  then Connect with encryption. No chat-posted credential values stored/reused.
+
+
+## Private P2 ready: Windows fix loaded, user passphrase/code required (2026-11-07)
+
+- [Latest candidate and required private setup](PRIVATE_SYNC_ACCEPTANCE_2026_11_07.md#current-user-boundary-p2-private-setup-ready).
+- Real read-only preflight passed for distinct new account; no Sync objects or
+  local Sync-table change. Desktop switch fix tested/built/launched; same signed-in
+  isolated profile retained. Production18/protected3 and Standard artifacts match.
+- Local Private approval pins account/mode/planned workspace only. No cloud
+  workspace/write yet. Next: user chooses passphrase, privately saves generated
+  recovery code and Connect with encryption. No secret values/captures requested.
+
+
+## Private P1 passed; desktop account-switch UX corrected (2026-11-07)
+
+- [Account/preflight and focused switch fix](PRIVATE_SYNC_ACCEPTANCE_2026_11_07.md#p1-resolved-and-windows-account-switch-fix-2026-11-07):
+  new account differs from Standard; actual read-only Sync listing empty, Sync
+  tables unchanged. No workspace created during preflight.
+- Windows now exposes existing confirmed Switch Google account and clarifies
+  Reconnect current account. Focused cancel/switch/new-label and auth-pinning
+  regressions pass; one fixture encoding correction retained in evidence.
+- Affected Windows UI build only; Android/native/crypto/Standard evidence reused.
+  Next: private passphrase/recovery handling; no secrets in chat/logs/captures.
+
+
+## Private P1 stopped at account mismatch (2026-11-07)
+
+- [Identity gate/next user action](PRIVATE_SYNC_ACCEPTANCE_2026_11_07.md#p1-identity-stop-2026-11-07-1058-utc03):
+  new private receipt matches Standard account ID; no Google preflight/request,
+  approval or workspace created. Production18/protected3 match; no test/build.
+- User must Disconnect/Connect only NEW Windows private profile and select a
+  different unused disposable account. Local disconnect has no remote revoke.
+
+
+## Private Sync: local readiness complete, second-account sign-in pending (2026-11-07)
+
+- [Private-only scope, exact artifacts, fresh tests and resume state](PRIVATE_SYNC_ACCEPTANCE_2026_11_07.md).
+- Private account/mode/workspace approval guard added; six focused tests and
+  targeted analysis pass. One affected Windows build; Standard source/bundle
+  restored byte-identical, Android APK/native/crypto/Standard evidence reused.
+- New persistent Windows root verified empty/schema27/native DPAPI; auth-only
+  enabled, both Sync approvals absent. Production18/startup/Standard Android
+  DB/WAL unchanged. Android user10 installed but dormant, user0 preserved.
+- Next user action: Connect Google Drive in new Windows candidate with second
+  unused disposable account. No passphrase/Private workspace or exchange yet.
+
+
+## Private Sync acceptance prepared, not executed (2026-11-07)
+
+- Base `87e976f`; [resumable plan, reusable assets and authorization gates](PRIVATE_SYNC_ACCEPTANCE_PLAN_2026_11_07.md).
+- Source/config continuity and protected documents match; binaries/OAuth/SDK and
+  Standard evidence reused. No test/build/launch/Google request/account switch.
+- Pending: second disposable account and separate profiles; Windows approval gate
+  currently accepts only the Standard contract. Review a minimal Private-specific
+  guard before cloud work; inspect Android secondary-user support when authorized.
+- Next: owner authorization for this setup; preserve Standard profiles/workspace.
+
+
 ## Verified implementation secured locally (2026-11-07)
 
 - `e6a95ca`: private Windows encrypted credential/profile isolation and
