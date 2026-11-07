@@ -1,6 +1,10 @@
 # Real Drive acceptance and OAuth audit — 2026-11-06
 
-Later owner-authorized continuation: Cloud configuration inspection is reported
+Latest: [Completed real Windows/Android Standard Sync acceptance and repository checkpoint](CROSS_PLATFORM_STANDARD_SYNC_2026_11_06.md#local-repository-checkpoint-2026-11-07)
+supersedes the historical authorization and setup stages below. Scope, artifact
+identities and remaining acceptance limits are recorded in that report.
+
+Earlier owner-authorized continuation: Cloud configuration inspection is reported
 complete and the existing approved Desktop JSON has been validated locally.
 A separate Drive-enabled private Windows candidate is now prepared; see
 [the enabled-build receipt](PRIVATE_DRIVE_ENABLED_BUILD_2026_11_06.md).

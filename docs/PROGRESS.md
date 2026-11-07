@@ -1,5 +1,183 @@
 # Progress
 
+## Verified implementation secured locally (2026-11-07)
+
+- `e6a95ca`: private Windows encrypted credential/profile isolation and
+  startup, companion, updater and authorization guards, with existing regressions.
+- `3e2e0e5`: Android recovery file identity and network scheduling permission,
+  dismissible Sync status, restored decision clocks and focused regressions.
+- [Source continuity and checkpoint receipt](CROSS_PLATFORM_STANDARD_SYNC_2026_11_06.md#local-repository-checkpoint-2026-11-07):
+  all 27 changed application/test files match verified manifests. Windows private
+  inputs/shared fixes are byte-identical; 188 runtime Dart files match content,
+  with 53 unchanged files differing only by line endings. Four artifact hashes pass.
+- Reused completed acceptance/regression evidence; only hash/staged-file/secret
+  exclusion and diff checks run. No builds, tests, emulator launch or cloud call.
+  Three unrelated storage-document changes preserved; no push/tag/version change.
+- Next: remaining Windows GUI restore and physical/platform acceptance, then
+  exact-candidate CI before wider distribution. Private Sync remains unauthorized.
+
+## Real Windows/Android Standard Sync acceptance complete within scope (2026-11-07)
+
+- [Final scenario results, failures, artifacts and limits](CROSS_PLATFORM_STANDARD_SYNC_2026_11_06.md#final-outcome-2026-11-07-utc03).
+  Real bidirectional rich records/deletions, reviewed offline conflict, interrupted
+  retry, corrected local restore/reconciliation, post-restore recurring completion,
+  repeated checks and restart converge at383 operations/all43 portable tables.
+- Recovery identity aliases, network-job permission, persistent status Close,
+  and retained received clocks corrected. Host regressions plus real corrected
+  Android replay pass. Both private candidates include corrections; old artifacts
+  retained. No full-suite rerun, dependency/version change or installer build.
+- Same spare account/workspace/proof, no new sign-in. Approved checkpoint switch
+  preserves failed210-operation/seven-invalid-decision profile and original AVD.
+  No immutable rewriting or cloud cleanup. Corrected metadata helper proves no
+  startup exchange; earlier side effect is disclosed in receipt.
+- Production18 paths/startup/protected3 docs and20 isolation inputs match. Original
+  cloud11 metadata unchanged; final26 objects unchanged across no-op checks.
+  Windows closed, authenticated SSD emulator retained with automatic Sync off.
+- Ready for controlled private Standard testing, not public release. Physical/OEM,
+  corrected Windows GUI restore, installer and exact-candidate CI remain separate.
+  No Private Sync/cloud snapshot test, commit, push, tag or publication.
+
+## Android spare account / existing Standard workspace verified read-only (2026-11-06)
+
+- [Latest account and real metadata receipt](ANDROID_DRIVE_READINESS_2026_11_06.md).
+  Owner Google sign-in complete; auth-only reconnect completed with no new prompt.
+  Actual Android account ID matches Windows spare receipt. Runtime remains same
+  AVD/app/server; no restart/reinstall/rebuild/full-suite repeat.
+- Real Android production Sync provider GET listing returns11 unchanged objects:
+  proof +10 operation objects/9 unique batches, all expected workspace/protocol2.
+  Every ID/size/MD5/property matches Windows inventory, including known duplicate.
+  Standard proof identity unchanged; bodies not downloaded/materialized yet.
+- Android DB/WAL byte-identical to pre-auth: schema27/integrity/FK pass,0 tasks/
+  events/journal, binding absent, capture/automatic disabled. Production18 hashes
+  unchanged. Initial VM CastMap-reader guard failure corrected in external helper;
+  no actual cloud mismatch, product change or write. Failed evidence retained.
+- Ready for explicit owner authorization of first Android Standard exchange and
+  synthetic cross-platform tests. No activation/approval/cloud writes; Private
+  Sync and cloud snapshots out of scope. Windows candidate remains closed.
+
+## Android authentication readiness after emulator correction (2026-11-06)
+
+- [Scoped results, warning and next owner action](ANDROID_DRIVE_READINESS_2026_11_06.md).
+  Retained Google Play API35 AVD/userdata preserved offline; no wipe/new AVD.
+  Existing35.3.11 still fails native UI/UiAutomation before APK. Official stable
+  emulator37.2.13 downloaded/verified outside Git; existing SDKs/image unchanged.
+- Same2GiB/two-core/host-GPU AVD: critical services, Settings/Play/UIAutomation,
+  4MiB storage and148MB APK hashes, install and actual Todorbit navigation pass.
+  Server PID572 stable beyond15min; no new ANR/crash after initial sample. Strict
+  zero-ANR flag stays false due one retained Messaging SIM startup ANR. No broad
+  guest-clean/physical-platform claim; app defect not demonstrated.
+- Exact registered debug APK reused; schema27/integrity/FK and zero tasks/events/
+  journal verified at actual Android private path. Live VM confirms no account,
+  no workspace binding, Sync disabled. Native auth-only route prepared; owner
+  spare-account sign-in/consent is required. Then compare live account and existing
+  Standard workspace read-only before requesting Android exchange authorization.
+- Production18 paths/startup, frozen20 source files and protected3 docs unchanged;
+  Windows private candidate closed normally for sequential RAM use. No app rebuild,
+  full suite, phone access, Android Sync, Private/snapshot test, commit or release.
+
+## Authorized real Standard Windows / Drive acceptance passed (2026-11-06)
+
+- Owner-authorized spare-account/fresh-workspace approval follows another real
+  zero-object preflight. Exact existing private candidate used;20-file source
+  manifest/main/AOT unchanged. No candidate rebuild, full suite, commit or push.
+- [Real results and remaining acceptance](REAL_STANDARD_SYNC_2026_11_06.md):
+  upload/readback, independent desktop reconstruction/reverse edits, deletion,
+  explicit causal conflict/resolution, real committed upload with injected reply
+  loss/retry, local restore of downloaded data with retained pending work and
+  real resync, then four unchanged exchanges. All43 portable tables and81
+  immutable operations agree after final candidate restart;12 expected task IDs,
+  including2 intentional soft deletions, no unexplained/duplicate tasks.
+- 18 production paths/startup unchanged;2 recovery profiles/15 files unchanged;
+  protected3 storage documents unchanged. App open PID16828, ~269MiB at checkpoint.
+  No cloud files deleted, Start New Sync, account/mode switch or production writes.
+- Android/emulator, physical UI, Private Sync, real cloud snapshot restore and
+  token-expiry/revocation remain open. Windows scoped acceptance passes; original
+  unfamiliar-task cause remains unproven. Keep synthetic cloud history for the
+  next Windows/Android phase; do not reset it. No release approval/publication.
+
+## Real spare-account read-only Drive preflight passed (2026-11-06)
+
+- Owner completed private sign-in and explicitly confirmed unused spare account.
+  Google-verified receipt ID pinned to that confirmation; no production-token
+  comparison/decryption. Exact existing build/main/AOT and paths reused.
+- Normal owned restart into existing read-only preflight succeeds without another
+  sign-in. Actual complete appDataFolder `todorbit-sync`, non-trashed metadata
+  listing returns0 objects. Snapshot-backup/personal Drive namespaces not scanned.
+- Private schema27/integrity/empty DB pass; no binding, capture disabled, Standard
+  approval absent. All18 production baseline paths and startup values unchanged.
+  Owned PID15404 remains open, connected, ~222.5MiB. No build/test/VM/Android rerun.
+- [Current receipt and next authorization](PRIVATE_CREDENTIAL_ISOLATION_2026_11_06.md).
+  Ready for owner authorization of first Windows-to-Drive Standard workspace
+  creation/exchange using synthetic data. No upload, activation or approval record
+  created; no existing cloud data touched. Source/protected work preserved.
+
+## Approved private Windows credential isolation implemented (2026-11-06)
+
+- Normal-account, explicit test-build flag; fixed marked persistent test profile,
+  independent per-purpose DPAPI files, atomic commit/cross-process locks and no
+  production fallback/migration. Companion/global startup/updates disabled;
+  unchanged companion omitted from private package. No new OS user/VM/emulator.
+- Native OS-process/failed-write/corruption/isolation fixture passes after
+  headless harness correction; five private-mode Dart cases and22 compatibility
+  cases pass. Targeted analysis clean. Private Release build passes (163.2s),
+  signed CRT/config/AOT guards pass, source/old recovery hashes preserved.
+- Actual built app native round trip and schema27/empty DB checks pass for smoke
+  and intended Runtime. After owner closed production apps/widgets, all18
+  production DB/settings/encrypted-file hashes and startup values stay unchanged.
+- [Exact files, build/ZIP identities, receipts and next action](PRIVATE_CREDENTIAL_ISOLATION_2026_11_06.md).
+  App PID12564 remains open at Backups & Cloud; owner selects only the spare
+  account. Auth-readiness verified; Standard gate absent until account/workspace
+  verification. No real Sync or release claim. Version and production OAuth unchanged.
+
+## Same-account practical Drive acceptance reevaluation (2026-11-06)
+
+- Corrected earlier overbroad isolation claim: portable DB/profile keys prevent
+  normal personal-token selection; OAuth explicitly prompts for account choice.
+  Separate Windows user is not inherently necessary for those guarantees.
+- Unchanged binary still rewrites a shared DPAPI map with process-local locking
+  and can clean global HKCU startup entries. Normal-account token/configuration
+  write isolation is not achieved by an APPDATA launcher; no app launched.
+- Created verified read-only recovery copies of both existing fixed-name local
+  DBs plus stable top-level JSON files under private `Recovery/20261106-152133`.
+  Both copied DBs integrity OK / zero FK violations. No token export or cloud
+  access; personal processes untouched. No test against personal records.
+- [Current findings and smallest proposed same-user change](STANDARD_DRIVE_ACCEPTANCE_2026_11_06.md#latest-reevaluation-normal-windows-account-preferred-1525-utc03).
+  Recommend narrowly scoped profile-local DPAPI/test startup isolation, using
+  existing auth-only backup connect before identity/workspace verification.
+  No rebuild, new account, VM/emulator or source implementation performed.
+
+## Persistent low-RAM Drive acceptance strategy (2026-11-06)
+
+- Sandbox closed before owner authorization. Available logs show VM/network
+  teardown around 14:53, without a matching WER/OOM event; cause remains unproven.
+  No Sandbox reopened. Host ~15.74GiB RAM; ~4.16GiB free after task guests close.
+- [Current isolation audit and owner action](STANDARD_DRIVE_ACCEPTANCE_2026_11_06.md#current-checkpoint-persistent-low-ram-strategy-1510-utc03): APPDATA alone cannot isolate secure storage (Known Folders/shared map), default browser or native HKCU startup behavior. Same-user launch refused; no personal token/profile read.
+- Verified portable extracted under `D:\AI_Projects\TodorbitPrivateBuilds\standard-acceptance-20261106\Windows\app\Todorbit`.
+  Prepared owner-reviewed standard-user setup/guarded launcher outside Git.
+  Session is non-elevated; separate `TodorbitDriveTest` identity is not created.
+  Owner administrator setup is the next boundary, before Google OAuth.
+- One fresh persistent solo Play AVD (2GiB/two cores/720p/SwiftShader) boots, then
+  system_server aborts with ART suspend timeout before APK installation. Synthetic
+  8MiB transfer/hash passes; app/Sync remain untested. Closed only this task AVD,
+  retained all userdata/diagnostics. No new build, suite, cloud or release action.
+
+## Authorized real Standard Sync setup and emulator blocker (2026-11-06)
+
+- From `4dcda12`, reused exact Drive-enabled Windows and registered debug APK
+  hashes; no app rebuild, full-suite rerun, code/version change or cloud reset.
+  Three unrelated storage-document changes remain preserved.
+- Enabled Windows Release runs in fresh Sandbox identity/profile: empty tasks,
+  schema27, integrity OK. Scoped `wsb` CLI works despite unavailable native UI
+  pipe. Keep Sandbox `bf33024b-2444-481e-93ac-11e626c8597e` open for owner sign-in.
+- New Play API35 AVD initially passes separated health samples, then Android's
+  installer write stalls and watchdog kills system_server during streamed
+  APK installation. File-based preparation also times out. Closed only this
+  failed new emulator, preserving userdata/logs; old AVD and phone untouched.
+- [Execution receipt and exact minimum sign-in/resume steps](STANDARD_DRIVE_ACCEPTANCE_2026_11_06.md).
+  Standard/account selection is now authorized; owner still completes actual
+  Google sign-in/consent. Android needs a working environment. No real cloud
+  result, original unfamiliar-task reproduction or application defect claimed.
+
 ## Owner-approved Drive-enabled private Windows candidate (2026-11-06)
 
 - Owner confirms project/API/scope/audience and Android debug registration; branding

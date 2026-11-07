@@ -1,5 +1,21 @@
 # Private Drive-enabled Windows build — 2026-11-06
 
+## Latest cross-platform checkpoint (2026-11-07)
+
+[Corrected real Windows/Android Standard acceptance, current private artifact paths and limits](CROSS_PLATFORM_STANDARD_SYNC_2026_11_06.md#final-outcome-2026-11-07-utc03)
+supersedes the earlier stage below:383 operations/all43 portable tables converge,
+corrected Android restore/reconciliation and repeated checks/restart pass. Both
+updated credential-isolated candidates preserve prior artifacts and production
+baseline. Same approved spare account/workspace, no new sign-in. Historical
+failures and archived invalid decisions remain explicit. Windows is closed;
+authenticated SSD emulator retained. No release, Private Sync or cloud snapshot
+testing. Earlier build/readiness receipts retain only their recorded boundaries.
+
+
+Later owner-authorized runtime setup and the Android environment blocker are
+recorded in [Standard acceptance](STANDARD_DRIVE_ACCEPTANCE_2026_11_06.md).
+The build-time receipt below retains its original no-launch boundary.
+
 **Prepared and validated; not launched, installed or connected to Google.**
 There were no account actions or real Drive requests. This is a private build
 handoff, not a real OAuth/Sync acceptance pass or release authorization.
