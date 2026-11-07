@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.19-beta.13+36 - unpublished refinement candidate
+
+- Add shared task/event filters, recurrence-family grouping and nested subtasks, customizable navigation, grouped Android Settings, and clearer optional editor fields.
+- Add event-project assignments, named checklists and richer draft creation; schema 27 migrates additively and retains immutable Sync history. Update connected devices together; schema-26 clients safely refuse newer batches.
+- Correct equivalent deletion conflicts, restored decision clocks, Today event windows and explicit recurring-event field clearing; preserve archive/edit and delete/edit decisions.
+- Add Windows/Android widget date navigation while retaining bounded projections and device-local configuration.
+- Use compact themed auto-dismissed routine Sync confirmations; keep required decisions actionable. Clarify reconnect versus account switching and add recovery-code copy control.
+- Verify real Standard Sync and a scoped real Private encrypted Windows/Android round trip with synthetic accounts; keep passphrase/recovery requirements and backup/Sync separation. No workspace conversion or password rotation is introduced.
+- Candidate only: see the stabilization receipt for live recovery/restore, exact artifact, CI, signing and physical-platform limits. Nothing is published or automatically distributed by this entry.
+
 ## 1.0.19-beta.12+35 - UI reliability and recovery
 
 - Preserve task, nested subtask, recurring-series, Goal and Habit drafts through supported navigation and dismissal; retain edits after rejected saves.
