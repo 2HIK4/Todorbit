@@ -328,3 +328,59 @@ manual priorities: Windows native keyboard/DPI/Narrator and Windows10; Android
 widgets/IME/Back/TalkBack, physical ARM64/OEM and16KiB runtime. Do not repeat real
 Sync or broad UI matrices. Next required owner action is only the Sandbox
 ?Back up and upgrade database? click; leave it open and report completion.
+
+
+Owner approved the real guest migration. Sandbox `acceptance.json` now PASS:
+published Beta12 fresh startup/schema26, synthetic stable-ID task/event/checklist,
+Beta13 in-place byte preservation before approval, reviewed schema27 migration,
+integrity/foreign keys, repeat setup, uninstall ownership scope and reinstall
+startup/data preservation. `migration-diagnostic.json` confirms the real Before
+Upgrade backup; `worker-and-recovery.json` verifies it as readable schema26 with
+retained fixture/integrity OK. The exact installed main hash matches the bundle.
+All four hidden worker barriers PASS (missing, schema22 migration, schema27
+privacy, schema27 pending restore), exit0/no visible windows/no profile hash
+changes. Guest PowerShell/C# runs equivalent assertions to the Python CI helper;
+it is not claimed as the exact hosted Python job. No guest Python installation.
+The guest-only runner's here-string preparation error did not execute; corrected
+file-based runner passed. Synthetic pre/post databases retained in results.
+
+Sandbox was stopped after completion (no emulator overlap). Host had6.1GiB free.
+Clean signed-APK AVD launched headless on port5586,2048MiB/2cores/hostGPU/Vulkan
+disabled; exact argv/profile roots in receipt008. Retained authenticated AVD was
+not booted or changed. Clean Android runtime checks are now in progress.
+
+
+### Beta13 local gate closure (2026-11-08 handoff)
+
+Signed production APK runtime PASS in the separate clean API35 x64 AVD:
+installed base.apk SHA256 exactly matches receipt044; version/code13/36,
+non-debuggable; native keyboard task creation/completion, event creation,
+force-stop/restart persistence, grouped Settings and signed-out Sync notice.
+Both native launcher widgets installed/configured, displayed the canaries,
+changed day/returned Today; Calendar deep link opened the app. Captures011-037,
+package/widget/crash038 and result039 retain scoped evidence. First streamed
+install lost its ADB acknowledgement around boot completion; actual installation
+was confirmed by package path and exact hash, without reinstall. Crash buffer
+empty after the observed journeys. Harness console encoding corrected only.
+Screenshots reviewed: common task/event, Sync modal and Calendar widget readable;
+compact date label ellipsizes. No broad audit or physical-reader claim.
+
+Task-owned emulator was shut down cleanly (040); no VM remains running.
+Final protection041: all18 production file hashes, startup entries and three
+protected documents unchanged. Source/build/Sync evidence reused; no rebuild or
+new cloud exchange. No confirmed app defect from this continuation; two CI check
+repairs are local commits7d80f03/382ceac. Public checksum file retained outside Git.
+
+| Gate | Result |
+| --- | --- |
+| Exact source/artifacts, signing/version/alignment/package checks | PASS (recorded hashes/reuse) |
+| Real Windows installer26-to27 upgrade/uninstall/reinstall | PASS, synthetic Sandbox |
+| Signed Android core runtime and native widgets | PASS, clean API35 x64 only |
+| Worker barriers/config fixture checks | PASS, scoped as above |
+| Hosted exact-candidate Windows/Android CI | BLOCKED pending authorized staging/push |
+| Windows10/DPI/Narrator; Android ARM64/OEM/16KiB/TalkBack | NOT TESTED; prioritized manual acceptance |
+
+Beta13 was not published. Windows binaries remain unsigned; production OAuth
+registration is owner-reported with matching certificate, no fresh account login.
+The next task explicitly authorizes a subsequent alarm-feature experimental release;
+that candidate must retain these limits and satisfy its changed-boundary gates.

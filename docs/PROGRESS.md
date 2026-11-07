@@ -3095,3 +3095,12 @@ At3700185, source/packages match retained evidence. CI fixture/schema coverage
 corrections pass focused checks; no app rebuild. Offline Sandbox installer/upgrade
 runner prepared; actual migration consent and clean signed-APK runtime pending.
 No publication, real Sync or production-profile changes.
+
+
+2026-11-08: Beta13 feasible local release acceptance closed: actual Sandbox
+26-to27 upgrade/uninstall/reinstall and exact worker barriers PASS; production-
+signed APK core/restart/native widgets PASS on separate clean API35 x64. VM/AVD
+stopped, production18 hashes/startup/protected docs unchanged. Hosted CI and
+physical-platform gates remain open; no publication. Owner now requests alarm
+implementation and authorizes the next experimental release subject to gates.
+See FINAL_STABILIZATION_2026_11_07.md and external release-verification039/041.
