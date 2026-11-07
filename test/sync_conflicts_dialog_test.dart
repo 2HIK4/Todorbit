@@ -482,10 +482,81 @@ void main() {
     },
   );
 
+  for (final disabled in [false, true]) {
+    testWidgets('routine success motion preference disabled=$disabled', (
+      tester,
+    ) async {
+      controller.auth.account = const CloudAccount(
+        'synthetic',
+        'Synthetic account',
+      );
+      controller.snapshot = const SyncExchangeStatus(
+        binding: SyncBinding(
+          workspace: 'fixture',
+          account: 'synthetic',
+          device: 'fixture',
+        ),
+        enabled: true,
+        automatic: true,
+        quarantined: false,
+        pending: 0,
+        conflicts: 0,
+        waiting: 0,
+      );
+      controller.engine.status = const SyncEngineStatus(SyncPhase.upToDate);
+      providerOwnsController = true;
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [syncControllerProvider.overrideWith((ref) => controller)],
+          child: MaterialApp(
+            home: MediaQuery(
+              data: MediaQueryData(
+                disableAnimations: disabled,
+                accessibleNavigation: false,
+              ),
+              child: const Scaffold(body: SyncStatusButton()),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('sync-status-button')));
+      await tester.pump();
+      await tester.pump();
+      final notice = find.byKey(const ValueKey('sync-success-notice'));
+      expect(notice, findsOneWidget);
+      final animation = tester.widget<SnackBar>(notice).animation!;
+      if (disabled) {
+        expect(
+          animation.status,
+          AnimationStatus.completed,
+          reason: 'App preference alone bypasses the transition',
+        );
+      } else {
+        expect(animation.status, AnimationStatus.forward);
+        await tester.pump(const Duration(milliseconds: 90));
+        expect(animation.value, inExclusiveRange(0, 1));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(animation.status, AnimationStatus.completed);
+      }
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
   for (final brightness in Brightness.values) {
     testWidgets(
       'routine sync feedback ${brightness.name} is themed, compact and deduplicated',
       (tester) async {
+        if (Platform.environment['TODORBIT_UI_CAPTURE'] != null) {
+          final font = FontLoader('Roboto');
+          font.addFont(
+            Future.value(
+              ByteData.sublistView(
+                File('C:/Windows/Fonts/segoeui.ttf').readAsBytesSync(),
+              ),
+            ),
+          );
+          await font.load();
+        }
         tester.view.devicePixelRatio = 1;
         tester.view.physicalSize = const Size(390, 844);
         addTearDown(tester.view.resetPhysicalSize);
@@ -518,27 +589,30 @@ void main() {
         );
         final semantics = tester.ensureSemantics();
         await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              syncControllerProvider.overrideWith((ref) => controller),
-            ],
-            child: MaterialApp(
-              theme: theme,
-              home: MediaQuery(
-                data: const MediaQueryData(
-                  accessibleNavigation: true,
-                  textScaler: TextScaler.linear(2),
-                  disableAnimations: true,
-                ),
-                child: Scaffold(
-                  body: const SyncStatusButton(),
-                  bottomNavigationBar: const SizedBox(
-                    height: 64,
-                    child: Text('Navigation'),
+          RepaintBoundary(
+            key: const ValueKey('success-capture'),
+            child: ProviderScope(
+              overrides: [
+                syncControllerProvider.overrideWith((ref) => controller),
+              ],
+              child: MaterialApp(
+                theme: theme,
+                home: MediaQuery(
+                  data: const MediaQueryData(
+                    accessibleNavigation: true,
+                    textScaler: TextScaler.linear(2),
+                    disableAnimations: true,
                   ),
-                  floatingActionButton: FloatingActionButton(
-                    onPressed: () {},
-                    child: const Icon(Icons.add),
+                  child: Scaffold(
+                    body: const SyncStatusButton(),
+                    bottomNavigationBar: const SizedBox(
+                      height: 64,
+                      child: Text('Navigation'),
+                    ),
+                    floatingActionButton: FloatingActionButton(
+                      onPressed: () {},
+                      child: const Icon(Icons.add),
+                    ),
                   ),
                 ),
               ),
@@ -565,6 +639,20 @@ void main() {
           ),
         );
         expect(find.bySemanticsLabel('Up to date'), findsWidgets);
+        final capture = Platform.environment['TODORBIT_UI_CAPTURE'];
+        if (capture != null) {
+          await tester.runAsync(() async {
+            final boundary = tester.renderObject<RenderRepaintBoundary>(
+              find.byKey(const ValueKey('success-capture')),
+            );
+            final image = await boundary.toImage();
+            final bytes = await image.toByteData(format: ImageByteFormat.png);
+            await File('$capture/success-${brightness.name}-2x.png')
+                .writeAsBytes(bytes!.buffer.asUint8List());
+            image.dispose();
+          });
+        }
+
         await tester.tap(button);
         await tester.pumpAndSettle();
         expect(controller.requests, 2);

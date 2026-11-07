@@ -8,6 +8,7 @@ import '../../data/cloud/sync_engine.dart';
 import '../settings/sync_conflicts_dialog.dart';
 import '../settings/sync_settings_page.dart';
 import 'status_snackbar.dart';
+import 'app_motion.dart';
 
 class SyncStatusButton extends ConsumerStatefulWidget {
   const SyncStatusButton({super.key, this.allowAutomatic = true});
@@ -32,6 +33,7 @@ class _SyncStatusButtonState extends ConsumerState<SyncStatusButton> {
         message,
         key: const ValueKey('sync-success-notice'),
       ),
+      snackBarAnimationStyle: AppMotion.style(context),
     );
     unawaited(shown.closed.then((_) => _successNoticePending = false));
   }

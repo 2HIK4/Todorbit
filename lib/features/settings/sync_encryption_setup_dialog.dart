@@ -139,6 +139,7 @@ class _PrivateSyncSetupState extends State<_PrivateSyncSetup> {
                     if (!context.mounted) return;
                     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                       transientStatusSnackBar(context, 'Recovery code copied'),
+                      snackBarAnimationStyle: AppMotion.style(context),
                     );
                   },
                 ),
