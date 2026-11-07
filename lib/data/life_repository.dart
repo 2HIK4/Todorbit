@@ -18,6 +18,7 @@ import '../domain/templates.dart';
 import '../domain/saved_views.dart';
 import '../domain/trash.dart';
 import '../domain/notifications.dart';
+import '../domain/alarms.dart';
 import '../domain/task_resources.dart';
 import '../domain/task_composition.dart';
 import '../domain/progressive_plan.dart';
@@ -44,6 +45,7 @@ part 'saved_view_repository.dart';
 part 'trash_repository.dart';
 part 'reports_repository.dart';
 part 'notification_repository.dart';
+part 'alarm_repository.dart';
 part 'task_resource_repository.dart';
 part 'event_repository.dart';
 part 'entity_icon_repository.dart';
@@ -405,6 +407,13 @@ class LifeRepository {
         ),
       ],
     );
+    if (draft.alarm != null) {
+      await saveAlarm(
+        draft.alarm!,
+        eventId: id,
+        expectedRevision: draft.alarmReviewRevision,
+      );
+    }
     return (await events()).firstWhere((event) => event.id == id);
   });
 
@@ -435,6 +444,13 @@ class LifeRepository {
           ],
         );
         if (changed != 1) throw StateError('Event changed or is in Trash');
+        if (draft.alarm != null) {
+          await saveAlarm(
+            draft.alarm!,
+            eventId: previous.id,
+            expectedRevision: draft.alarmReviewRevision,
+          );
+        }
       });
 
   Future<void> deleteEvent(String id) async {
@@ -780,6 +796,13 @@ class LifeRepository {
         ),
       );
       await _writeTaskNotification(id, draft.notification);
+      if (draft.alarm != null) {
+        await saveAlarm(
+          draft.alarm!,
+          taskId: id,
+          expectedRevision: draft.alarmReviewRevision,
+        );
+      }
     });
     return (await tasks()).firstWhere((task) => task.id == id);
   }
@@ -842,6 +865,7 @@ class LifeRepository {
         : RecurrenceRule.daysBetween(rule.startDate, draft.deadlineDate!);
     await db.transaction(() async {
       await _checkAssignment(draft.categoryId, draft.projectId);
+
       await db.customInsert(
         '''INSERT INTO recurrence_series(
           id,family_id,active_from_date,kind,start_date,interval,weekdays,end_date,max_occurrences,
@@ -901,6 +925,25 @@ class LifeRepository {
           now,
         );
         await _refreshProgressiveAssignments(seriesId);
+      }
+      if (draft.alarm != null) {
+        await saveAlarm(
+          draft.alarm!,
+          seriesId: draft.alarm!.mode == 'custom' ? null : seriesId,
+          taskId: draft.alarm!.mode == 'custom'
+              ? (await db
+                        .customSelect(
+                          'SELECT task_id FROM recurrence_occurrences WHERE series_id=? AND ordinal=?',
+                          variables: [
+                            Variable.withString(seriesId),
+                            Variable.withInt(first.ordinal),
+                          ],
+                        )
+                        .getSingle())
+                    .read<String>('task_id')
+              : null,
+          expectedRevision: draft.alarmReviewRevision,
+        );
       }
     });
     return (await tasks()).firstWhere(
@@ -1095,6 +1138,7 @@ class LifeRepository {
         );
       }
       await _writeTaskNotification(previous.id, draft.notification);
+      await replaceTaskAlarm(previous, draft);
       if (previous.scheduledDate != draft.scheduledDate) {
         await _recordOperation(
           type: ScheduleOperationType.move,

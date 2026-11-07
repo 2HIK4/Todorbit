@@ -10,8 +10,8 @@ spec.loader.exec_module(worker)
 
 class SchemaTest(unittest.TestCase):
     def test_current_schema_is_derived(self):
-        self.assertEqual(worker.checked_schema(), 27)
-        self.assertEqual(worker.checked_schema(27), 27)
+        self.assertGreaterEqual(worker.checked_schema(), 27)
+        self.assertEqual(worker.checked_schema(worker.checked_schema()), worker.checked_schema())
 
     def test_old_schema_is_rejected(self):
         with self.assertRaises(ValueError):

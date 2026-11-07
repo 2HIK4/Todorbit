@@ -13,6 +13,7 @@ import 'package:life_manager/data/cloud/sync_batch_codec.dart';
 import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/data/sync_exchange_models.dart';
 import 'package:life_manager/domain/models.dart';
+import 'package:life_manager/domain/alarms.dart';
 import 'package:life_manager/domain/recurrence.dart';
 import 'package:life_manager/domain/task_resources.dart';
 
@@ -142,6 +143,7 @@ void main() {
         final event = await sender.addEvent(
           EventDraft(
             title: 'Lecture',
+            alarm: const AlarmConfig(mode: 'relative', minutesBefore: 30),
             startsAt: DateTime(2026, 11, 5, 9),
             endsAt: DateTime(2026, 11, 5, 10),
             categoryId: category.id,
@@ -149,7 +151,10 @@ void main() {
           ),
         );
         final task = await sender.addTaskWithComposition(
-          const TaskDraft(title: 'Prepare'),
+          TaskDraft(
+            title: 'Prepare',
+            alarm: AlarmConfig(mode: 'custom', at: DateTime.utc(2027, 1, 1)),
+          ),
           const [],
           const [],
           groups: [
@@ -176,6 +181,26 @@ void main() {
             0,
           );
         }
+        expect(
+          (await receiver.alarmRules()).map((r) => r.id).toSet(),
+          (await sender.alarmRules()).map((r) => r.id).toSet(),
+        );
+        expect(
+          (await receiver.alarmRules())
+              .where((r) => r.taskId == task.id)
+              .single
+              .config
+              .at,
+          DateTime.utc(2027, 1, 1),
+        );
+        expect(
+          (await receiver.alarmRules())
+              .where((r) => r.eventId == event.id)
+              .single
+              .config
+              .minutesBefore,
+          30,
+        );
         expect((await receiver.events()).single.id, event.id);
         expect(await receiver.checklistGroups(), hasLength(1));
         await sender.deleteEvent(event.id);

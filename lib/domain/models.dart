@@ -1,4 +1,5 @@
 import 'notifications.dart';
+import 'alarms.dart';
 
 enum TaskStatus {
   notStarted,
@@ -169,6 +170,8 @@ class EventDraft {
     this.colorValue,
     this.iconName,
     this.reminderMinutes,
+    this.alarm,
+    this.alarmReviewRevision,
     this.repeat,
     this.details = const [],
   });
@@ -183,6 +186,8 @@ class EventDraft {
   final int? colorValue;
   final String? iconName;
   final int? reminderMinutes;
+  final AlarmConfig? alarm;
+  final String? alarmReviewRevision;
   final EventRepeat? repeat;
   final List<EventDetail> details;
 }
@@ -313,6 +318,10 @@ class TaskDraft {
     this.remainingWorkMinutes,
     this.schedulingLocked = false,
     this.notification,
+    this.alarm,
+    this.alarmReviewRevision,
+    this.alarmForFamily = false,
+    this.alarmFamilyReviewRevision,
   });
 
   final String title;
@@ -327,6 +336,10 @@ class TaskDraft {
   final int? remainingWorkMinutes;
   final bool schedulingLocked;
   final TaskNotification? notification;
+  final AlarmConfig? alarm;
+  final String? alarmReviewRevision;
+  final bool alarmForFamily;
+  final String? alarmFamilyReviewRevision;
 }
 
 String localDate(DateTime value) =>

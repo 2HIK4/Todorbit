@@ -123,6 +123,7 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
 
   String _fieldLabel(String field) =>
       const {
+        'config_json': 'Alarm settings',
         'scheduled_date': 'Planned day',
         'deadline_date': 'Deadline',
         'starts_at': 'Starts',

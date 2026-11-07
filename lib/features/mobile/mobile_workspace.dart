@@ -1,3 +1,5 @@
+import '../../domain/alarm_plan.dart';
+import '../shared/alarm_indicator.dart';
 import '../shared/app_motion.dart';
 import '../support/support_button.dart';
 import '../shared/item_filters.dart';
@@ -783,6 +785,10 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
             return Card(
               child: ListTile(
                 leading: const Icon(Icons.event_outlined),
+                trailing:
+                    eventAlarmRule(event, c.alarmRules)?.config.enabled == true
+                    ? const AlarmIndicator()
+                    : null,
                 title: Text(event.title),
                 subtitle: Text(localDate(event.startsAt.toLocal())),
                 onTap: () => openEvent(event),
@@ -838,10 +844,18 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
         ),
         onTap: () => task(t),
         onLongPress: () => actions(t, c),
-        trailing: IconButton(
-          tooltip: 'Actions for ${t.title}',
-          icon: const Icon(Icons.more_vert),
-          onPressed: () => actions(t, c),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (t.isOpen &&
+                taskAlarmRule(t, c.alarmRules)?.config.enabled == true)
+              const AlarmIndicator(),
+            IconButton(
+              tooltip: 'Actions for ${t.title}',
+              icon: const Icon(Icons.more_vert),
+              onPressed: () => actions(t, c),
+            ),
+          ],
         ),
       ),
     );

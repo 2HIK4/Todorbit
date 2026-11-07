@@ -68,8 +68,15 @@ class SandboxPreparationTest(unittest.TestCase):
         self.assertEqual(manifest['schemaVersion'], 27)
         self.assertEqual(manifest['tableCount'], 53)
 
+    def test_schema28_counts_alarm_configuration(self):
+        root, result = self.stage('1.0.19-beta.14', schema=28)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        manifest = json.loads(next(root.glob('.buildlog/*/payload/packages.json')).read_text(encoding='utf-8-sig'))
+        self.assertEqual(manifest['schemaVersion'], 28)
+        self.assertEqual(manifest['tableCount'], 54)
+
     def test_unreviewed_schema_cannot_emit_a_vm_configuration(self):
-        root, result = self.stage('1.0.19-beta.12', schema=28)
+        root, result = self.stage('1.0.19-beta.12', schema=29)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('Review the Sandbox table count', result.stderr)
         self.assertEqual(list(root.glob('.buildlog/*/*.wsb')), [])

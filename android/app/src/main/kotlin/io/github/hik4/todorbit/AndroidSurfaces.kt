@@ -56,7 +56,10 @@ object AndroidSurfaces {
     fun reminderReceipts(context: Context): Map<String, List<String>> {
         val plans=snapshot(context).optJSONArray("reminders") ?: JSONArray()
         return mapOf("pending" to (0 until plans.length()).map {receipt(plans.getJSONObject(it))},
-            "delivered" to delivered(context).toList())
+            "delivered" to delivered(context).toList(),
+            "alarmRetained" to (0 until plans.length()).map{plans.getJSONObject(it)}.filter {
+                val key=it.getString("key"); preferences(context).getLong("alarm-snooze-$key",0)>0 || preferences(context).getLong("alarm-ringing-until-$key",0)>System.currentTimeMillis()
+            }.map{receipt(it)})
     }
     fun publish(context: Context, source: String) {
         val next = JSONObject(source)
@@ -65,7 +68,17 @@ object AndroidSurfaces {
         // Commit first: receivers reject obsolete alarms even if cancellation races.
         check(preferences(context).edit().putString("snapshot", source).commit())
         val alarms = context.getSystemService(AlarmManager::class.java)
-        for(i in 0 until old.length()) alarms.cancel(alarmIntent(context, old.getJSONObject(i).getString("key")))
+        val nextPlans=next.optJSONArray("reminders") ?: JSONArray()
+        val nextKeys=(0 until nextPlans.length()).map{nextPlans.getJSONObject(it).getString("key")}.toSet()
+        for(i in 0 until old.length()) {
+            val key=old.getJSONObject(i).getString("key")
+            alarms.cancel(alarmIntent(context,key))
+            if(!nextKeys.contains(key)) {
+                context.getSystemService(NotificationManager::class.java).cancel(key,1)
+                preferences(context).edit().remove("alarm-snooze-$key").remove("alarm-ringing-until-$key").apply()
+            }
+        }
+        AlarmSoundService.instance?.reconcile()
         scheduleReminders(context)
         updateWidgets(context)
         scheduleRefresh(context)
@@ -86,6 +99,7 @@ object AndroidSurfaces {
             val item = plans.getJSONObject(i)
             val receipt = receipt(item)
             val now=System.currentTimeMillis()
+            if(item.optBoolean("alarm")) {AlarmDelivery.schedule(context,item);continue}
             if(now-item.getLong("at") < 24L*60*60*1000 && !receipts.contains(receipt))
                 alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,maxOf(item.getLong("at"),now+1000),alarmIntent(context,item.getString("key")))
         }
@@ -374,11 +388,15 @@ class ReminderReceiver : BroadcastReceiver() {
                 if(quiet) {
                     val date=now.toLocalDate().plusDays(if(overnight && minute>=start) 1 else 0)
                     val later=date.atTime(end/60,end%60).atZone(now.zone).toInstant().toEpochMilli()
-                    context.getSystemService(AlarmManager::class.java).setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,later,AndroidSurfaces.alarmIntent(context,key))
+                    if(item.optBoolean("alarm")) {
+                        AndroidSurfaces.preferences(context).edit().putLong("alarm-snooze-$key",later).commit()
+                        AlarmDelivery.schedule(context,item)
+                    } else context.getSystemService(AlarmManager::class.java).setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,later,AndroidSurfaces.alarmIntent(context,key))
                     return
                 }
             }
         } catch (_: Exception) { return }
+        if(item.optBoolean("alarm")) {AlarmDelivery.deliver(context,item);return}
         val prefs = AndroidSurfaces.preferences(context)
         val receipts = AndroidSurfaces.delivered(context)
         val receipt = AndroidSurfaces.receipt(item)

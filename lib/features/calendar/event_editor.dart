@@ -1,3 +1,7 @@
+import '../../data/alarm_device_store.dart';
+import '../../domain/alarms.dart';
+import '../../domain/alarm_plan.dart';
+import '../shared/alarm_field.dart';
 import '../shared/app_motion.dart';
 import '../shared/settings_section.dart';
 import '../shared/scroll_edge_fade.dart';
@@ -96,6 +100,9 @@ class _EventEditorState extends ConsumerState<EventEditor> {
   int? colorValue;
   String? iconName;
   int? reminderMinutes;
+  AlarmConfig alarm = const AlarmConfig();
+  AlarmConfig initialAlarm = const AlarmConfig();
+  AlarmRule? initialAlarmRule;
   _EventEditScope editScope = _EventEditScope.occurrence;
   bool busy = false;
   final exitGuard = GlobalKey<UnsavedEditorGuardState>();
@@ -114,6 +121,7 @@ class _EventEditorState extends ConsumerState<EventEditor> {
     colorValue,
     iconName,
     reminderMinutes,
+    alarm.toJson(),
     editScope.name,
     details.map((d) => d.toJson()).toList(),
   ]);
@@ -143,6 +151,20 @@ class _EventEditorState extends ConsumerState<EventEditor> {
     colorValue = widget.event?.colorValue;
     iconName = widget.event?.iconName;
     reminderMinutes = widget.event?.reminderMinutes;
+    alarm = widget.event == null
+        ? const AlarmConfig()
+        : eventAlarmRule(
+                widget.event!,
+                ref.read(appControllerProvider).alarmRules,
+              )?.config ??
+              const AlarmConfig();
+    initialAlarm = alarm;
+    if (widget.event != null) {
+      initialAlarmRule = eventAlarmRule(
+        widget.event!,
+        ref.read(appControllerProvider).alarmRules,
+      );
+    }
     start =
         widget.event?.startsAt.toLocal() ??
         DateTime(
@@ -493,6 +515,14 @@ class _EventEditorState extends ConsumerState<EventEditor> {
         colorValue: colorValue,
         iconName: iconName,
         reminderMinutes: reminderMinutes,
+        alarm: alarm.sameAs(initialAlarm) ? null : alarm,
+        alarmReviewRevision:
+            initialAlarmRule?.eventId == widget.event?.id &&
+                initialAlarmRule?.nominalDate ==
+                    (widget.event?.nominalDate ?? '') &&
+                initialAlarmRule != null
+            ? initialAlarmRule!.updatedAt
+            : 'new',
         repeat: repeatKind == null
             ? null
             : EventRepeat(
@@ -502,6 +532,25 @@ class _EventEditorState extends ConsumerState<EventEditor> {
               ),
       );
       final controller = ref.read(appControllerProvider);
+      if (!alarm.sameAs(initialAlarm) && alarm.enabled) {
+        if (alarm.mode == 'custom' &&
+            !alarm.at!.isAfter(DateTime.now().toUtc())) {
+          throw const FormatException('Choose a future alarm time.');
+        }
+        if (Platform.isAndroid &&
+            await AlarmDeviceStore.active().enabled() &&
+            !await AndroidPlatform.requestNotifications()) {
+          throw StateError(
+            'Allow notifications or remove the alarm before saving.',
+          );
+        }
+        if (Platform.isWindows && await AlarmDeviceStore.active().enabled()) {
+          if (!NativeWidgetService().isAvailable) {
+            throw StateError('Alarms require the packaged Windows companion.');
+          }
+          await NativeWidgetService().ensureRemindersRunning();
+        }
+      }
       if (reminderMinutes != null && Platform.isAndroid) {
         if (!await AndroidPlatform.requestNotifications()) {
           throw StateError(
@@ -1087,44 +1136,56 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                   initiallyExpanded:
                       repeatKind != null || reminderMinutes != null,
                   children: [
-                    AnchoredSelectField<int?>(
-                      initialValue: reminderMinutes,
-                      decoration: InputDecoration(
-                        labelText: 'Reminder notifications',
-                        helperText: Platform.isAndroid
-                            ? 'Android reminders may be delayed by battery restrictions.'
-                            : Platform.isWindows &&
-                                  NativeWidgetService().isAvailable
-                            ? 'Delivered by the Todorbit tray companion while it runs.'
-                            : 'Requires the packaged Windows tray companion.',
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: null, child: Text('None')),
-                        DropdownMenuItem(value: 0, child: Text('At start')),
-                        DropdownMenuItem(
-                          value: 5,
-                          child: Text('5 minutes before'),
-                        ),
-                        DropdownMenuItem(
-                          value: 15,
-                          child: Text('15 minutes before'),
-                        ),
-                        DropdownMenuItem(
-                          value: 30,
-                          child: Text('30 minutes before'),
-                        ),
-                        DropdownMenuItem(
-                          value: 60,
-                          child: Text('1 hour before'),
-                        ),
-                      ],
-                      onChanged:
-                          Platform.isAndroid ||
-                              (Platform.isWindows &&
-                                  NativeWidgetService().isAvailable)
-                          ? (value) => setState(() => reminderMinutes = value)
-                          : null,
+                    AlarmField(
+                      value: alarm,
+                      event: true,
+                      recurring:
+                          repeatKind != null &&
+                          widget.event?.nominalDate == null,
+                      onChanged: (value) => setState(() {
+                        alarm = value;
+                        if (value.enabled) reminderMinutes = null;
+                      }),
                     ),
+                    if (reminderMinutes != null && !alarm.enabled)
+                      AnchoredSelectField<int?>(
+                        initialValue: reminderMinutes,
+                        decoration: InputDecoration(
+                          labelText: 'Reminder notifications',
+                          helperText: Platform.isAndroid
+                              ? 'Android reminders may be delayed by battery restrictions.'
+                              : Platform.isWindows &&
+                                    NativeWidgetService().isAvailable
+                              ? 'Delivered by the Todorbit tray companion while it runs.'
+                              : 'Requires the packaged Windows tray companion.',
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: null, child: Text('None')),
+                          DropdownMenuItem(value: 0, child: Text('At start')),
+                          DropdownMenuItem(
+                            value: 5,
+                            child: Text('5 minutes before'),
+                          ),
+                          DropdownMenuItem(
+                            value: 15,
+                            child: Text('15 minutes before'),
+                          ),
+                          DropdownMenuItem(
+                            value: 30,
+                            child: Text('30 minutes before'),
+                          ),
+                          DropdownMenuItem(
+                            value: 60,
+                            child: Text('1 hour before'),
+                          ),
+                        ],
+                        onChanged:
+                            Platform.isAndroid ||
+                                (Platform.isWindows &&
+                                    NativeWidgetService().isAvailable)
+                            ? (value) => setState(() => reminderMinutes = value)
+                            : null,
+                      ),
                     const SizedBox(height: 12),
                     AnchoredSelectField<EventRepeatKind?>(
                       initialValue: repeatKind,

@@ -26,7 +26,7 @@ internal sealed class DependencyReviewRequiredException(
 
 internal sealed partial class LifeManagerWidgetRepository : IDisposable {
   private const int MinimumSchemaVersion = 4;
-  private const int MaximumSchemaVersion = 27;
+  private const int MaximumSchemaVersion = 28;
   private const string ActiveTaskClause = """
      AND deleted_at IS NULL AND archived_at IS NULL
      AND (category_id IS NULL OR EXISTS
@@ -238,6 +238,7 @@ internal sealed partial class LifeManagerWidgetRepository : IDisposable {
 
   private bool ClaimEventReminder(string eventId, string nominal,
       DateTime startLocal, SqliteTransaction transaction) {
+    if(HasItemAlarm("event",eventId,nominal,transaction))return false;
     using var command = connection.CreateCommand();
     command.Transaction = transaction;
     command.CommandText = """

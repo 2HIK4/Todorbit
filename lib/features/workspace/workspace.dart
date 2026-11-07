@@ -1,3 +1,5 @@
+import '../../domain/alarm_plan.dart';
+import '../shared/alarm_indicator.dart';
 import '../shared/app_motion.dart';
 import '../shared/item_filters.dart';
 import '../shared/scroll_edge_fade.dart';
@@ -1787,6 +1789,14 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     return Card(
                       child: ListTile(
                         leading: const Icon(Icons.event_outlined),
+                        trailing:
+                            eventAlarmRule(
+                                  event,
+                                  controller.alarmRules,
+                                )?.config.enabled ==
+                                true
+                            ? const AlarmIndicator()
+                            : null,
                         title: Text(event.title),
                         subtitle: Text(localDate(event.startsAt.toLocal())),
                         onTap: () => _openEventDetails(event),
@@ -1851,6 +1861,13 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 size: 19,
                 color: scheme.primary,
               ),
+              if (task.isOpen &&
+                  taskAlarmRule(task, controller.alarmRules)?.config.enabled ==
+                      true)
+                const Padding(
+                  padding: EdgeInsets.only(left: 6),
+                  child: AlarmIndicator(),
+                ),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(

@@ -6,6 +6,11 @@ import 'package:flutter/services.dart';
 class AndroidPlatform {
   static const channel = MethodChannel('todorbit/android');
 
+  static Future<bool> alarmAccess() async =>
+      await channel.invokeMethod<bool>('alarmAccess') ?? false;
+  static Future<void> requestAlarmAccess() =>
+      channel.invokeMethod<void>('requestAlarmAccess');
+
   static Future<bool> requestNotifications() async =>
       await channel.invokeMethod<bool>('requestNotifications') ?? false;
 

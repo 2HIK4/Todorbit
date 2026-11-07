@@ -28,7 +28,7 @@ internal sealed partial class LifeManagerWidgetRepository
                 using var json = JsonDocument.Parse(rows.GetString(2));
                 var config = json.RootElement;
                 var mode = config.GetProperty("mode").GetString();
-                if (mode == "off") continue;
+                if (mode == "off" || HasItemAlarm("task",rows.GetString(0),"",transaction)) continue;
                 DateTime trigger;
                 if (mode == "custom" && config.TryGetProperty("at", out var at) && at.ValueKind == JsonValueKind.String)
                     trigger = DateTimeOffset.Parse(at.GetString()!, CultureInfo.InvariantCulture).UtcDateTime;

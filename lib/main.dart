@@ -1,3 +1,4 @@
+import 'data/alarm_device_store.dart';
 import 'features/shared/app_restart_scope.dart';
 import 'features/shared/app_motion.dart';
 
@@ -313,7 +314,9 @@ Future<void> _prepareApplication(
     if (companion.isAvailable &&
         ((await controller.repository.notificationSettings()).enabled ||
             await controller.repository.hasEventReminders() ||
-            await controller.repository.hasTaskReminders())) {
+            await controller.repository.hasTaskReminders(
+              includeAlarms: await AlarmDeviceStore.active().enabled(),
+            ))) {
       try {
         await companion.ensureRemindersRunning();
       } catch (failure) {

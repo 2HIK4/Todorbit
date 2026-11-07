@@ -779,6 +779,7 @@ internal static partial class LifeManagerWidgetSelfTest {
           throw new InvalidOperationException("Schema v21 reminder compatibility failed.");
       }
       TaskReminderSelfTest.Verify();
+      AlarmSelfTest.Verify();
       VerifySettingsRoundTrip(directory);
       VerifyAppearanceRoundTrip(directory);
       VerifySingleInstanceMutex();

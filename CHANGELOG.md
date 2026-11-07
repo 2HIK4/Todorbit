@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.19-beta.14+37 - alarm candidate
+
+- Add optional task/event alarms, exact times, advance offsets, recurring rules, system sounds, bounded ringing, snooze and dismiss. Keep delivery state local while Sync carries configuration.
+- Add Android exact-access review and an explicit inexact fallback; use a short native playback service and notification actions. Windows reuses the tray companion and an explicit sign-in startup choice.
+- Add schema28 alarm configuration through additive reviewed migration; preserve immutable history and existing work. Update all connected devices before exchanging schema28 batches.
+- Include the verified unpublished beta13 refinement, Sync/recovery, editor, navigation and widget improvements below.
+- Candidate only: native delivery, release and CI gates must pass before publication. Windows remains unsigned; physical/OEM/reader/16KiB limits remain explicit.
+
 ## 1.0.19-beta.13+36 - unpublished refinement candidate
 
 - Add shared task/event filters, recurrence-family grouping and nested subtasks, customizable navigation, grouped Android Settings, and clearer optional editor fields.

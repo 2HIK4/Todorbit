@@ -14,13 +14,23 @@ extension NotificationRepository on LifeRepository {
     );
   }
 
-  Future<bool> hasTaskReminders() async =>
-      (await db
-              .customSelect(
-                r"SELECT id FROM tasks WHERE json_extract(notification_json,'$.mode') != 'off' AND deleted_at IS NULL AND archived_at IS NULL AND status NOT IN ('completed','cancelled') LIMIT 1",
-              )
-              .get())
-          .isNotEmpty;
+  Future<bool> hasTaskReminders({bool includeAlarms = true}) async {
+    if (includeAlarms &&
+        (await db
+                .customSelect(
+                  r"SELECT 1 FROM alarm_rules WHERE deleted_at IS NULL AND archived_at IS NULL AND json_extract(config_json,'$.mode')!='off' LIMIT 1",
+                )
+                .get())
+            .isNotEmpty) {
+      return true;
+    }
+    return (await db
+            .customSelect(
+              r"SELECT id FROM tasks WHERE json_extract(notification_json,'$.mode') != 'off' AND deleted_at IS NULL AND archived_at IS NULL AND status NOT IN ('completed','cancelled') LIMIT 1",
+            )
+            .get())
+        .isNotEmpty;
+  }
 }
 
 extension NotificationSettingsRepository on LifeRepository {

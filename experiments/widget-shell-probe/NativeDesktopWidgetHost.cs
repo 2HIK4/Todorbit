@@ -21,6 +21,7 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
   private readonly System.Windows.Forms.Timer appearanceDebounce;
   private readonly System.Windows.Forms.Timer explorerRecovery;
   private readonly System.Windows.Forms.Timer notificationTimer;
+  private readonly NativeAlarmRuntime? alarmRuntime;
   private readonly System.Windows.Forms.Timer privacyTimer;
   private NativeDesktopWidgetHost? host;
   private readonly ExplorerRecoveryPolicy recoveryPolicy = new();
@@ -54,6 +55,7 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
       refreshDebounce.Stop();
       host?.RefreshFromDatabase();
       calendarHost?.RefreshFromDatabase();
+      alarmRuntime?.Invalidate();
       syncScheduler.Request();
     };
     databaseWatcher = new FileSystemWatcher(
@@ -90,13 +92,17 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
     appearanceWatcher.Created += AppearanceChanged;
     appearanceWatcher.Renamed += AppearanceChanged;
     Microsoft.Win32.SystemEvents.UserPreferenceChanged += SystemPreferenceChanged;
+    Microsoft.Win32.SystemEvents.TimeChanged += AlarmTimeChanged;
 
     explorerRecovery = new System.Windows.Forms.Timer { Interval = 1000 };
     explorerRecovery.Tick += (_, _) => RecoverAfterExplorerRestart();
     notificationTimer = new System.Windows.Forms.Timer { Interval = 30000 };
     notificationTimer.Tick += (_, _) => CheckNotifications();
     privacyTimer = new System.Windows.Forms.Timer { Interval = 1000 };
+    try {alarmRuntime=new NativeAlarmRuntime(repository,privacy,()=>ResolvePalette(appearance.Theme),appExe);}
+    catch(Exception error) {Debug.WriteLine($"Alarm state unavailable: {error.GetType().Name}. Retain profile state.");}
     privacyTimer.Tick += (_, _) => {
+      try {alarmRuntime?.Tick(DateTime.UtcNow);} catch(Exception error) {Debug.WriteLine($"Alarm delivery deferred: {error.GetType().Name}");}
       ExpireWidgetPreviews();
       host?.UpdatePrivacy(); calendarHost?.UpdatePrivacy();
       if (lastLocalDate != DateTime.Today) {
@@ -171,6 +177,10 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
     } catch (Exception) {
       return null;
     }
+  }
+
+  private void AlarmTimeChanged(object? sender,EventArgs e) {
+    TimeZoneInfo.ClearCachedData();uiContext.Post(_=>alarmRuntime?.Invalidate(),null);
   }
 
   private void CheckNotifications() {
@@ -429,9 +439,11 @@ internal sealed partial class NativeWidgetApplicationContext : ApplicationContex
       databaseWatcher.Dispose();
       appearanceWatcher.Dispose();
       Microsoft.Win32.SystemEvents.UserPreferenceChanged -= SystemPreferenceChanged;
+      Microsoft.Win32.SystemEvents.TimeChanged -= AlarmTimeChanged;
       refreshDebounce.Dispose();
       appearanceDebounce.Dispose();
       explorerRecovery.Dispose();
+      alarmRuntime?.Dispose();
       notificationTimer.Dispose();
       privacyTimer.Dispose();
       syncScheduler.Dispose();

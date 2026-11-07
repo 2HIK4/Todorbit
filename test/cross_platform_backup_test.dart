@@ -6,6 +6,7 @@ import 'package:life_manager/data/app_database.dart';
 import 'package:life_manager/data/backup_service.dart';
 import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/domain/models.dart';
+import 'package:life_manager/domain/alarms.dart';
 
 void main() {
   test('the portable snapshot retains identities across distinct desktop/mobile profiles', () async {
@@ -25,6 +26,7 @@ void main() {
       final task = await source.addTask(
         TaskDraft(
           title: 'Portable task',
+          alarm: AlarmConfig(mode: 'custom', at: DateTime.utc(2027, 1, 1)),
           categoryId: category.id,
           projectId: project.id,
           scheduledDate: '2026-10-28',
@@ -71,6 +73,14 @@ void main() {
       final target = LifeRepository(mobile);
       final restored = (await target.tasks()).single;
       expect(restored.id, task.id);
+      expect(
+        (await target.alarmRules()).single.config.at,
+        DateTime.utc(2027, 1, 1),
+      );
+      expect(
+        (await target.alarmRules()).single.id,
+        (await source.alarmRules()).single.id,
+      );
       expect(restored.updatedAt, task.updatedAt);
       expect(restored.categoryId, category.id);
       expect(restored.projectId, project.id);

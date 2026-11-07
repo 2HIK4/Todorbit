@@ -1,3 +1,5 @@
+import '../domain/alarms.dart';
+
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
@@ -728,6 +730,19 @@ void _validateLifeManagerSnapshot(String filePath) {
     }
     if (connection.select('PRAGMA foreign_key_check').isNotEmpty) {
       throw StateError('Snapshot has broken record relationships');
+    }
+    if (schema >= 28) {
+      if (!names.contains('alarm_rules')) {
+        throw StateError('Snapshot is missing alarm configuration');
+      }
+      for (final row in connection.select(
+        'SELECT config_json FROM alarm_rules',
+      )) {
+        AlarmConfig.fromJson(
+          (jsonDecode(row['config_json'] as String) as Map)
+              .cast<String, dynamic>(),
+        );
+      }
     }
     if (schema >= 27) {
       final groupColumns = connection

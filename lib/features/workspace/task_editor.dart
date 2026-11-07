@@ -1,3 +1,4 @@
+import '../../data/alarm_device_store.dart';
 import '../shared/app_motion.dart';
 import '../../domain/task_composition.dart';
 import 'checklist_groups_section.dart';
@@ -19,6 +20,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../../domain/notifications.dart';
+import '../../domain/alarms.dart';
+import '../../domain/alarm_plan.dart';
+import '../shared/alarm_field.dart';
 import '../../platform/android/android_platform.dart';
 import '../widget/native_widget_service.dart';
 import 'task_notification_field.dart';
@@ -102,6 +106,11 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   Set<int> recurrenceWeekdays = {};
   bool repeatPlanAtEnd = false;
   TaskNotification notification = const TaskNotification();
+  AlarmConfig alarm = const AlarmConfig();
+  AlarmConfig initialAlarm = const AlarmConfig();
+  AlarmRule? initialAlarmRule;
+  AlarmRule? initialFamilyAlarmRule;
+  bool alarmForFamily = false;
   bool saving = false;
   bool schedulingLocked = false;
   String? iconKey;
@@ -133,6 +142,8 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     recurrenceWeekdays.toList()..sort(),
     repeatPlanAtEnd,
     notification.toJson(),
+    alarm.toJson(),
+    alarmForFamily,
     schedulingLocked,
     iconKey,
     draftChecklist,
@@ -221,6 +232,31 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     final task = widget.task;
     currentTask = task;
     notification = task?.notification ?? const TaskNotification();
+    alarm = task == null
+        ? const AlarmConfig()
+        : taskAlarmRule(
+                task,
+                ref.read(appControllerProvider).alarmRules,
+              )?.config ??
+              const AlarmConfig();
+    initialAlarm = alarm;
+    if (task?.recurrenceSeriesId != null) {
+      initialFamilyAlarmRule = ref
+          .read(appControllerProvider)
+          .alarmRules
+          .where(
+            (r) =>
+                r.seriesId ==
+                (task!.recurrenceFamilyId ?? task.recurrenceSeriesId),
+          )
+          .firstOrNull;
+    }
+    if (task != null) {
+      initialAlarmRule = taskAlarmRule(
+        task,
+        ref.read(appControllerProvider).alarmRules,
+      );
+    }
     final workspace = ref.read(appControllerProvider);
     iconKey = task == null ? null : workspace.iconKeys['task:${task.id}'];
     prerequisiteIds = workspace.dependencies
@@ -716,6 +752,26 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     setState(() => saving = true);
     try {
       final controller = ref.read(appControllerProvider);
+      AlarmConfig.fromJson(alarm.toJson());
+      if (!alarm.sameAs(initialAlarm) && alarm.enabled) {
+        if (alarm.mode == 'custom' &&
+            !alarm.at!.isAfter(DateTime.now().toUtc())) {
+          throw const FormatException('Choose a future alarm time.');
+        }
+        if (Platform.isAndroid &&
+            await AlarmDeviceStore.active().enabled() &&
+            !await AndroidPlatform.requestNotifications()) {
+          throw StateError(
+            'Allow notifications or remove the alarm before saving.',
+          );
+        }
+        if (Platform.isWindows && await AlarmDeviceStore.active().enabled()) {
+          if (!NativeWidgetService().isAvailable) {
+            throw StateError('Alarms require the packaged Windows companion.');
+          }
+          await NativeWidgetService().ensureRemindersRunning();
+        }
+      }
       TaskNotification.fromJson(notification.toJson());
       final notificationChanged = !notification.sameAs(
         currentTask?.notification ?? const TaskNotification(),
@@ -763,6 +819,14 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
       );
       final draft = TaskDraft(
         notification: notification,
+        alarm: alarm.sameAs(initialAlarm) && !alarmForFamily ? null : alarm,
+        alarmForFamily: alarmForFamily,
+        alarmFamilyReviewRevision: initialFamilyAlarmRule?.updatedAt ?? 'new',
+        alarmReviewRevision:
+            initialAlarmRule?.taskId == currentTask?.id &&
+                initialAlarmRule != null
+            ? initialAlarmRule!.updatedAt
+            : 'new',
         title: title.text,
         notes: notes.text,
         status: status,
@@ -1648,10 +1712,62 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                       ),
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: TaskNotificationField(
-                        value: notification,
-                        onChanged: (value) =>
-                            setState(() => notification = value),
+                      child: Column(
+                        children: [
+                          AlarmField(
+                            value: alarm,
+                            recurring:
+                                recurrenceKind != null ||
+                                currentTask?.recurrenceSeriesId != null,
+                            allowCustom: !alarmForFamily,
+                            onChanged: (value) => setState(() {
+                              alarm = value;
+                              if (value.enabled) {
+                                notification = const TaskNotification();
+                              }
+                            }),
+                          ),
+                          if (alarm.enabled &&
+                              alarm.mode == 'planned' &&
+                              scheduled == null)
+                            const Text(
+                              'Waiting for a planned day. Choose a day above or use an exact alarm time.',
+                            ),
+                          if (alarm.enabled &&
+                              alarm.mode == 'relative' &&
+                              !ref
+                                  .read(appControllerProvider)
+                                  .sessions
+                                  .any(
+                                    (s) =>
+                                        s.taskId == currentTask?.id &&
+                                        s.outcome == SessionOutcome.upcoming &&
+                                        s.startsAt.isAfter(DateTime.now()),
+                                  ))
+                            const Text(
+                              'Waiting for an upcoming work session. An exact alarm time works without one.',
+                            ),
+                          if (currentTask?.recurrenceSeriesId != null &&
+                              alarm.enabled)
+                            CheckboxListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text(
+                                'Apply alarm to this recurring family',
+                              ),
+                              subtitle: const Text(
+                                "Replaces this occurrence's override. Other occurrence overrides stay unchanged.",
+                              ),
+                              value: alarmForFamily,
+                              onChanged: (v) =>
+                                  setState(() => alarmForFamily = v ?? false),
+                            ),
+                          if (notification.enabled && !alarm.enabled)
+                            TaskNotificationField(
+                              value: notification,
+                              onChanged: (value) =>
+                                  setState(() => notification = value),
+                            ),
+                        ],
                       ),
                     ),
                     ExpansionTile(

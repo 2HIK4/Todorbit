@@ -37,6 +37,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        intent.getStringExtra("alarmKey")?.let{AlarmDelivery.act(this,it,0);intent.removeExtra("alarmKey")}
         // Apply the persisted policy before Flutter's first frame, including
         // startup failures or a slow database migration/restore review.
         if (AndroidSurfaces.privacy(this).optBoolean("enabled", true)) {
@@ -63,6 +64,13 @@ class MainActivity : FlutterActivity() {
                 }
                 "initialLink" -> result.success(initialLink)
                 "ackLink" -> { if(initialLink == call.arguments) {initialLink = null; intent.data = null}; result.success(null) }
+                "alarmSettingsChanged" -> {AlarmSoundService.instance?.reconcile(); result.success(null)}
+                "alarmAccess" -> result.success(AlarmDelivery.exact(this))
+                "requestAlarmAccess" -> {
+                    if(Build.VERSION.SDK_INT>=31 && !AlarmDelivery.exact(this))
+                        startActivity(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,android.net.Uri.parse("package:$packageName")))
+                    result.success(null)
+                }
                 "notificationsAllowed" -> result.success(notificationsAllowed())
                 "claimWidgetAction" -> {
                     AndroidSurfaces.enqueue {
@@ -131,6 +139,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        intent.getStringExtra("alarmKey")?.let{AlarmDelivery.act(this,it,0);intent.removeExtra("alarmKey")}
         setIntent(intent)
         intent.dataString?.let { initialLink = it; bridge.invokeMethod("openLink", it) }
     }

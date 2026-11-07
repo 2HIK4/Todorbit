@@ -11,6 +11,9 @@ import '../../data/mobile_preference_store.dart';
 import '../../data/privacy_store.dart';
 import '../../domain/models.dart';
 import '../../domain/notifications.dart';
+import '../../domain/alarms.dart';
+import '../../data/alarm_device_store.dart';
+import '../../domain/alarm_plan.dart';
 import 'android_platform.dart';
 
 String mobileLink(String kind, {String? id, String? day, String? nominal}) =>
@@ -50,6 +53,9 @@ List<Map<String, Object>> androidReminderPlan({
   required DateTime now,
   required MobilePreferences preferences,
   NotificationSettings settings = const NotificationSettings(),
+  List<AlarmRule> alarmRules = const [],
+  bool alarmsEnabled = true,
+  Set<String> retainedAlarmReceipts = const {},
   Set<String> pendingReceipts = const {},
   Set<String> deliveredReceipts = const {},
 }) {
@@ -86,7 +92,12 @@ List<Map<String, Object>> androidReminderPlan({
     });
   }
 
-  for (final task in tasks.where((t) => t.isOpen && t.notification.enabled)) {
+  for (final task in tasks.where(
+    (t) =>
+        t.isOpen &&
+        t.notification.enabled &&
+        taskAlarmRule(t, alarmRules)?.config.enabled != true,
+  )) {
     final notification = task.notification;
     if (notification.mode == 'custom' && notification.at != null) {
       add(
@@ -151,7 +162,10 @@ List<Map<String, Object>> androidReminderPlan({
     }
   }
   for (final e in events.where(
-    (e) => !e.cancelled && e.reminderMinutes != null,
+    (e) =>
+        !e.cancelled &&
+        e.reminderMinutes != null &&
+        eventAlarmRule(e, alarmRules)?.config.enabled != true,
   )) {
     add(
       'event:${e.id}:${e.nominalDate ?? e.startsAt.toUtc().toIso8601String()}',
@@ -200,6 +214,28 @@ List<Map<String, Object>> androidReminderPlan({
           task.deadlineDate == day ? 'Task deadline today' : 'Overdue task',
         );
       }
+    }
+  }
+  if (alarmsEnabled) {
+    for (final alarm in alarmPlan(
+      rules: alarmRules,
+      tasks: tasks,
+      events: events,
+      sessions: sessions,
+      now: now,
+    )) {
+      final shifted = outsideQuietHours(
+        DateTime.fromMillisecondsSinceEpoch(alarm['at'] as int, isUtc: true),
+        preferences,
+      );
+      final receipt = "${alarm['key']}:${alarm['occurrenceAt']}";
+      final retained = retainedAlarmReceipts.contains(receipt);
+      if (!retained &&
+          (deliveredReceipts.contains(receipt) ||
+              now.difference(shifted) > const Duration(minutes: 5))) {
+        continue;
+      }
+      plans.add({...alarm, 'at': shifted.millisecondsSinceEpoch});
     }
   }
   plans.sort((a, b) => (a['at'] as int).compareTo(b['at'] as int));
@@ -324,12 +360,17 @@ Future<void> publishAndroidRepository(
       'tasksTruncated': widgetTasks.length > 500,
       'agendaTruncated': agenda.length > 100,
       'reminders': androidReminderPlan(
+        alarmRules: await repository.alarmRules(),
+        alarmsEnabled: await AlarmDeviceStore.active().enabled(),
         tasks: tasks,
         sessions: sessions,
         events: events,
         now: now,
         preferences: preferences,
         settings: settings,
+        retainedAlarmReceipts: ((receipts?['alarmRetained'] as List?) ?? [])
+            .cast<String>()
+            .toSet(),
         pendingReceipts: ((receipts?['pending'] as List?) ?? [])
             .cast<String>()
             .toSet(),

@@ -313,7 +313,8 @@ class SyncBatchCodec {
           (envelope['batch'] as Map).cast<String, dynamic>(),
         );
         if (batch.schema != expectedSchema &&
-            !(expectedSchema == 27 && batch.schema == 26)) {
+            !((expectedSchema == 27 && batch.schema == 26) ||
+                (expectedSchema == 28 && {26, 27}.contains(batch.schema)))) {
           throw const SyncSchemaMismatch();
         }
         return batch;
@@ -338,7 +339,8 @@ class SyncBatchCodec {
         (jsonDecode(utf8.decode(clear)) as Map).cast<String, dynamic>(),
       );
       if (batch.schema != expectedSchema &&
-          !(expectedSchema == 27 && batch.schema == 26)) {
+          !((expectedSchema == 27 && batch.schema == 26) ||
+              (expectedSchema == 28 && {26, 27}.contains(batch.schema)))) {
         throw const SyncSchemaMismatch();
       }
       return batch;

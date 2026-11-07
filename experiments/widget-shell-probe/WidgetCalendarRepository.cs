@@ -9,9 +9,9 @@ internal sealed partial class LifeManagerWidgetRepository
 {
     /// Read-only calendar projection. Planned days, sessions and fixed events stay distinct.
     /// Event recurrence uses the same date matcher as the native reminder service.
-    internal IReadOnlyList<WidgetCalendarItem> LoadCalendarItems(DateTime first, DateTime through)
+    internal IReadOnlyList<WidgetCalendarItem> LoadCalendarItems(DateTime first, DateTime through, bool forNotifications = false)
     {
-        privacy?.RequireUnlocked();
+        if(!forNotifications || privacy?.SuppressLockedNotifications()==true) privacy?.RequireUnlocked();
         RefreshSchemaVersion();
         if (through <= first || (through - first).TotalDays > 62) throw new ArgumentOutOfRangeException(nameof(through));
         var result = new List<WidgetCalendarItem>();

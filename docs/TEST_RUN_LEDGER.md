@@ -1,5 +1,14 @@
 # Persistent test run ledger
 
+## Alarm beta14 (2026-11-08)
+
+[Compact checkpoint](ALARM_BETA_2026_11_08.md). New owner/config/planner/UI,
+schema27 journal preservation, captured/applied new rule Standard/Private local
+exchange, backup round-trip and native sound/snooze state boundaries. Logs under
+.buildlog/alarms-beta-20261108; numbered failure/closure receipts retained.
+Unchanged real Sync/recovery/beta13 installer/signed-APK evidence reused.
+No full local suite or new cloud exchange. Final candidate CI/build/runtime open.
+
 ## Beta13 release verification (2026-11-07)
 
 See [continuation receipt](FINAL_STABILIZATION_2026_11_07.md#beta13-release-verification-continuation-2026-11-07).

@@ -222,6 +222,8 @@ extension EventRepository on LifeRepository {
       iconName: draft.iconName,
       reminderMinutes: draft.reminderMinutes,
       repeat: draft.repeat,
+      alarm: draft.alarm,
+      alarmReviewRevision: 'new',
     );
     _validateEvent(adjustedDraft);
     late FixedEvent created;
@@ -485,6 +487,14 @@ extension EventRepository on LifeRepository {
         if (date == null) throw ArgumentError('Choose a recurring occurrence');
         _validateEvent(draft);
         await _checkAssignment(draft.categoryId, draft.projectId);
+        if (draft.alarm != null) {
+          await saveAlarm(
+            draft.alarm!,
+            eventId: occurrence.id,
+            nominalDate: date,
+            expectedRevision: draft.alarmReviewRevision,
+          );
+        }
         final now = DateTime.now().toUtc().toIso8601String();
         final payload = jsonEncode({
           'title': draft.title.trim(),

@@ -10,6 +10,8 @@ import '../../domain/notifications.dart';
 import '../widget/native_widget_service.dart';
 import '../shared/settings_section.dart';
 import '../../platform/android/android_platform.dart';
+import 'alarm_settings_dialog.dart';
+import '../shared/app_motion.dart';
 
 class NotificationDialog extends ConsumerStatefulWidget {
   const NotificationDialog({super.key, this.service});
@@ -108,6 +110,20 @@ class _NotificationDialogState extends ConsumerState<NotificationDialog> {
                     Platform.isAndroid
                         ? 'Off by default. Android delivers enabled reminders without keeping Todorbit open. Battery restrictions may delay delivery.'
                         : 'Off by default. The Windows tray companion delivers reminders while it is running, even when the main window is closed.',
+                  ),
+                  TextButton.icon(
+                    icon: const Icon(Icons.alarm),
+                    label: const Text('Alarm settings'),
+                    onPressed: () async {
+                      await showDialog<void>(
+                        context: context,
+                        animationStyle: AppMotion.style(context),
+                        builder: (_) => const AlarmSettingsDialog(),
+                      );
+                      if (Platform.isAndroid) {
+                        await ref.read(appControllerProvider).refresh();
+                      }
+                    },
                   ),
                   const SizedBox(height: 12),
                   SwitchListTile(

@@ -12,6 +12,7 @@ import '../data/appearance_preference_store.dart';
 import '../data/calendar_preference_store.dart';
 import '../data/backup_service.dart';
 import '../domain/models.dart';
+import '../domain/alarms.dart';
 import '../domain/recurrence.dart';
 import '../domain/series_edit.dart';
 import '../domain/habits.dart';
@@ -70,6 +71,7 @@ class AppController extends ChangeNotifier {
   String? backupError;
   VoidCallback? onLocalChange;
 
+  List<AlarmRule> alarmRules = [];
   List<Category> categories = [];
   List<Project> projects = [];
   List<LifeTask> tasks = [];
@@ -219,12 +221,14 @@ class AppController extends ChangeNotifier {
       repository.progressiveAssignments(),
       repository.checklistGroups(),
       todayEventsLoad,
+      repository.alarmRules(),
     ]);
     categories = result[0] as List<Category>;
     projects = result[1] as List<Project>;
     tasks = result[2] as List<LifeTask>;
     events = result[3] as List<FixedEvent>;
     todayEvents = result[27] as List<FixedEvent>;
+    alarmRules = result[28] as List<AlarmRule>;
     sessions = result[4] as List<WorkSession>;
     availability = result[5] as AvailabilityPlan;
     schedulingHistory = result[6] as List<SchedulingOperation>;

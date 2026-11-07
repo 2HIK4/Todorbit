@@ -1,3 +1,5 @@
+import '../../domain/alarm_plan.dart';
+import '../shared/alarm_indicator.dart';
 import '../shared/scroll_edge_fade.dart';
 import '../shared/app_motion.dart';
 import '../shared/item_filters.dart';
@@ -913,6 +915,17 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                   size: compact ? 14 : 18,
                   color: accent,
                 ),
+                if (event != null &&
+                    !event.cancelled &&
+                    eventAlarmRule(
+                          event,
+                          ref.read(appControllerProvider).alarmRules,
+                        )?.config.enabled ==
+                        true)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 4),
+                    child: AlarmIndicator(),
+                  ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: event != null

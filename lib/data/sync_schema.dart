@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 // local. Managed resource bytes travel with the resource row; external targets
 // remain references and never imply copying arbitrary filesystem contents.
 const portableSyncTables = <String>{
+  'alarm_rules',
   'tasks',
   'categories',
   'projects',

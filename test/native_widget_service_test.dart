@@ -8,6 +8,33 @@ import 'package:life_manager/features/widget/native_widget_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('fresh widget settings never imply startup consent', () {
+    expect(const WidgetControlState().launchAtSignIn, isFalse);
+  });
+  test('startup synchronization requires an explicitly saved choice', () async {
+    final root = await Directory.systemTemp.createTemp(
+      'todorbit-startup-choice-',
+    );
+    addTearDown(() => root.delete(recursive: true));
+    final executable = File('${root.path}/widget.exe');
+    await executable.writeAsString('Synthetic launcher fixture');
+    final preferences = File('${root.path}/widget-settings.json');
+    final calls = <List<String>>[];
+    final service = NativeWidgetService(
+      widgetExecutable: executable.path,
+      launcher: (_, args) async {
+        calls.add(args);
+        return 0;
+      },
+    );
+    await service.synchronizeStartup(preferencesFile: preferences);
+    await preferences.writeAsString('{"view":"today"}');
+    await service.synchronizeStartup(preferencesFile: preferences);
+    expect(calls, isEmpty);
+    await preferences.writeAsString('{"launchAtSignIn":false}');
+    await service.synchronizeStartup(preferencesFile: preferences);
+    expect(calls.single.take(2), ['--widget-command', 'startup-off']);
+  });
   test('live previews target the existing profile pipe without launching a process', () async {
     const channel = MethodChannel('life_manager/widget_preview');
     final messages = <List<dynamic>>[];

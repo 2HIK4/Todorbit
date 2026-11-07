@@ -13,7 +13,7 @@ import '../../domain/widget_configuration.dart';
 class WidgetControlState {
   const WidgetControlState({
     this.layoutLocked = false,
-    this.launchAtSignIn = true,
+    this.launchAtSignIn = false,
     this.backgroundOpacity = 100,
   });
   final bool layoutLocked;
@@ -99,9 +99,24 @@ class NativeWidgetService {
       _command(locked ? 'layout-lock' : 'layout-unlock');
   Future<void> setLaunchAtSignIn(bool enabled) =>
       _command(enabled ? 'startup-on' : 'startup-off');
-  Future<void> synchronizeStartup() async {
-    final settings = await readSettings();
-    await setLaunchAtSignIn(settings.launchAtSignIn);
+  Future<void> synchronizeStartup({File? preferencesFile}) async {
+    final file =
+        preferencesFile ??
+        File(
+          p.join(
+            (await AppDatabase.defaultFile()).parent.path,
+            'widget-settings.json',
+          ),
+        );
+    // Defaults describe appearance, not consent to change Windows startup.
+    if (!await file.exists()) {
+      return;
+    }
+    final data = jsonDecode(await file.readAsString());
+    if (data is! Map || data['launchAtSignIn'] is! bool) {
+      return;
+    }
+    await setLaunchAtSignIn(data['launchAtSignIn'] as bool);
   }
 
   Future<void> setOpacity(int value) {
@@ -123,7 +138,7 @@ class NativeWidgetService {
         layoutLocked: data['layoutLocked'] == true,
         launchAtSignIn: data['launchAtSignIn'] is bool
             ? data['launchAtSignIn'] as bool
-            : true,
+            : false,
         backgroundOpacity: opacity is int && opacity >= 0 && opacity <= 100
             ? opacity
             : 100,

@@ -3104,3 +3104,11 @@ stopped, production18 hashes/startup/protected docs unchanged. Hosted CI and
 physical-platform gates remain open; no publication. Owner now requests alarm
 implementation and authorizes the next experimental release subject to gates.
 See FINAL_STABILIZATION_2026_11_07.md and external release-verification039/041.
+
+
+2026-11-08 alarm beta14+37 WIP: portable schema28 rules, task/event editor and
+scoped family controls, Android native actions/service and Windows companion
+alarms implemented. Focused11/18 and new migration/codec/backup checks pass;
+Kotlin11 compile and initial native selftest pass. Final source/native build/OS/CI
+gates pending. Owner authorizes experimental publication only after gates.
+Resume docs/ALARM_BETA_2026_11_08.md; do not repeat Standard/Private matrices.

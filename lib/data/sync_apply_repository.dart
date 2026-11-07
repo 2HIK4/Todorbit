@@ -940,6 +940,25 @@ extension SyncApplyRepository on LifeRepository {
 
   Future<void> _validateSyncDomainState(List<_SyncRecordDraft> records) async {
     for (final record in records.where(
+      (r) => r.entity == 'alarm_rules' && r.review.merged != null,
+    )) {
+      try {
+        final row = record.review.merged!;
+        final config = AlarmConfig.fromJson(
+          (jsonDecode(row['config_json'] as String) as Map)
+              .cast<String, dynamic>(),
+        );
+        if (row['series_id'] != null && config.mode == 'custom') {
+          throw const FormatException();
+        }
+        if (row['event_id'] != null && config.mode == 'planned') {
+          throw const FormatException();
+        }
+      } catch (_) {
+        throw const _SyncDomainBlock('invalidAlarmRule');
+      }
+    }
+    for (final record in records.where(
       (r) => r.entity == 'portable_preferences' && r.review.merged != null,
     )) {
       final value = record.review.merged!;

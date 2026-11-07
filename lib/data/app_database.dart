@@ -16,9 +16,9 @@ import 'sync_device_schema.dart';
 class AppDatabase extends GeneratedDatabase {
   AppDatabase(super.executor);
 
-  static const currentSchemaVersion = 27;
+  static const currentSchemaVersion = 28;
   // These versions have identical immutable Sync recovery-table layouts.
-  static const compatibleSyncHistorySchemas = {26, 27};
+  static const compatibleSyncHistorySchemas = {26, 27, 28};
   bool _syncGroupingReady = false;
   final Object _syncGroupZone = Object();
 
@@ -268,6 +268,7 @@ class AppDatabase extends GeneratedDatabase {
         await _createTaskNotifications();
         await _createEventProjects();
         await _createChecklistGroups();
+        await _createAlarmRules();
         await createSyncPortableFields(this);
         await createSyncSchema(this, installTriggers: false);
         await upgradeSyncExchangeSchema(this);
@@ -299,9 +300,12 @@ class AppDatabase extends GeneratedDatabase {
             to != currentSchemaVersion) {
           throw StateError('No migration registered from schema $from to $to');
         }
-        if (from == 26) {
-          await _createEventProjects();
-          await _createChecklistGroups();
+        if (from == 26 || from == 27) {
+          if (from == 26) {
+            await _createEventProjects();
+            await _createChecklistGroups();
+          }
+          await _createAlarmRules();
           final triggers = await customSelect(
             "SELECT name FROM sqlite_schema WHERE type='trigger' AND name GLOB 'sync_capture_*'",
           ).get();
@@ -364,6 +368,7 @@ class AppDatabase extends GeneratedDatabase {
         await _createTaskNotifications();
         await _createEventProjects();
         await _createChecklistGroups();
+        await _createAlarmRules();
         await createSyncPortableFields(this);
         if (from < 23) await createSyncSchema(this, installTriggers: false);
         if (from < 24) await upgradeSyncExchangeSchema(this);
@@ -958,6 +963,23 @@ class AppDatabase extends GeneratedDatabase {
     ''');
     await customStatement(
       'CREATE INDEX IF NOT EXISTS task_dependencies_prerequisite ON task_dependencies(prerequisite_id)',
+    );
+  }
+
+  Future<void> _createAlarmRules() async {
+    await customStatement('''CREATE TABLE IF NOT EXISTS alarm_rules (
+      id TEXT PRIMARY KEY,
+      task_id TEXT REFERENCES tasks(id) ON DELETE CASCADE,
+      event_id TEXT REFERENCES fixed_events(id) ON DELETE CASCADE,
+      series_id TEXT REFERENCES recurrence_series(id) ON DELETE CASCADE,
+      nominal_date TEXT NOT NULL DEFAULT '',
+      config_json TEXT NOT NULL CHECK(json_valid(config_json)),
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      deleted_at TEXT, archived_at TEXT,
+      CHECK((task_id IS NOT NULL)+(event_id IS NOT NULL)+(series_id IS NOT NULL)=1)
+    )''');
+    await customStatement(
+      "CREATE UNIQUE INDEX IF NOT EXISTS alarm_owner ON alarm_rules(coalesce(task_id,''),coalesce(event_id,''),coalesce(series_id,''),nominal_date)",
     );
   }
 

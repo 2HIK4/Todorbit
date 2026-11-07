@@ -31,6 +31,7 @@ $schemaVersion = [int]$Matches[1]
 $tableCount = switch ($schemaVersion) {
   26 { 52 }
   27 { 53 }
+  28 { 54 }
   default { throw "Review the Sandbox table count for schema $schemaVersion." }
 }
 @{version=$version; installerVersion=$installerVersion; hashes=$hashes; schemaVersion=$schemaVersion; tableCount=$tableCount} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $payload 'packages.json') -Encoding UTF8
