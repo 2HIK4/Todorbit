@@ -282,3 +282,49 @@ Migration approval must use the application's actual confirmation; native Window
 UI automation remains unavailable. Do not claim migration/uninstall passed until
 this checkpoint reports PASS. Signed Android runtime in a separate clean AVD and
 exact-source remote CI remain pending. No emulator or Google exchange launched.
+
+
+Continuation checkpoint: local commit `7d80f03` contains only CI checks/fixtures
+and documentation; candidate implementation/artifact hashes remain unchanged.
+Sandbox ID `fb22e6d1-73f6-47af-8aaa-864bd330b31f` is waiting at the real migration
+confirmation. Beta12 startup/schema26 and Beta13 in-place setup preservation PASS.
+The task-only harness initially expected a numeric main FileVersion; guest identity
+inspection confirmed the verified Flutter string `1.0.19-beta.13+36` and companion
+`1.0.19.36`. Corrected harness resumed without reinstalling or changing data.
+`sandbox-results/installed-identity.json` retains actual hashes/registration.
+Runner `sandbox-payload/Resume.ps1` waits for consent, then checks schema27,
+relationships/integrity, repeat install, uninstall/startup scope and reinstall.
+Do not repeat the completed installation steps. If its bounded wait expires,
+resume the same guest from the recorded stage rather than creating another VM.
+
+APK certificate check006 PASS: SHA1
+`D0:AE:60:28:E4:CD:0C:1C:83:67:11:42:F6:0F:14:2D:A8:1D:AD:96`, SHA256 matches
+receipt044 and the intended production registration in ANDROID_GOOGLE_DRIVE.md.
+Remote Google configuration remains owner-reported; no sign-in/request performed.
+Separate clean API35 GooglePlay AVD prepared at
+`C:/Users/User/AppData/Local/TodorbitPrivateTesting/Beta13SignedClean20261107/avd-home/`;
+name `TodorbitBeta13SignedClean20261107`, port5586, no existing userdata copied.
+Launch only after this task's Sandbox is safely stopped; use retained emulator,
+2cores/2GiB, host GPU, Vulkan disabled. Receipt007 records paths. Signed debug
+Standard/Private profiles remain untouched. Clean signed-APK runtime still PENDING.
+
+Public review assets remain the exact portable ZIP/installer under
+`D:/AI_Projects/TodorbitPrivateBuilds/stabilization-20261107/packages/`, and APK under
+its `Android-production-signed-motion/` child. Public-only checksum inventory:
+`release-verification/Beta13-PUBLIC-SHA256SUMS.txt`. Private-test ZIP is excluded.
+Windows binaries are UNSIGNED; Android certificate verified. Release notes retain
+experimental/unpublished status and recovery/schema compatibility notices.
+
+Exact-candidate CI mapping: local analysis/build/signing/native/package results
+above are reused by hash; original serial suite plus documented focused closures
+is not a fresh full green run. New config gate18/schema helper2 checks pass.
+GitHub windows-2022 hosted run, ubuntu/KVM Android updater integration and remote
+artifact/release checks remain BLOCKED pending separately authorized push/Actions;
+no hosted job was run or claimed. No automatic full-suite/build repetition.
+
+Current release decision: NOT READY for publication approval yet. Finish actual
+guest migration/uninstall and separate signed-APK core runtime first. Remaining
+manual priorities: Windows native keyboard/DPI/Narrator and Windows10; Android
+widgets/IME/Back/TalkBack, physical ARM64/OEM and16KiB runtime. Do not repeat real
+Sync or broad UI matrices. Next required owner action is only the Sandbox
+?Back up and upgrade database? click; leave it open and report completion.
