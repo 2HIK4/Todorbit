@@ -7,12 +7,14 @@ import 'package:life_manager/data/app_database.dart';
 import 'package:life_manager/data/backup_service.dart';
 import 'package:life_manager/features/settings/backup_dialog.dart';
 import 'package:life_manager/features/startup/startup_page.dart';
+import 'package:life_manager/features/shared/app_restart_scope.dart';
 
 class _BackupFixture extends BackupService {
   _BackupFixture() : super(File('unused-synthetic-profile.sqlite'));
   bool fail = true;
   bool scheduled = false;
   int previews = 0;
+  bool failSchedule = false;
   Completer<BackupSummary>? preview;
   final record = BackupRecord(
     file: File('synthetic-snapshot.sqlite'),
@@ -48,6 +50,7 @@ class _BackupFixture extends BackupService {
     String? expectedLocalPreferences,
     Map<String, dynamic>? cloudTransfer,
   }) async {
+    if (failSchedule) throw StateError('Synthetic schedule failed');
     scheduled = true;
   }
 
@@ -80,7 +83,7 @@ void main() {
     expect(service.previews, 1);
     preview.complete(const BackupSummary({'tasks': 2}));
     await tester.pumpAndSettle();
-    expect(find.text('Confirm replacement'), findsOneWidget);
+    expect(find.text('Apply replacement'), findsOneWidget);
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(service.scheduled, isFalse);
@@ -132,8 +135,93 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Restore'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Confirm replacement'));
+      await tester.tap(find.text('Apply replacement'));
       await tester.pumpAndSettle();
+      expect(service.scheduled, isTrue);
+      await tester.ensureVisible(find.text('Cancel scheduled restore'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel scheduled restore'));
+      await tester.pumpAndSettle();
+      expect(service.scheduled, isFalse);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  for (final failSchedule in [false, true]) {
+    testWidgets(
+      'restore restarts only after verified scheduling ($failSchedule)',
+      (tester) async {
+        final service = _BackupFixture()
+          ..fail = false
+          ..failSchedule = failSchedule;
+        var restarts = 0;
+        await tester.pumpWidget(
+          AppRestartScope(
+            restart: () async {
+              expect(service.scheduled, isTrue);
+              restarts++;
+            },
+            child: MaterialApp(
+              home: Scaffold(body: BackupDialog(service: service)),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text('Restore'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Restore'));
+        await tester.pumpAndSettle();
+        expect(find.text('Replace current data and restart?'), findsOneWidget);
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+        expect(restarts, 0);
+        await tester.ensureVisible(find.text('Restore'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Restore'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Apply replacement'));
+        await tester.pumpAndSettle();
+        expect(service.scheduled, !failSchedule);
+        expect(restarts, failSchedule ? 0 : 1);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  testWidgets(
+    'failed automatic restart retains pending restore and offers retry',
+    (tester) async {
+      final service = _BackupFixture()..fail = false;
+      var restarts = 0;
+      await tester.pumpWidget(
+        AppRestartScope(
+          restart: () async {
+            restarts++;
+            throw StateError('Synthetic restart unavailable');
+          },
+          child: MaterialApp(
+            home: Scaffold(body: BackupDialog(service: service)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Restore'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Restore'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Apply replacement'));
+      await tester.pumpAndSettle();
+      expect(restarts, 1);
+      expect(service.scheduled, isTrue);
+      expect(
+        find.textContaining('automatic restart could not finish'),
+        findsOneWidget,
+      );
+      await tester.ensureVisible(find.text('Restart and apply'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Restart and apply'));
+      await tester.pumpAndSettle();
+      expect(restarts, 2);
       expect(service.scheduled, isTrue);
       await tester.ensureVisible(find.text('Cancel scheduled restore'));
       await tester.pumpAndSettle();

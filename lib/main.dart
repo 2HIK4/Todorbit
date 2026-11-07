@@ -1,3 +1,4 @@
+import 'features/shared/app_restart_scope.dart';
 import 'features/shared/app_motion.dart';
 
 import 'dart:async';
@@ -376,38 +377,98 @@ Future<void> _prepareApplication(
       unawaited(sync.initialize());
     }
   }
+  var restarting = false;
+  Future<void> restartAfterRestore() async {
+    if (restarting) return;
+    restarting = true;
+    try {
+      // Drain exchanges and privacy writes before detaching their consumers.
+      if (kDebugMode) {
+        debugPrint('Restore restart: draining Sync');
+      }
+      await sync?.shutdown();
+      if (kDebugMode) {
+        debugPrint('Restore restart: closing privacy session');
+      }
+      await privacy.shutdown();
+      final companion = NativeWidgetService();
+      if (companion.isAvailable) await companion.close();
+      runApp(
+        const MaterialApp(
+          home: StartupPage(
+            children: [Text('Applying backup and restarting Todorbit...')],
+          ),
+        ),
+      );
+      // Unmount the old providers, timers and platform observers before closing
+      // SQLite. Startup then performs its existing verified replacement,
+      // Before Restore, privacy, migration and Sync quarantine checks.
+      if (kDebugMode) {
+        debugPrint('Restore restart: detaching profile UI');
+      }
+      await WidgetsBinding.instance.endOfFrame;
+      if (kDebugMode) {
+        debugPrint('Restore restart: closing database');
+      }
+      await database.close();
+      if (kDebugMode) {
+        debugPrint('Restore restart: guarded startup');
+      }
+      await _startApplication(args);
+      if (kDebugMode) {
+        debugPrint('Restore restart: complete');
+      }
+    } catch (_) {
+      runApp(
+        const MaterialApp(
+          home: StartupPage(
+            children: [
+              Text('Automatic restart could not finish.'),
+              Text(
+                'Close and reopen Todorbit to continue. Your backup and restore recovery files are retained.',
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+
   runApp(
-    ProviderScope(
-      overrides: [
-        appControllerProvider.overrideWith((ref) => controller),
-        privacyManagerProvider.overrideWith((ref) => privacy),
-        syncControllerProvider.overrideWith((ref) => sync),
-      ],
-      child: legacyWidgetMode && !privacy.enabled
-          ? DesktopWidgetApp(
-              diagnostics: args.contains('--widget-diagnostics'),
-              onExit: () async {
-                await database.close();
-                exit(0);
-              },
-            )
-          : LifeManagerApp(
-              databaseFile: databaseFile,
-              appearanceFile: appearanceStore.file,
-              openAppearance: args.contains('--appearance'),
-              initialNavigation:
-                  args.contains('--navigate') &&
-                      args.indexOf('--navigate') + 1 < args.length
-                  ? args[args.indexOf('--navigate') + 1]
-                  : null,
-              editWidget: args.contains('--edit-widget')
-                  ? (args.contains('calendar')
-                        ? DesktopWidgetKind.calendar
-                        : DesktopWidgetKind.tasks)
-                  : null,
-              legacyImportFile: offerLegacyImport ? legacyDatabase : null,
-              mobileLayout: kDebugMode && args.contains('--mobile-preview'),
-            ),
+    AppRestartScope(
+      restart: restartAfterRestore,
+      child: ProviderScope(
+        overrides: [
+          appControllerProvider.overrideWith((ref) => controller),
+          privacyManagerProvider.overrideWith((ref) => privacy),
+          syncControllerProvider.overrideWith((ref) => sync),
+        ],
+        child: legacyWidgetMode && !privacy.enabled
+            ? DesktopWidgetApp(
+                diagnostics: args.contains('--widget-diagnostics'),
+                onExit: () async {
+                  await database.close();
+                  exit(0);
+                },
+              )
+            : LifeManagerApp(
+                databaseFile: databaseFile,
+                appearanceFile: appearanceStore.file,
+                openAppearance: args.contains('--appearance'),
+                initialNavigation:
+                    args.contains('--navigate') &&
+                        args.indexOf('--navigate') + 1 < args.length
+                    ? args[args.indexOf('--navigate') + 1]
+                    : null,
+                editWidget: args.contains('--edit-widget')
+                    ? (args.contains('calendar')
+                          ? DesktopWidgetKind.calendar
+                          : DesktopWidgetKind.tasks)
+                    : null,
+                legacyImportFile: offerLegacyImport ? legacyDatabase : null,
+                mobileLayout: kDebugMode && args.contains('--mobile-preview'),
+              ),
+      ),
     ),
   );
 }

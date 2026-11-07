@@ -1,3 +1,4 @@
+import '../shared/app_restart_scope.dart';
 import '../shared/scroll_edge_fade.dart';
 import '../shared/app_motion.dart';
 
@@ -176,13 +177,18 @@ class _BackupDialogState extends State<BackupDialog> {
         context: context,
         animationStyle: AppMotion.style(context),
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Replace current data on next launch?'),
+          title: Text(
+            AppRestartScope.maybeOf(context) == null
+                ? 'Replace current data on next launch?'
+                : 'Replace current data and restart?',
+          ),
           scrollable: true,
           content: Text(
             '${importedFrom == null ? 'Stored backup' : 'Imported backup'} from ${_date(dialogContext, record.createdAt)}.\n\n'
             '${summary.description.isEmpty ? 'No records in this backup' : summary.description}.\n\n'
             'Counts include archived and deleted records retained for recovery.\n\n'
-            'When you next start Todorbit, this backup replaces your current tasks, events, and other database records. It does not merge them. Todorbit first saves your current database as a Before Restore backup so you can recover it.\n\n'
+            'This backup replaces your current tasks, events, and other database records. It does not merge them. Todorbit first saves your current database as a Before Restore backup so you can recover it.\n\n'
+            '${AppRestartScope.maybeOf(context) == null ? 'Close and reopen Todorbit to apply the replacement.' : 'Todorbit will restart automatically to apply the replacement.'}\n\n'
             'Changes made since this backup will no longer appear in the active database.',
           ),
           actions: [
@@ -192,7 +198,7 @@ class _BackupDialogState extends State<BackupDialog> {
             ),
             FilledButton(
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Confirm replacement'),
+              child: const Text('Apply replacement'),
             ),
           ],
         ),
@@ -204,6 +210,7 @@ class _BackupDialogState extends State<BackupDialog> {
         appSchemaVersion: AppDatabase.currentSchemaVersion,
       );
       await _reload();
+      if (mounted) await _restart();
     } catch (failure) {
       if (mounted) setState(() => error = '$failure');
     } finally {
@@ -213,6 +220,19 @@ class _BackupDialogState extends State<BackupDialog> {
           reviewing = false;
         });
       }
+    }
+  }
+
+  Future<void> _restart() async {
+    final restart = AppRestartScope.maybeOf(context);
+    if (restart == null) return;
+    try {
+      await restart();
+    } catch (_) {
+      throw StateError(
+        'The backup is scheduled, but automatic restart could not finish. '
+        'Close and reopen Todorbit to apply it. Your current data and backup are retained.',
+      );
     }
   }
 
@@ -350,6 +370,25 @@ class _BackupDialogState extends State<BackupDialog> {
                             ? 'Close Todorbit from Recent apps, then reopen it to apply the backup. Your current database will first be saved as a Before Restore backup. This restore has not happened yet.'
                             : 'Close Todorbit and its widget, then reopen Todorbit to apply the backup. Your current database will first be saved as a Before Restore backup. This restore has not happened yet.',
                       ),
+                      if (AppRestartScope.maybeOf(context) != null)
+                        FilledButton.icon(
+                          onPressed: busy
+                              ? null
+                              : () async {
+                                  setState(() => busy = true);
+                                  try {
+                                    await _restart();
+                                  } catch (failure) {
+                                    if (mounted) {
+                                      setState(() => error = '$failure');
+                                    }
+                                  } finally {
+                                    if (mounted) setState(() => busy = false);
+                                  }
+                                },
+                          icon: const Icon(Icons.restart_alt),
+                          label: const Text('Restart and apply'),
+                        ),
                       TextButton(
                         onPressed: busy ? null : _cancelRestore,
                         child: const Text('Cancel scheduled restore'),

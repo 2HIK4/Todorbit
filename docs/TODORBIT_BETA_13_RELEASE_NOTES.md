@@ -11,6 +11,9 @@ confirmed action. Private setup provides a recovery-code copy button; save its
 passphrase or recovery code securely. This update does not rotate credentials,
 convert existing workspaces or combine snapshot backups with incremental Sync.
 
+Applying a reviewed local backup automatically restarts the profile through the
+normal safety checks. Before Restore and explicit Sync reconciliation remain.
+
 Upgrade every connected device before using schema 27 features. Older schema-26
 clients refuse newer batches safely. Existing database upgrades retain reviewed
 Before upgrade recovery; retain backups and do not downgrade a migrated database.

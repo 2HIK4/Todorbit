@@ -8,6 +8,7 @@
 - Add Windows/Android widget date navigation while retaining bounded projections and device-local configuration.
 - Use compact themed auto-dismissed routine Sync confirmations; keep required decisions actionable. Clarify reconnect versus account switching and add recovery-code copy control.
 - Verify real Standard Sync and a scoped real Private encrypted Windows/Android round trip with synthetic accounts; keep passphrase/recovery requirements and backup/Sync separation. No workspace conversion or password rotation is introduced.
+- Apply a reviewed local backup with an automatic guarded profile restart; retain Before Restore recovery and explicit Sync reconciliation.
 - Candidate only: see the stabilization receipt for live recovery/restore, exact artifact, CI, signing and physical-platform limits. Nothing is published or automatically distributed by this entry.
 
 ## 1.0.19-beta.12+35 - UI reliability and recovery

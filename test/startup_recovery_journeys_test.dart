@@ -13,6 +13,8 @@ import 'package:life_manager/data/backup_service.dart';
 import 'package:life_manager/domain/appearance.dart';
 import 'package:life_manager/data/profile_paths.dart';
 import 'package:life_manager/main.dart' as app;
+import 'package:life_manager/features/shared/app_restart_scope.dart';
+import 'package:life_manager/app/sync_controller.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 import 'database_initialization_test.dart' show legacyDatabase;
@@ -196,6 +198,118 @@ void main() {
     expect(database.readAsBytesSync(), before);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+  testWidgets(
+    'real automatic restore restart closes old profile and reopens verified replacement',
+    (tester) async {
+      // Keep the actual restored database and Before Restore as acceptance evidence.
+      retainFixture = true;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('life_manager/activation'),
+        (_) async => null,
+      );
+      Future<void> pumpIo() async {
+        for (var i = 0; i < 20; i++) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 20)),
+          );
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+      }
+
+      await tester.runAsync(() => app.main([]));
+      try {
+        // Real profile IO and background initialization need event-loop time;
+        // advancing only the fake clock starves them and spins the progress UI.
+        await pumpIo();
+        final oldContainer = ProviderScope.containerOf(
+          tester.element(find.byType(app.LifeManagerApp)),
+        );
+        final oldController = oldContainer.read(appControllerProvider);
+        await tester.runAsync(() async {
+          await oldController.repository.addTask(
+            const TaskDraft(title: 'Snapshot record'),
+          );
+          final selected = await oldController.backupService!.createBackup(
+            BackupKind.manual,
+          );
+          await oldController.repository.addTask(
+            const TaskDraft(title: 'Later recoverable work'),
+          );
+          await oldController.backupService!.scheduleRestore(
+            selected,
+            appSchemaVersion: AppDatabase.currentSchemaVersion,
+          );
+        });
+        final restart = AppRestartScope.maybeOf(
+          tester.element(find.byType(app.LifeManagerApp)),
+        )!;
+        var completed = false;
+        late Future<void> restarting;
+        await tester.runAsync(() async {
+          restarting = restart().whenComplete(() => completed = true);
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        });
+        for (var i = 0; i < 1000 && !completed; i++) {
+          await tester.pump(const Duration(milliseconds: 20));
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 30)),
+          );
+        }
+        expect(
+          completed,
+          isTrue,
+          reason: 'Automatic restart must finish without a second launch',
+        );
+        await tester.runAsync(() => restarting);
+        await pumpIo();
+        final nextContainer = ProviderScope.containerOf(
+          tester.element(find.byType(app.LifeManagerApp)),
+        );
+        final next = nextContainer.read(appControllerProvider);
+        expect(identical(oldController, next), isFalse);
+        expect(next.tasks.map((t) => t.title), ['Snapshot record']);
+        expect(
+          await tester.runAsync(
+            () => next.backupService!.hasScheduledRestore(),
+          ),
+          isFalse,
+        );
+        final before = await tester.runAsync(
+          () => next.backupService!.restorationRecoveryBackup(),
+        );
+        expect(before, isNotNull);
+        final check = sqlite.sqlite3.open(
+          before!.file.path,
+          mode: sqlite.OpenMode.readOnly,
+        );
+        try {
+          expect(
+            check.select('SELECT title FROM tasks').map((r) => r['title']),
+            contains('Later recoverable work'),
+          );
+          expect(
+            check.select('PRAGMA integrity_check').single.values.single,
+            'ok',
+          );
+        } finally {
+          check.close();
+        }
+        expect(tester.takeException(), isNull);
+      } finally {
+        if (find.byType(app.LifeManagerApp).evaluate().isNotEmpty) {
+          final current = ProviderScope.containerOf(
+            tester.element(find.byType(app.LifeManagerApp)),
+          );
+          await tester.runAsync(() async {
+            await current.read(syncControllerProvider)?.shutdown();
+            await current.read(appControllerProvider).repository.db.close();
+          });
+        }
+        await tester.pumpWidget(const SizedBox.shrink());
+      }
+    },
+  );
+
   testWidgets(
     'real approved legacy upgrade preserves identities relationships and preferences',
     (tester) async {
