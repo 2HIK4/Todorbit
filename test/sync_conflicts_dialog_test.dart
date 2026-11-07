@@ -471,16 +471,120 @@ void main() {
       expect(controller.requests, 2);
       expect(find.byType(AlertDialog), findsNothing);
       expect(find.byType(SnackBar), findsOneWidget);
-      // Action snackbars stay visible with accessible navigation. The close
-      // control must let keyboard/reader users uncover an editor's Save action.
-      await tester.pump(const Duration(seconds: 10));
-      expect(find.byType(SnackBar), findsOneWidget);
-      await tester.tap(find.byTooltip('Close'));
+      final success = tester.widget<SnackBar>(find.byType(SnackBar));
+      expect(success.persist, isFalse);
+      expect(success.action, isNull);
+      expect(success.showCloseIcon, isNot(true));
+      await tester.pump(const Duration(seconds: 4));
       await tester.pumpAndSettle();
       expect(find.byType(SnackBar), findsNothing);
       await tester.pumpWidget(const SizedBox());
     },
   );
+
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'routine sync feedback ${brightness.name} is themed, compact and deduplicated',
+      (tester) async {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = const Size(390, 844);
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        controller.auth.account = const CloudAccount(
+          'synthetic',
+          'Synthetic account',
+        );
+        controller.snapshot = const SyncExchangeStatus(
+          binding: SyncBinding(
+            workspace: 'fixture',
+            account: 'synthetic',
+            device: 'fixture',
+          ),
+          enabled: true,
+          automatic: true,
+          quarantined: false,
+          pending: 0,
+          conflicts: 0,
+          waiting: 0,
+        );
+        controller.engine.status = const SyncEngineStatus(SyncPhase.upToDate);
+        providerOwnsController = true;
+        final theme = buildAppTheme(
+          brightness,
+          brightness == Brightness.dark
+              ? ThemePalette.dark
+              : ThemePalette.light,
+          android: true,
+        );
+        final semantics = tester.ensureSemantics();
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              syncControllerProvider.overrideWith((ref) => controller),
+            ],
+            child: MaterialApp(
+              theme: theme,
+              home: MediaQuery(
+                data: const MediaQueryData(
+                  accessibleNavigation: true,
+                  textScaler: TextScaler.linear(2),
+                  disableAnimations: true,
+                ),
+                child: Scaffold(
+                  body: const SyncStatusButton(),
+                  bottomNavigationBar: const SizedBox(
+                    height: 64,
+                    child: Text('Navigation'),
+                  ),
+                  floatingActionButton: FloatingActionButton(
+                    onPressed: () {},
+                    child: const Icon(Icons.add),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        final button = find.byKey(const ValueKey('sync-status-button'));
+        await tester.tap(button);
+        await tester.pumpAndSettle();
+        final notice = find.byKey(const ValueKey('sync-success-notice'));
+        final snack = tester.widget<SnackBar>(notice);
+        expect(snack.backgroundColor, theme.colorScheme.surfaceContainerHigh);
+        expect(
+          (snack.content as Text).style?.color,
+          theme.colorScheme.onSurface,
+        );
+        expect(snack.action, isNull);
+        expect(snack.persist, isFalse);
+        expect(tester.getSize(notice).height, lessThan(100));
+        expect(
+          tester.getRect(notice).bottom,
+          lessThanOrEqualTo(
+            tester.getRect(find.byType(FloatingActionButton)).top,
+          ),
+        );
+        expect(find.bySemanticsLabel('Up to date'), findsWidgets);
+        await tester.tap(button);
+        await tester.pumpAndSettle();
+        expect(controller.requests, 2);
+        expect(find.byType(SnackBar), findsOneWidget);
+        await tester.pump(const Duration(seconds: 4));
+        await tester.pumpAndSettle();
+        expect(find.byType(SnackBar), findsNothing);
+        await tester.pump(const Duration(seconds: 5));
+        await tester.pumpAndSettle();
+        expect(
+          find.byType(SnackBar),
+          findsNothing,
+          reason: 'No queued duplicate success',
+        );
+        expect(tester.takeException(), isNull);
+        semantics.dispose();
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
 
   for (final brightness in Brightness.values) {
     for (final state in [
@@ -801,6 +905,36 @@ void main() {
         await tester.tap(find.text('Open encryption'));
         await tester.pumpAndSettle();
         expect(find.text('Private Encrypted Sync'), findsOneWidget);
+        String? copiedRecovery;
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async {
+            if (call.method == 'Clipboard.setData') {
+              copiedRecovery = (call.arguments as Map)['text'] as String;
+            }
+            return null;
+          },
+        );
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          ),
+        );
+        final recovery = tester
+            .widget<SelectableText>(
+              find.descendant(
+                of: find.byType(AlertDialog),
+                matching: find.byType(SelectableText),
+              ),
+            )
+            .data;
+        await tester.ensureVisible(find.byTooltip('Copy recovery code'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Copy recovery code'));
+        await tester.pumpAndSettle();
+        expect(copiedRecovery, recovery);
+        expect(find.byIcon(Icons.copy_outlined), findsOneWidget);
         await tester.ensureVisible(find.text('I saved my recovery code'));
         await tester.tap(find.text('I saved my recovery code'));
         await tester.pumpAndSettle();

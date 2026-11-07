@@ -1,11 +1,13 @@
 import '../shared/app_motion.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../app/sync_controller.dart';
 import '../../data/cloud/sync_batch_codec.dart';
 import '../../data/cloud/sync_workspace_format.dart';
 import '../shared/settings_section.dart';
+import '../shared/status_snackbar.dart';
 
 Future<void> showPrivateSyncSetup(
   BuildContext context,
@@ -122,7 +124,26 @@ class _PrivateSyncSetupState extends State<_PrivateSyncSetup> {
               'Store this code privately outside this device. If you lose the passphrase and every copy of the code, encrypted cloud data cannot be recovered.',
             ),
             const SizedBox(height: 8),
-            SelectableText(key.exportRecoveryCode()),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: SelectableText(key.exportRecoveryCode())),
+                IconButton(
+                  tooltip: 'Copy recovery code',
+                  icon: const Icon(Icons.copy_outlined),
+                  onPressed: () async {
+                    if (!widget.controller.isUnlocked()) return;
+                    await Clipboard.setData(
+                      ClipboardData(text: key.exportRecoveryCode()),
+                    );
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                      transientStatusSnackBar(context, 'Recovery code copied'),
+                    );
+                  },
+                ),
+              ],
+            ),
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('I saved my recovery code'),

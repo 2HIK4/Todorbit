@@ -65,6 +65,27 @@ class _ConnectedAuth extends GoogleDriveAuth {
   }
 }
 
+class _SwitchableAuth extends _ConnectedAuth {
+  _SwitchableAuth(super.client);
+  int disconnects = 0, connects = 0;
+  @override
+  Future<void> disconnect() async {
+    disconnects++;
+    await super.disconnect();
+  }
+
+  @override
+  Future<void> connect() async {
+    expect(
+      account,
+      isNull,
+      reason: 'Switch must disconnect the selected store first',
+    );
+    connects++;
+    account = const CloudAccount('new-test-account', 'New test account');
+  }
+}
+
 class _RestoreFixture extends CloudBackupService {
   _RestoreFixture(BackupService local, MemoryCloud provider, this.settings)
     : super(local: local, provider: provider, appVersion: 'test');
@@ -87,6 +108,75 @@ class _RestoreFixture extends CloudBackupService {
 }
 
 void main() {
+  testWidgets(
+    'desktop account switch confirms and updates the visible account',
+    (tester) async {
+      final database = AppDatabase(NativeDatabase.memory());
+      final local = _LocalFixture();
+      final controller = AppController(
+        LifeRepository(database),
+        backupService: local,
+      );
+      await controller.initialize();
+      final client = MockClient((_) async => http.Response('', 503));
+      final auth = _SwitchableAuth(client);
+      final cloud = MemoryCloud();
+      try {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [appControllerProvider.overrideWith((_) => controller)],
+            child: MaterialApp(
+              home: Scaffold(
+                body: SingleChildScrollView(
+                  child: BackupsCloudPage(
+                    auth: auth,
+                    service: CloudBackupService(
+                      local: local,
+                      provider: cloud,
+                      appVersion: 'fixture',
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.runAsync(() async {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+        });
+        await tester.pumpAndSettle();
+        expect(find.text('Reconnect current account'), findsOneWidget);
+        final change = find.widgetWithText(
+          OutlinedButton,
+          'Switch Google account',
+        );
+        await tester.ensureVisible(change);
+        await tester.pumpAndSettle();
+        await tester.tap(change);
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+        await tester.pumpAndSettle();
+        expect(auth.account?.id, 'test-account');
+        expect(auth.disconnects, 0);
+        expect(auth.connects, 0);
+        await tester.tap(change);
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(FilledButton, 'Switch account'));
+        await tester.pumpAndSettle();
+        expect(auth.disconnects, 1);
+        expect(auth.connects, 1);
+        expect(auth.account?.id, 'new-test-account');
+        expect(find.textContaining('New test account'), findsOneWidget);
+        expect(find.textContaining('Test account'), findsNothing);
+        expect(cloud.objects, isEmpty);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        client.close();
+        await database.close();
+      }
+    },
+  );
   testWidgets('disconnecting Backups disconnects the shared sync session', (
     tester,
   ) async {

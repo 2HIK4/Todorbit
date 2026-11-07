@@ -580,7 +580,9 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
             OutlinedButton(
               onPressed: busy || !configured ? null : _connect,
               child: Text(
-                connected ? 'Reconnect Google Drive' : 'Connect Google Drive',
+                connected
+                    ? 'Reconnect current account'
+                    : 'Connect Google Drive',
               ),
             ),
             if (signingIn)
@@ -588,7 +590,7 @@ class _BackupsCloudPageState extends ConsumerState<BackupsCloudPage> {
                 onPressed: () => auth!.flow.cancel(),
                 child: const Text('Cancel sign-in'),
               ),
-            if (Platform.isAndroid && connected)
+            if (connected)
               OutlinedButton(
                 onPressed: busy
                     ? null
