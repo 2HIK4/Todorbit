@@ -71,6 +71,7 @@ class SyncStatusButton extends ConsumerWidget {
                 } else {
                   ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                     SnackBar(
+                      showCloseIcon: true,
                       content: Text(
                         controller.message ??
                             controller.status.notice ??

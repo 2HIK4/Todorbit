@@ -74,6 +74,14 @@ void main() {
         workspaceId: original.workspace,
         accountId: original.account,
       )).last['operation_id'];
+      final latestSequence =
+          (await db
+                  .customSelect(
+                    'SELECT origin_sequence FROM sync_journal WHERE operation_id=?',
+                    variables: [Variable.withString(latestOperation as String)],
+                  )
+                  .getSingle())
+              .read<int>('origin_sequence');
       await recovery.scheduleRestore(
         older,
         appSchemaVersion: AppDatabase.currentSchemaVersion,
@@ -112,7 +120,7 @@ void main() {
         (await db
                 .customSelect(
                   'SELECT operation_id FROM sync_journal WHERE operation_id=?',
-                  variables: [Variable.withString(latestOperation as String)],
+                  variables: [Variable.withString(latestOperation)],
                 )
                 .get())
             .length,
@@ -173,6 +181,16 @@ void main() {
           expectedSchema: AppDatabase.currentSchemaVersion,
         );
         sent.addAll(decoded.operations.map((op) => op.revision.id));
+        for (final operation in decoded.operations.where(
+          (operation) => operation.revision.intent == 'restore',
+        )) {
+          expect(
+            operation.revision.observed[original.device] ?? 0,
+            lessThan(latestSequence),
+            reason:
+                'The restored view must not acknowledge newer retained work',
+          );
+        }
         await otherRepository.retainIncomingSyncBatch(
           peer,
           key,
@@ -198,6 +216,73 @@ void main() {
         'Restored older view',
         'Offline latest before restore',
       });
+      final latest = conflict.candidates.entries.singleWhere(
+        (entry) => entry.value?['title'] == 'Offline latest before restore',
+      );
+      final resolved = await repository.resolveSyncConflicts(
+        restored,
+        lease: lease,
+        reviewedToken: review.token,
+        choices: {conflict.id: SyncResolutionChoice.revision(latest.key)},
+      );
+      expect(resolved.state, SyncApplyState.applied);
+      final decision = (await repository.prepareNextSyncBatch(
+        restored,
+        key,
+        lease: lease,
+      ))!;
+      final decodedDecision = await SyncBatchCodec().decrypt(
+        decision.bytes,
+        key,
+        workspace: restored.workspace,
+        account: restored.account,
+        expectedSchema: AppDatabase.currentSchemaVersion,
+      );
+      expect(decodedDecision.operations, isNotEmpty);
+      expect(
+        decodedDecision.operations.every(
+          (operation) =>
+              operation.revision.observed[original.device] == latestSequence,
+        ),
+        isTrue,
+      );
+      await otherRepository.retainIncomingSyncBatch(
+        peer,
+        key,
+        remote(decision),
+        decision.bytes,
+      );
+      await repository.acknowledgeSyncBatch(
+        decision,
+        remote(decision),
+        lease: lease,
+      );
+      expect((await repository.syncExchangeStatus()).pending, 0);
+      final peerLease = (await otherRepository.acquireSyncLease(peer))!;
+      try {
+        for (var i = 0; i < 16; i++) {
+          final received = await otherRepository.applyNextSyncGroup(
+            peer,
+            lease: peerLease,
+          );
+          if (received.state == SyncApplyState.idle) break;
+          expect(
+            received.state,
+            anyOf(SyncApplyState.applied, SyncApplyState.needsReview),
+            reason: received.reason,
+          );
+          expect(i, lessThan(15));
+        }
+      } finally {
+        await otherRepository.releaseSyncLease(peerLease);
+      }
+      expect(
+        (await otherRepository.tasks())
+            .singleWhere((t) => t.id == task.id)
+            .title,
+        'Offline latest before restore',
+      );
+      expect((await otherRepository.syncExchangeStatus()).conflicts, 0);
       expect(
         sha256.convert(await before.file.readAsBytes()).toString(),
         archiveDigest,

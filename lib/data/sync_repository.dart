@@ -1,5 +1,23 @@
 part of 'life_repository.dart';
 
+Future<bool> _syncRecoveryFileMatches(String filename, File recovery) async {
+  if (filename.isEmpty ||
+      !path.equals(path.basename(filename), path.basename(recovery.path))) {
+    return false;
+  }
+  try {
+    // Android may expose /data/data and /data/user/0 as directory aliases.
+    // Verify the file AND its journal directory: a hard link elsewhere must
+    // not let a backup omit the live database's adjacent WAL/SHM files.
+    final openedParent = await File(filename).parent.resolveSymbolicLinks();
+    final recoveryParent = await recovery.parent.resolveSymbolicLinks();
+    return await FileSystemEntity.identical(openedParent, recoveryParent) &&
+        await FileSystemEntity.identical(filename, recovery.absolute.path);
+  } on FileSystemException {
+    return false;
+  }
+}
+
 extension SyncRepository on LifeRepository {
   Future<void> quarantineRestoredSync() => db.transaction(() async {
     await db.customStatement(
@@ -23,11 +41,7 @@ extension SyncRepository on LifeRepository {
     final filename = databases
         .singleWhere((row) => row.read<String>('name') == 'main')
         .read<String>('file');
-    if (filename.isEmpty ||
-        !path.equals(
-          path.normalize(File(filename).absolute.path),
-          path.normalize(recovery.databaseFile.absolute.path),
-        )) {
+    if (!await _syncRecoveryFileMatches(filename, recovery.databaseFile)) {
       throw StateError('Before Sync backup must belong to this database');
     }
     final context = await db

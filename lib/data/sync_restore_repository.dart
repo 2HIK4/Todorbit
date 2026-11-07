@@ -145,10 +145,7 @@ extension SyncRestoreRepository on LifeRepository {
     final filename = databases
         .singleWhere((r) => r.read<String>('name') == 'main')
         .read<String>('file');
-    if (!path.equals(
-      path.normalize(File(filename).absolute.path),
-      path.normalize(recovery.databaseFile.absolute.path),
-    )) {
+    if (!await _syncRecoveryFileMatches(filename, recovery.databaseFile)) {
       throw StateError('Recovery backup does not belong to this profile.');
     }
     final archive = await recovery.createBackup(BackupKind.manual);
@@ -288,6 +285,33 @@ extension SyncRestoreRepository on LifeRepository {
       await _validateRetainedSyncParents(binding);
       await _advanceKnownSyncHistory(binding);
       await _completeRetainedSyncGroups(binding);
+      // Before Restore rows can already be known, so the normal unknown-row
+      // closure does not advance their received clocks. Merge them only AFTER
+      // capturing the restored view: that action must remain concurrent with
+      // newer retained work, while subsequent edits/decisions observe it.
+      final known = await db
+          .customSelect(
+            '''SELECT device_id,max(origin_sequence) AS last_sequence
+        FROM sync_journal WHERE workspace_id=? AND account_id=? AND known=1
+        GROUP BY device_id''',
+            variables: [
+              Variable.withString(binding.workspace),
+              Variable.withString(binding.account),
+            ],
+          )
+          .get();
+      for (final row in known) {
+        await db.customStatement(
+          '''UPDATE sync_capture_context SET received_json=json_set(received_json,
+          '\$.' || json_quote(?),max(coalesce(json_extract(received_json,
+          '\$.' || json_quote(?)),0),?)) WHERE id=1''',
+          [
+            row.read<String>('device_id'),
+            row.read<String>('device_id'),
+            row.read<int>('last_sequence'),
+          ],
+        );
+      }
       await db.customStatement(
         '''UPDATE sync_capture_context SET capture_enabled=1,restore_quarantined=0,
         suspended_for_restore=0,mutation_group=NULL,automatic_sync=0,change_token=NULL,

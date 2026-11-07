@@ -451,7 +451,12 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [syncControllerProvider.overrideWith((ref) => controller)],
-          child: const MaterialApp(home: Scaffold(body: SyncStatusButton())),
+          child: const MaterialApp(
+            home: MediaQuery(
+              data: MediaQueryData(accessibleNavigation: true),
+              child: Scaffold(body: SyncStatusButton()),
+            ),
+          ),
         ),
       );
       await tester.tap(find.byKey(const ValueKey('sync-status-button')));
@@ -466,6 +471,13 @@ void main() {
       expect(controller.requests, 2);
       expect(find.byType(AlertDialog), findsNothing);
       expect(find.byType(SnackBar), findsOneWidget);
+      // Action snackbars stay visible with accessible navigation. The close
+      // control must let keyboard/reader users uncover an editor's Save action.
+      await tester.pump(const Duration(seconds: 10));
+      expect(find.byType(SnackBar), findsOneWidget);
+      await tester.tap(find.byTooltip('Close'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SnackBar), findsNothing);
       await tester.pumpWidget(const SizedBox());
     },
   );
