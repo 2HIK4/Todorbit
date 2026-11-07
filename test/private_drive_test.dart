@@ -78,6 +78,54 @@ void main() {
           approval.deleteSync();
         },
       );
+      test('Private approval pins account, mode and workspace without Standard fallback', () {
+        final root = PrivateTestEnvironment.validate();
+        final standard = File('${root.path}/STANDARD-SYNC-APPROVED.json');
+        final private = File('${root.path}/PRIVATE-SYNC-APPROVED.json');
+        addTearDown(() {
+          if (standard.existsSync()) standard.deleteSync();
+          if (private.existsSync()) private.deleteSync();
+        });
+        Map<String, Object> record(String mode) => {
+          'account': 'synthetic-private',
+          'mode': mode,
+          'workspace': 'private-workspace',
+          'workspaceVerifiedDisposable': true,
+        };
+        bool allowed({
+          String? account = 'synthetic-private',
+          String? workspace = 'private-workspace',
+          String mode = 'private',
+        }) => PrivateTestEnvironment.syncApproved(
+          account,
+          mode: mode,
+          workspace: workspace,
+        );
+        standard.writeAsStringSync(jsonEncode(record('standard')));
+        expect(allowed(), isFalse);
+        private.writeAsStringSync(jsonEncode(record('private')));
+        expect(allowed(), isTrue);
+        expect(allowed(account: null), isFalse);
+        expect(allowed(account: 'other'), isFalse);
+        expect(allowed(workspace: null), isFalse);
+        expect(allowed(workspace: ''), isFalse);
+        expect(allowed(workspace: 'other'), isFalse);
+        expect(allowed(mode: 'unknown'), isFalse);
+        standard.deleteSync();
+        expect(allowed(mode: 'standard'), isFalse);
+        for (final invalid in [
+          record('standard'),
+          {...record('private'), 'workspaceVerifiedDisposable': false},
+          {...record('private')}..remove('workspace'),
+        ]) {
+          private.writeAsStringSync(jsonEncode(invalid));
+          expect(allowed(), isFalse);
+        }
+        private.writeAsStringSync('{broken');
+        expect(allowed(), isFalse);
+        private.deleteSync();
+        expect(allowed(), isFalse);
+      });
       test(
         'fixed profile and every credential purpose avoid shared storage',
         () async {

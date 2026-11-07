@@ -35,7 +35,13 @@ Future<void> runPrivateAcceptanceProbe(
     );
   }
   if (args.contains('--private-sync-now')) {
-    if (!PrivateTestEnvironment.syncApproved(sync.auth.account?.id)) {
+    final paired = await sync.pairing.saved();
+    if (paired == null ||
+        !PrivateTestEnvironment.syncApproved(
+          sync.auth.account?.id,
+          mode: paired.key.isStandard ? 'standard' : 'private',
+          workspace: paired.binding.workspace,
+        )) {
       throw StateError('Disposable account/workspace approval required.');
     }
     await sync.syncNow(manual: true);

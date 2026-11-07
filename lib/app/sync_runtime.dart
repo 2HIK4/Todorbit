@@ -48,10 +48,20 @@ SyncController createSyncRuntime(
   late final SyncController sync;
   sync = SyncController(
     timeBudget: timeBudget,
-    canExchange: () async =>
-        (!PrivateTestEnvironment.enabled ||
-            PrivateTestEnvironment.syncApproved(auth.account?.id)) &&
-        (canExchange == null || await canExchange()),
+    canExchange: () async {
+      if (PrivateTestEnvironment.enabled) {
+        final paired = await sync.pairing.saved();
+        if (paired == null ||
+            !PrivateTestEnvironment.syncApproved(
+              auth.account?.id,
+              mode: paired.key.isStandard ? 'standard' : 'private',
+              workspace: paired.binding.workspace,
+            )) {
+          return false;
+        }
+      }
+      return canExchange == null || await canExchange();
+    },
     repository: controller.repository,
     recovery: recovery,
     auth: auth,

@@ -16,16 +16,32 @@ class PrivateTestEnvironment {
     }
   }
 
-  static bool syncApproved(String? account) {
-    if (account == null) return false;
+  static bool syncApproved(
+    String? account, {
+    String mode = 'standard',
+    String? workspace,
+  }) {
+    if (account == null || !{'standard', 'private'}.contains(mode)) {
+      return false;
+    }
     try {
       final value = jsonDecode(
-        File(p.join(validate().path, 'STANDARD-SYNC-APPROVED.json'))
-            .readAsStringSync(),
+        File(
+          p.join(
+            validate().path,
+            mode == 'private'
+                ? 'PRIVATE-SYNC-APPROVED.json'
+                : 'STANDARD-SYNC-APPROVED.json',
+          ),
+        ).readAsStringSync(),
       );
       return value is Map &&
           value['account'] == account &&
-          value['mode'] == 'standard' &&
+          value['mode'] == mode &&
+          (mode != 'private' ||
+              (workspace != null &&
+                  workspace.isNotEmpty &&
+                  value['workspace'] == workspace)) &&
           value['workspaceVerifiedDisposable'] == true;
     } catch (_) {
       return false;
