@@ -37,6 +37,24 @@ function Assert-GoogleDriveReleaseBundle([string]$Bundle, [string]$Repo, [string
     throw 'OAuth build receipt missing. Build with tools/build-windows-release.ps1 before packaging.'
   }
   $receipt = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
+  $versionText = Get-Content -Raw -LiteralPath (Join-Path $Repo 'pubspec.yaml')
+  if ($versionText -notmatch '(?m)^version:\s*((\d+\.\d+\.\d+)(?:-[0-9A-Za-z.-]+)?)\+(\d+)\s*$') {
+    throw 'Application version/build is required for bundle identity validation.'
+  }
+  $fullVersion = "$($Matches[1])+$($Matches[3])"
+  $fileVersion = "$($Matches[2]).$($Matches[3])"
+  $mainVersion = (Get-Item -LiteralPath (Join-Path $Bundle 'Todorbit.exe')).VersionInfo.ProductVersion
+  if ($mainVersion -cne $fullVersion) { throw 'Application binary version does not match the candidate source.' }
+  $widget = Join-Path $Bundle 'TodorbitWidget.exe'
+  if ($receipt.privateDriveTest -ne $true) {
+    if (!(Test-Path -LiteralPath $widget)) { throw 'Public bundle lacks its native companion.' }
+    $widgetVersion = (Get-Item -LiteralPath $widget).VersionInfo
+    if ($widgetVersion.ProductVersion -cne $fullVersion -or $widgetVersion.FileVersion -cne $fileVersion) {
+      throw 'Native companion version/build does not match the application. Rebuild the companion.'
+    }
+  } elseif (Test-Path -LiteralPath $widget) {
+    throw 'Private test bundle must not contain the native companion.'
+  }
   $selectedConfigPath = if ($ConfigPath) {
     (Resolve-Path -LiteralPath $ConfigPath -ErrorAction Stop).Path
   } else { Join-Path $Repo 'config\google-drive.json' }

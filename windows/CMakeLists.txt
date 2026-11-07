@@ -65,9 +65,9 @@ add_custom_target(life_manager_widget ALL
     --configuration "$<CONFIG>"
     --runtime win-x64
     --self-contained true
-    -p:Version=${FLUTTER_VERSION_MAJOR}.${FLUTTER_VERSION_MINOR}.${FLUTTER_VERSION_PATCH}
-    -p:FileVersion=${FLUTTER_VERSION_MAJOR}.${FLUTTER_VERSION_MINOR}.${FLUTTER_VERSION_PATCH}.0
-    -p:InformationalVersion=${FLUTTER_VERSION_MAJOR}.${FLUTTER_VERSION_MINOR}.${FLUTTER_VERSION_PATCH}+${FLUTTER_VERSION_BUILD}
+    -p:Version=${FLUTTER_VERSION}
+    -p:FileVersion=${FLUTTER_VERSION_MAJOR}.${FLUTTER_VERSION_MINOR}.${FLUTTER_VERSION_PATCH}.${FLUTTER_VERSION_BUILD}
+    -p:InformationalVersion=${FLUTTER_VERSION}
     -p:IncludeSourceRevisionInInformationalVersion=false
     -p:PublishSingleFile=true
     -p:IncludeNativeLibrariesForSelfExtract=true
