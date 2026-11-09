@@ -93,7 +93,8 @@ void main() {
           ),
         );
         await controller.refresh();
-        final start = DateTime.now().add(const Duration(hours: 1));
+        final now = DateTime.now();
+        final start = DateTime(now.year, now.month, now.day, 12);
         await controller.addEvent(
           EventDraft(
             title: 'Android integration event',

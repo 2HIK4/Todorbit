@@ -4,6 +4,10 @@ Todorbit is a Windows-first Flutter app. Flutter UI lives in `lib/features/`, do
 
 Install Flutter, Visual Studio Windows C++ desktop tools, and .NET 10 SDK. Run `flutter pub get` first. Use [Testing](TESTING.md) to select checks for the changed boundary; a small edit does not require all build/test commands. Distribution builds use `./tools/build-windows-release.ps1` after dependencies are resolved.
 
+Use [storage maintenance](STORAGE_MAINTENANCE.md) for artifact retention and safe
+manual cleanup. Ignored build/log directories can contain profiles and release
+evidence; inspect their contents before removing generated outputs.
+
 If this machine cannot create Flutter plugin symlinks, the optional local
 `./tools/dev/prepare-windows-plugins.ps1` creates missing directory junctions in
 the ignored generated plugin directory from `.flutter-plugins-dependencies`.

@@ -6,8 +6,12 @@ internal static partial class LifeManagerWidgetSelfTest {
     var keyPath = @"Software\Todorbit\StartupSelfTest\" + Guid.NewGuid().ToString("N");
     try {
       var store = new WidgetSettingsStore(Path.Combine(directory, "widget-settings.json"));
+      if (store.Load().LaunchAtSignIn) {
+        throw new InvalidOperationException("New widget profiles must default startup off (opt-in).");
+      }
+      store.Save(new WidgetSettings { LaunchAtSignIn = true });
       if (!store.Load().LaunchAtSignIn) {
-        throw new InvalidOperationException("New widget profiles must default startup on.");
+        throw new InvalidOperationException("Explicit startup on was not preserved.");
       }
       store.Save(new WidgetSettings { LaunchAtSignIn = false });
       if (store.Load().LaunchAtSignIn) {
