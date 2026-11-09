@@ -1,5 +1,15 @@
 # Progress
 
+## Beta14 experimental release published (2026-11-10)
+
+Tag `v1.0.19-beta.14` (commit `3e0efe7`, version `1.0.19-beta.14+37`, Schema 28).
+Published experimental GitHub pre-release with Windows installer, portable ZIP,
+production-signed Android APK, update metadata, and SHA-256 checksums.
+All GitHub Actions CI gates passed (`Windows checks` run 42711845466 in 27m54s,
+`Android validation` run 42711898319 in 9m57s). Local native widget self-tests,
+migration/sync codec tests, and package verifications passed. Beta 13 remains an
+unpublished private checkpoint.
+
 ## Beta13 private-review candidate complete (2026-11-07)
 
 [Final results, exact artifacts and remaining gates](FINAL_STABILIZATION_2026_11_07.md#final-outcome-and-owner-review).
