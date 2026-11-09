@@ -32,6 +32,7 @@ void main() {
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
     controller = AppController(LifeRepository(db));
+    controller.navigate(WorkspaceView.calendar);
     await controller.refresh();
   });
   tearDown(() async {
