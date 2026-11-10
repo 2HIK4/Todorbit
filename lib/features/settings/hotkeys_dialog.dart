@@ -283,6 +283,32 @@ class _HotkeysDialogState extends ConsumerState<HotkeysDialog> {
                         ],
                       ),
                     ),
+                  const Divider(),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Calendar shortcuts',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SettingsHelperText(
+                          'Active while viewing the Calendar:\n'
+                          '• Ctrl+1: Day view\n'
+                          '• Ctrl+2: Week view\n'
+                          '• Ctrl+3: Month view\n'
+                          '• T: Jump to today (when not typing)\n'
+                          '• Ctrl+Z: Undo reschedule or resize\n'
+                          '• Escape: Cancel active drag or resize\n'
+                          '• Ctrl+Scroll: Zoom in/out anchored at cursor',
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),

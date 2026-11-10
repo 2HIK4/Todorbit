@@ -1,5 +1,22 @@
 # Persistent test run ledger
 
+## Interactive Calendar Redesign (2026-11-10)
+
+Feature branch `feature/interactive-calendar`. Accurate vertical time-grid layout, side-by-side local collision lane allocation, drag-to-move, top/bottom edge resizing, cross-day Week dragging, Month date-drag with clock-time preservation, date-anchored zoom (Ctrl+wheel), shortcuts (Ctrl+1/2/3, T, Ctrl+Z, Esc), and reversible legacy preview toggle.
+Runs:
+- `test/calendar_layout_engine_test.dart` (8/8 PASS): coordinate conversions, snapping, touching endpoints, nested/dense collisions, minimum readable height.
+- `test/calendar_interaction_controller_test.dart` (4/4 PASS): drag move, top-edge resize start, bottom-edge resize end, cancel/undo.
+- `test/calendar_zoom_controller_test.dart` (5/5 PASS): view transitions (Month ↔ Week ↔ Day), wheel accumulation, week & month cursor anchor resolution.
+- `test/interactive_calendar_redesign_test.dart` (5/5 PASS): day view timed placement, all-day & planned header, month right-click context menu (Show Day/Week), keyboard shortcuts, legacy fallback switch.
+- `test/calendar_improvements_test.dart` (7/7 PASS): navigation persistence, month capacity, weekday headers.
+- `test/calendar_test.dart` (3/3 PASS): conflict indicators, content filtering, event creation.
+- `test/round3_calendar_test.dart` (8/8 PASS): subtasks, cancelled events, month preview, right-click creation.
+- `test/event_recurrence_test.dart` (7/7 PASS): recurrence safety, occurrence vs series invariants.
+- `test/cancelled_event_readability_test.dart` & `test/event_editor_layout_test.dart` (5/5 PASS): contrast and dialog layouts.
+- `test/hotkeys_test.dart` (3/3 PASS): shortcut binding validation.
+- `dart analyze` (0 issues).
+Unchanged SQLite migrations, Drive sync crypto, and native companion builds safely reused. Local physical Windows mouse/touchpad gestures and Android long-press touch verified in test harnesses; physical mobile device validation noted for manual checklist.
+
 ## Alarm beta14 (2026-11-08)
 
 [Compact checkpoint](ALARM_BETA_2026_11_08.md). New owner/config/planner/UI,

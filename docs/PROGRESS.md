@@ -1,5 +1,21 @@
 # Progress
 
+## Interactive Calendar Redesign (2026-11-10)
+
+Feature branch `feature/interactive-calendar`.
+Implemented modular interactive calendar redesign for Windows and Android:
+- Accurate vertical time-grid layout for Day and Week views with real time positioning and duration heights.
+- Intelligent side-by-side collision layout resolving overlapping intervals into stable local lanes with horizontal expansion and readable minimum widths.
+- Move (center-drag) and resize (top-edge start time, bottom-edge end time) with 15-minute snapping, live time chips, semi-transparent ghost preview, and auto-scrolling.
+- Cross-day Week drag & drop and Month view date drag & drop preserving clock time and duration.
+- Month view extended right-click context menu (Add Event, Add Task, Add Work Session, Show Day, Show Week).
+- Date-anchored zoom navigation (Month ↔ Week ↔ Day) via Ctrl+wheel and keyboard shortcuts (Ctrl+1, Ctrl+2, Ctrl+3, T, Ctrl+Z, Esc).
+- Modular architecture with centralized configuration (`CalendarAppearanceConfiguration`), layout engine (`CalendarLayoutEngine`), interaction controller (`CalendarInteractionController`), and zoom controller (`CalendarZoomController`).
+- Reversible fallback switch in toolbar allowing instant toggling between interactive timeline and legacy calendar presentation.
+- Undo/redo support via Ctrl+Z and bottom SnackBar action.
+- Recurring occurrence safety (`nominalDate != null` updates single occurrence exception), task deadline preservation (modifies `scheduledDate` only), and alarm synchronization preserved.
+- All 40 unit and widget tests pass; `dart analyze` reports 0 issues.
+
 ## Beta14 experimental release published (2026-11-10)
 
 Tag `v1.0.19-beta.14` (commit `3e0efe7`, version `1.0.19-beta.14+37`, Schema 28).

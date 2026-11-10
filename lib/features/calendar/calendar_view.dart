@@ -4,12 +4,21 @@ import '../shared/scroll_edge_fade.dart';
 import '../shared/app_motion.dart';
 import '../shared/item_filters.dart';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import 'event_editor.dart';
+import 'calendar_config.dart';
+import 'calendar_day_view.dart';
+import 'calendar_interaction_controller.dart';
+import 'calendar_models.dart';
+import 'calendar_month_view.dart';
+import 'calendar_week_view.dart';
+import 'calendar_zoom_controller.dart';
 import '../shared/icon_picker.dart';
 import '../shared/about_view_button.dart';
 import '../shared/weekdays.dart';
@@ -42,6 +51,19 @@ class CalendarView extends ConsumerStatefulWidget {
 class _CalendarViewState extends ConsumerState<CalendarView> {
   DateTime selected = DateTime.now();
   CalendarMode mode = CalendarMode.week;
+  final CalendarAppearanceConfiguration _config =
+      const CalendarAppearanceConfiguration();
+  late final CalendarInteractionController _interactionController =
+      CalendarInteractionController(config: _config);
+  late final CalendarZoomController _zoomController =
+      CalendarZoomController(config: _config);
+  bool _useLegacy = false;
+
+  @override
+  void dispose() {
+    _interactionController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -274,11 +296,215 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
     );
   }
 
+  Future<void> _undo() async {
+    final message = await _interactionController.undo(ref.read(appControllerProvider));
+    if (message != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
+  }
+
+  Future<void> _handleInteractionFinished() async {
+    final appCtrl = ref.read(appControllerProvider);
+    final summary = await _interactionController.commit(appCtrl);
+    if (summary != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(summary),
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: _undo,
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleMonthItemDropped(CalendarItem item, DateTime targetDate) async {
+    _interactionController.startDateDrag(
+      item: item,
+      originDate: item.startsAt ?? targetDate,
+    );
+    _interactionController.updatePointer(Offset.zero, targetDate);
+    await _handleInteractionFinished();
+  }
+
+  void _handleCalendarItemTap(CalendarItem item) {
+    if (item.event != null) {
+      _editEvent(item.event);
+    } else if (item.session != null) {
+      _editSession(item.session);
+    } else if (item.task != null) {
+      widget.onTaskTap(item.task!);
+    }
+  }
+
+  List<CalendarItem> _buildCalendarItems(AppController controller, DateTime date) {
+    final key = localDate(date);
+    final items = <CalendarItem>[];
+
+    if (controller.calendarContent != CalendarContent.tasksOnly) {
+      for (final event in controller.filteredEvents) {
+        final start = event.startsAt.toLocal();
+        final end = event.endsAt.toLocal();
+        final dayStart = DateTime(date.year, date.month, date.day);
+        final dayEnd = DateTime(date.year, date.month, date.day + 1);
+
+        if (start.isBefore(dayEnd) && end.isAfter(dayStart)) {
+          final detailsStr = event.details.isNotEmpty
+              ? event.details.map((d) => '${d.label}: ${d.value}').join(' · ')
+              : (event.location.isNotEmpty ? event.location : null);
+          items.add(
+            CalendarItem(
+              id: event.id,
+              title: event.title,
+              kind: CalendarItemKind.event,
+              startsAt: start,
+              endsAt: end,
+              allDay: event.allDay,
+              event: event,
+              colorValue: controller.effectiveEventColor(event),
+              iconName: event.iconName,
+              isCancelled: event.cancelled,
+              detailsText: detailsStr,
+            ),
+          );
+        }
+      }
+    }
+
+    if (controller.calendarContent != CalendarContent.eventsOnly) {
+      for (final task in controller.filteredTasks) {
+        final parentId = controller.taskParents[task.id];
+        final parent = controller.tasks
+            .where((item) => item.id == parentId)
+            .firstOrNull;
+        final parentTitle = parent?.title;
+
+        if (task.scheduledDate == key) {
+          items.add(
+            CalendarItem(
+              id: task.id,
+              title: task.title,
+              kind: CalendarItemKind.task,
+              task: task,
+              parentTitle: parentTitle,
+              subtitle: 'Plan',
+            ),
+          );
+        }
+        if (task.deadlineDate == key && task.scheduledDate != key) {
+          items.add(
+            CalendarItem(
+              id: task.id,
+              title: task.title,
+              kind: CalendarItemKind.task,
+              task: task,
+              parentTitle: parentTitle,
+              subtitle: 'Deadline',
+            ),
+          );
+        }
+      }
+
+      for (final session in controller.filteredSessions) {
+        final start = session.startsAt.toLocal();
+        final end = session.endsAt.toLocal();
+        final dayStart = DateTime(date.year, date.month, date.day);
+        final dayEnd = DateTime(date.year, date.month, date.day + 1);
+
+        if (start.isBefore(dayEnd) && end.isAfter(dayStart)) {
+          final task = controller.tasks
+              .where((item) => item.id == session.taskId)
+              .firstOrNull;
+          items.add(
+            CalendarItem(
+              id: session.id,
+              title: task?.title ?? 'Work session',
+              kind: CalendarItemKind.session,
+              startsAt: start,
+              endsAt: end,
+              session: session,
+              subtitle: session.outcome.name,
+            ),
+          );
+        }
+      }
+    }
+
+    return items;
+  }
+
+  Map<DateTime, List<CalendarItem>> _buildWeekItemsByDay(AppController controller) {
+    final map = <DateTime, List<CalendarItem>>{};
+    for (var i = 0; i < 7; i++) {
+      final d = DateTime(weekStart.year, weekStart.month, weekStart.day + i);
+      map[d] = _buildCalendarItems(controller, d);
+    }
+    return map;
+  }
+
+  Map<DateTime, List<CalendarItem>> _buildMonthItemsByDay(AppController controller) {
+    final map = <DateTime, List<CalendarItem>>{};
+    final first = DateTime(day.year, day.month);
+    final offset = (first.weekday - ref.read(appControllerProvider).firstWeekday + 7) % 7;
+    final daysInMonth = DateUtils.getDaysInMonth(day.year, day.month);
+    final cellCount = ((offset + daysInMonth + 6) ~/ 7) * 7;
+
+    for (var i = 0; i < cellCount; i++) {
+      final d = DateTime(first.year, first.month, first.day + i - offset);
+      map[d] = _buildCalendarItems(controller, d);
+    }
+    return map;
+  }
+
+  DateTime _resolveAnchorDate(Offset localPosition, Size viewSize) {
+    if (mode == CalendarMode.day) {
+      return day;
+    } else if (mode == CalendarMode.week) {
+      return _zoomController.resolveWeekAnchorDate(
+        localX: (localPosition.dx - 48.0).clamp(0.0, viewSize.width),
+        totalWidth: viewSize.width - 48.0,
+        weekStart: weekStart,
+      );
+    } else {
+      return _zoomController.resolveMonthAnchorDate(
+        localX: localPosition.dx.clamp(0.0, viewSize.width),
+        localY: (localPosition.dy - 30.0).clamp(0.0, viewSize.height),
+        gridWidth: viewSize.width,
+        gridHeight: (viewSize.height - 30.0).clamp(1.0, double.infinity),
+        monthDate: day,
+        firstWeekday: ref.read(appControllerProvider).firstWeekday,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(appControllerProvider);
-    return Column(
-      children: [
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.digit1, control: true): () =>
+            _setMode(CalendarMode.day),
+        const SingleActivator(LogicalKeyboardKey.digit2, control: true): () =>
+            _setMode(CalendarMode.week),
+        const SingleActivator(LogicalKeyboardKey.digit3, control: true): () =>
+            _setMode(CalendarMode.month),
+        const SingleActivator(LogicalKeyboardKey.keyT): () {
+          setState(() => selected = DateTime.now());
+          _loadSelectedMonth();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyZ, control: true): _undo,
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          _interactionController.cancel();
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: Column(
+          children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 22, 24, 14),
           child: Wrap(
@@ -402,19 +628,133 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                 icon: const Icon(Icons.auto_fix_high),
                 label: const Text('Reschedule'),
               ),
+              IconButton(
+                tooltip: 'Undo calendar change (Ctrl+Z)',
+                onPressed: _interactionController.canUndo ? _undo : null,
+                icon: const Icon(Icons.undo),
+              ),
+              IconButton(
+                tooltip: _useLegacy
+                    ? 'Switch to interactive timeline'
+                    : 'Switch to legacy calendar presentation',
+                icon: Icon(
+                  _useLegacy
+                      ? Icons.view_timeline
+                      : Icons.view_timeline_outlined,
+                ),
+                onPressed: () => setState(() => _useLegacy = !_useLegacy),
+              ),
             ],
           ),
         ),
         const Divider(height: 1),
         Expanded(
-          child: switch (mode) {
-            CalendarMode.day => _dayList(controller, day),
-            CalendarMode.week => _weekGrid(controller),
-            CalendarMode.month => _monthGrid(controller),
-          },
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final bodySize = Size(constraints.maxWidth, constraints.maxHeight);
+              return Listener(
+                onPointerSignal: (pointerSignal) {
+                  if (pointerSignal is PointerScrollEvent) {
+                    final isCtrl = HardwareKeyboard.instance.isControlPressed;
+                    if (isCtrl) {
+                      final targetMode = _zoomController.handlePointerScroll(
+                        scrollDeltaY: pointerSignal.scrollDelta.dy,
+                        currentMode: mode,
+                        isControlPressed: true,
+                      );
+                      if (targetMode != null && targetMode != mode) {
+                        final anchorDate = _resolveAnchorDate(
+                          pointerSignal.localPosition,
+                          bodySize,
+                        );
+                        setState(() {
+                          selected = anchorDate;
+                          mode = targetMode;
+                        });
+                        ref
+                            .read(appControllerProvider)
+                            .setLastCalendarMode(targetMode.name);
+                        _loadSelectedMonth();
+                      }
+                    }
+                  }
+                },
+                child: _useLegacy
+                    ? switch (mode) {
+                        CalendarMode.day => _dayList(controller, day),
+                        CalendarMode.week => _weekGrid(controller),
+                        CalendarMode.month => _monthGrid(controller),
+                      }
+                    : switch (mode) {
+                        CalendarMode.day => CalendarDayView(
+                            dayDate: day,
+                            items: _buildCalendarItems(controller, day),
+                            config: _config,
+                            interactionController: _interactionController,
+                            onItemTap: _handleCalendarItemTap,
+                            onSlotSecondaryTap: _showCreateMenu,
+                            alarmRules: controller.alarmRules,
+                            onInteractionFinished: _handleInteractionFinished,
+                          ),
+                        CalendarMode.week => CalendarWeekView(
+                            weekStart: weekStart,
+                            itemsByDay: _buildWeekItemsByDay(controller),
+                            config: _config,
+                            interactionController: _interactionController,
+                            onItemTap: _handleCalendarItemTap,
+                            onSlotSecondaryTap: _showCreateMenu,
+                            onDayHeaderTap: (date) {
+                              setState(() {
+                                selected = date;
+                                mode = CalendarMode.day;
+                              });
+                              ref
+                                  .read(appControllerProvider)
+                                  .setLastCalendarMode('day');
+                            },
+                            alarmRules: controller.alarmRules,
+                            onInteractionFinished: _handleInteractionFinished,
+                          ),
+                        CalendarMode.month => CalendarMonthView(
+                            selectedDate: day,
+                            firstWeekday:
+                                ref.read(appControllerProvider).firstWeekday,
+                            itemsByDay: _buildMonthItemsByDay(controller),
+                            config: _config,
+                            onItemTap: _handleCalendarItemTap,
+                            onDayTap: _showDayPreview,
+                            onItemDroppedOnDate: _handleMonthItemDropped,
+                            onShowDay: (date) {
+                              setState(() {
+                                selected = date;
+                                mode = CalendarMode.day;
+                              });
+                              ref
+                                  .read(appControllerProvider)
+                                  .setLastCalendarMode('day');
+                            },
+                            onShowWeek: (date) {
+                              setState(() {
+                                selected = date;
+                                mode = CalendarMode.week;
+                              });
+                              ref
+                                  .read(appControllerProvider)
+                                  .setLastCalendarMode('week');
+                            },
+                            onAddEvent: (date) => _editEvent(null, date),
+                            onAddTask: widget.onAddTask,
+                            onAddSession: (date) => _editSession(),
+                          ),
+                      },
+              );
+            },
+          ),
         ),
       ],
-    );
+    ),
+  ),
+);
   }
 
   String _periodLabel() {
