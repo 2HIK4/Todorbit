@@ -10,6 +10,7 @@ class CalendarZoomController {
   CalendarAppearanceConfiguration config;
   double _accumulatedDelta = 0.0;
   DateTime? _lastScrollTime;
+  DateTime? _lastTransitionTime;
 
   /// Resolves the next calendar mode when zooming in (towards Day view).
   CalendarMode? zoomIn(CalendarMode current) {
@@ -40,6 +41,12 @@ class CalendarZoomController {
     if (!config.enableZoom || !isControlPressed) return null;
 
     final now = DateTime.now();
+    if (_lastTransitionTime != null &&
+        now.difference(_lastTransitionTime!).inMilliseconds < 350) {
+      _accumulatedDelta = 0.0;
+      return null;
+    }
+
     if (_lastScrollTime != null &&
         now.difference(_lastScrollTime!).inMilliseconds > 300) {
       _accumulatedDelta = 0.0;
@@ -51,11 +58,19 @@ class CalendarZoomController {
     if (_accumulatedDelta <= -config.zoomThreshold) {
       // Scrolled UP (negative in Flutter PointerScrollEvent) -> Zoom IN
       _accumulatedDelta = 0.0;
-      return zoomIn(currentMode);
+      final next = zoomIn(currentMode);
+      if (next != null) {
+        _lastTransitionTime = now;
+      }
+      return next;
     } else if (_accumulatedDelta >= config.zoomThreshold) {
       // Scrolled DOWN -> Zoom OUT
       _accumulatedDelta = 0.0;
-      return zoomOut(currentMode);
+      final next = zoomOut(currentMode);
+      if (next != null) {
+        _lastTransitionTime = now;
+      }
+      return next;
     }
 
     return null;

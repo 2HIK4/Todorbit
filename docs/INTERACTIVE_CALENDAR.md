@@ -81,6 +81,41 @@ The collision engine in [`calendar_layout_engine.dart`](../lib/features/calendar
 - **Ctrl+3**: Switch to Month view
 - **T**: Jump to Today
 - **Ctrl+Z**: Undo last calendar change
+- **Ctrl+Shift+Z / Ctrl+Y**: Redo last undone change
 - **Escape**: Cancel active drag or resize gesture
 - **Ctrl + Mouse Wheel Up**: Zoom in (Month → Week → Day anchored at pointer)
 - **Ctrl + Mouse Wheel Down**: Zoom out (Day → Week → Month anchored at pointer)
+
+---
+
+## 6. Interaction Refinements & Physics (Beta 15 Post-Release Fixes)
+
+### A. Dragging and Auto-Scroll Dynamics
+- **Viewport-Relative Distance Calculation**: Auto-scrolling calculates pointer distance relative to the visible viewport bounds (`localInColumn.dy - scroller.offset`), not relative to the dragged card's internal coordinates (`details.localPosition.dy`). This completely prevents the initial unexpected upward scroll jump on drag start.
+- **Controlled Margin & Continuous Ticking**: Auto-scrolling triggers strictly within `autoScrollMargin` (48 px) of the top or bottom viewport edge. An active periodic timer ticks scrolling at 16ms intervals and continuously invokes `updatePointer`, keeping the dragged block aligned with the pointer during auto-scrolling.
+- **Initial Grab Offset Tracking**: Grabbing an event records `initialGrabOffsetY`, anchoring pointer position relative to the item's top edge and eliminating sudden visual jumps on pickup.
+
+### B. Cross-Day Week Dragging
+- **Global Pointer Resolution**: In `CalendarWeekView`, dragging evaluates `_resolveDayAt(globalPosition, days, columnWidth)` against the timeline viewport's horizontal scroll offset.
+- **Dynamic Ghost Preview**: As the pointer crosses day boundaries, `targetDayDate` updates in `CalendarInteractionController`, rendering the ghost preview in the target day column while preserving original start time, duration, and collision snapping.
+- **Atomic Commit**: Dropping commits to the repository with the updated date and time in a single atomic transaction.
+
+### C. Month View Hitboxes & Visual Density
+- **Full-Width Opaque Drag Hitboxes**: Event cards use `Draggable<CalendarItem>` with `HitTestBehavior.opaque` and full-width container hit testing, ensuring drag gestures initiate reliably from the start (10%), center (50%), and end (90%) of any card without pass-through.
+- **Restored Typography and Proportions**: Card dimensions are proportioned for readability (`height: 28-34px * textScaleFactor`, font size `11pt`, icons `12pt`, cell minimum height `90px`), eliminating cramped, unreadable card text.
+
+### D. Ctrl + Mouse Wheel Zoom Isolation
+- **Scroll Physics Interception**: `CalendarScrollPhysics` overrides `shouldAcceptUserOffset` to return `false` whenever `HardwareKeyboard.instance.isControlPressed` is true. This prevents underlying scrollables from scrolling the timeline while zooming.
+- **Pointer Signal Resolution**: `GestureBinding.instance.pointerSignalResolver.register` claims the pointer signal exclusively for zoom transitions.
+- **Transition Debounce**: `CalendarZoomController` enforces a 350ms cooldown window (`_lastTransitionTime`) to eliminate accidental multi-mode skipping from inertia trackpads or free-spinning scroll wheels.
+
+### E. Toolbar Hierarchy & Notification Behavior
+- **Unified Toolbar Controls**: Undo, Redo, vertical divider, and Calendar Presentation mode switch are grouped in a single atomic rounded container, preventing awkward wrapping or orphaned icons across narrow widths.
+- **Reactivity**: History buttons are wrapped in `ListenableBuilder(listenable: _interactionController)` to re-render enabled/disabled states immediately as actions occur.
+- **Compact Auto-Dismiss Notifications**: Calendar change notices use floating, compact SnackBar notifications (`width: 420px`) with a 4-second auto-dismiss timeout, replacing previous notices cleanly without stacking.
+
+### F. Current Time Indicator
+- **Intentional Presentation**: Renders with the theme's primary color (`colorScheme.primary`), an anti-aliased 1.5px horizontal rule, a left circular pip, an aligned time badge (e.g., `14:30`), and an accessible tooltip.
+
+### G. Native Windows Tasks Widget Navigation
+- **Consistent Visual Dimensions**: Tasks widget earlier/later navigation buttons in `experiments/widget-shell-probe/WidgetDateNavigation.cs` match the Calendar widget's 32x32 hit bounds, geometry (`DrawCalendarArrow`), accent color, and hover outline.

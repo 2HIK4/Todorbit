@@ -73,6 +73,7 @@ class CalendarInteractionController extends ChangeNotifier {
 
   Offset? pointerStartLocal;
   Offset? pointerCurrentLocal;
+  double? initialGrabOffsetY;
   bool isDragging = false;
 
   // History stacks
@@ -97,6 +98,7 @@ class CalendarInteractionController extends ChangeNotifier {
     required CalendarItem item,
     required DateTime dayDate,
     required Offset pointerLocal,
+    double? pointerTimelineY,
   }) {
     if (_isHistoryBusy || !config.enableDragMove || !item.isTimed) return;
     gestureKind = CalendarGestureKind.move;
@@ -109,6 +111,11 @@ class CalendarInteractionController extends ChangeNotifier {
     proposedDayDate = dayDate;
     pointerStartLocal = pointerLocal;
     pointerCurrentLocal = pointerLocal;
+    if (pointerTimelineY != null && item.startsAt != null) {
+      initialGrabOffsetY = pointerTimelineY - engine.timeToY(item.startsAt!, dayDate);
+    } else {
+      initialGrabOffsetY = null;
+    }
     isDragging = false;
     notifyListeners();
   }
@@ -117,6 +124,7 @@ class CalendarInteractionController extends ChangeNotifier {
     required CalendarItem item,
     required DateTime dayDate,
     required Offset pointerLocal,
+    double? pointerTimelineY,
   }) {
     if (_isHistoryBusy || !config.enableResize || !item.isTimed) return;
     gestureKind = CalendarGestureKind.resizeStart;
@@ -129,6 +137,7 @@ class CalendarInteractionController extends ChangeNotifier {
     proposedDayDate = dayDate;
     pointerStartLocal = pointerLocal;
     pointerCurrentLocal = pointerLocal;
+    initialGrabOffsetY = null;
     isDragging = false;
     notifyListeners();
   }
@@ -137,6 +146,7 @@ class CalendarInteractionController extends ChangeNotifier {
     required CalendarItem item,
     required DateTime dayDate,
     required Offset pointerLocal,
+    double? pointerTimelineY,
   }) {
     if (_isHistoryBusy || !config.enableResize || !item.isTimed) return;
     gestureKind = CalendarGestureKind.resizeEnd;
@@ -149,6 +159,7 @@ class CalendarInteractionController extends ChangeNotifier {
     proposedDayDate = dayDate;
     pointerStartLocal = pointerLocal;
     pointerCurrentLocal = pointerLocal;
+    initialGrabOffsetY = null;
     isDragging = false;
     notifyListeners();
   }
@@ -170,7 +181,11 @@ class CalendarInteractionController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void updatePointer(Offset pointerLocal, [DateTime? hoveredDayDate]) {
+  void updatePointer(
+    Offset pointerLocal, [
+    DateTime? hoveredDayDate,
+    double? pointerTimelineY,
+  ]) {
     if (gestureKind == CalendarGestureKind.none || activeItem == null) return;
 
     pointerCurrentLocal = pointerLocal;
@@ -198,13 +213,23 @@ class CalendarInteractionController extends ChangeNotifier {
     switch (gestureKind) {
       case CalendarGestureKind.move:
         if (origStart == null || origEnd == null) break;
-        // Calculate proposed start from delta Y
-        final origStartY = engine.timeToY(origStart);
-        final proposedY = origStartY + totalDelta.dy;
+        final double proposedY;
+        if (pointerTimelineY != null && initialGrabOffsetY != null) {
+          proposedY = pointerTimelineY - initialGrabOffsetY!;
+        } else {
+          final origStartY = engine.timeToY(origStart, activeDayDate);
+          proposedY = origStartY + totalDelta.dy;
+        }
         final snappedStart = engine.yToTime(proposedY, targetDay);
 
         // Clamp so item does not extend past end of day
-        final maxEnd = DateTime(targetDay.year, targetDay.month, targetDay.day, config.endHour == 24 ? 23 : config.endHour, config.endHour == 24 ? 59 : 0);
+        final maxEnd = DateTime(
+          targetDay.year,
+          targetDay.month,
+          targetDay.day,
+          config.endHour == 24 ? 23 : config.endHour,
+          config.endHour == 24 ? 59 : 0,
+        );
         var finalStart = snappedStart;
         var finalEnd = finalStart.add(originalDuration);
 
@@ -220,8 +245,13 @@ class CalendarInteractionController extends ChangeNotifier {
       case CalendarGestureKind.resizeStart:
         if (origStart == null || origEnd == null) break;
         // Top edge: move start time, keep end time fixed
-        final origStartY = engine.timeToY(origStart);
-        final proposedY = origStartY + totalDelta.dy;
+        final double proposedY;
+        if (pointerTimelineY != null) {
+          proposedY = pointerTimelineY;
+        } else {
+          final origStartY = engine.timeToY(origStart, activeDayDate);
+          proposedY = origStartY + totalDelta.dy;
+        }
         final snappedStart = engine.yToTime(proposedY, targetDay);
 
         final minDuration = Duration(minutes: config.minItemDurationMinutes);
@@ -238,8 +268,13 @@ class CalendarInteractionController extends ChangeNotifier {
       case CalendarGestureKind.resizeEnd:
         if (origStart == null || origEnd == null) break;
         // Bottom edge: move end time, keep start time fixed
-        final origEndY = engine.timeToY(origEnd, activeDayDate);
-        final proposedY = origEndY + totalDelta.dy;
+        final double proposedY;
+        if (pointerTimelineY != null) {
+          proposedY = pointerTimelineY;
+        } else {
+          final origEndY = engine.timeToY(origEnd, activeDayDate);
+          proposedY = origEndY + totalDelta.dy;
+        }
         final snappedEnd = engine.yToTime(proposedY, targetDay);
 
         final minDuration = Duration(minutes: config.minItemDurationMinutes);
@@ -290,6 +325,7 @@ class CalendarInteractionController extends ChangeNotifier {
     proposedDayDate = null;
     pointerStartLocal = null;
     pointerCurrentLocal = null;
+    initialGrabOffsetY = null;
     isDragging = false;
     notifyListeners();
   }
@@ -395,7 +431,9 @@ class CalendarInteractionController extends ChangeNotifier {
             ? 'Changed end time of "${event.title}" to ${_formatTime(nextEnd)}'
             : gestureKind == CalendarGestureKind.resizeStart
                 ? 'Changed start time of "${event.title}" to ${_formatTime(nextStart)}'
-                : 'Moved "${event.title}" to ${_formatTime(nextStart)}';
+                : hasDateChange
+                    ? 'Moved "${event.title}" to ${_formatDateStr(nextStart)} ${_formatTime(nextStart)}'
+                    : 'Moved "${event.title}" to ${_formatTime(nextStart)}';
       } else if (item.session != null) {
         final session = item.session!;
         final previousSession = session;
@@ -421,7 +459,9 @@ class CalendarInteractionController extends ChangeNotifier {
             ? 'Changed end time of work session to ${_formatTime(nextEnd)}'
             : gestureKind == CalendarGestureKind.resizeStart
                 ? 'Changed start time of work session to ${_formatTime(nextStart)}'
-                : 'Rescheduled work session to ${_formatTime(nextStart)}';
+                : hasDateChange
+                    ? 'Rescheduled work session to ${_formatDateStr(nextStart)} ${_formatTime(nextStart)}'
+                    : 'Rescheduled work session to ${_formatTime(nextStart)}';
       } else if (item.task != null && nextDate != null) {
         final task = item.task!;
         final previousTask = task;

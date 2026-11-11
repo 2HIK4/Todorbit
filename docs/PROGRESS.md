@@ -1,5 +1,22 @@
 # Progress
 
+## Calendar Interaction & UI Regression Fixes (2026-11-11)
+
+Branch `fix/calendar-interaction-regressions`.
+Addressed manual testing defects identified in the Beta 15 Interactive Calendar:
+- **Auto-scroll upward on drag start**: Resolved root cause in `TimelineDayColumn` where card-relative coordinates triggered spurious auto-scroll; converted to viewport-relative distance (`localInColumn.dy - scroller.offset`) with 48px margin and continuous auto-scroll ticking.
+- **Undo / Redo live reactivity**: Ensured toolbar Undo/Redo buttons react immediately to history changes using `ListenableBuilder(listenable: _interactionController)`, with dedicated calendar autofocus node and keyboard shortcut bindings (`Ctrl+Z`, `Ctrl+Shift+Z`, `Ctrl+Y`).
+- **Compact auto-dismiss notifications**: Replaced persistent full-width banners with floating, compact 420px notifications auto-dismissing after 4 seconds and cleanly replacing prior notices without stacking.
+- **Week view cross-day dragging**: Implemented `_resolveDayAt` coordinate mapping with dynamic ghost preview in target day column and atomic date/time commit.
+- **Month view card drag hitboxes**: Replaced nested gesture handlers with `Draggable<CalendarItem>` with `HitTestBehavior.opaque` and full-width hit targets, verified at 10%, 25%, 50%, 75%, and 90% widths.
+- **Ctrl + Mouse Wheel zoom isolation**: Added `CalendarScrollPhysics.shouldAcceptUserOffset` returning false when Ctrl is pressed and registered pointer signals with `pointerSignalResolver`, eliminating simultaneous timeline scrolling during zoom; added 350ms transition debounce to prevent multi-mode skipping.
+- **Month view card readability**: Restored comfortable visual density matching design tokens (28-34px height, 11pt font, 12pt icons, 90px min cell height).
+- **Toolbar layout grouping**: Grouped Undo, Redo, divider, and presentation toggle into an atomic rounded pill container to prevent awkward wrapping and orphaned buttons.
+- **Current time indicator**: Replaced unlabelled pink line with an intentional primary-colored line, left pip, live time badge, and tooltip.
+- **Native Windows Tasks widget navigation**: Updated `WidgetDateNavigation.cs` earlier/later buttons with 32x32 hit bounds, matching chevrons, and accent hover outlines consistent with the Calendar widget.
+- **Verification**: All 7 regression scenarios in `test/calendar_interactions_regression_test.dart` passed; existing suites `test/calendar_undo_redo_test.dart` and `test/interactive_calendar_redesign_test.dart` (16 tests) passed; `dotnet run --project experiments/widget-shell-probe -- --self-test` passed; `dart analyze` reports 0 issues.
+
+
 ## Beta 15 experimental release published (2026-11-11)
 
 Tag `v1.0.19-beta.15` (commit `931f71b`, version `1.0.19-beta.15+38`, Schema 28).

@@ -21,7 +21,6 @@ import 'calendar_week_view.dart';
 import 'calendar_zoom_controller.dart';
 import '../shared/icon_picker.dart';
 import '../shared/about_view_button.dart';
-import '../shared/settings_history_scope.dart';
 import '../shared/weekdays.dart';
 import 'session_editor.dart';
 
@@ -30,6 +29,31 @@ enum CalendarMode { day, week, month }
 int monthEntryCapacity(double cellHeight, double textScale) {
   final rowHeight = 32.0 * textScale.clamp(1.0, 2.0);
   return ((cellHeight - 34) / rowHeight).floor().clamp(0, 30);
+}
+
+class CalendarScrollPhysics extends ScrollPhysics {
+  const CalendarScrollPhysics({super.parent});
+
+  @override
+  CalendarScrollPhysics applyTo(ScrollPhysics? ancestor) =>
+      CalendarScrollPhysics(parent: buildParent(ancestor));
+
+  @override
+  bool shouldAcceptUserOffset(ScrollMetrics position) {
+    if (HardwareKeyboard.instance.isControlPressed) {
+      return false;
+    }
+    return super.shouldAcceptUserOffset(position);
+  }
+}
+
+class CalendarScrollBehavior extends MaterialScrollBehavior {
+  const CalendarScrollBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    return const CalendarScrollPhysics();
+  }
 }
 
 class CalendarView extends ConsumerStatefulWidget {
@@ -58,10 +82,12 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
       CalendarInteractionController(config: _config);
   late final CalendarZoomController _zoomController =
       CalendarZoomController(config: _config);
+  final FocusNode _calendarFocusNode = FocusNode();
   bool _useLegacy = false;
 
   @override
   void dispose() {
+    _calendarFocusNode.dispose();
     _interactionController.removeListener(_onInteractionChanged);
     _interactionController.dispose();
     super.dispose();
@@ -303,21 +329,60 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
     );
   }
 
+  void _showCalendarNotification(String message, {String? actionLabel, VoidCallback? onAction}) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.removeCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(fontSize: 13),
+        ),
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+        width: MediaQuery.sizeOf(context).width > 500 ? 420 : null,
+        margin: MediaQuery.sizeOf(context).width <= 500
+            ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
+            : null,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        action: (actionLabel != null && onAction != null)
+            ? SnackBarAction(
+                label: actionLabel,
+                onPressed: onAction,
+              )
+            : null,
+      ),
+    );
+  }
+
+  void _safeUndo() {
+    final editing = FocusManager.instance.primaryFocus?.context;
+    if (editing != null &&
+        (editing.widget is EditableText ||
+            editing.findAncestorWidgetOfExactType<EditableText>() != null)) {
+      return;
+    }
+    _undo();
+  }
+
+  void _safeRedo() {
+    final editing = FocusManager.instance.primaryFocus?.context;
+    if (editing != null &&
+        (editing.widget is EditableText ||
+            editing.findAncestorWidgetOfExactType<EditableText>() != null)) {
+      return;
+    }
+    _redo();
+  }
+
   Future<void> _undo() async {
     final message = await _interactionController.undo(ref.read(appControllerProvider));
     if (message != null && mounted) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: const Duration(seconds: 4),
-          action: _interactionController.canRedo
-              ? SnackBarAction(
-                  label: 'Redo',
-                  onPressed: _redo,
-                )
-              : null,
-        ),
+      _showCalendarNotification(
+        message,
+        actionLabel: _interactionController.canRedo ? 'Redo' : null,
+        onAction: _interactionController.canRedo ? _redo : null,
       );
     }
   }
@@ -325,18 +390,10 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
   Future<void> _redo() async {
     final message = await _interactionController.redo(ref.read(appControllerProvider));
     if (message != null && mounted) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: const Duration(seconds: 4),
-          action: _interactionController.canUndo
-              ? SnackBarAction(
-                  label: 'Undo',
-                  onPressed: _undo,
-                )
-              : null,
-        ),
+      _showCalendarNotification(
+        message,
+        actionLabel: _interactionController.canUndo ? 'Undo' : null,
+        onAction: _interactionController.canUndo ? _undo : null,
       );
     }
   }
@@ -345,16 +402,10 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
     final appCtrl = ref.read(appControllerProvider);
     final summary = await _interactionController.commit(appCtrl);
     if (summary != null && mounted) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(summary),
-          duration: const Duration(seconds: 4),
-          action: SnackBarAction(
-            label: 'Undo',
-            onPressed: _undo,
-          ),
-        ),
+      _showCalendarNotification(
+        summary,
+        actionLabel: 'Undo',
+        onAction: _undo,
       );
     }
   }
@@ -545,10 +596,13 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
         const SingleActivator(LogicalKeyboardKey.escape): () {
           _interactionController.cancel();
         },
+        const SingleActivator(LogicalKeyboardKey.keyZ, control: true): _safeUndo,
+        const SingleActivator(LogicalKeyboardKey.keyZ, control: true, shift: true): _safeRedo,
+        const SingleActivator(LogicalKeyboardKey.keyY, control: true): _safeRedo,
       },
-      child: SettingsHistoryScope(
-        undo: _undo,
-        redo: _redo,
+      child: Focus(
+        focusNode: _calendarFocusNode,
+        autofocus: true,
         child: Column(
           children: [
         Padding(
@@ -674,26 +728,59 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                 icon: const Icon(Icons.auto_fix_high),
                 label: const Text('Reschedule'),
               ),
-              IconButton(
-                tooltip: 'Undo calendar change (Ctrl+Z)',
-                onPressed: _interactionController.canUndo ? _undo : null,
-                icon: const Icon(Icons.undo),
-              ),
-              IconButton(
-                tooltip: 'Redo calendar change (Ctrl+Shift+Z)',
-                onPressed: _interactionController.canRedo ? _redo : null,
-                icon: const Icon(Icons.redo),
-              ),
-              IconButton(
-                tooltip: _useLegacy
-                    ? 'Switch to interactive timeline'
-                    : 'Switch to legacy calendar presentation',
-                icon: Icon(
-                  _useLegacy
-                      ? Icons.view_timeline
-                      : Icons.view_timeline_outlined,
-                ),
-                onPressed: () => setState(() => _useLegacy = !_useLegacy),
+              // Calendar history and presentation controls grouped atomically
+              ListenableBuilder(
+                listenable: _interactionController,
+                builder: (context, _) {
+                  final scheme = Theme.of(context).colorScheme;
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: scheme.outlineVariant.withValues(alpha: 0.35),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Undo calendar change (Ctrl+Z)',
+                          visualDensity: VisualDensity.compact,
+                          iconSize: 18,
+                          onPressed: _interactionController.canUndo ? _undo : null,
+                          icon: const Icon(Icons.undo),
+                        ),
+                        IconButton(
+                          tooltip: 'Redo calendar change (Ctrl+Shift+Z, Ctrl+Y)',
+                          visualDensity: VisualDensity.compact,
+                          iconSize: 18,
+                          onPressed: _interactionController.canRedo ? _redo : null,
+                          icon: const Icon(Icons.redo),
+                        ),
+                        Container(
+                          width: 1,
+                          height: 18,
+                          color: scheme.outlineVariant.withValues(alpha: 0.4),
+                        ),
+                        IconButton(
+                          tooltip: _useLegacy
+                              ? 'Switch to interactive timeline'
+                              : 'Switch to legacy calendar presentation',
+                          visualDensity: VisualDensity.compact,
+                          iconSize: 18,
+                          icon: Icon(
+                            _useLegacy
+                                ? Icons.view_timeline
+                                : Icons.view_timeline_outlined,
+                          ),
+                          onPressed: () => setState(() => _useLegacy = !_useLegacy),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -708,108 +795,113 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                   if (pointerSignal is PointerScrollEvent) {
                     final isCtrl = HardwareKeyboard.instance.isControlPressed;
                     if (isCtrl) {
-                      final targetMode = _zoomController.handlePointerScroll(
-                        scrollDeltaY: pointerSignal.scrollDelta.dy,
-                        currentMode: mode,
-                        isControlPressed: true,
-                      );
-                      if (targetMode != null && targetMode != mode) {
-                        final anchorDate = _resolveAnchorDate(
-                          pointerSignal.localPosition,
-                          bodySize,
+                      GestureBinding.instance.pointerSignalResolver.register(pointerSignal, (event) {
+                        final targetMode = _zoomController.handlePointerScroll(
+                          scrollDeltaY: pointerSignal.scrollDelta.dy,
+                          currentMode: mode,
+                          isControlPressed: true,
                         );
-                        setState(() {
-                          selected = anchorDate;
-                          mode = targetMode;
-                        });
-                        ref
-                            .read(appControllerProvider)
-                            .setLastCalendarMode(targetMode.name);
-                        _loadSelectedMonth();
-                      }
+                        if (targetMode != null && targetMode != mode) {
+                          final anchorDate = _resolveAnchorDate(
+                            pointerSignal.localPosition,
+                            bodySize,
+                          );
+                          setState(() {
+                            selected = anchorDate;
+                            mode = targetMode;
+                          });
+                          ref
+                              .read(appControllerProvider)
+                              .setLastCalendarMode(targetMode.name);
+                          _loadSelectedMonth();
+                        }
+                      });
                     }
                   }
                 },
-                child: _useLegacy
-                    ? switch (mode) {
-                        CalendarMode.day => _dayList(controller, day),
-                        CalendarMode.week => _weekGrid(controller),
-                        CalendarMode.month => _monthGrid(controller),
-                      }
-                    : switch (mode) {
-                        CalendarMode.day => CalendarDayView(
-                            dayDate: day,
-                            items: _buildCalendarItems(controller, day),
-                            config: _config,
-                            interactionController: _interactionController,
-                            onItemTap: _handleCalendarItemTap,
-                            onSlotSecondaryTap: _showCreateMenu,
-                            alarmRules: controller.alarmRules,
-                            onInteractionFinished: _handleInteractionFinished,
-                          ),
-                        CalendarMode.week => LayoutBuilder(
-                            builder: (context, bounds) {
-                              if (bounds.maxWidth <
-                                  650 *
-                                      MediaQuery.textScalerOf(context)
-                                          .scale(14) /
-                                      14) {
-                                return _weekGrid(controller);
-                              }
-                              return CalendarWeekView(
-                                weekStart: weekStart,
-                                itemsByDay: _buildWeekItemsByDay(controller),
-                                config: _config,
-                                interactionController: _interactionController,
-                                onItemTap: _handleCalendarItemTap,
-                                onSlotSecondaryTap: _showCreateMenu,
-                                onDayHeaderTap: (date) {
-                                  setState(() {
-                                    selected = date;
-                                    mode = CalendarMode.day;
-                                  });
-                                  ref
-                                      .read(appControllerProvider)
-                                      .setLastCalendarMode('day');
-                                },
-                                alarmRules: controller.alarmRules,
-                                onInteractionFinished:
-                                    _handleInteractionFinished,
-                              );
-                            },
-                          ),
-                        CalendarMode.month => CalendarMonthView(
-                            selectedDate: day,
-                            firstWeekday:
-                                ref.read(appControllerProvider).firstWeekday,
-                            itemsByDay: _buildMonthItemsByDay(controller),
-                            config: _config,
-                            onItemTap: _handleCalendarItemTap,
-                            onDayTap: _showDayPreview,
-                            onItemDroppedOnDate: _handleMonthItemDropped,
-                            onShowDay: (date) {
-                              setState(() {
-                                selected = date;
-                                mode = CalendarMode.day;
-                              });
-                              ref
-                                  .read(appControllerProvider)
-                                  .setLastCalendarMode('day');
-                            },
-                            onShowWeek: (date) {
-                              setState(() {
-                                selected = date;
-                                mode = CalendarMode.week;
-                              });
-                              ref
-                                  .read(appControllerProvider)
-                                  .setLastCalendarMode('week');
-                            },
-                            onAddEvent: (date) => _editEvent(null, date),
-                            onAddTask: widget.onAddTask,
-                            onAddSession: (date) => _editSession(),
-                          ),
-                      },
+                child: ScrollConfiguration(
+                  behavior: const CalendarScrollBehavior(),
+                  child: _useLegacy
+                      ? switch (mode) {
+                          CalendarMode.day => _dayList(controller, day),
+                          CalendarMode.week => _weekGrid(controller),
+                          CalendarMode.month => _monthGrid(controller),
+                        }
+                      : switch (mode) {
+                          CalendarMode.day => CalendarDayView(
+                              dayDate: day,
+                              items: _buildCalendarItems(controller, day),
+                              config: _config,
+                              interactionController: _interactionController,
+                              onItemTap: _handleCalendarItemTap,
+                              onSlotSecondaryTap: _showCreateMenu,
+                              alarmRules: controller.alarmRules,
+                              onInteractionFinished: _handleInteractionFinished,
+                            ),
+                          CalendarMode.week => LayoutBuilder(
+                              builder: (context, bounds) {
+                                if (bounds.maxWidth <
+                                    650 *
+                                        MediaQuery.textScalerOf(context)
+                                            .scale(14) /
+                                        14) {
+                                  return _weekGrid(controller);
+                                }
+                                return CalendarWeekView(
+                                  weekStart: weekStart,
+                                  itemsByDay: _buildWeekItemsByDay(controller),
+                                  config: _config,
+                                  interactionController: _interactionController,
+                                  onItemTap: _handleCalendarItemTap,
+                                  onSlotSecondaryTap: _showCreateMenu,
+                                  onDayHeaderTap: (date) {
+                                    setState(() {
+                                      selected = date;
+                                      mode = CalendarMode.day;
+                                    });
+                                    ref
+                                        .read(appControllerProvider)
+                                        .setLastCalendarMode('day');
+                                  },
+                                  alarmRules: controller.alarmRules,
+                                  onInteractionFinished:
+                                      _handleInteractionFinished,
+                                );
+                              },
+                            ),
+                          CalendarMode.month => CalendarMonthView(
+                              selectedDate: day,
+                              firstWeekday:
+                                  ref.read(appControllerProvider).firstWeekday,
+                              itemsByDay: _buildMonthItemsByDay(controller),
+                              config: _config,
+                              onItemTap: _handleCalendarItemTap,
+                              onDayTap: _showDayPreview,
+                              onItemDroppedOnDate: _handleMonthItemDropped,
+                              onShowDay: (date) {
+                                setState(() {
+                                  selected = date;
+                                  mode = CalendarMode.day;
+                                });
+                                ref
+                                    .read(appControllerProvider)
+                                    .setLastCalendarMode('day');
+                              },
+                              onShowWeek: (date) {
+                                setState(() {
+                                  selected = date;
+                                  mode = CalendarMode.week;
+                                });
+                                ref
+                                    .read(appControllerProvider)
+                                    .setLastCalendarMode('week');
+                              },
+                              onAddEvent: (date) => _editEvent(null, date),
+                              onAddTask: widget.onAddTask,
+                              onAddSession: (date) => _editSession(),
+                            ),
+                        },
+                ),
               );
             },
           ),

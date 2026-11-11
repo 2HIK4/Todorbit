@@ -133,7 +133,7 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 7,
-                  mainAxisExtent: cellHeight.clamp(80.0, double.infinity),
+                  mainAxisExtent: cellHeight.clamp(90.0, double.infinity),
                 ),
                 itemCount: cellCount,
                 itemBuilder: (context, index) {
@@ -225,7 +225,7 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
                                             ? (previewCount - 1).clamp(0, 30)
                                             : previewCount,
                                       ))
-                                        _buildMonthItem(item, scheme),
+                                        _buildMonthItem(item, scheme, date),
                                       if (items.length > previewCount)
                                         TextButton(
                                           style: TextButton.styleFrom(
@@ -258,22 +258,26 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
     );
   }
 
-  Widget _buildMonthItem(CalendarItem item, ColorScheme scheme) {
+  Widget _buildMonthItem(CalendarItem item, ColorScheme scheme, DateTime date) {
     final accent = widget.colorResolver != null
         ? widget.colorResolver!(item)
         : (item.colorValue != null ? Color(item.colorValue!) : scheme.primary);
 
     final hasParent = item.parentTitle != null;
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final cardHeight = (hasParent ? 34.0 : 28.0) * textScale.clamp(1.0, 1.4);
+
     final itemWidget = Container(
-      height: hasParent ? 28 : 22,
-      margin: const EdgeInsets.only(bottom: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      width: double.infinity,
+      height: cardHeight,
+      margin: const EdgeInsets.only(bottom: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: Color.lerp(scheme.surface, accent, item.isCancelled ? 0.12 : 0.18),
         border: Border(
           left: BorderSide(
             color: accent,
-            width: 2.5,
+            width: 3.0,
           ),
         ),
         borderRadius: BorderRadius.circular(4),
@@ -286,10 +290,10 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
                 : item.kind == CalendarItemKind.session
                 ? Icons.schedule_outlined
                 : Icons.task_alt_outlined,
-            size: 10,
+            size: 12,
             color: scheme.onSurfaceVariant,
           ),
-          const SizedBox(width: 3),
+          const SizedBox(width: 4),
           Expanded(
             child: hasParent
                 ? Column(
@@ -301,7 +305,7 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -310,7 +314,7 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 9,
+                          fontSize: 10,
                           color: scheme.onSurfaceVariant,
                         ),
                       ),
@@ -321,7 +325,8 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
                       color: item.isCancelled ? scheme.outline : scheme.onSurface,
                       decoration: item.isCancelled ? TextDecoration.lineThrough : null,
                     ),
@@ -333,15 +338,16 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
 
     return Tooltip(
       message: item.isCancelled ? 'Cancelled: ${item.title}' : item.title,
-      child: LongPressDraggable<CalendarItem>(
+      child: Draggable<CalendarItem>(
         data: item,
-        delay: const Duration(milliseconds: 180),
+        hitTestBehavior: HitTestBehavior.opaque,
+        dragAnchorStrategy: pointerDragAnchorStrategy,
         feedback: Material(
           elevation: 4,
           borderRadius: BorderRadius.circular(4),
           color: Colors.transparent,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
             decoration: BoxDecoration(
               color: scheme.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(4),
@@ -350,7 +356,7 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.drag_indicator, size: 12, color: accent),
+                Icon(Icons.drag_indicator, size: 14, color: accent),
                 const SizedBox(width: 4),
                 Text(
                   item.title,
@@ -368,8 +374,11 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
           opacity: 0.3,
           child: itemWidget,
         ),
-        child: InkWell(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onTap: () => widget.onItemTap(item),
+          onSecondaryTapDown: (details) =>
+              _showContextMenu(item.startsAt ?? date, details.globalPosition),
           child: itemWidget,
         ),
       ),

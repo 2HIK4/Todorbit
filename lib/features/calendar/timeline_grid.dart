@@ -22,6 +22,7 @@ class TimelineDayColumn extends StatefulWidget {
     this.alarmRules = const [],
     this.colorResolver,
     this.scrollController,
+    this.resolveDayAt,
     this.onInteractionFinished,
   });
 
@@ -34,6 +35,7 @@ class TimelineDayColumn extends StatefulWidget {
   final List<AlarmRule> alarmRules;
   final Color Function(CalendarItem item)? colorResolver;
   final ScrollController? scrollController;
+  final DateTime Function(Offset globalPosition)? resolveDayAt;
   final Future<void> Function()? onInteractionFinished;
 
   @override
@@ -42,6 +44,7 @@ class TimelineDayColumn extends StatefulWidget {
 
 class _TimelineDayColumnState extends State<TimelineDayColumn> {
   Timer? _autoScrollTimer;
+  Offset? _lastGlobalPointerPosition;
 
   @override
   void dispose() {
@@ -49,29 +52,56 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
     super.dispose();
   }
 
-  void _checkAutoScroll(Offset localPosition, double viewportHeight) {
+  void _checkAutoScroll(Offset globalPosition) {
     if (widget.scrollController == null || !widget.scrollController!.hasClients) return;
     final scroller = widget.scrollController!;
+    final renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null || !renderBox.hasSize) return;
 
-    if (localPosition.dy < widget.config.autoScrollMargin) {
+    final localInColumn = renderBox.globalToLocal(globalPosition);
+    final viewportHeight = scroller.position.viewportDimension;
+    final scrollOffset = scroller.offset;
+    final viewportY = localInColumn.dy - scrollOffset;
+
+    final margin = widget.config.autoScrollMargin;
+    if (viewportY >= 0 && viewportY < margin) {
       if (_autoScrollTimer == null || !_autoScrollTimer!.isActive) {
         _autoScrollTimer = Timer.periodic(const Duration(milliseconds: 30), (_) {
           if (!scroller.hasClients) return;
           final target = (scroller.offset - widget.config.autoScrollSpeed).clamp(0.0, scroller.position.maxScrollExtent);
+          if (target == scroller.offset) return;
           scroller.jumpTo(target);
+          _onAutoScrollTick();
         });
       }
-    } else if (localPosition.dy > viewportHeight - widget.config.autoScrollMargin) {
+    } else if (viewportY > viewportHeight - margin && viewportY <= viewportHeight + 10) {
       if (_autoScrollTimer == null || !_autoScrollTimer!.isActive) {
         _autoScrollTimer = Timer.periodic(const Duration(milliseconds: 30), (_) {
           if (!scroller.hasClients) return;
           final target = (scroller.offset + widget.config.autoScrollSpeed).clamp(0.0, scroller.position.maxScrollExtent);
+          if (target == scroller.offset) return;
           scroller.jumpTo(target);
+          _onAutoScrollTick();
         });
       }
     } else {
       _autoScrollTimer?.cancel();
     }
+  }
+
+  void _onAutoScrollTick() {
+    if (_lastGlobalPointerPosition == null) return;
+    final renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null || !renderBox.hasSize) return;
+    final localInColumn = renderBox.globalToLocal(_lastGlobalPointerPosition!);
+    final targetDay = widget.resolveDayAt != null
+        ? widget.resolveDayAt!(_lastGlobalPointerPosition!)
+        : widget.dayDate;
+    widget.interactionController.updatePointer(
+      _lastGlobalPointerPosition!,
+      targetDay,
+      localInColumn.dy,
+    );
   }
 
   @override
@@ -179,28 +209,41 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
   Widget _buildCurrentTimeLine(CalendarLayoutEngine engine, ColorScheme scheme, double width) {
     final now = DateTime.now();
     final y = engine.timeToY(now, widget.dayDate);
+    final timeStr = _formatTime(now);
     return Positioned(
-      top: y - 1,
+      top: y - 8,
       left: 0,
       right: 0,
       child: IgnorePointer(
-        child: Row(
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: scheme.error,
-                shape: BoxShape.circle,
+        child: Tooltip(
+          message: 'Current time ($timeStr)',
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                decoration: BoxDecoration(
+                  color: scheme.primary,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  timeStr,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: scheme.onPrimary,
+                  ),
+                ),
               ),
-            ),
-            Expanded(
-              child: Container(
-                height: 2,
-                color: scheme.error,
+              const SizedBox(width: 2),
+              Expanded(
+                child: Container(
+                  height: 1.5,
+                  color: scheme.primary,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -267,21 +310,37 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                       behavior: HitTestBehavior.opaque,
                       onTap: () => widget.onItemTap(item),
                       onPanStart: (details) {
+                        _lastGlobalPointerPosition = details.globalPosition;
+                        final renderBox = context.findRenderObject() as RenderBox?;
+                        final timelineY = renderBox != null && renderBox.hasSize
+                            ? renderBox.globalToLocal(details.globalPosition).dy
+                            : null;
                         widget.interactionController.startMove(
                           item: item,
                           dayDate: widget.dayDate,
                           pointerLocal: details.globalPosition,
+                          pointerTimelineY: timelineY,
                         );
                       },
                       onPanUpdate: (details) {
+                        _lastGlobalPointerPosition = details.globalPosition;
+                        final renderBox = context.findRenderObject() as RenderBox?;
+                        final timelineY = renderBox != null && renderBox.hasSize
+                            ? renderBox.globalToLocal(details.globalPosition).dy
+                            : null;
+                        final targetDay = widget.resolveDayAt != null
+                            ? widget.resolveDayAt!(details.globalPosition)
+                            : widget.dayDate;
                         widget.interactionController.updatePointer(
                           details.globalPosition,
-                          widget.dayDate,
+                          targetDay,
+                          timelineY,
                         );
-                        _checkAutoScroll(details.localPosition, MediaQuery.sizeOf(context).height);
+                        _checkAutoScroll(details.globalPosition);
                       },
                       onPanEnd: (_) async {
                         _autoScrollTimer?.cancel();
+                        _lastGlobalPointerPosition = null;
                         await widget.onInteractionFinished?.call();
                       },
                       child: Padding(
@@ -308,21 +367,34 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                         child: GestureDetector(
                           behavior: HitTestBehavior.translucent,
                           onVerticalDragStart: (details) {
+                            _lastGlobalPointerPosition = details.globalPosition;
+                            final renderBox = context.findRenderObject() as RenderBox?;
+                            final timelineY = renderBox != null && renderBox.hasSize
+                                ? renderBox.globalToLocal(details.globalPosition).dy
+                                : null;
                             widget.interactionController.startResizeTop(
                               item: item,
                               dayDate: widget.dayDate,
                               pointerLocal: details.globalPosition,
+                              pointerTimelineY: timelineY,
                             );
                           },
                           onVerticalDragUpdate: (details) {
+                            _lastGlobalPointerPosition = details.globalPosition;
+                            final renderBox = context.findRenderObject() as RenderBox?;
+                            final timelineY = renderBox != null && renderBox.hasSize
+                                ? renderBox.globalToLocal(details.globalPosition).dy
+                                : null;
                             widget.interactionController.updatePointer(
                               details.globalPosition,
                               widget.dayDate,
+                              timelineY,
                             );
-                            _checkAutoScroll(details.localPosition, MediaQuery.sizeOf(context).height);
+                            _checkAutoScroll(details.globalPosition);
                           },
                           onVerticalDragEnd: (_) async {
                             _autoScrollTimer?.cancel();
+                            _lastGlobalPointerPosition = null;
                             await widget.onInteractionFinished?.call();
                           },
                           child: const SizedBox.expand(),
@@ -342,21 +414,34 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                         child: GestureDetector(
                           behavior: HitTestBehavior.translucent,
                           onVerticalDragStart: (details) {
+                            _lastGlobalPointerPosition = details.globalPosition;
+                            final renderBox = context.findRenderObject() as RenderBox?;
+                            final timelineY = renderBox != null && renderBox.hasSize
+                                ? renderBox.globalToLocal(details.globalPosition).dy
+                                : null;
                             widget.interactionController.startResizeBottom(
                               item: item,
                               dayDate: widget.dayDate,
                               pointerLocal: details.globalPosition,
+                              pointerTimelineY: timelineY,
                             );
                           },
                           onVerticalDragUpdate: (details) {
+                            _lastGlobalPointerPosition = details.globalPosition;
+                            final renderBox = context.findRenderObject() as RenderBox?;
+                            final timelineY = renderBox != null && renderBox.hasSize
+                                ? renderBox.globalToLocal(details.globalPosition).dy
+                                : null;
                             widget.interactionController.updatePointer(
                               details.globalPosition,
                               widget.dayDate,
+                              timelineY,
                             );
-                            _checkAutoScroll(details.localPosition, MediaQuery.sizeOf(context).height);
+                            _checkAutoScroll(details.globalPosition);
                           },
                           onVerticalDragEnd: (_) async {
                             _autoScrollTimer?.cancel();
+                            _lastGlobalPointerPosition = null;
                             await widget.onInteractionFinished?.call();
                           },
                           child: const SizedBox.expand(),

@@ -40,11 +40,16 @@ class CalendarWeekView extends StatefulWidget {
 
 class _CalendarWeekViewState extends State<CalendarWeekView> {
   final ScrollController _verticalScrollController = ScrollController();
-  final ScrollController _horizontalScrollController = ScrollController();
+  final ScrollController _headerScrollController = ScrollController();
+  final ScrollController _gridHorizontalScrollController = ScrollController();
+  final GlobalKey _gridKey = GlobalKey();
+  bool _isSyncingScroll = false;
 
   @override
   void initState() {
     super.initState();
+    _headerScrollController.addListener(_syncHeaderToGrid);
+    _gridHorizontalScrollController.addListener(_syncGridToHeader);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_verticalScrollController.hasClients) {
         final initialY = widget.config.initialScrollHour * widget.config.hourHeight;
@@ -55,11 +60,38 @@ class _CalendarWeekViewState extends State<CalendarWeekView> {
     });
   }
 
+  void _syncHeaderToGrid() {
+    if (!_isSyncingScroll && _gridHorizontalScrollController.hasClients) {
+      _isSyncingScroll = true;
+      _gridHorizontalScrollController.jumpTo(_headerScrollController.offset);
+      _isSyncingScroll = false;
+    }
+  }
+
+  void _syncGridToHeader() {
+    if (!_isSyncingScroll && _headerScrollController.hasClients) {
+      _isSyncingScroll = true;
+      _headerScrollController.jumpTo(_gridHorizontalScrollController.offset);
+      _isSyncingScroll = false;
+    }
+  }
+
   @override
   void dispose() {
+    _headerScrollController.removeListener(_syncHeaderToGrid);
+    _gridHorizontalScrollController.removeListener(_syncGridToHeader);
     _verticalScrollController.dispose();
-    _horizontalScrollController.dispose();
+    _headerScrollController.dispose();
+    _gridHorizontalScrollController.dispose();
     super.dispose();
+  }
+
+  DateTime _resolveDayAt(Offset globalPosition, List<DateTime> days, double columnWidth) {
+    final renderBox = _gridKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null || !renderBox.hasSize) return days.first;
+    final local = renderBox.globalToLocal(globalPosition);
+    final colIndex = (local.dx / columnWidth).floor().clamp(0, days.length - 1);
+    return days[colIndex];
   }
 
   List<DateTime> get _weekDays => List.generate(7, (index) {
@@ -97,7 +129,7 @@ class _CalendarWeekViewState extends State<CalendarWeekView> {
                 const SizedBox(width: timeGutterWidth),
                 Expanded(
                   child: SingleChildScrollView(
-                    controller: needsHorizontalScroll ? _horizontalScrollController : null,
+                    controller: needsHorizontalScroll ? _headerScrollController : null,
                     scrollDirection: Axis.horizontal,
                     physics: needsHorizontalScroll ? null : const NeverScrollableScrollPhysics(),
                     child: SizedBox(
@@ -159,9 +191,11 @@ class _CalendarWeekViewState extends State<CalendarWeekView> {
                     // 7 Day columns
                     Expanded(
                       child: SingleChildScrollView(
+                        controller: needsHorizontalScroll ? _gridHorizontalScrollController : null,
                         scrollDirection: Axis.horizontal,
                         physics: needsHorizontalScroll ? null : const NeverScrollableScrollPhysics(),
                         child: SizedBox(
+                          key: _gridKey,
                           width: totalGridWidth,
                           height: config.totalGridHeight,
                           child: Row(
@@ -187,6 +221,7 @@ class _CalendarWeekViewState extends State<CalendarWeekView> {
                                     alarmRules: widget.alarmRules,
                                     colorResolver: widget.colorResolver,
                                     scrollController: _verticalScrollController,
+                                    resolveDayAt: (globalPos) => _resolveDayAt(globalPos, days, columnWidth),
                                     onInteractionFinished: widget.onInteractionFinished,
                                   ),
                                 ),
