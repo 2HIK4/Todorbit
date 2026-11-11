@@ -1,5 +1,18 @@
 # Progress
 
+## Beta 15 experimental release published (2026-11-11)
+
+Tag `v1.0.19-beta.15` (commit `931f71b`, version `1.0.19-beta.15+38`, Schema 28).
+Published experimental GitHub pre-release with Windows installer, portable ZIP,
+production-signed Android APK, update metadata, and SHA-256 checksums:
+- Redesigned interactive calendar with accurate Day and Week time grids, collision avoidance lanes, 15-minute snapping, live drag & resize feedback.
+- Cross-day dragging in Week view and date dragging in Month view with context actions.
+- Cursor-anchored zoom transitions (Month ↔ Week ↔ Day) and complete keyboard navigation.
+- Desktop-grade bidirectional Undo/Redo (Ctrl+Z / Ctrl+Shift+Z / toolbar / SnackBar) with text-focus bypass and safe Redo invalidation.
+- Legacy calendar toggle switch preserved in calendar toolbar for instant reversible fallback.
+- Mandatory GitHub Actions CI passed: `Windows checks` run 43042071223 (19m26s), `Android validation` run 43027408713 (9m39s), `Website preview checks` run 43042071045 (9s).
+- Full receipt recorded in [TODORBIT_BETA_15_PUBLICATION.md](TODORBIT_BETA_15_PUBLICATION.md).
+
 ## Calendar Undo & Redo Integration Complete (2026-11-11)
 
 Feature branch `feature/interactive-calendar`.
