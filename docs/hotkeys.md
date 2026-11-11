@@ -30,6 +30,7 @@ When the Calendar view has focus:
 | Ctrl+3 | Month view |
 | T | Jump to today (when not typing in a text field) |
 | Ctrl+Z | Undo last calendar reschedule or resize |
+| Ctrl+Shift+Z, Ctrl+Y | Redo last undone calendar reschedule or resize |
 | Escape | Cancel active drag or resize gesture |
 | Ctrl+Wheel Up | Zoom in (Month → Week → Day anchored at pointer) |
 | Ctrl+Wheel Down | Zoom out (Day → Week → Month anchored at pointer) |

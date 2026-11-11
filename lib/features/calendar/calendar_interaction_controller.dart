@@ -25,16 +25,22 @@ class CalendarUndoRecord {
     required this.kind,
     required this.description,
     this.previousEvent,
+    this.nextEventDraft,
     this.previousSession,
+    this.nextSessionDraft,
     this.previousTask,
+    this.nextTaskDraft,
     this.isOccurrence = false,
   });
 
   final CalendarUndoKind kind;
   final String description;
   final FixedEvent? previousEvent;
+  final EventDraft? nextEventDraft;
   final WorkSession? previousSession;
+  final SessionDraft? nextSessionDraft;
   final LifeTask? previousTask;
+  final TaskDraft? nextTaskDraft;
   final bool isOccurrence;
 }
 
@@ -69,16 +75,30 @@ class CalendarInteractionController extends ChangeNotifier {
   Offset? pointerCurrentLocal;
   bool isDragging = false;
 
-  // Undo stack
+  // History stacks
   final List<CalendarUndoRecord> _undoStack = [];
-  bool get canUndo => _undoStack.isNotEmpty;
+  final List<CalendarUndoRecord> _redoStack = [];
+  bool _isHistoryBusy = false;
+
+  bool get canUndo => _undoStack.isNotEmpty && !_isHistoryBusy && !isDragging;
+  bool get canRedo => _redoStack.isNotEmpty && !_isHistoryBusy && !isDragging;
+  bool get isHistoryBusy => _isHistoryBusy;
+
+  int get undoCount => _undoStack.length;
+  int get redoCount => _redoStack.length;
+
+  void clearHistory() {
+    _undoStack.clear();
+    _redoStack.clear();
+    notifyListeners();
+  }
 
   void startMove({
     required CalendarItem item,
     required DateTime dayDate,
     required Offset pointerLocal,
   }) {
-    if (!config.enableDragMove || !item.isTimed) return;
+    if (_isHistoryBusy || !config.enableDragMove || !item.isTimed) return;
     gestureKind = CalendarGestureKind.move;
     activeItem = item;
     originStartsAt = item.startsAt;
@@ -98,7 +118,7 @@ class CalendarInteractionController extends ChangeNotifier {
     required DateTime dayDate,
     required Offset pointerLocal,
   }) {
-    if (!config.enableResize || !item.isTimed) return;
+    if (_isHistoryBusy || !config.enableResize || !item.isTimed) return;
     gestureKind = CalendarGestureKind.resizeStart;
     activeItem = item;
     originStartsAt = item.startsAt;
@@ -118,7 +138,7 @@ class CalendarInteractionController extends ChangeNotifier {
     required DateTime dayDate,
     required Offset pointerLocal,
   }) {
-    if (!config.enableResize || !item.isTimed) return;
+    if (_isHistoryBusy || !config.enableResize || !item.isTimed) return;
     gestureKind = CalendarGestureKind.resizeEnd;
     activeItem = item;
     originStartsAt = item.startsAt;
@@ -137,7 +157,7 @@ class CalendarInteractionController extends ChangeNotifier {
     required CalendarItem item,
     required DateTime originDate,
   }) {
-    if (!config.enableCrossDayMove) return;
+    if (_isHistoryBusy || !config.enableCrossDayMove) return;
     gestureKind = CalendarGestureKind.dateDrag;
     activeItem = item;
     activeDayDate = originDate;
@@ -169,12 +189,15 @@ class CalendarInteractionController extends ChangeNotifier {
         : (activeDayDate ?? hoveredDayDate ?? DateTime.now());
     proposedDayDate = targetDay;
 
-    final origStart = originStartsAt!;
-    final origEnd = originEndsAt!;
-    final originalDuration = origEnd.difference(origStart);
+    final origStart = originStartsAt;
+    final origEnd = originEndsAt;
+    final originalDuration = (origStart != null && origEnd != null)
+        ? origEnd.difference(origStart)
+        : Duration.zero;
 
     switch (gestureKind) {
       case CalendarGestureKind.move:
+        if (origStart == null || origEnd == null) break;
         // Calculate proposed start from delta Y
         final origStartY = engine.timeToY(origStart);
         final proposedY = origStartY + totalDelta.dy;
@@ -195,6 +218,7 @@ class CalendarInteractionController extends ChangeNotifier {
         break;
 
       case CalendarGestureKind.resizeStart:
+        if (origStart == null || origEnd == null) break;
         // Top edge: move start time, keep end time fixed
         final origStartY = engine.timeToY(origStart);
         final proposedY = origStartY + totalDelta.dy;
@@ -212,6 +236,7 @@ class CalendarInteractionController extends ChangeNotifier {
         break;
 
       case CalendarGestureKind.resizeEnd:
+        if (origStart == null || origEnd == null) break;
         // Bottom edge: move end time, keep start time fixed
         final origEndY = engine.timeToY(origEnd, activeDayDate);
         final proposedY = origEndY + totalDelta.dy;
@@ -232,9 +257,18 @@ class CalendarInteractionController extends ChangeNotifier {
         // Month view date drag: update target date while preserving clock time
         if (hoveredDayDate != null) {
           proposedDayDate = hoveredDayDate;
-          final dayDiff = hoveredDayDate.difference(DateTime(activeDayDate!.year, activeDayDate!.month, activeDayDate!.day)).inDays;
-          proposedStartsAt = origStart.add(Duration(days: dayDiff));
-          proposedEndsAt = origEnd.add(Duration(days: dayDiff));
+          if (origStart != null && origEnd != null) {
+            proposedStartsAt = DateTime(
+              hoveredDayDate.year,
+              hoveredDayDate.month,
+              hoveredDayDate.day,
+              origStart.hour,
+              origStart.minute,
+              origStart.second,
+              origStart.millisecond,
+            );
+            proposedEndsAt = proposedStartsAt!.add(originalDuration);
+          }
         }
         break;
 
@@ -291,6 +325,26 @@ class CalendarInteractionController extends ChangeNotifier {
 
     String? summary;
 
+    final String actionDesc;
+    switch (gestureKind) {
+      case CalendarGestureKind.resizeStart:
+        actionDesc = 'start time of "${item.title}"';
+        break;
+      case CalendarGestureKind.resizeEnd:
+        actionDesc = 'end time of "${item.title}"';
+        break;
+      case CalendarGestureKind.dateDrag:
+        final targetStr = nextDate != null
+            ? _formatDateStr(nextDate)
+            : _formatDateStr(nextStart!);
+        actionDesc = 'moving "${item.title}" to $targetStr';
+        break;
+      case CalendarGestureKind.move:
+      default:
+        actionDesc = 'moving "${item.title}"';
+        break;
+    }
+
     try {
       if (item.event != null) {
         final event = item.event!;
@@ -317,8 +371,9 @@ class CalendarInteractionController extends ChangeNotifier {
           _undoStack.add(
             CalendarUndoRecord(
               kind: CalendarUndoKind.event,
-              description: 'Moved "${event.title}"',
+              description: actionDesc,
               previousEvent: previousEvent,
+              nextEventDraft: draft,
               isOccurrence: true,
             ),
           );
@@ -327,13 +382,20 @@ class CalendarInteractionController extends ChangeNotifier {
           _undoStack.add(
             CalendarUndoRecord(
               kind: CalendarUndoKind.event,
-              description: 'Moved "${event.title}"',
+              description: actionDesc,
               previousEvent: previousEvent,
+              nextEventDraft: draft,
               isOccurrence: false,
             ),
           );
         }
-        summary = 'Moved "${event.title}" to ${_formatTime(nextStart)}';
+        _redoStack.clear();
+        notifyListeners();
+        summary = gestureKind == CalendarGestureKind.resizeEnd
+            ? 'Changed end time of "${event.title}" to ${_formatTime(nextEnd)}'
+            : gestureKind == CalendarGestureKind.resizeStart
+                ? 'Changed start time of "${event.title}" to ${_formatTime(nextStart)}'
+                : 'Moved "${event.title}" to ${_formatTime(nextStart)}';
       } else if (item.session != null) {
         final session = item.session!;
         final previousSession = session;
@@ -348,11 +410,18 @@ class CalendarInteractionController extends ChangeNotifier {
         _undoStack.add(
           CalendarUndoRecord(
             kind: CalendarUndoKind.session,
-            description: 'Rescheduled session',
+            description: actionDesc,
             previousSession: previousSession,
+            nextSessionDraft: draft,
           ),
         );
-        summary = 'Rescheduled work session to ${_formatTime(nextStart)}';
+        _redoStack.clear();
+        notifyListeners();
+        summary = gestureKind == CalendarGestureKind.resizeEnd
+            ? 'Changed end time of work session to ${_formatTime(nextEnd)}'
+            : gestureKind == CalendarGestureKind.resizeStart
+                ? 'Changed start time of work session to ${_formatTime(nextStart)}'
+                : 'Rescheduled work session to ${_formatTime(nextStart)}';
       } else if (item.task != null && nextDate != null) {
         final task = item.task!;
         final previousTask = task;
@@ -377,10 +446,13 @@ class CalendarInteractionController extends ChangeNotifier {
         _undoStack.add(
           CalendarUndoRecord(
             kind: CalendarUndoKind.task,
-            description: 'Moved task "${task.title}"',
+            description: actionDesc,
             previousTask: previousTask,
+            nextTaskDraft: draft,
           ),
         );
+        _redoStack.clear();
+        notifyListeners();
         summary = 'Moved "${task.title}" to $targetDateStr';
       }
     } finally {
@@ -393,9 +465,38 @@ class CalendarInteractionController extends ChangeNotifier {
   /// Reverts the most recent committed calendar change.
   Future<String?> undo(AppController controller) async {
     if (!canUndo) return null;
-    final record = _undoStack.removeLast();
+    _isHistoryBusy = true;
     notifyListeners();
+    final record = _undoStack.last;
+    try {
+      final summary = await _applyUndo(controller, record);
+      _undoStack.removeLast();
+      _redoStack.add(record);
+      return summary;
+    } finally {
+      _isHistoryBusy = false;
+      notifyListeners();
+    }
+  }
 
+  /// Reapplies the most recent undone calendar change.
+  Future<String?> redo(AppController controller) async {
+    if (!canRedo) return null;
+    _isHistoryBusy = true;
+    notifyListeners();
+    final record = _redoStack.last;
+    try {
+      final summary = await _applyRedo(controller, record);
+      _redoStack.removeLast();
+      _undoStack.add(record);
+      return summary;
+    } finally {
+      _isHistoryBusy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<String> _applyUndo(AppController controller, CalendarUndoRecord record) async {
     switch (record.kind) {
       case CalendarUndoKind.event:
         final prev = record.previousEvent!;
@@ -414,16 +515,17 @@ class CalendarInteractionController extends ChangeNotifier {
           reminderMinutes: prev.reminderMinutes,
           repeat: prev.repeat,
         );
-        // Find current instance
-        final current = controller.events.where((e) => e.id == prev.id).firstOrNull;
-        if (current != null) {
-          if (record.isOccurrence) {
-            await controller.updateEventOccurrence(current, draft);
-          } else {
+        if (record.isOccurrence) {
+          await controller.updateEventOccurrence(prev, draft);
+        } else {
+          final current = controller.events.where((e) => e.id == prev.id).firstOrNull;
+          if (current != null) {
             await controller.updateEvent(current, draft);
+          } else {
+            throw StateError('Event "${prev.title}" was not found in database.');
           }
         }
-        return 'Reverted "${prev.title}"';
+        return 'Undid ${record.description}';
 
       case CalendarUndoKind.session:
         final prev = record.previousSession!;
@@ -436,8 +538,10 @@ class CalendarInteractionController extends ChangeNotifier {
         final current = controller.sessions.where((s) => s.id == prev.id).firstOrNull;
         if (current != null) {
           await controller.updateSession(current, draft);
+        } else {
+          throw StateError('Work session was not found in database.');
         }
-        return 'Reverted work session';
+        return 'Undid ${record.description}';
 
       case CalendarUndoKind.task:
         final prev = record.previousTask!;
@@ -458,8 +562,49 @@ class CalendarInteractionController extends ChangeNotifier {
         final current = controller.tasks.where((t) => t.id == prev.id).firstOrNull;
         if (current != null) {
           await controller.updateTask(current, draft);
+        } else {
+          throw StateError('Task "${prev.title}" was not found in database.');
         }
-        return 'Reverted "${prev.title}"';
+        return 'Undid ${record.description}';
+    }
+  }
+
+  Future<String> _applyRedo(AppController controller, CalendarUndoRecord record) async {
+    switch (record.kind) {
+      case CalendarUndoKind.event:
+        final nextDraft = record.nextEventDraft!;
+        final prev = record.previousEvent!;
+        if (record.isOccurrence) {
+          await controller.updateEventOccurrence(prev, nextDraft);
+        } else {
+          final current = controller.events.where((e) => e.id == prev.id).firstOrNull;
+          if (current != null) {
+            await controller.updateEvent(current, nextDraft);
+          } else {
+            throw StateError('Event "${prev.title}" was not found in database.');
+          }
+        }
+        return 'Redid ${record.description}';
+
+      case CalendarUndoKind.session:
+        final nextDraft = record.nextSessionDraft!;
+        final current = controller.sessions.where((s) => s.id == record.previousSession!.id).firstOrNull;
+        if (current != null) {
+          await controller.updateSession(current, nextDraft);
+        } else {
+          throw StateError('Work session was not found in database.');
+        }
+        return 'Redid ${record.description}';
+
+      case CalendarUndoKind.task:
+        final nextDraft = record.nextTaskDraft!;
+        final current = controller.tasks.where((t) => t.id == record.previousTask!.id).firstOrNull;
+        if (current != null) {
+          await controller.updateTask(current, nextDraft);
+        } else {
+          throw StateError('Task "${record.previousTask!.title}" was not found in database.');
+        }
+        return 'Redid ${record.description}';
     }
   }
 

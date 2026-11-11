@@ -1,9 +1,33 @@
 # Persistent test run ledger
 
-## Interactive Calendar Redesign (2026-11-10)
+## Calendar Undo & Redo Integration Verification (2026-11-11)
+
+Feature branch `feature/interactive-calendar`. Complete Undo and Redo support for interactive calendar gestures and month drag & drop, with optimistic concurrency control, recurring occurrence isolation, task deadline preservation, editable text focus bypass, toolbar buttons, and reversible SnackBar actions.
+Runs:
+- `test/calendar_undo_redo_test.dart` (11/11 PASS):
+  1. Move FixedEvent -> Undo -> Redo restores and reapplies exact startsAt/endsAt times.
+  2. Resize top edge (startsAt) -> Undo -> Redo updates start time while fixing end time.
+  3. Resize bottom edge (endsAt) -> Undo -> Redo on WorkSession.
+  4. Month date drag & drop of task preserves deadlineDate across Undo & Redo while moving scheduledDate.
+  5. Month date drag & drop of event preserves clock time across Undo & Redo.
+  6. Multiple consecutive operations work in correct LIFO order across events and sessions.
+  7. New edit after Undo cleanly invalidates and clears Redo history (`canRedo == false`, `redoCount == 0`).
+  8. Cancelled gestures and no-op drops create zero history entries.
+  9. Recurring occurrence Undo/Redo updates single occurrence without altering parent series recurrence rule or other occurrences.
+  10. `SettingsHistoryScope` handles Ctrl+Z, Ctrl+Shift+Z, and Ctrl+Y when outside text fields.
+  11. `SettingsHistoryScope` ignores calendar undo/redo shortcuts when an `EditableText` (TextField) is focused, retaining platform native text undo/redo.
+- `test/calendar_safety_and_persistence_test.dart` (3/3 PASS): scheduled task deadline preservation, work session deadline preservation, recurring occurrence isolation.
+- `test/calendar_eval_visual_verification_test.dart` (5/5 PASS): Day/Week/Month views, legacy preview switch, compact mobile rendering.
+- `test/calendar_interaction_controller_test.dart` (4/4 PASS): drag move, resizeTop, resizeBottom, cancel/state reset.
+- `test/interactive_calendar_redesign_test.dart` (5/5 PASS): Day/Week/Month navigation, shortcuts, right-click actions, legacy fallback.
+- `dart analyze lib/features/calendar` (0 issues found).
+
+## Interactive Calendar Redesign & Evaluation (2026-11-10)
 
 Feature branch `feature/interactive-calendar`. Accurate vertical time-grid layout, side-by-side local collision lane allocation, drag-to-move, top/bottom edge resizing, cross-day Week dragging, Month date-drag with clock-time preservation, date-anchored zoom (Ctrl+wheel), shortcuts (Ctrl+1/2/3, T, Ctrl+Z, Esc), and reversible legacy preview toggle.
 Runs:
+- `test/calendar_safety_and_persistence_test.dart` (3/3 PASS): dragging scheduled tasks preserves deadline dates; dragging work sessions preserves parent task deadlines; moving/editing recurring event occurrences creates isolated single-occurrence exceptions via updateEventOccurrence without shifting parent recurrence rule or other occurrences in the series; undo reverses accurately.
+- `test/calendar_eval_visual_verification_test.dart` (5/5 PASS): Day view time grid and 3-lane collision layout, Week view 7-column alignment, Month view grid, legacy presentation switch toggle, and mobile portrait (412x892) viewport rendering with ultra-compact collision protection.
 - `test/calendar_layout_engine_test.dart` (8/8 PASS): coordinate conversions, snapping, touching endpoints, nested/dense collisions, minimum readable height.
 - `test/calendar_interaction_controller_test.dart` (4/4 PASS): drag move, top-edge resize start, bottom-edge resize end, cancel/undo.
 - `test/calendar_zoom_controller_test.dart` (5/5 PASS): view transitions (Month ↔ Week ↔ Day), wheel accumulation, week & month cursor anchor resolution.
@@ -14,8 +38,10 @@ Runs:
 - `test/event_recurrence_test.dart` (7/7 PASS): recurrence safety, occurrence vs series invariants.
 - `test/cancelled_event_readability_test.dart` & `test/event_editor_layout_test.dart` (5/5 PASS): contrast and dialog layouts.
 - `test/hotkeys_test.dart` (3/3 PASS): shortcut binding validation.
-- `dart analyze` (0 issues).
-Unchanged SQLite migrations, Drive sync crypto, and native companion builds safely reused. Local physical Windows mouse/touchpad gestures and Android long-press touch verified in test harnesses; physical mobile device validation noted for manual checklist.
+- `dart analyze lib/features/calendar test/...` (0 issues).
+- Windows debug binary built at `build/windows/x64/runner/Debug/Todorbit.exe`. Verified in isolated disposable profile `%TEMP%\todorbit-calendar-eval` with representative synthetic database.
+- Android debug APK built at `build/app/outputs/flutter-apk/app-github-debug.apk`. Verified with `python tools/verify-android-artifact.py` (7 native libraries pass ELF and APK ZIP alignment).
+- Confirmed blocker fix: narrow-column cards (<44px width) in dense mobile collisions now render clean pill representation with tooltips and clipping, eliminating RenderFlex horizontal overflows.
 
 ## Alarm beta14 (2026-11-08)
 

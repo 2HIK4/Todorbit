@@ -21,6 +21,7 @@ import 'calendar_week_view.dart';
 import 'calendar_zoom_controller.dart';
 import '../shared/icon_picker.dart';
 import '../shared/about_view_button.dart';
+import '../shared/settings_history_scope.dart';
 import '../shared/weekdays.dart';
 import 'session_editor.dart';
 
@@ -61,13 +62,19 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
 
   @override
   void dispose() {
+    _interactionController.removeListener(_onInteractionChanged);
     _interactionController.dispose();
     super.dispose();
+  }
+
+  void _onInteractionChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void initState() {
     super.initState();
+    _interactionController.addListener(_onInteractionChanged);
     selected = widget.initialDate ?? selected;
     final controller = ref.read(appControllerProvider);
     mode = CalendarMode.values.byName(
@@ -299,8 +306,37 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
   Future<void> _undo() async {
     final message = await _interactionController.undo(ref.read(appControllerProvider));
     if (message != null && mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
+        SnackBar(
+          content: Text(message),
+          duration: const Duration(seconds: 4),
+          action: _interactionController.canRedo
+              ? SnackBarAction(
+                  label: 'Redo',
+                  onPressed: _redo,
+                )
+              : null,
+        ),
+      );
+    }
+  }
+
+  Future<void> _redo() async {
+    final message = await _interactionController.redo(ref.read(appControllerProvider));
+    if (message != null && mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: const Duration(seconds: 4),
+          action: _interactionController.canUndo
+              ? SnackBarAction(
+                  label: 'Undo',
+                  onPressed: _undo,
+                )
+              : null,
+        ),
       );
     }
   }
@@ -309,6 +345,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
     final appCtrl = ref.read(appControllerProvider);
     final summary = await _interactionController.commit(appCtrl);
     if (summary != null && mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(summary),
@@ -323,9 +360,15 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
   }
 
   Future<void> _handleMonthItemDropped(CalendarItem item, DateTime targetDate) async {
+    final originDate = item.startsAt ??
+        (item.task?.scheduledDate != null
+            ? DateTime.tryParse(item.task!.scheduledDate!)
+            : null) ??
+        targetDate;
+
     _interactionController.startDateDrag(
       item: item,
-      originDate: item.startsAt ?? targetDate,
+      originDate: originDate,
     );
     _interactionController.updatePointer(Offset.zero, targetDate);
     await _handleInteractionFinished();
@@ -496,13 +539,13 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
           setState(() => selected = DateTime.now());
           _loadSelectedMonth();
         },
-        const SingleActivator(LogicalKeyboardKey.keyZ, control: true): _undo,
         const SingleActivator(LogicalKeyboardKey.escape): () {
           _interactionController.cancel();
         },
       },
-      child: Focus(
-        autofocus: true,
+      child: SettingsHistoryScope(
+        undo: _undo,
+        redo: _redo,
         child: Column(
           children: [
         Padding(
@@ -632,6 +675,11 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                 tooltip: 'Undo calendar change (Ctrl+Z)',
                 onPressed: _interactionController.canUndo ? _undo : null,
                 icon: const Icon(Icons.undo),
+              ),
+              IconButton(
+                tooltip: 'Redo calendar change (Ctrl+Shift+Z)',
+                onPressed: _interactionController.canRedo ? _redo : null,
+                icon: const Icon(Icons.redo),
               ),
               IconButton(
                 tooltip: _useLegacy

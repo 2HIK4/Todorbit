@@ -1,5 +1,22 @@
 # Progress
 
+## Calendar Undo & Redo Integration Complete (2026-11-11)
+
+Feature branch `feature/interactive-calendar`.
+Implemented complete desktop-grade Undo and Redo system for calendar interactions:
+- Full bidirectional history stack: <kbd>Ctrl</kbd>+<kbd>Z</kbd> to undo, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> and <kbd>Ctrl</kbd>+<kbd>Y</kbd> to redo.
+- Toolbar integration: dynamic Undo and Redo icon buttons in the Calendar toolbar reflecting history availability in real time.
+- SnackBar integration: reversible notification with immediate "Redo" action on undo, and "Undo" action on redo.
+- Gesture coverage: moving items in Day/Week view, top-edge start time resizing, bottom-edge end time resizing, and Month view date drag & drop.
+- Invalidation guarantee: performing a new edit after Undo cleanly clears invalidated Redo history (`_redoStack.clear()`).
+- Atomic history entries: pointer movements during dragging/resizing generate zero history entries; a single entry is recorded only upon commit.
+- No-op and cancellation safety: cancelled gestures (Escape) or drops returning to original time/date record zero history entries.
+- Text focus preservation: wrapped with `SettingsHistoryScope` so that when any `EditableText` (e.g. search fields, editor inputs) is focused, keyboard undo/redo operates natively on text without calendar interference.
+- Concurrency & race condition protection: added `_isHistoryBusy` guard to prevent corrupting history stacks or racing against SQLite during rapid keystrokes.
+- Recurring occurrence isolation: undoing/redoing occurrence edits targets individual occurrences via `updateEventOccurrence` without altering parent series recurrence rules or other occurrences.
+- Task deadline protection: scheduled date moves and restorations preserve task deadline dates intact.
+- Comprehensive test coverage: 11 focused integration tests in `test/calendar_undo_redo_test.dart` pass completely alongside existing safety, layout, and regression suites.
+
 ## Interactive Calendar Redesign (2026-11-10)
 
 Feature branch `feature/interactive-calendar`.
@@ -14,7 +31,10 @@ Implemented modular interactive calendar redesign for Windows and Android:
 - Reversible fallback switch in toolbar allowing instant toggling between interactive timeline and legacy calendar presentation.
 - Undo/redo support via Ctrl+Z and bottom SnackBar action.
 - Recurring occurrence safety (`nominalDate != null` updates single occurrence exception), task deadline preservation (modifies `scheduledDate` only), and alarm synchronization preserved.
-- All 40 unit and widget tests pass; `dart analyze` reports 0 issues.
+- All 48 unit, widget, visual layout, and safety tests pass; `dart analyze` reports 0 issues.
+- Verified Windows debug build in isolated profile `%TEMP%\todorbit-calendar-eval` with synthetic data (events, work sessions, recurring items, 3-lane collision clusters).
+- Verified Android test APK `build/app/outputs/flutter-apk/app-github-debug.apk` with `verify-android-artifact.py`.
+- Resolved confirmed blocker: narrow collision columns (<44px width) on mobile viewports now use ultra-compact pill representation with tooltip, eliminating RenderFlex horizontal overflows.
 
 ## Beta14 experimental release published (2026-11-10)
 

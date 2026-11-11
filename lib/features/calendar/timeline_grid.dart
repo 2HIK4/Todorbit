@@ -286,10 +286,12 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                       },
                       child: Padding(
                         padding: EdgeInsets.symmetric(
-                          horizontal: 4,
+                          horizontal: isCompact ? 2 : 4,
                           vertical: isCompact ? 1 : 3,
                         ),
-                        child: _buildItemContent(item, placement, accent, scheme, isCompact, hasAlarm),
+                        child: ClipRect(
+                          child: _buildItemContent(item, placement, accent, scheme, isCompact, hasAlarm, itemWidth),
+                        ),
                       ),
                     ),
                   ),
@@ -377,6 +379,7 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
     ColorScheme scheme,
     bool isCompact,
     bool hasAlarm,
+    double itemWidth,
   ) {
     final startTimeStr = _formatTime(item.startsAt!);
     final endTimeStr = _formatTime(item.endsAt!);
@@ -386,43 +389,53 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
         : null;
 
     if (isCompact) {
-      return Row(
-        children: [
-          Icon(
-            item.kind == CalendarItemKind.event
-                ? iconForKey(item.iconName, Icons.event_outlined)
-                : Icons.schedule,
-            size: 11,
-            color: accent,
-          ),
-          const SizedBox(width: 3),
-          Expanded(
-            child: Text(
-              '${item.title} ($timeRangeStr)',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: item.isCancelled ? scheme.outline : scheme.onSurface,
-                decoration: item.isCancelled ? TextDecoration.lineThrough : null,
+      if (itemWidth < 44) {
+        return Tooltip(
+          message: '${item.title}\n$timeRangeStr',
+          child: const SizedBox.expand(),
+        );
+      }
+      return ClipRect(
+        child: Row(
+          children: [
+            if (itemWidth >= 60) ...[
+              Icon(
+                item.kind == CalendarItemKind.event
+                    ? iconForKey(item.iconName, Icons.event_outlined)
+                    : Icons.schedule,
+                size: 11,
+                color: accent,
+              ),
+              const SizedBox(width: 3),
+            ],
+            Expanded(
+              child: Text(
+                '${item.title} ($timeRangeStr)',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: item.isCancelled ? scheme.outline : scheme.onSurface,
+                  decoration: item.isCancelled ? TextDecoration.lineThrough : null,
+                ),
               ),
             ),
-          ),
-          if (hasAlarm)
-            const Padding(
-              padding: EdgeInsets.only(left: 2),
-              child: AlarmIndicator(),
-            ),
-          if (placement.hasConflict)
-            Padding(
-              padding: const EdgeInsets.only(left: 2),
-              child: Tooltip(
-                message: conflictTooltip!,
-                child: Icon(Icons.warning_amber_rounded, size: 10, color: scheme.error),
+            if (hasAlarm && itemWidth >= 70)
+              const Padding(
+                padding: EdgeInsets.only(left: 2),
+                child: AlarmIndicator(),
               ),
-            ),
-        ],
+            if (placement.hasConflict && itemWidth >= 80)
+              Padding(
+                padding: const EdgeInsets.only(left: 2),
+                child: Tooltip(
+                  message: conflictTooltip!,
+                  child: Icon(Icons.warning_amber_rounded, size: 10, color: scheme.error),
+                ),
+              ),
+          ],
+        ),
       );
     }
 
