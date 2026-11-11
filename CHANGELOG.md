@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.19-beta.15+38 - interactive calendar candidate
+
+- Interactive vertical timeline calendar redesign for Day and Week views with accurate time positioning and duration heights.
+- Intelligent multi-item collision handling with side-by-side local lane layout, horizontal expansion, and minimum readable widths.
+- Direct pointer interactions: drag to move, top-edge start time resizing, and bottom-edge end time resizing with configurable 15-minute snapping, live time chips, and semi-transparent ghost preview.
+- Cross-day Week movement and Month date drag & drop preserving clock time and duration.
+- Month view extended right-click context menu (Add Event, Add Task, Add Work Session, Show Day, Show Week).
+- Date-anchored cursor zoom navigation (Month ↔ Week ↔ Day) via Ctrl+wheel and keyboard shortcuts (Ctrl+1, Ctrl+2, Ctrl+3, T, Esc).
+- Complete bidirectional Undo/Redo: Ctrl+Z undo, Ctrl+Shift+Z / Ctrl+Y redo, header toolbar buttons, and reversible SnackBar feedback.
+- EditableText focus bypass preserving platform native text undo/redo during typing.
+- Single-occurrence recurring edits via `updateEventOccurrence` without altering parent series recurrence rules or sibling occurrences.
+- Task deadline protection: scheduled date moves and restorations preserve task deadline dates intact.
+- Reversible legacy calendar toggle switch in toolbar.
+- Candidate only: release, CI, and packaging integrity gates must pass before publication. Windows remains unsigned; physical Windows/Android runtime coverage remains explicit.
+
 ## 1.0.19-beta.14+37 - alarm candidate
 
 - Add optional task/event alarms, exact times, advance offsets, recurring rules, system sounds, bounded ringing, snooze and dismiss. Keep delivery state local while Sync carries configuration.
