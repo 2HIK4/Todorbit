@@ -17,6 +17,7 @@ Treat rules by their strict level of authority:
 
 1. **Mandatory Safety Rules (Non-Negotiable)**:
    - **Zero Data Loss**: Never wipe, reset, drop, or overwrite SQLite tables, profile JSON files, user backups, or widget settings as an error recovery fallback.
+   - **Domain Invariants & Test Expectation Integrity**: Identify authoritative domain invariants before changing behavior. Never create or trust tests that merely encode existing implementation bugs. Differentiate visual display constraints from persistence constraints (display clipping must never truncate persisted timestamps or user data). Verify fixes against legitimate edge cases (overnight spans, multi-day durations, recurrence). Always prove fixes with focused regression tests that fail on the defect and pass strictly after correction.
    - **Forward-Compatible Migrations**: Schema alterations MUST be forward-migrated through explicit Drift migrations and verified in `MigrationGate`.
    - **CAS Task Concurrency**: All task writes MUST advance `updated_at` beyond the predecessor timestamp and check revision concurrency tokens via SQL compare-and-swap (CAS).
    - **Profile Isolation**: Never execute tests or debug builds against real production `%APPDATA%\TodoPilot` or personal accounts. Always use isolated, disposable profiles.
@@ -70,3 +71,9 @@ Do not load all documentation into context. Activate only the reference matching
   - **Critical**: Schema, persistence, sync, alarms, encryption -> isolation fixtures, migration roundtrips, atomic CAS CAS checks.
   - **Release**: Packaging, Inno Setup, APK alignment, signed update manifests.
 - **No Test Invention**: Never claim tests passed if they were not run or were skipped. Record historical reuse accurately by referencing commit SHA and receipt.
+
+### 4. Domain Invariant Protection & Test Expectation Integrity
+- **Identify Domain Invariants First**: Before writing or altering code, identify the inviolable domain invariants (e.g. event duration invariance under a move gesture, task deadline independence from scheduled date).
+- **Challenge Pre-Existing and New Test Assertions**: Passing tests can institutionalize corruption if they assert flawed expectations. Never assume a test expectation is valid simply because it exists or matches current runtime output.
+- **Differentiate UI Presentation from Persistence**: Display boundaries (e.g., clipping an event visually at midnight in a day-view column) must never mutate, clamp, or truncate underlying persisted records.
+- **Pre-Fix Failing Test Discipline**: When fixing a defect, first verify that the regression test fails against the unpatched behavior, then verify that it cleanly passes once the invariant is restored.
