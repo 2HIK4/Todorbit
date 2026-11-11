@@ -1,5 +1,17 @@
 # Progress
 
+## Interactive Calendar Boundary Clamping & Cancellation Hygiene (2026-11-11)
+
+Branch `fix/calendar-interaction-regressions`.
+Hardened interactive calendar boundary safety and gesture lifecycle hygiene based on Prompt 3 engineering investigations:
+- **Boundary clamping for long/multi-day events (CAL-02)**: Added lower-bound `minStart` clamping in `CalendarInteractionController` so dragging events with duration >= 24h cannot push `finalStart` into the previous day when clamped to `maxEnd`. Added `maxEnd` (23:59) upper-bound clamping to bottom edge resizing (`resizeEnd`).
+- **Top auto-scroll tolerance (CAL-03)**: Added `-10px` overshoot tolerance (`viewportY >= -10 && viewportY < margin`) in `TimelineDayColumn`, preventing auto-scroll from stalling when mouse cursor drifts slightly into the header.
+- **Gesture cancellation hygiene**: Added `onPanCancel` and `onVerticalDragCancel` callbacks across item and resize handles in `TimelineDayColumn` to immediately cancel `_autoScrollTimer` and invoke `interactionController.cancel()`, preventing dangling background timers.
+- **Domain alarm invariant verified (DATA-01)**: Confirmed that `draft.alarm == null` in `CalendarInteractionController` correctly preserves existing alarm rules in `AlarmRepository`, while `AlarmPlanner` re-evaluates schedules on date changes.
+- **Auto-scroll cadence invariant verified (CAL-01)**: Confirmed 30ms interval / 12px step (~400px/s) provides optimal smooth scrolling without CPU thrashing.
+- **Verification**: All 10 regression tests in `test/calendar_interactions_regression_test.dart` passed; all 11 tests in `test/calendar_undo_redo_test.dart` passed; `dart analyze` reports 0 issues.
+
+
 ## Beta 16 experimental release published (2026-11-11)
 
 Tag `v1.0.19-beta.16` (version `1.0.19-beta.16+39`, Schema 28).

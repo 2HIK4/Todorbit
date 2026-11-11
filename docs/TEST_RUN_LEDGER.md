@@ -1,5 +1,19 @@
 # Persistent test run ledger
 
+## Calendar Boundary Clamping & Auto-Scroll Cancellation Verification (2026-11-11)
+
+Branch `fix/calendar-interaction-regressions`, commit `4fd635b` (Schema 28). Hardens interactive calendar boundary handling, top-edge auto-scroll gesture tolerance, gesture cancellation lifecycle hygiene, and verifies domain alarm preservation invariants:
+- **CAL-01 Invariant Verified**: `timeline_grid.dart` auto-scroll timer runs at 30ms interval with 12px speed (~400px/s velocity); provides smooth, responsive timeline scrolling without timer starvation or CPU thrashing on 60Hz/120Hz displays. Preserved intentional code.
+- **CAL-02 Resolved**: Multi-day and long events exceeding the viewport now clamp with `minStart` (00:00) lower bound so dragging long events cannot push start dates into the previous day. Added `maxEnd` (23:59) upper-bound clamping to `resizeBottom` to prevent drag expansion past day bounds.
+- **CAL-03 Resolved**: Top-edge auto-scroll tolerance expanded to `-10px` (`viewportY >= -10 && viewportY < margin`), preventing auto-scroll freeze when cursor drifts slightly into the column header area.
+- **Gesture Lifecycle Hygiene**: Added `onPanCancel` and `onVerticalDragCancel` (top/bottom resize handles) to cancel `_autoScrollTimer`, clear pointer tracking, and invoke `interactionController.cancel()`, preventing orphaned periodic timers.
+- **DATA-01 Invariant Verified**: In `CalendarInteractionController.dart`, `draft.alarm == null` is Todorbit's established repository convention for "preserve existing alarm rule without modification" (enforced by `AlarmRepository.replaceTaskAlarm`). Dynamic alarms continue to be recomputed by `AlarmPlanner` against the updated `scheduled_date`. Retained invariant.
+Runs & Evidence:
+- `test/calendar_interactions_regression_test.dart` (10/10 PASS): Scenarios A through H re-verified; Scenario I (boundary and resizeEnd clamping) and Scenario J (top-edge auto-scroll overshoot buffer and cancellation cleanup) pass.
+- `test/calendar_undo_redo_test.dart` (11/11 PASS): Full LIFO history, text field isolation, and occurrence preservation pass.
+- `dart analyze lib/features/calendar test/calendar_interactions_regression_test.dart`: 0 issues found.
+- `git diff --check`: 0 whitespace errors.
+
 ## Calendar Interaction & UI Regression Verification (2026-11-11)
 
 Branch `fix/calendar-interaction-regressions`, commit `82552a0` (tag `v1.0.19-beta.16`, build 39, Schema 28). Resolves 10 Beta 15 manual testing defects across viewport drag auto-scrolling, cross-day Week drag & drop, reactive toolbar Undo/Redo, compact floating notifications, Month card hitboxes with mobile touch protection, Ctrl+wheel zoom isolation, comfortable month density, unified toolbar pill, current-time indicator, and 32x32 native Windows widget navigation.
