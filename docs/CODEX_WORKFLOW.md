@@ -19,6 +19,29 @@ Record durable product decisions in `docs/DECISIONS.md` and meaningful checkpoin
 
 For change validation or a release checkpoint, invoke `$todorbit-regression` from `.agents/skills/`. The official Dart/Flutter plugin supplies the analyzer and live tooling; no separate MCP configuration is needed here.
 
+## Engineering quality workflow
+
+[AGENTS.md](../AGENTS.md#skills-and-documentation-routing) requires
+[Todorbit Engineering Quality](../.agents/skills/todorbit-engineering-quality/SKILL.md)
+for any backend, domain, data persistence, SQLite migration, sync, encryption,
+native Windows/.NET, Android/Kotlin, background alarms, or performance work.
+
+1. **Selective Activation**: Do not load all references into context. Load only the reference
+   document matching the current subsystem:
+   - Data, SQLite, sync, alarms: `data-safety-and-persistence.md`
+   - Platform interop, Windows .NET, Android Kotlin, calendar divergence: `cross-platform-architecture.md`
+   - Profiling, CPU/memory, 16GB host limits: `performance-and-profiling.md`
+   - Agent efficiency, search bounds, Git checkpoints: `agent-workflow-efficiency.md`
+2. **Root-Cause Invariant**: Diagnose the entire caller graph and underlying causality before editing.
+   Never apply band-aid display checks or silence exceptions to bypass invariant violations.
+3. **Dual-Platform Boundary Verification**: Verify whether a feature targets Desktop (`Workspace` ->
+   `CalendarView`), Android Mobile (`MobileWorkspace` -> `MobileCalendar`), or both. Never assume
+   desktop widget updates propagate to Android mobile users.
+4. **Data Safety**: Never wipe, drop, or reset SQLite databases, profiles, or user backups as an error fallback.
+   All task edits MUST use SQL compare-and-swap (CAS) with advancing `updated_at` revision tokens.
+5. **Context & Hardware Efficiency**: Machine has 16GB RAM. Run commands sequentially with `--concurrency=1`.
+   Do not run parallel Flutter tests, Android emulators, or compiler jobs.
+
 ## UI quality workflow
 
 [AGENTS.md](../AGENTS.md#skills-and-documentation-routing) requires
