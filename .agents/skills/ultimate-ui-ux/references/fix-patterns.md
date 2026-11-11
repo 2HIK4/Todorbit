@@ -164,6 +164,17 @@ Assert draft, cursor and anchor stability within expected layout change; inspect
 intermediate frames so a settled screenshot cannot hide oscillation. Regress
 shared fields, banners, lazy lists and validation consumers with the same cause.
 
+## Interactive canvas, gesture and calendar patterns
+
+| Symptom | Root cause candidates | Durable repair and verification |
+|---|---|---|
+| Auto-scroll jumps upward on card drag start | Pointer distance calculated against card coordinates (`localPosition.dy < margin`) instead of viewport bounds | Convert pointer to viewport coordinate (`localInColumn.dy - scrollOffset`); auto-scroll only when viewport distance `< 48px`; tick continuously (30ms) |
+| Touching Month card on mobile prevents scrolling | Immediate pointer `Draggable` intercepts vertical pan gestures | On Android/iOS, adapt cards to `LongPressDraggable` (250ms delay, haptic feedback) and enable `ClampingScrollPhysics` on grid; desktop keeps instant `Draggable` |
+| Timeline scrolls vertically while zooming view modes | Pointer wheel events bubble to `SingleChildScrollView` while <kbd>Ctrl</kbd> is pressed | Implement `CalendarScrollPhysics.shouldAcceptUserOffset` returning false when Ctrl is pressed; debounce view mode transitions by 350ms in `CalendarZoomController` |
+| Floating notification banners stack and linger | Persistent full-width `SnackBar` without auto-dismiss or dismissal of previous banner | Replace with floating 420px notification with `Duration(seconds: 4)` and `messenger.removeCurrentSnackBar()` before displaying new notice |
+| Current time rule looks like a broken pink line | Unlabelled line drawn with `scheme.error` and zero text metadata | Replace with primary accent rule, circular pip, live formatted time badge (`HH:mm`), and accessible tooltip |
+| Native desktop widget navigation buttons hard to click | Small hit bounds (32×28), text glyphs (`‹`, `›`), no hover state | Increase bounds to 32×32, use vector arrow rendering (`DrawCalendarArrow`), and draw Fluent accent hover/pressed rounded outlines |
+
 ## Proactive investigation boundary
 
 Map symptom -> shared owner -> materially different consumers -> observable

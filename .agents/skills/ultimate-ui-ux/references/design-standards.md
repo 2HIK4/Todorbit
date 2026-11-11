@@ -54,6 +54,36 @@ selectors and dialog action bars already exist. Do not replace the lavender
 identity or overwrite saved custom palettes. Native widget mappings are separate
 consumers of the same palette, not proof that Flutter styling propagates there.
 
+## Interaction integrity over cosmetics
+
+An attractive interface is fundamentally defective if interactions are incorrect,
+inaccessible, or inconsistent. Never prioritize visual polish over working gestures,
+responsive controls, or keyboard operability.
+
+### 1. Calendar, canvas & gesture standards
+- **Viewport-Relative Auto-Scroll**: Distance calculations during card drag MUST be computed relative to the scrollable viewport (`localInColumn.dy - scroller.offset`), never relative to the picked-up card. Auto-scroll triggers strictly within a 48px margin of viewport edges with smooth periodic ticking (30ms).
+- **Cross-Day Drag & Drop**: Dragging in multi-day time grids (Week view) must resolve horizontal pointer coordinates across all visible day columns, render live ghost preview on the candidate column, and atomically commit new date and time upon drop.
+- **Edge Resizing**: Start time (top edge) and end time (bottom edge) resize handles must enforce minimum item duration (15 min) and clamp cleanly to configured timeline bounds.
+- **Month View Drag Hitboxes & Mobile Touch Protection**: The entire visible card body (10% to 90% width) must respond to dragging via `HitTestBehavior.opaque`. On mobile platforms (Android/iOS), card dragging must adapt to `LongPressDraggable` (250ms delay, haptics) with clamping scroll physics, allowing smooth touch scrolling across month rows without accidental drag triggers. On desktop, cards retain immediate pointer `Draggable`.
+- **Keyboard Zoom & Scroll Physics Isolation**: Pointer wheel events with <kbd>Ctrl</kbd> pressed must switch calendar view modes (Day ↔ Week ↔ Month) with transition debouncing (350ms) while completely suppressing timeline scrolling via dedicated `CalendarScrollPhysics.shouldAcceptUserOffset`.
+- **Toolbar & History Ergonomics**: History operations (<kbd>Ctrl</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Y</kbd>) must bind reactively via `ListenableBuilder` to history availability (`canUndo`/`canRedo`) and bypass when focused on an `EditableText` input field. Related actions (Undo, Redo, divider, presentation switch) must group into an atomic pill container to prevent wrapping glitches.
+- **Feedback & Notifications**: Reversible actions must present compact floating notifications (max width 420px on desktop) auto-dismissing after 4 seconds and replacing prior notices without stacking banners over content.
+
+### 2. Native Windows & Android widget standards
+- **Windows Companion (`WidgetDateNavigation`)**: Earlier/later navigation buttons must provide at least 32×32 logical pixel hit targets, use vector chevron rendering (`DrawCalendarArrow`), and display Fluent hover and pressed rounded outlines using `palette.Accent`.
+- **Android Launcher Widgets (`RemoteViews`)**: Touch targets must measure at least 48dp, adapt to launcher theme variants, and preserve navigation to specific app destinations.
+
+### 3. Dual-platform entry points and parity rule
+- **Desktop vs Mobile Divergence**:
+  - Desktop workspace mounts `CalendarView` (`lib/features/calendar/calendar_view.dart`).
+  - Android mobile shell mounts `MobileCalendar` (`lib/features/mobile/mobile_calendar.dart`).
+- **Core Requirements**:
+  1. Shared core functionality MUST be evaluated for both platforms.
+  2. Platform-specific interfaces may differ to support mouse/keyboard precision versus touch ergonomics.
+  3. Changes to desktop calendar widgets must NOT be represented as Android functionality without verifying the Android navigation path.
+  4. Tests using an Android target platform inside a desktop calendar widget do NOT prove that the production Android UI exposes that widget.
+  5. When adding a shared feature, identify both platform entry points and record parity or intentional exclusions.
+
 ## Platform and accessibility acceptance
 
 - Windows: compact mouse/keyboard layout, visible focus, scoped shortcuts,

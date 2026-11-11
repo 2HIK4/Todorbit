@@ -14,6 +14,15 @@ Treat four defect classes equally: **visual** (presentation/hierarchy),
 **behavioral** (wrong response/state/feedback), **usability** (works but confusing
 or costly), and **environmental/edge-case** (fails with different inputs, data,
 devices or application states). Automated passes do not establish good UX.
+An attractive interface is fundamentally defective if interactions are incorrect,
+inaccessible, or inconsistent. Gestures, touch vs pointer ergonomics, keyboard focus,
+and viewport auto-scrolling are primary quality criteria alongside visual aesthetics.
+
+> [!IMPORTANT]
+> **Dual-Platform Navigation Discovery**: Desktop (`Workspace` -> `CalendarView`) and
+> Android (`MobileWorkspace` -> `MobileCalendar`) have distinct application shells.
+> Enhancements to desktop canvas widgets do NOT automatically propagate to mobile.
+> Always identify both platform entry points when designing or evaluating shared features.
 
 ## Start and choose scope
 
