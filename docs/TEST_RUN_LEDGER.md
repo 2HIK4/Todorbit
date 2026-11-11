@@ -1,5 +1,25 @@
 # Persistent test run ledger
 
+## Calendar Interaction & UI Regression Verification (2026-11-11)
+
+Branch `fix/calendar-interaction-regressions`, commit `82552a0` (tag `v1.0.19-beta.16`, build 39, Schema 28). Resolves 10 Beta 15 manual testing defects across viewport drag auto-scrolling, cross-day Week drag & drop, reactive toolbar Undo/Redo, compact floating notifications, Month card hitboxes with mobile touch protection, Ctrl+wheel zoom isolation, comfortable month density, unified toolbar pill, current-time indicator, and 32x32 native Windows widget navigation.
+Runs & Evidence:
+- `test/calendar_interactions_regression_test.dart` (8/8 PASS):
+  1. A: Dragging Day-view event does NOT cause unexpected scrolling (viewport-relative distance with 48px margin).
+  2. B: Edge resizing updates startsAt or endsAt accurately (top-edge start time and bottom-edge end time).
+  3. C: Cross-day move in Week view commits to target day and supports Undo/Redo.
+  4. D: Month view card drag hitboxes work at 10%, 25%, 50%, 75%, and 90% of card width (`HitTestBehavior.opaque`).
+  5. E: Ctrl + Mouse Wheel zoom switches modes without scrolling timeline (`CalendarScrollPhysics`).
+  6. F: Toolbar Undo/Redo buttons react dynamically to history changes (`ListenableBuilder`).
+  7. G: Month view card readability dimensions match comfortable density (28-34px cards, 90px min cell, `ClampingScrollPhysics`).
+  8. H: Android Month-view uses `LongPressDraggable` (250ms delay, haptic feedback) so touch scrolling does not conflict with dragging.
+- `test/calendar_undo_redo_test.dart` (11/11 PASS reused from `ee55cb6`): LIFO undo/redo, text focus bypass, task deadline preservation, occurrence isolation.
+- `test/interactive_calendar_redesign_test.dart` (5/5 PASS reused from `4f77010`): Day/Week/Month navigation, shortcuts, right-click actions, legacy fallback switch.
+- `experiments/widget-shell-probe`: `dotnet run --project experiments/widget-shell-probe -- --self-test` (PASS, verified 32x32 hit bounds, `DrawCalendarArrow`, Fluent hover/pressed accents).
+- Code Analysis: `dart analyze` reports 0 issues.
+- Artifacts & Hashes: Verified in [TODORBIT_BETA_16_PUBLICATION.md](TODORBIT_BETA_16_PUBLICATION.md); Windows Inno Setup installer, portable ZIP, and production-signed Android universal APK (`db477a597fe1...`).
+- Limits & Unverified: Physical Windows multi-monitor fractional DPI scaling and physical Android TalkBack/OEM gestures remain manual acceptance gates. Production Android UI exposes `MobileCalendar`, not `CalendarView`; mobile `CalendarMonthView` behavior is verified via widget tests with injected `TargetPlatform.android`.
+
 ## Calendar Undo & Redo Integration Verification (2026-11-11)
 
 Feature branch `feature/interactive-calendar`. Complete Undo and Redo support for interactive calendar gestures and month drag & drop, with optimistic concurrency control, recurring occurrence isolation, task deadline preservation, editable text focus bypass, toolbar buttons, and reversible SnackBar actions.

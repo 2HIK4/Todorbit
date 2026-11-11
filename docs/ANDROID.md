@@ -6,7 +6,7 @@ The production-signed [Android beta 2 is public](ANDROID_BETA_2_PUBLICATION.md):
 Windows/Android cloud restoration remains unverified under the owner's scoped
 first-beta deferral; this is not a Stable or Play release.
 
-Android work lives on `feature/android-mobile`. It shares schema 22, the
+Android work lives on `feature/android-mobile`. It shares schema 28, the
 repository, recurrence/scheduling rules, controller, backup codec and theme
 palettes with Windows. Android screens live under `lib/features/mobile/`;
 Android adapters under `lib/platform/android/`. Windows IPC, updater and native

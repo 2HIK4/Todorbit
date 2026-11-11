@@ -19,8 +19,9 @@ publication and widget rendering run on a serialized worker, with `goAsync`
 receiver lifetimes. [Android UI/widget acceptance](ANDROID_UI_REDESIGN.md)
 distinguishes launcher observations from native render-window checks.
 
-Current source is schema **27** (additive event-project and named-checklist
-relationships; immutable schema-26 Sync history is retained). This map owns subsystem discovery; commands
+Current source is schema **28** (additive optional native task and event alarms,
+retaining additive event-project and named-checklist relationships from schema 27;
+immutable schema-26 Sync history is retained). This map owns subsystem discovery; commands
 live in [Testing](TESTING.md), setup in [Development](DEVELOPMENT.md), and
 packaging/publication in [Release](RELEASE.md). Paths below are repository-relative.
 
