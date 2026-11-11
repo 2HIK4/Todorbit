@@ -1,5 +1,19 @@
 # Persistent test run ledger
 
+## Cross-Platform UI/UX Refinement Batch 1 Verification (2026-11-12)
+
+Branch `fix/calendar-interaction-regressions` (Schema 28). Implements high-impact usability, accessibility, and visual affordance improvements across Windows desktop and Android:
+- **Timeline Item Semantics**: Wrapped placed timeline cards in `Semantics(label: ...)` exposing item title, start/end time range, alarm indicator, and overlap conflict count to screen readers (Narrator on Windows, TalkBack on Android).
+- **Current-Time Indicator Tooltip Fix**: Corrected widget tree hierarchy in `_buildCurrentTimeLine` (`timeline_grid.dart`) so the time badge's tooltip is interactable on hover while the horizontal line remains click-through via `IgnorePointer`.
+- **Resize Handle Affordance Tooltips**: Added discoverable tooltips (`Drag to adjust start time`, `Drag to adjust end time`) with 500ms hover delay to top and bottom edge handles in `timeline_grid.dart`.
+- **Rich Month View Card Tooltips**: Updated `CalendarMonthView` (`calendar_month_view.dart`) to format full time ranges, parent project context, and details in tooltips across month cells.
+- **Polished Mobile Calendar Empty State**: Replaced unstyled debug text in `MobileCalendar` (`mobile_calendar.dart`) with a centered, structured empty state featuring `event_available_outlined` icon, primary title, and tokenized secondary guidance.
+Runs & Evidence:
+- `test/calendar_interactions_regression_test.dart` (11/11 PASS): Scenarios A through J pass; new Scenario K verifies timeline item semantics, current-time tooltip hoverability, resize handle tooltips, and rich month view card tooltips.
+- `test/calendar_undo_redo_test.dart` (11/11 PASS reused).
+- `dart analyze lib/features/calendar lib/features/mobile test/calendar_interactions_regression_test.dart`: 0 issues found.
+- `git diff --check`: 0 whitespace errors.
+
 ## Urgent Calendar Event Duration Invariant Verification (2026-11-11)
 
 Branch `fix/calendar-interaction-regressions` (Schema 28). Resolves P0 data truncation defect where Day/Week calendar move operations erroneously applied day-column visual bounds (`maxEnd = 23:59`) to domain event persistence, truncating events > 24 hours to at most 23h59m and shifting overnight events backward:

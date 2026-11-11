@@ -927,5 +927,96 @@ void main() {
       expect(interaction.isDragging, isFalse);
       expect(interaction.isDragging, isFalse);
     });
+
+    testWidgets('K. Timeline item semantics and rich month view tooltips provide accessible context', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(1000, 700));
+      final today = DateUtils.dateOnly(DateTime.now());
+      final event = await repo.addEvent(
+        EventDraft(
+          title: 'Quarterly Planning',
+          startsAt: DateTime(today.year, today.month, today.day, 10, 0),
+          endsAt: DateTime(today.year, today.month, today.day, 11, 30),
+        ),
+      );
+      await controller.refresh();
+
+      final interaction = CalendarInteractionController(config: config);
+      final item = CalendarItem(
+        id: event.id,
+        title: event.title,
+        kind: CalendarItemKind.event,
+        event: event,
+        startsAt: event.startsAt.toLocal(),
+        endsAt: event.endsAt.toLocal(),
+      );
+
+      // 1. Verify Day View Semantics and Resize Tooltips
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CalendarDayView(
+              dayDate: today,
+              items: [item],
+              config: config,
+              interactionController: interaction,
+              onItemTap: (_) {},
+              onSlotSecondaryTap: (_, _) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Semantics node must expose title and formatted time range
+      final semanticsFinder = find.byWidgetPredicate(
+        (w) =>
+            w is Semantics &&
+            w.properties.label != null &&
+            w.properties.label!.contains('Quarterly Planning, 10:00 – 11:30'),
+      );
+      expect(semanticsFinder, findsOneWidget);
+
+      // Tooltips for resize handles and current-time line
+      expect(find.byTooltip('Drag to adjust start time'), findsOneWidget);
+      expect(find.byTooltip('Drag to adjust end time'), findsOneWidget);
+      final now = DateTime.now();
+      final timeStr =
+          '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+      expect(find.byTooltip('Current time ($timeStr)'), findsOneWidget);
+
+      // 2. Verify Month View Rich Tooltip
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CalendarMonthView(
+              selectedDate: today,
+              firstWeekday: 1,
+              itemsByDay: {today: [item]},
+              config: config,
+              onItemTap: (_) {},
+              onDayTap: (_) {},
+              onItemDroppedOnDate: (_, _) {},
+              onShowDay: (_) {},
+              onShowWeek: (_) {},
+              onAddEvent: (_) {},
+              onAddTask: (_) {},
+              onAddSession: (_) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tooltip must format title and time range in Month view
+      final monthTooltipFinder = find.byWidgetPredicate(
+        (w) =>
+            w is Tooltip &&
+            w.message != null &&
+            w.message!.contains('Quarterly Planning\n10:00 – 11:30'),
+      );
+      expect(monthTooltipFinder, findsOneWidget);
+    });
   });
 }

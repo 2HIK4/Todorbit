@@ -1,5 +1,17 @@
 # Progress
 
+## Cross-Platform UI/UX Refinement Batch 1 (2026-11-12)
+
+Branch `fix/calendar-interaction-regressions`.
+Implemented high-impact accessibility, visual affordance, and interaction refinements across Windows and Android:
+- **Timeline Item Accessibility**: Added `Semantics` wrappers in `TimelineDayColumn` (`timeline_grid.dart`) formatting item title, start/end time range, alarm indicator, and overlap conflict count for Windows Narrator and Android TalkBack screen readers.
+- **Current-Time Indicator Tooltip Fix**: Corrected `_buildCurrentTimeLine` widget hierarchy so the time badge's tooltip is hoverable while the horizontal timeline rule remains click-through via `IgnorePointer`.
+- **Resize Handle Affordance Tooltips**: Added discoverable tooltips (`Drag to adjust start time`, `Drag to adjust end time`) with 500ms hover delay to edge resize handles.
+- **Rich Month View Tooltips**: Added time ranges, parent project context, and details to `CalendarMonthView` (`calendar_month_view.dart`) card tooltips.
+- **Polished Mobile Calendar Empty State**: Replaced unstyled debug text in `MobileCalendar` (`mobile_calendar.dart`) with an intentional Material 3 empty state featuring `event_available_outlined` icon, primary title, and tokenized secondary guidance.
+- **Verification**: All 11 regression tests in `test/calendar_interactions_regression_test.dart` passed (including new Scenario K); all 11 tests in `test/calendar_undo_redo_test.dart` passed; `dart analyze` reports 0 issues.
+
+
 ## Urgent Calendar Event Duration Invariant Restored (2026-11-11)
 
 Branch `fix/calendar-interaction-regressions`.

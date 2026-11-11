@@ -407,9 +407,35 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
           );
 
     return Tooltip(
-      message: item.isCancelled ? 'Cancelled: ${item.title}' : item.title,
+      message: _buildTooltipMessage(item),
       child: draggableWidget,
     );
+  }
+
+  String _buildTooltipMessage(CalendarItem item) {
+    final buffer = StringBuffer();
+    if (item.isCancelled) buffer.write('Cancelled: ');
+    if (item.parentTitle != null && item.parentTitle!.isNotEmpty) {
+      buffer.write('${item.parentTitle} · ');
+    }
+    buffer.write(item.title);
+    if (item.isTimed && item.startsAt != null && item.endsAt != null) {
+      final startStr = _formatTime(item.startsAt!);
+      final endStr = _formatTime(item.endsAt!);
+      buffer.write('\n$startStr – $endStr');
+    } else if (item.subtitle != null && item.subtitle!.isNotEmpty) {
+      buffer.write('\n${item.subtitle}');
+    }
+    if (item.detailsText != null && item.detailsText!.isNotEmpty) {
+      buffer.write('\n${item.detailsText}');
+    }
+    return buffer.toString();
+  }
+
+  String _formatTime(DateTime dt) {
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '$h:$m';
   }
 
   bool _isSameDay(DateTime a, DateTime b) =>

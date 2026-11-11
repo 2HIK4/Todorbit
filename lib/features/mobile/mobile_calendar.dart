@@ -341,9 +341,36 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
         ),
         if ((!showTasks || tasks.isEmpty && sessions.isEmpty) &&
             (!showEvents || events.isEmpty))
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 32),
-            child: Text('Nothing planned for this day.'),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.event_available_outlined,
+                    size: 40,
+                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.6),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'No commitments for this day',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Use the action buttons above to schedule an event or task.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                  ),
+                ],
+              ),
+            ),
           ),
         if (showEvents)
           for (final e in events)

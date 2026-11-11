@@ -214,37 +214,37 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
       top: y - 8,
       left: 0,
       right: 0,
-      child: IgnorePointer(
-        child: Tooltip(
-          message: 'Current time ($timeStr)',
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                decoration: BoxDecoration(
-                  color: scheme.primary,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  timeStr,
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                    color: scheme.onPrimary,
-                  ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Tooltip(
+            message: 'Current time ($timeStr)',
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+              decoration: BoxDecoration(
+                color: scheme.primary,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                timeStr,
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: scheme.onPrimary,
                 ),
               ),
-              const SizedBox(width: 2),
-              Expanded(
-                child: Container(
-                  height: 1.5,
-                  color: scheme.primary,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          const SizedBox(width: 2),
+          Expanded(
+            child: IgnorePointer(
+              child: Container(
+                height: 1.5,
+                color: scheme.primary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -348,13 +348,20 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                         _lastGlobalPointerPosition = null;
                         widget.interactionController.cancel();
                       },
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isCompact ? 2 : 4,
-                          vertical: isCompact ? 1 : 3,
-                        ),
-                        child: ClipRect(
-                          child: _buildItemContent(item, placement, accent, scheme, isCompact, hasAlarm, itemWidth),
+                      child: Semantics(
+                        label: '${item.title}, ${_formatTime(item.startsAt!)} – ${_formatTime(item.endsAt!)}'
+                            '${hasAlarm ? ', Alarm set' : ''}'
+                            '${placement.hasConflict ? ', Overlaps ${placement.conflictCount} items' : ''}',
+                        button: true,
+                        enabled: true,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isCompact ? 2 : 4,
+                            vertical: isCompact ? 1 : 3,
+                          ),
+                          child: ClipRect(
+                            child: _buildItemContent(item, placement, accent, scheme, isCompact, hasAlarm, itemWidth),
+                          ),
                         ),
                       ),
                     ),
@@ -367,47 +374,51 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                       left: 0,
                       right: 0,
                       height: config.resizeHandleHeight,
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.resizeUpDown,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.translucent,
-                          onVerticalDragStart: (details) {
-                            _lastGlobalPointerPosition = details.globalPosition;
-                            final renderBox = context.findRenderObject() as RenderBox?;
-                            final timelineY = renderBox != null && renderBox.hasSize
-                                ? renderBox.globalToLocal(details.globalPosition).dy
-                                : null;
-                            widget.interactionController.startResizeTop(
-                              item: item,
-                              dayDate: widget.dayDate,
-                              pointerLocal: details.globalPosition,
-                              pointerTimelineY: timelineY,
-                            );
-                          },
-                          onVerticalDragUpdate: (details) {
-                            _lastGlobalPointerPosition = details.globalPosition;
-                            final renderBox = context.findRenderObject() as RenderBox?;
-                            final timelineY = renderBox != null && renderBox.hasSize
-                                ? renderBox.globalToLocal(details.globalPosition).dy
-                                : null;
-                            widget.interactionController.updatePointer(
-                              details.globalPosition,
-                              widget.dayDate,
-                              timelineY,
-                            );
-                            _checkAutoScroll(details.globalPosition);
-                          },
-                          onVerticalDragEnd: (_) async {
-                            _autoScrollTimer?.cancel();
-                            _lastGlobalPointerPosition = null;
-                            await widget.onInteractionFinished?.call();
-                          },
-                          onVerticalDragCancel: () {
-                            _autoScrollTimer?.cancel();
-                            _lastGlobalPointerPosition = null;
-                            widget.interactionController.cancel();
-                          },
-                          child: const SizedBox.expand(),
+                      child: Tooltip(
+                        message: 'Drag to adjust start time',
+                        waitDuration: const Duration(milliseconds: 500),
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.resizeUpDown,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onVerticalDragStart: (details) {
+                              _lastGlobalPointerPosition = details.globalPosition;
+                              final renderBox = context.findRenderObject() as RenderBox?;
+                              final timelineY = renderBox != null && renderBox.hasSize
+                                  ? renderBox.globalToLocal(details.globalPosition).dy
+                                  : null;
+                              widget.interactionController.startResizeTop(
+                                item: item,
+                                dayDate: widget.dayDate,
+                                pointerLocal: details.globalPosition,
+                                pointerTimelineY: timelineY,
+                              );
+                            },
+                            onVerticalDragUpdate: (details) {
+                              _lastGlobalPointerPosition = details.globalPosition;
+                              final renderBox = context.findRenderObject() as RenderBox?;
+                              final timelineY = renderBox != null && renderBox.hasSize
+                                  ? renderBox.globalToLocal(details.globalPosition).dy
+                                  : null;
+                              widget.interactionController.updatePointer(
+                                details.globalPosition,
+                                widget.dayDate,
+                                timelineY,
+                              );
+                              _checkAutoScroll(details.globalPosition);
+                            },
+                            onVerticalDragEnd: (_) async {
+                              _autoScrollTimer?.cancel();
+                              _lastGlobalPointerPosition = null;
+                              await widget.onInteractionFinished?.call();
+                            },
+                            onVerticalDragCancel: () {
+                              _autoScrollTimer?.cancel();
+                              _lastGlobalPointerPosition = null;
+                              widget.interactionController.cancel();
+                            },
+                            child: const SizedBox.expand(),
+                          ),
                         ),
                       ),
                     ),
@@ -419,47 +430,51 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                       left: 0,
                       right: 0,
                       height: config.resizeHandleHeight,
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.resizeUpDown,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.translucent,
-                          onVerticalDragStart: (details) {
-                            _lastGlobalPointerPosition = details.globalPosition;
-                            final renderBox = context.findRenderObject() as RenderBox?;
-                            final timelineY = renderBox != null && renderBox.hasSize
-                                ? renderBox.globalToLocal(details.globalPosition).dy
-                                : null;
-                            widget.interactionController.startResizeBottom(
-                              item: item,
-                              dayDate: widget.dayDate,
-                              pointerLocal: details.globalPosition,
-                              pointerTimelineY: timelineY,
-                            );
-                          },
-                          onVerticalDragUpdate: (details) {
-                            _lastGlobalPointerPosition = details.globalPosition;
-                            final renderBox = context.findRenderObject() as RenderBox?;
-                            final timelineY = renderBox != null && renderBox.hasSize
-                                ? renderBox.globalToLocal(details.globalPosition).dy
-                                : null;
-                            widget.interactionController.updatePointer(
-                              details.globalPosition,
-                              widget.dayDate,
-                              timelineY,
-                            );
-                            _checkAutoScroll(details.globalPosition);
-                          },
-                          onVerticalDragEnd: (_) async {
-                            _autoScrollTimer?.cancel();
-                            _lastGlobalPointerPosition = null;
-                            await widget.onInteractionFinished?.call();
-                          },
-                          onVerticalDragCancel: () {
-                            _autoScrollTimer?.cancel();
-                            _lastGlobalPointerPosition = null;
-                            widget.interactionController.cancel();
-                          },
-                          child: const SizedBox.expand(),
+                      child: Tooltip(
+                        message: 'Drag to adjust end time',
+                        waitDuration: const Duration(milliseconds: 500),
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.resizeUpDown,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onVerticalDragStart: (details) {
+                              _lastGlobalPointerPosition = details.globalPosition;
+                              final renderBox = context.findRenderObject() as RenderBox?;
+                              final timelineY = renderBox != null && renderBox.hasSize
+                                  ? renderBox.globalToLocal(details.globalPosition).dy
+                                  : null;
+                              widget.interactionController.startResizeBottom(
+                                item: item,
+                                dayDate: widget.dayDate,
+                                pointerLocal: details.globalPosition,
+                                pointerTimelineY: timelineY,
+                              );
+                            },
+                            onVerticalDragUpdate: (details) {
+                              _lastGlobalPointerPosition = details.globalPosition;
+                              final renderBox = context.findRenderObject() as RenderBox?;
+                              final timelineY = renderBox != null && renderBox.hasSize
+                                  ? renderBox.globalToLocal(details.globalPosition).dy
+                                  : null;
+                              widget.interactionController.updatePointer(
+                                details.globalPosition,
+                                widget.dayDate,
+                                timelineY,
+                              );
+                              _checkAutoScroll(details.globalPosition);
+                            },
+                            onVerticalDragEnd: (_) async {
+                              _autoScrollTimer?.cancel();
+                              _lastGlobalPointerPosition = null;
+                              await widget.onInteractionFinished?.call();
+                            },
+                            onVerticalDragCancel: () {
+                              _autoScrollTimer?.cancel();
+                              _lastGlobalPointerPosition = null;
+                              widget.interactionController.cancel();
+                            },
+                            child: const SizedBox.expand(),
+                          ),
                         ),
                       ),
                     ),
