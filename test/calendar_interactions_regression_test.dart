@@ -289,6 +289,7 @@ void main() {
 
       Widget buildMonthView() {
         return MaterialApp(
+          theme: ThemeData(platform: TargetPlatform.windows),
           home: Scaffold(
             body: CalendarMonthView(
               selectedDate: nov10,
@@ -481,6 +482,90 @@ void main() {
 
       final iconWidget = tester.widget<Icon>(find.byIcon(Icons.event_outlined));
       expect(iconWidget.size, greaterThanOrEqualTo(12.0));
+    });
+
+    testWidgets('H. Android Month-view uses LongPressDraggable so touch scrolling does not conflict with dragging', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(400, 600));
+      final nov10 = DateTime(2026, 11, 10);
+      final nov15 = DateTime(2026, 11, 15);
+
+      final event = await repo.addEvent(
+        EventDraft(
+          title: 'Mobile Task',
+          startsAt: DateTime(2026, 11, 10, 14, 0),
+          endsAt: DateTime(2026, 11, 10, 15, 0),
+        ),
+      );
+      await controller.refresh();
+
+      final item = CalendarItem(
+        id: event.id,
+        title: event.title,
+        kind: CalendarItemKind.event,
+        event: event,
+        startsAt: event.startsAt.toLocal(),
+        endsAt: event.endsAt.toLocal(),
+      );
+
+      CalendarItem? droppedItem;
+      DateTime? droppedTarget;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(platform: TargetPlatform.android),
+          home: Scaffold(
+            body: CalendarMonthView(
+              selectedDate: nov10,
+              firstWeekday: 1,
+              itemsByDay: {nov10: [item]},
+              config: config,
+              onItemTap: (_) {},
+              onDayTap: (_) {},
+              onItemDroppedOnDate: (dItem, target) {
+                droppedItem = dItem;
+                droppedTarget = target;
+              },
+              onShowDay: (_) {},
+              onShowWeek: (_) {},
+              onAddEvent: (_) {},
+              onAddTask: (_) {},
+              onAddSession: (_) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // On Android, items must be wrapped in LongPressDraggable to protect touch scrolling
+      expect(find.byType(LongPressDraggable<CalendarItem>), findsOneWidget);
+      expect(find.byType(Draggable<CalendarItem>), findsNothing);
+
+      // Fast touch flick (less than 250ms long press) does NOT initiate drag drop
+      final cardRect = tester.getRect(find.byType(LongPressDraggable<CalendarItem>));
+      final startPos = cardRect.center;
+      final targetCenter = tester.getCenter(find.text('15'));
+
+      final flick = await tester.startGesture(startPos);
+      await tester.pump(const Duration(milliseconds: 50));
+      await flick.moveTo(targetCenter);
+      await tester.pump(const Duration(milliseconds: 50));
+      await flick.up();
+      await tester.pumpAndSettle();
+
+      expect(droppedItem, isNull, reason: 'Fast touch swipe must not drag card on Android');
+
+      // Intentional long-press (>250ms) triggers drag and successfully drops
+      final dragGesture = await tester.startGesture(startPos);
+      await tester.pump(const Duration(milliseconds: 300)); // Surpass 250ms delay
+      await dragGesture.moveTo(targetCenter);
+      await tester.pump(const Duration(milliseconds: 50));
+      await dragGesture.up();
+      await tester.pumpAndSettle();
+
+      expect(droppedItem?.title, equals('Mobile Task'));
+      expect(droppedTarget, equals(nov15));
     });
   });
 }

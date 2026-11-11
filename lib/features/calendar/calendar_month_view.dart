@@ -98,9 +98,11 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
 
     return LayoutBuilder(
       builder: (context, bounds) {
-        final cellHeight = (bounds.maxHeight - 40) / rowCount;
+        final rawCellHeight = (bounds.maxHeight - 40) / rowCount;
+        final cellHeight = rawCellHeight.clamp(90.0, double.infinity);
+        final isOverflowing = (cellHeight * rowCount) > (bounds.maxHeight - 40);
         final previewCount = monthEntryCapacity(
-          cellHeight,
+          rawCellHeight,
           MediaQuery.textScalerOf(context).scale(1),
         );
 
@@ -130,10 +132,12 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
             Expanded(
               child: GridView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                physics: const NeverScrollableScrollPhysics(),
+                physics: isOverflowing
+                    ? const ClampingScrollPhysics()
+                    : const NeverScrollableScrollPhysics(),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 7,
-                  mainAxisExtent: cellHeight.clamp(90.0, double.infinity),
+                  mainAxisExtent: cellHeight,
                 ),
                 itemCount: cellCount,
                 itemBuilder: (context, index) {
@@ -336,52 +340,75 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
       ),
     );
 
-    return Tooltip(
-      message: item.isCancelled ? 'Cancelled: ${item.title}' : item.title,
-      child: Draggable<CalendarItem>(
-        data: item,
-        hitTestBehavior: HitTestBehavior.opaque,
-        dragAnchorStrategy: pointerDragAnchorStrategy,
-        feedback: Material(
-          elevation: 4,
+    final isMobile = Theme.of(context).platform == TargetPlatform.android ||
+        Theme.of(context).platform == TargetPlatform.iOS;
+
+    final feedbackWidget = Material(
+      elevation: 4,
+      borderRadius: BorderRadius.circular(4),
+      color: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHigh,
           borderRadius: BorderRadius.circular(4),
-          color: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: accent, width: 1.5),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.drag_indicator, size: 14, color: accent),
-                const SizedBox(width: 4),
-                Text(
-                  item.title,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurface,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          border: Border.all(color: accent, width: 1.5),
         ),
-        childWhenDragging: Opacity(
-          opacity: 0.3,
-          child: itemWidget,
-        ),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => widget.onItemTap(item),
-          onSecondaryTapDown: (details) =>
-              _showContextMenu(item.startsAt ?? date, details.globalPosition),
-          child: itemWidget,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.drag_indicator, size: 14, color: accent),
+            const SizedBox(width: 4),
+            Text(
+              item.title,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: scheme.onSurface,
+              ),
+            ),
+          ],
         ),
       ),
+    );
+
+    final childWidget = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => widget.onItemTap(item),
+      onSecondaryTapDown: (details) =>
+          _showContextMenu(item.startsAt ?? date, details.globalPosition),
+      child: itemWidget,
+    );
+
+    final draggableWidget = isMobile
+        ? LongPressDraggable<CalendarItem>(
+            data: item,
+            delay: const Duration(milliseconds: 250),
+            hapticFeedbackOnStart: true,
+            hitTestBehavior: HitTestBehavior.opaque,
+            dragAnchorStrategy: pointerDragAnchorStrategy,
+            feedback: feedbackWidget,
+            childWhenDragging: Opacity(
+              opacity: 0.3,
+              child: itemWidget,
+            ),
+            child: childWidget,
+          )
+        : Draggable<CalendarItem>(
+            data: item,
+            hitTestBehavior: HitTestBehavior.opaque,
+            dragAnchorStrategy: pointerDragAnchorStrategy,
+            feedback: feedbackWidget,
+            childWhenDragging: Opacity(
+              opacity: 0.3,
+              child: itemWidget,
+            ),
+            child: childWidget,
+          );
+
+    return Tooltip(
+      message: item.isCancelled ? 'Cancelled: ${item.title}' : item.title,
+      child: draggableWidget,
     );
   }
 
