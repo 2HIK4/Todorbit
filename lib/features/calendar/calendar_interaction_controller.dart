@@ -222,7 +222,7 @@ class CalendarInteractionController extends ChangeNotifier {
         }
         final snappedStart = engine.yToTime(proposedY, targetDay);
 
-        // Clamp so item does not extend past end of day
+        // Clamp so item does not extend past end of day or before start of day
         final maxEnd = DateTime(
           targetDay.year,
           targetDay.month,
@@ -230,12 +230,29 @@ class CalendarInteractionController extends ChangeNotifier {
           config.endHour == 24 ? 23 : config.endHour,
           config.endHour == 24 ? 59 : 0,
         );
+        final minStart = DateTime(
+          targetDay.year,
+          targetDay.month,
+          targetDay.day,
+          config.startHour,
+          0,
+        );
         var finalStart = snappedStart;
         var finalEnd = finalStart.add(originalDuration);
 
         if (finalEnd.isAfter(maxEnd)) {
           finalEnd = maxEnd;
           finalStart = finalEnd.subtract(originalDuration);
+        }
+
+        if (finalStart.isBefore(minStart)) {
+          finalStart = minStart;
+          final maxAllowedDuration = maxEnd.difference(minStart);
+          if (originalDuration > maxAllowedDuration) {
+            finalEnd = maxEnd;
+          } else {
+            finalEnd = finalStart.add(originalDuration);
+          }
         }
 
         proposedStartsAt = finalStart;
@@ -279,10 +296,20 @@ class CalendarInteractionController extends ChangeNotifier {
 
         final minDuration = Duration(minutes: config.minItemDurationMinutes);
         final earliestAllowedEnd = origStart.add(minDuration);
+        final maxEnd = DateTime(
+          targetDay.year,
+          targetDay.month,
+          targetDay.day,
+          config.endHour == 24 ? 23 : config.endHour,
+          config.endHour == 24 ? 59 : 0,
+        );
 
-        final finalEnd = snappedEnd.isBefore(earliestAllowedEnd)
+        var finalEnd = snappedEnd.isBefore(earliestAllowedEnd)
             ? earliestAllowedEnd
             : snappedEnd;
+        if (finalEnd.isAfter(maxEnd)) {
+          finalEnd = maxEnd;
+        }
 
         proposedStartsAt = origStart;
         proposedEndsAt = finalEnd;

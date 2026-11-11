@@ -64,7 +64,7 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
     final viewportY = localInColumn.dy - scrollOffset;
 
     final margin = widget.config.autoScrollMargin;
-    if (viewportY >= 0 && viewportY < margin) {
+    if (viewportY >= -10 && viewportY < margin) {
       if (_autoScrollTimer == null || !_autoScrollTimer!.isActive) {
         _autoScrollTimer = Timer.periodic(const Duration(milliseconds: 30), (_) {
           if (!scroller.hasClients) return;
@@ -343,6 +343,11 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                         _lastGlobalPointerPosition = null;
                         await widget.onInteractionFinished?.call();
                       },
+                      onPanCancel: () {
+                        _autoScrollTimer?.cancel();
+                        _lastGlobalPointerPosition = null;
+                        widget.interactionController.cancel();
+                      },
                       child: Padding(
                         padding: EdgeInsets.symmetric(
                           horizontal: isCompact ? 2 : 4,
@@ -397,6 +402,11 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                             _lastGlobalPointerPosition = null;
                             await widget.onInteractionFinished?.call();
                           },
+                          onVerticalDragCancel: () {
+                            _autoScrollTimer?.cancel();
+                            _lastGlobalPointerPosition = null;
+                            widget.interactionController.cancel();
+                          },
                           child: const SizedBox.expand(),
                         ),
                       ),
@@ -443,6 +453,11 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                             _autoScrollTimer?.cancel();
                             _lastGlobalPointerPosition = null;
                             await widget.onInteractionFinished?.call();
+                          },
+                          onVerticalDragCancel: () {
+                            _autoScrollTimer?.cancel();
+                            _lastGlobalPointerPosition = null;
+                            widget.interactionController.cancel();
                           },
                           child: const SizedBox.expand(),
                         ),

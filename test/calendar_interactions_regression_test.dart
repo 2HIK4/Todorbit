@@ -567,5 +567,174 @@ void main() {
       expect(droppedItem?.title, equals('Mobile Task'));
       expect(droppedTarget, equals(nov15));
     });
+
+    test('I. Multi-day and long events clamp safely to day boundaries without leaking into adjacent days', () async {
+      final testDay = DateTime(2026, 11, 10);
+      final event = await repo.addEvent(
+        EventDraft(
+          title: 'All-Day Hackathon',
+          startsAt: DateTime(2026, 11, 10, 0, 0),
+          endsAt: DateTime(2026, 11, 11, 2, 0), // 26 hours duration
+        ),
+      );
+      await controller.refresh();
+
+      final interaction = CalendarInteractionController(config: config);
+      final item = CalendarItem(
+        id: event.id,
+        title: event.title,
+        kind: CalendarItemKind.event,
+        event: event,
+        startsAt: event.startsAt.toLocal(),
+        endsAt: event.endsAt.toLocal(),
+      );
+
+      // Start move and drag near end of day (22:00)
+      interaction.startMove(
+        item: item,
+        dayDate: testDay,
+        pointerLocal: const Offset(10, 100),
+        pointerTimelineY: 100,
+      );
+      interaction.updatePointer(
+        const Offset(10, 1320), // 22:00
+        testDay,
+        1320,
+      );
+
+      // finalStart must be clamped to minStart (2026-11-10 00:00), never leaking to Nov 9!
+      expect(interaction.proposedStartsAt!.day, equals(10));
+      expect(interaction.proposedStartsAt!.hour, equals(0));
+      expect(interaction.proposedStartsAt!.minute, equals(0));
+      expect(interaction.proposedEndsAt!.day, equals(10));
+      expect(interaction.proposedEndsAt!.hour, equals(23));
+      expect(interaction.proposedEndsAt!.minute, equals(59));
+
+      // Test resizeEnd clamping when event starts at 23:50
+      final lateEvent = await repo.addEvent(
+        EventDraft(
+          title: 'Late Night Call',
+          startsAt: DateTime(2026, 11, 10, 23, 50),
+          endsAt: DateTime(2026, 11, 10, 23, 55),
+        ),
+      );
+      final lateItem = CalendarItem(
+        id: lateEvent.id,
+        title: lateEvent.title,
+        kind: CalendarItemKind.event,
+        event: lateEvent,
+        startsAt: lateEvent.startsAt.toLocal(),
+        endsAt: lateEvent.endsAt.toLocal(),
+      );
+
+      interaction.startResizeBottom(
+        item: lateItem,
+        dayDate: testDay,
+        pointerLocal: const Offset(10, 1430),
+        pointerTimelineY: 1430,
+      );
+      // Attempt to drag past end of day
+      interaction.updatePointer(
+        const Offset(10, 1500),
+        testDay,
+        1500,
+      );
+      expect(interaction.proposedStartsAt!.day, equals(10));
+      expect(interaction.proposedStartsAt!.hour, equals(23));
+      expect(interaction.proposedStartsAt!.minute, equals(50));
+      expect(interaction.proposedEndsAt!.day, equals(10));
+      expect(interaction.proposedEndsAt!.hour, equals(23));
+      expect(interaction.proposedEndsAt!.minute, equals(59));
+    });
+
+    testWidgets('J. Top-edge auto-scroll buffer allows pointer to overshoot slightly into header and cancellation resets state', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(1000, 700));
+      final testDay = DateTime(2026, 11, 10);
+      final event = await repo.addEvent(
+        EventDraft(
+          title: 'Scrum Sync',
+          startsAt: DateTime(2026, 11, 10, 14, 0),
+          endsAt: DateTime(2026, 11, 10, 15, 0),
+        ),
+      );
+      await controller.refresh();
+
+      final interaction = CalendarInteractionController(config: config);
+      final item = CalendarItem(
+        id: event.id,
+        title: event.title,
+        kind: CalendarItemKind.event,
+        event: event,
+        startsAt: event.startsAt.toLocal(),
+        endsAt: event.endsAt.toLocal(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CalendarDayView(
+              dayDate: testDay,
+              items: [item],
+              config: config,
+              interactionController: interaction,
+              onItemTap: (_) {},
+              onSlotSecondaryTap: (_, _) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final scrollable = tester.widget<SingleChildScrollView>(
+        find.descendant(
+          of: find.byType(CalendarDayView),
+          matching: find.byType(SingleChildScrollView),
+        ).first,
+      );
+      final scroller = scrollable.controller!;
+
+      // Scroll timeline down so scroller is at offset 600
+      scroller.jumpTo(600);
+      await tester.pumpAndSettle();
+      expect(scroller.offset, equals(600));
+
+      final eventFinder = find.text('Scrum Sync');
+      expect(eventFinder, findsOneWidget);
+
+      final eventCenter = tester.getCenter(eventFinder);
+      final gesture = await tester.startGesture(eventCenter, kind: PointerDeviceKind.mouse);
+      await tester.pump(const Duration(milliseconds: 50));
+
+      // Move slightly to pass dragThreshold (4px)
+      await gesture.moveTo(eventCenter - const Offset(0, 10));
+      await tester.pump(const Duration(milliseconds: 50));
+
+      // Drag pointer to 20px below top of viewport (well within 48px auto-scroll margin)
+      final viewportTop = tester.getTopLeft(find.byType(SingleChildScrollView).first).dy;
+      await gesture.moveTo(Offset(eventCenter.dx, viewportTop + 20));
+      await tester.pump(const Duration(milliseconds: 150));
+
+      // Auto-scrolling up should have reduced the scroll offset
+      expect(scroller.offset, lessThan(600));
+
+      // Now move pointer 5px ABOVE the viewport top (-5px, within the -10px tolerance)
+      final offsetBeforeOvershoot = scroller.offset;
+      await gesture.moveTo(Offset(eventCenter.dx, viewportTop - 5));
+      await tester.pump(const Duration(milliseconds: 150));
+
+      // Auto-scroll continues even with slight -5px overshoot into header area
+      expect(scroller.offset, lessThanOrEqualTo(offsetBeforeOvershoot));
+
+      // Releasing / cancelling resets interaction state cleanly
+      await gesture.up();
+      interaction.cancel();
+      await tester.pumpAndSettle();
+
+      expect(interaction.gestureKind, equals(CalendarGestureKind.none));
+      expect(interaction.isDragging, isFalse);
+      expect(interaction.isDragging, isFalse);
+    });
   });
 }
