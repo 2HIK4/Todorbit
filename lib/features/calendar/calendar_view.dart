@@ -427,6 +427,8 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
         final parentTitle = parent?.title;
 
         if (task.scheduledDate == key) {
+          final activity = controller.progressiveAssignments[task.id]?.title;
+          final detailsText = activity != null ? 'Current step: $activity' : null;
           items.add(
             CalendarItem(
               id: task.id,
@@ -435,6 +437,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
               task: task,
               parentTitle: parentTitle,
               subtitle: 'Plan',
+              detailsText: detailsText,
             ),
           );
         }
@@ -744,24 +747,36 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
                             alarmRules: controller.alarmRules,
                             onInteractionFinished: _handleInteractionFinished,
                           ),
-                        CalendarMode.week => CalendarWeekView(
-                            weekStart: weekStart,
-                            itemsByDay: _buildWeekItemsByDay(controller),
-                            config: _config,
-                            interactionController: _interactionController,
-                            onItemTap: _handleCalendarItemTap,
-                            onSlotSecondaryTap: _showCreateMenu,
-                            onDayHeaderTap: (date) {
-                              setState(() {
-                                selected = date;
-                                mode = CalendarMode.day;
-                              });
-                              ref
-                                  .read(appControllerProvider)
-                                  .setLastCalendarMode('day');
+                        CalendarMode.week => LayoutBuilder(
+                            builder: (context, bounds) {
+                              if (bounds.maxWidth <
+                                  650 *
+                                      MediaQuery.textScalerOf(context)
+                                          .scale(14) /
+                                      14) {
+                                return _weekGrid(controller);
+                              }
+                              return CalendarWeekView(
+                                weekStart: weekStart,
+                                itemsByDay: _buildWeekItemsByDay(controller),
+                                config: _config,
+                                interactionController: _interactionController,
+                                onItemTap: _handleCalendarItemTap,
+                                onSlotSecondaryTap: _showCreateMenu,
+                                onDayHeaderTap: (date) {
+                                  setState(() {
+                                    selected = date;
+                                    mode = CalendarMode.day;
+                                  });
+                                  ref
+                                      .read(appControllerProvider)
+                                      .setLastCalendarMode('day');
+                                },
+                                alarmRules: controller.alarmRules,
+                                onInteractionFinished:
+                                    _handleInteractionFinished,
+                              );
                             },
-                            alarmRules: controller.alarmRules,
-                            onInteractionFinished: _handleInteractionFinished,
                           ),
                         CalendarMode.month => CalendarMonthView(
                             selectedDate: day,

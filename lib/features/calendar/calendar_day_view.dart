@@ -206,6 +206,8 @@ class _CalendarDayViewState extends State<CalendarDayView> {
         ? widget.colorResolver!(item)
         : (item.colorValue != null ? Color(item.colorValue!) : scheme.primary);
 
+    final String badgeLabel = item.allDay ? 'All day' : (item.subtitle ?? 'Plan');
+
     return InkWell(
       borderRadius: BorderRadius.circular(6),
       onTap: () => widget.onItemTap(item),
@@ -230,11 +232,27 @@ class _CalendarDayViewState extends State<CalendarDayView> {
               color: accent,
             ),
             const SizedBox(width: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                badgeLabel,
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
             Text(
-              item.subtitle != null
-                  ? '${item.subtitle} · ${item.title}'
+              item.detailsText != null
+                  ? '${item.title}\n${item.detailsText}'
                   : item.title,
-              maxLines: 1,
+              maxLines: item.detailsText != null ? 2 : 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 11,

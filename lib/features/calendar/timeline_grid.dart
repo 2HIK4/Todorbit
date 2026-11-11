@@ -381,9 +381,11 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
     bool hasAlarm,
     double itemWidth,
   ) {
+    final dayStart = DateTime(widget.dayDate.year, widget.dayDate.month, widget.dayDate.day);
+    final isContinuation = item.startsAt!.isBefore(dayStart);
     final startTimeStr = _formatTime(item.startsAt!);
     final endTimeStr = _formatTime(item.endsAt!);
-    final timeRangeStr = '$startTimeStr – $endTimeStr';
+    final timeRangeStr = isContinuation ? 'Continues' : '$startTimeStr – $endTimeStr';
     final conflictTooltip = placement.hasConflict
         ? 'Overlaps ${placement.conflictCount} other event${placement.conflictCount == 1 ? '' : 's'} or work session${placement.conflictCount == 1 ? '' : 's'}'
         : null;
