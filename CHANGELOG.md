@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.19-beta.16+39 - calendar interaction and UI regression fixes
+
+- Fix unexpected calendar scroll upward during event dragging by evaluating pointer distance against viewport bounds rather than card-relative coordinates.
+- Add continuous auto-scroll ticking keeping dragged items locked to pointer movement during auto-scrolling.
+- Enable full cross-day drag and drop in Week view with global column resolution, dynamic ghost preview, and atomic date/time commit.
+- Restore live reactivity for toolbar Undo and Redo controls and keyboard shortcuts (Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y) with autofocus and EditableText bypass.
+- Replace persistent full-width banners with a compact floating notification (auto-dismissing after 4 seconds without stacking).
+- Resolve Month view card drag hitboxes across 100% of card width with opaque hit testing; adapt to LongPressDraggable with haptic feedback on mobile to protect touch scrolling.
+- Isolate Ctrl + Mouse Wheel zoom using dedicated scroll physics to eliminate simultaneous timeline scrolling; add 350ms transition debounce.
+- Restore comfortable Month view card readability (28–34px height, 11pt font, 12pt icons, 90px min cell height).
+- Unify Undo, Redo, divider, and presentation switch in an atomic toolbar pill preventing orphaned icons or awkward wrapping.
+- Restyle current-time indicator with theme primary accent, aligned time badge, and accessible tooltip.
+- Upgrade native Windows Tasks widget navigation buttons to 32x32 hit bounds with matching chevrons and Fluent hover outlines.
+- Experimental pre-release: release, CI, and packaging integrity gates passed. Windows remains unsigned; physical multi-device acceptance remains manual.
+
+
 ## 1.0.19-beta.15+38 - interactive calendar candidate
 
 - Interactive vertical timeline calendar redesign for Day and Week views with accurate time positioning and duration heights.

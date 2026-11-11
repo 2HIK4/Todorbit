@@ -1,5 +1,25 @@
 # Progress
 
+## Beta 16 experimental release published (2026-11-11)
+
+Tag `v1.0.19-beta.16` (version `1.0.19-beta.16+39`, Schema 28).
+Published experimental GitHub pre-release with Windows installer, portable ZIP,
+production-signed Android universal APK, update metadata, and SHA-256 checksums:
+- Refined interactive calendar resolving all 10 manual testing defects from Beta 15.
+- Fixed unexpected upward scrolling on pickup with viewport-relative distance and smooth 16ms auto-scroll ticking.
+- Full cross-day Week drag & drop with live ghost preview across day columns and atomic commit.
+- Dynamic toolbar Undo/Redo reactivity, autofocus node, and keyboard shortcuts (<kbd>Ctrl</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Y</kbd>).
+- Compact 420px floating notification with automatic 4-second dismissal.
+- Full-width Month view card drag hitboxes (10% to 90% width) with `LongPressDraggable` on mobile to protect touch scrolling.
+- Isolated <kbd>Ctrl</kbd> + Mouse Wheel zoom eliminating simultaneous timeline scrolling, with 350ms transition debounce.
+- Comfortable Month view card typography and density (28–34px height, 11pt font, 12pt icons).
+- Unified atomic toolbar pill grouping Undo, Redo, divider, and presentation toggle.
+- Intentional primary-accent current-time indicator with live time badge and tooltip.
+- Upgraded native Windows Tasks widget navigation buttons to 32×32 hit bounds with matching chevrons and Fluent hover outlines.
+- All 8 end-to-end regression tests in `test/calendar_interactions_regression_test.dart` and 16 existing tests passed; `dart analyze` reports 0 issues.
+- Full receipt recorded in [TODORBIT_BETA_16_PUBLICATION.md](TODORBIT_BETA_16_PUBLICATION.md).
+
+
 ## Calendar Interaction & UI Regression Fixes (2026-11-11)
 
 Branch `fix/calendar-interaction-regressions`.
