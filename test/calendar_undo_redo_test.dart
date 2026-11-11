@@ -545,7 +545,7 @@ void main() {
 
       final occurrences = await repo.eventOccurrences('2026-11-10', '2026-11-12');
       final occNov10 = occurrences.firstWhere((o) => o.nominalDate == '2026-11-10');
-      final occNov11 = occurrences.firstWhere((o) => o.nominalDate == '2026-11-11');
+      expect(occurrences.any((o) => o.nominalDate == '2026-11-11'), isTrue);
 
       final interaction = CalendarInteractionController(config: config);
       final day = DateTime(2026, 11, 10);

@@ -1,4 +1,4 @@
-import 'dart:io';
+// ignore_for_file: avoid_print
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_manager/data/app_database.dart';
 import 'package:life_manager/data/life_repository.dart';
