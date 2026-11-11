@@ -568,49 +568,249 @@ void main() {
       expect(droppedTarget, equals(nov15));
     });
 
-    test('I. Multi-day and long events clamp safely to day boundaries without leaking into adjacent days', () async {
+    test('I. Event moves strictly preserve scheduled duration across all scenarios', () async {
       final testDay = DateTime(2026, 11, 10);
-      final event = await repo.addEvent(
+      final nextDay = DateTime(2026, 11, 11);
+
+      // 1. Normal same-day event move (90 minutes)
+      final normalEvent = await repo.addEvent(
         EventDraft(
-          title: 'All-Day Hackathon',
-          startsAt: DateTime(2026, 11, 10, 0, 0),
-          endsAt: DateTime(2026, 11, 11, 2, 0), // 26 hours duration
+          title: 'Design Review',
+          startsAt: DateTime(2026, 11, 10, 10, 0),
+          endsAt: DateTime(2026, 11, 10, 11, 30), // 90 min
         ),
       );
       await controller.refresh();
-
       final interaction = CalendarInteractionController(config: config);
-      final item = CalendarItem(
-        id: event.id,
-        title: event.title,
+      final normalItem = CalendarItem(
+        id: normalEvent.id,
+        title: normalEvent.title,
         kind: CalendarItemKind.event,
-        event: event,
-        startsAt: event.startsAt.toLocal(),
-        endsAt: event.endsAt.toLocal(),
+        event: normalEvent,
+        startsAt: normalEvent.startsAt.toLocal(),
+        endsAt: normalEvent.endsAt.toLocal(),
       );
 
-      // Start move and drag near end of day (22:00)
       interaction.startMove(
-        item: item,
+        item: normalItem,
         dayDate: testDay,
-        pointerLocal: const Offset(10, 100),
-        pointerTimelineY: 100,
+        pointerLocal: const Offset(10, 600),
+        pointerTimelineY: 600, // 10:00
       );
-      interaction.updatePointer(
-        const Offset(10, 1320), // 22:00
-        testDay,
-        1320,
+      interaction.updatePointer(const Offset(10, 840), testDay, 840); // 14:00
+      expect(interaction.proposedStartsAt, equals(DateTime(2026, 11, 10, 14, 0)));
+      expect(interaction.proposedEndsAt, equals(DateTime(2026, 11, 10, 15, 30)));
+      expect(interaction.proposedEndsAt!.difference(interaction.proposedStartsAt!), equals(const Duration(minutes: 90)));
+      await interaction.commit(controller);
+      await controller.refresh();
+      var persisted = (await repo.events()).firstWhere((e) => e.id == normalEvent.id);
+      expect(persisted.startsAt.toLocal(), equals(DateTime(2026, 11, 10, 14, 0)));
+      expect(persisted.endsAt.toLocal(), equals(DateTime(2026, 11, 10, 15, 30)));
+
+      // 2. Overnight event move (starts at night, ends in morning, 6 hours)
+      final overnightEvent = await repo.addEvent(
+        EventDraft(
+          title: 'Night Shift Hackathon',
+          startsAt: DateTime(2026, 11, 10, 20, 0),
+          endsAt: DateTime(2026, 11, 11, 2, 0), // 6 hours
+        ),
+      );
+      await controller.refresh();
+      final overnightItem = CalendarItem(
+        id: overnightEvent.id,
+        title: overnightEvent.title,
+        kind: CalendarItemKind.event,
+        event: overnightEvent,
+        startsAt: overnightEvent.startsAt.toLocal(),
+        endsAt: overnightEvent.endsAt.toLocal(),
       );
 
-      // finalStart must be clamped to minStart (2026-11-10 00:00), never leaking to Nov 9!
-      expect(interaction.proposedStartsAt!.day, equals(10));
-      expect(interaction.proposedStartsAt!.hour, equals(0));
-      expect(interaction.proposedStartsAt!.minute, equals(0));
-      expect(interaction.proposedEndsAt!.day, equals(10));
-      expect(interaction.proposedEndsAt!.hour, equals(23));
-      expect(interaction.proposedEndsAt!.minute, equals(59));
+      interaction.startMove(
+        item: overnightItem,
+        dayDate: testDay,
+        pointerLocal: const Offset(10, 1200),
+        pointerTimelineY: 1200, // 20:00
+      );
+      // Move to 23:00 near end of day column
+      interaction.updatePointer(const Offset(10, 1380), testDay, 1380); // 23:00
+      // Invariant: start is 23:00, end is 05:00 next day (NOT clamped to 23:59 or shifted backward to 17:59!)
+      expect(interaction.proposedStartsAt, equals(DateTime(2026, 11, 10, 23, 0)));
+      expect(interaction.proposedEndsAt, equals(DateTime(2026, 11, 11, 5, 0)));
+      expect(interaction.proposedEndsAt!.difference(interaction.proposedStartsAt!), equals(const Duration(hours: 6)));
+      await interaction.commit(controller);
+      await controller.refresh();
+      persisted = (await repo.events()).firstWhere((e) => e.id == overnightEvent.id);
+      expect(persisted.startsAt.toLocal(), equals(DateTime(2026, 11, 10, 23, 0)));
+      expect(persisted.endsAt.toLocal(), equals(DateTime(2026, 11, 11, 5, 0)));
 
-      // Test resizeEnd clamping when event starts at 23:50
+      // 3. Multi-day event lasting over 24 hours (26 hours)
+      final multiDay26 = await repo.addEvent(
+        EventDraft(
+          title: 'Release Sprint',
+          startsAt: DateTime(2026, 11, 10, 0, 0),
+          endsAt: DateTime(2026, 11, 11, 2, 0), // 26 hours
+        ),
+      );
+      await controller.refresh();
+      final multiDayItem26 = CalendarItem(
+        id: multiDay26.id,
+        title: multiDay26.title,
+        kind: CalendarItemKind.event,
+        event: multiDay26,
+        startsAt: multiDay26.startsAt.toLocal(),
+        endsAt: multiDay26.endsAt.toLocal(),
+      );
+
+      interaction.startMove(
+        item: multiDayItem26,
+        dayDate: testDay,
+        pointerLocal: const Offset(10, 0),
+        pointerTimelineY: 0,
+      );
+      interaction.updatePointer(const Offset(10, 840), testDay, 840); // 14:00
+      expect(interaction.proposedStartsAt, equals(DateTime(2026, 11, 10, 14, 0)));
+      expect(interaction.proposedEndsAt, equals(DateTime(2026, 11, 11, 16, 0)));
+      expect(interaction.proposedEndsAt!.difference(interaction.proposedStartsAt!), equals(const Duration(hours: 26)));
+      await interaction.commit(controller);
+      await controller.refresh();
+      persisted = (await repo.events()).firstWhere((e) => e.id == multiDay26.id);
+      expect(persisted.startsAt.toLocal(), equals(DateTime(2026, 11, 10, 14, 0)));
+      expect(persisted.endsAt.toLocal(), equals(DateTime(2026, 11, 11, 16, 0)));
+
+      // 4. 48-hour event move
+      final event48 = await repo.addEvent(
+        EventDraft(
+          title: 'Weekend Conference',
+          startsAt: DateTime(2026, 11, 10, 10, 0),
+          endsAt: DateTime(2026, 11, 12, 10, 0), // 48 hours
+        ),
+      );
+      await controller.refresh();
+      final item48 = CalendarItem(
+        id: event48.id,
+        title: event48.title,
+        kind: CalendarItemKind.event,
+        event: event48,
+        startsAt: event48.startsAt.toLocal(),
+        endsAt: event48.endsAt.toLocal(),
+      );
+
+      interaction.startMove(
+        item: item48,
+        dayDate: testDay,
+        pointerLocal: const Offset(10, 600),
+        pointerTimelineY: 600, // 10:00
+      );
+      interaction.updatePointer(const Offset(10, 720), testDay, 720); // 12:00
+      expect(interaction.proposedStartsAt, equals(DateTime(2026, 11, 10, 12, 0)));
+      expect(interaction.proposedEndsAt, equals(DateTime(2026, 11, 12, 12, 0)));
+      expect(interaction.proposedEndsAt!.difference(interaction.proposedStartsAt!), equals(const Duration(hours: 48)));
+      await interaction.commit(controller);
+      await controller.refresh();
+      persisted = (await repo.events()).firstWhere((e) => e.id == event48.id);
+      expect(persisted.startsAt.toLocal(), equals(DateTime(2026, 11, 10, 12, 0)));
+      expect(persisted.endsAt.toLocal(), equals(DateTime(2026, 11, 12, 12, 0)));
+
+      // 5. Cross-day Week move
+      final movedItem48 = CalendarItem(
+        id: persisted.id,
+        title: persisted.title,
+        kind: CalendarItemKind.event,
+        event: persisted,
+        startsAt: persisted.startsAt.toLocal(),
+        endsAt: persisted.endsAt.toLocal(),
+      );
+      interaction.startMove(
+        item: movedItem48,
+        dayDate: testDay,
+        pointerLocal: const Offset(100, 720),
+        pointerTimelineY: 720,
+      );
+      // Drag horizontally to nextDay column (Nov 11) at 10:00 (600px)
+      interaction.updatePointer(const Offset(250, 600), nextDay, 600);
+      expect(interaction.proposedStartsAt, equals(DateTime(2026, 11, 11, 10, 0)));
+      expect(interaction.proposedEndsAt, equals(DateTime(2026, 11, 13, 10, 0)));
+      expect(interaction.proposedEndsAt!.difference(interaction.proposedStartsAt!), equals(const Duration(hours: 48)));
+      await interaction.commit(controller);
+      await controller.refresh();
+      persisted = (await repo.events()).firstWhere((e) => e.id == event48.id);
+      expect(persisted.startsAt.toLocal(), equals(DateTime(2026, 11, 11, 10, 0)));
+      expect(persisted.endsAt.toLocal(), equals(DateTime(2026, 11, 13, 10, 0)));
+
+      // 6. Undo/Redo after moving a multi-day event
+      expect(interaction.canUndo, isTrue);
+      await interaction.undo(controller);
+      await controller.refresh();
+      persisted = (await repo.events()).firstWhere((e) => e.id == event48.id);
+      expect(persisted.startsAt.toLocal(), equals(DateTime(2026, 11, 10, 12, 0)));
+      expect(persisted.endsAt.toLocal(), equals(DateTime(2026, 11, 12, 12, 0)));
+
+      expect(interaction.canRedo, isTrue);
+      await interaction.redo(controller);
+      await controller.refresh();
+      persisted = (await repo.events()).firstWhere((e) => e.id == event48.id);
+      expect(persisted.startsAt.toLocal(), equals(DateTime(2026, 11, 11, 10, 0)));
+      expect(persisted.endsAt.toLocal(), equals(DateTime(2026, 11, 13, 10, 0)));
+
+      // 7. Recurring occurrence move preserves duration
+      final recurring = await repo.addEvent(
+        EventDraft(
+          title: 'Daily Standup',
+          startsAt: DateTime(2026, 11, 10, 9, 0),
+          endsAt: DateTime(2026, 11, 10, 10, 30), // 90 min
+          repeat: const EventRepeat(kind: EventRepeatKind.daily),
+        ),
+      );
+      await controller.refresh();
+      final recurringOccurrence = CalendarItem(
+        id: '${recurring.id}:2026-11-10',
+        title: recurring.title,
+        kind: CalendarItemKind.event,
+        event: FixedEvent(
+          id: recurring.id,
+          title: recurring.title,
+          notes: recurring.notes,
+          startsAt: DateTime(2026, 11, 10, 9, 0),
+          endsAt: DateTime(2026, 11, 10, 10, 30),
+          createdAt: recurring.createdAt,
+          updatedAt: recurring.updatedAt,
+          nominalDate: '2026-11-10',
+        ),
+        startsAt: DateTime(2026, 11, 10, 9, 0),
+        endsAt: DateTime(2026, 11, 10, 10, 30),
+      );
+
+      interaction.startMove(
+        item: recurringOccurrence,
+        dayDate: testDay,
+        pointerLocal: const Offset(10, 540),
+        pointerTimelineY: 540,
+      );
+      interaction.updatePointer(const Offset(10, 900), testDay, 900); // 15:00
+      expect(interaction.proposedStartsAt, equals(DateTime(2026, 11, 10, 15, 0)));
+      expect(interaction.proposedEndsAt, equals(DateTime(2026, 11, 10, 16, 30)));
+      expect(interaction.proposedEndsAt!.difference(interaction.proposedStartsAt!), equals(const Duration(minutes: 90)));
+      await interaction.commit(controller);
+      await controller.refresh();
+
+      // 8. Cancellation without database writes
+      interaction.startMove(
+        item: normalItem,
+        dayDate: testDay,
+        pointerLocal: const Offset(10, 840),
+        pointerTimelineY: 840,
+      );
+      interaction.updatePointer(const Offset(10, 1020), testDay, 1020); // 17:00
+      expect(interaction.isDragging, isTrue);
+      interaction.cancel();
+      expect(interaction.isDragging, isFalse);
+      expect(interaction.gestureKind, equals(CalendarGestureKind.none));
+      final commitResult = await interaction.commit(controller);
+      expect(commitResult, isNull);
+      persisted = (await repo.events()).firstWhere((e) => e.id == normalEvent.id);
+      expect(persisted.startsAt.toLocal(), equals(DateTime(2026, 11, 10, 14, 0)), reason: 'Cancelled drag must not commit');
+
+      // 9. ResizeEnd within column still clamps to maxEnd (23:59)
       final lateEvent = await repo.addEvent(
         EventDraft(
           title: 'Late Night Call',
@@ -633,18 +833,9 @@ void main() {
         pointerLocal: const Offset(10, 1430),
         pointerTimelineY: 1430,
       );
-      // Attempt to drag past end of day
-      interaction.updatePointer(
-        const Offset(10, 1500),
-        testDay,
-        1500,
-      );
-      expect(interaction.proposedStartsAt!.day, equals(10));
-      expect(interaction.proposedStartsAt!.hour, equals(23));
-      expect(interaction.proposedStartsAt!.minute, equals(50));
-      expect(interaction.proposedEndsAt!.day, equals(10));
-      expect(interaction.proposedEndsAt!.hour, equals(23));
-      expect(interaction.proposedEndsAt!.minute, equals(59));
+      interaction.updatePointer(const Offset(10, 1500), testDay, 1500);
+      expect(interaction.proposedStartsAt, equals(DateTime(2026, 11, 10, 23, 50)));
+      expect(interaction.proposedEndsAt, equals(DateTime(2026, 11, 10, 23, 59)));
     });
 
     testWidgets('J. Top-edge auto-scroll buffer allows pointer to overshoot slightly into header and cancellation resets state', (

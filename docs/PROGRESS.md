@@ -1,5 +1,15 @@
 # Progress
 
+## Urgent Calendar Event Duration Invariant Restored (2026-11-11)
+
+Branch `fix/calendar-interaction-regressions`.
+Resolved P0 data-integrity defect where Day/Week calendar move operations erroneously clamped event end times to `maxEnd` (23:59) of the target day:
+- **Duration Invariant Restored**: In `CalendarInteractionController.updatePointer` for `CalendarGestureKind.move`, removed single-day `maxEnd` clamping. Event duration is now strictly invariant under move operations (`finalEnd = finalStart.add(originalDuration)`).
+- **Multi-day & Overnight Events Safe**: Dragging 26-hour, 48-hour, or overnight events (e.g. 23:00 to 05:00 next day) no longer truncates duration or shifts start time backward.
+- **Auto-scroll & Cancellation Hygiene Retained**: Preserved top auto-scroll buffer (-10px) and complete gesture cancellation handlers (`onPanCancel`, `onVerticalDragCancel`).
+- **Verification**: Updated Scenario I in `test/calendar_interactions_regression_test.dart` to comprehensively test normal, overnight, 26h, 48h, cross-day, recurring occurrence, undo/redo, persistence, and cancellation (10/10 PASS). All 11 tests in `test/calendar_undo_redo_test.dart` and 4 tests in `test/calendar_interaction_controller_test.dart` pass; `dart analyze` reports 0 issues.
+
+
 ## Interactive Calendar Boundary Clamping & Cancellation Hygiene (2026-11-11)
 
 Branch `fix/calendar-interaction-regressions`.

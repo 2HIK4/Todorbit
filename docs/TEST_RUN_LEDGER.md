@@ -1,5 +1,28 @@
 # Persistent test run ledger
 
+## Urgent Calendar Event Duration Invariant Verification (2026-11-11)
+
+Branch `fix/calendar-interaction-regressions` (Schema 28). Resolves P0 data truncation defect where Day/Week calendar move operations erroneously applied day-column visual bounds (`maxEnd = 23:59`) to domain event persistence, truncating events > 24 hours to at most 23h59m and shifting overnight events backward:
+- **Root Cause & Fix**: Removed `finalEnd.isAfter(maxEnd)` clamping from `CalendarInteractionController.updatePointer` during `CalendarGestureKind.move`. Established domain invariant: `finalEnd = finalStart.add(originalDuration)`. Display clipping is handled by layout rendering (`CalendarLayoutEngine`); persisted duration is strictly invariant.
+- **Auto-scroll & Cancellation Hygiene Intact**: Retained top auto-scroll tolerance (-10px) and complete gesture cancellation handlers (`onPanCancel`, `onVerticalDragCancel`).
+Runs & Evidence:
+- `test/calendar_interactions_regression_test.dart` (10/10 PASS):
+  - Scenario I replaced with comprehensive duration-preservation suite:
+    1. Normal same-day event move (90 min duration preserved and persisted).
+    2. Overnight event move (6 hours across midnight, 23:00 to 05:00 next day preserved and persisted without backward shift).
+    3. Event lasting over 24 hours (26 hours duration preserved and persisted).
+    4. 48-hour event move (48 hours duration preserved and persisted).
+    5. Cross-day Week move (preserves 48-hour duration on target day column).
+    6. Undo/Redo of multi-day event move (restores original 48h range and reapplies).
+    7. Recurring occurrence move (preserves duration, updates single occurrence exception).
+    8. Cancellation without database writes (clean reset, no draft committed).
+    9. ResizeEnd within column still clamps to maxEnd (23:59).
+  - Scenario J: Top auto-scroll buffer and cancellation resets state (PASS).
+- `test/calendar_undo_redo_test.dart` (11/11 PASS): All history, text focus, and task deadline tests pass.
+- `test/calendar_interaction_controller_test.dart` (4/4 PASS): Unit calculations for move, resizeTop, resizeBottom, and cancel pass.
+- `dart analyze lib/features/calendar test/calendar_interactions_regression_test.dart`: 0 issues found.
+- `git diff --check`: 0 whitespace errors.
+
 ## Calendar Boundary Clamping & Auto-Scroll Cancellation Verification (2026-11-11)
 
 Branch `fix/calendar-interaction-regressions`, commit `4fd635b` (Schema 28). Hardens interactive calendar boundary handling, top-edge auto-scroll gesture tolerance, gesture cancellation lifecycle hygiene, and verifies domain alarm preservation invariants:

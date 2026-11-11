@@ -222,14 +222,7 @@ class CalendarInteractionController extends ChangeNotifier {
         }
         final snappedStart = engine.yToTime(proposedY, targetDay);
 
-        // Clamp so item does not extend past end of day or before start of day
-        final maxEnd = DateTime(
-          targetDay.year,
-          targetDay.month,
-          targetDay.day,
-          config.endHour == 24 ? 23 : config.endHour,
-          config.endHour == 24 ? 59 : 0,
-        );
+        // Clamp start time to day grid start boundary
         final minStart = DateTime(
           targetDay.year,
           targetDay.month,
@@ -238,22 +231,14 @@ class CalendarInteractionController extends ChangeNotifier {
           0,
         );
         var finalStart = snappedStart;
-        var finalEnd = finalStart.add(originalDuration);
-
-        if (finalEnd.isAfter(maxEnd)) {
-          finalEnd = maxEnd;
-          finalStart = finalEnd.subtract(originalDuration);
-        }
-
         if (finalStart.isBefore(minStart)) {
           finalStart = minStart;
-          final maxAllowedDuration = maxEnd.difference(minStart);
-          if (originalDuration > maxAllowedDuration) {
-            finalEnd = maxEnd;
-          } else {
-            finalEnd = finalStart.add(originalDuration);
-          }
         }
+
+        // Domain invariant: event duration MUST remain invariant under a move gesture.
+        // Display clipping on day columns is handled by layout rendering; persisted
+        // duration must never be truncated.
+        final finalEnd = finalStart.add(originalDuration);
 
         proposedStartsAt = finalStart;
         proposedEndsAt = finalEnd;
