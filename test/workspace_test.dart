@@ -430,4 +430,99 @@ void main() {
       await tester.binding.setSurfaceSize(null);
     }
   });
+
+  testWidgets(
+    'TaskEditor saves via Ctrl+S / Ctrl+Enter and closes cleanly via Escape',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1280, 800));
+      final database = AppDatabase(NativeDatabase.memory());
+      final repository = LifeRepository(database);
+      final controller = AppController(repository);
+      await controller.refresh();
+      try {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appControllerProvider.overrideWith((ref) => controller),
+              privacyOverride,
+            ],
+            child: const LifeManagerApp(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // 1. Open new task editor
+        await tester.tap(find.text('New task'));
+        await tester.pumpAndSettle();
+        expect(find.byType(TaskEditor), findsOneWidget);
+
+        // Verify date row and save button tooltips
+        expect(find.byTooltip('Change Scheduled day'), findsOneWidget);
+        expect(find.byTooltip('Set Deadline'), findsOneWidget);
+        expect(
+          find.byTooltip('Create task (Ctrl+S, Ctrl+Enter)'),
+          findsOneWidget,
+        );
+
+        // Enter title and save with Ctrl+S
+        await tester.enterText(
+          find.widgetWithText(TextField, 'Title *'),
+          'Shortcut Task 1',
+        );
+        await tester.pumpAndSettle();
+
+        await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+        await tester.sendKeyEvent(LogicalKeyboardKey.keyS);
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+        await tester.pumpAndSettle();
+
+        // Task is persisted and selected task details view is open
+        final tasksAfterCtrlS = await repository.tasks();
+        expect(
+          tasksAfterCtrlS.any((t) => t.title == 'Shortcut Task 1'),
+          isTrue,
+        );
+        expect(find.text('Task details'), findsOneWidget);
+        expect(
+          find.byTooltip('Save changes (Ctrl+S, Ctrl+Enter)'),
+          findsOneWidget,
+        );
+
+        // Escape closes the selected task editor pane
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pumpAndSettle();
+        expect(find.byType(TaskEditor), findsNothing);
+
+        // 2. Open another task and save via Ctrl+Enter
+        await tester.tap(find.text('New task'));
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.widgetWithText(TextField, 'Title *'),
+          'Shortcut Task 2',
+        );
+        await tester.pumpAndSettle();
+
+        await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+        await tester.pumpAndSettle();
+
+        final tasksAfterCtrlEnter = await repository.tasks();
+        expect(
+          tasksAfterCtrlEnter.any((t) => t.title == 'Shortcut Task 2'),
+          isTrue,
+        );
+        expect(find.text('Task details'), findsOneWidget);
+
+        // Escape closes the editor pane again
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pumpAndSettle();
+        expect(find.byType(TaskEditor), findsNothing);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await database.close();
+        await tester.binding.setSurfaceSize(null);
+      }
+    },
+  );
 }

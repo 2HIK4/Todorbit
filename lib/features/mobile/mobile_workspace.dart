@@ -815,6 +815,48 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
         .where((v) => v.id == t.projectId)
         .firstOrNull
         ?.name;
+    final today = localDate(DateTime.now());
+    final isOverdue = t.isOpen &&
+        t.deadlineDate != null &&
+        t.deadlineDate!.compareTo(today) < 0;
+
+    final subtitleParts = <InlineSpan>[];
+    void addPart(InlineSpan span) {
+      if (subtitleParts.isNotEmpty) {
+        subtitleParts.add(const TextSpan(text: ' · '));
+      }
+      subtitleParts.add(span);
+    }
+
+    if (t.priority > 0) {
+      addPart(TextSpan(text: 'Priority ${t.priority}'));
+    }
+    if (t.status != TaskStatus.notStarted) {
+      addPart(TextSpan(text: t.status.name));
+    }
+    if (t.scheduledDate != null) {
+      addPart(TextSpan(
+        text:
+            'Planned ${MaterialLocalizations.of(context).formatMediumDate(DateTime.parse(t.scheduledDate!))}',
+      ));
+    }
+    if (t.deadlineDate != null) {
+      final formatted = MaterialLocalizations.of(context).formatMediumDate(
+        DateTime.parse(t.deadlineDate!),
+      );
+      addPart(TextSpan(
+        text: isOverdue ? 'Overdue · Due $formatted' : 'Due $formatted',
+        style: isOverdue
+            ? TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontWeight: FontWeight.w600,
+              )
+            : null,
+      ));
+    }
+    if (category != null) addPart(TextSpan(text: category));
+    if (project != null) addPart(TextSpan(text: project));
+
     return Card(
       child: ListTile(
         contentPadding: const EdgeInsetsDirectional.only(start: 4, end: 4),
@@ -830,23 +872,31 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
               ? const TextStyle(decoration: TextDecoration.lineThrough)
               : null,
         ),
-        subtitle: Text(
-          [
-            if (t.priority > 0) 'Priority ${t.priority}',
-            if (t.status != TaskStatus.notStarted) t.status.name,
-            if (t.scheduledDate != null)
-              'Planned ${MaterialLocalizations.of(context).formatMediumDate(DateTime.parse(t.scheduledDate!))}',
-            if (t.deadlineDate != null)
-              'Due ${MaterialLocalizations.of(context).formatMediumDate(DateTime.parse(t.deadlineDate!))}',
-            ?category,
-            ?project,
-          ].join(' · '),
-        ),
+        subtitle: subtitleParts.isEmpty
+            ? null
+            : Text.rich(
+                TextSpan(
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                  children: subtitleParts,
+                ),
+              ),
         onTap: () => task(t),
         onLongPress: () => actions(t, c),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (isOverdue)
+              Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: Icon(
+                  Icons.warning_amber_rounded,
+                  color: Theme.of(context).colorScheme.error,
+                  size: 20,
+                  semanticLabel: 'Overdue',
+                ),
+              ),
             if (t.isOpen &&
                 taskAlarmRule(t, c.alarmRules)?.config.enabled == true)
               const AlarmIndicator(),

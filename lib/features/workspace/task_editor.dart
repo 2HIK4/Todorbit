@@ -15,6 +15,7 @@ import 'dart:io';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
@@ -1242,31 +1243,43 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     final projectChoices = controller.projects
         .where((project) => project.categoryId == categoryId)
         .toList();
-    return PopScope(
-      canPop: canLeave && !saving,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) cancel();
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
+          if (!saving) _save();
+        },
+        const SingleActivator(LogicalKeyboardKey.enter, control: true): () {
+          if (!saving) _save();
+        },
+        const SingleActivator(LogicalKeyboardKey.escape): cancel,
       },
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
+      child: FocusScope(
+        autofocus: true,
+        child: PopScope(
+          canPop: canLeave && !saving,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) cancel();
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: Text(
-                    widget.task == null ? 'New task' : 'Task details',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        widget.task == null ? 'New task' : 'Task details',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Close details',
+                      onPressed: cancel,
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  tooltip: 'Close details',
-                  onPressed: cancel,
-                  icon: const Icon(Icons.close),
-                ),
-              ],
-            ),
             const SizedBox(height: 12),
             Expanded(
               child: Scrollbar(
@@ -1969,21 +1982,28 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
               ),
             ),
             const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: saving ? null : _save,
-              icon: const Icon(Icons.save_outlined),
-              label: Text(
-                saving
-                    ? 'Saving…'
-                    : widget.task == null
-                    ? 'Create task'
-                    : 'Save changes',
+            Tooltip(
+              message: widget.task == null
+                  ? 'Create task (Ctrl+S, Ctrl+Enter)'
+                  : 'Save changes (Ctrl+S, Ctrl+Enter)',
+              child: FilledButton.icon(
+                onPressed: saving ? null : _save,
+                icon: const Icon(Icons.save_outlined),
+                label: Text(
+                  saving
+                      ? 'Saving…'
+                      : widget.task == null
+                      ? 'Create task'
+                      : 'Save changes',
+                ),
               ),
             ),
           ],
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 
   Widget _dateRow(
@@ -2001,16 +2021,21 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         Row(
           children: [
             Expanded(
-              child: OutlinedButton.icon(
-                onPressed: pick,
-                icon: const Icon(Icons.calendar_today_outlined, size: 18),
-                label: Text(
-                  date == null
-                      ? 'No date'
-                      : Platform.isAndroid
-                      ? MaterialLocalizations.of(context).formatMediumDate(date)
-                      : localDate(date),
-                  overflow: TextOverflow.ellipsis,
+              child: Tooltip(
+                message: date == null ? 'Set $label' : 'Change $label',
+                child: OutlinedButton.icon(
+                  onPressed: pick,
+                  icon: const Icon(Icons.calendar_today_outlined, size: 18),
+                  label: Text(
+                    date == null
+                        ? 'No date'
+                        : Platform.isAndroid
+                        ? MaterialLocalizations.of(context).formatMediumDate(date)
+                        : localDate(date),
+                    overflow: TextOverflow.ellipsis,
+                    semanticsLabel:
+                        '$label: ${date == null ? 'No date' : (Platform.isAndroid ? MaterialLocalizations.of(context).formatMediumDate(date) : localDate(date))}',
+                  ),
                 ),
               ),
             ),

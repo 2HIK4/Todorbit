@@ -953,6 +953,7 @@ void main() {
       );
 
       // 1. Verify Day View Semantics and Resize Tooltips
+      CalendarItem? tappedItem;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -961,7 +962,7 @@ void main() {
               items: [item],
               config: config,
               interactionController: interaction,
-              onItemTap: (_) {},
+              onItemTap: (it) => tappedItem = it,
               onSlotSecondaryTap: (_, _) {},
             ),
           ),
@@ -969,14 +970,21 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Semantics node must expose title and formatted time range
+      // Semantics node must expose title and formatted time range, exclude child semantics, and provide onTap
       final semanticsFinder = find.byWidgetPredicate(
         (w) =>
             w is Semantics &&
             w.properties.label != null &&
-            w.properties.label!.contains('Quarterly Planning, 10:00 – 11:30'),
+            w.properties.label!.contains('Quarterly Planning, 10:00 – 11:30') &&
+            w.excludeSemantics == true &&
+            w.properties.onTap != null,
       );
       expect(semanticsFinder, findsOneWidget);
+
+      // Verify semantic tap activates onItemTap
+      final semanticsWidget = tester.widget<Semantics>(semanticsFinder);
+      semanticsWidget.properties.onTap!();
+      expect(tappedItem?.id, item.id);
 
       // Tooltips for resize handles and current-time line
       expect(find.byTooltip('Drag to adjust start time'), findsOneWidget);

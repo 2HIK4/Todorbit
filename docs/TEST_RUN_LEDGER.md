@@ -1,5 +1,19 @@
 # Persistent test run ledger
 
+## Application-Wide UI/UX Improvements Batch 2 Verification (2026-11-12)
+
+Branch `fix/calendar-interaction-regressions` (Schema 28). Implements high-impact usability, accessibility, keyboard navigation, and platform parity improvements across Windows desktop and Android:
+- **Timeline Item Semantics Correction**: Added `excludeSemantics: true` and `onTap: () => widget.onItemTap(item)` to `Semantics` in `TimelineDayColumn` (`timeline_grid.dart`), eliminating duplicate screen-reader announcements (outer label vs inner text nodes) and enabling direct assistive touch/click activation.
+- **Desktop Task Editor Keyboard Shortcuts**: Wrapped `TaskEditor` (`task_editor.dart`) in `CallbackShortcuts` supporting `Ctrl+S` and `Ctrl+Enter` to save changes immediately from anywhere in the editor without tabbing through fields. Added `Escape` shortcut to cancel/close the editor pane, respecting unsaved changes confirmation (`confirmLeave`). Added `Escape` shortcut in `workspace.dart` so deselecting/closing open task panes via keyboard functions globally.
+- **Task Editor Tooltips & Accessibility**: Added discoverable tooltips (`Save changes (Ctrl+S, Ctrl+Enter)`, `Create task (Ctrl+S, Ctrl+Enter)`) and enriched date button tooltips (`Change Scheduled day`, `Set Scheduled day`, `Change Deadline`, `Set Deadline`) with explicit semantic labels for screen readers.
+- **Android Task List Overdue Highlighting & Visual Warning**: In `mobileTaskRow` (`mobile_workspace.dart`), added overdue detection (`isOverdue = t.isOpen && t.deadlineDate != null && t.deadlineDate!.compareTo(today) < 0`). Overdue tasks now render an amber warning icon (`Icons.warning_amber_rounded` with semantic label `Overdue`) in the trailing action bar, and display `'Overdue · Due [date]'` styled with `colorScheme.error` and `FontWeight.w600` in the subtitle, achieving visual parity with desktop urgency indicators.
+Runs & Evidence:
+- `test/calendar_interactions_regression_test.dart` (11/11 PASS): Scenario K verified with `excludeSemantics == true` and semantic `onTap` invocation.
+- `test/mobile_workspace_test.dart` (23/23 PASS): Verified all existing mobile journeys plus new test asserting overdue tasks display the warning amber icon, semantic label, and error-colored subtitle on Android.
+- `test/workspace_test.dart` (8/8 PASS): Verified all workspace tests plus new test confirming `Ctrl+S`, `Ctrl+Enter`, `Escape`, and date-row tooltips in `TaskEditor`.
+- `dart analyze lib test`: 0 issues found.
+- `git diff --check`: 0 whitespace errors.
+
 ## Cross-Platform UI/UX Refinement Batch 1 Verification (2026-11-12)
 
 Branch `fix/calendar-interaction-regressions` (Schema 28). Implements high-impact usability, accessibility, and visual affordance improvements across Windows desktop and Android:

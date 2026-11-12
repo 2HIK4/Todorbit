@@ -811,6 +811,13 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       bindings: {
         for (final entry in controller.hotkeys.bindings.entries)
           entry.value.activator: () => _runHotkey(entry.key, controller),
+        const SingleActivator(LogicalKeyboardKey.escape): () async {
+          if (controller.selectedTask != null || creating) {
+            if (await editorNavigation.confirmLeave() && mounted) {
+              _closeEditor();
+            }
+          }
+        },
       },
       child: Focus(
         autofocus: true,

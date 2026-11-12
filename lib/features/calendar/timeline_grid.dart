@@ -354,6 +354,8 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                             '${placement.hasConflict ? ', Overlaps ${placement.conflictCount} items' : ''}',
                         button: true,
                         enabled: true,
+                        excludeSemantics: true,
+                        onTap: () => widget.onItemTap(item),
                         child: Padding(
                           padding: EdgeInsets.symmetric(
                             horizontal: isCompact ? 2 : 4,

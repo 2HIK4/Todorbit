@@ -397,6 +397,54 @@ void main() {
   });
 
   testWidgets(
+    'mobile task row highlights overdue tasks with warning icon and error text',
+    (tester) async {
+      final today = localDate(DateTime.now());
+      final yesterday = localDate(
+        DateTime.now().subtract(const Duration(days: 1)),
+      );
+      final tomorrow = localDate(
+        DateTime.now().add(const Duration(days: 1)),
+      );
+      await controller.addTask(
+        TaskDraft(
+          title: 'Overdue task',
+          scheduledDate: today,
+          deadlineDate: yesterday,
+        ),
+      );
+      await controller.addTask(
+        TaskDraft(
+          title: 'Future task',
+          scheduledDate: today,
+          deadlineDate: tomorrow,
+        ),
+      );
+      try {
+        await open(tester);
+        await tester.pumpAndSettle();
+
+        // Overdue task displays warning amber icon with 'Overdue' semantic label
+        final overdueWarningFinder = find.byWidgetPredicate(
+          (w) =>
+              w is Icon &&
+              w.icon == Icons.warning_amber_rounded &&
+              w.semanticLabel == 'Overdue',
+        );
+        expect(overdueWarningFinder, findsOneWidget);
+
+        // Overdue task subtitle contains 'Overdue · Due'
+        expect(find.textContaining('Overdue · Due'), findsOneWidget);
+
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.binding.setSurfaceSize(null);
+      }
+    },
+  );
+
+  testWidgets(
     'mobile settings expose daily reminders and independent navigation',
     (tester) async {
       try {

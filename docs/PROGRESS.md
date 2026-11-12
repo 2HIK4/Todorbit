@@ -1,5 +1,15 @@
 # Progress
 
+## Application-Wide UI/UX Improvements Batch 2 (2026-11-12)
+
+Branch `fix/calendar-interaction-regressions`.
+Implemented high-impact usability, accessibility, keyboard shortcuts, and platform parity improvements across Windows and Android:
+- **Timeline Semantics Hygiene**: Updated `Semantics` on timeline cards in `TimelineDayColumn` (`timeline_grid.dart`) with `excludeSemantics: true` and `onTap: () => widget.onItemTap(item)` to eliminate duplicate spoken announcements and ensure full screen-reader activatability.
+- **Desktop Task Editor Productivity Shortcuts**: Added `Ctrl+S` and `Ctrl+Enter` save shortcuts and `Escape` cancel/close shortcut to `TaskEditor` (`task_editor.dart`) and `Workspace` (`workspace.dart`), allowing keyboard users to commit or dismiss task edits instantly.
+- **Accessible Date Buttons & Save Affordances**: Added descriptive tooltips and semantic labels across date selection buttons (`Change/Set Scheduled day`, `Change/Set Deadline`) and the primary save button in `TaskEditor`.
+- **Android Overdue Visibility Parity**: Added overdue deadline detection and warning indicators to `MobileWorkspace` (`mobile_workspace.dart`). Overdue tasks now display an `Icons.warning_amber_rounded` badge and red `Overdue · Due [date]` subtitle text, matching desktop deadline urgency.
+- **Verification**: 11/11 tests pass in `test/calendar_interactions_regression_test.dart`; 23/23 tests pass in `test/mobile_workspace_test.dart`; 8/8 tests pass in `test/workspace_test.dart`; `dart analyze lib test` reports 0 issues; `git diff --check` passes cleanly.
+
 ## Cross-Platform UI/UX Refinement Batch 1 (2026-11-12)
 
 Branch `fix/calendar-interaction-regressions`.
