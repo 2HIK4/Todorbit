@@ -90,8 +90,9 @@ class _PrivateSyncSetupState extends State<_PrivateSyncSetup> {
               enableSuggestions: false,
               textInputAction: TextInputAction.next,
               decoration: InputDecoration(
-                labelText: 'Encryption passphrase',
-                helperText: 'At least 12 characters. Several unrelated words work well; length and unpredictability matter.',
+                labelText: 'Private Sync passphrase',
+                helperText:
+                    'At least 12 characters (not your Google password). Several unrelated words work well; length and unpredictability matter.',
                 suffixIcon: IconButton(
                   tooltip: visible ? 'Hide passphrase' : 'Show passphrase',
                   onPressed: () => setState(() => visible = !visible),
@@ -127,7 +128,12 @@ class _PrivateSyncSetupState extends State<_PrivateSyncSetup> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: SelectableText(key.exportRecoveryCode())),
+                Expanded(
+                  child: Semantics(
+                    label: 'Recovery code: ${key.exportRecoveryCode()}',
+                    child: SelectableText(key.exportRecoveryCode()),
+                  ),
+                ),
                 IconButton(
                   tooltip: 'Copy recovery code',
                   icon: const Icon(Icons.copy_outlined),

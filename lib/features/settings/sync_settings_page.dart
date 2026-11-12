@@ -347,6 +347,15 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
           ),
         ],
         const SizedBox(height: 16),
+        if (connected && !paired && !unlockRequired) ...[
+          const StatusNotice(
+            title: 'Standard Sync ready',
+            message:
+                'Google Drive is connected. Default setup uses Standard Sync (no extra password required). To use client-side encryption instead, expand Encryption options below.',
+            icon: Icons.cloud_done_outlined,
+          ),
+          const SizedBox(height: 12),
+        ],
         if (restored) ...[
           const StatusNotice(
             title: 'Review restored data',
@@ -358,10 +367,23 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
             (problem?.action == SyncProblemAction.reconnect &&
                 controller.pairing.passwordAvailable) ||
             restored && connected) ...[
-          if (!restored)
-            const SettingsHelperText(
-              'Unlock your encrypted cloud data once. This device will remember the key in protected storage.',
+          if (!restored) ...[
+            StatusNotice(
+              title: problem?.action == SyncProblemAction.unlock
+                  ? problem!.title
+                  : 'Encrypted cloud workspace detected',
+              message: problem?.action == SyncProblemAction.unlock
+                  ? problem!.explanation
+                  : 'An existing Private Encrypted Sync workspace was found in your Google Drive. Enter the Private Sync passphrase created on your other device, or switch to your recovery code (do not enter your Google account password).',
+              icon: Icons.lock_outline,
+              error: problem?.action == SyncProblemAction.unlock &&
+                  problem!.title.contains('could not'),
             ),
+            const SizedBox(height: 12),
+            const SettingsHelperText(
+              'Unlock your encrypted cloud data once. This device will remember the key in protected storage. If you lost the passphrase, toggle to recovery code below or use Start New Sync under Recovery.',
+            ),
+          ],
           if (!restored && controller.pairing.passwordAvailable)
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
@@ -385,10 +407,10 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
             decoration: InputDecoration(
               labelText:
                   !restored &&
-                      controller.pairing.passwordAvailable &&
-                      !useRecoveryCode
-                  ? 'Encryption passphrase'
-                  : 'Recovery code',
+                          controller.pairing.passwordAvailable &&
+                          !useRecoveryCode
+                      ? 'Private Sync passphrase'
+                      : 'Recovery code',
               suffixIcon: IconButton(
                 tooltip: showCredential ? 'Hide credential' : 'Show credential',
                 onPressed: () =>
@@ -399,7 +421,9 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
               ),
               helperText: restored
                   ? 'Only needed if this device has lost access.'
-                  : null,
+                  : !useRecoveryCode && controller.pairing.passwordAvailable
+                  ? 'Enter the passphrase from your other device (not your Google password).'
+                  : 'Enter the 24-character recovery code generated during setup.',
             ),
             onSubmitted: busy ? null : (_) => _authorize(controller),
           ),
@@ -452,15 +476,18 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
         ],
         if (problem != null) ...[
           const SizedBox(height: 12),
-          StatusNotice(
-            title: problem.title,
-            message: problem.explanation,
-            error: true,
-          ),
-          OutlinedButton(
-            onPressed: busy ? null : () => _problemAction(controller, problem),
-            child: Text(problem.actionLabel),
-          ),
+          if (problem.action != SyncProblemAction.unlock) ...[
+            StatusNotice(
+              title: problem.title,
+              message: problem.explanation,
+              error: true,
+            ),
+            OutlinedButton(
+              onPressed:
+                  busy ? null : () => _problemAction(controller, problem),
+              child: Text(problem.actionLabel),
+            ),
+          ],
           ExpansionTile(
             tilePadding: EdgeInsets.zero,
             title: const Text('Safe diagnostic details'),

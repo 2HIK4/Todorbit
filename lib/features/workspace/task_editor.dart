@@ -745,6 +745,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   ];
 
   Future<void> _save() async {
+    if (saving) return;
     if (title.text.trim().isEmpty) {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Enter a task title.')));

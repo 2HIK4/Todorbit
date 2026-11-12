@@ -1,5 +1,15 @@
 # Progress
 
+## Cross-Platform Settings, Sync and Recovery UX (2026-11-13)
+
+Branch `fix/calendar-interaction-regressions`.
+Improved usability, transparency, accessibility, and error recovery in Settings and Google Drive Sync across Windows and Android:
+- **Standard vs. Private Sync Clarity**: Added dedicated `Standard Sync ready` informational guidance in `SyncSettingsPage` clarifying that Google Drive sync defaults to Standard Sync (no extra password required).
+- **Demystified Password Requests & Google Account Distinction**: Added explicit `Encrypted cloud workspace detected` card and renamed input to `Private Sync passphrase` with helper text `Enter the passphrase from your other device (not your Google password)`. Prevented users from erroneously entering Google account passwords into client-side encryption fields.
+- **Optimized Problem & Unlock Hierarchy**: Reorganized `SyncSettingsPage` so problem and unlock explanations precede the credential inputs. Eliminated duplicate unlock buttons.
+- **Enhanced Private Sync Setup Affordance**: In `SyncEncryptionSetupDialog`, clarified passphrase instructions and added accessible semantics to the recovery code display.
+- **Verification**: 35/35 tests pass in `test/sync_conflicts_dialog_test.dart` (including new Standard vs Private setup suite); 5/5 tests pass in `test/cloud/sync_standard_mode_test.dart`; 8/8 tests pass in `test/smart_sync_controller_test.dart`; `dart analyze lib test` reports 0 issues; `git diff --check` passes cleanly.
+
 ## Application-Wide UI/UX Improvements Batch 2 (2026-11-12)
 
 Branch `fix/calendar-interaction-regressions`.

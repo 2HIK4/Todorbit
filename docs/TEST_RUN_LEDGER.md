@@ -1,5 +1,20 @@
 # Persistent test run ledger
 
+## Cross-Platform Settings, Sync and Recovery UX Verification (2026-11-13)
+
+Branch `fix/calendar-interaction-regressions` (Schema 28). Resolves cross-platform user confusion around Google Drive Sync setup, Standard vs. Private Encrypted sync, and password/recovery entry:
+- **Standard Sync Setup Clarity**: When Google Drive is connected but unpaired (`connected && !paired && !unlockRequired`), added a prominent `Standard Sync ready` informational status notice in `SyncSettingsPage` explaining that Standard Sync defaults to syncing through Google Drive with zero extra passwords required, and directing users to "Encryption options" only if client-side encryption is desired.
+- **Demystified Private Encrypted Sync Unlock & Google Password Distinction**: When an existing encrypted workspace is detected (`unlockRequired`), added an explicit `Encrypted cloud workspace detected` card in `SyncSettingsPage` clearly stating that an encrypted workspace was found in Google Drive and instructing users to enter the Private Sync passphrase created on their other device (or switch to their 24-character recovery code). Added explicit helper text on the input field: `Enter the passphrase from your other device (not your Google password).` and renamed label to `Private Sync passphrase` to eliminate confusion with Google account credentials.
+- **Visual Hierarchy & Redundant Action Elimination**: Moved problem status notices (`StatusNotice`) above the unlock inputs, providing immediate context before credential entry. Prevented duplicate/confusing `OutlinedButton` ('Unlock sync') from rendering below the primary `FilledButton` ('Authorize this device').
+- **Private Sync Setup Accessibility & Guidance**: In `SyncEncryptionSetupDialog`, renamed label to `Private Sync passphrase`, updated guidance to clarify that passphrases are local to Todorbit and not the Google password, and wrapped recovery codes in `Semantics(label: 'Recovery code: ...')`.
+- **TaskEditor Defensive Concurrency Guard**: Added `if (saving) return;` at the entry of `_save()` in `task_editor.dart` to guard against asynchronous re-entrance.
+Runs & Evidence:
+- `test/sync_conflicts_dialog_test.dart` (35/35 PASS): Added new test asserting Standard Sync ready notice, Private Sync passphrase label, recovery toggle, and helper text guidance. All 34 prior conflict and dialog tests pass.
+- `test/cloud/sync_standard_mode_test.dart` (5/5 PASS): Verified Standard workspace joining, pairing service invariants, and passphrase validation.
+- `test/smart_sync_controller_test.dart` (8/8 PASS): All 8 multi-device sync, offline decision convergence, and conflict tests pass.
+- `dart analyze lib test`: 0 issues found.
+- `git diff --check`: 0 whitespace errors.
+
 ## Application-Wide UI/UX Improvements Batch 2 Verification (2026-11-12)
 
 Branch `fix/calendar-interaction-regressions` (Schema 28). Implements high-impact usability, accessibility, keyboard navigation, and platform parity improvements across Windows desktop and Android:

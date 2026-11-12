@@ -1289,4 +1289,76 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'sync setup clearly differentiates Standard Sync from Private Encrypted unlock guidance',
+    (tester) async {
+      controller.auth.account = const CloudAccount(
+        'mock-account',
+        'tester@example.com',
+      );
+      controller.needsRecoveryCode = false;
+      controller.pairing.passwordAvailable = false;
+      providerOwnsController = true;
+
+      // 1. Unpaired with Google Drive connected: shows Standard Sync ready banner
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [syncControllerProvider.overrideWith((ref) => controller)],
+          child: MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => TextButton(
+                  onPressed: () => showSyncSettings(context),
+                  child: const Text('Open Sync'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open Sync'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Standard Sync ready'), findsOneWidget);
+      expect(
+        find.textContaining('no extra password required'),
+        findsOneWidget,
+      );
+      expect(find.text('Set up sync'), findsOneWidget);
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+
+      // 2. Encrypted cloud workspace detected (unlockRequired): explains Private Sync vs Google password
+      controller.needsRecoveryCode = true;
+      controller.pairing.passwordAvailable = true;
+      await tester.tap(find.text('Open Sync'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Encrypted cloud workspace detected'), findsOneWidget);
+      expect(
+        find.textContaining('do not enter your Google account password'),
+        findsOneWidget,
+      );
+      // Default uses recovery code
+      expect(find.text('Recovery code'), findsOneWidget);
+      expect(
+        find.textContaining('24-character recovery code'),
+        findsOneWidget,
+      );
+
+      // Toggle off recovery code to enter passphrase
+      await tester.tap(find.text('Use recovery code'));
+      await tester.pumpAndSettle();
+      expect(find.text('Private Sync passphrase'), findsOneWidget);
+      expect(
+        find.textContaining('not your Google password'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
