@@ -1,13 +1,16 @@
 #ifndef AppVersion
   #error AppVersion must be passed by build-installer.ps1
 #endif
+#ifndef AppNumericVersion
+  #define AppNumericVersion "1.0.0.0"
+#endif
 #define BundleDir "..\build\windows\x64\runner\Release"
 
 [Setup]
 AppId={{8C3E7B4A-17A4-42D7-8C45-EBB4C79B6941}
 AppName=Todorbit
 AppVersion={#AppVersion}
-VersionInfoVersion={#AppVersion}
+VersionInfoVersion={#AppNumericVersion}
 AppPublisher=Hussam Alkhatib
 DefaultDirName={localappdata}\Programs\Life Manager
 DefaultGroupName=Todorbit

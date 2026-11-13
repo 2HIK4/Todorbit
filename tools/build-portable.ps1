@@ -9,17 +9,18 @@ Assert-GoogleDriveReleaseBundle $bundle $repo $GoogleDriveConfigPath
 Assert-TodorbitWindowsCrtBundle $bundle
 $releaseRoot = if ($OutputDirectory) { [IO.Path]::GetFullPath($OutputDirectory) } else { Join-Path $repo 'release' }
 $versionText = Get-Content -Raw (Join-Path $repo 'pubspec.yaml')
-if ($versionText -notmatch '(?m)^version:\s*(\d+\.\d+\.\d+)') {
+if ($versionText -notmatch '(?m)^version:\s*([^\s+]+)') {
   throw 'Could not read application version.'
 }
 $version = $Matches[1]
+$baseVersion = if ($version -match '^(\d+\.\d+\.\d+)') { $Matches[1] } else { $version }
 foreach ($name in @('Todorbit.exe', 'TodorbitWidget.exe', 'flutter_windows.dll', 'sqlite3.dll')) {
   if (-not (Test-Path -LiteralPath (Join-Path $bundle $name))) {
     throw "Release bundle is missing $name. Run flutter build windows --release."
   }
 }
 $widgetVersion = (Get-Item -LiteralPath (Join-Path $bundle 'TodorbitWidget.exe')).VersionInfo.FileVersion
-if ($widgetVersion -notmatch ('^' + [regex]::Escape($version) + '(?:\.|$)')) {
+if ($widgetVersion -notmatch ('^' + [regex]::Escape($baseVersion) + '(?:\.|$)')) {
   throw "Widget version $widgetVersion does not match application version $version. Rebuild Windows Release."
 }
 if (-not (Test-Path -LiteralPath (Join-Path $bundle 'data\flutter_assets\NOTICES.Z'))) {

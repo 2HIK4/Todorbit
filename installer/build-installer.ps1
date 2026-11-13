@@ -1,15 +1,19 @@
 param(
   [string]$Compiler = '',
-  [string]$GoogleDriveConfigPath = ''
+  [string]$GoogleDriveConfigPath = '',
+  [string]$OutputDirectory = ''
 )
 
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $versionText = Get-Content -Raw (Join-Path $repo 'pubspec.yaml')
-if ($versionText -notmatch '(?m)^version:\s*(\d+\.\d+\.\d+)') {
+if ($versionText -notmatch '(?m)^version:\s*([^\s+]+)') {
   throw 'Could not read application version.'
 }
 $version = $Matches[1]
+$baseVersion = if ($version -match '^(\d+\.\d+\.\d+)') { $Matches[1] } else { $version }
+$buildNumber = if ($versionText -match '(?m)^version:\s*[^\s+]+\+(\d+)') { $Matches[1] } else { '0' }
+$numericVersion = "$baseVersion.$buildNumber"
 $bundle = Join-Path $repo 'build\windows\x64\runner\Release'
 . (Join-Path $repo 'tools\google-drive-release-config.ps1')
 . (Join-Path $repo 'tools\windows-crt.ps1')
@@ -21,7 +25,7 @@ if (-not (Test-Path -LiteralPath $mainExe) -or -not (Test-Path -LiteralPath $wid
   throw 'Release bundle is missing. Run flutter build windows --release first.'
 }
 $widgetVersion = (Get-Item -LiteralPath $widgetExe).VersionInfo.FileVersion
-if ($widgetVersion -notmatch ('^' + [regex]::Escape($version) + '(?:\.|$)')) {
+if ($widgetVersion -notmatch ('^' + [regex]::Escape($baseVersion) + '(?:\.|$)')) {
   throw "Widget version $widgetVersion does not match application version $version. Rebuild Windows Release."
 }
 $privateData = Get-ChildItem -LiteralPath $bundle -Recurse -File | Where-Object {
@@ -40,6 +44,8 @@ if (-not $Compiler) {
   $candidates = @(
     (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 7\ISCC.exe')
     (Join-Path $env:ProgramFiles 'Inno Setup 7\ISCC.exe')
+    (Join-Path $env:LOCALAPPDATA 'Temp\TodorbitCI\Todorbit-InnoSetup-7.1.0\compiler\ISCC.exe')
+    'D:\vs code\Inno Setup 7\ISCC.exe'
   )
   $registryPaths = @(
     'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*'
@@ -63,8 +69,19 @@ if ($compilerVersion -notmatch '^7\.') {
   throw "Inno Setup 7 is required; compiler reported '$compilerVersion'."
 }
 
-& $Compiler "/DAppVersion=$version" (Join-Path $PSScriptRoot 'life_manager.iss')
+$outDir = if ($OutputDirectory) { [IO.Path]::GetFullPath($OutputDirectory) } else { Join-Path $repo 'release' }
+if (-not (Test-Path -LiteralPath $outDir)) {
+  New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+}
+
+$isccArgs = @(
+  "/DAppVersion=$version",
+  "/DAppNumericVersion=$numericVersion",
+  "/O$outDir",
+  (Join-Path $PSScriptRoot 'life_manager.iss')
+)
+& $Compiler @isccArgs
 if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
-$artifact = Join-Path $repo "release\Todorbit-$version-win-x64-setup.exe"
+$artifact = Join-Path $outDir "Todorbit-$version-win-x64-setup.exe"
 if (-not (Test-Path -LiteralPath $artifact)) { throw 'Installer compiler did not create expected artifact.' }
 Get-FileHash -Algorithm SHA256 -LiteralPath $artifact
