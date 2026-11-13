@@ -85,6 +85,16 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
   final FocusNode _calendarFocusNode = FocusNode();
   bool _useLegacy = false;
 
+  @visibleForTesting
+  FocusNode get calendarFocusNode => _calendarFocusNode;
+
+  @visibleForTesting
+  CalendarInteractionController get interactionController =>
+      _interactionController;
+
+  @visibleForTesting
+  Future<void> handleInteractionFinished() => _handleInteractionFinished();
+
   @override
   void dispose() {
     _calendarFocusNode.dispose();
@@ -107,6 +117,11 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
       controller.lastCalendarMode ??
           controller.customization.calendarDefaultView,
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_calendarFocusNode.hasFocus) {
+        _calendarFocusNode.requestFocus();
+      }
+    });
   }
 
   DateTime get day => DateTime(selected.year, selected.month, selected.day);
@@ -340,6 +355,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
           style: const TextStyle(fontSize: 13),
         ),
         duration: const Duration(seconds: 4),
+        persist: false,
         behavior: SnackBarBehavior.floating,
         width: MediaQuery.sizeOf(context).width > 500 ? 420 : null,
         margin: MediaQuery.sizeOf(context).width <= 500
@@ -378,35 +394,50 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
 
   Future<void> _undo() async {
     final message = await _interactionController.undo(ref.read(appControllerProvider));
-    if (message != null && mounted) {
-      _showCalendarNotification(
-        message,
-        actionLabel: _interactionController.canRedo ? 'Redo' : null,
-        onAction: _interactionController.canRedo ? _redo : null,
-      );
+    if (mounted) {
+      if (!_calendarFocusNode.hasFocus) {
+        _calendarFocusNode.requestFocus();
+      }
+      if (message != null) {
+        _showCalendarNotification(
+          message,
+          actionLabel: _interactionController.canRedo ? 'Redo' : null,
+          onAction: _interactionController.canRedo ? _redo : null,
+        );
+      }
     }
   }
 
   Future<void> _redo() async {
     final message = await _interactionController.redo(ref.read(appControllerProvider));
-    if (message != null && mounted) {
-      _showCalendarNotification(
-        message,
-        actionLabel: _interactionController.canUndo ? 'Undo' : null,
-        onAction: _interactionController.canUndo ? _undo : null,
-      );
+    if (mounted) {
+      if (!_calendarFocusNode.hasFocus) {
+        _calendarFocusNode.requestFocus();
+      }
+      if (message != null) {
+        _showCalendarNotification(
+          message,
+          actionLabel: _interactionController.canUndo ? 'Undo' : null,
+          onAction: _interactionController.canUndo ? _undo : null,
+        );
+      }
     }
   }
 
   Future<void> _handleInteractionFinished() async {
     final appCtrl = ref.read(appControllerProvider);
     final summary = await _interactionController.commit(appCtrl);
-    if (summary != null && mounted) {
-      _showCalendarNotification(
-        summary,
-        actionLabel: 'Undo',
-        onAction: _undo,
-      );
+    if (mounted) {
+      if (!_calendarFocusNode.hasFocus) {
+        _calendarFocusNode.requestFocus();
+      }
+      if (summary != null) {
+        _showCalendarNotification(
+          summary,
+          actionLabel: 'Undo',
+          onAction: _undo,
+        );
+      }
     }
   }
 
@@ -603,7 +634,35 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
       child: Focus(
         focusNode: _calendarFocusNode,
         autofocus: true,
-        child: Column(
+        onKeyEvent: (_, event) {
+          if (event is! KeyDownEvent ||
+              !HardwareKeyboard.instance.isControlPressed) {
+            return KeyEventResult.ignored;
+          }
+          final editing = FocusManager.instance.primaryFocus?.context;
+          if (editing != null &&
+              (editing.widget is EditableText ||
+                  editing.findAncestorWidgetOfExactType<EditableText>() != null)) {
+            return KeyEventResult.ignored;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.keyZ) {
+            HardwareKeyboard.instance.isShiftPressed ? _safeRedo() : _safeUndo();
+            return KeyEventResult.handled;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.keyY) {
+            _safeRedo();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (_) {
+            if (!_calendarFocusNode.hasFocus) {
+              _calendarFocusNode.requestFocus();
+            }
+          },
+          child: Column(
           children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 22, 24, 14),
@@ -908,6 +967,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
         ),
       ],
     ),
+  ),
   ),
 );
   }

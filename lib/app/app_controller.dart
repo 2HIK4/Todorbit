@@ -1,6 +1,7 @@
 import '../domain/task_resources.dart';
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart' hide Category;
 import 'package:flutter_riverpod/legacy.dart';
@@ -291,6 +292,7 @@ class AppController extends ChangeNotifier {
 
   void _scheduleMidnightTimer() {
     _midnightTimer?.cancel();
+    if (Platform.environment.containsKey('FLUTTER_TEST')) return;
     final now = DateTime.now();
     final nextMidnight = DateTime(now.year, now.month, now.day + 1);
     final delay = nextMidnight.difference(now) + const Duration(seconds: 1);
