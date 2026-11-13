@@ -30,7 +30,9 @@ class CalendarLayoutEngine {
   }
 
   /// Converts a vertical pixel Y offset into a snapped [DateTime] on [dayDate].
-  DateTime yToTime(double y, DateTime dayDate) {
+  DateTime yToTime(double y, DateTime dayDate, {
+    bool allowEndBoundary = false,
+  }) {
     final clampedY = y.clamp(0.0, config.totalGridHeight);
     final totalHours = (clampedY / config.hourHeight) + config.startHour;
     final totalMinutes = (totalHours * 60).round();
@@ -46,8 +48,8 @@ class CalendarLayoutEngine {
       dayDate.year,
       dayDate.month,
       dayDate.day,
-      hour == 24 ? 23 : hour,
-      hour == 24 ? 59 : minute,
+      hour == 24 && !allowEndBoundary ? 23 : hour,
+      hour == 24 ? (allowEndBoundary ? 0 : 59) : minute,
     );
   }
 

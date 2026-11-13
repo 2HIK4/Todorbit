@@ -235,6 +235,22 @@ class CalendarInteractionController extends ChangeNotifier {
           finalStart = minStart;
         }
 
+        // A continuation card begins at the visible grid boundary, while the
+        // event itself began earlier. Move that visible segment by the pointer
+        // delta without resetting the event's original date/time to this day.
+        final originDay = activeDayDate ?? targetDay;
+        final originGridStart = DateTime(
+          originDay.year,
+          originDay.month,
+          originDay.day,
+          config.startHour,
+        );
+        if (origStart.isBefore(originGridStart)) {
+          finalStart = finalStart.subtract(
+            originGridStart.difference(origStart),
+          );
+        }
+
         // Domain invariant: event duration MUST remain invariant under a move gesture.
         // Display clipping on day columns is handled by layout rendering; persisted
         // duration must never be truncated.
@@ -277,24 +293,15 @@ class CalendarInteractionController extends ChangeNotifier {
           final origEndY = engine.timeToY(origEnd, activeDayDate);
           proposedY = origEndY + totalDelta.dy;
         }
-        final snappedEnd = engine.yToTime(proposedY, targetDay);
+        final snappedEnd = engine.yToTime(proposedY, targetDay,
+          allowEndBoundary: true,
+        );
 
         final minDuration = Duration(minutes: config.minItemDurationMinutes);
         final earliestAllowedEnd = origStart.add(minDuration);
-        final maxEnd = DateTime(
-          targetDay.year,
-          targetDay.month,
-          targetDay.day,
-          config.endHour == 24 ? 23 : config.endHour,
-          config.endHour == 24 ? 59 : 0,
-        );
-
-        var finalEnd = snappedEnd.isBefore(earliestAllowedEnd)
+        final finalEnd = snappedEnd.isBefore(earliestAllowedEnd)
             ? earliestAllowedEnd
             : snappedEnd;
-        if (finalEnd.isAfter(maxEnd)) {
-          finalEnd = maxEnd;
-        }
 
         proposedStartsAt = origStart;
         proposedEndsAt = finalEnd;
@@ -552,44 +559,27 @@ class CalendarInteractionController extends ChangeNotifier {
     switch (record.kind) {
       case CalendarUndoKind.event:
         final prev = record.previousEvent!;
-        final draft = EventDraft(
-          title: prev.title,
-          notes: prev.notes,
-          startsAt: prev.startsAt,
-          endsAt: prev.endsAt,
-          location: prev.location,
-          details: prev.details,
-          allDay: prev.allDay,
-          categoryId: prev.categoryId,
-          projectId: prev.projectId,
-          colorValue: prev.colorValue,
-          iconName: prev.iconName,
-          reminderMinutes: prev.reminderMinutes,
-          repeat: prev.repeat,
-        );
+        final current = _currentHistoryEvent(controller, prev);
+        final draft = _eventAtTimes(current, prev.startsAt, prev.endsAt);
         if (record.isOccurrence) {
-          await controller.updateEventOccurrence(prev, draft);
+          await controller.updateEventOccurrence(current, draft);
         } else {
-          final current = controller.events.where((e) => e.id == prev.id).firstOrNull;
-          if (current != null) {
-            await controller.updateEvent(current, draft);
-          } else {
-            throw StateError('Event "${prev.title}" was not found in database.');
-          }
+          await controller.updateEvent(current, draft);
         }
         return 'Undid ${record.description}';
 
       case CalendarUndoKind.session:
         final prev = record.previousSession!;
-        final draft = SessionDraft(
-          taskId: prev.taskId,
-          startsAt: prev.startsAt,
-          endsAt: prev.endsAt,
-          outcome: prev.outcome,
-        );
         final current = controller.sessions.where((s) => s.id == prev.id).firstOrNull;
         if (current != null) {
-          await controller.updateSession(current, draft);
+          await controller.updateSession(current,
+            SessionDraft(
+              taskId: current.taskId,
+              startsAt: prev.startsAt,
+              endsAt: prev.endsAt,
+              outcome: current.outcome,
+            ),
+          );
         } else {
           throw StateError('Work session was not found in database.');
         }
@@ -597,23 +587,11 @@ class CalendarInteractionController extends ChangeNotifier {
 
       case CalendarUndoKind.task:
         final prev = record.previousTask!;
-        final draft = TaskDraft(
-          title: prev.title,
-          notes: prev.notes,
-          status: prev.status,
-          priority: prev.priority,
-          categoryId: prev.categoryId,
-          projectId: prev.projectId,
-          scheduledDate: prev.scheduledDate,
-          deadlineDate: prev.deadlineDate,
-          plannedDurationMinutes: prev.plannedDurationMinutes,
-          remainingWorkMinutes: prev.remainingWorkMinutes,
-          schedulingLocked: prev.schedulingLocked,
-          notification: prev.notification,
-        );
         final current = controller.tasks.where((t) => t.id == prev.id).firstOrNull;
         if (current != null) {
-          await controller.updateTask(current, draft);
+          await controller.updateTask(current,
+            _taskAtDate(current, prev.scheduledDate),
+          );
         } else {
           throw StateError('Task "${prev.title}" was not found in database.');
         }
@@ -626,15 +604,16 @@ class CalendarInteractionController extends ChangeNotifier {
       case CalendarUndoKind.event:
         final nextDraft = record.nextEventDraft!;
         final prev = record.previousEvent!;
+        final current = _currentHistoryEvent(controller, prev);
+        final draft = _eventAtTimes(
+          current,
+          nextDraft.startsAt,
+          nextDraft.endsAt,
+        );
         if (record.isOccurrence) {
-          await controller.updateEventOccurrence(prev, nextDraft);
+          await controller.updateEventOccurrence(current, draft);
         } else {
-          final current = controller.events.where((e) => e.id == prev.id).firstOrNull;
-          if (current != null) {
-            await controller.updateEvent(current, nextDraft);
-          } else {
-            throw StateError('Event "${prev.title}" was not found in database.');
-          }
+          await controller.updateEvent(current, draft);
         }
         return 'Redid ${record.description}';
 
@@ -642,7 +621,14 @@ class CalendarInteractionController extends ChangeNotifier {
         final nextDraft = record.nextSessionDraft!;
         final current = controller.sessions.where((s) => s.id == record.previousSession!.id).firstOrNull;
         if (current != null) {
-          await controller.updateSession(current, nextDraft);
+          await controller.updateSession(current,
+            SessionDraft(
+              taskId: current.taskId,
+              startsAt: nextDraft.startsAt,
+              endsAt: nextDraft.endsAt,
+              outcome: current.outcome,
+            ),
+          );
         } else {
           throw StateError('Work session was not found in database.');
         }
@@ -652,13 +638,69 @@ class CalendarInteractionController extends ChangeNotifier {
         final nextDraft = record.nextTaskDraft!;
         final current = controller.tasks.where((t) => t.id == record.previousTask!.id).firstOrNull;
         if (current != null) {
-          await controller.updateTask(current, nextDraft);
+          await controller.updateTask(current,
+            _taskAtDate(current, nextDraft.scheduledDate),
+          );
         } else {
           throw StateError('Task "${record.previousTask!.title}" was not found in database.');
         }
         return 'Redid ${record.description}';
     }
   }
+
+  // Calendar history owns dates/times only. Reusing a complete historical draft
+  // with a fresh CAS token would silently overwrite edits made in another editor.
+  TaskDraft _taskAtDate(LifeTask task, String? date) => TaskDraft(
+    title: task.title,
+    notes: task.notes,
+    status: task.status,
+    priority: task.priority,
+    categoryId: task.categoryId,
+    projectId: task.projectId,
+    scheduledDate: date,
+    deadlineDate: task.deadlineDate,
+    plannedDurationMinutes: task.plannedDurationMinutes,
+    remainingWorkMinutes: task.remainingWorkMinutes,
+    schedulingLocked: task.schedulingLocked,
+    notification: task.notification,
+  );
+
+  FixedEvent _currentHistoryEvent(
+    AppController controller,
+    FixedEvent previous,
+  ) {
+    final current = controller.events
+        .where(
+          (event) =>
+              event.id == previous.id &&
+              event.nominalDate == previous.nominalDate &&
+              !event.cancelled,
+        )
+        .firstOrNull;
+    if (current == null) {
+      throw StateError(
+        'Event "${previous.title}" is unavailable. Reopen its calendar date.',
+      );
+    }
+    return current;
+  }
+
+  EventDraft _eventAtTimes(FixedEvent event, DateTime start, DateTime end) =>
+      EventDraft(
+        title: event.title,
+        notes: event.notes,
+        startsAt: start,
+        endsAt: end,
+        location: event.location,
+        details: event.details,
+        allDay: event.allDay,
+        categoryId: event.categoryId,
+        projectId: event.projectId,
+        colorValue: event.colorValue,
+        iconName: event.iconName,
+        reminderMinutes: event.reminderMinutes,
+        repeat: event.repeat,
+      );
 
   String _formatTime(DateTime dt) {
     final h = dt.hour.toString().padLeft(2, '0');

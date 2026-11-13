@@ -810,7 +810,7 @@ void main() {
       persisted = (await repo.events()).firstWhere((e) => e.id == normalEvent.id);
       expect(persisted.startsAt.toLocal(), equals(DateTime(2026, 11, 10, 14, 0)), reason: 'Cancelled drag must not commit');
 
-      // 9. ResizeEnd within column still clamps to maxEnd (23:59)
+      // 9. A display boundary must not reduce the minimum persisted duration.
       final lateEvent = await repo.addEvent(
         EventDraft(
           title: 'Late Night Call',
@@ -835,7 +835,7 @@ void main() {
       );
       interaction.updatePointer(const Offset(10, 1500), testDay, 1500);
       expect(interaction.proposedStartsAt, equals(DateTime(2026, 11, 10, 23, 50)));
-      expect(interaction.proposedEndsAt, equals(DateTime(2026, 11, 10, 23, 59)));
+      expect(interaction.proposedEndsAt, equals(DateTime(2026, 11, 11, 0, 5)));
     });
 
     testWidgets('J. Top-edge auto-scroll buffer allows pointer to overshoot slightly into header and cancellation resets state', (

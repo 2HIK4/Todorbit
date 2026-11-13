@@ -257,6 +257,18 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
   }) {
     final item = placement.item;
     final config = widget.config;
+    final gridStart = DateTime(
+      widget.dayDate.year,
+      widget.dayDate.month,
+      widget.dayDate.day,
+      config.startHour,
+    );
+    final gridEnd = DateTime(
+      widget.dayDate.year,
+      widget.dayDate.month,
+      widget.dayDate.day,
+      config.endHour,
+    );
     final itemLeft = (placement.leftFraction * availableWidth) + (config.overlapSpacing / 2);
     final itemWidth = (placement.widthFraction * availableWidth) - config.overlapSpacing;
 
@@ -370,7 +382,8 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                   ),
 
                   // Top edge resize handle
-                  if (config.enableResize)
+                  if (config.enableResize &&
+                      !item.startsAt!.isBefore(gridStart))
                     Positioned(
                       top: 0,
                       left: 0,
@@ -426,7 +439,7 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                     ),
 
                   // Bottom edge resize handle
-                  if (config.enableResize)
+                  if (config.enableResize && !item.endsAt!.isAfter(gridEnd))
                     Positioned(
                       bottom: 0,
                       left: 0,

@@ -23,7 +23,16 @@ void main() {
   setUp(() async {
     root = await Directory.systemTemp.createTemp('todorbit-sync-lease-');
     final file = File('${root.path}/synthetic.sqlite');
-    final initial = AppDatabase(NativeDatabase(file));
+    // WAL is persistent database setup, not part of lease contention. Configure
+    // it before opening competing engines so journal-mode negotiation cannot
+    // fail before either engine reaches the operation this test exercises.
+    final initial = AppDatabase(
+      NativeDatabase(file,
+        setup: (db) {
+          db.execute('PRAGMA journal_mode=WAL');
+        },
+      ),
+    );
     try {
       final repository = LifeRepository(initial);
       await repository.addTask(
@@ -43,7 +52,6 @@ void main() {
         file,
         setup: (db) {
           db.execute('PRAGMA busy_timeout=5000');
-          db.execute('PRAGMA journal_mode=WAL');
         },
       ),
     );
@@ -52,7 +60,6 @@ void main() {
         file,
         setup: (db) {
           db.execute('PRAGMA busy_timeout=5000');
-          db.execute('PRAGMA journal_mode=WAL');
         },
       ),
     );

@@ -728,7 +728,7 @@ void main() {
       // Artificially change last known date to simulate previous day
       controller.lastKnownDate = '2020-01-01';
 
-      controller.checkDateRollover();
+      await controller.checkDateRollover();
       expect(notified, isTrue);
 
       final newVisible = controller.visibleTasks;

@@ -117,6 +117,7 @@ class AppController extends ChangeNotifier {
   Timer? _timerHeartbeat;
   bool _heartbeatBusy = false;
   Timer? _midnightTimer;
+  bool _disposed = false;
   String? _lastKnownDate;
   String? get lastKnownDate => _lastKnownDate;
   @visibleForTesting
@@ -252,6 +253,7 @@ class AppController extends ChangeNotifier {
       todayEventsLoad,
       repository.alarmRules(),
     ]);
+    if (_disposed) return;
     categories = result[0] as List<Category>;
     projects = result[1] as List<Project>;
     tasks = result[2] as List<LifeTask>;
@@ -282,7 +284,7 @@ class AppController extends ChangeNotifier {
     checklistGroups = result[26] as List<TaskChecklistGroup>;
     progressiveAssignments = result[25] as Map<String, ProgressiveAssignment>;
     _syncTimerHeartbeat();
-    _lastKnownDate ??= localDate(DateTime.now());
+    _lastKnownDate = today;
     _scheduleMidnightTimer();
     if (selectedTaskId != null && selectedTask == null) selectedTaskId = null;
     loading = false;
@@ -293,25 +295,44 @@ class AppController extends ChangeNotifier {
   @visibleForTesting
   static bool enableMidnightTimerInTests = false;
 
-  void _scheduleMidnightTimer() {
+  void _scheduleMidnightTimer({Duration? retryAfter}) {
     _midnightTimer?.cancel();
+    if (_disposed) return;
     if (Platform.environment.containsKey('FLUTTER_TEST') && !enableMidnightTimerInTests) return;
     final now = DateTime.now();
     final nextMidnight = DateTime(now.year, now.month, now.day + 1);
-    final delay = nextMidnight.difference(now) + const Duration(seconds: 1);
-    _midnightTimer = Timer(delay, checkDateRollover);
+    final delay =
+        retryAfter ?? nextMidnight.difference(now) + const Duration(seconds: 1);
+    _midnightTimer = Timer(delay, () async {
+      try {
+        await checkDateRollover();
+      } catch (error, stack) {
+        // Keep the previous projection and retry; never replace it with empty
+        // data or advance the date marker after a failed refresh.
+        _scheduleMidnightTimer(retryAfter: const Duration(minutes: 1));
+        FlutterError.reportError(
+          FlutterErrorDetails(
+            exception: error,
+            stack: stack,
+            library: 'Todorbit date refresh',
+          ),
+        );
+      }
+    });
   }
 
   /// Checks if the local date has changed (e.g. crossing midnight or waking from sleep),
   /// invalidates task caches, and notifies listeners so views like Today rebuild.
-  void checkDateRollover() {
+  Future<void> checkDateRollover() async {
+    if (_disposed) return;
     final today = localDate(DateTime.now());
     if (_lastKnownDate != today) {
-      _lastKnownDate = today;
-      _invalidateTaskCaches();
-      notifyListeners();
+      // Refresh also expands recurring tasks and reloads the separate Today
+      // event projection when the calendar is browsing another month.
+      await refresh();
+    } else {
+      _scheduleMidnightTimer();
     }
-    _scheduleMidnightTimer();
   }
 
   void _syncTimerHeartbeat() {
@@ -350,6 +371,7 @@ class AppController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _timerHeartbeat?.cancel();
     _midnightTimer?.cancel();
     super.dispose();

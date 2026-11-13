@@ -9,7 +9,13 @@
 
 ## 1. Candidate Gate Verification
 
-All mandatory checks verified against candidate source:
+Correction (2026-11-14): the recorded focused checks below did **not** satisfy all
+mandatory gates. [Exact tag Windows CI](https://github.com/2HIK4/Todorbit/actions/runs/43475207925)
+failed: 866 passed, 8 failed, 9 skipped (seven pending midnight timers and one
+concurrent WAL setup failure in the lease-test fixture). No published binaries
+or tags were replaced. See the [independent review](INDEPENDENT_REVIEW_2026_11_14.md).
+
+Previously recorded checks:
 - Windows checks (Flutter analysis: 0 issues, test suite: 15/15 workspace passes, Release build, Inno Setup 7.1.0 compiler, CRT sidecars, native widget self-tests).
 - Android validation (Flutter tests, release packaging, signature verification, 16 KiB native ELF alignment).
 - Version synchronization across `pubspec.yaml`, `widget-shell-probe.csproj`, `CHANGELOG.md`, and release notes.

@@ -344,7 +344,12 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
     );
   }
 
-  void _showCalendarNotification(String message, {String? actionLabel, VoidCallback? onAction}) {
+  void _showCalendarNotification(
+    String message, {
+    String? actionLabel,
+    VoidCallback? onAction,
+    bool isError = false,
+  }) {
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     messenger.removeCurrentSnackBar();
@@ -355,7 +360,8 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
           style: const TextStyle(fontSize: 13),
         ),
         duration: const Duration(seconds: 4),
-        persist: false,
+        persist: isError,
+        showCloseIcon: isError,
         behavior: SnackBarBehavior.floating,
         width: MediaQuery.sizeOf(context).width > 500 ? 420 : null,
         margin: MediaQuery.sizeOf(context).width <= 500
@@ -393,51 +399,70 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
   }
 
   Future<void> _undo() async {
-    final message = await _interactionController.undo(ref.read(appControllerProvider));
-    if (mounted) {
-      if (!_calendarFocusNode.hasFocus) {
-        _calendarFocusNode.requestFocus();
+    try {
+      final message = await _interactionController.undo(
+        ref.read(appControllerProvider),
+      );
+      if (mounted) {
+        if (!_calendarFocusNode.hasFocus) {
+          _calendarFocusNode.requestFocus();
+        }
+        if (message != null) {
+          _showCalendarNotification(
+            message,
+            actionLabel: _interactionController.canRedo ? 'Redo' : null,
+            onAction: _interactionController.canRedo ? _redo : null,
+          );
+        }
       }
-      if (message != null) {
-        _showCalendarNotification(
-          message,
-          actionLabel: _interactionController.canRedo ? 'Redo' : null,
-          onAction: _interactionController.canRedo ? _redo : null,
-        );
-      }
+    } catch (error) {
+      _showCalendarNotification('Could not undo: $error', isError: true);
     }
   }
 
   Future<void> _redo() async {
-    final message = await _interactionController.redo(ref.read(appControllerProvider));
-    if (mounted) {
-      if (!_calendarFocusNode.hasFocus) {
-        _calendarFocusNode.requestFocus();
+    try {
+      final message = await _interactionController.redo(
+        ref.read(appControllerProvider),
+      );
+      if (mounted) {
+        if (!_calendarFocusNode.hasFocus) {
+          _calendarFocusNode.requestFocus();
+        }
+        if (message != null) {
+          _showCalendarNotification(
+            message,
+            actionLabel: _interactionController.canUndo ? 'Undo' : null,
+            onAction: _interactionController.canUndo ? _undo : null,
+          );
+        }
       }
-      if (message != null) {
-        _showCalendarNotification(
-          message,
-          actionLabel: _interactionController.canUndo ? 'Undo' : null,
-          onAction: _interactionController.canUndo ? _undo : null,
-        );
-      }
+    } catch (error) {
+      _showCalendarNotification('Could not redo: $error', isError: true);
     }
   }
 
   Future<void> _handleInteractionFinished() async {
-    final appCtrl = ref.read(appControllerProvider);
-    final summary = await _interactionController.commit(appCtrl);
-    if (mounted) {
-      if (!_calendarFocusNode.hasFocus) {
-        _calendarFocusNode.requestFocus();
+    try {
+      final appCtrl = ref.read(appControllerProvider);
+      final summary = await _interactionController.commit(appCtrl);
+      if (mounted) {
+        if (!_calendarFocusNode.hasFocus) {
+          _calendarFocusNode.requestFocus();
+        }
+        if (summary != null) {
+          _showCalendarNotification(
+            summary,
+            actionLabel: 'Undo',
+            onAction: _undo,
+          );
+        }
       }
-      if (summary != null) {
-        _showCalendarNotification(
-          summary,
-          actionLabel: 'Undo',
-          onAction: _undo,
-        );
-      }
+    } catch (error) {
+      _showCalendarNotification(
+        'Could not change calendar item: $error',
+        isError: true,
+      );
     }
   }
 

@@ -1,5 +1,11 @@
 # Persistent test run ledger
 
+## Independent Beta 17/18 review (2026-11-14)
+
+[Review and invocation receipt](INDEPENDENT_REVIEW_2026_11_14.md). Baseline
+`a1ac5a5`; new boundary assertions first run against unpatched application code.
+See the receipt for executions, fingerprints, evidence reuse and release gates.
+
 ## Beta 18 Release Preparation and Verification (2026-11-13)
 
 Branch `fix/calendar-interaction-regressions` (Schema 28, Version `1.0.19-beta.18+41`, Android versionCode 41).

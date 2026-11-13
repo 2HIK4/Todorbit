@@ -1,12 +1,21 @@
 # Changelog
 
+## 1.0.19-beta.19+42 - independent calendar and date rollover corrections
+
+- Preserve later task/event edits and work-session outcomes when undoing or redoing calendar dates and times.
+- Preserve the original start offset when dragging an overnight/multi-day continuation; expose resize handles only at real event boundaries.
+- Keep the minimum resize duration at midnight and allow an end time exactly at midnight.
+- Refresh Today event projections and recurring tasks at date rollover; prevent disposed controllers from restarting timers.
+- Present failed calendar edits/history as dismissible errors while retaining failed history entries.
+- Correct the concurrent SQLite lease-test setup race and the overstated Beta 17/18 CI receipts. Candidate release gates remain pending until recorded separately.
+
 ## 1.0.19-beta.18+41 - calendar keyboard undo/redo focus ownership and notification auto-dismissal
 
 - Restore calendar keyboard shortcuts (`Ctrl+Z`, `Ctrl+Shift+Z`, `Ctrl+Y`): claim focus on initial mount, post-interaction commit, and pointer down within the calendar layout area.
 - Add modal route guard and text input exclusion: calendar pointer interactions never steal focus from active dialogs, popups, or `EditableText` text fields, preserving platform native text undo/redo.
 - Enable automatic notification dismissal (`persist: false`): edit notifications with `Undo` action auto-dismiss after 4 seconds without persisting indefinitely; sync status notification with action auto-dismisses after 8 seconds.
 - Support test mode configuration for midnight date rollover timer (`AppController.enableMidnightTimerInTests`), preventing pending timers in unit tests while preserving production rollover.
-- Experimental pre-release: release, CI, and packaging integrity gates passed. Windows remains unsigned; physical multi-device acceptance remains manual.
+- Experimental pre-release. Correction on 2026-11-14: the published source's required Windows CI failed (881 passed, 1 failed, 9 skipped); the focused passes above did not establish full release readiness. Windows remains unsigned; physical multi-device acceptance remains manual.
 
 
 ## 1.0.19-beta.17+40 - data integrity, sync clarity, task editor modularity, and performance memoization
@@ -20,7 +29,7 @@
 - Refactor monolithic TaskEditor save pipeline into modular, single-responsibility components with isolated prerequisite conflict resolution.
 - Optimize task projection performance: memoize `visibleTasks` and `filteredTasks` with immutability protection, automatic invalidation on task mutations, calendar-day rollover, and 6.7x faster sequential query execution.
 - Add automatic midnight rollover scheduler: single one-shot timer fires at 00:00:01 local time to invalidate caches and rebuild Today views without user intervention or continuous polling.
-- Experimental pre-release: release, CI, and packaging integrity gates passed. Windows remains unsigned; physical multi-device acceptance remains manual.
+- Experimental pre-release. Correction on 2026-11-14: required Windows CI failed (866 passed, 8 failed, 9 skipped); the focused passes above did not establish full release readiness. Windows remains unsigned; physical multi-device acceptance remains manual.
 
 
 ## 1.0.19-beta.16+39 - calendar interaction and UI regression fixes

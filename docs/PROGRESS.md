@@ -1,5 +1,18 @@
 # Progress
 
+## Independent Beta 17/18 review (2026-11-14)
+
+Branch `codex/independent-beta-review`, baseline `a1ac5a5`; candidate metadata
+`1.0.19-beta.19+42`, schema 28. Confirmed/fixed stale calendar history overwrites,
+continuation movement/false resize handles, midnight minimum-duration loss,
+Today rollover projection refresh and invisible async calendar failures.
+Corrected WAL setup in the concurrent lease fixture and Beta 17/18 CI claims.
+Focused runs: 61, 17, 15 and 58 passes, with pre-fix failures retained; targeted
+Dart MCP analysis clean after removing a new-test unused import. Exact-candidate
+CI, packaging and release gates are pending. No publication yet. DTD/hot reload
+blocked because no debug app is running. Unrelated storage documents preserved.
+Full scope, invocation fingerprints and limits: [review receipt](INDEPENDENT_REVIEW_2026_11_14.md).
+
 ## Beta 18 Release Preparation and Verification (2026-11-13)
 
 Branch `fix/calendar-interaction-regressions`.
