@@ -32,14 +32,19 @@ class CalendarLayoutEngine {
   /// Converts a vertical pixel Y offset into a snapped [DateTime] on [dayDate].
   DateTime yToTime(double y, DateTime dayDate, {
     bool allowEndBoundary = false,
+    bool clampToGrid = true,
   }) {
-    final clampedY = y.clamp(0.0, config.totalGridHeight);
+    final clampedY = clampToGrid ? y.clamp(0.0, config.totalGridHeight) : y;
     final totalHours = (clampedY / config.hourHeight) + config.startHour;
     final totalMinutes = (totalHours * 60).round();
 
     // Snap to nearest configured interval
     final snap = config.snapMinutes;
     final snappedMinutes = (totalMinutes / snap).round() * snap;
+
+    if (!clampToGrid) {
+      return DateTime(dayDate.year, dayDate.month, dayDate.day, 0, snappedMinutes);
+    }
 
     final hour = (snappedMinutes ~/ 60).clamp(config.startHour, config.endHour);
     final minute = (snappedMinutes % 60);

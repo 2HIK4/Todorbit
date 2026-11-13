@@ -13,6 +13,13 @@ CI, packaging and release gates are pending. No publication yet. DTD/hot reload
 blocked because no debug app is running. Unrelated storage documents preserved.
 Full scope, invocation fingerprints and limits: [review receipt](INDEPENDENT_REVIEW_2026_11_14.md).
 
+Release follow-up: corrected Sandbox beta DisplayVersion contract (6 fixture
+passes). The continuation fix needed a further upward-drag boundary correction;
+50 final calendar tests and targeted Dart MCP analysis pass. Previous candidate
+packages are preserved as superseded. Android CI host/APK validation passed, but
+the on-device job failed before test loading at Dart Development Service startup.
+Final-source CI and rebuilt package acceptance remain required; no publication.
+
 ## Beta 18 Release Preparation and Verification (2026-11-13)
 
 Branch `fix/calendar-interaction-regressions`.

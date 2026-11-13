@@ -9,6 +9,34 @@ void main() {
   const config = CalendarAppearanceConfiguration(hourHeight: 60);
   final day = DateTime(2026, 11, 10);
 
+  test('continuation moves earlier within its day and across day columns', () {
+    for (final target in [day, DateTime(2026, 11, 11)]) {
+      final interaction = CalendarInteractionController(config: config);
+      addTearDown(interaction.dispose);
+      interaction.startMove(
+        item: CalendarItem(
+          id: 'earlier',
+          title: 'Overnight',
+          kind: CalendarItemKind.event,
+          startsAt: DateTime(2026, 11, 9, 23),
+          endsAt: DateTime(2026, 11, 10, 5),
+        ),
+        dayDate: day,
+        pointerLocal: const Offset(10, 120),
+        pointerTimelineY: 120,
+      );
+      interaction.updatePointer(const Offset(10, 60), target, 60);
+      expect(
+        interaction.proposedStartsAt,
+        DateTime(target.year, target.month, target.day - 1, 22),
+      );
+      expect(
+        interaction.proposedEndsAt,
+        DateTime(target.year, target.month, target.day, 4),
+      );
+    }
+  });
+
   test('bottom resize retains minimum duration at midnight', () {
     final interaction = CalendarInteractionController(config: config);
     addTearDown(interaction.dispose);

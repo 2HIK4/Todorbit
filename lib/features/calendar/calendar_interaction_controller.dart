@@ -220,21 +220,6 @@ class CalendarInteractionController extends ChangeNotifier {
           final origStartY = engine.timeToY(origStart, activeDayDate);
           proposedY = origStartY + totalDelta.dy;
         }
-        final snappedStart = engine.yToTime(proposedY, targetDay);
-
-        // Clamp start time to day grid start boundary
-        final minStart = DateTime(
-          targetDay.year,
-          targetDay.month,
-          targetDay.day,
-          config.startHour,
-          0,
-        );
-        var finalStart = snappedStart;
-        if (finalStart.isBefore(minStart)) {
-          finalStart = minStart;
-        }
-
         // A continuation card begins at the visible grid boundary, while the
         // event itself began earlier. Move that visible segment by the pointer
         // delta without resetting the event's original date/time to this day.
@@ -245,11 +230,17 @@ class CalendarInteractionController extends ChangeNotifier {
           originDay.day,
           config.startHour,
         );
-        if (origStart.isBefore(originGridStart)) {
-          finalStart = finalStart.subtract(
-            originGridStart.difference(origStart),
-          );
-        }
+        final hiddenDuration = origStart.isBefore(originGridStart)
+            ? originGridStart.difference(origStart)
+            : Duration.zero;
+        // Continuations are already clipped. Their pointer delta can be
+        // negative; clamping that delta to the visual grid makes upward moves
+        // no-ops. Ordinary starts retain the configured day-grid bounds.
+        final finalStart = engine.yToTime(
+          proposedY,
+          targetDay,
+          clampToGrid: hiddenDuration == Duration.zero,
+        ).subtract(hiddenDuration);
 
         // Domain invariant: event duration MUST remain invariant under a move gesture.
         // Display clipping on day columns is handled by layout rendering; persisted

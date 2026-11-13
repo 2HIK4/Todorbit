@@ -43,6 +43,28 @@ Each invocation below refers to that exact command record, including failures.
 | 016a (`fixture-pre.json`): `python -m unittest tools.test_windows_sandbox_prepare.SandboxPreparationTest.test_prerelease_assets_and_installer_display_keep_beta_identity` | Failed as expected | Corrected contract assertion reproduces stale numeric-only installer display version in the Sandbox helper. |
 | 017: `python -m unittest tools.test_windows_sandbox_prepare` | Passed: 6 | Corrected beta display contract plus stable identity, digest rejection and schema safety. |
 | 018: `python tools/dev/check-docs.py` | Passed: 0 errors | Current link/map/catalog validation. |
+| 016: Android Release build helper | Passed, 8 native libraries aligned | Signed universal APK, source `c11297e`; superseded by the later upward-continuation correction. Original local.properties bytes restored. |
+| 019: isolated packaged native Release self-test | Passed | Child APPDATA/LOCALAPPDATA and resolved TodoPilot root logged beneath this task's native-profile. Native source unchanged by later Flutter correction; reuse only with matching final binary hash. |
+| 020: Windows package identity preflight | Failed before packaging | Task-local harness incorrectly required numeric **string** FileVersion for Flutter main EXE. Verify numeric PE parts instead; main string legitimately retains beta/build identity. No app source change or output created. |
+| 021: corrected Windows preflight + Inno/portable/checksums | Passed | Both EXEs product `1.0.19-beta.19+42`, numeric `1.0.19.42`; disabled Drive; compiler 7.1.0; source `c11297e` runtime inputs identical at `3d30d52`. Packages subsequently superseded by continuation fix. |
+| 022: Android signature/identity/floor/manifest preparation | Passed | Production cert `00226d…74a99`, code42 > published41, universal APK and sidecars; subsequently superseded by continuation fix. |
+| 023: boundary review, upward/cross-column continuation only | Failed | New edge assertion finds the first continuation correction still clamps negative visual offsets to zero. |
+| 024: `dart format test/calendar_review_boundaries_test.dart` | Passed | Format new edge assertion only. |
+| 025: boundary/controller/layout/gesture/history/shortcuts (7 files) | Passed: 50 | Final correction permits negative offsets only for already-clipped continuation movement; ordinary starts keep day bounds. Downward/upward/cross-column moves, history, duration, cancellation and notification checks pass. |
+| Dart MCP `analyze_files`: interaction controller, layout engine, boundary review | Passed: no errors | Final continuation correction; prior controller/mobile/draft/CAS passes reused under unchanged boundaries. |
+
+CI for intermediate sources: `43513284876`/`43513288019` cancelled after the
+Sandbox helper change. `43514388959` cancelled after the upward continuation
+correction. Android `43514390043`: host/APK job passed; on-device job failed to
+start Dart Development Service before loading android_drive_updates_test
+(zero tests executed). Emulator boot/build/install succeeded; no app-behavior
+pass is claimed. Fresh final-source CI is required, with that startup failure
+retained as a release blocker until resolved. Detailed log is retained locally.
+
+Intermediate packages remain byte-for-byte under
+`.buildlog/independent-review/superseded-3d30d52-packages`; they must not be
+published. No old public tag/binary is altered. New Flutter code invalidates
+prior Windows/Android AOT and package checks, so each requires one final rebuild.
 
 Logger correction: run 016 Android build did not reserve its number until it
 finished, so the lightweight pre-fix helper test reused its log. Preserve that
