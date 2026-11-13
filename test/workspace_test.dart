@@ -525,4 +525,120 @@ void main() {
       }
     },
   );
+
+  group('TaskEditor prerequisite conflict detection', () {
+    final now = DateTime.now().toUtc();
+    final taskA = LifeTask(
+      id: 'task-a',
+      title: 'Prerequisite A',
+      notes: '',
+      status: TaskStatus.notStarted,
+      priority: 1,
+      createdAt: now,
+      updatedAt: now,
+      scheduledDate: '2026-11-20',
+    );
+    final taskB = LifeTask(
+      id: 'task-b',
+      title: 'Prerequisite B (unscheduled)',
+      notes: '',
+      status: TaskStatus.notStarted,
+      priority: 1,
+      createdAt: now,
+      updatedAt: now,
+      scheduledDate: null,
+    );
+    final taskC = LifeTask(
+      id: 'task-c',
+      title: 'Prerequisite C (completed)',
+      notes: '',
+      status: TaskStatus.completed,
+      priority: 1,
+      createdAt: now,
+      updatedAt: now,
+      scheduledDate: '2026-11-25',
+    );
+    final taskD = LifeTask(
+      id: 'task-d',
+      title: 'Prerequisite D (earlier)',
+      notes: '',
+      status: TaskStatus.notStarted,
+      priority: 1,
+      createdAt: now,
+      updatedAt: now,
+      scheduledDate: '2026-11-10',
+    );
+    final currentTask = LifeTask(
+      id: 'current-task',
+      title: 'Target Task',
+      notes: '',
+      status: TaskStatus.notStarted,
+      priority: 1,
+      createdAt: now,
+      updatedAt: now,
+      scheduledDate: '2026-11-15',
+    );
+
+    final dependencies = [
+      TaskDependency(taskId: 'current-task', prerequisiteId: 'task-a'),
+      TaskDependency(taskId: 'current-task', prerequisiteId: 'task-b'),
+      TaskDependency(taskId: 'current-task', prerequisiteId: 'task-c'),
+      TaskDependency(taskId: 'current-task', prerequisiteId: 'task-d'),
+      TaskDependency(taskId: 'other-task', prerequisiteId: 'task-a'),
+    ];
+
+    final allTasks = [taskA, taskB, taskC, taskD, currentTask];
+
+    test('finds conflicts for unscheduled or later prerequisites', () {
+      final conflicts = TaskEditor.findPrerequisiteConflicts(
+        currentTask: currentTask,
+        targetScheduledDate: '2026-11-15',
+        dependencies: dependencies,
+        allTasks: allTasks,
+      );
+
+      // taskA (2026-11-20 >= 2026-11-15) and taskB (null scheduledDate) are conflicts
+      // taskC is completed (ignored)
+      // taskD is earlier (2026-11-10 < 2026-11-15, ignored)
+      expect(conflicts.map((t) => t.id).toSet(), equals({'task-a', 'task-b'}));
+    });
+
+    test('returns empty when all prerequisites are scheduled earlier or completed', () {
+      final conflicts = TaskEditor.findPrerequisiteConflicts(
+        currentTask: currentTask,
+        targetScheduledDate: '2026-11-25',
+        dependencies: [
+          TaskDependency(taskId: 'current-task', prerequisiteId: 'task-a'),
+          TaskDependency(taskId: 'current-task', prerequisiteId: 'task-c'),
+          TaskDependency(taskId: 'current-task', prerequisiteId: 'task-d'),
+        ],
+        allTasks: allTasks,
+      );
+
+      expect(conflicts, isEmpty);
+    });
+  });
+
+  group('AppController visibleTasks memoization', () {
+    test('reuses cached visibleTasks within unchanged notification cycle', () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      final repository = LifeRepository(database);
+      final controller = AppController(repository);
+      await controller.refresh();
+
+      final firstRead = controller.visibleTasks;
+      final secondRead = controller.visibleTasks;
+      expect(identical(firstRead, secondRead), isTrue);
+
+      // Mutating view/filter invalidates cache
+      controller.navigate(WorkspaceView.all);
+      final thirdRead = controller.visibleTasks;
+      expect(identical(firstRead, thirdRead), isFalse);
+
+      final fourthRead = controller.visibleTasks;
+      expect(identical(thirdRead, fourthRead), isTrue);
+
+      await database.close();
+    });
+  });
 }

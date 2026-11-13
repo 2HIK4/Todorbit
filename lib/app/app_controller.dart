@@ -113,6 +113,22 @@ class AppController extends ChangeNotifier {
   AvailabilityPlan availability = const AvailabilityPlan(weekly: {});
   List<SchedulingOperation> schedulingHistory = [];
   WorkspaceView view = WorkspaceView.today;
+
+  List<LifeTask>? _cachedVisibleTasks;
+  String? _cachedVisibleTasksDate;
+  List<LifeTask>? _cachedFilteredTasks;
+
+  void _invalidateTaskCaches() {
+    _cachedVisibleTasks = null;
+    _cachedVisibleTasksDate = null;
+    _cachedFilteredTasks = null;
+  }
+
+  @override
+  void notifyListeners() {
+    _invalidateTaskCaches();
+    super.notifyListeners();
+  }
   TaskSort sort = TaskSort.schedule;
   String? scopeId;
   String? selectedTaskId;
@@ -602,7 +618,7 @@ class AppController extends ChangeNotifier {
   }
 
   List<LifeTask> get filteredTasks =>
-      activeFilter.isActive ? searchTasks(activeFilter) : tasks;
+      activeFilter.isActive ? (_cachedFilteredTasks ??= searchTasks(activeFilter)) : tasks;
   List<FixedEvent> get filteredEvents {
     final saved = view == WorkspaceView.saved
         ? savedViews.where((v) => v.id == scopeId).firstOrNull?.filter
@@ -637,6 +653,9 @@ class AppController extends ChangeNotifier {
 
   List<LifeTask> get visibleTasks {
     final today = localDate(DateTime.now());
+    if (_cachedVisibleTasks != null && _cachedVisibleTasksDate == today) {
+      return _cachedVisibleTasks!;
+    }
     bool active(LifeTask task) =>
         task.isOpen ||
         (taskViewPreferences.keepCompletedVisible &&
@@ -712,6 +731,8 @@ class AppController extends ChangeNotifier {
           return b.createdAt.compareTo(a.createdAt);
       }
     });
+    _cachedVisibleTasks = items;
+    _cachedVisibleTasksDate = today;
     return items;
   }
 

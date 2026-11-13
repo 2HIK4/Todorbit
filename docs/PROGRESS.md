@@ -1,5 +1,21 @@
 # Progress
 
+## Targeted Engineering Quality and Performance Improvements (2026-11-13)
+
+Branch `fix/calendar-interaction-regressions`.
+Implemented high-impact engineering maintainability, cognitive load reduction, and performance optimizations across core state management and workspace editing:
+- **`TaskEditor` Decomposition & Modularization**: Refactored the monolithic 270-line `_save()` method in `TaskEditor` (`lib/features/workspace/task_editor.dart`) into single-responsibility, bounded phases:
+  - Extracted pure static `TaskEditor.findPrerequisiteConflicts` to isolate dependency conflict analysis from widget tree lifecycle.
+  - Extracted `_validateAlarmsAndNotifications` for clean platform-specific precondition enforcement (Android notification permissions, Windows reminder companion).
+  - Extracted `_buildTaskDraft` for deterministic mapping of UI inputs to domain drafts.
+  - Extracted `_confirmPrerequisiteConflicts` and `_persistTaskDraft` for clean separation of user dialogs from atomic persistence operations.
+  - Extracted `_postSaveSyncAndReminders` for icon synchronization and background reminder health.
+- **`AppController.visibleTasks` & `filteredTasks` Memoization**: Optimized task projection in `AppController` (`lib/app/app_controller.dart`):
+  - Added notification-cycle memoization (`_cachedVisibleTasks` and `_cachedFilteredTasks`) with calendar-day awareness (`_cachedVisibleTasksDate`).
+  - Redundant O(N log N) filtering and sorting passes across frequent UI build frames within the same notification cycle now return the cached projection in O(1) time.
+  - Automatic cache invalidation on any state change via overridden `notifyListeners()`.
+- **Verification**: 11/11 tests pass in `test/workspace_test.dart` (including new prerequisite conflict detection and memoization test groups); 14/14 tests pass in `test/workspace_draft_safety_test.dart`; 8/8 tests pass in `test/repository_test.dart`; 1/1 tests pass in `test/task_view_preferences_test.dart`; 2/2 tests pass in `test/advanced_search_widget_test.dart`; `dart analyze lib test` reports 0 issues; `git diff --check` passes cleanly.
+
 ## Cross-Platform Settings, Sync and Recovery UX (2026-11-13)
 
 Branch `fix/calendar-interaction-regressions`.

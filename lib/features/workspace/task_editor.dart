@@ -77,6 +77,28 @@ class TaskEditor extends ConsumerStatefulWidget {
   final bool protectUnsavedEdits;
   final TaskEditorController? navigationController;
 
+  /// Computes any unfinished prerequisite tasks that are scheduled on or after
+  /// the target scheduled date (or unscheduled), creating an ordering conflict.
+  static List<LifeTask> findPrerequisiteConflicts({
+    required LifeTask currentTask,
+    required String targetScheduledDate,
+    required List<TaskDependency> dependencies,
+    required List<LifeTask> allTasks,
+  }) {
+    final byId = {for (final task in allTasks) task.id: task};
+    return dependencies
+        .where((link) => link.taskId == currentTask.id)
+        .map((link) => byId[link.prerequisiteId])
+        .whereType<LifeTask>()
+        .where(
+          (task) =>
+              task.status != TaskStatus.completed &&
+              (task.scheduledDate == null ||
+                  targetScheduledDate.compareTo(task.scheduledDate!) <= 0),
+        )
+        .toList();
+  }
+
   @override
   ConsumerState<TaskEditor> createState() => _TaskEditorState();
 }
@@ -744,6 +766,255 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
       ),
   ];
 
+  Future<void> _validateAlarmsAndNotifications(
+    AppController controller, {
+    required bool notificationChanged,
+  }) async {
+    AlarmConfig.fromJson(alarm.toJson());
+    if (!alarm.sameAs(initialAlarm) && alarm.enabled) {
+      if (alarm.mode == 'custom' &&
+          !alarm.at!.isAfter(DateTime.now().toUtc())) {
+        throw const FormatException('Choose a future alarm time.');
+      }
+      if (Platform.isAndroid &&
+          await AlarmDeviceStore.active().enabled() &&
+          !await AndroidPlatform.requestNotifications()) {
+        throw StateError(
+          'Allow notifications or remove the alarm before saving.',
+        );
+      }
+      if (Platform.isWindows && await AlarmDeviceStore.active().enabled()) {
+        if (!NativeWidgetService().isAvailable) {
+          throw StateError('Alarms require the packaged Windows companion.');
+        }
+        await NativeWidgetService().ensureRemindersRunning();
+      }
+    }
+    TaskNotification.fromJson(notification.toJson());
+    if (notificationChanged &&
+        notification.enabled &&
+        !Platform.isAndroid &&
+        !NativeWidgetService().isAvailable) {
+      throw StateError(
+        'The Windows companion is required for task notifications.',
+      );
+    }
+    if (notificationChanged && notification.enabled && Platform.isAndroid) {
+      if (!await AndroidPlatform.requestNotifications()) {
+        throw StateError(
+          'Notifications are not allowed. Allow them in Android Settings or turn this reminder off.',
+        );
+      }
+    }
+    if (notificationChanged &&
+        notification.mode == 'custom' &&
+        !notification.at!.isAfter(DateTime.now().toUtc())) {
+      throw const FormatException('Choose a future notification time.');
+    }
+    if (notificationChanged &&
+        notification.mode == 'session' &&
+        !controller.sessions.any(
+          (s) =>
+              s.taskId == currentTask?.id &&
+              s.outcome == SessionOutcome.upcoming &&
+              s.endsAt.isAfter(DateTime.now().toUtc()),
+        )) {
+      throw const FormatException(
+        'Add an upcoming work session or choose a custom notification time.',
+      );
+    }
+  }
+
+  TaskDraft _buildTaskDraft({
+    required int? plannedMinutes,
+    required int? remainingMinutes,
+  }) {
+    return TaskDraft(
+      notification: notification,
+      alarm: alarm.sameAs(initialAlarm) && !alarmForFamily ? null : alarm,
+      alarmForFamily: alarmForFamily,
+      alarmFamilyReviewRevision: initialFamilyAlarmRule?.updatedAt ?? 'new',
+      alarmReviewRevision:
+          initialAlarmRule?.taskId == currentTask?.id &&
+                  initialAlarmRule != null
+              ? initialAlarmRule!.updatedAt
+              : 'new',
+      title: title.text,
+      notes: notes.text,
+      status: status,
+      priority: priority,
+      categoryId: categoryId,
+      projectId: projectId,
+      scheduledDate: scheduled == null ? null : localDate(scheduled!),
+      deadlineDate: deadline == null ? null : localDate(deadline!),
+      plannedDurationMinutes: plannedMinutes,
+      remainingWorkMinutes: remainingMinutes,
+      schedulingLocked: schedulingLocked,
+    );
+  }
+
+  Future<bool> _confirmPrerequisiteConflicts(List<LifeTask> conflicts) async {
+    final proceed = await showDialog<bool>(
+      context: context,
+      animationStyle: AppMotion.style(context),
+      builder: (context) => AlertDialog(
+        title: const Text('Plan before prerequisites?'),
+        content: Text(
+          'This day is before unfinished prerequisite work: '
+          '${conflicts.map((task) => task.title).join(', ')}.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Save anyway'),
+          ),
+        ],
+      ),
+    );
+    return proceed == true;
+  }
+
+  Future<void> _persistTaskDraft({
+    required AppController controller,
+    required TaskDraft draft,
+    required Set<String> reviewedPrerequisiteIds,
+  }) async {
+    if (currentTask == null) {
+      if (widget.parentTaskId != null) {
+        final parent = controller.tasks
+            .where((task) => task.id == widget.parentTaskId)
+            .firstOrNull;
+        if (parent == null) throw StateError('Parent task is unavailable');
+        await controller.addSubtask(
+          parent,
+          draft,
+          resources: draftResources,
+          onCommitted: adoptCommittedTask,
+          groups: draftChecklistGroups,
+        );
+      } else if (recurrenceKind == null) {
+        await controller.addTaskWithComposition(
+          draft,
+          [
+            ...draftChecklist,
+            if (checklistEntry.text.trim().isNotEmpty)
+              checklistEntry.text.trim(),
+          ],
+          [
+            for (final child in draftSubtasks)
+              TaskDraft(
+                title: child.title,
+                categoryId: categoryId,
+                projectId: projectId,
+                scheduledDate: child.plannedDay == null
+                    ? null
+                    : localDate(child.plannedDay!),
+                deadlineDate: child.deadline == null
+                    ? null
+                    : localDate(child.deadline!),
+              ),
+          ],
+          resources: draftResources,
+          onCommitted: adoptCommittedTask,
+          groups: draftChecklistGroups,
+        );
+      } else {
+        if (draft.scheduledDate == null) {
+          throw const FormatException(
+            'Select a scheduled day for recurrence',
+          );
+        }
+        final interval = int.tryParse(recurrenceInterval.text.trim());
+        final countText = recurrenceCount.text.trim();
+        final count = countText.isEmpty ? null : int.tryParse(countText);
+        if (interval == null ||
+            interval < 1 ||
+            (countText.isNotEmpty && (count == null || count < 1))) {
+          throw const FormatException('Enter positive recurrence numbers');
+        }
+        await controller.addRecurringTask(
+          draft,
+          RecurrenceRule(
+            kind: recurrenceKind!,
+            startDate: draft.scheduledDate!,
+            interval: interval,
+            weekdays: recurrenceKind == RecurrenceKind.weekdays
+                ? recurrenceWeekdays
+                : const {},
+            endDate: recurrenceEnd == null ? null : localDate(recurrenceEnd!),
+            maxOccurrences: count,
+          ),
+          progressiveSteps: progressiveSteps.text.trim().isEmpty
+              ? const []
+              : progressiveSteps.text
+                    .split('\n')
+                    .map((s) => s.trim())
+                    .where((s) => s.isNotEmpty)
+                    .toList(),
+          repeatPlanAtEnd: repeatPlanAtEnd,
+          checklist: [
+            ...draftChecklist,
+            if (checklistEntry.text.trim().isNotEmpty)
+              checklistEntry.text.trim(),
+          ],
+          subtasks: draftChildren,
+          resources: draftResources,
+          onCommitted: adoptCommittedTask,
+          groups: draftChecklistGroups,
+        );
+      }
+    } else {
+      await controller.updateTask(
+        currentTask!,
+        draft,
+        reviewedPrerequisiteIds: reviewedPrerequisiteIds,
+      );
+    }
+  }
+
+  Future<void> _postSaveSyncAndReminders(
+    AppController controller, {
+    required bool notificationChanged,
+  }) async {
+    final saved =
+        controller.tasks
+            .where((task) => task.id == currentTask?.id)
+            .firstOrNull ??
+        currentTask ??
+        controller.selectedTask;
+    if (saved != null) currentTask = saved;
+    if (saved != null) {
+      final kind = widget.task == null && recurrenceKind != null
+          ? 'series'
+          : 'task';
+      final id = kind == 'series'
+          ? saved.recurrenceSeriesId ?? saved.id
+          : saved.id;
+      if (iconKey != controller.iconKeys['$kind:$id']) {
+        await controller.setIcon(kind, id, iconKey);
+      }
+    }
+    if (notificationChanged && notification.enabled && Platform.isWindows) {
+      try {
+        await NativeWidgetService().ensureRemindersRunning();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Task saved; reminder companion could not start: $e',
+              ),
+            ),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _save() async {
     if (saving) return;
     if (title.text.trim().isEmpty) {
@@ -754,62 +1025,13 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     setState(() => saving = true);
     try {
       final controller = ref.read(appControllerProvider);
-      AlarmConfig.fromJson(alarm.toJson());
-      if (!alarm.sameAs(initialAlarm) && alarm.enabled) {
-        if (alarm.mode == 'custom' &&
-            !alarm.at!.isAfter(DateTime.now().toUtc())) {
-          throw const FormatException('Choose a future alarm time.');
-        }
-        if (Platform.isAndroid &&
-            await AlarmDeviceStore.active().enabled() &&
-            !await AndroidPlatform.requestNotifications()) {
-          throw StateError(
-            'Allow notifications or remove the alarm before saving.',
-          );
-        }
-        if (Platform.isWindows && await AlarmDeviceStore.active().enabled()) {
-          if (!NativeWidgetService().isAvailable) {
-            throw StateError('Alarms require the packaged Windows companion.');
-          }
-          await NativeWidgetService().ensureRemindersRunning();
-        }
-      }
-      TaskNotification.fromJson(notification.toJson());
       final notificationChanged = !notification.sameAs(
         currentTask?.notification ?? const TaskNotification(),
       );
-      if (notificationChanged &&
-          notification.enabled &&
-          !Platform.isAndroid &&
-          !NativeWidgetService().isAvailable) {
-        throw StateError(
-          'The Windows companion is required for task notifications.',
-        );
-      }
-      if (notificationChanged && notification.enabled && Platform.isAndroid) {
-        if (!await AndroidPlatform.requestNotifications()) {
-          throw StateError(
-            'Notifications are not allowed. Allow them in Android Settings or turn this reminder off.',
-          );
-        }
-      }
-      if (notificationChanged &&
-          notification.mode == 'custom' &&
-          !notification.at!.isAfter(DateTime.now().toUtc())) {
-        throw const FormatException('Choose a future notification time.');
-      }
-      if (notificationChanged &&
-          notification.mode == 'session' &&
-          !controller.sessions.any(
-            (s) =>
-                s.taskId == currentTask?.id &&
-                s.outcome == SessionOutcome.upcoming &&
-                s.endsAt.isAfter(DateTime.now().toUtc()),
-          )) {
-        throw const FormatException(
-          'Add an upcoming work session or choose a custom notification time.',
-        );
-      }
+      await _validateAlarmsAndNotifications(
+        controller,
+        notificationChanged: notificationChanged,
+      );
       final plannedMinutes = _parseMinutes(
         plannedDuration.text,
         'Planned minutes',
@@ -819,195 +1041,38 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         'Remaining minutes',
         allowZero: true,
       );
-      final draft = TaskDraft(
-        notification: notification,
-        alarm: alarm.sameAs(initialAlarm) && !alarmForFamily ? null : alarm,
-        alarmForFamily: alarmForFamily,
-        alarmFamilyReviewRevision: initialFamilyAlarmRule?.updatedAt ?? 'new',
-        alarmReviewRevision:
-            initialAlarmRule?.taskId == currentTask?.id &&
-                initialAlarmRule != null
-            ? initialAlarmRule!.updatedAt
-            : 'new',
-        title: title.text,
-        notes: notes.text,
-        status: status,
-        priority: priority,
-        categoryId: categoryId,
-        projectId: projectId,
-        scheduledDate: scheduled == null ? null : localDate(scheduled!),
-        deadlineDate: deadline == null ? null : localDate(deadline!),
-        plannedDurationMinutes: plannedMinutes,
-        remainingWorkMinutes: remainingMinutes,
-        schedulingLocked: schedulingLocked,
+      final draft = _buildTaskDraft(
+        plannedMinutes: plannedMinutes,
+        remainingMinutes: remainingMinutes,
       );
       final reviewedPrerequisiteIds = <String>{};
       if (currentTask != null &&
           draft.scheduledDate != currentTask!.scheduledDate &&
           draft.scheduledDate != null) {
-        final byId = {for (final task in controller.tasks) task.id: task};
-        final conflicts = controller.dependencies
-            .where((link) => link.taskId == currentTask!.id)
-            .map((link) => byId[link.prerequisiteId])
-            .whereType<LifeTask>()
-            .where(
-              (task) =>
-                  task.status != TaskStatus.completed &&
-                  (task.scheduledDate == null ||
-                      draft.scheduledDate!.compareTo(task.scheduledDate!) <= 0),
-            )
-            .toList();
+        final conflicts = TaskEditor.findPrerequisiteConflicts(
+          currentTask: currentTask!,
+          targetScheduledDate: draft.scheduledDate!,
+          dependencies: controller.dependencies,
+          allTasks: controller.tasks,
+        );
         if (conflicts.isNotEmpty) {
           if (!mounted) return;
-          final proceed = await showDialog<bool>(
-            context: context,
-            animationStyle: AppMotion.style(context),
-            builder: (context) => AlertDialog(
-              title: const Text('Plan before prerequisites?'),
-              content: Text(
-                'This day is before unfinished prerequisite work: '
-                '${conflicts.map((task) => task.title).join(', ')}.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Save anyway'),
-                ),
-              ],
-            ),
-          );
-          if (proceed != true) return;
+          final proceed = await _confirmPrerequisiteConflicts(conflicts);
+          if (!proceed) return;
           reviewedPrerequisiteIds.addAll(conflicts.map((task) => task.id));
         }
       }
-      if (currentTask == null) {
-        if (widget.parentTaskId != null) {
-          final parent = controller.tasks
-              .where((task) => task.id == widget.parentTaskId)
-              .firstOrNull;
-          if (parent == null) throw StateError('Parent task is unavailable');
-          await controller.addSubtask(
-            parent,
-            draft,
-            resources: draftResources,
-            onCommitted: adoptCommittedTask,
-            groups: draftChecklistGroups,
-          );
-        } else if (recurrenceKind == null) {
-          await controller.addTaskWithComposition(
-            draft,
-            [
-              ...draftChecklist,
-              if (checklistEntry.text.trim().isNotEmpty)
-                checklistEntry.text.trim(),
-            ],
-            [
-              for (final child in draftSubtasks)
-                TaskDraft(
-                  title: child.title,
-                  categoryId: categoryId,
-                  projectId: projectId,
-                  scheduledDate: child.plannedDay == null
-                      ? null
-                      : localDate(child.plannedDay!),
-                  deadlineDate: child.deadline == null
-                      ? null
-                      : localDate(child.deadline!),
-                ),
-            ],
-            resources: draftResources,
-            onCommitted: adoptCommittedTask,
-            groups: draftChecklistGroups,
-          );
-        } else {
-          if (draft.scheduledDate == null) {
-            throw const FormatException(
-              'Select a scheduled day for recurrence',
-            );
-          }
-          final interval = int.tryParse(recurrenceInterval.text.trim());
-          final countText = recurrenceCount.text.trim();
-          final count = countText.isEmpty ? null : int.tryParse(countText);
-          if (interval == null ||
-              interval < 1 ||
-              (countText.isNotEmpty && (count == null || count < 1))) {
-            throw const FormatException('Enter positive recurrence numbers');
-          }
-          await controller.addRecurringTask(
-            draft,
-            RecurrenceRule(
-              kind: recurrenceKind!,
-              startDate: draft.scheduledDate!,
-              interval: interval,
-              weekdays: recurrenceKind == RecurrenceKind.weekdays
-                  ? recurrenceWeekdays
-                  : const {},
-              endDate: recurrenceEnd == null ? null : localDate(recurrenceEnd!),
-              maxOccurrences: count,
-            ),
-            progressiveSteps: progressiveSteps.text.trim().isEmpty
-                ? const []
-                : progressiveSteps.text
-                      .split('\n')
-                      .map((s) => s.trim())
-                      .where((s) => s.isNotEmpty)
-                      .toList(),
-            repeatPlanAtEnd: repeatPlanAtEnd,
-            checklist: [
-              ...draftChecklist,
-              if (checklistEntry.text.trim().isNotEmpty)
-                checklistEntry.text.trim(),
-            ],
-            subtasks: draftChildren,
-            resources: draftResources,
-            onCommitted: adoptCommittedTask,
-            groups: draftChecklistGroups,
-          );
-        }
-      } else {
-        await controller.updateTask(
-          currentTask!,
-          draft,
-          reviewedPrerequisiteIds: reviewedPrerequisiteIds,
-        );
-      }
-      final saved =
-          controller.tasks
-              .where((task) => task.id == currentTask?.id)
-              .firstOrNull ??
-          currentTask ??
-          controller.selectedTask;
-      if (saved != null) currentTask = saved;
-      if (saved != null) {
-        final kind = widget.task == null && recurrenceKind != null
-            ? 'series'
-            : 'task';
-        final id = kind == 'series'
-            ? saved.recurrenceSeriesId ?? saved.id
-            : saved.id;
-        if (iconKey != controller.iconKeys['$kind:$id']) {
-          await controller.setIcon(kind, id, iconKey);
-        }
-      }
-      if (notificationChanged && notification.enabled && Platform.isWindows) {
-        try {
-          await NativeWidgetService().ensureRemindersRunning();
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Task saved; reminder companion could not start: $e',
-                ),
-              ),
-            );
-          }
-        }
-      }
+
+      await _persistTaskDraft(
+        controller: controller,
+        draft: draft,
+        reviewedPrerequisiteIds: reviewedPrerequisiteIds,
+      );
+
+      await _postSaveSyncAndReminders(
+        controller,
+        notificationChanged: notificationChanged,
+      );
       if (mounted) finish();
     } catch (error) {
       if (mounted) {
