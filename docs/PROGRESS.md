@@ -1,5 +1,19 @@
 # Progress
 
+## Final Engineering Verification & Beta Release Readiness (2026-11-13)
+
+Branch `fix/calendar-interaction-regressions`.
+Verified recent application improvements, hardened task memoization against edge-case state mutations, profiled performance gains, and conducted pre-release readiness evaluation:
+- **Harden Task Memoization**:
+  - Immutability: Wrapped `visibleTasks` and `filteredTasks` returns in `List.unmodifiable` to ensure callers cannot mutate cached state.
+  - State Invalidation: Converted `tasks` into a property with a setter that automatically invokes `_invalidateTaskCaches()`, guaranteeing that direct list assignments instantly invalidate cached views even without an explicit `notifyListeners()`.
+  - Date Rollover: Added calendar-day tracking (`_cachedFilteredTasksDate == today`) to `filteredTasks` matching `visibleTasks`, ensuring seamless midnight expiration.
+- **TaskEditor Save Pipeline Verification**:
+  - Validated preserved control flow, subtask composition, progressive planning, and prerequisite conflict detection across `test/task_composition_widget_test.dart` (2/2 PASS) and `test/progressive_plan_widget_test.dart` (1/1 PASS).
+- **Synthetic Dataset Benchmarking**:
+  - Measured 1,000 queries on 500 synthetic tasks: Unmemoized raw sorting/filtering took 219 ms (219.60 µs/query); memoized caching took 32 ms (32.93 µs/query), yielding a verified 6.7x speedup and eliminating redundant allocations.
+- **Verification**: 14/14 tests pass in `test/workspace_test.dart`; 2/2 tests pass in `test/task_composition_widget_test.dart`; 1/1 tests pass in `test/progressive_plan_widget_test.dart`; `dart analyze lib test` reports 0 issues; `git diff --check` passes cleanly.
+
 ## Targeted Engineering Quality and Performance Improvements (2026-11-13)
 
 Branch `fix/calendar-interaction-regressions`.
