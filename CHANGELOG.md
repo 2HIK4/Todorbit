@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.19-beta.18+41 - calendar keyboard undo/redo focus ownership and notification auto-dismissal
+
+- Restore calendar keyboard shortcuts (`Ctrl+Z`, `Ctrl+Shift+Z`, `Ctrl+Y`): claim focus on initial mount, post-interaction commit, and pointer down within the calendar layout area.
+- Add modal route guard and text input exclusion: calendar pointer interactions never steal focus from active dialogs, popups, or `EditableText` text fields, preserving platform native text undo/redo.
+- Enable automatic notification dismissal (`persist: false`): edit notifications with `Undo` action auto-dismiss after 4 seconds without persisting indefinitely; sync status notification with action auto-dismisses after 8 seconds.
+- Support test mode configuration for midnight date rollover timer (`AppController.enableMidnightTimerInTests`), preventing pending timers in unit tests while preserving production rollover.
+- Experimental pre-release: release, CI, and packaging integrity gates passed. Windows remains unsigned; physical multi-device acceptance remains manual.
+
+
 ## 1.0.19-beta.17+40 - data integrity, sync clarity, task editor modularity, and performance memoization
 
 - Restore event duration invariant in interactive calendar: dragging multi-day and overnight events preserves exact duration without truncation.
