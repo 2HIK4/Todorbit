@@ -74,7 +74,12 @@ class AppController extends ChangeNotifier {
   List<AlarmRule> alarmRules = [];
   List<Category> categories = [];
   List<Project> projects = [];
-  List<LifeTask> tasks = [];
+  List<LifeTask> _tasks = [];
+  List<LifeTask> get tasks => _tasks;
+  set tasks(List<LifeTask> value) {
+    _tasks = value;
+    _invalidateTaskCaches();
+  }
   List<FixedEvent> events = [];
   List<FixedEvent> todayEvents = [];
   Map<String, String> iconKeys = {};
@@ -117,11 +122,13 @@ class AppController extends ChangeNotifier {
   List<LifeTask>? _cachedVisibleTasks;
   String? _cachedVisibleTasksDate;
   List<LifeTask>? _cachedFilteredTasks;
+  String? _cachedFilteredTasksDate;
 
   void _invalidateTaskCaches() {
     _cachedVisibleTasks = null;
     _cachedVisibleTasksDate = null;
     _cachedFilteredTasks = null;
+    _cachedFilteredTasksDate = null;
   }
 
   @override
@@ -617,8 +624,15 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<LifeTask> get filteredTasks =>
-      activeFilter.isActive ? (_cachedFilteredTasks ??= searchTasks(activeFilter)) : tasks;
+  List<LifeTask> get filteredTasks {
+    if (!activeFilter.isActive) return tasks;
+    final today = localDate(DateTime.now());
+    if (_cachedFilteredTasks != null && _cachedFilteredTasksDate == today) {
+      return _cachedFilteredTasks!;
+    }
+    _cachedFilteredTasksDate = today;
+    return _cachedFilteredTasks = List.unmodifiable(searchTasks(activeFilter));
+  }
   List<FixedEvent> get filteredEvents {
     final saved = view == WorkspaceView.saved
         ? savedViews.where((v) => v.id == scopeId).firstOrNull?.filter
@@ -731,9 +745,9 @@ class AppController extends ChangeNotifier {
           return b.createdAt.compareTo(a.createdAt);
       }
     });
-    _cachedVisibleTasks = items;
+    _cachedVisibleTasks = List.unmodifiable(items);
     _cachedVisibleTasksDate = today;
-    return items;
+    return _cachedVisibleTasks!;
   }
 
   StatisticsReport report(String fromDate, String throughDate) =>

@@ -10,6 +10,7 @@ import 'package:life_manager/data/app_database.dart';
 import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/domain/models.dart';
 import 'package:life_manager/domain/recurrence.dart';
+import 'package:life_manager/domain/saved_views.dart';
 import 'package:life_manager/features/workspace/series_editor.dart';
 import 'package:life_manager/features/workspace/task_editor.dart';
 import 'package:life_manager/main.dart';
@@ -637,6 +638,79 @@ void main() {
 
       final fourthRead = controller.visibleTasks;
       expect(identical(thirdRead, fourthRead), isTrue);
+
+      await database.close();
+    });
+
+    test('protects cache from caller mutation via unmodifiable list', () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      final repository = LifeRepository(database);
+      final controller = AppController(repository);
+      await controller.refresh();
+
+      final visible = controller.visibleTasks;
+      final dummyTask = LifeTask(
+        id: 'dummy',
+        title: 'Dummy',
+        notes: '',
+        status: TaskStatus.notStarted,
+        priority: 1,
+        createdAt: DateTime.now().toUtc(),
+        updatedAt: DateTime.now().toUtc(),
+      );
+
+      expect(() => visible.add(dummyTask), throwsUnsupportedError);
+      await database.close();
+    });
+
+    test('invalidates cache when tasks property is assigned directly', () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      final repository = LifeRepository(database);
+      final controller = AppController(repository);
+      await controller.refresh();
+
+      final initial = controller.visibleTasks;
+      controller.tasks = [
+        LifeTask(
+          id: 'new-direct-task',
+          title: 'Direct Task',
+          notes: '',
+          status: TaskStatus.notStarted,
+          priority: 1,
+          createdAt: DateTime.now().toUtc(),
+          updatedAt: DateTime.now().toUtc(),
+          scheduledDate: localDate(DateTime.now()),
+        ),
+      ];
+
+      final afterDirectSet = controller.visibleTasks;
+      expect(identical(initial, afterDirectSet), isFalse);
+      expect(afterDirectSet.any((t) => t.id == 'new-direct-task'), isTrue);
+
+      await database.close();
+    });
+
+    test('memoizes filteredTasks when active and protects against mutation', () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      final repository = LifeRepository(database);
+      final controller = AppController(repository);
+      await controller.refresh();
+
+      controller.setFilter(const TaskFilter(text: 'Search'));
+      final firstFiltered = controller.filteredTasks;
+      final secondFiltered = controller.filteredTasks;
+      expect(identical(firstFiltered, secondFiltered), isTrue);
+
+      final dummyTask = LifeTask(
+        id: 'dummy',
+        title: 'Dummy',
+        notes: '',
+        status: TaskStatus.notStarted,
+        priority: 1,
+        createdAt: DateTime.now().toUtc(),
+        updatedAt: DateTime.now().toUtc(),
+      );
+      expect(() => firstFiltered.add(dummyTask), throwsUnsupportedError);
 
       await database.close();
     });
