@@ -36,12 +36,12 @@ class SandboxPreparationTest(unittest.TestCase):
             '-PackagesDirectory', str(packages)], capture_output=True, text=True)
         return root, result
 
-    def test_prerelease_assets_keep_beta_identity_and_numeric_installer_identity(self):
-        root, result = self.stage('1.0.19-beta.8')
+    def test_prerelease_assets_and_installer_display_keep_beta_identity(self):
+        root, result = self.stage('1.0.19-beta.19')
         self.assertEqual(result.returncode, 0, result.stderr)
         manifest = json.loads(next(root.glob('.buildlog/*/payload/packages.json')).read_text(encoding='utf-8-sig'))
-        self.assertEqual(manifest['version'], '1.0.19-beta.8')
-        self.assertEqual(manifest['installerVersion'], '1.0.19')
+        self.assertEqual(manifest['version'], '1.0.19-beta.19')
+        self.assertEqual(manifest['installerVersion'], '1.0.19-beta.19')
         self.assertEqual(manifest['schemaVersion'], 26)
         self.assertEqual(manifest['tableCount'], 52)
         self.assertEqual(len(manifest['hashes']), 2)

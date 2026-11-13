@@ -39,6 +39,19 @@ Each invocation below refers to that exact command record, including failures.
 | Dart MCP `analyze_files`: history review test, interaction controller, calendar view | Passed: no errors | Verify final import/brace correction; full project analysis found no other issue. Initial attempt reported no configured roots; root-add with incorrect `roots` key rejected, then `uris` succeeded. |
 | DTD discovery / `hot_reload` | Blocked: no debug app/DTD | No running app exists to reload; no personal process was attached. Release runtime acceptance remains separate. |
 | `git diff --check` (2026-11-14 00:38 UTC+03) | Passed | Diff whitespace validation; only Git line-ending notices. |
+| 015: `pwsh -NoProfile -File tools/build-windows-release.ps1` | Passed | Windows Release build, disabled Drive bundle consistency, Microsoft-signed CRT staging; source `c11297e`. |
+| 016a (`fixture-pre.json`): `python -m unittest tools.test_windows_sandbox_prepare.SandboxPreparationTest.test_prerelease_assets_and_installer_display_keep_beta_identity` | Failed as expected | Corrected contract assertion reproduces stale numeric-only installer display version in the Sandbox helper. |
+| 017: `python -m unittest tools.test_windows_sandbox_prepare` | Passed: 6 | Corrected beta display contract plus stable identity, digest rejection and schema safety. |
+| 018: `python tools/dev/check-docs.py` | Passed: 0 errors | Current link/map/catalog validation. |
+
+Logger correction: run 016 Android build did not reserve its number until it
+finished, so the lightweight pre-fix helper test reused its log. Preserve that
+test's command/fingerprint/result in `fixture-pre.json` and observed failure in
+the tool transcript/`fixture-pre.log`; Android's dependency-resolution log prefix
+was overwritten, while subsequent Gradle output and final result remain available.
+The logger now reserves numbers atomically before execution. No app build/test
+is rerun merely to restore log formatting; package identity/signature checks
+independently validate the final artifact.
 
 ## Findings and corrections
 
@@ -53,6 +66,7 @@ No Critical finding was established.
 | Medium | Async calendar edit/history errors escape toolbar/shortcut callbacks. | Show persistent closeable error; keep four-second success notices. `calendar_view.dart`. |
 | Medium | Beta 17/18 receipts/changelog claim mandatory gates passed despite failed CI; RELEASE.md names an old beta as current. | Correct documentation, preserving published binaries/tags. |
 | Low | Lease fixture races journal-mode negotiation before testing lease acquisition. | Enable persistent WAL once before competing engines; retain concurrent acquisition/exclusivity assertions. `sync_lease_repository_test.dart`. |
+| Medium | Beta 17 changes Inno AppVersion/DisplayVersion to retain the beta suffix, but Sandbox staging and its test still require the numeric core. | Keep full beta identity in the acceptance manifest; retain numeric PE identity separately. `prepare-windows-sandbox-acceptance.ps1`, `test_windows_sandbox_prepare.py`. |
 
 ## Inspection and coverage limits
 

@@ -10,9 +10,9 @@ $null = New-Item -ItemType Directory -Path $payload,$results
 $versionText = Get-Content -LiteralPath (Join-Path $repo 'pubspec.yaml') -Raw
 if ($versionText -notmatch '(?m)^version:\s*(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)(?:\+\d+)?\s*$') { throw 'Missing version.' }
 $version = $Matches[1]
-# Public asset names retain the prerelease identifier. The existing Inno
-# builder deliberately uses the numeric core for registration/PE metadata.
-$installerVersion = $version.Split('-')[0]
+# AppVersion/DisplayVersion retain the beta identifier; only PE version fields
+# use AppNumericVersion. Match the actual installer registration contract.
+$installerVersion = $version
 $hashes = @{}
 foreach ($suffix in @('setup.exe','portable.zip')) {
   $name = "Todorbit-$version-win-x64-$suffix"
