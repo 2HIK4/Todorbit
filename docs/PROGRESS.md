@@ -16,7 +16,7 @@ Prepared and verified experimental Beta 17 local release artifacts (`1.0.19-beta
   - Verified signed package `io.github.hik4.todorbit`, versionCode 40, 16 KiB ELF alignment, production certificate `00:22:6D:...`.
   - Manifest & sidecars: `Todorbit-1.0.19-beta.17-android-update.json`, `ANDROID-RELEASE-NOTES.md`, `ANDROID-SHA256SUMS.txt`, `Todorbit-1.0.19-beta.17-SHA256SUMS.txt`.
 - **Verification**: 15/15 tests pass in `test/workspace_test.dart`; `dotnet run --project experiments/widget-shell-probe -- --self-test` PASS; `dart analyze lib test` reports 0 issues; `git diff --check` passes cleanly.
-- **Release Status**: Local packages staged for manual testing; zero push, zero tags, zero drafts published.
+- **Release Status**: Published as experimental pre-release `v1.0.19-beta.17`. Full receipt in [TODORBIT_BETA_17_PUBLICATION.md](TODORBIT_BETA_17_PUBLICATION.md).
 
 ## Final Engineering Verification & Beta Release Readiness (2026-11-13)
 

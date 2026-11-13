@@ -20,4 +20,8 @@ Experimental Windows and Android pre-release, build 40 (SQLite Schema 28). Build
 - Full sync, draft safety, repository, and widget suites passed; `dart analyze` reports 0 issues.
 - Native widget companion verified via `dotnet run --project experiments/widget-shell-probe -- --self-test`.
 - Android release configured with 16 KiB page-size native library alignment.
-- This is an experimental pre-release, excluded from the Stable update channel. Windows packages remain unsigned.
+
+### Known Limitations & Synchronization Notice
+- **Windows Google Drive Sync Disabled**: Windows desktop Google Drive synchronization is intentionally disabled by design in this public pre-release (`GOOGLE_DRIVE_ENABLED: false`) pending Google Cloud domain and branding verification. Desktop users have full offline task and calendar scheduling, local `.tdbackup` snapshot backup/restore, and native Windows widgets. Cross-device synchronization between Windows and Android is **not** available in this public build.
+- **Android Google Drive Authentication & Acceptance Limits**: While the Android package enables platform Google authentication (`GOOGLE_DRIVE_ANDROID_ENABLED: true`), real Google account authentication and end-to-end sync have not been fully verified on physical target devices. Google Play Services and matching OAuth client registration in Google Cloud Console remain prerequisites. Users should export local `.tdbackup` snapshots before testing cloud sync.
+- Windows packages remain unsigned. Excluded from the Stable release channel.
