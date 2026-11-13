@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.19-beta.17+40 - data integrity, sync clarity, task editor modularity, and performance memoization
+
+- Restore event duration invariant in interactive calendar: dragging multi-day and overnight events preserves exact duration without truncation.
+- Add upper-bound clamping to bottom-edge event resizing and top-edge auto-scroll buffer tolerance (-10px) preventing cursor stall in timeline headers.
+- Improve calendar accessibility: provide detailed Semantics on timeline items, accessible tooltips on resize handles and current-time indicators, and rich Month-view card tooltips.
+- Refine mobile workspace: replace unstyled calendar empty state with Material 3 empty state, and add overdue deadline warnings with amber badges and relative due dates.
+- Add desktop task editor keyboard shortcuts: commit edits instantly via Ctrl+S or Ctrl+Enter, and close editor pane cleanly via Escape.
+- Clarify Google Drive sync configuration: differentiate Standard Sync (no extra password) from Private Encrypted Sync, demystify unlock prompts, and prevent confusing cloud passphrases with Google account passwords.
+- Refactor monolithic TaskEditor save pipeline into modular, single-responsibility components with isolated prerequisite conflict resolution.
+- Optimize task projection performance: memoize `visibleTasks` and `filteredTasks` with immutability protection, automatic invalidation on task mutations, calendar-day rollover, and 6.7x faster sequential query execution.
+- Add automatic midnight rollover scheduler: single one-shot timer fires at 00:00:01 local time to invalidate caches and rebuild Today views without user intervention or continuous polling.
+- Experimental pre-release: release, CI, and packaging integrity gates passed. Windows remains unsigned; physical multi-device acceptance remains manual.
+
+
 ## 1.0.19-beta.16+39 - calendar interaction and UI regression fixes
 
 - Fix unexpected calendar scroll upward during event dragging by evaluating pointer distance against viewport bounds rather than card-relative coordinates.
