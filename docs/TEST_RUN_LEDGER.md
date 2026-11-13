@@ -1,5 +1,38 @@
 # Persistent test run ledger
 
+## Beta 17 Release Preparation and Verification (2026-11-13)
+
+Branch `fix/calendar-interaction-regressions` (Schema 28, Version `1.0.19-beta.17+40`, Android versionCode 40).
+Prepared and verified experimental Beta 17 local release packages across Windows x64 and Android:
+- **Midnight Rollover Auto-Refresh (`AppController`)**:
+  - Implemented `_scheduleMidnightTimer()` and `checkDateRollover()`: sets a single-shot timer targeting 00:00:01 local time.
+  - Automatically invalidates `_cachedVisibleTasks` and `_cachedFilteredTasks` and calls `notifyListeners()`, causing Today views across desktop and mobile to rebuild with fresh day bounds without continuous polling or manual restart.
+- **Android Acceptance Scope Boundary**:
+  - Clarified and established testing scope: On Android, `lib/main.dart` mounts `MobileWorkspace`, not desktop `Workspace`/`TimelineGrid`.
+  - Android acceptance comprises `MobileWorkspace` (navigation drawer, task list with overdue warning affordances, task detail sheet) and `MobileCalendar` (month grid, agenda list, event detail view).
+  - Desktop multi-lane timeline dragging, resize edge handles, and desktop keyboard shortcuts (`Ctrl+S`, `Ctrl+Enter`, `Escape`) belong strictly to Windows verification.
+- **Packaging Receipts & Checksums**:
+  - Windows Setup: `Todorbit-1.0.19-beta.17-win-x64-setup.exe` (47,740,345 bytes)
+    - SHA-256: `ca0b27e13270fe1f8de5797c43bfc74f0b2295cc3d33c51a5f576b5c2723889b`
+    - Inno Setup 7.1.0 compiler, numeric `VersionInfoVersion=1.0.19.40`, display `AppVersion=1.0.19-beta.17`.
+    - Bundled with Microsoft Visual C++ runtime DLLs (`msvcp140.dll`, `vcruntime140.dll`, `vcruntime140_1.dll`, `sqlite3.dll`).
+  - Windows Portable: `Todorbit-1.0.19-beta.17-win-x64-portable.zip` (63,158,969 bytes)
+    - SHA-256: `430998c6562a090c0729be703415de43fc4a9dae3c8540954428a8e35b991879`
+    - Verified `Todorbit.exe` (`1.0.19-beta.17+40`) and `TodorbitWidget.exe` (FileVersion `1.0.19.40`, ProductVersion `1.0.19-beta.17+40`).
+    - Validated native companion `--self-test` PASS.
+  - Android Universal APK: `Todorbit-1.0.19-beta.17-android-universal.apk` (53,776,379 bytes)
+    - SHA-256: `07d97b9000ad96f475ac39a48d3ec6bd59650eb525190290fee213de8b875d16`
+    - Verified package `io.github.hik4.todorbit`, versionCode 40, versionName `1.0.19-beta.17`, minSdk 26.
+    - Verified production signature fingerprint: `00:22:6D:AD:75:AC:90:7A:C5:1C:86:DF:2C:50:11:F0:B6:E2:CE:82:91:99:41:03:97:5F:11:A8:EB:57:4A:99`.
+    - Verified 16 KiB page alignment for 8 ELF native shared libraries across `arm64-v8a` and `x86_64`.
+    - Verified `versionCode 40 > published_floor (39)`.
+    - Manifest & sidecars: `Todorbit-1.0.19-beta.17-android-update.json`, `ANDROID-RELEASE-NOTES.md`, `ANDROID-SHA256SUMS.txt`.
+- Runs & Evidence:
+  - `test/workspace_test.dart` (15/15 PASS): Verified midnight rollover cache invalidation and notification trigger.
+  - `dart analyze lib test`: 0 issues found.
+  - `git diff --check`: 0 issues.
+  - Status: Prepared locally for manual Windows and Android testing; zero push, zero tags, zero drafts published.
+
 ## Cross-Platform Settings, Sync and Recovery UX Verification (2026-11-13)
 
 Branch `fix/calendar-interaction-regressions` (Schema 28). Resolves cross-platform user confusion around Google Drive Sync setup, Standard vs. Private Encrypted sync, and password/recovery entry:
@@ -39,6 +72,7 @@ Branch `fix/calendar-interaction-regressions` (Schema 28). Implements high-impac
 - **Polished Mobile Calendar Empty State**: Replaced unstyled debug text in `MobileCalendar` (`mobile_calendar.dart`) with a centered, structured empty state featuring `event_available_outlined` icon, primary title, and tokenized secondary guidance.
 Runs & Evidence:
 - `test/calendar_interactions_regression_test.dart` (11/11 PASS): Scenarios A through J pass; new Scenario K verifies timeline item semantics, current-time tooltip hoverability, resize handle tooltips, and rich month view card tooltips.
+  *(Note on historical attribution: Scenario K was introduced in this batch via commit `190516c`, expanding the regression suite from 10 to 11 tests. Prior commit `efe02b8` strictly verified 10/10 scenarios A through J).*
 - `test/calendar_undo_redo_test.dart` (11/11 PASS reused).
 - `dart analyze lib/features/calendar lib/features/mobile test/calendar_interactions_regression_test.dart`: 0 issues found.
 - `git diff --check`: 0 whitespace errors.
@@ -50,6 +84,7 @@ Branch `fix/calendar-interaction-regressions` (Schema 28). Resolves P0 data trun
 - **Auto-scroll & Cancellation Hygiene Intact**: Retained top auto-scroll tolerance (-10px) and complete gesture cancellation handlers (`onPanCancel`, `onVerticalDragCancel`).
 Runs & Evidence:
 - `test/calendar_interactions_regression_test.dart` (10/10 PASS):
+  *(Note on historical attribution: Exact checkout verified 10/10 scenarios A through J; Scenario K was introduced subsequently in commit `190516c`).*
   - Scenario I replaced with comprehensive duration-preservation suite:
     1. Normal same-day event move (90 min duration preserved and persisted).
     2. Overnight event move (6 hours across midnight, 23:00 to 05:00 next day preserved and persisted without backward shift).

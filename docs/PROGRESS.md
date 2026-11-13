@@ -1,5 +1,23 @@
 # Progress
 
+## Beta 17 Release Preparation and Verification (2026-11-13)
+
+Branch `fix/calendar-interaction-regressions`.
+Prepared and verified experimental Beta 17 local release artifacts (`1.0.19-beta.17+40`, Android versionCode 40, Schema 28) across Windows x64 and Android:
+- **Midnight Rollover Auto-Refresh (`AppController`)**:
+  - Implemented single-shot timer (`_scheduleMidnightTimer()`, `checkDateRollover()`) targeting 00:00:01 local time.
+  - Automatically invalidates task memoization caches (`_cachedVisibleTasks`, `_cachedFilteredTasks`) and notifies listeners at midnight without polling or restart.
+- **Android Acceptance Scope Boundary**:
+  - Established platform verification boundaries: Android mounts `MobileWorkspace` / `MobileCalendar` exclusively; desktop multi-lane dragging and desktop keyboard shortcuts belong strictly to Windows verification.
+- **Packaging Receipts & Checksums**:
+  - Windows Setup: `Todorbit-1.0.19-beta.17-win-x64-setup.exe` (47,740,345 bytes, SHA-256: `ca0b27e13270fe1f8de5797c43bfc74f0b2295cc3d33c51a5f576b5c2723889b`).
+  - Windows Portable: `Todorbit-1.0.19-beta.17-win-x64-portable.zip` (63,158,969 bytes, SHA-256: `430998c6562a090c0729be703415de43fc4a9dae3c8540954428a8e35b991879`).
+  - Android Universal APK: `Todorbit-1.0.19-beta.17-android-universal.apk` (53,776,379 bytes, SHA-256: `07d97b9000ad96f475ac39a48d3ec6bd59650eb525190290fee213de8b875d16`).
+  - Verified signed package `io.github.hik4.todorbit`, versionCode 40, 16 KiB ELF alignment, production certificate `00:22:6D:...`.
+  - Manifest & sidecars: `Todorbit-1.0.19-beta.17-android-update.json`, `ANDROID-RELEASE-NOTES.md`, `ANDROID-SHA256SUMS.txt`, `Todorbit-1.0.19-beta.17-SHA256SUMS.txt`.
+- **Verification**: 15/15 tests pass in `test/workspace_test.dart`; `dotnet run --project experiments/widget-shell-probe -- --self-test` PASS; `dart analyze lib test` reports 0 issues; `git diff --check` passes cleanly.
+- **Release Status**: Local packages staged for manual testing; zero push, zero tags, zero drafts published.
+
 ## Final Engineering Verification & Beta Release Readiness (2026-11-13)
 
 Branch `fix/calendar-interaction-regressions`.
