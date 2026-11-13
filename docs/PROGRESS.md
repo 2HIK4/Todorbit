@@ -1,5 +1,27 @@
 # Progress
 
+## Beta 18 Release Preparation and Verification (2026-11-13)
+
+Branch `fix/calendar-interaction-regressions`.
+Prepared and verified experimental Beta 18 local release artifacts (`1.0.19-beta.18+41`, Android versionCode 41, Schema 28) across Windows x64 and Android:
+- **Calendar Keyboard Shortcuts Restored**:
+  - Acquired and retained focus on `_calendarFocusNode` across initial mount, post-interaction commit, and pointer down events within the calendar layout area.
+  - Implemented modal route guard (`ModalRoute.of(context)?.isCurrent == true`) preventing pointer focus stealing when dialogs, popups, or menus are displayed.
+  - Verified `EditableText` isolation in `onKeyEvent` so active text inputs retain native platform undo/redo and bypass calendar undo.
+- **Notification Auto-Dismissal**:
+  - Explicitly passed `persist: false` to `SnackBar` in `_showCalendarNotification` and sync announcement in `_SyncStatusButtonState`, fixing Flutter 3.24+ `persist` default when action buttons are present.
+  - Edit notifications automatically dismiss after 4 seconds; sync announcements dismiss after 8 seconds; undo actions remain fully functional prior to timeout.
+- **Test-Safe Midnight Rollover Scheduler**:
+  - Added `@visibleForTesting static bool enableMidnightTimerInTests = false;` in `AppController` so widget/unit test suites bypass unmocked pending midnight timers by default, while preserving production midnight rollover at 00:00:01 local time.
+- **Packaging Receipts & Checksums**:
+  - Windows Setup: `Todorbit-1.0.19-beta.18-win-x64-setup.exe` (47,730,037 bytes, SHA-256: `0fbdc50e92d67fce58ef3c22be91cfb5ed1199eac9d9658cf3ea1fbfd11cd9c9`).
+  - Windows Portable: `Todorbit-1.0.19-beta.18-win-x64-portable.zip` (63,159,750 bytes, SHA-256: `3698162969fe553c8eb2fc102e787269affaa9398b15fca9e02e8fa8b8db24ed`).
+  - Android Universal APK: `Todorbit-1.0.19-beta.18-android-universal.apk` (53,776,379 bytes, SHA-256: `fc7702961ff74935c8cde741d79dda283e0d63e4e8a5d7f63a3667bb9d06e72a`).
+  - Verified signed package `io.github.hik4.todorbit`, versionCode 41, 16 KiB ELF alignment, production certificate `00:22:6D:...` matching Beta 16/17 continuity.
+  - Manifest & sidecars: `Todorbit-1.0.19-beta.18-android-update.json`, `ANDROID-RELEASE-NOTES.md`, `ANDROID-SHA256SUMS.txt`, `Todorbit-1.0.19-beta.18-SHA256SUMS.txt`.
+- **Verification**: 30/30 tests pass across `test/calendar_undo_redo_shortcuts_test.dart` (8), `test/calendar_interactions_regression_test.dart` (11), and `test/calendar_undo_redo_test.dart` (11); `dotnet run --project experiments/widget-shell-probe -- --self-test` PASS; `dart analyze lib test` reports 0 issues; `git diff --check` passes cleanly.
+- **Release Status**: Local packages staged for manual acceptance testing; zero push, zero tags, zero drafts published.
+
 ## Beta 17 Release Preparation and Verification (2026-11-13)
 
 Branch `fix/calendar-interaction-regressions`.
