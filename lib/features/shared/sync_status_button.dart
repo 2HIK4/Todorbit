@@ -82,6 +82,7 @@ class _SyncStatusButtonState extends ConsumerState<SyncStatusButton> {
                             'Google Drive Sync is ready. Review privacy choices in Sync settings.',
                           ),
                           showCloseIcon: true,
+                          persist: false,
                           duration: const Duration(seconds: 8),
                           action: SnackBarAction(
                             label: 'Encryption options',

@@ -568,5 +568,139 @@ void main() {
 
       expect(find.byType(SnackBar), findsNothing);
     });
+
+    testWidgets('7. Modal dialog over calendar prevents pointer focus stealing', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      final testDate = DateTime(2026, 11, 10);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appControllerProvider.overrideWith((ref) => controller),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: CalendarView(
+                initialDate: testDate,
+                onTaskTap: (_) {},
+                onSmartReschedule: () {},
+                onAddTask: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final state = tester.state(find.byType(CalendarView)) as dynamic;
+      final focusNode = state.calendarFocusNode as FocusNode;
+      expect(focusNode.hasFocus, isTrue);
+
+      // Open a dialog
+      late BuildContext calendarCtx;
+      calendarCtx = tester.element(find.byType(CalendarView));
+      showDialog<void>(
+        context: calendarCtx,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Test Dialog'),
+          content: const TextField(key: ValueKey('dialog-input')),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap inside the dialog text field
+      await tester.tap(find.byKey(const ValueKey('dialog-input')));
+      await tester.pumpAndSettle();
+
+      // Focus should NOT belong to calendar
+      expect(focusNode.hasFocus, isFalse);
+
+      // Close dialog
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('8. Clicking Undo action on floating SnackBar reverts event move before timeout', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      final testDate = DateTime(2026, 11, 10);
+
+      final event = await repo.addEvent(
+        EventDraft(
+          title: 'Team Sync',
+          startsAt: DateTime(2026, 11, 10, 14, 0),
+          endsAt: DateTime(2026, 11, 10, 15, 0),
+        ),
+      );
+      await controller.refresh();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appControllerProvider.overrideWith((ref) => controller),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: CalendarView(
+                initialDate: testDate,
+                onTaskTap: (_) {},
+                onSmartReschedule: () {},
+                onAddTask: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final state = tester.state(find.byType(CalendarView)) as dynamic;
+      final interaction = state.interactionController;
+
+      // Move event from 14:00 to 15:00
+      interaction.startMove(
+        item: CalendarItem(
+          id: event.id,
+          title: event.title,
+          kind: CalendarItemKind.event,
+          event: event,
+          startsAt: DateTime(2026, 11, 10, 14, 0),
+          endsAt: DateTime(2026, 11, 10, 15, 0),
+        ),
+        dayDate: testDate,
+        pointerLocal: const Offset(10, 840),
+      );
+      interaction.updatePointer(const Offset(10, 900), testDate);
+      await state.handleInteractionFinished();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Verify move committed
+      var current = (await repo.events()).firstWhere((e) => e.id == event.id);
+      expect(current.startsAt.toLocal().hour, 15);
+
+      // Verify SnackBar with Undo action is visible
+      expect(find.byType(SnackBar), findsOneWidget);
+      final undoButton = find.widgetWithText(SnackBarAction, 'Undo');
+      expect(undoButton, findsOneWidget);
+
+      // Click Undo action
+      await tester.tap(undoButton);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Event is reverted
+      current = (await repo.events()).firstWhere((e) => e.id == event.id);
+      expect(current.startsAt.toLocal().hour, 14);
+
+      // Advance 4 seconds and ensure dismissal
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
+      expect(find.byType(SnackBar), findsNothing);
+    });
   });
 }

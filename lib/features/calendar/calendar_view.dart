@@ -655,14 +655,7 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
           }
           return KeyEventResult.ignored;
         },
-        child: Listener(
-          behavior: HitTestBehavior.translucent,
-          onPointerDown: (_) {
-            if (!_calendarFocusNode.hasFocus) {
-              _calendarFocusNode.requestFocus();
-            }
-          },
-          child: Column(
+        child: Column(
           children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 22, 24, 14),
@@ -850,6 +843,15 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
             builder: (context, constraints) {
               final bodySize = Size(constraints.maxWidth, constraints.maxHeight);
               return Listener(
+                behavior: HitTestBehavior.translucent,
+                onPointerDown: (_) {
+                  if (ModalRoute.of(context)?.isCurrent != true) {
+                    return;
+                  }
+                  if (!_calendarFocusNode.hasFocus) {
+                    _calendarFocusNode.requestFocus();
+                  }
+                },
                 onPointerSignal: (pointerSignal) {
                   if (pointerSignal is PointerScrollEvent) {
                     final isCtrl = HardwareKeyboard.instance.isControlPressed;
@@ -967,7 +969,6 @@ class _CalendarViewState extends ConsumerState<CalendarView> {
         ),
       ],
     ),
-  ),
   ),
 );
   }
