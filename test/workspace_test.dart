@@ -714,5 +714,27 @@ void main() {
 
       await database.close();
     });
+
+    test('checkDateRollover notifies listeners and invalidates cache when date advances', () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      final repository = LifeRepository(database);
+      final controller = AppController(repository);
+      await controller.refresh();
+
+      final initialVisible = controller.visibleTasks;
+      bool notified = false;
+      controller.addListener(() => notified = true);
+
+      // Artificially change last known date to simulate previous day
+      controller.lastKnownDate = '2020-01-01';
+
+      controller.checkDateRollover();
+      expect(notified, isTrue);
+
+      final newVisible = controller.visibleTasks;
+      expect(identical(initialVisible, newVisible), isFalse);
+
+      await database.close();
+    });
   });
 }

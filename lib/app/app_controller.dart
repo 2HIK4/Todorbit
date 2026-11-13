@@ -115,6 +115,11 @@ class AppController extends ChangeNotifier {
   String? timerError;
   Timer? _timerHeartbeat;
   bool _heartbeatBusy = false;
+  Timer? _midnightTimer;
+  String? _lastKnownDate;
+  String? get lastKnownDate => _lastKnownDate;
+  @visibleForTesting
+  set lastKnownDate(String? value) => _lastKnownDate = value;
   AvailabilityPlan availability = const AvailabilityPlan(weekly: {});
   List<SchedulingOperation> schedulingHistory = [];
   WorkspaceView view = WorkspaceView.today;
@@ -276,10 +281,32 @@ class AppController extends ChangeNotifier {
     checklistGroups = result[26] as List<TaskChecklistGroup>;
     progressiveAssignments = result[25] as Map<String, ProgressiveAssignment>;
     _syncTimerHeartbeat();
+    _lastKnownDate ??= localDate(DateTime.now());
+    _scheduleMidnightTimer();
     if (selectedTaskId != null && selectedTask == null) selectedTaskId = null;
     loading = false;
     notifyListeners();
     onLocalChange?.call();
+  }
+
+  void _scheduleMidnightTimer() {
+    _midnightTimer?.cancel();
+    final now = DateTime.now();
+    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+    final delay = nextMidnight.difference(now) + const Duration(seconds: 1);
+    _midnightTimer = Timer(delay, checkDateRollover);
+  }
+
+  /// Checks if the local date has changed (e.g. crossing midnight or waking from sleep),
+  /// invalidates task caches, and notifies listeners so views like Today rebuild.
+  void checkDateRollover() {
+    final today = localDate(DateTime.now());
+    if (_lastKnownDate != today) {
+      _lastKnownDate = today;
+      _invalidateTaskCaches();
+      notifyListeners();
+    }
+    _scheduleMidnightTimer();
   }
 
   void _syncTimerHeartbeat() {
@@ -319,6 +346,7 @@ class AppController extends ChangeNotifier {
   @override
   void dispose() {
     _timerHeartbeat?.cancel();
+    _midnightTimer?.cancel();
     super.dispose();
   }
 
