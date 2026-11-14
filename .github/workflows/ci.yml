@@ -75,6 +75,9 @@ jobs:
       - name: Validate workflow routing and failure contracts
         run: python -m unittest discover -s tools -p test_ci_workflows.py 2>&1 | tee .buildlog/ci/workflow-contracts.log
 
+      - name: Validate architecture boundaries and dependency direction
+        run: python -m unittest discover -s tools -p test_architecture_boundaries.py 2>&1 | tee .buildlog/ci/architecture-boundaries.log
+
       - name: Run fast critical regression tests (Level 1 & Critical Level 2)
         run: |
           flutter test --no-pub --concurrency=1 \
@@ -89,7 +92,8 @@ jobs:
             test/sync_journal_test.dart \
             test/calendar_series_integrity_review_test.dart \
             test/notification_auto_dismiss_test.dart \
-            test/calendar_card_contrast_test.dart 2>&1 | tee .buildlog/ci/tests.log
+            test/calendar_card_contrast_test.dart \
+            test/calendar_contracts_test.dart 2>&1 | tee .buildlog/ci/tests.log
 
       - name: Upload bounded CI diagnostics
         if: failure()

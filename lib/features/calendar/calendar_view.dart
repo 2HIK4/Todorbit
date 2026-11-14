@@ -14,6 +14,7 @@ import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import 'event_editor.dart';
 import 'calendar_config.dart';
+import 'calendar_contracts.dart';
 import 'calendar_day_view.dart';
 import 'calendar_interaction_controller.dart';
 import 'calendar_models.dart';
@@ -26,12 +27,7 @@ import '../shared/about_view_button.dart';
 import '../shared/weekdays.dart';
 import 'session_editor.dart';
 
-enum CalendarMode { day, week, month }
-
-int monthEntryCapacity(double cellHeight, double textScale) {
-  final rowHeight = 32.0 * textScale.clamp(1.0, 2.0);
-  return ((cellHeight - 34) / rowHeight).floor().clamp(0, 30);
-}
+export 'calendar_contracts.dart' show CalendarMode, monthEntryCapacity;
 
 class CalendarScrollPhysics extends ScrollPhysics {
   const CalendarScrollPhysics({super.parent});

@@ -49,7 +49,7 @@ and relevant platform receipts; it does not prove the unperformed procedures her
 | DEF-WIN-WIDGET | Native companion; Windows widget engineer | 4; disposable Windows user, physical mixed-DPI monitors | PENDING | Candidate native executable hash; physical companion DPI/hit-test evidence absent. |
 | DEF-AND-WORKFLOW | Mobile editing/SQLite/restore; Android engineer | 3; disposable API-35 AVD | PENDING | Actual android_workflow_test.dart run; update/Drive fixture and host passes do not cover it. |
 | DEF-CAL-INPUT | Flutter CAL-03 resize/input; calendar engineer | 4; isolated Windows profile, physical mouse/mixed DPI | PENDING | Candidate app hash; real mouse dwell/reversal/multimonitor behavior absent. Native companion self-test is separate. |
-| DEF-CI-CLOUD | INFRA-01; repository owner/CI maintainer | 3; GitHub-hosted runners and repository rules | PENDING | Final committed infrastructure SHA; real automatic/manual/check/artifact/cold-timing evidence absent. |
+| DEF-CI-CLOUD | INFRA-01 / ARCH-01; repository owner/CI maintainer | 3; GitHub-hosted runners and repository rules | PENDING | Final committed candidate including reviewed architecture guards; real automatic/manual/check/artifact/cold-timing evidence absent. |
 
 ## Procedures and prerequisites
 
@@ -159,7 +159,11 @@ is not a physical mouse-drag pass or native-companion acceptance.
 
 Owner: repository owner/CI maintainer. Source is the final committed INFRA-01 tree
 identified in its [review receipt](INFRA_CODEX_REVIEW_2026_11_14.md), not the old
-product checkpoint. Follow [first execution and required-check migration](TESTING.md#first-github-execution-and-required-check-migration):
+product checkpoint, plus the reviewed [ARCH-01 changes](ARCH01_CODEX_REVIEW_2026_11_14.md)
+when included in the next authorized candidate. Verify the architecture step and
+calendar contract tests actually run on Ubuntu/Python 3.13; local Python 3.14,
+actionlint and inert failure probes do not close cloud acceptance.
+Follow [first execution and required-check migration](TESTING.md#first-github-execution-and-required-check-migration):
 authorized commit/push/PR first, then inspect required-check rules and register
 dispatch workflows on the default branch. Run the automatic job and all six
 manual selections on exact refs. Verify Linux Flutter 3.47.7/Dart compatibility,

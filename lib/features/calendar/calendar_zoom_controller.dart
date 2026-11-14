@@ -1,4 +1,4 @@
-import 'calendar_view.dart';
+import 'calendar_contracts.dart';
 import 'calendar_config.dart';
 
 /// Manages zoom transitions (Month <-> Week <-> Day) and date-anchored navigation.

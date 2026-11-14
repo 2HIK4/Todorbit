@@ -3,6 +3,23 @@
 Completed entries are archived here before removal from
 [the pending queue](AI_REVIEW_QUEUE.md). Preserve significant defects and fixes.
 
+## ARCH-01 — Approved after repairs (2026-11-14)
+
+Reviewed against preserved HEAD `9cfdd0c619abffd94f3dacef1a794cede12ba9d2`
+on `codex/independent-beta-review`. Gemini extracted the two calendar contracts,
+re-exported the legacy API, removed month/zoom root imports and added CI/catalog
+routing. Codex confirmed exact enum/formula compatibility and absence of a
+transitive root path, then repaired conditional/comment/string/URI detection,
+`dart:ui` purity and indirect boundary enforcement in the Python checker.
+Fixtures now exercise production checks. Final architecture 18/18 and contract
+8/8 pass; focused analysis has zero errors/warnings with one pre-existing info.
+CI lint, failure propagation and feature plan pass. Prior unchanged 49/52 calendar
+manifest entries reused; remaining three have verified extraction-only diffs.
+Full commands, failures, skills, Markdown inventory, source fingerprint and limits:
+[review receipt](ARCH01_CODEX_REVIEW_2026_11_14.md). Queue entry closed;
+[cloud and release acceptance](DEFERRED_VERIFICATION.md) remain pending.
+No commit/push/build/version/licensing/publication action performed.
+
 ## Calendar/UI review — 2026-11-14
 
 Source: `053fa0f` plus reviewed uncommitted Gemini implementation and Codex

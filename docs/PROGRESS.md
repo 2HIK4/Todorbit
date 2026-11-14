@@ -1,5 +1,39 @@
 # Progress
 
+## Approved ARCH-01 local checkpoint (2026-11-14)
+
+User authorized one local commit of the reviewed ARCH-01 implementation and its
+documentation on `codex/independent-beta-review`, parent
+`9cfdd0c619abffd94f3dacef1a794cede12ba9d2`. All 22 approved source/dependency
+fingerprints match; existing 18 architecture / 8 contract and scoped CI/analysis
+evidence is reused without tests or builds. Exact 15-file inclusion scope and
+checkpoint checks are in the [review receipt](ARCH01_CODEX_REVIEW_2026_11_14.md#local-checkpoint-scope-2026-11-14).
+The modular audit and both storage documents remain excluded/untracked.
+Cloud/platform/release acceptance remains pending; no push or publication.
+
+## ARCH-01 independently reviewed and closed (2026-11-14)
+
+Approved after scanner repairs; exact enum/formula and legacy re-export preserved,
+direct/transitive month/zoom-to-root paths absent. Architecture checks 18 passed,
+contract/API checks 8 passed; scoped analysis zero errors/warnings (one existing
+info), CI lint/failure probe and calendar plan passed. Reused prior unchanged
+calendar boundaries after 49/52 manifest matches; three extraction-only library
+diffs verified. No Dart behavior edit, commit, build or release. Source hashes,
+executed commands, pre-existing formatting and evidence qualifications are in the
+[review receipt](ARCH01_CODEX_REVIEW_2026_11_14.md). Archived in
+[history](AI_REVIEW_HISTORY.md); queue empty. [Deferred acceptance](DEFERRED_VERIFICATION.md),
+including actual GitHub execution, remains pending.
+
+## ARCH-01: Calendar contract extraction and import boundary (2026-11-14)
+
+Implemented the first modular architecture improvement recommended by Codex's modular architecture audit (Problem A3, Section 13):
+- Extracted `CalendarMode` and `monthEntryCapacity` into pure Dart contract `lib/features/calendar/calendar_contracts.dart` with zero external dependencies.
+- Re-exported both symbols from `lib/features/calendar/calendar_view.dart` to preserve full backwards compatibility for all existing callers and tests.
+- Replaced upward imports to `calendar_view.dart` in `calendar_month_view.dart` and `calendar_zoom_controller.dart` with `calendar_contracts.dart`, eliminating the 3-library strongly connected component cycle.
+- Added automated boundary check in `tools/test_architecture_boundaries.py` enforcing contract purity, preventing child-to-root imports, and proving absence of false positives via synthetic fixture tests.
+- Added boundary validation to `.github/workflows/ci.yml` and routed `test/calendar_contracts_test.dart` in `tools/dev/features.json`.
+- Reported focused Level 1 contract tests, boundary checks, existing zoom/capacity tests, route catalog validation, formatting, and static analysis without modifying persistence, synchronization, or user data. Original pending handoff is superseded by the independent review above; its evidence qualifications are retained in the review receipt.
+
 ## Reviewed INFRA-01 local Git checkpoint (2026-11-14)
 
 This commit preserves the approved INFRA-01 state on

@@ -12,3 +12,7 @@ Code-review completion does not authorize publication or replace release gates.
 INFRA-01 is independently approved after repairs and archived in
 [review history](AI_REVIEW_HISTORY.md). [Cloud execution and deferred acceptance](DEFERRED_VERIFICATION.md)
 remain pending; code-review completion is distinct from them.
+
+ARCH-01 is independently **APPROVED AFTER REPAIRS** and archived in
+[history](AI_REVIEW_HISTORY.md) with its
+[review receipt](ARCH01_CODEX_REVIEW_2026_11_14.md). No pending code-review items remain.

@@ -1,5 +1,72 @@
 # Persistent test run ledger
 
+## Approved ARCH-01 checkpoint evidence reuse (2026-11-14, UTC+03:00)
+
+No Flutter/Python tests, analyzer or platform builds rerun: all 22 approved byte
+hashes and combined fingerprint
+`5e86d6b2c495a15c8f1e1a3554473982a504ae6816cf7998d135c750542c3fa1`
+match the reviewed manifest. Implementation/assertions/dependencies and host are
+unchanged; only checkpoint documentation is added. Existing 18 architecture /
+8 contract tests, CI lint/failure probe, plan and scoped analysis evidence reused.
+Git/source preservation, staged-path/blob, sensitive-content, whitespace and
+commit/index audits are documented in the
+[existing receipt](ARCH01_CODEX_REVIEW_2026_11_14.md#local-checkpoint-scope-2026-11-14);
+raw checkpoint records remain ignored under `.buildlog/arch01-checkpoint/`.
+
+## ARCH-01 independent review and repairs (2026-11-14, UTC+03:00)
+
+HEAD `9cfdd0c619abffd94f3dacef1a794cede12ba9d2`, branch
+`codex/independent-beta-review`, dirty-source SHA-256
+`5e86d6b2c495a15c8f1e1a3554473982a504ae6816cf7998d135c750542c3fa1`
+([22-file manifest](ARCH01_REVIEW_SOURCE_MANIFEST_2026_11_14.json)). Exact commands,
+local times, iterations, output locations and reuse reasons are recorded in the
+[review receipt](ARCH01_CODEX_REVIEW_2026_11_14.md).
+
+New Level 1 evidence: original scanner with six regression methods failed 14
+subcases; repaired 15 passed; expanded production-checker/metadata/graph coverage
+17 passed; scanner/URI/BOM assertions 17 passed. Final review reproduced one
+false rejection of a normalized domain URI; resolved-only purity fix and expanded
+assertions passed all 18 architecture tests. Contract compatibility
+tests 8 passed. Scoped Flutter analysis exit 0, zero errors/warnings, one existing
+style info. CI actionlint, exact-command synthetic failure propagation, feature
+plan and exact-source/dependency checks passed. Formatting check exit 1 is the
+unchanged month-view baseline's pre-existing body wrapping/spacing; four other
+checked files clean. Prior-manifest comparison initially had a wrong diagnostic
+expectation, corrected to all three extraction-only libraries; 49/52 other blobs
+match. No product-source change resulted from those diagnostics.
+
+Prior approved recurrence/resize/history/shared UI evidence reused for unchanged
+fingerprinted boundaries. Gemini's un-fingerprinted results below remain reported
+historical evidence; no independent all-44-pass claim (one tooling test was skipped).
+No broad suite, builds, personal-profile or device run. No changed Level 2 boundary;
+[deferred cloud/platform/release acceptance](DEFERRED_VERIFICATION.md) stays pending.
+Final documentation/catalog validation: zero errors (logs 15/20); all 22 source
+hashes current, expected paths/index/new-file whitespace checked (19);
+`git diff --check` clean after documentation updates (16/21/22). Detailed results
+are retained in `.buildlog/arch01-review/` and the linked receipt.
+
+## ARCH-01: Calendar contract extraction and import boundary (2026-11-14)
+
+Baseline `9cfdd0c619abffd94f3dacef1a794cede12ba9d2` on branch `codex/independent-beta-review`.
+Focused verification for ARCH-01 pure calendar contract extraction and import boundary enforcement:
+- **Contract & Calculation Unit Tests**:
+  - `flutter test --no-pub --concurrency=1 test/calendar_contracts_test.dart`: 8/8 passed. Verifies `CalendarMode` enum declaration, member indices, string serialization (`byName`), calculation exact steps, textScale clamp [1.0, 2.0], result clamp [0, 30], and re-export identity through `calendar_view.dart`.
+- **Existing Zoom & Capacity Regression Tests**:
+  - `flutter test --no-pub --concurrency=1 test/calendar_zoom_controller_test.dart`: 5/5 passed. Proves `CalendarZoomController` transitions and anchor resolutions work with updated contract imports.
+  - `flutter test --no-pub --concurrency=1 --plain-name "month capacity grows with height and shrinks with text scale" test/round3_calendar_test.dart`: 1/1 passed. Proves backwards-compatibility re-export via `calendar_view.dart`.
+- **Architecture Boundary & Purity Checks**:
+  - `python -m unittest tools/test_architecture_boundaries.py`: 9/9 passed in 0.014s. 5 synthetic fixture tests (relative/package import/export detection, contract impurity detection, comments/string literals false positive prevention) and 4 real-source checks confirming `calendar_contracts.dart` purity, zero child-to-root imports in `calendar_month_view.dart` and `calendar_zoom_controller.dart`, and re-export existence.
+  - `python -m unittest discover -s tools -p "test_*.py"`: 44/44 passed in 23.2s.
+- **Route Catalog & Documentation Checks**:
+  - `python tools/dev/check-docs.py`: 0 errors across documentation and feature catalog routes.
+  - `tools/dev/verify.ps1 -Feature calendar -Mode Feature -Plan`: verified plan includes `test/calendar_contracts_test.dart`.
+- **Static Analysis, Formatting & Patch Hygiene**:
+  - `dart format --output=none --set-exit-if-changed ...`: clean (0 changed).
+  - `flutter analyze --no-pub --no-fatal-infos ...`: 0 errors, 0 warnings.
+  - `git diff --check`: 0 whitespace issues.
+Review queue entry updated in [AI Review Queue](AI_REVIEW_QUEUE.md) under `PENDING_CODEX_REVIEW`.
+No database schema, sync, encryption, or native platform files touched. No release published.
+
 ## Reviewed INFRA-01 checkpoint hygiene (2026-11-14)
 
 No tests/builds rerun: all 18 approved execution/instruction/dependency entries
