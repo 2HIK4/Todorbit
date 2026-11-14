@@ -155,6 +155,19 @@ class EventRepeat {
   final int interval;
   final Set<int> weekdays;
   final String? untilDate;
+
+  EventRepeat copyWith({
+    EventRepeatKind? kind,
+    int? interval,
+    Set<int>? weekdays,
+    String? untilDate,
+  }) =>
+      EventRepeat(
+        kind: kind ?? this.kind,
+        interval: interval ?? this.interval,
+        weekdays: weekdays ?? this.weekdays,
+        untilDate: untilDate ?? this.untilDate,
+      );
 }
 
 class EventDraft {

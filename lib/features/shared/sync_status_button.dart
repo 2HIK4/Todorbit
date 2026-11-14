@@ -31,6 +31,7 @@ class _SyncStatusButtonState extends ConsumerState<SyncStatusButton> {
       transientStatusSnackBar(
         context,
         message,
+        type: NotificationType.success,
         key: const ValueKey('sync-success-notice'),
       ),
       snackBarAnimationStyle: AppMotion.style(context),
@@ -103,6 +104,14 @@ class _SyncStatusButtonState extends ConsumerState<SyncStatusButton> {
                   ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                     SnackBar(
                       showCloseIcon: true,
+                      persist: false,
+                      duration: statusReadingDuration(
+                        context,
+                        controller.message ??
+                            controller.status.notice ??
+                            controller.label,
+                        NotificationType.error,
+                      ),
                       content: Text(
                         controller.message ??
                             controller.status.notice ??

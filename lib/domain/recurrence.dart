@@ -177,6 +177,49 @@ class RecurrenceRule {
     return localDate(completed.add(Duration(days: interval)));
   }
 
+  String slotDateAtOrdinal(int ordinal) {
+    if (ordinal < 0) {
+      throw ArgumentError('Ordinal must be non-negative');
+    }
+    final start = _parseDate(startDate);
+    switch (kind) {
+      case RecurrenceKind.daily:
+        final day = start.add(Duration(days: ordinal * interval));
+        return localDate(day);
+
+      case RecurrenceKind.weekly:
+        final day = start.add(Duration(days: ordinal * 7 * interval));
+        return localDate(day);
+
+      case RecurrenceKind.weekdays:
+        final sorted = weekdays.toList()..sort();
+        final monday = start.subtract(Duration(days: start.weekday - 1));
+        final firstWeekDays =
+            sorted.where((day) => day >= start.weekday).toList();
+        DateTime day;
+        if (ordinal < firstWeekDays.length) {
+          day = monday.add(Duration(days: firstWeekDays[ordinal] - 1));
+        } else {
+          final rem = ordinal - firstWeekDays.length;
+          final weekIndex = 1 + rem ~/ sorted.length;
+          final dayIndex = rem % sorted.length;
+          final week = monday.add(Duration(days: weekIndex * interval * 7));
+          day = week.add(Duration(days: sorted[dayIndex] - 1));
+        }
+        return localDate(day);
+
+      case RecurrenceKind.monthly:
+        return localDate(_monthAt(start, ordinal * interval));
+
+      case RecurrenceKind.yearly:
+        final year = start.year + ordinal * interval;
+        return localDate(_clampedDate(year, start.month, start.day));
+
+      case RecurrenceKind.afterCompletion:
+        throw UnsupportedError('afterCompletion does not use slot ordinals');
+    }
+  }
+
   static String shiftDate(String value, int days) =>
       localDate(_parseDate(value).add(Duration(days: days)));
 

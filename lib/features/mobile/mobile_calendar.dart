@@ -1,5 +1,6 @@
 import '../shared/scroll_edge_fade.dart';
 import '../shared/item_filters.dart';
+import '../shared/status_snackbar.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -82,8 +83,7 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
       await ref.read(appControllerProvider).ensureRecurringMonth(selected);
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$error')));
+        showTransientStatus(context, '$error', type: NotificationType.error);
       }
     }
   }
@@ -350,23 +350,24 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
                   Icon(
                     Icons.event_available_outlined,
                     size: 40,
-                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.6),
+                    color: Theme.of(context).colorScheme.outline
+                        .withValues(alpha: 0.6),
                   ),
                   const SizedBox(height: 10),
                   Text(
                     'No commitments for this day',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Use the action buttons above to schedule an event or task.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.outline,
-                        ),
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
                   ),
                 ],
               ),

@@ -57,4 +57,51 @@ void main() {
       },
     );
   }
+
+  testWidgets('custom topFadeColor and bottomFadeColor are rendered in gradients', (tester) async {
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+    const customBottom = Color(0x33000000);
+    const customTop = Color(0x22000000);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 320,
+            height: 200,
+            child: ScrollEdgeFade(
+              topFadeColor: customTop,
+              bottomFadeColor: customBottom,
+              child: ListView(
+                controller: controller,
+                children: const [
+                  SizedBox(height: 100),
+                  SizedBox(height: 500),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final bottomFadeFinder = find.byKey(const ValueKey('scroll-bottom-fade'));
+    expect(bottomFadeFinder, findsOneWidget);
+
+    final bottomBox = tester.widget<DecoratedBox>(bottomFadeFinder);
+    final bottomGrad = (bottomBox.decoration as BoxDecoration).gradient as LinearGradient;
+    expect(bottomGrad.colors.last, customBottom);
+
+    controller.jumpTo(controller.position.maxScrollExtent);
+    await tester.pumpAndSettle();
+
+    final topFadeFinder = find.byKey(const ValueKey('scroll-top-fade'));
+    expect(topFadeFinder, findsOneWidget);
+
+    final topBox = tester.widget<DecoratedBox>(topFadeFinder);
+    final topGrad = (topBox.decoration as BoxDecoration).gradient as LinearGradient;
+    expect(topGrad.colors.first, customTop);
+  });
 }

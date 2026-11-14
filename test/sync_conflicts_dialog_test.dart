@@ -475,7 +475,9 @@ void main() {
       expect(success.persist, isFalse);
       expect(success.action, isNull);
       expect(success.showCloseIcon, isNot(true));
-      await tester.pump(const Duration(seconds: 4));
+      await tester.pump(
+        tester.widget<SnackBar>(find.byType(SnackBar)).duration,
+      );
       await tester.pumpAndSettle();
       expect(find.byType(SnackBar), findsNothing);
       await tester.pumpWidget(const SizedBox());
@@ -657,7 +659,12 @@ void main() {
         await tester.pumpAndSettle();
         expect(controller.requests, 2);
         expect(find.byType(SnackBar), findsOneWidget);
-        await tester.pump(const Duration(seconds: 4));
+        expect(
+          snack.duration,
+          const Duration(seconds: 6),
+          reason: 'Accessible navigation allows twice the success reading time',
+        );
+        await tester.pump(snack.duration);
         await tester.pumpAndSettle();
         expect(find.byType(SnackBar), findsNothing);
         await tester.pump(const Duration(seconds: 5));
@@ -1321,10 +1328,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Standard Sync ready'), findsOneWidget);
-      expect(
-        find.textContaining('no extra password required'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('no extra password required'), findsOneWidget);
       expect(find.text('Set up sync'), findsOneWidget);
       await tester.tap(find.text('Close'));
       await tester.pumpAndSettle();
@@ -1342,19 +1346,13 @@ void main() {
       );
       // Default uses recovery code
       expect(find.text('Recovery code'), findsOneWidget);
-      expect(
-        find.textContaining('24-character recovery code'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('24-character recovery code'), findsOneWidget);
 
       // Toggle off recovery code to enter passphrase
       await tester.tap(find.text('Use recovery code'));
       await tester.pumpAndSettle();
       expect(find.text('Private Sync passphrase'), findsOneWidget);
-      expect(
-        find.textContaining('not your Google password'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('not your Google password'), findsOneWidget);
 
       await tester.tap(find.text('Close'));
       await tester.pumpAndSettle();

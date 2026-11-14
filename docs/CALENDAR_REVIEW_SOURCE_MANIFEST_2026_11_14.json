@@ -1,0 +1,394 @@
+{
+  "format": 1,
+  "date": "2026-11-14",
+  "branch": "codex/independent-beta-review",
+  "parentCommit": "053fa0f2df16ddb8eefb7867f09562400a423837",
+  "purpose": "Safe post-review checkpoint of six calendar/UI improvements; no release authorization.",
+  "reviewReceipt": "docs/CALENDAR_CODEX_REVIEW_2026_11_14.md",
+  "status": {
+    "UX-01": "APPROVED_AFTER_REPAIRS",
+    "CAL-01": "APPROVED_WITH_LIMITATIONS_AFTER_REPAIRS",
+    "CAL-02": "APPROVED_AFTER_REPAIRS",
+    "CAL-03": "APPROVED_AFTER_REPAIRS",
+    "CAL-04": "APPROVED_AFTER_REPAIRS",
+    "UI-01": "APPROVED_AS_IMPLEMENTED"
+  },
+  "cal01Limitations": [
+    "Historical split generations require editor review.",
+    "Orphaned exception/alarm keys and nonrepresentable selected-ordinal or interval transformations are rejected.",
+    "Recurrence kind/interval/cardinality changes and finite-end moves changing slot count are rejected.",
+    "Custom timing follows the documented elapsed-offset/duration policy; real DST wall-clock acceptance remains unverified."
+  ],
+  "hashNotes": "reviewedSha256 hashes exact reviewed worktree bytes. gitBlob hashes Git-filtered content and is authoritative for committed content across checkout line-ending policies. Earlier manifests are overlaid chronologically; raw logs/profiles remain ignored.",
+  "originalManifests": [
+    {
+      "path": ".buildlog/calendar-independent-review/final-source-hashes.json",
+      "sha256": "9F801620E293125A40E119C8988F5410B2B2BDD0AEB7ABA4F73708B060F51108"
+    },
+    {
+      "path": ".buildlog/calendar-final-review/final-source-hashes.json",
+      "sha256": "A8DD9A84C88FBB6A4432DE92774B61C6C8E47E5C9CB886533601F92100DBB1FB"
+    },
+    {
+      "path": ".buildlog/cal01-integrity-review/final-hashes.json",
+      "sha256": "7CA1E1F46235FF58BCBB277379518F821AEBA971D4CF06D83AFE8BBCA063D8F1"
+    }
+  ],
+  "checkpointPaths": [
+    "docs/AI_REVIEW_HISTORY.md",
+    "docs/AI_REVIEW_QUEUE.md",
+    "docs/CALENDAR_CODEX_REVIEW_2026_11_14.md",
+    "docs/CALENDAR_REVIEW_SOURCE_MANIFEST_2026_11_14.json",
+    "docs/PROGRESS.md",
+    "docs/TEST_RUN_LEDGER.md",
+    "lib/app/app_controller.dart",
+    "lib/data/event_repository.dart",
+    "lib/data/life_repository.dart",
+    "lib/domain/models.dart",
+    "lib/domain/recurrence.dart",
+    "lib/features/calendar/calendar_day_view.dart",
+    "lib/features/calendar/calendar_interaction_controller.dart",
+    "lib/features/calendar/calendar_layout_engine.dart",
+    "lib/features/calendar/calendar_view.dart",
+    "lib/features/calendar/calendar_week_view.dart",
+    "lib/features/calendar/event_editor.dart",
+    "lib/features/calendar/recurring_event_move_dialog.dart",
+    "lib/features/calendar/timeline_grid.dart",
+    "lib/features/mobile/mobile_calendar.dart",
+    "lib/features/mobile/mobile_workspace.dart",
+    "lib/features/shared/scroll_edge_fade.dart",
+    "lib/features/shared/status_snackbar.dart",
+    "lib/features/shared/sync_status_button.dart",
+    "lib/features/workspace/workspace.dart",
+    "test/calendar_card_contrast_test.dart",
+    "test/calendar_event_move_recurrence_test.dart",
+    "test/calendar_final_review_test.dart",
+    "test/calendar_history_error_review_test.dart",
+    "test/calendar_independent_review_test.dart",
+    "test/calendar_multi_day_resize_test.dart",
+    "test/calendar_series_integrity_review_test.dart",
+    "test/calendar_zoom_animation_test.dart",
+    "test/notification_auto_dismiss_test.dart",
+    "test/scroll_edge_fade_test.dart",
+    "test/sync_apply_repository_test.dart",
+    "test/sync_conflicts_dialog_test.dart"
+  ],
+  "excludedUnrelatedPaths": [
+    "docs/STORAGE_CLEANUP_2026_11_04.md",
+    "docs/STORAGE_MAINTENANCE.md"
+  ],
+  "sourcesAndDependencies": [
+    {
+      "path": "analysis_options.yaml",
+      "reviewedSha256": "DBDB095BA9629B1281DFB0A1C3AC0D37DA578D48B26D02F75B3CB9B6B21142F4",
+      "gitBlob": "b184301c4d403ce431eb7a76613f9c30be8fa309",
+      "reviewManifest": ".buildlog/cal01-integrity-review/final-hashes.json"
+    },
+    {
+      "path": "lib/app/app_controller.dart",
+      "reviewedSha256": "5877B29E78288104EB36974A49ACE9DAF7DEDAA56E428ADF8CC4EA0DAF871A30",
+      "gitBlob": "87fa63bf169d2ac5a0766b774e85f8b1cb8e2b1f",
+      "reviewManifest": ".buildlog/cal01-integrity-review/final-hashes.json"
+    },
+    {
+      "path": "lib/data/app_database.dart",
+      "reviewedSha256": "C1A485449380111B66450BCC868E4B84351A48046B3C776787D7F667247F7F79",
+      "gitBlob": "33619b9d1614ab9b571e9062b0e9265fde476778",
+      "reviewManifest": ".buildlog/cal01-integrity-review/final-hashes.json"
+    },
+    {
+      "path": "lib/data/event_repository.dart",
+      "reviewedSha256": "539227CF1DB15E59A4568AEFF61C6B7F518A941680DCA009F7C7574A2BDC87AC",
+      "gitBlob": "ddb1e5ca2cf04c007d479dc029315585c5ee3932",
+      "reviewManifest": ".buildlog/cal01-integrity-review/final-hashes.json"
+    },
+    {
+      "path": "lib/data/life_repository.dart",
+      "reviewedSha256": "68CFADB80C147144635C9C00C7175FC5C7B426F470D1A7AEE11B9E46D6ABE85E",
+      "gitBlob": "00ccae141c974556a0e516c82c2f9952cf5ea55d",
+      "reviewManifest": ".buildlog/cal01-integrity-review/final-hashes.json"
+    },
+    {
+      "path": "lib/data/sync_schema.dart",
+      "reviewedSha256": "C4E35647E40B530BC88CD4D0B67DA45D9CD4811EB8A3696F2C09BC7EEE13B0DD",
+      "gitBlob": "612894ef625f9680779f6b9d19946c2c91330cfc",
+      "reviewManifest": ".buildlog/cal01-integrity-review/final-hashes.json"
+    },
+    {
+      "path": "lib/domain/models.dart",
+      "reviewedSha256": "42C70C2D91E752A4B5EF7D6FCED38EDBB19B3C38AE67845E5A9956DA6E377768",
+      "gitBlob": "ea12fe42aff35d3a2e8b5389cafbe8cd3bd37ddd",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "lib/domain/recurrence.dart",
+      "reviewedSha256": "D13356EE7E35324B2A53DDD0B372EED03247C2532A6EB94041B4FE4314E19B59",
+      "gitBlob": "fdd629a36a8a4151b9a57f68c9ba88f8f733ec85",
+      "reviewManifest": ".buildlog/cal01-integrity-review/final-hashes.json"
+    },
+    {
+      "path": "lib/features/calendar/calendar_config.dart",
+      "reviewedSha256": "8469C3C2302120A5FF0C32992299E274209B50BC373EF505BBA901508B6DD55C",
+      "gitBlob": "fe0ee61d6d68c58c7ffd50c1afed75c73fff8eef",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "lib/features/calendar/calendar_day_view.dart",
+      "reviewedSha256": "DA555EFD5D423D3FE455339DB6F09E51581046C883C2FEBA3F76469A2924004E",
+      "gitBlob": "667e0e67711e7530038e12797c089a1d4f75cd1b",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "lib/features/calendar/calendar_interaction_controller.dart",
+      "reviewedSha256": "397CADF9F217C1E1E5A712EB75F4CAF344B41FFDA2AF4A23E343497DE81A1D80",
+      "gitBlob": "1a151e53cbf5de9373ad47499ea7c496e44cc775",
+      "reviewManifest": ".buildlog/cal01-integrity-review/final-hashes.json"
+    },
+    {
+      "path": "lib/features/calendar/calendar_layout_engine.dart",
+      "reviewedSha256": "EED5A1B3EB7EF3931CA6CA2C65EF2AA3390F57DC419AFA1970B9CA7BEFC2DA1F",
+      "gitBlob": "d55854591a8f458187ee029de5a7ab11c3294d9c",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "lib/features/calendar/calendar_models.dart",
+      "reviewedSha256": "26C9DFDB057BF49C71530EA085886C7C609B71AC78B67479B824104B31A278DF",
+      "gitBlob": "06ceadad7a0fa975582ad4535d87bd4603a9b8ca",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "lib/features/calendar/calendar_month_view.dart",
+      "reviewedSha256": "C3B1F15D9D2FD534D952AE7354E72F7DBE3B90BDB1CBD756999F3AE37908B404",
+      "gitBlob": "4bbf85f915a81e666a4f03f7e4dcac6fd24d6cff",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "lib/features/calendar/calendar_view.dart",
+      "reviewedSha256": "9B67486007873CDDFEC7835ED4FB63306184940626E756CACD9098865B7C1453",
+      "gitBlob": "4a50a8b5af042d7579c4eb774f2a2dc7ec0b32ec",
+      "reviewManifest": ".buildlog/cal01-integrity-review/final-hashes.json"
+    },
+    {
+      "path": "lib/features/calendar/calendar_week_view.dart",
+      "reviewedSha256": "D76DC6624C6429906B4910E9705B8CD361F5B9F00AD0D495F7C8FB10B74E87C0",
+      "gitBlob": "e6212d311e4544e7308e981d615421a4717501a9",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "lib/features/calendar/calendar_zoom_controller.dart",
+      "reviewedSha256": "09B3E7CF136E627638498BFC67273F2884387765F0E0D45D16A25CB05F4C5D26",
+      "gitBlob": "b9124e67f7a4f47b0e30d57c6618b6cdb8e97c9c",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "lib/features/calendar/event_editor.dart",
+      "reviewedSha256": "C27C6F92E792CE13FD097EFB810CE9CA565A76FDC958635D950C900C6AD4B120",
+      "gitBlob": "01e06dd38f5ae443afa1a7e130a0f90a98182e60",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "lib/features/calendar/recurring_event_move_dialog.dart",
+      "reviewedSha256": "FE697DB78118909E9431EC2890EFA0A6B3995436656DF746A9E7D67F43365950",
+      "gitBlob": "58d785c08bb8b7d6b26f51c31ef100ff444781a7",
+      "reviewManifest": ".buildlog/cal01-integrity-review/final-hashes.json"
+    },
+    {
+      "path": "lib/features/calendar/session_editor.dart",
+      "reviewedSha256": "3FE1656FA76B518EDED6DE6E2E102566D2472E53F0467A05B2975E1508C43E8D",
+      "gitBlob": "f5113e852785320f826a2f191bac1aeb115a24f5",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "lib/features/calendar/timeline_grid.dart",
+      "reviewedSha256": "7925EF7B82D6F55BA0C44F24C309F007C97DB7DE14EC714F923FAC3ED8E8C8A2",
+      "gitBlob": "031b8d929bdbb65e88b186088203d720c8d921bd",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "lib/features/mobile/mobile_calendar.dart",
+      "reviewedSha256": "F8A9EF2B9ECCF977D90DCE88BA2F64EC55573DF3CC3F1307AE20A9C4E6D7056F",
+      "gitBlob": "abce587f6849d7cfebdbdd5e8e8bbf730fd42f80",
+      "reviewManifest": ".buildlog/calendar-independent-review/final-source-hashes.json"
+    },
+    {
+      "path": "lib/features/mobile/mobile_workspace.dart",
+      "reviewedSha256": "03CA13EF2F47027E1C2E2798E14EA824C80EE140F0C1AABF0F8CD62D61786A49",
+      "gitBlob": "9bd7d4ee2e8a106e8f233ffae680ee991ce7f894",
+      "reviewManifest": ".buildlog/calendar-independent-review/final-source-hashes.json"
+    },
+    {
+      "path": "lib/features/shared/scroll_edge_fade.dart",
+      "reviewedSha256": "7940284C1124EC3C23621C0DDEC2CDC99281D690EDA4E78588EA10BE6CAB9E8E",
+      "gitBlob": "a90c73acf238344817bd1f96ad4bfeb2bd7962b3",
+      "reviewManifest": ".buildlog/calendar-independent-review/final-source-hashes.json"
+    },
+    {
+      "path": "lib/features/shared/status_snackbar.dart",
+      "reviewedSha256": "1668CB1BD7A74F5EB9C1A34529E5049F15C81D26F8F27D50D14EBC2BA5F9A208",
+      "gitBlob": "b594ca35105fd890e57485353f2d204b46b1d699",
+      "reviewManifest": ".buildlog/calendar-independent-review/final-source-hashes.json"
+    },
+    {
+      "path": "lib/features/shared/sync_status_button.dart",
+      "reviewedSha256": "38AF10F80308CF372BD334D4F600ADC63AA0757D4812FCD26C3B25AD3FD16A0A",
+      "gitBlob": "f0826c26cde2775aa2b228add802df382f88e7b9",
+      "reviewManifest": ".buildlog/calendar-independent-review/final-source-hashes.json"
+    },
+    {
+      "path": "lib/features/workspace/workspace.dart",
+      "reviewedSha256": "9FAA55028B9134D20F8B3C4A5FB1BD53B9E58EB2520F7C36DC5E6E71F3F196B3",
+      "gitBlob": "51166c3a601d02d119e9472ba021de80d0870ee8",
+      "reviewManifest": ".buildlog/calendar-independent-review/final-source-hashes.json"
+    },
+    {
+      "path": "pubspec.lock",
+      "reviewedSha256": "D7F08F3CBE6018BDA46A67719B60B4A09A55492DC4862FF4D4C08169D23B6194",
+      "gitBlob": "088ed8d633901b7551845e331248313e71f41679",
+      "reviewManifest": ".buildlog/cal01-integrity-review/final-hashes.json"
+    },
+    {
+      "path": "test/calendar_card_contrast_test.dart",
+      "reviewedSha256": "5137B6256858A480C1D7A1351DEB8126F54B5C22767060405ACA10E424ECDA41",
+      "gitBlob": "8840e37f870f13c58f9ab30fea5aad753c33d71c",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "test/calendar_eval_visual_verification_test.dart",
+      "reviewedSha256": "3AC47CA6B567D4E5BF23D9DD15363AC8775399E9B1F2DF433B852E5D2A58E4B0",
+      "gitBlob": "c18240e4f99f5871b8da0fc4220a64a8db3d9230",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "test/calendar_event_move_recurrence_test.dart",
+      "reviewedSha256": "2DCB3A1BAF579D8D73C0A50B1E927B15B5A7E8D638AF27982D60574B3A10376A",
+      "gitBlob": "6989d72f8b9639d247374ec464ebd098c76666b7",
+      "reviewManifest": ".buildlog/cal01-integrity-review/final-hashes.json"
+    },
+    {
+      "path": "test/calendar_final_review_test.dart",
+      "reviewedSha256": "9891CC814DCFB29D755EFAC637B7C6056510D908ADE36554C69EC975F25CF8B6",
+      "gitBlob": "0b9db610359c2177d79b3c4678fef4bef595da8b",
+      "reviewManifest": ".buildlog/cal01-integrity-review/final-hashes.json"
+    },
+    {
+      "path": "test/calendar_history_error_review_test.dart",
+      "reviewedSha256": "CCD8BEAE51C721B4AD51F8E8C4166383F21EEDBCC48C87A7CC308B01190ACDB2",
+      "gitBlob": "7310fc122283c325c64bd6b61b49762bd2dd603c",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "test/calendar_history_review_test.dart",
+      "reviewedSha256": "AB700D50CCCC11C3E9B169358EA97698658416CA0017DF4154DE0F762211A2BF",
+      "gitBlob": "eaae6a4ade538bbb725e6a16d68e84423db07bbb",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "test/calendar_improvements_test.dart",
+      "reviewedSha256": "F931A1CFB6D2139264E78ABD5430D59D50438FB81E16D2ED074097470B0C18AB",
+      "gitBlob": "b49c9ebb0a2a955a6d785b82e631c24e094658ed",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "test/calendar_independent_review_test.dart",
+      "reviewedSha256": "33CC8E4E11B508A1194052F39103632663E9418B671757F886754AD6BC6CFD95",
+      "gitBlob": "97beab57f70aa5ab5aa1e435c46072c8bc260433",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "test/calendar_interaction_controller_test.dart",
+      "reviewedSha256": "EED364EA2523F3424C5958A9762787193E70A9966AB17976AA3A2A9240689142",
+      "gitBlob": "f12791ada72cf1948df6dbc28996979b8831882e",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "test/calendar_interactions_regression_test.dart",
+      "reviewedSha256": "E199827EF8E4FC1BE532E524E2D07F4B717358BCCC0FD4ACB88B567DB04B812F",
+      "gitBlob": "09f35c4d5429c5ff70b01635b2037d3d2c06bdf2",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "test/calendar_layout_engine_test.dart",
+      "reviewedSha256": "30228B633FAFA7E19C413867D908CEDA665D1B409C23B4BC018264D22F4153AC",
+      "gitBlob": "df935f7d9f1163a7b94faabae04201dab471746e",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "test/calendar_multi_day_resize_test.dart",
+      "reviewedSha256": "071FC4079C37EDA6FDE66D5D010EE874D298071483EF489A293E6217A5FDE374",
+      "gitBlob": "821d42f65fcdc11de084581d3a5282f1fce0c34b",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "test/calendar_review_boundaries_test.dart",
+      "reviewedSha256": "DF7D6435587ACD7436D9DA73000199A059DF5D1B37721BC87DF13E9FBDEF4DF8",
+      "gitBlob": "66c2d46f87e26cf09a458529b00e1dfa459d9ec0",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "test/calendar_safety_and_persistence_test.dart",
+      "reviewedSha256": "26109F1024185F91AB99AD45A671BA3DFBE062F083D3C698005DB18D0BAF9AC9",
+      "gitBlob": "56ed6a93e5d8be54e0c464a3014638a69a17f5d2",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "test/calendar_series_integrity_review_test.dart",
+      "reviewedSha256": "76BB3BB096DE198E497344F6BF7F7383DCBD996F693C0E2D2DE0C3E6E7CC24EE",
+      "gitBlob": "e144406095cd245410c5890408e7487649f1e131",
+      "reviewManifest": ".buildlog/cal01-integrity-review/final-hashes.json"
+    },
+    {
+      "path": "test/calendar_test.dart",
+      "reviewedSha256": "EA0E8796E1822846B3601ED28A82CD50D93FD09EBDD6D384D3526E26E7CAC7D4",
+      "gitBlob": "6599144cff8d8fe5257a1adf800d5092883b19e1",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "test/calendar_undo_redo_shortcuts_test.dart",
+      "reviewedSha256": "B02A1DF965AE86995E36DAC5E4066644CCC5A3C27CB85B75E3D52BCBAB9E7B8E",
+      "gitBlob": "ee61fedd594a49d575eb949b82e1b8f561f1f408",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "test/calendar_undo_redo_test.dart",
+      "reviewedSha256": "1CE49AB467F751FA8A4FC4B593BEECCBCF3082B0BAE915451BB94A4FC2580083",
+      "gitBlob": "e60b3099b1d8c113a6c780b01b41fd0b3ce78187",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "test/calendar_zoom_animation_test.dart",
+      "reviewedSha256": "854772BA6444963105B10FCDD0D6BF4A178A5BBB23A1D7B23F94C20AA625B44A",
+      "gitBlob": "0fbb0453328595b0457a3b3488e6569dbd52b7cd",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "test/calendar_zoom_controller_test.dart",
+      "reviewedSha256": "9247E64F275F424FAC00AFA85B78624AC6BD47C71323AC094948AA1A27CC4DB0",
+      "gitBlob": "bc99dd8345373934b135b7d8c8d4bb6ed39e9769",
+      "reviewManifest": ".buildlog/calendar-final-review/final-source-hashes.json"
+    },
+    {
+      "path": "test/notification_auto_dismiss_test.dart",
+      "reviewedSha256": "BAF8109FE5628D65609F9DDDA51D142A50B64D3F812B33BFFB2E2D2EFAB64FA7",
+      "gitBlob": "b11dd5eea80a7cc5fa867db5fa5a13ceac37787e",
+      "reviewManifest": ".buildlog/calendar-independent-review/final-source-hashes.json"
+    },
+    {
+      "path": "test/scroll_edge_fade_test.dart",
+      "reviewedSha256": "3E53D9368C2D8F1E9D256D23319E9C63D7CFED6EDE7DED60490DBAEC4F09DDCF",
+      "gitBlob": "276f4137e566aba0d9b16f507d300b30630a4310",
+      "reviewManifest": ".buildlog/calendar-independent-review/final-source-hashes.json"
+    },
+    {
+      "path": "test/sync_apply_repository_test.dart",
+      "reviewedSha256": "F033BFC8A06478C09191583A4FF4BA7B645C95644DB7C7B4AD1CF56C85D2376E",
+      "gitBlob": "2cc116cbb7b46170ede881e2209baedc0f503336",
+      "reviewManifest": ".buildlog/cal01-integrity-review/final-hashes.json"
+    },
+    {
+      "path": "test/sync_conflicts_dialog_test.dart",
+      "reviewedSha256": "C5CBEBAA306543CB43409E2169FD17FF9066720B2BEDCFE2A1B57FA3D68196F7",
+      "gitBlob": "a018c0c9cf95cb5540f94186ae743d34d4307edd",
+      "reviewManifest": ".buildlog/calendar-independent-review/final-source-hashes.json"
+    }
+  ]
+}

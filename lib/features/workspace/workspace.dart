@@ -915,7 +915,10 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   }
 
   Widget _sidebar(AppController controller) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final shadowColor = scheme.shadow;
     return Material(
       color: scheme.surfaceContainerLow,
       child: Column(
@@ -1016,6 +1019,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           ),
           Expanded(
             child: FadingListView(
+              topFadeColor: shadowColor.withValues(alpha: isDark ? 0.25 : 0.08),
+              bottomFadeColor: shadowColor.withValues(alpha: isDark ? 0.35 : 0.12),
               padding: const EdgeInsets.symmetric(horizontal: 8),
               children: [
                 for (final view in controller.sidebarOrder.where(

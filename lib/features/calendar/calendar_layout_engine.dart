@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+
 import 'calendar_config.dart';
 import 'calendar_models.dart';
 
@@ -17,8 +18,25 @@ class CalendarLayoutEngine {
   /// If [baseDay] is provided, handles times extending to midnight or across day boundaries.
   double timeToY(DateTime time, [DateTime? baseDay]) {
     if (baseDay != null) {
-      final base = DateTime(baseDay.year, baseDay.month, baseDay.day, config.startHour);
-      final diff = time.difference(base);
+      // A timeline shows civil clock hours. Elapsed time on DST transition
+      // days has 23/25 hours and must not shift every subsequent card row.
+      final base = DateTime.utc(
+        baseDay.year,
+        baseDay.month,
+        baseDay.day,
+        config.startHour,
+      );
+      final clock = DateTime.utc(
+        time.year,
+        time.month,
+        time.day,
+        time.hour,
+        time.minute,
+        time.second,
+        time.millisecond,
+        time.microsecond,
+      );
+      final diff = clock.difference(base);
       final hours = diff.inMilliseconds / 3600000.0;
       return (hours * config.hourHeight).clamp(0.0, config.totalGridHeight);
     }
@@ -26,11 +44,16 @@ class CalendarLayoutEngine {
         (time.hour - config.startHour) +
         (time.minute / 60.0) +
         (time.second / 3600.0);
-    return (hourFraction * config.hourHeight).clamp(0.0, config.totalGridHeight);
+    return (hourFraction * config.hourHeight).clamp(
+      0.0,
+      config.totalGridHeight,
+    );
   }
 
   /// Converts a vertical pixel Y offset into a snapped [DateTime] on [dayDate].
-  DateTime yToTime(double y, DateTime dayDate, {
+  DateTime yToTime(
+    double y,
+    DateTime dayDate, {
     bool allowEndBoundary = false,
     bool clampToGrid = true,
   }) {
@@ -43,7 +66,13 @@ class CalendarLayoutEngine {
     final snappedMinutes = (totalMinutes / snap).round() * snap;
 
     if (!clampToGrid) {
-      return DateTime(dayDate.year, dayDate.month, dayDate.day, 0, snappedMinutes);
+      return DateTime(
+        dayDate.year,
+        dayDate.month,
+        dayDate.day,
+        0,
+        snappedMinutes,
+      );
     }
 
     final hour = (snappedMinutes ~/ 60).clamp(config.startHour, config.endHour);
@@ -92,13 +121,14 @@ class CalendarLayoutEngine {
   /// Builds connected collision clusters where an edge exists if two items strictly overlap in time.
   List<List<CalendarItem>> _buildCollisionClusters(List<CalendarItem> items) {
     // Sort items by start time, duration desc, stable id
-    final sorted = List<CalendarItem>.from(items)..sort((a, b) {
-      final startCmp = a.startsAt!.compareTo(b.startsAt!);
-      if (startCmp != 0) return startCmp;
-      final durCmp = b.duration.compareTo(a.duration);
-      if (durCmp != 0) return durCmp;
-      return a.id.compareTo(b.id);
-    });
+    final sorted = List<CalendarItem>.from(items)
+      ..sort((a, b) {
+        final startCmp = a.startsAt!.compareTo(b.startsAt!);
+        if (startCmp != 0) return startCmp;
+        final durCmp = b.duration.compareTo(a.duration);
+        if (durCmp != 0) return durCmp;
+        return a.id.compareTo(b.id);
+      });
 
     final clusters = <List<CalendarItem>>[];
     List<CalendarItem>? currentCluster;
@@ -160,13 +190,14 @@ class CalendarLayoutEngine {
     }
 
     // Sort cluster items: start asc, duration desc, id
-    final sorted = List<CalendarItem>.from(cluster)..sort((a, b) {
-      final startCmp = a.startsAt!.compareTo(b.startsAt!);
-      if (startCmp != 0) return startCmp;
-      final durCmp = b.duration.compareTo(a.duration);
-      if (durCmp != 0) return durCmp;
-      return a.id.compareTo(b.id);
-    });
+    final sorted = List<CalendarItem>.from(cluster)
+      ..sort((a, b) {
+        final startCmp = a.startsAt!.compareTo(b.startsAt!);
+        if (startCmp != 0) return startCmp;
+        final durCmp = b.duration.compareTo(a.duration);
+        if (durCmp != 0) return durCmp;
+        return a.id.compareTo(b.id);
+      });
 
     // Lane assignment: each lane holds a list of items placed in it
     final lanes = <List<CalendarItem>>[];
@@ -221,9 +252,11 @@ class CalendarLayoutEngine {
       var colSpan = 1;
       for (var l = lane + 1; l < totalLanes; l++) {
         final laneItems = lanes[l];
-        final hasOverlapInLane = laneItems.any((other) =>
-            item.startsAt!.isBefore(other.endsAt!) &&
-            item.endsAt!.isAfter(other.startsAt!));
+        final hasOverlapInLane = laneItems.any(
+          (other) =>
+              item.startsAt!.isBefore(other.endsAt!) &&
+              item.endsAt!.isAfter(other.startsAt!),
+        );
         if (hasOverlapInLane) break;
         colSpan++;
       }
@@ -231,10 +264,14 @@ class CalendarLayoutEngine {
       final leftFraction = lane / totalLanes;
       final widthFraction = colSpan / totalLanes;
 
-      final conflictCount = sorted.where((other) =>
-          other.id != item.id &&
-          item.startsAt!.isBefore(other.endsAt!) &&
-          item.endsAt!.isAfter(other.startsAt!)).length;
+      final conflictCount = sorted
+          .where(
+            (other) =>
+                other.id != item.id &&
+                item.startsAt!.isBefore(other.endsAt!) &&
+                item.endsAt!.isAfter(other.startsAt!),
+          )
+          .length;
 
       placements.add(
         CalendarPlacement(

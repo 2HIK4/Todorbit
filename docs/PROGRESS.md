@@ -1,5 +1,146 @@
 # Progress
 
+## Safe reviewed-source Git checkpoint (2026-11-14)
+
+This commit checkpoints UX-01, CAL-01, CAL-02, CAL-03, CAL-04 and UI-01 on
+`codex/independent-beta-review` from parent `053fa0f`. No app/test changes during
+checkpoint preparation; all 52 approved source/dependency fingerprints match.
+[Portable source manifest](CALENDAR_REVIEW_SOURCE_MANIFEST_2026_11_14.json) lists
+all 37 included paths and canonical Git blob identities. CAL-01 retains its
+supported-operation restrictions; full review history and evidence are preserved.
+Two unrelated storage documents remain untracked; ignored profiles/builds/logs
+remain local. Prior test evidence reused, no tests/build/version/tag/publication.
+Ready for the next development phase; normal platform/release acceptance remains.
+See [checkpoint receipt](CALENDAR_CODEX_REVIEW_2026_11_14.md).
+
+## CAL-01 focused independent integrity review (2026-11-14)
+
+**APPROVED WITH LIMITATIONS after repairs.** Fixed deleted/archived alarm
+reactivation, month-end/leap finite-series final-slot loss, and master time/duration
+changes when moving a customized occurrence. Ordinal mapping, cancellation/override/
+alarm inversion, late-write rollback, CAS and overlapping-key sync group application
+verified. Ten new integrity cases, one two-repository sync case and eight affected
+existing series regressions pass; reuse/failures in the existing receipt. CAL-01
+archived before queue removal; five previous approvals preserved. Historical/
+orphan/ambiguous/end-count changes stay guarded. No runtime app/DTD available;
+no platform rebuild, commit, version bump or publication. Future: real DST/live
+Drive/device acceptance and normal exact-source release gates. Source manifest
+`7CA1E1F4…063D8F1` in `.buildlog/cal01-integrity-review/final-hashes.json`.
+
+See [review receipt](CALENDAR_CODEX_REVIEW_2026_11_14.md).
+
+## CAL-01: Final Recurrence Integrity and Series-Move Support (2026-11-14)
+
+Branch `codex/independent-beta-review`, commit `053fa0f` + working tree.
+- **CAL-01 Completed**: Implemented comprehensive, data-safe recurring series movement with 1:1 ordinal-bijection exception and alarm migration.
+  - **Ordinal Invariance**: Every occurrence slot is mapped via `RecurrenceRule.slotDateAtOrdinal(int ordinal)` providing pure civil date arithmetic for daily, weekly, selected weekdays, monthly, and yearly rules.
+  - **Exception Migration**: Modified occurrences in `event_occurrence_changes` are safely translated to the corresponding ordinal slot on the new schedule; deliberate time overrides ($\Delta_{start}$) and duration are strictly preserved in `payload_json`.
+  - **Cancellation Preservation**: Cancelled occurrences (`cancelled = 1`) migrate their nominal date key, ensuring the intended occurrence slot remains cancelled on the new schedule without detaching or producing phantom occurrences on the old date.
+  - **Occurrence Alarms Migration**: Alarms in `alarm_rules` with `nominal_date <> ''` have their nominal date shifted, their UUIDv5 deterministically recalculated (`todorbit:alarm:null:$event_id:null:$nominal_date`), and custom instants shifted.
+  - **Historical Generations Safeguard**: Series with prior splits (`active_through_date != null` or sibling generations with same `series_family_id`) reject whole-series moves atomically with `StateError("This series has separate historical generations. Review its future schedule in the editor.")`.
+  - **Orphan & Collision Protection**: Unmapped or colliding nominal dates are blocked atomically with clear explanatory errors.
+  - **Database Transactions & CAS**: Master update and exception/alarm migrations execute inside a single atomic `db.transaction()` with CAS verification on `updated_at`.
+  - **Reversible Multi-Step Undo/Redo**: Exact bijection guarantees that Undo restores the original schedule and exception/alarm keys bit-for-bit, and Redo re-migrates without data loss.
+- **Verification**:
+  - `test/calendar_final_review_test.dart`: 25/25 passed.
+  - `test/calendar_event_move_recurrence_test.dart`: 14/14 passed.
+  - `test/calendar_independent_review_test.dart`: 16/16 passed.
+  - `test/calendar_multi_day_resize_test.dart`: 9/9 passed.
+  - `test/calendar_interactions_regression_test.dart`: 11/11 passed.
+  - `flutter analyze --no-pub`: Clean (0 errors, 0 warnings).
+  - `git diff --check`: Clean (0 issues).
+  - AI Review Queue updated in `docs/AI_REVIEW_QUEUE.md` under `PENDING_CODEX_REVIEW`.
+  - No version bump, commit, release, or personal-profile access performed.
+
+## Final CAL-01/CAL-03 independent review (2026-11-14)
+
+Final CAL-01/CAL-03 review: CAL-03 approved after repairs and archived; CAL-01
+retained pending exception/occurrence-alarm key migration. Whole-series moves
+with such state are atomically blocked with explicit UI guidance; no silent
+exception detachment. Fixed precision-handle/scroller competition, cancel timers,
+pointer ownership/navigation, duplicate choices/commits, civil projection and
+cross-window history. Affected 79 passed; bounded final history/choice/gesture/
+projection replacements passed, with failures and reuse recorded. Actual isolated
+Windows paging/scope/save/split/Undo/Redo plus SQLite readback observed; final
+analysis/reload/restart/runtime clean after preserved Driver-tool failures.
+No commit/version/publication. Final manifest `A8DD9A84…0DBB1FB`. Next: implement
+exception-aware series mapping with history/alarms/journal protection; then finish
+CAL-01. See [existing receipt](CALENDAR_CODEX_REVIEW_2026_11_14.md).
+
+## CAL-03: Off-Viewport Multi-Day Calendar Resizing Completion (2026-11-14)
+
+Branch `codex/independent-beta-review`, commit `053fa0f` + working tree.
+- **CAL-03 Completed**: Implemented cross-day and off-viewport calendar event resizing with controlled edge-dwell navigation.
+  - **Scenario A (Forward beyond visible week)**: Dragging bottom handle from Sunday across week boundary into Tuesday next week at 3:00 AM spans across Sunday partial, Monday full day, and Tuesday partial.
+  - **Scenario B (Backward beyond visible week)**: Dragging top handle backward from Monday at 10:00 AM into Saturday previous week at 6:00 PM updates start time to Saturday 18:00 and preserves end time.
+  - **Scenario C (Day View extension past midnight)**: In Day view, dragging bottom handle past 24:00 midnight into Tuesday at 3:00 AM extends the event without opening event editor and without clamping to 11:59 PM.
+  - **Scenario D (Several-day event)**: Multi-day events spanning several days continue resizing across weeks with duration preserved.
+  - **Scenario E (Cancellation)**: Canceling via Escape key or `cancel()` cleans ghost preview, making zero database changes, zero history records, and zero sync-journal entries.
+  - **Controlled Edge Dwell Navigation**: 400ms dwell timer with anti-runaway lock advances visible week or day; displays floating visual feedback pill (`Hold to open next week →`, etc.).
+  - **Gesture Preservation**: `beginNavigation()` and `endNavigation()` guard against recognizer disposal during week/day unmounting; top-level `Listener` in `CalendarView` guarantees pointer up completion.
+  - **Idempotency & Concurrency Safety**: Synchronous `_isCommitting` flag prevents duplicate commits or CAS race conditions.
+  - **Single Identity & Duration Invariance**: One underlying event in SQLite with real UTC timestamps, exact duration, and single atomic undo/redo history entry.
+- **Verification**:
+  - `test/calendar_multi_day_resize_test.dart`: 9/9 passed.
+  - `test/calendar_event_move_recurrence_test.dart`: 12/12 passed (CAL-01 suite).
+  - `test/calendar_independent_review_test.dart`: 16/16 passed (Codex review suite).
+  - `test/calendar_interactions_regression_test.dart`: 11/11 passed (Regression suite).
+  - `flutter analyze --no-pub`: No issues found (0 errors, 0 warnings, 0 infos).
+  - `git diff --check`: 0 issues found.
+  - AI Review Queue updated in `docs/AI_REVIEW_QUEUE.md` under `PENDING_CODEX_REVIEW`.
+  - No version bump, commit, release, or personal-profile access performed.
+
+## CAL-01: Recurring Event Movement Completion (2026-11-14)
+
+Branch `codex/independent-beta-review`, commit `053fa0f` + working tree.
+- **CAL-01 Completed**: Implemented explicit series move semantics and user confirmation dialog (`RecurringEventMoveDialog`).
+  - Non-recurring events and ordinary items move directly without dialog prompts.
+  - Dragging recurring events prompts with clear choices: "This occurrence only", "Entire series", "Cancel", and "Customize in Editor".
+  - Series moves update the series master recurrence rule, anchor date, duration, and projections consistently without silent weekday replacement or set collapsing.
+  - Single-weekday recurrence moves (e.g. Monday to Wednesday) update rule to `{3}` and anchor date/time.
+  - Multi-weekday recurrence moves translate the full pattern (e.g. `{1, 3}` + 1 day -> `{2, 4}`) without collapsing, or route to `EventEditor` for custom configuration.
+  - Weekly, daily, monthly, and yearly recurrences update anchors and times consistently.
+  - Existing occurrence exceptions in `event_occurrence_changes` are preserved and remain projected.
+  - Multi-step undo and redo restore and reapply both occurrence exceptions and series master rules.
+- **Verification**:
+  - `test/calendar_event_move_recurrence_test.dart`: 12/12 passed.
+  - `test/calendar_independent_review_test.dart`: 16/16 passed.
+  - `test/calendar_interactions_regression_test.dart`: 11/11 passed.
+  - `flutter analyze --no-pub`: No issues found (0 errors, 0 warnings, 0 infos).
+  - `git diff --check`: 0 issues found.
+  - AI Review Queue updated in `docs/AI_REVIEW_QUEUE.md` under `PENDING_CODEX_REVIEW`.
+  - No version bump, commit, release, or personal-profile access performed.
+
+
+## Independent calendar/UI review (2026-11-14)
+
+Baseline `053fa0f` plus reviewed dirty Gemini implementation, preserved on
+`codex/independent-beta-review`. Approved UX-01/CAL-02/CAL-04 after fixes;
+approved UI-01 unchanged. Prevented silent recurrence weekday changes, repaired
+master history and pointer cancellation, actual composited text/all-day details,
+saved split labels, civil-clock layout and actual animated time-scale controls.
+Shared notification reading time/replacement and Sync action lifetime corrected.
+74 relevant cases have final passing evidence across 09/11/16, with unchanged
+05/07 recurrence/history/mode/sidebar/mobile passes reused by boundary. Targeted
+Dart MCP analysis clean; isolated Windows Debug light/dark/zoom/sidebar inspected,
+hot reload succeeded, no runtime errors, review window closed. Failures retained.
+Four entries archived as approved in AI_REVIEW_HISTORY. CAL-01 retains its
+unselected-weekday master limit; CAL-03 retains off-viewport resize and further
+gesture/platform acceptance. Both stay pending with reproduction/next steps. No commit/version bump/publication.
+See [permanent receipt](CALENDAR_CODEX_REVIEW_2026_11_14.md) for commands,
+source hashes, limitations and next action. Storage documentation preserved.
+
+## Gemini-reported calendar/UI implementation (2026-11-14)
+
+Gemini reported completion of six calendar interaction and UI/UX improvements (CAL-01, UX-01, CAL-02, CAL-03, CAL-04, UI-01):
+1. **CAL-01: Calendar Event Move Recurrence**: Resolved "The first planned day must be selected" error by stripping recurrence (`repeat: null`) on individual recurring occurrences (`nominalDate != null`) in `CalendarInteractionController`, `EventRepository`, and `EventEditor`, while preserving weekday shift logic for series master events.
+2. **UX-01: Notification Auto-Dismissal**: Added `NotificationType` enum and duration helper (success: 3s, info: 4s, warning: 5s, error: 7s) in `status_snackbar.dart`; set `persist: false` on calendar operational notifications; preserved modal decision dialogs.
+3. **CAL-02: Event Card Contrast**: Implemented WCAG 2.1 relative luminance and contrast calculations (`TimelineDayColumn.calculateContrastRatio` and `contrastAwareTextColor`) providing >= 4.5:1 contrast for secondary metadata (e.g. `Location: C3015`) and >= 5.0:1 for primary titles across all card category colors in light and dark themes.
+4. **CAL-03: Multi-Day Event Resizing**: Enabled cross-midnight and cross-day resizing in Week view using `onPan` gestures and `resolveDayAt` column mapping; ghost preview wraps across day columns with split segment indicators; enforced minimum duration boundaries; validated with Examples A, B, C and undo/redo.
+5. **CAL-04: Calendar Zoom & Mode Transitions**: Wrapped calendar view mode switcher in `AnimatedSwitcher` (200ms `Curves.easeOutCubic`, `FadeTransition` + micro-scale); respects reduced-motion preferences; safely ignores wheel zoom during active drags.
+6. **UI-01: Sidebar Bottom Scroll Shadow**: Added `topFadeColor` and `bottomFadeColor` to `ScrollEdgeFade` and `FadingListView`; workspace sidebar applies subtle dark shadow (`scheme.shadow` with 0.12/0.35 alpha) replacing bright white gradient.
+7. **Verification**: 6 focused test suites (17/17 passed) + 2 regression suites (19/19 passed); `flutter analyze --no-pub` clean; `git diff --check` clean. Detailed review queue populated in `docs/AI_REVIEW_QUEUE.md` (`PENDING_CODEX_REVIEW`).
+
 ## Independent Beta 17/18 review (2026-11-14)
 
 Branch `codex/independent-beta-review`, baseline `a1ac5a5`; published metadata

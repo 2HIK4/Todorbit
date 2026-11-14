@@ -81,6 +81,7 @@ class AppController extends ChangeNotifier {
     _tasks = value;
     _invalidateTaskCaches();
   }
+
   List<FixedEvent> events = [];
   List<FixedEvent> todayEvents = [];
   Map<String, String> iconKeys = {};
@@ -143,6 +144,7 @@ class AppController extends ChangeNotifier {
     _invalidateTaskCaches();
     super.notifyListeners();
   }
+
   TaskSort sort = TaskSort.schedule;
   String? scopeId;
   String? selectedTaskId;
@@ -298,7 +300,9 @@ class AppController extends ChangeNotifier {
   void _scheduleMidnightTimer({Duration? retryAfter}) {
     _midnightTimer?.cancel();
     if (_disposed) return;
-    if (Platform.environment.containsKey('FLUTTER_TEST') && !enableMidnightTimerInTests) return;
+    if (Platform.environment.containsKey('FLUTTER_TEST') &&
+        !enableMidnightTimerInTests)
+      return;
     final now = DateTime.now();
     final nextMidnight = DateTime(now.year, now.month, now.day + 1);
     final delay =
@@ -688,6 +692,7 @@ class AppController extends ChangeNotifier {
     _cachedFilteredTasksDate = today;
     return _cachedFilteredTasks = List.unmodifiable(searchTasks(activeFilter));
   }
+
   List<FixedEvent> get filteredEvents {
     final saved = view == WorkspaceView.saved
         ? savedViews.where((v) => v.id == scopeId).firstOrNull?.filter
@@ -1230,6 +1235,17 @@ class AppController extends ChangeNotifier {
     await repository.updateEvent(previous, draft);
     await refresh();
   }
+
+  Future<void> moveCalendarSeries(FixedEvent previous, EventDraft draft) async {
+    await repository.moveCalendarSeries(previous, draft);
+    await refresh();
+  }
+
+  Future<String?> calendarSeriesMoveProblem(
+    FixedEvent master, [
+    EventDraft? draft,
+  ]) =>
+      repository.calendarSeriesMoveProblem(master, draft);
 
   Future<void> updateEventOccurrence(
     FixedEvent occurrence,
