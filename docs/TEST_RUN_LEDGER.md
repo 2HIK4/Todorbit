@@ -1,5 +1,17 @@
 # Persistent test run ledger
 
+## Linux helper-diagnostic portability repair (2026-11-14)
+
+[Second cloud run](https://github.com/2HIK4/Todorbit/actions/runs/43637305743)
+on `539d1df` passed analysis/docs, then failed a raw stderr substring assertion
+because Linux PowerShell wrapped/styled the correct rejection message. Added
+test-only diagnostic normalization plus a focused regression fixture; retained
+nonzero/semantic error assertions. `python -m unittest discover -s tools -p test_dev_verify.py`:
+9 passed in 15.512s locally; no product suite or build. See the
+[existing infrastructure receipt](INFRA_CODEX_REVIEW_2026_11_14.md#focused-development-pr-and-first-cloud-execution-2026-11-14)
+and `.buildlog/ci-activation/helper-repair-tests.log`. Production helper and all
+workflow gates remain unchanged; cloud rerun is needed for the corrected harness.
+
 ## Focused PR first cloud CI and test-fixture lint repair (2026-11-14)
 
 [PR #1](https://github.com/2HIK4/Todorbit/pull/1), base `053fa0f`, head `204b8d3`.

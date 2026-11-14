@@ -319,3 +319,18 @@ including `focused-pr-preflight.json`, first-run logs and the bounded artifact.
 The earlier no-cloud statements above describe their original checkpoints.
 `DEF-CI-CLOUD` remains incomplete; source/run conclusions and remaining manual
 acceptance must be updated after the repaired run completes.
+
+[Second automatic run](https://github.com/2HIK4/Todorbit/actions/runs/43637305743),
+head `539d1df4a38b20d09f4adb693ae4d072810526d5`, passed analysis/docs and failed
+after about 59 seconds in the developer-helper test (8 run, 2 Windows-fixture
+skips). Linux PowerShell rendered the expected exception with ANSI colors and a
+line break/gutter between `never` and `guessed`; the actual nonzero rejection
+was correct, but the test's raw substring assertion was not portable. Repair is
+test-only diagnostic normalization of ANSI styling, continuation gutters and
+whitespace, with a focused plain/styled/unexpected-message regression fixture.
+Nonzero-exit and semantic-message assertions remain required. The same handling
+is used for the explicit disposable-emulator rejection. Production verification
+scripts, test selections and workflow failure gates are unchanged.
+`python -m unittest discover -s tools -p test_dev_verify.py` passed all 9 tests
+locally in 15.512s. No product tests/builds were run. Original-head Android run
+43636795996 was cancelled as superseded; replacement-head checks remain enabled.

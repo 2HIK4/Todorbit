@@ -167,6 +167,10 @@ returns 404; do not change `main` or treat dispatch as activated. Details and
 source/failure artifacts are in the [infrastructure receipt](INFRA_CODEX_REVIEW_2026_11_14.md#focused-development-pr-and-first-cloud-execution-2026-11-14).
 Keep this item pending for repaired automatic results, manual registration and
 unexecuted groups/timing/platform acceptance. No release or default-branch merge.
+Second run 43637305743 on `539d1df` passed analysis/docs, then exposed Linux
+PowerShell formatting in a helper-test assertion. Test-only normalization and
+nine local passing helper tests are recorded in the receipt; a new cloud result
+is still required. This is not a production helper or application logic failure.
 
 Owner: repository owner/CI maintainer. Source is the final committed INFRA-01 tree
 identified in its [review receipt](INFRA_CODEX_REVIEW_2026_11_14.md), not the old

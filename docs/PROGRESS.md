@@ -1,5 +1,14 @@
 # Progress
 
+## First-cloud portability correction (2026-11-14)
+
+PR #1's second run passed analysis/docs, then exposed a test-only Linux
+PowerShell error-wrapping mismatch. Preserved the helper's fail-closed behavior
+and semantic/exit assertions; normalized presentation and added a focused fixture.
+Nine helper tests pass locally. No application source or CI gate change; cloud
+verification resumes on the next repair commit. Details remain in the existing
+[infrastructure receipt](INFRA_CODEX_REVIEW_2026_11_14.md#focused-development-pr-and-first-cloud-execution-2026-11-14).
+
 ## Focused development PR and first real CI (2026-11-14)
 
 Confirmed remote `codex/independent-beta-review` at `053fa0f` already contains
