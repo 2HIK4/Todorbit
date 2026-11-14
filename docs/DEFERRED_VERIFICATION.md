@@ -157,6 +157,17 @@ is not a physical mouse-drag pass or native-companion acceptance.
 
 ### DEF-CI-CLOUD
 
+2026-11-14 progress: focused [PR #1](https://github.com/2HIK4/Todorbit/pull/1)
+targets the existing development baseline `053fa0f`, preserving the 165 historical
+commits outside `main`. First [automatic run](https://github.com/2HIK4/Todorbit/actions/runs/43636796051)
+on head `204b8d3` reached Linux SDK/cache/lockfile setup and then failed on an
+unused test binding; later checks were skipped. Minimal fixture-only lint repair
+requires new cloud evidence. Manual workflow/default-branch file registration
+returns 404; do not change `main` or treat dispatch as activated. Details and
+source/failure artifacts are in the [infrastructure receipt](INFRA_CODEX_REVIEW_2026_11_14.md#focused-development-pr-and-first-cloud-execution-2026-11-14).
+Keep this item pending for repaired automatic results, manual registration and
+unexecuted groups/timing/platform acceptance. No release or default-branch merge.
+
 Owner: repository owner/CI maintainer. Source is the final committed INFRA-01 tree
 identified in its [review receipt](INFRA_CODEX_REVIEW_2026_11_14.md), not the old
 product checkpoint, plus the reviewed [ARCH-01 changes](ARCH01_CODEX_REVIEW_2026_11_14.md)

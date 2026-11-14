@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_manager/app/app_controller.dart';
 import 'package:life_manager/data/app_database.dart';
@@ -324,7 +323,7 @@ void main() {
   test(
     'moving from a timed override translates the master by gesture delta',
     () async {
-      final e = await weekly();
+      await weekly();
       final second = (await repo.eventOccurrences(
         '2026-11-23',
         '2026-11-23',

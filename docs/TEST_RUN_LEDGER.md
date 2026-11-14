@@ -1,5 +1,21 @@
 # Persistent test run ledger
 
+## Focused PR first cloud CI and test-fixture lint repair (2026-11-14)
+
+[PR #1](https://github.com/2HIK4/Todorbit/pull/1), base `053fa0f`, head `204b8d3`.
+[Cloud run 43636796051](https://github.com/2HIK4/Todorbit/actions/runs/43636796051)
+failed analysis on one unused local variable after successful Linux Flutter
+3.47.7/Python 3.13.18, SDK/pub cache hits and locked dependency setup (about 46s).
+The next Python/architecture/critical-test steps were skipped. Failure diagnostics
+were uploaded and downloaded; no test pass is inferred from provisioning.
+Two-line fixture cleanup preserves seed execution/assertions. Its scoped command
+`flutter analyze --no-pub --no-fatal-infos test/calendar_series_integrity_review_test.dart`
+passed with no issues (81.6s); full local tests/analysis/builds were not run.
+Previous product evidence is reused for unchanged behavior; repaired cloud CI
+and manual/default-branch acceptance are still pending. Full source/run/artifact
+records: [existing receipt](INFRA_CODEX_REVIEW_2026_11_14.md#focused-development-pr-and-first-cloud-execution-2026-11-14),
+ignored `.buildlog/ci-activation/`.
+
 ## Approved ARCH-01 checkpoint evidence reuse (2026-11-14, UTC+03:00)
 
 No Flutter/Python tests, analyzer or platform builds rerun: all 22 approved byte

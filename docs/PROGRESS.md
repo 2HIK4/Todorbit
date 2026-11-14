@@ -1,5 +1,18 @@
 # Progress
 
+## Focused development PR and first real CI (2026-11-14)
+
+Confirmed remote `codex/independent-beta-review` at `053fa0f` already contains
+the 165 historical commits absent from `main`. Published the three reviewed
+checkpoints as `codex/reviewed-calendar-ci-arch`; [PR #1](https://github.com/2HIK4/Todorbit/pull/1)
+targets that development base (initially three commits/56 files). `main` and
+historical branches remain unchanged. First [Lightweight CI](https://github.com/2HIK4/Todorbit/actions/runs/43636796051)
+proved Linux SDK/cache/lockfile setup, then failed on one unused test variable;
+minimal assertion-preserving cleanup passes scoped analysis and requires a new
+cloud run. Manual dispatch is unregistered on default `main`; no bootstrap,
+release or extra platform dispatch. Exact ancestry, failure/artifact evidence and
+remaining limits are in the [existing infrastructure receipt](INFRA_CODEX_REVIEW_2026_11_14.md#focused-development-pr-and-first-cloud-execution-2026-11-14).
+
 ## Approved ARCH-01 local checkpoint (2026-11-14)
 
 User authorized one local commit of the reviewed ARCH-01 implementation and its

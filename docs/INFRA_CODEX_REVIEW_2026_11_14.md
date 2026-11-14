@@ -265,3 +265,57 @@ start, receipt/progress/ledger retain their earlier records, and both excluded
 storage files retain their initial hashes. Existing Git identity is configured;
 no active commit hooks were present. Detailed staging/commit audits remain under
 ignored `.buildlog/infra01-checkpoint/`. No test/build rerun was needed.
+
+## Focused development PR and first cloud execution (2026-11-14)
+
+Later user authorization permits publishing the reviewed development scope and
+observing CI, while explicitly withholding historical integration into `main`.
+`main` remains `a6d36dc7ed2863a40b7e9bc9c4cdbebc81f2c530`. Existing public remote
+`codex/independent-beta-review` at `053fa0f2df16ddb8eefb7867f09562400a423837`
+contains all 165 historical commits and is the exact ancestor of reviewed
+`204b8d325c6957e9d7ffce0aeb998de05e72915e`. A range-diff proves the only new
+commits are `8be2f04`, `9cfdd0c`, `204b8d3`; the initial focused diff is 56 files,
+11,233 additions and 952 deletions. No historical code was cherry-picked onto
+the older default branch. All 22 ARCH source hashes match; prior milestone
+manifest comparisons remain valid. The three unrelated untracked documents are
+unchanged and excluded.
+
+To avoid advancing the base with the identically named local branch, published
+the reviewed SHA under `codex/reviewed-calendar-ci-arch` using a normal explicit
+refspec. [PR #1](https://github.com/2HIK4/Todorbit/pull/1) targets
+`codex/independent-beta-review`, not `main`. Local repair work uses the matching
+new head branch; original local reviewed branch/commits are preserved. No force
+push, default-branch modification, protection/ruleset change or release dispatch.
+Both main/development bases had no active protection/rulesets when inspected.
+
+[First Lightweight CI run](https://github.com/2HIK4/Todorbit/actions/runs/43636796051)
+on PR head `204b8d3` failed after about 46 seconds (job 42 seconds): Linux setup,
+Flutter 3.47.7, Python 3.13.18 and enforced-lockfile dependency resolution passed.
+Flutter SDK and pub caches both reported hits/restoration. Analysis then rejected
+one unused local binding at `calendar_series_integrity_review_test.dart:327`;
+14 informational diagnostics were nonfatal. Later Python/architecture/test steps
+were skipped, not passed. Bounded failure artifact `lightweight-ci-43636796051-1`
+(ID `14130630395`) was uploaded and downloaded successfully; it contains only
+`analysis.log` and `dependencies.log`. Real failure propagation is observed.
+
+Minimal repair removes that unused binding while preserving `await weekly()`
+and every assertion; also removes an unnecessary test import. No product logic
+or workflow gate changes. Applying the Dart static-analysis skill,
+`flutter analyze --no-pub --no-fatal-infos test/calendar_series_integrity_review_test.dart`
+passed with no issues (81.6 seconds locally). No local product tests or builds.
+The repair commit is additional to the three approved checkpoints; a new cloud
+run is required before this PR has passing verification.
+
+The existing [Android validation run](https://github.com/2HIK4/Todorbit/actions/runs/43636795996)
+started automatically from its pre-existing PR paths, not a manual dispatch.
+Manual workflow registration and its file at `main` both return HTTP 404;
+`manual-verification.yml` is present only on the development side. No expensive
+manual platform/signing workflow or standalone bootstrap was created. Safest
+future dispatch activation is a separately reviewed default-branch integration
+path that preserves the historical backlog and release gates.
+
+Git/scope/source and cloud records are retained in `.buildlog/ci-activation/`,
+including `focused-pr-preflight.json`, first-run logs and the bounded artifact.
+The earlier no-cloud statements above describe their original checkpoints.
+`DEF-CI-CLOUD` remains incomplete; source/run conclusions and remaining manual
+acceptance must be updated after the repaired run completes.
