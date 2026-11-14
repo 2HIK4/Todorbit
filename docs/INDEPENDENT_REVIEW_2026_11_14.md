@@ -58,13 +58,13 @@ Sandbox helper change. `43514388959` cancelled after the upward continuation
 correction. Android `43514390043`: host/APK job passed; on-device job failed to
 start Dart Development Service before loading android_drive_updates_test
 (zero tests executed). Emulator boot/build/install succeeded; no app-behavior
-pass is claimed. Fresh final-source CI is required, with that startup failure
-retained as a release blocker until resolved. Detailed log is retained locally.
+pass is claimed. Publication was blocked pending fresh final-source CI; that
+later runner passed (see final evidence below). Detailed failure log retained.
 
 Intermediate packages remain byte-for-byte under
 `.buildlog/independent-review/superseded-3d30d52-packages`; they must not be
 published. No old public tag/binary is altered. New Flutter code invalidates
-prior Windows/Android AOT and package checks, so each requires one final rebuild.
+prior Windows/Android AOT and package checks; both final rebuilds passed below.
 
 Logger correction: run 016 Android build did not reserve its number until it
 finished, so the lightweight pre-fix helper test reused its log. Preserve that
@@ -121,10 +121,76 @@ are source-inspected where recent changes touch them, without new live acceptanc
 features and historical platform receipts are not newly validated passes.
 
 Live tooling discovery: DTD reports no running debug app. No personal profile
-has been opened or launched. Physical Windows/Android acceptance is not tested.
+has been opened or launched. Final Release GUI/Sandbox and emulator acceptance
+are recorded below; physical keyboard/DPI/OEM acceptance remains unverified.
 
 Release evidence discrepancy: Beta 17 tag Windows run `43475207925` failed with
 866 passed, 8 failed, 9 skipped (seven pending-midnight-timer failures plus one
 concurrent WAL setup failure). Beta 18 run `43506984173` completed with 881
 passed, 1 failed, 9 skipped (same WAL fixture race). Receipts claiming all mandatory gates passed do not
 establish release readiness. Existing published binaries/tags are preserved.
+
+## Final-source verification and publication
+
+Runtime source/tag `375729e064ba9a2c7af298fa4c40e60d51d14821`; fingerprint
+`33b0a5039ea671d44d0cbe3174d993db045c6a3d882b297e72728bf7e208c6fd`
+for tracked application/tests/tools/configuration used by the local logger.
+Source unchanged after final builds; subsequent edits are documentation only.
+Commands, times, source and fingerprint for each entry remain in its numbered
+`.buildlog/independent-review/run-NNN.json`; paired `.log` contains output.
+Temporary live-test/verification scripts are additionally hashed in later records.
+
+| Invocation | Result | Scope / necessity |
+| --- | --- | --- |
+| 026: `pwsh -NoProfile -File tools/build-windows-release.ps1` | Passed | Final Windows Release after continuation correction; disabled Drive, CRT gates. |
+| 027: task-local `launch-gui.ps1` | Passed | Final Release launched with verified task-owned APPDATA/LOCALAPPDATA. Pointer navigation/editor observed using Windows UI automation; helper text/key input inconclusive. Closed only this app. |
+| 028: task-local `build-android.ps1` | Passed | Final signed universal Release, eight aligned native libraries; original local.properties bytes restored. Sequential with Windows build. |
+| 029: task-local `verify-gui-profile.py` | Passed | Resolved isolated TodoPilot profile, schema 28, 54 tables, integrity OK, no FK violations, empty task table. |
+| 030: task-local `package-windows.ps1` | Passed | Final PE versions, Inno 7.1.0 setup, portable ZIP and checksum outputs. |
+| 031: task-local `verify-signing-continuity.ps1` | Passed | Downloaded actual Beta 18 production APK, checked GitHub digest and both certificates; no key change. |
+| 032: task-local `prepare-android.ps1` | Passed | Canonical APK preparation, package/code/floor/signature, updater manifest and sidecars. |
+| 033: task-local `verify-packages.py` | Passed | ZIP CRC, bundle configuration/private-file exclusion, all ten asset hashes and sidecar consistency. |
+| 034: `tools/prepare-windows-sandbox-acceptance.ps1 -PackagesDirectory release/beta19` | Passed | Stage final packages, exact digests and beta display identity. |
+| 035: task-local `launch-sandbox.ps1` plus acceptance result | Passed | Fresh Windows identity: installed/portable profiles, integrity/reopen, same-candidate setup preservation, uninstall/reinstall and native self-test. GUI/Google explicitly unverified. Only exact task-owned Sandbox session closed. |
+| 036: `pwsh -NoProfile -File tools/dev/test-profile-journeys.ps1` | Passed: 15 | Separate opt-in startup/recovery/resource journeys; malformed appearance/calendar, corrupt/future schema, legacy upgrade, restore/restart, privacy/path/resource boundaries. Actual child profile paths recorded. |
+| 037: task-local `stage-release.ps1` | Passed | Private prerelease staging, exact source, ten explicit assets. No publication yet. |
+| 038: task-local `verify-draft.py` | Passed | All uploaded asset sizes/digests/state and intended source/classification. |
+| 039: `tools/test-portable-update.ps1 -Package release/beta19/Todorbit-1.0.19-beta.19-win-x64-portable.zip` | Failed | Disposable main app did not close within 15 seconds. Held publication; do not infer a product cause from timeout. |
+| 040: task-local `portable-diagnostic.ps1` with same package | Passed | Same positive assertions plus logging window handle/title/CloseMainWindow return and retained evidence. Swap, automatic restart, SQLite sentinel and widget settings preserved. Closure accepted; first timeout cause unverified. No app change/assertion relaxation. |
+| 041: original portable harness/package, `-ExpectFailure` | Passed | Failure injection, rollback, automatic recovery restart and isolated profile preservation. |
+| 042: task-local `verify-draft.py` | Passed | Fresh prepublication asset/source verification after acceptance. |
+| `gh release edit v1.0.19-beta.19 --repo 2HIK4/Todorbit --draft=false --prerelease --latest=false` | Passed | Published 2026-11-14 02:42:50 UTC+03, release ID 444843364. Old tags/binaries untouched. |
+| 043: task-local `verify-public.py` | Passed | Anonymous release API plus HTTP 200/length/digest checks for every public asset; downloaded and hashed small sidecars/manifests/notes. |
+| 044: `flutter test --no-pub --concurrency=1 .buildlog/independent-review/public_updater_test.dart` | Compile failure | Temporary live harness passed null to non-nullable HttpOverrides; application unmodified, zero tests executed. |
+| 045: same live updater command | Passed: 1 combined test | Empty concrete HttpOverrides restores real HTTP. Actual production Windows setup/portable and Android arm64/x64 updaters discover Beta 19 from Beta 18; Stable excludes it; Android code/digest verified. Isolated child APPDATA/LOCALAPPDATA. |
+| 046: `python tools/dev/check-docs.py` | Passed: 0 errors | Final documentation links/map/catalog after publication receipt updates. |
+| Final `git diff --check` and staged diff review | Passed | Documentation-only final handoff; no application rebuild/test repetition. |
+
+Exact-source remote gates:
+
+- [Windows 43516558494](https://github.com/2HIK4/Todorbit/actions/runs/43516558494):
+  success; full analysis, 893 tests passed/9 opt-in skips, tooling, config, Release,
+  CRT/portable/native writer/background barriers/self-test/installer/checksums.
+- [Android 43516561285](https://github.com/2HIK4/Todorbit/actions/runs/43516561285):
+  host/APK and on-device update integration both success. Supersedes the
+  intermediate DDS startup blocker; no SDK workaround or skipped assertion.
+- [Signed APK 16 KiB 43527857993](https://github.com/2HIK4/Todorbit/actions/runs/43527857993):
+  exact production APK hash, 16,384-byte pages; stable baseline; rendered Flutter,
+  create/restart/complete with no crash/ANR observed. Actual production Beta 18
+  code 41-to-42 in-place upgrade retained task. `16k-evidence/receipt.json`.
+
+Native run 019 reused only after matching final executable SHA-256
+`a4f4c816ec581ffa485190721cc7a7bfa64590c2d74cec254fd7f632c41fa04a`.
+Full local suite was not duplicated after passing exact-source Windows CI.
+Earlier 58-pass shared controller/mobile/draft/CAS evidence remains valid because
+the final continuation change touches only already-clipped desktop movement,
+covered by the final 50-pass calendar run. No broad app rebuild or tests are
+required for final documentation-only receipt edits.
+
+Final live updater assertions passed after continuation of this chat at
+08:55 UTC+03. Public asset checks and publication occurred earlier the same day.
+[Publication receipt](TODORBIT_BETA_19_PUBLICATION.md) contains artifact hashes,
+manual limits and the prioritized published-beta checklist. Physical keyboard/
+DPI, Windows 10, Narrator/TalkBack, ARM64/OEM reminders and real Google account
+flows remain unverified. Windows Sandbox's setup preservation used the same
+candidate; a real Beta 18-to-19 Windows installation remains a manual check.

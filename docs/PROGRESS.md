@@ -2,15 +2,17 @@
 
 ## Independent Beta 17/18 review (2026-11-14)
 
-Branch `codex/independent-beta-review`, baseline `a1ac5a5`; candidate metadata
+Branch `codex/independent-beta-review`, baseline `a1ac5a5`; published metadata
 `1.0.19-beta.19+42`, schema 28. Confirmed/fixed stale calendar history overwrites,
 continuation movement/false resize handles, midnight minimum-duration loss,
 Today rollover projection refresh and invisible async calendar failures.
 Corrected WAL setup in the concurrent lease fixture and Beta 17/18 CI claims.
 Focused runs: 61, 17, 15 and 58 passes, with pre-fix failures retained; targeted
-Dart MCP analysis clean after removing a new-test unused import. Exact-candidate
-CI, packaging and release gates are pending. No publication yet. DTD/hot reload
-blocked because no debug app is running. Unrelated storage documents preserved.
+Dart MCP analysis clean after removing a new-test unused import. Final source
+`375729e`: Windows CI passed analysis, 893 tests (9 opt-in skips), build/package
+gates; Android host and on-device update CI passed. Separate profile journeys:
+15 passes. DTD/hot reload unavailable because no debug app is running; final
+Release runtime inspected in an isolated profile. Storage documents preserved.
 Full scope, invocation fingerprints and limits: [review receipt](INDEPENDENT_REVIEW_2026_11_14.md).
 
 Release follow-up: corrected Sandbox beta DisplayVersion contract (6 fixture
@@ -18,7 +20,21 @@ passes). The continuation fix needed a further upward-drag boundary correction;
 50 final calendar tests and targeted Dart MCP analysis pass. Previous candidate
 packages are preserved as superseded. Android CI host/APK validation passed, but
 the on-device job failed before test loading at Dart Development Service startup.
-Final-source CI and rebuilt package acceptance remain required; no publication.
+That intermediate failure was superseded by passing final-source Android CI.
+Final Windows/Android packages rebuilt sequentially; native binary hash matches
+its passing self-test. Fresh Sandbox installation/portable/reopen, data
+preservation and uninstall/reinstall acceptance passed. Exact signed Android
+16 KiB runtime passed, including production Beta 18-to-19 upgrade retention.
+
+Published [Beta 19](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.19)
+as an experimental pre-release, tag/source `375729e`, with ten verified public
+assets. Stable, old binaries/tags, schema and Windows Drive configuration remain
+unchanged. One portable closure timeout remains unexplained; diagnostic positive
+swap/restart and original rollback/recovery assertions passed without app edits.
+Physical keyboard/DPI, Windows 10, accessibility, OEM reminders and real Google
+flows remain manual gaps. Next: published Beta 18-to-19 Windows upgrade and
+affected calendar/history/keyboard journeys. See the
+[publication receipt](TODORBIT_BETA_19_PUBLICATION.md).
 
 ## Beta 18 Release Preparation and Verification (2026-11-13)
 

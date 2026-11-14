@@ -5,6 +5,13 @@
 [Review and invocation receipt](INDEPENDENT_REVIEW_2026_11_14.md). Baseline
 `a1ac5a5`; new boundary assertions first run against unpatched application code.
 See the receipt for executions, fingerprints, evidence reuse and release gates.
+Final source `375729e`: calendar 50 passes; unchanged shared controller/mobile/
+draft/CAS coverage reused from 58 passes; Sandbox fixtures 6 passes; isolated
+profile journeys 15 passes. Exact-source Windows CI: 893 passed, 9 opt-in skips;
+Android host/on-device and exact signed APK 16 KiB upgrade runtime passed.
+Portable first closure timed out; instrumented positive and original rollback
+checks passed. Failures and their rerun reasons remain in the receipt.
+[Beta 19 publication and acceptance limits](TODORBIT_BETA_19_PUBLICATION.md).
 
 ## Beta 18 Release Preparation and Verification (2026-11-13)
 

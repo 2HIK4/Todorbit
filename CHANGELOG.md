@@ -7,7 +7,7 @@
 - Keep the minimum resize duration at midnight and allow an end time exactly at midnight.
 - Refresh Today event projections and recurring tasks at date rollover; prevent disposed controllers from restarting timers.
 - Present failed calendar edits/history as dismissible errors while retaining failed history entries.
-- Correct the concurrent SQLite lease-test setup race and the overstated Beta 17/18 CI receipts. Candidate release gates remain pending until recorded separately.
+- Correct the concurrent SQLite lease-test setup race and the overstated Beta 17/18 CI receipts. Beta 19 verification and manual limits are recorded in `docs/TODORBIT_BETA_19_PUBLICATION.md`.
 
 ## 1.0.19-beta.18+41 - calendar keyboard undo/redo focus ownership and notification auto-dismissal
 

@@ -3,11 +3,13 @@
 ## Current status
 
 The latest published experimental release verified on 2026-11-14 is
-**[v1.0.19-beta.18](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.18)**,
-version `1.0.19-beta.18+41`, schema 28. Its required Windows CI failed; see the
-[corrected publication receipt](TODORBIT_BETA_18_PUBLICATION.md) and
-[independent review](INDEPENDENT_REVIEW_2026_11_14.md). Windows Drive remains
-disabled. A subsequent candidate must satisfy the normal gates below.
+**[v1.0.19-beta.19](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.19)**,
+version `1.0.19-beta.19+42`, schema 28, source `375729e`.
+[Publication receipt](TODORBIT_BETA_19_PUBLICATION.md) records exact-source CI,
+signed Android upgrade/runtime, Windows package acceptance, public assets and
+remaining manual gaps. Windows Drive remains disabled and Stable is unaffected.
+Beta 18's failed Windows CI remains recorded in its
+[corrected historical receipt](TODORBIT_BETA_18_PUBLICATION.md).
 
 Historical coordinated release: **[v1.0.19-beta.12](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.12)**,
 Windows + Android, version `1.0.19-beta.12+35`, Android code 35, schema 26,
