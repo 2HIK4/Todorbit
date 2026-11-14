@@ -69,7 +69,8 @@ void main() {
       expect(find.textContaining('Could not undo'), findsOneWidget);
       expect(interaction.undoCount, 1);
       final snack = tester.widget<SnackBar>(find.byType(SnackBar));
-      expect(snack.persist, isTrue);
+      expect(snack.persist, isFalse);
+      expect(snack.duration, greaterThanOrEqualTo(const Duration(seconds: 7)));
       expect(snack.showCloseIcon, isTrue);
       await tester.pumpWidget(const SizedBox.shrink());
     },

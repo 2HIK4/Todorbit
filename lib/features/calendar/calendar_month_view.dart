@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../shared/weekdays.dart';
 import 'calendar_config.dart';
 import 'calendar_models.dart';
-import 'calendar_view.dart';
+import 'calendar_contracts.dart';
 
 /// Interactive Month view supporting drag-and-drop between date cells and extended context actions.
 class CalendarMonthView extends StatefulWidget {

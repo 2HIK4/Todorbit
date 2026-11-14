@@ -2,8 +2,7 @@ name: Windows checks
 
 on:
   workflow_call:
-  push:
-  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,28 +12,45 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Record checked-out source
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force .buildlog/verification | Out-Null
+          "Commit: $(git rev-parse HEAD); Ref: $env:GITHUB_REF" | Set-Content .buildlog/verification/windows-source.log
       - name: Install and verify pinned Inno Setup before app checks
         shell: pwsh
         run: ./tools/install-inno-setup-ci.ps1
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: '10.0.x'
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           flutter-version: '3.47.7'
           channel: stable
           cache: true
       - name: Resolve dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
       - name: Analyze Dart
-        run: flutter analyze
-      - name: Run Flutter tests
-        run: flutter test --concurrency=1
-      - name: Validate developer routes and verification helper
+        shell: pwsh
         run: |
-          python -m unittest discover -s tools -p test_dev_verify.py
-          python -m unittest discover -s tools -p test_background_sync_schema.py
+          flutter analyze --no-pub 2>&1 | Tee-Object .buildlog/verification/windows-analysis.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run Flutter tests
+        shell: pwsh
+        run: |
+          flutter test --no-pub --concurrency=1 2>&1 | Tee-Object .buildlog/verification/windows-tests.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Validate developer routes and verification helper
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force .buildlog/verification | Out-Null
+          python -m unittest discover -s tools -p test_dev_verify.py 2>&1 | Tee-Object .buildlog/verification/windows-developer-tools.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m unittest discover -s tools -p test_background_sync_schema.py 2>&1 | Tee-Object .buildlog/verification/windows-background-schema.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Check public OAuth configuration and packaging gates
         shell: pwsh
         run: ./tools/test-google-drive-release-config.ps1
@@ -69,8 +85,16 @@ jobs:
       - name: Release candidate checksums
         shell: pwsh
         run: ./tools/write-release-checksums.ps1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: windows-release-candidate
           path: release/*
           if-no-files-found: error
+      - name: Upload Windows host diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-verification-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .buildlog/verification/windows-*.log
+          if-no-files-found: warn
+          retention-days: 7

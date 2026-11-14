@@ -417,41 +417,49 @@ class LifeRepository {
     return (await events()).firstWhere((event) => event.id == id);
   });
 
-  Future<void> updateEvent(FixedEvent previous, EventDraft draft) =>
-      db.transaction(() async {
-        _validateEvent(draft);
-        await _checkAssignment(draft.categoryId, draft.projectId);
-        final changed = await db.customUpdate(
-          '''
+  Future<void> updateEvent(
+    FixedEvent previous,
+    EventDraft draft, {
+    bool moveSeriesAnchor = false,
+  }) => db.transaction(() async {
+    _validateEvent(draft);
+    await _checkAssignment(draft.categoryId, draft.projectId);
+    final changed = await db.customUpdate(
+      '''
       UPDATE fixed_events SET title=?,notes=?,starts_at=?,ends_at=?,updated_at=?,
         location=?,all_day=?,category_id=?,project_id=?,color_value=?,icon_name=?,
         reminder_minutes=?,recurrence_kind=?,recurrence_interval=?,
-        recurrence_weekdays=?,recurrence_until=?,details_json=?
+        recurrence_weekdays=?,recurrence_until=?,details_json=?,active_from_date=?
       WHERE id=? AND updated_at=? AND deleted_at IS NULL
     ''',
-          variables: [
-            Variable.withString(draft.title.trim()),
-            Variable.withString(draft.notes),
-            Variable.withString(draft.startsAt.toUtc().toIso8601String()),
-            Variable.withString(draft.endsAt.toUtc().toIso8601String()),
-            Variable.withString(DateTime.now().toUtc().toIso8601String()),
-            ..._eventExtraVariables(draft),
-            Variable.withString(
-              jsonEncode(draft.details.map((item) => item.toJson()).toList()),
-            ),
-            Variable.withString(previous.id),
-            Variable.withString(previous.updatedAt.toUtc().toIso8601String()),
-          ],
-        );
-        if (changed != 1) throw StateError('Event changed or is in Trash');
-        if (draft.alarm != null) {
-          await saveAlarm(
-            draft.alarm!,
-            eventId: previous.id,
-            expectedRevision: draft.alarmReviewRevision,
-          );
-        }
-      });
+      variables: [
+        Variable.withString(draft.title.trim()),
+        Variable.withString(draft.notes),
+        Variable.withString(draft.startsAt.toUtc().toIso8601String()),
+        Variable.withString(draft.endsAt.toUtc().toIso8601String()),
+        Variable.withString(DateTime.now().toUtc().toIso8601String()),
+        ..._eventExtraVariables(draft),
+        Variable.withString(
+          jsonEncode(draft.details.map((item) => item.toJson()).toList()),
+        ),
+        Variable<String>(
+          moveSeriesAnchor
+              ? localDate(draft.startsAt.toLocal())
+              : previous.activeFromDate,
+        ),
+        Variable.withString(previous.id),
+        Variable.withString(previous.updatedAt.toUtc().toIso8601String()),
+      ],
+    );
+    if (changed != 1) throw StateError('Event changed or is in Trash');
+    if (draft.alarm != null) {
+      await saveAlarm(
+        draft.alarm!,
+        eventId: previous.id,
+        expectedRevision: draft.alarmReviewRevision,
+      );
+    }
+  });
 
   Future<void> deleteEvent(String id) async {
     await moveToTrash(TrashKind.event, id);

@@ -3,6 +3,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -10,6 +11,22 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 SHELL = shutil.which('pwsh') or shutil.which('powershell')
+
+
+def plain_error(text):
+    """Ignore PowerShell's ANSI styling and wrapped diagnostic gutters."""
+    text = re.sub(r'\x1b\[[0-9;]*m', '', text)
+    return ' '.join(re.sub(r'(?m)^\s*\|\s?', '', text).split())
+
+
+class DiagnosticTest(unittest.TestCase):
+    def test_error_text_preserves_message_across_styled_continuations(self):
+        message = 'Quick requires explicit -ChangedPaths and -Tests; tests are never guessed.'
+        wrapped = ('\x1b[31;1m     | Quick requires explicit -ChangedPaths and -Tests; '
+                   'tests are never\x1b[0m\n\x1b[31;1m     | guessed.\x1b[0m\n')
+        self.assertEqual(plain_error(wrapped), message)
+        self.assertEqual(plain_error(message), message)
+        self.assertNotIn('tests are never guessed', plain_error('Unexpected failure'))
 
 
 class CatalogTest(unittest.TestCase):
@@ -40,7 +57,7 @@ class VerifyTest(unittest.TestCase):
     def test_quick_refuses_to_guess_tests(self):
         result = self.run_helper('-Mode', 'Quick', '-ChangedPaths', 'lib/main.dart', '-Plan')
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('tests are never guessed', result.stderr)
+        self.assertIn('tests are never guessed', plain_error(result.stderr))
 
     def test_every_feature_plan_uses_its_explicit_tests(self):
         catalog = json.loads((ROOT / 'tools/dev/features.json').read_text())
@@ -63,7 +80,7 @@ class VerifyTest(unittest.TestCase):
     def test_android_requires_explicit_disposable_emulator(self):
         result = self.run_helper('-Mode', 'Full', '-Platform', 'Android', '-Device', 'personal-phone', '-Plan')
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('isolated disposable AVD', result.stderr)
+        self.assertIn('isolated disposable AVD', plain_error(result.stderr))
 
     @unittest.skipUnless(os.name == 'nt', 'Uses Windows native-command fixtures')
     def test_failing_selected_tests_stop_the_pipeline(self):

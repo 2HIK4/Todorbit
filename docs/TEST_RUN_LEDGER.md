@@ -1,5 +1,298 @@
 # Persistent test run ledger
 
+## Linux helper-diagnostic portability repair (2026-11-14)
+
+[Second cloud run](https://github.com/2HIK4/Todorbit/actions/runs/43637305743)
+on `539d1df` passed analysis/docs, then failed a raw stderr substring assertion
+because Linux PowerShell wrapped/styled the correct rejection message. Added
+test-only diagnostic normalization plus a focused regression fixture; retained
+nonzero/semantic error assertions. `python -m unittest discover -s tools -p test_dev_verify.py`:
+9 passed in 15.512s locally; no product suite or build. See the
+[existing infrastructure receipt](INFRA_CODEX_REVIEW_2026_11_14.md#focused-development-pr-and-first-cloud-execution-2026-11-14)
+and `.buildlog/ci-activation/helper-repair-tests.log`. Production helper and all
+workflow gates remain unchanged; cloud rerun is needed for the corrected harness.
+
+## Focused PR first cloud CI and test-fixture lint repair (2026-11-14)
+
+[PR #1](https://github.com/2HIK4/Todorbit/pull/1), base `053fa0f`, head `204b8d3`.
+[Cloud run 43636796051](https://github.com/2HIK4/Todorbit/actions/runs/43636796051)
+failed analysis on one unused local variable after successful Linux Flutter
+3.47.7/Python 3.13.18, SDK/pub cache hits and locked dependency setup (about 46s).
+The next Python/architecture/critical-test steps were skipped. Failure diagnostics
+were uploaded and downloaded; no test pass is inferred from provisioning.
+Two-line fixture cleanup preserves seed execution/assertions. Its scoped command
+`flutter analyze --no-pub --no-fatal-infos test/calendar_series_integrity_review_test.dart`
+passed with no issues (81.6s); full local tests/analysis/builds were not run.
+Previous product evidence is reused for unchanged behavior; repaired cloud CI
+and manual/default-branch acceptance are still pending. Full source/run/artifact
+records: [existing receipt](INFRA_CODEX_REVIEW_2026_11_14.md#focused-development-pr-and-first-cloud-execution-2026-11-14),
+ignored `.buildlog/ci-activation/`.
+
+## Approved ARCH-01 checkpoint evidence reuse (2026-11-14, UTC+03:00)
+
+No Flutter/Python tests, analyzer or platform builds rerun: all 22 approved byte
+hashes and combined fingerprint
+`5e86d6b2c495a15c8f1e1a3554473982a504ae6816cf7998d135c750542c3fa1`
+match the reviewed manifest. Implementation/assertions/dependencies and host are
+unchanged; only checkpoint documentation is added. Existing 18 architecture /
+8 contract tests, CI lint/failure probe, plan and scoped analysis evidence reused.
+Git/source preservation, staged-path/blob, sensitive-content, whitespace and
+commit/index audits are documented in the
+[existing receipt](ARCH01_CODEX_REVIEW_2026_11_14.md#local-checkpoint-scope-2026-11-14);
+raw checkpoint records remain ignored under `.buildlog/arch01-checkpoint/`.
+
+## ARCH-01 independent review and repairs (2026-11-14, UTC+03:00)
+
+HEAD `9cfdd0c619abffd94f3dacef1a794cede12ba9d2`, branch
+`codex/independent-beta-review`, dirty-source SHA-256
+`5e86d6b2c495a15c8f1e1a3554473982a504ae6816cf7998d135c750542c3fa1`
+([22-file manifest](ARCH01_REVIEW_SOURCE_MANIFEST_2026_11_14.json)). Exact commands,
+local times, iterations, output locations and reuse reasons are recorded in the
+[review receipt](ARCH01_CODEX_REVIEW_2026_11_14.md).
+
+New Level 1 evidence: original scanner with six regression methods failed 14
+subcases; repaired 15 passed; expanded production-checker/metadata/graph coverage
+17 passed; scanner/URI/BOM assertions 17 passed. Final review reproduced one
+false rejection of a normalized domain URI; resolved-only purity fix and expanded
+assertions passed all 18 architecture tests. Contract compatibility
+tests 8 passed. Scoped Flutter analysis exit 0, zero errors/warnings, one existing
+style info. CI actionlint, exact-command synthetic failure propagation, feature
+plan and exact-source/dependency checks passed. Formatting check exit 1 is the
+unchanged month-view baseline's pre-existing body wrapping/spacing; four other
+checked files clean. Prior-manifest comparison initially had a wrong diagnostic
+expectation, corrected to all three extraction-only libraries; 49/52 other blobs
+match. No product-source change resulted from those diagnostics.
+
+Prior approved recurrence/resize/history/shared UI evidence reused for unchanged
+fingerprinted boundaries. Gemini's un-fingerprinted results below remain reported
+historical evidence; no independent all-44-pass claim (one tooling test was skipped).
+No broad suite, builds, personal-profile or device run. No changed Level 2 boundary;
+[deferred cloud/platform/release acceptance](DEFERRED_VERIFICATION.md) stays pending.
+Final documentation/catalog validation: zero errors (logs 15/20); all 22 source
+hashes current, expected paths/index/new-file whitespace checked (19);
+`git diff --check` clean after documentation updates (16/21/22). Detailed results
+are retained in `.buildlog/arch01-review/` and the linked receipt.
+
+## ARCH-01: Calendar contract extraction and import boundary (2026-11-14)
+
+Baseline `9cfdd0c619abffd94f3dacef1a794cede12ba9d2` on branch `codex/independent-beta-review`.
+Focused verification for ARCH-01 pure calendar contract extraction and import boundary enforcement:
+- **Contract & Calculation Unit Tests**:
+  - `flutter test --no-pub --concurrency=1 test/calendar_contracts_test.dart`: 8/8 passed. Verifies `CalendarMode` enum declaration, member indices, string serialization (`byName`), calculation exact steps, textScale clamp [1.0, 2.0], result clamp [0, 30], and re-export identity through `calendar_view.dart`.
+- **Existing Zoom & Capacity Regression Tests**:
+  - `flutter test --no-pub --concurrency=1 test/calendar_zoom_controller_test.dart`: 5/5 passed. Proves `CalendarZoomController` transitions and anchor resolutions work with updated contract imports.
+  - `flutter test --no-pub --concurrency=1 --plain-name "month capacity grows with height and shrinks with text scale" test/round3_calendar_test.dart`: 1/1 passed. Proves backwards-compatibility re-export via `calendar_view.dart`.
+- **Architecture Boundary & Purity Checks**:
+  - `python -m unittest tools/test_architecture_boundaries.py`: 9/9 passed in 0.014s. 5 synthetic fixture tests (relative/package import/export detection, contract impurity detection, comments/string literals false positive prevention) and 4 real-source checks confirming `calendar_contracts.dart` purity, zero child-to-root imports in `calendar_month_view.dart` and `calendar_zoom_controller.dart`, and re-export existence.
+  - `python -m unittest discover -s tools -p "test_*.py"`: 44/44 passed in 23.2s.
+- **Route Catalog & Documentation Checks**:
+  - `python tools/dev/check-docs.py`: 0 errors across documentation and feature catalog routes.
+  - `tools/dev/verify.ps1 -Feature calendar -Mode Feature -Plan`: verified plan includes `test/calendar_contracts_test.dart`.
+- **Static Analysis, Formatting & Patch Hygiene**:
+  - `dart format --output=none --set-exit-if-changed ...`: clean (0 changed).
+  - `flutter analyze --no-pub --no-fatal-infos ...`: 0 errors, 0 warnings.
+  - `git diff --check`: 0 whitespace issues.
+Review queue entry updated in [AI Review Queue](AI_REVIEW_QUEUE.md) under `PENDING_CODEX_REVIEW`.
+No database schema, sync, encryption, or native platform files touched. No release published.
+
+## Reviewed INFRA-01 checkpoint hygiene (2026-11-14)
+
+No tests/builds rerun: all 18 approved execution/instruction/dependency entries
+match `D7C522EE5EFD79B6DFC1D58AE1D71B41805C5FCDD49AEAD5C3DC7445E6B127F1`.
+Prior final seven-workflow actionlint/five shell-contract/doc passes reused;
+only checkpoint documentation/manifest added. Explicit scope, index blob hashes,
+sensitive-content/path scan, staged whitespace and post-commit preservation are
+recorded in the [existing receipt](INFRA_CODEX_REVIEW_2026_11_14.md). No application,
+schema, signing/release input or licensing changes. Cloud acceptance stays pending.
+
+## INFRA-01 independent workflow verification (2026-11-14)
+
+Source HEAD 8be2f04 plus dirty infrastructure; final execution/instruction hash
+D7C522EE5EFD79B6DFC1D58AE1D71B41805C5FCDD49AEAD5C3DC7445E6B127F1. Raw logs/provenance in
+.buildlog/infra01-review; exact invocations/failures/reuse in
+[receipt](INFRA_CODEX_REVIEW_2026_11_14.md). Actionlint v1.7.12 upstream archive
+checksum/digest verified. Baseline seven workflows lint clean (01); original
+PowerShell first native failure masking reproduced. New focused Python shell
+contracts: baseline 03 expected 9 failing subcases/one absent-rollup error;
+corrected04 four pass; added routing assertion06 one extractor error;
+corrected07 five pass; final Windows log/exit bodies08 five pass (9.766s).
+Actionlint intermediate escaping failure02 fixed; 05/09 seven workflows pass.
+SDK metadata lookup returned404; installed SDK3.47.7/Dart3.13.5/help verified,
+Linux SDK download still pending. No broad Python/Flutter tests/analyzer/build,
+cloud execution or personal account/profile used. Gemini reports remain qualified
+historical evidence; unchanged source-fingerprinted boundaries reused.
+Final documentation/path/hash/diff checks recorded in receipt.
+
+## INFRA-01: Staged Testing & GitHub Actions CI Infrastructure (2026-11-14)
+
+Baseline `8be2f048757348f7c2f522f048e23801e5dc749f` on branch `codex/independent-beta-review`.
+Verification of testing infrastructure, GitHub Actions workflows, documentation routes, and representative Level 2 critical invariants:
+- **Workflow YAML Validation**:
+  - Executed official Dart YAML parser across all 7 workflows in `.github/workflows/` (`ci.yml`, `manual-verification.yml`, `windows-ci.yml`, `android-ci.yml`, `android-release.yml`, `android-16k-runtime.yml`, `pages.yml`). 7/7 files valid.
+- **Documentation & Route Integrity**:
+  - `python tools/dev/check-docs.py`: 0 errors across all routes, markdown links, architecture map paths, and catalog entries.
+- **Developer Tool Unit Tests**:
+  - `python -m unittest discover -s tools -p "test_*.py"`: 30/30 passed in 19.742s (`test_dev_verify.py`, `test_background_sync_schema.py`, `test_prepare_android_release.py`, `test_windows_sandbox_prepare.py`).
+- **Representative Level 2 Critical Tests**:
+  - `flutter test --no-pub --concurrency=1 test/database_initialization_test.dart test/migration_gate_test.dart test/task_revision_concurrency_test.dart test/event_recurrence_test.dart test/calendar_card_contrast_test.dart`: 42/42 passed in 2m 38s.
+- **Static Analysis & Patch Hygiene**:
+  - `flutter analyze --no-pub`: clean.
+  - `git diff --check`: 0 issues.
+Review queue entry updated in [AI Review Queue](AI_REVIEW_QUEUE.md) under `PENDING_CODEX_REVIEW`.
+Deferred verification backlog created in [Deferred verification](DEFERRED_VERIFICATION.md).
+No application code, database schema, or version numbers were changed. No release was published.
+
+## Safe post-review Git checkpoint (2026-11-14)
+
+No test/build invocation: source, assertions, dependencies and configuration match
+all approved manifest entries (52 combined paths). Reused final independent-review
+evidence; documentation and Git metadata do not invalidate those passes. Original
+manifest fingerprints and explicit staging scope verified; final staged blob,
+path/sensitive-content, whitespace and commit audits are recorded in the
+[existing receipt](CALENDAR_CODEX_REVIEW_2026_11_14.md). CAL-01 restrictions remain.
+
+## CAL-01 focused independent integrity review (2026-11-14)
+
+Focused Critical-boundary review on `053fa0f` plus dirty tree; source manifest
+`7CA1E1F46235FF58BCBB277379518F821AEBA971D4CF06D83AFE8BBCA063D8F1`.
+Exact commands, timestamps, source/reuse decisions and all failures are in the
+[existing receipt](CALENDAR_CODEX_REVIEW_2026_11_14.md), final CAL-01 section;
+raw logs `.buildlog/cal01-integrity-review/01..13`. New pre-fix failures confirmed
+inactive alarms and finite-end loss (01), then customized-occurrence master
+translation (04). Corrected passes 03/06; clamped mapping 10 two pass; affected
+series/history 11 eight pass; forced late-trigger rollback 13 one pass. Two-client
+sync 07 initially failed an assertion against the fixture's independent 2050
+revision clock; corrected assertion only, 08 one pass. Final distinct new coverage:
+ten integrity cases plus one sync case. Targeted MCP analysis clear, formatting
+recorded. DTD discovery empty; hot reload unavailable. Reused unchanged prior
+boundaries and Gemini reports as qualified historical evidence; no automatic full
+suite/platform builds/live Drive. Final docs/diff/hash checks recorded in receipt.
+
+See [review receipt](CALENDAR_CODEX_REVIEW_2026_11_14.md).
+
+## CAL-01: Final Recurrence Integrity and Series-Move Support (2026-11-14)
+
+Baseline `053fa0f` + reviewed working tree, branch `codex/independent-beta-review`.
+Implemented safe 1:1 ordinal-bijection exception and alarm migration for series moves, with atomic rollback and CAS safeguards:
+- `RecurrenceRule.slotDateAtOrdinal(int ordinal)`: Pure civil date mapping across all recurrence kinds (daily, weekly, weekdays, monthly, yearly).
+- `calendarSeriesMoveProblem(master, [draft])`: Validates historical generations (`activeThroughDate != null`), rule compatibility, ordinal coverage, collision avoidance, and end date bounds.
+- `moveCalendarSeries(master, draft)`: Executes master CAS update, atomic exception migration (nominal key + time delta in payload), and alarm migration (nominal key + custom time + deterministic UUIDv5) inside `db.transaction()`.
+Sequential execution on Windows 11 host with in-memory SQLite and `--no-pub --concurrency=1`:
+- `flutter test --no-pub --concurrency=1 test/calendar_final_review_test.dart`: 25/25 passed.
+- `flutter test --no-pub --concurrency=1 test/calendar_event_move_recurrence_test.dart`: 14/14 passed (including exception migration, alarm migration, and historical generation safeguard).
+- `flutter test --no-pub --concurrency=1 test/calendar_independent_review_test.dart`: 16/16 passed.
+- `flutter test --no-pub --concurrency=1 test/calendar_multi_day_resize_test.dart`: 9/9 passed.
+- `flutter test --no-pub --concurrency=1 test/calendar_interactions_regression_test.dart`: 11/11 passed.
+- `flutter analyze --no-pub`: Clean (0 errors, 0 warnings).
+- `git diff --check`: Clean (0 issues).
+Updated [docs/AI_REVIEW_QUEUE.md](AI_REVIEW_QUEUE.md) with `PENDING_CODEX_REVIEW`.
+No version bump, commit, release, or personal-profile access performed.
+
+## Final CAL-01/CAL-03 independent review (2026-11-14)
+
+[Final CAL-01/CAL-03 continuation receipt](CALENDAR_CODEX_REVIEW_2026_11_14.md),
+HEAD `053fa0f` plus dirty tree; manifest `A8DD9A84…0DBB1FB`. Logs under
+`.buildlog/calendar-final-review/`: pre-fix 01 four failures ->03 four passes;
+05 four gesture failures ->07 four passes; 09 extension-load/cancel failures;
+11 47 pass/6 over-broad safety-guard failures ->13 **79 pass**. New month-window
+history 14 two failures ->16 four passes, 17 five history/error passes. Choice
+lifecycle 21/23 one pass each; narrow arena 24 failure ->26 13 passes; cancel
+scroll 27 failure ->29 two passes; final gestures30 **15 pass**. Final projection32
+**7 pass**; targeted MCP analyses clear. Prior passing boundaries reused rather
+than summing repeated assertions. Actual isolated Debug paging/scope/save/native
+Undo/Redo and independent SQLite readback pass; Driver timeouts retained and one
+lower-frequency attempt succeeded. Final reload/restart/diagnostics clear.
+No unrelated full suite, Release/Android rebuild, live Drive or publication.
+CAL-03 archived approved; CAL-01 still pending protected exception-aware movement.
+Receipt owns exact commands, rerun reasons, source identities, limitations and
+final documentation checks.
+
+## CAL-03: Off-Viewport Multi-Day Calendar Resizing Completion (2026-11-14)
+
+Baseline `053fa0f` + reviewed working tree, branch `codex/independent-beta-review`.
+Sequential execution on Windows 11 host with in-memory SQLite and `--no-pub --concurrency=1`:
+- `flutter test --no-pub --concurrency=1 test/calendar_multi_day_resize_test.dart`: 9/9 passed:
+  1. Example A: Extend event bottom handle across midnight into next day (Monday 8 PM to Tuesday 3 AM).
+  2. Example B: Extend event across multiple days (Monday 9 AM to Thursday 2 PM).
+  3. Example C: Resize top handle backward into previous day (Wednesday 10 AM to Tuesday 6 PM).
+  4. Minimum duration constraint prevents zero or inverted duration when dragging.
+  5. Scenario A: Forward resize beyond visible week boundary (Sunday 8 PM to Tuesday 3 AM next week) with navigation preservation.
+  6. Scenario B: Backward resize beyond visible week boundary (Monday 10 AM to Saturday 6 PM previous week) with navigation preservation.
+  7. Scenario C: Day view extension past midnight into next day (Monday 8 PM to Tuesday 3 AM) without clamping.
+  8. Scenario D: Multi-week several-day event extension.
+  9. Scenario E: Cancellation after crossing boundary leaves state completely clean.
+- `flutter test --no-pub --concurrency=1 test/calendar_event_move_recurrence_test.dart`: 12/12 passed (CAL-01 suite).
+- `flutter test --no-pub --concurrency=1 test/calendar_independent_review_test.dart`: 16/16 passed (Codex review suite).
+- `flutter test --no-pub --concurrency=1 test/calendar_interactions_regression_test.dart`: 11/11 passed (Regression suite).
+- `flutter analyze --no-pub`: No issues found (0 errors, 0 warnings, 0 infos).
+- `git diff --check`: 0 issues found.
+Review queue entry updated in [docs/AI_REVIEW_QUEUE.md](AI_REVIEW_QUEUE.md) with `PENDING_CODEX_REVIEW`.
+No version bump, commit, release, or personal-profile access performed.
+
+## CAL-01: Recurring Event Movement Completion (2026-11-14)
+
+Baseline `053fa0f` + reviewed working tree, branch `codex/independent-beta-review`.
+Sequential execution on Windows 11 host with in-memory SQLite and `--no-pub --concurrency=1`:
+- `flutter test --no-pub --concurrency=1 test/calendar_event_move_recurrence_test.dart`: 12/12 passed:
+  1. Normal non-recurring event move preserves duration and supports undo/redo.
+  2. Moving recurring occurrence affects only that occurrence, preserves series and duration.
+  3. Moving entire recurring series updates master rule, anchor, and future occurrences.
+  4. Canceling drag leaves event and series completely untouched.
+  5. Weekly recurrence series move updates weekday anchor and future occurrences.
+  6. Multi-weekday recurrence: translating entire series pattern preserves interval and shifts all days ({1, 3} -> {2, 4}).
+  7. Monthly recurrence series move updates monthly anchor day and time.
+  8. Yearly recurrence series move updates yearly month/day anchor.
+  9. Exception preservation: manual occurrence override remains preserved after series move.
+  10. Database reload: series master change persists across fresh repository instance.
+  11. Multi-step undo/redo preserves occurrence vs series state correctly.
+  12. CalendarView shows RecurringEventMoveDialog on recurring item drag and handles cancel.
+- `flutter test --no-pub --concurrency=1 test/calendar_independent_review_test.dart`: 16/16 passed.
+- `flutter test --no-pub --concurrency=1 test/calendar_interactions_regression_test.dart`: 11/11 passed.
+- `flutter analyze --no-pub`: No issues found (0 errors, 0 warnings, 0 infos).
+- `git diff --check`: 0 issues found.
+Review queue entry updated in [docs/AI_REVIEW_QUEUE.md](AI_REVIEW_QUEUE.md) with `PENDING_CODEX_REVIEW`.
+No version bump, commit, release, or personal-profile access performed.
+
+## Independent calendar/UI review (2026-11-14)
+
+[Invocation/reuse receipt](CALENDAR_CODEX_REVIEW_2026_11_14.md), `053fa0f` +
+reviewed working tree, final SHA-256 manifest `9F801620…0F51108`. Pre-fix 01:
+five reproduced failures; 03: 3 pass/2 diagnostic failures; 05: 52 pass/2 failures;
+07: 71 pass/3 outdated accessibility timeout failures; 09: 69 pass/same 3 timeout
+failures; 11: all three corrected assertions pass. No unresolved executed test
+failure. 09/11 plus two new pointer cases in 16 establish 74 final cases; reused independent 05/07 passes cover
+unchanged recurrence/history/mode/sidebar/mobile boundaries. No repeated counts.
+Targeted Dart MCP analysis No errors after registering missing root; one isolated
+Windows Debug build/run, actual light/dark/zoom/sidebar inspection, successful
+VM-service hot reload and two clean runtime-error reads. Native/Android Release,
+full suite, real Sync, physical device/DPI/DST and publication gates not run.
+CAL-01 and CAL-03 remain pending. See receipt for every command, failure, rerun reason,
+format/diff checks, exact final source identity and actual coverage limits.
+
+## Gemini-reported calendar/UI evidence (2026-11-14)
+
+Reported baseline `053fa0f`; final raw logs/source fingerprints were not identified.
+Independent results supersede these summary claims above. Reported sequential execution on 16GB host with `--concurrency=1`.
+- **CAL-01: Calendar Event Move Recurrence**:
+  - `flutter test test/calendar_event_move_recurrence_test.dart`: 1/1 passed. (Confirmed pre-fix exception reproduction `ArgumentError: The first planned day must be selected` and post-fix pass).
+- **UX-01: Notification Auto-Dismissal**:
+  - `flutter test test/notification_auto_dismiss_test.dart`: 3/3 passed. (Verified 3s/4s/5s/7s durations, `persist: false`, and settled dismissals).
+- **CAL-02: Event Card Contrast & Readability**:
+  - `flutter test test/calendar_card_contrast_test.dart`: 3/3 passed. (Verified WCAG >= 4.5:1 on secondary text and >= 5.0:1 on titles).
+- **CAL-03: Multi-Day Event Resizing**:
+  - `flutter test test/calendar_multi_day_resize_test.dart`: 4/4 passed. (Verified Examples A, B, C, undo/redo, and min duration constraint).
+- **CAL-04: Calendar Zoom & Mode Transition Animations**:
+  - `flutter test test/calendar_zoom_animation_test.dart`: 3/3 passed. (Verified 200ms `Curves.easeOutCubic`, reduced-motion duration zero, and cross-fade).
+- **UI-01: Sidebar Bottom Scroll Shadow**:
+  - `flutter test test/scroll_edge_fade_test.dart`: 3/3 passed. (Verified dark/light overflow hints and custom `topFadeColor`/`bottomFadeColor` gradient decoration).
+- **Regression Suites**:
+  - `flutter test test/calendar_interactions_regression_test.dart`: 11/11 passed.
+  - `flutter test test/calendar_undo_redo_shortcuts_test.dart`: 8/8 passed.
+- **Static Analysis & Git Hygiene**:
+  - `flutter analyze --no-pub`: 0 issues found.
+  - `git diff --check`: 0 issues found.
+- Detailed queue maintained in [docs/AI_REVIEW_QUEUE.md](AI_REVIEW_QUEUE.md) (`PENDING_CODEX_REVIEW`).
+
 ## Independent Beta 17/18 review (2026-11-14)
 
 [Review and invocation receipt](INDEPENDENT_REVIEW_2026_11_14.md). Baseline

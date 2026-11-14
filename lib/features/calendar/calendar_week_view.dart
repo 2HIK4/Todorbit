@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+
 import '../../domain/alarms.dart';
 import '../shared/weekdays.dart';
 import 'calendar_config.dart';
@@ -21,6 +24,7 @@ class CalendarWeekView extends StatefulWidget {
     this.alarmRules = const [],
     this.colorResolver,
     this.onInteractionFinished,
+    this.onNavigateWeek,
   });
 
   final DateTime weekStart;
@@ -28,11 +32,13 @@ class CalendarWeekView extends StatefulWidget {
   final CalendarAppearanceConfiguration config;
   final CalendarInteractionController interactionController;
   final void Function(CalendarItem item) onItemTap;
-  final void Function(DateTime slotTime, Offset globalPosition) onSlotSecondaryTap;
+  final void Function(DateTime slotTime, Offset globalPosition)
+  onSlotSecondaryTap;
   final void Function(DateTime dayDate) onDayHeaderTap;
   final List<AlarmRule> alarmRules;
   final Color Function(CalendarItem item)? colorResolver;
   final Future<void> Function()? onInteractionFinished;
+  final void Function(int direction)? onNavigateWeek;
 
   @override
   State<CalendarWeekView> createState() => _CalendarWeekViewState();
@@ -45,16 +51,27 @@ class _CalendarWeekViewState extends State<CalendarWeekView> {
   final GlobalKey _gridKey = GlobalKey();
   bool _isSyncingScroll = false;
 
+  Timer? _edgeDwellTimer;
+  int? _pendingDwellDirection;
+  bool _hasNavigatedAtCurrentEdge = false;
+  int? _navigatedDirection;
+  String? _edgeDwellMessage;
+
   @override
   void initState() {
     super.initState();
+    widget.interactionController.addListener(_handleInteractionChange);
     _headerScrollController.addListener(_syncHeaderToGrid);
     _gridHorizontalScrollController.addListener(_syncGridToHeader);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_verticalScrollController.hasClients) {
-        final initialY = widget.config.initialScrollHour * widget.config.hourHeight;
+        final initialY =
+            widget.config.initialScrollHour * widget.config.hourHeight;
         _verticalScrollController.jumpTo(
-          initialY.clamp(0.0, _verticalScrollController.position.maxScrollExtent),
+          initialY.clamp(
+            0.0,
+            _verticalScrollController.position.maxScrollExtent,
+          ),
         );
       }
     });
@@ -68,6 +85,41 @@ class _CalendarWeekViewState extends State<CalendarWeekView> {
     }
   }
 
+  @override
+  void didUpdateWidget(covariant CalendarWeekView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.weekStart != widget.weekStart &&
+        widget.interactionController.isDragging) {
+      final forward = widget.weekStart.isAfter(oldWidget.weekStart);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _gridHorizontalScrollController.hasClients) {
+          _gridHorizontalScrollController.jumpTo(
+            forward
+                ? 0
+                : _gridHorizontalScrollController.position.maxScrollExtent,
+          );
+        }
+      });
+    }
+    if (oldWidget.config.hourHeight != widget.config.hourHeight &&
+        _verticalScrollController.hasClients) {
+      final offset =
+          _verticalScrollController.offset *
+          widget.config.hourHeight /
+          oldWidget.config.hourHeight;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _verticalScrollController.hasClients) {
+          _verticalScrollController.jumpTo(
+            offset.clamp(
+              0.0,
+              _verticalScrollController.position.maxScrollExtent,
+            ),
+          );
+        }
+      });
+    }
+  }
+
   void _syncGridToHeader() {
     if (!_isSyncingScroll && _headerScrollController.hasClients) {
       _isSyncingScroll = true;
@@ -78,6 +130,8 @@ class _CalendarWeekViewState extends State<CalendarWeekView> {
 
   @override
   void dispose() {
+    widget.interactionController.removeListener(_handleInteractionChange);
+    _edgeDwellTimer?.cancel();
     _headerScrollController.removeListener(_syncHeaderToGrid);
     _gridHorizontalScrollController.removeListener(_syncGridToHeader);
     _verticalScrollController.dispose();
@@ -86,11 +140,125 @@ class _CalendarWeekViewState extends State<CalendarWeekView> {
     super.dispose();
   }
 
-  DateTime _resolveDayAt(Offset globalPosition, List<DateTime> days, double columnWidth) {
+  void _handleInteractionChange() {
+    final interaction = widget.interactionController;
+    if (!interaction.isDragging) {
+      _cancelEdgeDwell();
+      _hasNavigatedAtCurrentEdge = false;
+      return;
+    }
+    final pointer = interaction.pointerCurrentLocal;
+    final box = _gridKey.currentContext?.findRenderObject() as RenderBox?;
+    if (pointer == null || box == null || !box.hasSize) return;
+    final local = box.globalToLocal(pointer);
+    _checkEdgeDwell(local.dx, box.size.width);
+  }
+
+  void _checkEdgeDwell(double localX, double totalGridWidth) {
+    if (widget.onNavigateWeek == null ||
+        !widget.interactionController.isDragging) {
+      _cancelEdgeDwell();
+      return;
+    }
+    const edgeThreshold = 36.0;
+    final int direction;
+    final scroll = _gridHorizontalScrollController.hasClients
+        ? _gridHorizontalScrollController.position
+        : null;
+    final viewportX = localX - (scroll?.pixels ?? 0);
+    final width = scroll?.viewportDimension ?? totalGridWidth;
+    if (viewportX < -10 || viewportX > width + 10) {
+      _cancelEdgeDwell();
+      _hasNavigatedAtCurrentEdge = false;
+      return;
+    }
+    if (viewportX >= width - edgeThreshold) {
+      direction = 1;
+    } else if (viewportX <= edgeThreshold) {
+      direction = -1;
+    } else {
+      _cancelEdgeDwell();
+      _hasNavigatedAtCurrentEdge = false;
+      return;
+    }
+
+    if (_hasNavigatedAtCurrentEdge && _navigatedDirection == direction) {
+      return;
+    }
+
+    if (_pendingDwellDirection == direction) {
+      return;
+    }
+
+    _pendingDwellDirection = direction;
+    if (mounted) {
+      setState(() {
+        final moreColumns =
+            scroll != null &&
+            (direction > 0 ? scroll.extentAfter : scroll.extentBefore) > 1;
+        _edgeDwellMessage = moreColumns
+            ? (direction > 0
+                  ? 'Hold to scroll right →'
+                  : '← Hold to scroll left')
+            : (direction > 0
+                  ? 'Hold to open next week →'
+                  : '← Hold to open previous week');
+      });
+    }
+
+    _edgeDwellTimer?.cancel();
+    _edgeDwellTimer = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted || !widget.interactionController.isDragging) return;
+      _hasNavigatedAtCurrentEdge = true;
+      _navigatedDirection = _pendingDwellDirection;
+      final dir = _pendingDwellDirection;
+      _cancelEdgeDwell();
+      if (dir != null) {
+        if (scroll != null &&
+            (dir > 0 ? scroll.extentAfter : scroll.extentBefore) > 1) {
+          _gridHorizontalScrollController.jumpTo(
+            dir > 0 ? scroll.maxScrollExtent : scroll.minScrollExtent,
+          );
+        } else {
+          widget.onNavigateWeek?.call(dir);
+        }
+      }
+    });
+  }
+
+  void _cancelEdgeDwell() {
+    _edgeDwellTimer?.cancel();
+    _edgeDwellTimer = null;
+    _pendingDwellDirection = null;
+    if (_edgeDwellMessage != null && mounted) {
+      setState(() {
+        _edgeDwellMessage = null;
+      });
+    }
+  }
+
+  DateTime _resolveDayAt(
+    Offset globalPosition,
+    List<DateTime> days,
+    double columnWidth,
+  ) {
     final renderBox = _gridKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null || !renderBox.hasSize) return days.first;
     final local = renderBox.globalToLocal(globalPosition);
     final colIndex = (local.dx / columnWidth).floor().clamp(0, days.length - 1);
+    if (colIndex < 0) {
+      return DateTime(
+        days.first.year,
+        days.first.month,
+        days.first.day + colIndex,
+      );
+    } else if (colIndex >= days.length) {
+      return DateTime(
+        days.last.year,
+        days.last.month,
+        days.last.day + (colIndex - (days.length - 1)),
+      );
+    }
     return days[colIndex];
   }
 
@@ -129,9 +297,13 @@ class _CalendarWeekViewState extends State<CalendarWeekView> {
                 const SizedBox(width: timeGutterWidth),
                 Expanded(
                   child: SingleChildScrollView(
-                    controller: needsHorizontalScroll ? _headerScrollController : null,
+                    controller: needsHorizontalScroll
+                        ? _headerScrollController
+                        : null,
                     scrollDirection: Axis.horizontal,
-                    physics: needsHorizontalScroll ? null : const NeverScrollableScrollPhysics(),
+                    physics: needsHorizontalScroll
+                        ? null
+                        : const NeverScrollableScrollPhysics(),
                     child: SizedBox(
                       width: totalGridWidth,
                       child: Row(
@@ -163,9 +335,16 @@ class _CalendarWeekViewState extends State<CalendarWeekView> {
                       height: config.totalGridHeight,
                       child: Stack(
                         children: [
-                          for (var hour = config.startHour; hour < config.endHour; hour++)
+                          for (
+                            var hour = config.startHour;
+                            hour < config.endHour;
+                            hour++
+                          )
                             Positioned(
-                              top: (hour - config.startHour) * config.hourHeight - 8,
+                              top:
+                                  (hour - config.startHour) *
+                                      config.hourHeight -
+                                  8,
                               left: 4,
                               right: 6,
                               child: Text(
@@ -191,41 +370,152 @@ class _CalendarWeekViewState extends State<CalendarWeekView> {
                     // 7 Day columns
                     Expanded(
                       child: SingleChildScrollView(
-                        controller: needsHorizontalScroll ? _gridHorizontalScrollController : null,
+                        controller: needsHorizontalScroll
+                            ? _gridHorizontalScrollController
+                            : null,
                         scrollDirection: Axis.horizontal,
-                        physics: needsHorizontalScroll ? null : const NeverScrollableScrollPhysics(),
-                        child: SizedBox(
-                          key: _gridKey,
-                          width: totalGridWidth,
-                          height: config.totalGridHeight,
-                          child: Row(
-                            children: [
-                              for (var i = 0; i < days.length; i++)
-                                Container(
-                                  width: columnWidth,
-                                  decoration: BoxDecoration(
-                                    border: Border(
-                                      right: BorderSide(
-                                        color: scheme.outlineVariant.withValues(alpha: 0.35),
-                                        width: 1,
+                        physics: needsHorizontalScroll
+                            ? null
+                            : const NeverScrollableScrollPhysics(),
+                        child: Listener(
+                          behavior: HitTestBehavior.translucent,
+                          onPointerMove: (event) {
+                            if (widget.interactionController.ownsPointer(
+                                  event.pointer,
+                                ) &&
+                                widget.interactionController.isDragging) {
+                              final renderBox =
+                                  _gridKey.currentContext?.findRenderObject()
+                                      as RenderBox?;
+                              if (renderBox != null && renderBox.hasSize) {
+                                final local = renderBox.globalToLocal(
+                                  event.position,
+                                );
+                                final targetDay = _resolveDayAt(
+                                  event.position,
+                                  days,
+                                  columnWidth,
+                                );
+                                widget.interactionController.updatePointer(
+                                  event.position,
+                                  targetDay,
+                                  local.dy,
+                                );
+                                _checkEdgeDwell(local.dx, totalGridWidth);
+                              }
+                            }
+                          },
+                          onPointerUp: (event) async {
+                            if (widget.interactionController.ownsPointer(
+                                  event.pointer,
+                                ) &&
+                                widget.interactionController.isDragging) {
+                              _cancelEdgeDwell();
+                              await widget.onInteractionFinished?.call();
+                            } else {
+                              _cancelEdgeDwell();
+                            }
+                          },
+                          onPointerCancel: (event) {
+                            _cancelEdgeDwell();
+                            if (widget.interactionController.ownsPointer(
+                              event.pointer,
+                            ))
+                              widget.interactionController.forceCancel();
+                          },
+                          child: SizedBox(
+                            key: _gridKey,
+                            width: totalGridWidth,
+                            height: config.totalGridHeight,
+                            child: Stack(
+                              children: [
+                                Row(
+                                  children: [
+                                    for (var i = 0; i < days.length; i++)
+                                      Container(
+                                        width: columnWidth,
+                                        decoration: BoxDecoration(
+                                          border: Border(
+                                            right: BorderSide(
+                                              color: scheme.outlineVariant
+                                                  .withValues(alpha: 0.35),
+                                              width: 1,
+                                            ),
+                                          ),
+                                        ),
+                                        child: TimelineDayColumn(
+                                          dayDate: days[i],
+                                          items:
+                                              widget.itemsByDay[days[i]] ??
+                                              const [],
+                                          config: config,
+                                          interactionController:
+                                              widget.interactionController,
+                                          onItemTap: widget.onItemTap,
+                                          onSlotSecondaryTap:
+                                              widget.onSlotSecondaryTap,
+                                          alarmRules: widget.alarmRules,
+                                          colorResolver: widget.colorResolver,
+                                          scrollController:
+                                              _verticalScrollController,
+                                          resolveDayAt: (globalPos) =>
+                                              _resolveDayAt(
+                                                globalPos,
+                                                days,
+                                                columnWidth,
+                                              ),
+                                          onInteractionFinished:
+                                              widget.onInteractionFinished,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                if (_edgeDwellMessage != null)
+                                  Positioned(
+                                    top: 10,
+                                    left: 0,
+                                    right: 0,
+                                    child: Center(
+                                      child: Material(
+                                        elevation: 4,
+                                        borderRadius: BorderRadius.circular(16),
+                                        color: scheme.inverseSurface,
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 6,
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                _pendingDwellDirection !=
+                                                            null &&
+                                                        _pendingDwellDirection! >
+                                                            0
+                                                    ? Icons.arrow_forward
+                                                    : Icons.arrow_back,
+                                                size: 14,
+                                                color: scheme.onInverseSurface,
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                _edgeDwellMessage!,
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                  color:
+                                                      scheme.onInverseSurface,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
-                                  child: TimelineDayColumn(
-                                    dayDate: days[i],
-                                    items: widget.itemsByDay[days[i]] ?? const [],
-                                    config: config,
-                                    interactionController: widget.interactionController,
-                                    onItemTap: widget.onItemTap,
-                                    onSlotSecondaryTap: widget.onSlotSecondaryTap,
-                                    alarmRules: widget.alarmRules,
-                                    colorResolver: widget.colorResolver,
-                                    scrollController: _verticalScrollController,
-                                    resolveDayAt: (globalPos) => _resolveDayAt(globalPos, days, columnWidth),
-                                    onInteractionFinished: widget.onInteractionFinished,
-                                  ),
-                                ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -273,10 +563,7 @@ class _CalendarWeekViewState extends State<CalendarWeekView> {
             Container(
               padding: const EdgeInsets.all(4),
               decoration: isToday
-                  ? BoxDecoration(
-                      color: scheme.primary,
-                      shape: BoxShape.circle,
-                    )
+                  ? BoxDecoration(color: scheme.primary, shape: BoxShape.circle)
                   : null,
               child: Text(
                 '${dayDate.day}',

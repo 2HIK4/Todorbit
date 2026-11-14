@@ -8,6 +8,8 @@ class FadingListView extends StatelessWidget {
     this.controller,
     this.shrinkWrap = false,
     this.physics,
+    this.topFadeColor,
+    this.bottomFadeColor,
   }) : builder = null,
        count = null;
   const FadingListView.builder({
@@ -17,6 +19,8 @@ class FadingListView extends StatelessWidget {
     this.padding,
     this.controller,
     this.physics,
+    this.topFadeColor,
+    this.bottomFadeColor,
   }) : builder = itemBuilder,
        count = itemCount,
        children = const [],
@@ -28,9 +32,13 @@ class FadingListView extends StatelessWidget {
   final IndexedWidgetBuilder? builder;
   final int? count;
   final ScrollPhysics? physics;
+  final Color? topFadeColor;
+  final Color? bottomFadeColor;
 
   @override
   Widget build(BuildContext context) => ScrollEdgeFade(
+    topFadeColor: topFadeColor,
+    bottomFadeColor: bottomFadeColor,
     child: builder != null
         ? ListView.builder(
             controller: controller,
@@ -55,13 +63,19 @@ class FadingScrollView extends StatelessWidget {
     required this.child,
     this.padding,
     this.controller,
+    this.topFadeColor,
+    this.bottomFadeColor,
   });
   final Widget child;
   final EdgeInsetsGeometry? padding;
   final ScrollController? controller;
+  final Color? topFadeColor;
+  final Color? bottomFadeColor;
 
   @override
   Widget build(BuildContext context) => ScrollEdgeFade(
+    topFadeColor: topFadeColor,
+    bottomFadeColor: bottomFadeColor,
     child: SingleChildScrollView(
       controller: controller,
       padding: padding,
@@ -72,8 +86,15 @@ class FadingScrollView extends StatelessWidget {
 
 /// A pointer-transparent hint that disappears when the scroll viewport ends.
 class ScrollEdgeFade extends StatefulWidget {
-  const ScrollEdgeFade({super.key, required this.child});
+  const ScrollEdgeFade({
+    super.key,
+    required this.child,
+    this.topFadeColor,
+    this.bottomFadeColor,
+  });
   final Widget child;
+  final Color? topFadeColor;
+  final Color? bottomFadeColor;
 
   @override
   State<ScrollEdgeFade> createState() => _ScrollEdgeFadeState();
@@ -110,9 +131,11 @@ class _ScrollEdgeFadeState extends State<ScrollEdgeFade> {
       return widget.child;
     }
     final theme = Theme.of(context);
-    final background =
+    final fallbackBackground =
         theme.dialogTheme.backgroundColor ??
         theme.colorScheme.surfaceContainerHigh;
+    final topColor = widget.topFadeColor ?? fallbackBackground;
+    final bottomColor = widget.bottomFadeColor ?? fallbackBackground;
     return NotificationListener<ScrollMetricsNotification>(
       onNotification: (notice) {
         update(notice.metrics, notice.depth);
@@ -142,8 +165,8 @@ class _ScrollEdgeFadeState extends State<ScrollEdgeFade> {
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              background,
-                              background.withValues(alpha: 0),
+                              topColor,
+                              topColor.withValues(alpha: 0),
                             ],
                           ),
                         ),
@@ -166,8 +189,8 @@ class _ScrollEdgeFadeState extends State<ScrollEdgeFade> {
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              background.withValues(alpha: 0),
-                              background,
+                              bottomColor.withValues(alpha: 0),
+                              bottomColor,
                             ],
                           ),
                         ),

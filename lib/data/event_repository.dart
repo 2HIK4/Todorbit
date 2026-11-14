@@ -77,7 +77,388 @@ List<Variable> _eventExtraVariables(EventDraft draft) => [
   Variable<String>(draft.repeat?.untilDate),
 ];
 
+class _MigratedException {
+  const _MigratedException({
+    required this.oldNominalDate,
+    required this.newNominalDate,
+    required this.cancelled,
+    required this.payloadJson,
+    required this.createdAt,
+  });
+
+  final String oldNominalDate;
+  final String newNominalDate;
+  final bool cancelled;
+  final String? payloadJson;
+  final String createdAt;
+}
+
+class _MigratedAlarm {
+  const _MigratedAlarm({
+    required this.oldId,
+    required this.newId,
+    required this.oldNominalDate,
+    required this.newNominalDate,
+    required this.configJson,
+    required this.createdAt,
+    required this.deletedAt,
+    required this.archivedAt,
+  });
+
+  final String oldId;
+  final String newId;
+  final String oldNominalDate;
+  final String newNominalDate;
+  final String configJson;
+  final String createdAt;
+  final String? deletedAt;
+  final String? archivedAt;
+}
+
+// Only the final recurrence interval is needed to compare finite slot counts.
+// A full expansion could allocate millions of daily occurrences in a UI check.
+int _calendarFinalOrdinal(RecurrenceRule rule) {
+  final end = rule.endDate!;
+  final span = RecurrenceRule.daysBetween(rule.startDate, end);
+  final lookback = span < 366 * rule.interval ? span : 366 * rule.interval;
+  return rule
+      .between(RecurrenceRule.shiftDate(end, -lookback), end)
+      .last
+      .ordinal;
+}
+
 extension EventRepository on LifeRepository {
+  Future<String?> calendarSeriesMoveProblem(
+    FixedEvent master, [
+    EventDraft? draft,
+  ]) async {
+    final sibling = await db
+        .customSelect(
+          'SELECT 1 FROM fixed_events WHERE COALESCE(series_family_id,id)=? AND id<>? LIMIT 1',
+          variables: [
+            Variable.withString(master.seriesFamilyId ?? master.id),
+            Variable.withString(master.id),
+          ],
+        )
+        .getSingleOrNull();
+    if (master.activeThroughDate != null || sibling != null) {
+      return 'This series has separate historical generations. Review its future schedule in the editor.';
+    }
+
+    final overrides = await db
+        .customSelect(
+          'SELECT nominal_date, cancelled, payload_json, created_at FROM event_occurrence_changes WHERE event_id=?',
+          variables: [Variable.withString(master.id)],
+        )
+        .get();
+    final alarms = await db
+        .customSelect(
+          "SELECT id, nominal_date, config_json, created_at, deleted_at, archived_at FROM alarm_rules WHERE event_id=? AND nominal_date<>''",
+          variables: [Variable.withString(master.id)],
+        )
+        .get();
+
+    if (draft == null) {
+      if (overrides.isEmpty && alarms.isEmpty) return null;
+      return 'This series contains edited, cancelled or alarm-specific occurrences. '
+          'Move this occurrence only, or review the series in the editor; moving '
+          'the whole series could detach those exceptions.';
+    }
+
+    final oldRepeat = master.repeat;
+    final newRepeat = draft.repeat;
+    if (oldRepeat == null || newRepeat == null) {
+      return 'The series recurrence rule is missing.';
+    }
+    if (oldRepeat.kind != newRepeat.kind ||
+        oldRepeat.interval != newRepeat.interval) {
+      return 'This recurrence change cannot safely preserve modified occurrences. Move this occurrence only, or customize the series in the editor.';
+    }
+    if (oldRepeat.kind == EventRepeatKind.weekdays &&
+        oldRepeat.weekdays.length != newRepeat.weekdays.length) {
+      return 'Changing repeat weekdays cannot safely preserve modified occurrences. Customize the series in the editor.';
+    }
+
+    final oldRule = RecurrenceRule(
+      kind: RecurrenceKind.values.byName(oldRepeat.kind.name),
+      startDate: localDate(master.startsAt.toLocal()),
+      interval: oldRepeat.interval,
+      weekdays: oldRepeat.weekdays,
+      endDate: oldRepeat.untilDate,
+    );
+    final newRule = RecurrenceRule(
+      kind: RecurrenceKind.values.byName(newRepeat.kind.name),
+      startDate: localDate(draft.startsAt.toLocal()),
+      interval: newRepeat.interval,
+      weekdays: newRepeat.weekdays,
+      endDate: newRepeat.untilDate,
+    );
+
+    if ((oldRule.endDate == null) != (newRule.endDate == null) ||
+        (oldRule.endDate != null &&
+            _calendarFinalOrdinal(oldRule) != _calendarFinalOrdinal(newRule))) {
+      return 'This move would add or remove occurrences at the recurrence end date. Move this occurrence only, or customize the end date in the editor.';
+    }
+
+    final mappedDates = <String, String>{};
+    for (final row in overrides) {
+      final oldNominal = row.read<String>('nominal_date');
+      final slot = oldRule.between(oldNominal, oldNominal).firstOrNull;
+      if (slot == null) {
+        return 'This series contains an exception on $oldNominal that does not match the recurrence pattern. Review the series in the editor.';
+      }
+      final newNominal = newRule.slotDateAtOrdinal(slot.ordinal);
+      if (newRule.endDate != null &&
+          newNominal.compareTo(newRule.endDate!) > 0) {
+        return 'Moving this series would drop a modified occurrence on $oldNominal because the new end date is earlier.';
+      }
+      if (mappedDates.containsValue(newNominal)) {
+        return 'Moving this series causes an occurrence collision on $newNominal. Review the series in the editor.';
+      }
+      mappedDates[oldNominal] = newNominal;
+    }
+
+    for (final row in alarms) {
+      final oldNominal = row.read<String>('nominal_date');
+      final slot = oldRule.between(oldNominal, oldNominal).firstOrNull;
+      if (slot == null) {
+        return 'This series contains an occurrence alarm on $oldNominal that does not match the recurrence pattern. Review the series in the editor.';
+      }
+      final newNominal = newRule.slotDateAtOrdinal(slot.ordinal);
+      if (newRule.endDate != null &&
+          newNominal.compareTo(newRule.endDate!) > 0) {
+        return 'Moving this series would drop an alarm on $oldNominal because the new end date is earlier.';
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> moveCalendarSeries(
+    FixedEvent master,
+    EventDraft draft,
+  ) => db.transaction(() async {
+    final problem = await calendarSeriesMoveProblem(master, draft);
+    if (problem != null) throw StateError(problem);
+
+    final oldRepeat = master.repeat;
+    final newRepeat = draft.repeat;
+
+    final overrides = await db
+        .customSelect(
+          'SELECT nominal_date, cancelled, payload_json, created_at FROM event_occurrence_changes WHERE event_id=?',
+          variables: [Variable.withString(master.id)],
+        )
+        .get();
+    final alarms = await db
+        .customSelect(
+          "SELECT id, nominal_date, config_json, created_at, deleted_at, archived_at FROM alarm_rules WHERE event_id=? AND nominal_date<>''",
+          variables: [Variable.withString(master.id)],
+        )
+        .get();
+
+    final hasExceptions = overrides.isNotEmpty || alarms.isNotEmpty;
+    final List<_MigratedException> migratedExceptions = [];
+    final List<_MigratedAlarm> migratedAlarms = [];
+
+    if (hasExceptions && oldRepeat != null && newRepeat != null) {
+      final oldRule = RecurrenceRule(
+        kind: RecurrenceKind.values.byName(oldRepeat.kind.name),
+        startDate: localDate(master.startsAt.toLocal()),
+        interval: oldRepeat.interval,
+        weekdays: oldRepeat.weekdays,
+        endDate: oldRepeat.untilDate,
+      );
+      final newRule = RecurrenceRule(
+        kind: RecurrenceKind.values.byName(newRepeat.kind.name),
+        startDate: localDate(draft.startsAt.toLocal()),
+        interval: newRepeat.interval,
+        weekdays: newRepeat.weekdays,
+        endDate: newRepeat.untilDate,
+      );
+
+      final oldBaseStart = master.startsAt.toLocal();
+      final newBaseStart = draft.startsAt.toLocal();
+
+      for (final row in overrides) {
+        final oldNominal = row.read<String>('nominal_date');
+        final cancelled = row.read<int>('cancelled') == 1;
+        final payloadRaw = row.read<String?>('payload_json');
+        final createdAt = row.read<String>('created_at');
+
+        final slot = oldRule.between(oldNominal, oldNominal).first;
+        final newNominal = newRule.slotDateAtOrdinal(slot.ordinal);
+
+        String? newPayloadJson;
+        if (payloadRaw != null) {
+          final payload = jsonDecode(payloadRaw) as Map<String, dynamic>;
+          final oldNominalDay = DateTime.parse('$oldNominal 00:00:00');
+          final oldOccurrenceDefaultStart = DateTime(
+            oldNominalDay.year,
+            oldNominalDay.month,
+            oldNominalDay.day,
+            oldBaseStart.hour,
+            oldBaseStart.minute,
+            oldBaseStart.second,
+          );
+
+          final newNominalDay = DateTime.parse('$newNominal 00:00:00');
+          final newOccurrenceDefaultStart = DateTime(
+            newNominalDay.year,
+            newNominalDay.month,
+            newNominalDay.day,
+            newBaseStart.hour,
+            newBaseStart.minute,
+            newBaseStart.second,
+          );
+
+          if (payload.containsKey('startsAt') &&
+              payload.containsKey('endsAt')) {
+            final overrideStart = DateTime.parse(payload['startsAt'] as String)
+                .toLocal();
+            final overrideEnd = DateTime.parse(payload['endsAt'] as String)
+                .toLocal();
+            final offset = overrideStart.difference(oldOccurrenceDefaultStart);
+            final duration = overrideEnd.difference(overrideStart);
+
+            final newOverrideStart = newOccurrenceDefaultStart.add(offset);
+            final newOverrideEnd = newOverrideStart.add(duration);
+
+            payload['startsAt'] = newOverrideStart.toUtc().toIso8601String();
+            payload['endsAt'] = newOverrideEnd.toUtc().toIso8601String();
+          }
+          newPayloadJson = jsonEncode(payload);
+        }
+
+        migratedExceptions.add(
+          _MigratedException(
+            oldNominalDate: oldNominal,
+            newNominalDate: newNominal,
+            cancelled: cancelled,
+            payloadJson: newPayloadJson,
+            createdAt: createdAt,
+          ),
+        );
+      }
+
+      for (final row in alarms) {
+        final oldId = row.read<String>('id');
+        final oldNominal = row.read<String>('nominal_date');
+        final configRaw = row.read<String>('config_json');
+        final createdAt = row.read<String>('created_at');
+
+        final slot = oldRule.between(oldNominal, oldNominal).first;
+        final newNominal = newRule.slotDateAtOrdinal(slot.ordinal);
+
+        final newId = const Uuid().v5(
+          Namespace.url.value,
+          'todorbit:alarm:null:${master.id}:null:$newNominal',
+        );
+
+        final configMap = (jsonDecode(configRaw) as Map)
+            .cast<String, dynamic>();
+        final config = AlarmConfig.fromJson(configMap);
+        AlarmConfig updatedConfig = config;
+
+        if (config.mode == 'custom' && config.at != null) {
+          final oldNominalDay = DateTime.parse('$oldNominal 00:00:00');
+          final oldOccurrenceDefaultStart = DateTime(
+            oldNominalDay.year,
+            oldNominalDay.month,
+            oldNominalDay.day,
+            oldBaseStart.hour,
+            oldBaseStart.minute,
+            oldBaseStart.second,
+          );
+          final newNominalDay = DateTime.parse('$newNominal 00:00:00');
+          final newOccurrenceDefaultStart = DateTime(
+            newNominalDay.year,
+            newNominalDay.month,
+            newNominalDay.day,
+            newBaseStart.hour,
+            newBaseStart.minute,
+            newBaseStart.second,
+          );
+          final alarmOffset = config.at!.difference(oldOccurrenceDefaultStart);
+          final newAt = newOccurrenceDefaultStart.add(alarmOffset);
+          updatedConfig = AlarmConfig(
+            mode: config.mode,
+            at: newAt,
+            localMinute: config.localMinute,
+            minutesBefore: config.minutesBefore,
+            sound: config.sound,
+            vibrate: config.vibrate,
+            durationSeconds: config.durationSeconds,
+          );
+        }
+
+        migratedAlarms.add(
+          _MigratedAlarm(
+            oldId: oldId,
+            newId: newId,
+            oldNominalDate: oldNominal,
+            newNominalDate: newNominal,
+            configJson: jsonEncode(updatedConfig.toJson()),
+            createdAt: createdAt,
+            deletedAt: row.read<String?>('deleted_at'),
+            archivedAt: row.read<String?>('archived_at'),
+          ),
+        );
+      }
+    }
+
+    // Apply master update atomically with CAS
+    await updateEvent(master, draft, moveSeriesAnchor: true);
+
+    final now = DateTime.now().toUtc().toIso8601String();
+
+    if (migratedExceptions.isNotEmpty) {
+      await db.customStatement(
+        'DELETE FROM event_occurrence_changes WHERE event_id=?',
+        [master.id],
+      );
+      for (final exc in migratedExceptions) {
+        await db.customStatement(
+          '''INSERT INTO event_occurrence_changes
+              (event_id, nominal_date, cancelled, payload_json, created_at, updated_at)
+              VALUES(?,?,?,?,?,?)''',
+          [
+            master.id,
+            exc.newNominalDate,
+            exc.cancelled ? 1 : 0,
+            exc.payloadJson,
+            exc.createdAt,
+            now,
+          ],
+        );
+      }
+    }
+
+    if (migratedAlarms.isNotEmpty) {
+      await db.customStatement(
+        "DELETE FROM alarm_rules WHERE event_id=? AND nominal_date<>''",
+        [master.id],
+      );
+      for (final alarm in migratedAlarms) {
+        await db.customStatement(
+          '''INSERT INTO alarm_rules
+              (id, task_id, event_id, series_id, nominal_date, config_json, created_at, updated_at, deleted_at, archived_at)
+              VALUES(?,NULL,?,NULL,?,?,?,?,?,?)''',
+          [
+            alarm.newId,
+            master.id,
+            alarm.newNominalDate,
+            alarm.configJson,
+            alarm.createdAt,
+            now,
+            alarm.deletedAt,
+            alarm.archivedAt,
+          ],
+        );
+      }
+    }
+  });
+
   Future<bool> hasEventReminders() async {
     final row = await db.customSelect(
       '''SELECT 1 FROM fixed_events
@@ -283,8 +664,12 @@ extension EventRepository on LifeRepository {
             row,
     };
     final fromStart = DateTime.parse('$fromDate 00:00:00');
-    final throughEnd = DateTime.parse('$throughDate 00:00:00')
-        .add(const Duration(days: 1));
+    final throughDay = DateTime.parse('$throughDate 00:00:00');
+    final throughEnd = DateTime(
+      throughDay.year,
+      throughDay.month,
+      throughDay.day + 1,
+    );
     final result = <FixedEvent>[];
     for (final template in templates) {
       final repeat = template.repeat;
@@ -297,7 +682,18 @@ extension EventRepository on LifeRepository {
       }
       final originalStart = template.startsAt.toLocal();
       final originalEnd = template.endsAt.toLocal();
-      final spanDays = originalEnd.difference(originalStart).inDays + 1;
+      // Projection windows count civil dates, including 23/25-hour local days.
+      final spanDays =
+          DateTime.utc(originalEnd.year, originalEnd.month, originalEnd.day)
+              .difference(
+                DateTime.utc(
+                  originalStart.year,
+                  originalStart.month,
+                  originalStart.day,
+                ),
+              )
+              .inDays +
+          1;
       final rule = RecurrenceRule(
         kind: RecurrenceKind.values.byName(repeat.kind.name),
         startDate: localDate(originalStart),
@@ -485,7 +881,26 @@ extension EventRepository on LifeRepository {
       db.transaction(() async {
         final date = occurrence.nominalDate;
         if (date == null) throw ArgumentError('Choose a recurring occurrence');
-        _validateEvent(draft);
+        final occurrenceDraft = draft.repeat != null
+            ? EventDraft(
+                title: draft.title,
+                notes: draft.notes,
+                startsAt: draft.startsAt,
+                endsAt: draft.endsAt,
+                location: draft.location,
+                details: draft.details,
+                allDay: draft.allDay,
+                categoryId: draft.categoryId,
+                projectId: draft.projectId,
+                colorValue: draft.colorValue,
+                iconName: draft.iconName,
+                reminderMinutes: draft.reminderMinutes,
+                alarm: draft.alarm,
+                alarmReviewRevision: draft.alarmReviewRevision,
+                repeat: null,
+              )
+            : draft;
+        _validateEvent(occurrenceDraft);
         await _checkAssignment(draft.categoryId, draft.projectId);
         if (draft.alarm != null) {
           await saveAlarm(

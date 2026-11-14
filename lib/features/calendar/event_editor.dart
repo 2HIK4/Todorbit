@@ -523,7 +523,9 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                 initialAlarmRule != null
             ? initialAlarmRule!.updatedAt
             : 'new',
-        repeat: repeatKind == null
+        repeat: (widget.event?.nominalDate != null &&
+                    editScope == _EventEditScope.occurrence) ||
+                repeatKind == null
             ? null
             : EventRepeat(
                 kind: repeatKind!,

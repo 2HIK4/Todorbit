@@ -1,0 +1,108 @@
+{
+  "baseline": "9cfdd0c619abffd94f3dacef1a794cede12ba9d2",
+  "branch": "codex/independent-beta-review",
+  "recorded_at": "2026-11-14T20:35:28+03:00",
+  "encoding": "SHA-256 of exact working-tree bytes; combined: sorted path + NUL + sha256 + LF",
+  "combined_sha256": "5e86d6b2c495a15c8f1e1a3554473982a504ae6816cf7998d135c750542c3fa1",
+  "child_dependency_closure": [
+    "lib/domain/alarms.dart",
+    "lib/domain/models.dart",
+    "lib/domain/notifications.dart",
+    "lib/features/calendar/calendar_config.dart",
+    "lib/features/calendar/calendar_contracts.dart",
+    "lib/features/calendar/calendar_models.dart",
+    "lib/features/calendar/calendar_month_view.dart",
+    "lib/features/calendar/calendar_zoom_controller.dart",
+    "lib/features/shared/weekdays.dart"
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "930df95130c9a1e33c540c395a6d55a1e70c8b99c0efdf82da90d4a3a380aeba"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "a131d27794b12615c942ad179f8f5e7e2a65eae3eae61115acb019d483916cc2"
+    },
+    {
+      "path": "analysis_options.yaml",
+      "sha256": "dbdb095ba9629b1281dfb0a1c3ac0d37da578d48b26d02f75b3cb9b6b21142f4"
+    },
+    {
+      "path": "lib/domain/alarms.dart",
+      "sha256": "7172c625da192ef5f22069f7dca4edd9fdcb7e136f277e449f743b89c13b6704"
+    },
+    {
+      "path": "lib/domain/models.dart",
+      "sha256": "42c70c2d91e752a4b5ef7d6fced38edbb19b3c38ae67845e5a9956da6e377768"
+    },
+    {
+      "path": "lib/domain/notifications.dart",
+      "sha256": "55c13d7306e8bdce467007fc021fce570d3c002b7352820f0fabf49a8d6d0a17"
+    },
+    {
+      "path": "lib/features/calendar/calendar_config.dart",
+      "sha256": "8469c3c2302120a5ff0c32992299e274209b50bc373ef505bba901508b6dd55c"
+    },
+    {
+      "path": "lib/features/calendar/calendar_contracts.dart",
+      "sha256": "acf2073d908310eb35deda9ee84605cb6f5d4a52ef37f26a12413fc198e3fc1d"
+    },
+    {
+      "path": "lib/features/calendar/calendar_models.dart",
+      "sha256": "26c9dfdb057bf49c71530ea085886c7c609b71ac78b67479b824104b31a278df"
+    },
+    {
+      "path": "lib/features/calendar/calendar_month_view.dart",
+      "sha256": "6ea9836942ce0e7da77d065e96014606bcc4b6a86e3dd39defebddb70c030243"
+    },
+    {
+      "path": "lib/features/calendar/calendar_view.dart",
+      "sha256": "9e85557d5ce1babc7e8528353c1b3f2f9f5415b9f7c50d61c95c7c47aece677d"
+    },
+    {
+      "path": "lib/features/calendar/calendar_zoom_controller.dart",
+      "sha256": "4950bfa95a7812f482706a85dfbd2d64cf434e567894e0e76d74f442c1faf062"
+    },
+    {
+      "path": "lib/features/shared/weekdays.dart",
+      "sha256": "5467646222f11252b9586bc3afd4425632b881faba1c5d04655824cdaeb27d1a"
+    },
+    {
+      "path": "pubspec.lock",
+      "sha256": "d7f08f3cbe6018bda46a67719b60b4a09a55492dc4862ff4d4c08169d23b6194"
+    },
+    {
+      "path": "pubspec.yaml",
+      "sha256": "d3ea1a48ab2cbf6a6a75291f2f64e06da5bf3c7566907735da0266d0b4699dc0"
+    },
+    {
+      "path": "test/calendar_contracts_test.dart",
+      "sha256": "85629b1ca5b629ade1e7557e1bb8cbd0fe5a9f8096ab080247f09e6a8cc1cd05"
+    },
+    {
+      "path": "test/calendar_zoom_controller_test.dart",
+      "sha256": "9247e64f275f424fac00afa85b78624ac6bd47c71323ac094948aa1a27cc4db0"
+    },
+    {
+      "path": "test/round3_calendar_test.dart",
+      "sha256": "1122ff42a0a6a5a5dce4b4025a5d452f0da727c6bc93ae4016f28ad66561a11a"
+    },
+    {
+      "path": "tools/dev/features.json",
+      "sha256": "a1b5ae4406c0f86e9a6c34d84ae4b8ad15ab52e6505d96ccb495ad363d6a823b"
+    },
+    {
+      "path": "tools/dev/verify.ps1",
+      "sha256": "5abed9e1da467d6a7de39a86c71caa66e6fa34aa2340ca5dcbafa4620ee1207c"
+    },
+    {
+      "path": "tools/test_architecture_boundaries.py",
+      "sha256": "11c8657066a83d807d69f27e693089aafa5de2a68dc34fd3e769f80aeefe681a"
+    },
+    {
+      "path": "tools/test_ci_workflows.py",
+      "sha256": "e8fb25d6542389805aef9bf685a3dc27445b86aa02589d3e22cbd3a4facbd38d"
+    }
+  ]
+}

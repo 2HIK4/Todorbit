@@ -1,0 +1,161 @@
+name: Comprehensive Verification (On-Demand)
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_group:
+        description: 'Verification group to run'
+        required: true
+        type: choice
+        default: 'flutter-regression'
+        options:
+          - 'flutter-regression'
+          - 'calendar-recurrence'
+          - 'persistence-sync'
+          - 'all-host'
+          - 'windows-verification'
+          - 'android-verification'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: manual-verify-${{ github.ref }}-${{ inputs.test_group }}
+  cancel-in-progress: false
+
+jobs:
+  host-verification:
+    name: Host Verification (${{ inputs.test_group }})
+    if: inputs.test_group != 'windows-verification' && inputs.test_group != 'android-verification'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      TEST_GROUP: ${{ inputs.test_group }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Record checked-out source
+        run: |
+          mkdir -p .buildlog/verification
+          printf '## Comprehensive Verification: %s\n- Commit: `%s`\n- Ref: `%s`\n' "$TEST_GROUP" "$(git rev-parse HEAD)" "$GITHUB_REF" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.13'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+
+      - name: Resolve Flutter dependencies
+        run: flutter pub get --enforce-lockfile 2>&1 | tee .buildlog/verification/dependencies.log
+
+      - name: Execute selected verification group
+        run: |
+          log=".buildlog/verification/selected-group.log"
+          run_check() {
+            "$@" 2>&1 | tee -a "$log"
+          }
+          case "$TEST_GROUP" in
+            "flutter-regression")
+              echo "Running broader Flutter host test suite..."
+              run_check flutter test --no-pub --concurrency=1 test
+              ;;
+            "calendar-recurrence")
+              echo "Running calendar and recurrence regression suite..."
+              run_check flutter test --no-pub --concurrency=1 \
+                test/calendar_test.dart \
+                test/calendar_improvements_test.dart \
+                test/event_recurrence_test.dart \
+                test/calendar_interactions_regression_test.dart \
+                test/calendar_undo_redo_shortcuts_test.dart \
+                test/calendar_multi_day_resize_test.dart \
+                test/calendar_event_move_recurrence_test.dart \
+                test/calendar_final_review_test.dart \
+                test/calendar_independent_review_test.dart \
+                test/calendar_series_integrity_review_test.dart \
+                test/calendar_history_review_test.dart \
+                test/calendar_history_error_review_test.dart
+              ;;
+            "persistence-sync")
+              echo "Running persistence, sync, backup, and concurrency suite..."
+              run_check flutter test --no-pub --concurrency=1 \
+                test/database_initialization_test.dart \
+                test/migration_gate_test.dart \
+                test/repository_test.dart \
+                test/task_revision_concurrency_test.dart \
+                test/sync_journal_test.dart \
+                test/sync_apply_repository_test.dart \
+                test/sync_exchange_schema_test.dart \
+                test/sync_exchange_repository_test.dart \
+                test/cloud/sync_batch_codec_test.dart \
+                test/cloud/google_drive_changes_test.dart \
+                test/backup_service_test.dart \
+                test/cross_platform_backup_test.dart \
+                test/calendar_series_integrity_review_test.dart
+              ;;
+            "all-host")
+              echo "Running all host analysis, Python checks, and complete test suite..."
+              run_check flutter analyze --no-pub --no-fatal-infos
+              run_check python tools/dev/check-docs.py
+              run_check python -m unittest discover -s tools -p "test_*.py"
+              run_check flutter test --no-pub --concurrency=1 test
+              ;;
+            *)
+              echo "Unknown group: $TEST_GROUP"
+              exit 1
+              ;;
+          esac
+
+      - name: Upload diagnostic logs on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: verification-failure-${{ inputs.test_group }}-${{ github.sha }}
+          path: .buildlog/verification/*.log
+          if-no-files-found: warn
+          retention-days: 7
+
+  windows-verification:
+    name: Windows Full Verification
+    if: inputs.test_group == 'windows-verification'
+    uses: ./.github/workflows/windows-ci.yml
+
+  android-verification:
+    name: Android Full Verification
+    if: inputs.test_group == 'android-verification'
+    uses: ./.github/workflows/android-ci.yml
+
+  verification-result:
+    name: Selected verification result
+    if: always()
+    needs: [host-verification, windows-verification, android-verification]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      TEST_GROUP: ${{ inputs.test_group }}
+      HOST_RESULT: ${{ needs.host-verification.result }}
+      WINDOWS_RESULT: ${{ needs.windows-verification.result }}
+      ANDROID_RESULT: ${{ needs.android-verification.result }}
+    steps:
+      - name: Report selected group outcome
+        shell: bash
+        run: |
+          case "$TEST_GROUP" in
+            windows-verification) result="$WINDOWS_RESULT" ;;
+            android-verification) result="$ANDROID_RESULT" ;;
+            flutter-regression|calendar-recurrence|persistence-sync|all-host) result="$HOST_RESULT" ;;
+            *) result="invalid-group" ;;
+          esac
+          printf '## Selected verification result\n- Group: `%s`\n- Commit: `%s`\n- Ref: `%s`\n- Result: **%s**\n' "$TEST_GROUP" "$GITHUB_SHA" "$GITHUB_REF" "$result" >> "$GITHUB_STEP_SUMMARY"
+          test "$result" = success

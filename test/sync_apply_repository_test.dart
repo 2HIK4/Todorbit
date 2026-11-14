@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart' as crypto;
+import 'package:drift/drift.dart' show Variable;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_manager/data/app_database.dart';
@@ -131,6 +132,91 @@ void main() {
     await left.close();
     await right.close();
     await root.delete(recursive: true);
+  });
+
+  test('calendar series migration exchanges overlapping exception and alarm keys atomically', () async {
+    final e = await sender.addEvent(
+      EventDraft(
+        title: 'Synthetic series',
+        startsAt: DateTime(2026, 11, 16, 10),
+        endsAt: DateTime(2026, 11, 16, 11),
+        repeat: const EventRepeat(kind: EventRepeatKind.weekly),
+      ),
+    );
+    final occurrences = await sender.eventOccurrences(
+      '2026-11-23',
+      '2026-11-30',
+    );
+    await sender.setEventOccurrenceCancelled(occurrences.first, true);
+    await sender.updateEventOccurrence(
+      occurrences.last,
+      EventDraft(
+        title: 'Custom',
+        startsAt: DateTime(2026, 11, 30, 14),
+        endsAt: DateTime(2026, 11, 30, 16),
+      ),
+    );
+    for (final nominal in ['2026-11-23', '2026-11-30']) {
+      await sender.saveAlarm(
+        const AlarmConfig(mode: 'relative', minutesBefore: 15),
+        eventId: e.id,
+        nominalDate: nominal,
+      );
+    }
+    await exchange();
+    SyncApplyResult result;
+    do {
+      result = await apply();
+    } while (result.state == SyncApplyState.applied);
+    expect(result.state, SyncApplyState.idle, reason: result.reason);
+    final before = await left
+        .customSelect('SELECT MAX(sequence) AS last FROM sync_journal')
+        .getSingle();
+    await sender.moveCalendarSeries(
+      e,
+      EventDraft(
+        title: e.title,
+        startsAt: DateTime(2026, 11, 23, 10),
+        endsAt: DateTime(2026, 11, 23, 11),
+        repeat: e.repeat,
+      ),
+    );
+    final mutations = await left
+        .customSelect(
+          'SELECT mutation_group_id FROM sync_journal WHERE sequence>?',
+          variables: [Variable.withInt(before.read<int>('last'))],
+        )
+        .get();
+    expect(mutations.length, 9);
+    expect(
+      mutations.map((r) => r.read<String>('mutation_group_id')).toSet().length,
+      1,
+    );
+    await exchange();
+    result = await apply();
+    expect(result.state, SyncApplyState.applied, reason: result.reason);
+    for (final table in [
+      'fixed_events',
+      'event_occurrence_changes',
+      'alarm_rules',
+    ]) {
+      final local =
+          (await left.customSelect('SELECT * FROM $table ORDER BY 1,2').get())
+              .map((r) => r.data)
+              .toList();
+      final remoteRows =
+          (await right.customSelect('SELECT * FROM $table ORDER BY 1,2').get())
+              .map((r) => r.data)
+              .toList();
+      // This fixture intentionally gives the receiver a 2050 CAS clock.
+      // Remote materialization advances local revision tokens independently.
+      for (final row in [...local, ...remoteRows]) {
+        row.remove('updated_at');
+      }
+      expect(remoteRows, local, reason: table);
+    }
+    expect((await apply()).state, SyncApplyState.idle);
+    expect(await exchange(), isEmpty);
   });
 
   for (final standard in [true, false]) {

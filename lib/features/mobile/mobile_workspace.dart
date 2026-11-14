@@ -7,6 +7,7 @@ import '../settings/sidebar_order_dialog.dart';
 import '../../domain/task_list_projection.dart';
 import '../shared/task_list_group.dart';
 import '../shared/scroll_edge_fade.dart';
+import '../shared/status_snackbar.dart';
 
 import 'dart:async';
 import 'dart:io';
@@ -136,9 +137,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
     super.dispose();
   }
 
-  void message(String value) =>
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(value)));
+  void message(String value) => showTransientStatus(context, value);
 
   Future<void> run(Future<void> Function() action) async {
     try {
@@ -816,7 +815,8 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
         .firstOrNull
         ?.name;
     final today = localDate(DateTime.now());
-    final isOverdue = t.isOpen &&
+    final isOverdue =
+        t.isOpen &&
         t.deadlineDate != null &&
         t.deadlineDate!.compareTo(today) < 0;
 
@@ -835,24 +835,27 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
       addPart(TextSpan(text: t.status.name));
     }
     if (t.scheduledDate != null) {
-      addPart(TextSpan(
-        text:
-            'Planned ${MaterialLocalizations.of(context).formatMediumDate(DateTime.parse(t.scheduledDate!))}',
-      ));
+      addPart(
+        TextSpan(
+          text:
+              'Planned ${MaterialLocalizations.of(context).formatMediumDate(DateTime.parse(t.scheduledDate!))}',
+        ),
+      );
     }
     if (t.deadlineDate != null) {
-      final formatted = MaterialLocalizations.of(context).formatMediumDate(
-        DateTime.parse(t.deadlineDate!),
+      final formatted = MaterialLocalizations.of(context)
+          .formatMediumDate(DateTime.parse(t.deadlineDate!));
+      addPart(
+        TextSpan(
+          text: isOverdue ? 'Overdue · Due $formatted' : 'Due $formatted',
+          style: isOverdue
+              ? TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                  fontWeight: FontWeight.w600,
+                )
+              : null,
+        ),
       );
-      addPart(TextSpan(
-        text: isOverdue ? 'Overdue · Due $formatted' : 'Due $formatted',
-        style: isOverdue
-            ? TextStyle(
-                color: Theme.of(context).colorScheme.error,
-                fontWeight: FontWeight.w600,
-              )
-            : null,
-      ));
     }
     if (category != null) addPart(TextSpan(text: category));
     if (project != null) addPart(TextSpan(text: project));
@@ -877,8 +880,8 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
             : Text.rich(
                 TextSpan(
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                   children: subtitleParts,
                 ),
               ),

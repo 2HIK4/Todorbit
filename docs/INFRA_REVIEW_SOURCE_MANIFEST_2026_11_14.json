@@ -1,0 +1,124 @@
+{
+  "format": 1,
+  "purpose": "Reviewed INFRA-01 local Git checkpoint; cloud execution remains pending.",
+  "branch": "codex/independent-beta-review",
+  "parentCommit": "8be2f048757348f7c2f522f048e23801e5dc749f",
+  "reviewReceipt": "docs/INFRA_CODEX_REVIEW_2026_11_14.md",
+  "approvedSourceFingerprint": "D7C522EE5EFD79B6DFC1D58AE1D71B41805C5FCDD49AEAD5C3DC7445E6B127F1",
+  "approvedManifestText": "{\r\n  \".github/workflows/android-16k-runtime.yml\": \"07B8C1D0051D8B9765E2FD31E3C3D4118EFA3402975D7223CD50108448A9B22B\",\r\n  \".github/workflows/android-ci.yml\": \"4BBE97352BC6E45DD3202B6625F8BF92A849176477D5A4DD7A6128BF1EBC6A54\",\r\n  \".github/workflows/android-release.yml\": \"7BA44AD28DDC1BFB7791F1EC4290814A1A694E73873ACAE43CF5D7A7AF1AE49A\",\r\n  \".github/workflows/ci.yml\": \"5CAC64E300A74496D8689A6AA1F4F5109888E688F38F641FFC60751420E167C7\",\r\n  \".github/workflows/manual-verification.yml\": \"6F4AAAE227FA7DD1A120A455094F75AB8FB3DA914D2C47B519F9E0C946680A7E\",\r\n  \".github/workflows/pages.yml\": \"6D993FB1AA0FD161969D61F0D778B67EE53C655FFEAF47BD7D014313ACA0A665\",\r\n  \".github/workflows/windows-ci.yml\": \"28EBA3AFB8092354C66FEC5A21E5F920423BDE36246B36648A4505881DD3A428\",\r\n  \"AGENTS.md\": \"A131D27794B12615C942AD179F8F5E7E2A65EAE3EAE61115ACB019D483916CC2\",\r\n  \"docs/CODEX_WORKFLOW.md\": \"6CCE08C488151E6BD46385E6061259608EDEA98477EB5F29B4C92CEC3A774A9A\",\r\n  \"docs/TESTING.md\": \"A0AF7C65ECDC4454C8D84CA0578F6598DB3C5D03E422DD7F833F9DAC3D6B797A\",\r\n  \"docs/DEFERRED_VERIFICATION.md\": \"C3D0D7775F6DA8C588D26DD499276FEDAD5D225B1C03F357DDF0A569CACDA82A\",\r\n  \"tools/test_ci_workflows.py\": \"E8FB25D6542389805AEF9BF685A3DC27445B86AA02589D3E22CBD3A4FACBD38D\",\r\n  \"tools/dev/check-docs.py\": \"009BED3DAAA12B67D9EBD087643D4542CC1CC991464D6A1D719C8E7B433F18ED\",\r\n  \"tools/test_dev_verify.py\": \"F84B208CF274AEE540DF634F9FE1ED49B65A5736CBCA61A9430B9CE6CE92DBE6\",\r\n  \"tools/dev/features.json\": \"554A9D8F52F5CF4528AD45427D943CA1BFFF237A0EB8C45798DBEECAB5AC5847\",\r\n  \"pubspec.yaml\": \"D3EA1A48AB2CBF6A6A75291F2F64E06DA5BF3C7566907735DA0266D0B4699DC0\",\r\n  \"pubspec.lock\": \"D7F08F3CBE6018BDA46A67719B60B4A09A55492DC4862FF4D4C08169D23B6194\",\r\n  \"analysis_options.yaml\": \"DBDB095BA9629B1281DFB0A1C3AC0D37DA578D48B26D02F75B3CB9B6B21142F4\"\r\n}\r\n",
+  "verification": "UTF-8 encode approvedManifestText to reproduce the exact original manifest SHA-256. reviewedSha256 hashes reviewed worktree bytes; gitBlob is canonical Git-filtered content across checkout line-ending policies.",
+  "sourcesAndDependencies": [
+    {
+      "path": ".github/workflows/android-16k-runtime.yml",
+      "reviewedSha256": "07B8C1D0051D8B9765E2FD31E3C3D4118EFA3402975D7223CD50108448A9B22B",
+      "gitBlob": "9c3e7c11c624e9bd7527fa8b168597c5a738595e"
+    },
+    {
+      "path": ".github/workflows/android-ci.yml",
+      "reviewedSha256": "4BBE97352BC6E45DD3202B6625F8BF92A849176477D5A4DD7A6128BF1EBC6A54",
+      "gitBlob": "a16cc45bb20fa12f5deb00db6a284ef0b4236a3d"
+    },
+    {
+      "path": ".github/workflows/android-release.yml",
+      "reviewedSha256": "7BA44AD28DDC1BFB7791F1EC4290814A1A694E73873ACAE43CF5D7A7AF1AE49A",
+      "gitBlob": "04faa24be2157122bb600f7ce963aaaca713ec44"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "reviewedSha256": "5CAC64E300A74496D8689A6AA1F4F5109888E688F38F641FFC60751420E167C7",
+      "gitBlob": "0317ee78a0c2f9cf8989de9f6e9d3ba07b29d3e8"
+    },
+    {
+      "path": ".github/workflows/manual-verification.yml",
+      "reviewedSha256": "6F4AAAE227FA7DD1A120A455094F75AB8FB3DA914D2C47B519F9E0C946680A7E",
+      "gitBlob": "3d0f682bf69e1ad3a1e363ec99efb27da48a19d6"
+    },
+    {
+      "path": ".github/workflows/pages.yml",
+      "reviewedSha256": "6D993FB1AA0FD161969D61F0D778B67EE53C655FFEAF47BD7D014313ACA0A665",
+      "gitBlob": "6030a72cb522105882c674c5b947b30374a2df64"
+    },
+    {
+      "path": ".github/workflows/windows-ci.yml",
+      "reviewedSha256": "28EBA3AFB8092354C66FEC5A21E5F920423BDE36246B36648A4505881DD3A428",
+      "gitBlob": "60cb6cff2ad95390b0b731d0d49e51435e428f48"
+    },
+    {
+      "path": "AGENTS.md",
+      "reviewedSha256": "A131D27794B12615C942AD179F8F5E7E2A65EAE3EAE61115ACB019D483916CC2",
+      "gitBlob": "250064dc6bbad92669dea106108e019907edda97"
+    },
+    {
+      "path": "docs/CODEX_WORKFLOW.md",
+      "reviewedSha256": "6CCE08C488151E6BD46385E6061259608EDEA98477EB5F29B4C92CEC3A774A9A",
+      "gitBlob": "c7dc8bcaab33c72f614e5847d8eba01e08b19535"
+    },
+    {
+      "path": "docs/TESTING.md",
+      "reviewedSha256": "A0AF7C65ECDC4454C8D84CA0578F6598DB3C5D03E422DD7F833F9DAC3D6B797A",
+      "gitBlob": "09625ae4b1b3ea4a3676181d30e958a37424eaea"
+    },
+    {
+      "path": "docs/DEFERRED_VERIFICATION.md",
+      "reviewedSha256": "C3D0D7775F6DA8C588D26DD499276FEDAD5D225B1C03F357DDF0A569CACDA82A",
+      "gitBlob": "8f0272a4679fc9c1da7c4889634a42687bdba9cc"
+    },
+    {
+      "path": "tools/test_ci_workflows.py",
+      "reviewedSha256": "E8FB25D6542389805AEF9BF685A3DC27445B86AA02589D3E22CBD3A4FACBD38D",
+      "gitBlob": "980609e1985e82cb924b47b337e8d802c36aa737"
+    },
+    {
+      "path": "tools/dev/check-docs.py",
+      "reviewedSha256": "009BED3DAAA12B67D9EBD087643D4542CC1CC991464D6A1D719C8E7B433F18ED",
+      "gitBlob": "0d744d62334e67c75c1ad19a600cc244791f4335"
+    },
+    {
+      "path": "tools/test_dev_verify.py",
+      "reviewedSha256": "F84B208CF274AEE540DF634F9FE1ED49B65A5736CBCA61A9430B9CE6CE92DBE6",
+      "gitBlob": "3de37714c04f1403b55920eae3af8e2de7a5ec12"
+    },
+    {
+      "path": "tools/dev/features.json",
+      "reviewedSha256": "554A9D8F52F5CF4528AD45427D943CA1BFFF237A0EB8C45798DBEECAB5AC5847",
+      "gitBlob": "32ac1588bb943961dac78676910ee92df976ae07"
+    },
+    {
+      "path": "pubspec.yaml",
+      "reviewedSha256": "D3EA1A48AB2CBF6A6A75291F2F64E06DA5BF3C7566907735DA0266D0B4699DC0",
+      "gitBlob": "cd7f964bf0fbc4e9c0765f63d6d7b10c262bae7c"
+    },
+    {
+      "path": "pubspec.lock",
+      "reviewedSha256": "D7F08F3CBE6018BDA46A67719B60B4A09A55492DC4862FF4D4C08169D23B6194",
+      "gitBlob": "088ed8d633901b7551845e331248313e71f41679"
+    },
+    {
+      "path": "analysis_options.yaml",
+      "reviewedSha256": "DBDB095BA9629B1281DFB0A1C3AC0D37DA578D48B26D02F75B3CB9B6B21142F4",
+      "gitBlob": "b184301c4d403ce431eb7a76613f9c30be8fa309"
+    }
+  ],
+  "checkpointPaths": [
+    ".github/workflows/android-ci.yml",
+    ".github/workflows/ci.yml",
+    ".github/workflows/manual-verification.yml",
+    ".github/workflows/windows-ci.yml",
+    "AGENTS.md",
+    "docs/AI_REVIEW_HISTORY.md",
+    "docs/AI_REVIEW_QUEUE.md",
+    "docs/CODEX_WORKFLOW.md",
+    "docs/DEFERRED_VERIFICATION.md",
+    "docs/INFRA_CODEX_REVIEW_2026_11_14.md",
+    "docs/INFRA_REVIEW_SOURCE_MANIFEST_2026_11_14.json",
+    "docs/PROGRESS.md",
+    "docs/TESTING.md",
+    "docs/TEST_RUN_LEDGER.md",
+    "tools/test_ci_workflows.py"
+  ],
+  "excludedUnrelatedPaths": [
+    "docs/STORAGE_CLEANUP_2026_11_04.md",
+    "docs/STORAGE_MAINTENANCE.md"
+  ],
+  "acceptance": "Local implementation approved after repairs. DEF-CI-CLOUD and all other deferred acceptance remain pending; no GitHub activation, push, merge, PR, tag or publication authorized."
+}
