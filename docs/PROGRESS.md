@@ -1,5 +1,42 @@
 # Progress
 
+## Reviewed INFRA-01 local Git checkpoint (2026-11-14)
+
+This commit preserves the approved INFRA-01 state on
+`codex/independent-beta-review` from parent `8be2f04`. All 18 reviewed entries
+match source fingerprint `D7C522EE…6B127F1`; all 52 calendar product/dependency
+identities remain unchanged. [Portable manifest](INFRA_REVIEW_SOURCE_MANIFEST_2026_11_14.json)
+preserves the exact review manifest and lists all 15 included paths/canonical
+Git blobs. Two unrelated storage documents remain untracked and excluded.
+Review history/CAL-01 restrictions and every deferred acceptance item remain.
+Existing verification reused; no test/build/version/tag/push/publication.
+Ready for future separately authorized GitHub activation; DEF-CI-CLOUD remains
+pending. See [checkpoint receipt](INFRA_CODEX_REVIEW_2026_11_14.md).
+
+## INFRA-01 independent CI/staged-verification review (2026-11-14)
+
+Approved locally after repairs; real GitHub execution and required-check
+configuration remain pending in DEF-CI-CLOUD. Fixed PowerShell failure masking,
+bounded diagnostic logs/selected-group outcomes and affected-critical test scope;
+verified/pinned direct action SHAs and locked dependencies. Five shell-contract
+tests and actionlint across seven workflows pass; initial failures retained.
+All release/native/Android/Pages capabilities preserved; no signing inheritance.
+Six original backlog items retained, with separate physical Flutter input/CI
+acceptance. Source manifest D7C522EE5EFD79B6DFC1D58AE1D71B41805C5FCDD49AEAD5C3DC7445E6B127F1.
+INFRA-01 archived before queue removal; all 52 reviewed product/test/dependency
+hashes unchanged, CAL-01 restrictions preserved. No commit/push/dispatch/build/
+app-test/version/publication. Next: authorized infrastructure commit/push/PR,
+owner check-rule migration, default-branch dispatch registration and six-group
+exact-ref cloud acceptance. See [receipt](INFRA_CODEX_REVIEW_2026_11_14.md).
+
+## INFRA-01: Efficient Staged Testing & GitHub Actions CI Infrastructure (2026-11-14)
+
+Established the 4-level verification hierarchy (Level 1 Fast, Level 2 Critical, Level 3 Deferred Regression, Level 4 Release Acceptance).
+Implemented lightweight automatic CI (`.github/workflows/ci.yml`) on `ubuntu-latest` with pinned Flutter 3.47.7 and fast critical test gates; implemented on-demand comprehensive verification (`.github/workflows/manual-verification.yml`) via `workflow_dispatch` with selectable groups; scoped `windows-ci.yml` triggers to eliminate wasteful 60-minute Windows Release compilation on every commit.
+Created permanent deferred verification backlog in [Deferred verification](DEFERRED_VERIFICATION.md) tracking Level 3 regression and Level 4 release acceptance with clear status lifecycle and targeted invalidation rules.
+Updated agent guidelines in [AGENTS.md](../AGENTS.md), [Codex workflow](CODEX_WORKFLOW.md), and [Testing](TESTING.md) with explicit Gemini and Codex responsibilities, resource budgeting on 16GB RAM, and module test matrix.
+Validated all 7 workflow YAML files with official Dart parser (0 errors); passed docs route validation (0 errors); passed 30 tool unit tests (19.7s); passed 42 critical Level 2 tests (2m 38s); patch hygiene clean (`git diff --check`: 0 issues). Review entry recorded in [AI Review Queue](AI_REVIEW_QUEUE.md) under `PENDING_CODEX_REVIEW`.
+
 ## Safe reviewed-source Git checkpoint (2026-11-14)
 
 This commit checkpoints UX-01, CAL-01, CAL-02, CAL-03, CAL-04 and UI-01 on

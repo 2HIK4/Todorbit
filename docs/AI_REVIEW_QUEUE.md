@@ -8,3 +8,7 @@ acceptance are recorded in [AI Review History](AI_REVIEW_HISTORY.md) and the
 
 UX-01, CAL-02, CAL-03, CAL-04 and UI-01 retain their earlier approval records.
 Code-review completion does not authorize publication or replace release gates.
+
+INFRA-01 is independently approved after repairs and archived in
+[review history](AI_REVIEW_HISTORY.md). [Cloud execution and deferred acceptance](DEFERRED_VERIFICATION.md)
+remain pending; code-review completion is distinct from them.

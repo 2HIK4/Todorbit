@@ -386,3 +386,83 @@ An exact 1:1 ordinal-bijection mapping policy was implemented:
 - Live Google Drive synchronization exchange remains deferred.
 
 </details>
+
+
+## INFRA-01 independent review — 2026-11-14
+
+**Approved after repairs (local implementation); cloud execution acceptance pending.**
+Preserved the six calendar/UI approvals, including CAL-01 limitations. Fixed
+Windows first-suite failure masking, bounded diagnostic capture, manual selected-
+result reporting and critical-check scope guidance. Verified upstream action
+commits and pinned direct CI/manual/Windows actions; kept signing/release gates.
+Preserved all six deferred IDs and added separate Flutter physical input and CI
+cloud acceptance. Five focused shell-contract tests and all seven actionlint
+workflow checks pass; no product/build/full-suite rerun or GitHub execution.
+See [independent receipt](INFRA_CODEX_REVIEW_2026_11_14.md) for exact source,
+failures, rerun/reuse reasons, limitations and owner activation steps. INFRA-01
+archived before queue removal; no commit/push/publication performed.
+
+<details>
+<summary>Gemini's submitted INFRA-01 record (historical reported evidence)</summary>
+
+## INFRA-01: Efficient Staged Testing & GitHub Actions CI Infrastructure
+
+- **Status**: `PENDING_CODEX_REVIEW`
+- **Date**: 2026-11-14
+- **Branch**: `codex/independent-beta-review`
+- **Base Checkpoint**: `8be2f048757348f7c2f522f048e23801e5dc749f`
+- **Objective**: Establish four verification levels (Level 1 Fast, Level 2 Critical, Level 3 Deferred Regression, Level 4 Release Acceptance), implement lightweight automatic CI and on-demand comprehensive verification in GitHub Actions, create the permanent deferred verification backlog (`docs/DEFERRED_VERIFICATION.md`), and update agent responsibilities.
+
+### Changed Files
+- **Created**: `.github/workflows/ci.yml` (Lightweight automatic CI on `ubuntu-latest` running fast static analysis, docs validation, developer tool tests, and portable critical Level 1/2 tests).
+- **Created**: `.github/workflows/manual-verification.yml` (On-demand comprehensive verification via `workflow_dispatch` with selectable groups: `flutter-regression`, `calendar-recurrence`, `persistence-sync`, `all-host`, `windows-verification`, `android-verification`).
+- **Modified**: `.github/workflows/windows-ci.yml` (Removed unconditional `push`/`pull_request` triggers that executed 60-minute Windows Release compilation and Inno Setup builds on every commit; preserved `workflow_call` for release workflows and added `workflow_dispatch`).
+- **Created**: `docs/DEFERRED_VERIFICATION.md` (Permanent backlog tracking unexecuted Level 3 Deferred Regression and Level 4 Release Acceptance checks, with explicit status lifecycle, invalidation rules, and initial specifications).
+- **Modified**: `AGENTS.md` (Documented 4 verification levels, explicit Gemini responsibilities, Codex review responsibilities, and separation of review queue from verification backlog).
+- **Modified**: `docs/CODEX_WORKFLOW.md` (Added detailed staged verification hierarchy, AI responsibilities, and 16GB host resource efficiency guidelines).
+- **Modified**: `docs/TESTING.md` (Updated verification levels table, added module test matrix, documented GitHub Actions workflows and triggers).
+- **Modified**: `docs/AI_REVIEW_QUEUE.md` (Recorded `INFRA-01` review entry).
+- **Modified**: `docs/TEST_RUN_LEDGER.md` (Recorded executed verification commands and evidence).
+
+### Workflow Design Decisions
+1. **Lightweight Automatic CI (`ci.yml`)**:
+   - Replaced expensive Windows Release builds on every commit with an `ubuntu-latest` runner that provisions in seconds and consumes 1x GitHub billable minutes.
+   - Pinned Flutter SDK to project standard `3.47.7` (`stable`), matching `pubspec.yaml` and existing release workflows.
+   - Enabled concurrency control (`cancel-in-progress: true`) to abort superseded PR commits immediately.
+   - Restricts automatic tests to fast cross-platform unit/widget checks, documentation link checks, and static analysis.
+2. **On-Demand Comprehensive Verification (`manual-verification.yml`)**:
+   - Provides selectable verification groups via `workflow_dispatch`.
+   - Directly reuses existing `windows-ci.yml` and `android-ci.yml` via `workflow_call` (`uses:`) to avoid duplicating complex native build scripts.
+   - Automatically writes markdown execution summaries to `$GITHUB_STEP_SUMMARY` recording exact Git SHA, branch, and status.
+   - Uploads diagnostic logs on failure with a modest 7-day retention period.
+3. **Trigger Scoping for Windows CI (`windows-ci.yml`)**:
+   - Retained `workflow_call` so signed candidate workflows (`android-release.yml`) continue executing without modification.
+   - Added `workflow_dispatch` for direct on-demand full Windows release builds.
+   - Eliminated the previous behavior of compiling the full C++ runner and Inno Setup installer on every commit/PR.
+
+### Test Classification Choices
+- **Level 1 (Fast)**: Immediate feedback during coding; syntax, contracts, formatting, and unit behavior.
+- **Level 2 (Critical)**: Inviolable data-safety, persistence, CAS tokens, schema migrations, sync journals, and recurrence logic. Run immediately whenever affected subsystem changes; **never deferred**.
+- **Level 3 (Deferred Regression)**: Broader host test suites, cross-platform regression, multi-module integration, helper tests, and release toolchain tests. Batched and tracked in `docs/DEFERRED_VERIFICATION.md`.
+- **Level 4 (Release Acceptance)**: Packaging, installer upgrades in clean sandbox, physical native hardware checks, Android 16 KiB runtime, and real Google OAuth. Tracked in `docs/DEFERRED_VERIFICATION.md`; mandatory before release.
+
+### Security Decisions
+- Enforced least-privilege permissions: `permissions: contents: read` across all test workflows.
+- Zero secrets used in pull request or manual host test workflows.
+- No `pull_request_target` used, protecting against malicious PR execution from forks.
+- Pinned all actions to official, audited versions (`actions/checkout@v4`, `actions/setup-python@v5`, `subosito/flutter-action@v2`, `actions/upload-artifact@v4`).
+- Maintained signing secrets isolation strictly in `android-release.yml`.
+
+### Validation Performed
+- Official Dart YAML parser validated all 7 workflow files in `.github/workflows/` (0 errors).
+- `python tools/dev/check-docs.py` validated all developer documentation links, mapped architecture paths, and feature catalog items (0 errors).
+- `python -m unittest discover -s tools -p "test_*.py"` executed 30 unit tests (30 passed in 19.7s).
+- Representative Level 2 critical tests executed: `database_initialization_test.dart`, `migration_gate_test.dart`, `task_revision_concurrency_test.dart`, `event_recurrence_test.dart`, `calendar_card_contrast_test.dart` (42 passed in 2m 38s).
+- `git diff --check` confirmed clean patch hygiene with 0 whitespace issues.
+
+### Potential Risks & Limitations
+- Workflows cannot run on GitHub Actions until pushed to the remote repository. Remote runner timing and network caching remain unmeasured locally.
+- In GitHub Actions, `workflow_dispatch` workflows only become visible in the Actions tab once merged into the default branch.
+- No application code, database schema, or version numbers were changed. No release was published.
+
+</details>

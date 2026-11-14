@@ -1,0 +1,101 @@
+name: Lightweight CI
+
+on:
+  # PR branch filters inspect the base, not the contribution branch.
+  pull_request:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast-checks:
+    name: Fast Cross-Platform Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Record checked-out source
+        run: |
+          mkdir -p .buildlog/ci
+          printf '## Lightweight CI\n- Commit: `%s`\n- Ref: `%s`\n- Event: `%s`\n' "$(git rev-parse HEAD)" "$GITHUB_REF" "$GITHUB_EVENT_NAME" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.13'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+
+      - name: Resolve Flutter dependencies
+        run: flutter pub get --enforce-lockfile 2>&1 | tee .buildlog/ci/dependencies.log
+
+      - name: Static analysis (Level 1)
+        run: |
+          flutter analyze --no-pub --no-fatal-infos \
+            lib \
+            test/database_initialization_test.dart \
+            test/migration_gate_test.dart \
+            test/repository_test.dart \
+            test/task_revision_concurrency_test.dart \
+            test/event_recurrence_test.dart \
+            test/calendar_event_move_recurrence_test.dart \
+            test/cloud/sync_batch_codec_test.dart \
+            test/cross_platform_backup_test.dart \
+            test/sync_journal_test.dart \
+            test/calendar_series_integrity_review_test.dart \
+            test/notification_auto_dismiss_test.dart \
+            test/calendar_card_contrast_test.dart 2>&1 | tee .buildlog/ci/analysis.log
+
+      - name: Validate documentation links and route catalog
+        run: |
+          python tools/dev/check-docs.py 2>&1 | tee .buildlog/ci/docs.log
+          python tools/dev/check-docs.py docs/DEFERRED_VERIFICATION.md 2>&1 | tee -a .buildlog/ci/docs.log
+
+      - name: Validate developer verification helper
+        run: python -m unittest discover -s tools -p test_dev_verify.py 2>&1 | tee .buildlog/ci/developer-tools.log
+
+      - name: Validate workflow routing and failure contracts
+        run: python -m unittest discover -s tools -p test_ci_workflows.py 2>&1 | tee .buildlog/ci/workflow-contracts.log
+
+      - name: Run fast critical regression tests (Level 1 & Critical Level 2)
+        run: |
+          flutter test --no-pub --concurrency=1 \
+            test/database_initialization_test.dart \
+            test/migration_gate_test.dart \
+            test/repository_test.dart \
+            test/task_revision_concurrency_test.dart \
+            test/event_recurrence_test.dart \
+            test/calendar_event_move_recurrence_test.dart \
+            test/cloud/sync_batch_codec_test.dart \
+            test/cross_platform_backup_test.dart \
+            test/sync_journal_test.dart \
+            test/calendar_series_integrity_review_test.dart \
+            test/notification_auto_dismiss_test.dart \
+            test/calendar_card_contrast_test.dart 2>&1 | tee .buildlog/ci/tests.log
+
+      - name: Upload bounded CI diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: lightweight-ci-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .buildlog/ci/*.log
+          if-no-files-found: warn
+          retention-days: 7

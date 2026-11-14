@@ -19,6 +19,56 @@ Record durable product decisions in `docs/DECISIONS.md` and meaningful checkpoin
 
 For change validation or a release checkpoint, invoke `$todorbit-regression` from `.agents/skills/`. The official Dart/Flutter plugin supplies the analyzer and live tooling; no separate MCP configuration is needed here.
 
+## Staged verification and AI responsibilities
+
+Todorbit organizes verification into four distinct tiers to maximize developer speed while strictly protecting data integrity and formal release gates:
+
+| Level | Scope | Timing | Enforcement |
+|---|---|---|---|
+| **Level 1: Fast** | Focused unit/widget tests for modified components, formatting checks, and relevant static analysis (`flutter analyze --no-pub <paths>`). | Immediately after editing relevant files. | Mandatory during coding; fast feedback. |
+| **Level 2: Critical** | SQLite persistence, schema migrations, compare-and-swap (CAS) tokens, sync journals and apply logic, encryption codecs, backup/restore, recurrence calculations, alarms, and undo/redo stacks. | Immediately whenever affected functionality changes. | **Non-negotiable; never deferred** to save time. Unverified critical code must not be marked complete. |
+| **Level 3: Deferred Regression** | Broad serial Flutter test suites, multi-module integration, cross-platform host regression, and release tooling unit tests. | Batched periodically or run on-demand. | Recorded in [Deferred verification](DEFERRED_VERIFICATION.md); triggered via GitHub Actions or checkpoints. |
+| **Level 4: Release Acceptance** | Packaging (Release C++ build, Inno Setup installer, signed APK), isolated Windows Sandbox upgrades, physical display DPI checks, Android 16 KiB runtime, and real Google OAuth. | Prior to release candidates and publishing. | Recorded in [Deferred verification](DEFERRED_VERIFICATION.md); mandatory before publication. |
+
+Level 2 applies to the affected invariant and callers, not every critical test in
+the repository. Levels are selection policy, not four complete suites to run in
+order. An unrelated UI/docs change needs only its relevant checks. Match source,
+assertions, dependencies/configuration and environment before reusing evidence.
+
+### Gemini's responsibilities
+1. **Read instructions**: Read task-relevant Markdown guidance and project invariants before modifying code.
+2. **Discover and apply skills**: Activate domain skills (`todorbit-engineering-quality`, `todorbit-regression`, `ultimate-ui-ux`) appropriately.
+3. **Identify modified modules**: Scope changed files and map dependencies using `tools/dev/features.json` and [Architecture map](ARCHITECTURE_MAP.md).
+4. **Run Level 1 tests**: Execute fast focused tests on modified files.
+5. **Run Level 2 critical tests**: Execute the smallest tests covering affected critical invariants immediately; reuse matching valid evidence. A layout-only edit does not trigger unrelated migration/sync suites.
+6. **Fix failures**: Resolve any failures at the root cause before completing the task.
+7. **Record deferred verification**: Log any unexecuted Level 3 regression or Level 4 acceptance requirements in [Deferred verification](DEFERRED_VERIFICATION.md).
+8. **Update review queue**: Record the unreviewed change entry in [AI Review Queue](AI_REVIEW_QUEUE.md) with `PENDING_CODEX_REVIEW`.
+9. **Record evidence**: Document exact commands, timestamps, git SHA, and dirty-source fingerprints in task receipts and [Test run ledger](TEST_RUN_LEDGER.md).
+10. **Never claim approval**: Never declare Codex approval or mark releases ready.
+
+### Codex's responsibilities
+1. **Inspect changes**: Inspect the full diff, status, and modified boundaries independently.
+2. **Read queue**: Read pending entries in [AI Review Queue](AI_REVIEW_QUEUE.md).
+3. **Review independently**: Challenge assertions, verify domain invariants, and ensure zero data loss.
+4. **Fix confirmed defects**: Repair defects directly where invariants were broken.
+5. **Reuse valid evidence**: Compare Git blob SHAs and dependency trees to reuse valid prior passes without rerunning unchanged suites.
+6. **Run targeted checks**: Execute risk-justified tests on repaired boundaries.
+7. **Audit deferred items**: Review pending items in [Deferred verification](DEFERRED_VERIFICATION.md) relevant to the change.
+8. **Archive approved reviews**: Move completed review records from the queue to [AI Review History](AI_REVIEW_HISTORY.md).
+9. **Preserve incomplete verification**: Retain unfinished acceptance gates in [Deferred verification](DEFERRED_VERIFICATION.md).
+10. **Avoid redundant executions**: Do not rerun broad, unchanged full test suites merely to refresh a receipt.
+
+### Separation of review queue and verification backlog
+- [AI Review Queue](AI_REVIEW_QUEUE.md) tracks **unreviewed code changes**.
+- [Deferred verification](DEFERRED_VERIFICATION.md) tracks **unfinished tests, regressions, and manual acceptance gates**.
+- An approved review item means code logic is sound; it does **not** equal release readiness until all associated Level 4 gates in `DEFERRED_VERIFICATION.md` pass.
+
+### Resource efficiency on 16GB host
+- The primary development machine has 16GB RAM. Run all test commands sequentially with `--concurrency=1`.
+- Never launch concurrent Flutter test processes, Gradle builds, or Android emulators simultaneously.
+- Avoid repetitive full-suite executions; use focused tests during active development.
+
 ## Engineering quality workflow
 
 [AGENTS.md](../AGENTS.md#skills-and-documentation-routing) requires

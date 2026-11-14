@@ -19,18 +19,39 @@ applies; an existing pass on that exact candidate satisfies it. Documentation-on
 follow-ups do not invalidate packaged runtime evidence. Do not rebuild unchanged
 artifacts or repeat local full suites merely to refresh a receipt.
 
-| Verification level | Scope |
-| --- | --- |
-| Quick | Small text, cosmetic, layout or UI edits; relevant analysis/render checks only |
-| Feature | Targeted unit/widget/integration checks for modified functionality |
-| Critical | Data safety, concurrency, backups, signing, security and updater invariants; failure/recovery checks at affected boundaries |
-| Release | Every mandatory publication gate, reusing valid exact-source/artifact evidence where allowed |
+| Verification level | Scope | Execution policy |
+| --- | --- | --- |
+| **Level 1: Fast** | Small text, cosmetic, layout or UI edits; focused unit/widget tests; relevant static analysis (`flutter analyze --no-pub <paths>`) | Run immediately after relevant edits during coding. |
+| **Level 2: Critical** | Data safety, SQLite persistence, schema migrations, CAS revision tokens, sync exchange/journals, encryption, backup/restore, recurrence math, alarms, and undo/redo stacks | Run the smallest tests covering the changed critical boundary immediately; **never deferred**. Reuse matching valid passes; unrelated UI/docs changes do not require every critical suite. Unverified critical code cannot be marked complete. |
+| **Level 3: Deferred Regression** | Broad serial Flutter test suites, multi-module integration, cross-platform host regression, and release tooling unit tests | Batched periodically or triggered on-demand; record requirements in [Deferred verification](DEFERRED_VERIFICATION.md). |
+| **Level 4: Release Acceptance** | Packaging (Release C++ build, Inno Setup installer, signed APK), isolated Windows Sandbox upgrades, physical display DPI checks, Android 16 KiB runtime, and real Google OAuth | Mandatory before publication; record requirements in [Deferred verification](DEFERRED_VERIFICATION.md). Never treat Levels 1â€“3 as release readiness. |
 
-These are risk levels; the existing helper modes remain Quick/Feature/Full.
+These correspond to risk tiers. The local helper modes remain Quick/Feature/Full.
 Critical selects explicit affected checks; Release adds the required CI, artifact
 and platform acceptance gates. Full Flutter suites need a concrete integration or
-release reason, not an ordinary UI edit. Diagnose a failed environment before
+release reason, not an ordinary UI edit. Record unexecuted Level 3 and Level 4 gates in
+[Deferred verification](DEFERRED_VERIFICATION.md). Diagnose a failed environment before
 retrying it; change one relevant condition or collect new diagnostic evidence.
+
+### Module test matrix
+
+Use these examples to select assertions for the actual changed boundary. A row
+is not a command to run every listed suite. The authoritative group catalog is
+`tools/dev/features.json`; include adjacent safety tests when a caller or data
+invariant changes. Reuse valid four-fingerprint evidence before any invocation.
+
+| Module / Directory | Level 1 (Fast) Tests | Level 2 (Critical) Tests |
+|---|---|---|
+| **Tasks & Editor** (`lib/features/workspace/`, `lib/domain/models.dart`) | `test/workspace_test.dart`, `test/task_editor_schedule_layout_test.dart` | `test/repository_test.dart`, `test/task_revision_concurrency_test.dart` |
+| **Calendar & Events** (`lib/features/calendar/`, `lib/domain/recurrence.dart`) | `test/calendar_test.dart`, `test/calendar_improvements_test.dart`, `test/calendar_card_contrast_test.dart` | `test/event_recurrence_test.dart`, `test/calendar_event_move_recurrence_test.dart`, `test/calendar_series_integrity_review_test.dart`, `test/calendar_undo_redo_test.dart` |
+| **Database & Migrations** (`lib/data/app_database.dart`, `lib/data/migration_gate.dart`) | `test/repository_test.dart` | `test/database_initialization_test.dart`, `test/migration_gate_test.dart`, `test/backup_service_test.dart` |
+| **Sync & Encryption** (`lib/data/sync*`, `lib/domain/sync/`, `lib/data/cloud/`) | `test/sync_journal_test.dart`, `test/cloud/sync_batch_codec_test.dart` | `test/sync_apply_repository_test.dart`, `test/sync_exchange_schema_test.dart`, `test/sync_exchange_repository_test.dart`, `test/cloud/google_drive_changes_test.dart` |
+| **Backup & Cloud Transfer** (`lib/data/backup_service.dart`, `lib/data/cloud/cloud_backup*`) | `test/import_export_test.dart`, `test/settings_transfer_test.dart` | `test/backup_service_test.dart`, `test/cross_platform_backup_test.dart`, `test/cloud/cloud_backup_test.dart` |
+| **Alarms & Notifications** (`lib/data/notification*`, `lib/data/alarm*`, `lib/domain/alarms*`) | `test/notification_auto_dismiss_test.dart`, `test/alarm_field_test.dart` | `test/alarm_test.dart`, `test/alarm_migration_test.dart`, `test/notification_repository_test.dart` |
+| **Settings & Preferences** (`lib/features/settings/`, `lib/data/profile_fingerprint.dart`) | `test/appearance_preference_store_test.dart`, `test/theme_customization_test.dart` | `test/settings_transfer_test.dart`, `test/profile_isolation_test.dart` |
+| **Mobile & Android Shell** (`lib/features/mobile/`, `lib/platform/android/`) | `test/mobile_workspace_test.dart`, `test/mobile_editors_test.dart` | `test/android_platform_test.dart`, `test/android_widget_action_test.dart`, `test/cross_platform_backup_test.dart` |
+| **Windows Desktop Widgets** (`lib/features/widget/`, `experiments/widget-shell-probe/`) | `test/widget_configuration_test.dart`, `test/widget_settings_page_test.dart` | `test/native_widget_service_test.dart`, native companion `--self-test` |
+
 
 ## Verification ledger
 
@@ -237,14 +258,88 @@ Replace `X.Y.Z` with the candidate version. Installer execution belongs in a
 disposable Windows user/VM, not the owner's normal account. Redirecting APPDATA
 alone does not isolate Windows Credential Manager or installer registration.
 
-[Windows CI](../.github/workflows/windows-ci.yml) runs analysis, full serial
-tests, OAuth/package gates, Release, portable, packaged native self-test,
-installer and checksums; it retains an unpublished artifact. [Pages CI](../.github/workflows/pages.yml)
-owns website deployment. Record passed, failed, skipped and manually unverified
-checks separately, with source revision and profile context for release evidence.
+## Continuous integration and GitHub Actions
 
-[Android CI](../.github/workflows/android-ci.yml) adds Android-focused host checks,
-APK/native-alignment gates and real emulator integration. Its duplicate Windows-host
-full suite is removed; Windows CI still runs full analysis/serial tests on every
-push/PR. The signed Android candidate requires **both** workflows. Keep both
-required before release; a green Android-only workflow is not full acceptance.
+GitHub Actions workflows are partitioned into lightweight automatic gates and on-demand comprehensive verification to prevent wasteful cloud consumption and runner thrashing:
+
+1. **[Lightweight CI](../.github/workflows/ci.yml)**: all pull-request base branches
+   (not source-branch prefixes), and pushes to `main`; stable check name
+   `Fast Cross-Platform Checks`. Ubuntu, serial portable safety smoke tests,
+   analysis of lib/selected tests, route/docs validation and focused Python helper/
+   workflow shell-contract tests. Full repository analysis remains a comprehensive
+   gate. The 25-minute ceiling includes a cold SDK/dependency setup; first cloud
+   timings must confirm/tune this budget. Mobile/theme breadth moves to manual
+   regression; migration/CAS/recurrence/codec/backup coverage stays automatic,
+   with sync-journal and CAL-01 integrity tests included.
+2. **[Comprehensive Verification](../.github/workflows/manual-verification.yml)**:
+   workflow_dispatch only. `flutter-regression` = full test/ directory on Ubuntu;
+   `calendar-recurrence` = calendar, recurrence, integrity and history;
+   `persistence-sync` = database, CAS, sync/backup and series-integrity;
+   `all-host` = full analysis, default docs, all Python tools and test/ on Ubuntu.
+   No native/device acceptance is implied. Host commands fail through `tee`,
+   capture bounded logs and stop after failure. `Selected verification result`
+   reports the selected branch, including failure/cancellation/skips.
+3. **[Windows CI](../.github/workflows/windows-ci.yml)**: direct dispatch or reusable
+   call, Windows-2022, full host/analysis plus unchanged OAuth/package, C++/.NET,
+   native writer/background/self-test, portable/installer/checksum gates. Release
+   candidate artifact remains unpublished. First Python suite failure cannot be
+   hidden by a later successful suite. No ordinary push/PR trigger remains.
+4. **[Android CI](../.github/workflows/android-ci.yml)**: existing filtered push/PR,
+   direct dispatch and reusable call remain. Android-focused host tests/debug APK
+   execute on Windows; API-35 KVM AVD update/Drive-contract integration executes on
+   Ubuntu. This is emulator evidence, not physical-device acceptance. Its update
+   fixture does not run `android_workflow_test.dart`; `DEF-AND-WORKFLOW` remains
+   distinct. Existing automatic Android builds/emulator can still run alongside
+   Lightweight CI for matching paths; INFRA-01 does not make every PR cheap.
+5. **[Android Release](../.github/workflows/android-release.yml)**: protected
+   `android-signing` environment and both reusable validation dependencies remain
+   unchanged; neither manual verification nor PR CI receives signing secrets.
+6. **[Android 16 KiB Runtime](../.github/workflows/android-16k-runtime.yml)**: separate
+   artifact-only API-36 ps16k gate. Needs candidate APK identity/hash, with optional
+   previous APK for upgrades; not invoked by the generic Android group. Its
+   existing trusted contents-write draft-asset access is not inherited by tests.
+7. **[Pages CI](../.github/workflows/pages.yml)**: independent validation and explicit
+   owner-approved main-branch deployment remain unchanged.
+
+Direct actions in the three INFRA-01 workflows use verified commit SHAs. Nested
+legacy Android/release/Pages workflows retain existing action-tag references;
+no new secret inheritance, write token, self-hosted runner or signing path was
+introduced. Treat future dependency updates as reviews; SHA pins do not lock all
+transitive action internals. Checkout credentials are not persisted. Dependencies
+are resolved with `--enforce-lockfile`; PR cache scope must remain isolated from
+trusted branch caches. Diagnostic uploads include named log files only, not
+whole .buildlog profiles/databases/packages.
+
+### First GitHub execution and required-check migration
+
+No cloud run or repository branch-protection/ruleset inspection has occurred.
+Only after an authorized reviewed commit/push, open a PR to obtain the new
+`Fast Cross-Platform Checks` status. An owner must inspect Settings > Rules /
+Branches: any formerly required standalone `windows` context from **Windows
+checks** no longer runs automatically. After observing the intended new check,
+replace that stale requirement with `Fast Cross-Platform Checks` if lightweight
+PR policy is desired; retain Windows/Android exact-candidate release gates.
+Existing Android/Pages check names are unchanged. Do not assume nested
+`Windows Full Verification / windows` or `windows-regression / windows` satisfies
+an old standalone required check. If merge queue is enabled, add and validate a
+`merge_group` trigger before requiring this workflow for queue entries.
+
+Dispatch workflows must exist on the default branch before the dispatch API/UI
+can invoke them. After that registration, select the exact candidate ref:
+
+```powershell
+gh workflow run manual-verification.yml --ref <reviewed-branch> -f test_group=calendar-recurrence
+gh workflow run manual-verification.yml --ref <reviewed-branch> -f test_group=windows-verification
+gh workflow run manual-verification.yml --ref <reviewed-branch> -f test_group=android-verification
+```
+
+Run the other three host groups as needed. Observe actual run/check conclusions,
+checked-out SHA, selected-group summary, cache/cold timing and retained diagnostics;
+review a controlled failing run to confirm remote failure propagation. Keep
+`DEF-CI-CLOUD` pending until these checks are evidenced. Linux Flutter SDK download
+availability (project pin 3.47.7) and cloud runner compatibility are acceptance,
+not established by local YAML/actionlint or Windows test passes.
+
+Record passed, failed, skipped and unverified checks separately in the
+[Test run ledger](TEST_RUN_LEDGER.md) and [Deferred verification](DEFERRED_VERIFICATION.md).
+No green host check substitutes for appropriate release/platform acceptance.

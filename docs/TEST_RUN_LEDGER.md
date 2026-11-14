@@ -1,5 +1,52 @@
 # Persistent test run ledger
 
+## Reviewed INFRA-01 checkpoint hygiene (2026-11-14)
+
+No tests/builds rerun: all 18 approved execution/instruction/dependency entries
+match `D7C522EE5EFD79B6DFC1D58AE1D71B41805C5FCDD49AEAD5C3DC7445E6B127F1`.
+Prior final seven-workflow actionlint/five shell-contract/doc passes reused;
+only checkpoint documentation/manifest added. Explicit scope, index blob hashes,
+sensitive-content/path scan, staged whitespace and post-commit preservation are
+recorded in the [existing receipt](INFRA_CODEX_REVIEW_2026_11_14.md). No application,
+schema, signing/release input or licensing changes. Cloud acceptance stays pending.
+
+## INFRA-01 independent workflow verification (2026-11-14)
+
+Source HEAD 8be2f04 plus dirty infrastructure; final execution/instruction hash
+D7C522EE5EFD79B6DFC1D58AE1D71B41805C5FCDD49AEAD5C3DC7445E6B127F1. Raw logs/provenance in
+.buildlog/infra01-review; exact invocations/failures/reuse in
+[receipt](INFRA_CODEX_REVIEW_2026_11_14.md). Actionlint v1.7.12 upstream archive
+checksum/digest verified. Baseline seven workflows lint clean (01); original
+PowerShell first native failure masking reproduced. New focused Python shell
+contracts: baseline 03 expected 9 failing subcases/one absent-rollup error;
+corrected04 four pass; added routing assertion06 one extractor error;
+corrected07 five pass; final Windows log/exit bodies08 five pass (9.766s).
+Actionlint intermediate escaping failure02 fixed; 05/09 seven workflows pass.
+SDK metadata lookup returned404; installed SDK3.47.7/Dart3.13.5/help verified,
+Linux SDK download still pending. No broad Python/Flutter tests/analyzer/build,
+cloud execution or personal account/profile used. Gemini reports remain qualified
+historical evidence; unchanged source-fingerprinted boundaries reused.
+Final documentation/path/hash/diff checks recorded in receipt.
+
+## INFRA-01: Staged Testing & GitHub Actions CI Infrastructure (2026-11-14)
+
+Baseline `8be2f048757348f7c2f522f048e23801e5dc749f` on branch `codex/independent-beta-review`.
+Verification of testing infrastructure, GitHub Actions workflows, documentation routes, and representative Level 2 critical invariants:
+- **Workflow YAML Validation**:
+  - Executed official Dart YAML parser across all 7 workflows in `.github/workflows/` (`ci.yml`, `manual-verification.yml`, `windows-ci.yml`, `android-ci.yml`, `android-release.yml`, `android-16k-runtime.yml`, `pages.yml`). 7/7 files valid.
+- **Documentation & Route Integrity**:
+  - `python tools/dev/check-docs.py`: 0 errors across all routes, markdown links, architecture map paths, and catalog entries.
+- **Developer Tool Unit Tests**:
+  - `python -m unittest discover -s tools -p "test_*.py"`: 30/30 passed in 19.742s (`test_dev_verify.py`, `test_background_sync_schema.py`, `test_prepare_android_release.py`, `test_windows_sandbox_prepare.py`).
+- **Representative Level 2 Critical Tests**:
+  - `flutter test --no-pub --concurrency=1 test/database_initialization_test.dart test/migration_gate_test.dart test/task_revision_concurrency_test.dart test/event_recurrence_test.dart test/calendar_card_contrast_test.dart`: 42/42 passed in 2m 38s.
+- **Static Analysis & Patch Hygiene**:
+  - `flutter analyze --no-pub`: clean.
+  - `git diff --check`: 0 issues.
+Review queue entry updated in [AI Review Queue](AI_REVIEW_QUEUE.md) under `PENDING_CODEX_REVIEW`.
+Deferred verification backlog created in [Deferred verification](DEFERRED_VERIFICATION.md).
+No application code, database schema, or version numbers were changed. No release was published.
+
 ## Safe post-review Git checkpoint (2026-11-14)
 
 No test/build invocation: source, assertions, dependencies and configuration match
