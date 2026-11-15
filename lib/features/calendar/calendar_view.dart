@@ -553,8 +553,9 @@ class _CalendarViewState extends ConsumerState<CalendarView>
 
       if (!mounted ||
           !_interactionController.hasPendingChange ||
-          _interactionController.activeItem != activeItem)
+          _interactionController.activeItem != activeItem) {
         return;
+      }
 
       final action = await showDialog<CalendarRecurringMoveAction>(
         context: context,

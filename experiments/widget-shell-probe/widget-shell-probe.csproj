@@ -8,9 +8,9 @@
     <AssemblyName>TodorbitWidget</AssemblyName>
     <RootNamespace>LifeManager.Widget</RootNamespace>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
-    <Version>1.0.19-beta.19</Version>
-    <FileVersion>1.0.19.42</FileVersion>
-    <InformationalVersion>1.0.19-beta.19+42</InformationalVersion>
+    <Version>1.0.19-beta.20</Version>
+    <FileVersion>1.0.19.43</FileVersion>
+    <InformationalVersion>1.0.19-beta.20+43</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Product>Todorbit Widget</Product>
     <ApplicationIcon>../../windows/runner/resources/app_icon.ico</ApplicationIcon>

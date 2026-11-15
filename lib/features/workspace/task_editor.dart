@@ -1593,8 +1593,9 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                               ],
                               onChanged: (value) => setState(() {
                                 recurrenceKind = value;
-                                if (value != null)
+                                if (value != null) {
                                   status = TaskStatus.notStarted;
+                                }
                                 if (value == RecurrenceKind.weekdays &&
                                     recurrenceWeekdays.isEmpty) {
                                   recurrenceWeekdays = {

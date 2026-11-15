@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.19-beta.20+43 - reviewed calendar and editor usability repairs
+
+- Improve widget Today/date following and private receiver security; preserve deliberate browsing.
+- Repair foreground/resume/date-picker state and responsive calendar headings/mode controls.
+- Improve alarm/task editor spacing, recurring-action copy and local rounded-card feedback.
+- Retain documented device/upgrade/accessibility/Windows acceptance gaps; experimental prerelease only.
+
 ## 1.0.19-beta.19+42 - independent calendar and date rollover corrections
 
 - Preserve later task/event edits and work-session outcomes when undoing or redoing calendar dates and times.
