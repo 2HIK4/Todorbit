@@ -1,0 +1,52 @@
+[
+  {
+    "name": "ANDROID-RELEASE-NOTES.md",
+    "bytes": 2403,
+    "sha256": "0e4577d279c7adecd0ddb66c5ff3768c7c791c446b281f55db33a495385feedb"
+  },
+  {
+    "name": "ANDROID-SHA256SUMS.txt",
+    "bytes": 316,
+    "sha256": "489690123e181d292cfbbcadcc68657fd852701284f04a3d9b12d77a36819307"
+  },
+  {
+    "name": "Todorbit-1.0.19-beta.22-android-universal.apk",
+    "bytes": 54170139,
+    "sha256": "01686c128c63f55b69aa03fe55768fa81f2d5016a200de78649301b7d13986ad"
+  },
+  {
+    "name": "Todorbit-1.0.19-beta.22-android-universal.apk.sha256",
+    "bytes": 113,
+    "sha256": "cbd5a112756b1e2749583e5a21ce2bcc62a0a889ffc2c11a818dc18b2ca787d9"
+  },
+  {
+    "name": "Todorbit-1.0.19-beta.22-android-update.json",
+    "bytes": 421,
+    "sha256": "5de26e6574a10fa270e5d37c1084521e9e59e1b5a9fbd8c46d82bbb13b2b1ddc"
+  },
+  {
+    "name": "Todorbit-1.0.19-beta.22-SHA256SUMS.txt",
+    "bytes": 221,
+    "sha256": "4d6aaa4af8e53f984d524eb95cb478deb07df50b1a7a3f3724f8f445fe9d5d97"
+  },
+  {
+    "name": "Todorbit-1.0.19-beta.22-win-x64-portable.zip",
+    "bytes": 65347850,
+    "sha256": "41282406ec54bb055a22593b2cfa3d4aabf2bec7e9b213404d1397713c130ca2"
+  },
+  {
+    "name": "Todorbit-1.0.19-beta.22-win-x64-portable.zip.sha256",
+    "bytes": 112,
+    "sha256": "5d7227c3d3cd2761960a7162d775594c4d1ff8dc6b373ba1b8bb24128273e5b2"
+  },
+  {
+    "name": "Todorbit-1.0.19-beta.22-win-x64-setup.exe",
+    "bytes": 47943233,
+    "sha256": "a8280080118db27b75226a262da9686056ae6a19c0be7a0c41cfa54d1f12b33d"
+  },
+  {
+    "name": "Todorbit-1.0.19-beta.22-win-x64-setup.exe.sha256",
+    "bytes": 109,
+    "sha256": "cde2f00e6de93194eaf91f1e6390f7773ab29c7adbf9e1f6cffd3c2c93c05abe"
+  }
+]
