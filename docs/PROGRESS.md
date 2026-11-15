@@ -1,5 +1,17 @@
 # Progress
 
+## UIUX-02 independent review and repairs (2026-11-15)
+
+Scoped code/host-visual review approved with limitations after receiver security,
+date/lifecycle, responsive layout, copy/contrast and skill-reference repairs.
+Rejected unsupported product-wide audit claims. Two app screens plus AlarmField
+rendered, including 24 final Dark/Light/default/accessibility PNGs. Exact commands,
+failed diagnostics, source/screenshot identities, Git preservation and acceptance
+gaps are in the [receipt](UIUX02_CODEX_REVIEW_2026_11_15.md). Launcher Doze/reboot,
+installed upgrade and actual device/Windows visual acceptance remain in
+[deferred verification](DEFERRED_VERIFICATION.md). No commit or release.
+
+
 ## First-cloud portability correction (2026-11-14)
 
 PR #1's second run passed analysis/docs, then exposed a test-only Linux

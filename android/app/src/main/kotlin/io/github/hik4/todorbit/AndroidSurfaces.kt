@@ -115,10 +115,17 @@ object AndroidSurfaces {
             for(id in manager.getAppWidgetIds(ComponentName(context,cls))) render(context,manager,id,cls == CalendarWidget::class.java)
     }
     fun scheduleRefresh(context: Context) {
-        val midnight = ZonedDateTime.now().toLocalDate().plusDays(1).atStartOfDay(ZonedDateTime.now().zone).toInstant().toEpochMilli()
-        val intent = PendingIntent.getBroadcast(context,0,Intent(context, SurfaceRefreshReceiver::class.java).setAction("midnight"),
+        val intent = PendingIntent.getBroadcast(context,0,Intent(context, SurfaceRefreshReceiver::class.java).setAction(SurfaceRefreshPolicy.MIDNIGHT),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        context.getSystemService(AlarmManager::class.java).set(AlarmManager.RTC,midnight,intent)
+        val alarms = context.getSystemService(AlarmManager::class.java)
+        val manager = AppWidgetManager.getInstance(context)
+        val hasWidgets = listOf(TasksWidget::class.java, CalendarWidget::class.java).any {
+            manager.getAppWidgetIds(ComponentName(context, it)).isNotEmpty()
+        }
+        if (!hasWidgets) { alarms.cancel(intent); return }
+        val midnight = SurfaceRefreshPolicy.nextMidnight(ZonedDateTime.now())
+        // One shared, inexact rollover alarm. Idle delivery can still be batched/delayed.
+        alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, midnight, intent)
     }
     // Commands are capabilities issued only by our private widget projection. A
     // public deep link cannot manufacture a completion operation or choose an ID.
@@ -207,9 +214,13 @@ object AndroidSurfaces {
         val first=try { LocalDate.parse(data.optString("widgetFrom")) } catch(_: Exception) { today }
         val last=try { LocalDate.parse(data.optString("widgetThrough")) } catch(_: Exception) { today }
         val selected=if(raw=="today") today else try {LocalDate.parse(raw)} catch(_: Exception) {return}
-        if(selected<first || selected>last) return
+        if(raw != "today" && selected != today && (selected<first || selected>last)) return
         val edit=preferences(context).edit()
-        if(raw=="today") edit.remove("date-$id") else edit.putString("date-$id",selected.toString())
+        if(raw=="today" || selected == today) {
+            edit.remove("date-$id").remove("date-selected-on-$id")
+        } else {
+            edit.putString("date-$id",selected.toString()).remove("date-selected-on-$id")
+        }
         edit.apply()
         render(context,manager,id,calendar)
     }
@@ -243,8 +254,16 @@ object AndroidSurfaces {
         val today = LocalDate.now()
         val first=try { LocalDate.parse(data.optString("widgetFrom")) } catch(_: Exception) { today }
         val last=try { LocalDate.parse(data.optString("widgetThrough")) } catch(_: Exception) { today }
-        val selected=try { LocalDate.parse(prefs.getString("date-$id",null)) } catch(_: Exception) { today }
-        val selectedDay=if(selected<first || selected>last) today else selected
+        val storedDate = prefs.getString("date-$id", null)
+        // Explicit browsing is preserved, including across midnight. Only Today
+        // clears the override; legacy selections have no reliable provenance.
+        val selectedDay = SurfaceRefreshPolicy.selectedDay(storedDate, today, first, last)
+        if (selectedDay == today) {
+            if(storedDate != null || prefs.contains("date-selected-on-$id")) {
+                prefs.edit().remove("date-$id").remove("date-selected-on-$id").apply()
+            }
+        }
+        val isFollowingToday = (selectedDay == today)
         val day = selectedDay.toString()
         val filter = prefs.getString("filter-$id","today")
         fun link(kind: String) = "todorbit://$kind?day=$day&widget=$id"
@@ -274,11 +293,18 @@ object AndroidSurfaces {
                 val date=selectedDay.plusDays(n.toLong())
                 val cell=RemoteViews(context.packageName,R.layout.todorbit_widget_day)
                 val count=available.count { it.optString("kind")=="event" && it.optString("day")<=date.toString() && it.optString("through")>=date.toString() }
-                cell.setTextViewText(R.id.widget_day,date.format(DateTimeFormatter.ofPattern("EEE"))+"\n"+date.dayOfMonth+if(count>0) " \u00b7 $count" else "")
-                cell.setTextColor(R.id.widget_day,if(n==0) accent else secondary)
-                cell.setContentDescription(R.id.widget_day,"${date.format(DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.FULL))}, $count events")
-                cell.setOnClickPendingIntent(R.id.widget_day,if(date>=first && date<=last) dateIntent(context,id,calendar,date.toString()) else open(context,"todorbit://calendar?day=$date&widget=$id"))
-                remote.addView(R.id.widget_week,cell)
+                val isTodayCell = (date == today)
+                val isSelectedCell = (date == selectedDay)
+                val dayText = date.format(DateTimeFormatter.ofPattern("EEE"))+"\n"+date.dayOfMonth+if(count>0) " \u00b7 $count" else ""
+                cell.setTextViewText(R.id.widget_day, dayText)
+                cell.setTextColor(R.id.widget_day, if(isSelectedCell) accent else if(isTodayCell) foreground else secondary)
+                val desc = "${date.format(DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.FULL))}${if(isTodayCell) ", Today" else ""}, $count events"
+                cell.setContentDescription(R.id.widget_day, desc)
+                val targetIntent = if(isTodayCell) dateIntent(context, id, calendar, "today")
+                    else if(date>=first && date<=last) dateIntent(context, id, calendar, date.toString())
+                    else open(context, "todorbit://calendar?day=$date&widget=$id")
+                cell.setOnClickPendingIntent(R.id.widget_day, targetIntent)
+                remote.addView(R.id.widget_week, cell)
             }
         }
         val scale=context.resources.configuration.fontScale
@@ -318,10 +344,19 @@ object AndroidSurfaces {
             capacity++
         }
         remote.setViewVisibility(R.id.widget_dates,if(calendar || filter=="today") View.VISIBLE else View.GONE)
-        remote.setTextViewText(R.id.widget_today,(if(selectedDay==today) "Today, " else "")+selectedDay.format(DateTimeFormatter.ofPattern("MMM d")))
-        remote.setContentDescription(R.id.widget_today,"${selectedDay.format(DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.FULL))}. Return to today")
-        remote.setOnClickPendingIntent(R.id.widget_today,dateIntent(context,id,calendar,"today"))
-        remote.setTextColor(R.id.widget_today,accent)
+        val todayLabel = if(isFollowingToday) {
+            "Today, " + today.format(DateTimeFormatter.ofPattern("MMM d"))
+        } else {
+            selectedDay.format(DateTimeFormatter.ofPattern("MMM d")) + " \u2022 Back to today"
+        }
+        remote.setTextViewText(R.id.widget_today, todayLabel)
+        remote.setContentDescription(R.id.widget_today, if(isFollowingToday) {
+            "${today.format(DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.FULL))}. Following today."
+        } else {
+            "${selectedDay.format(DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.FULL))}. Return to today."
+        })
+        remote.setOnClickPendingIntent(R.id.widget_today, dateIntent(context, id, calendar, "today"))
+        remote.setTextColor(R.id.widget_today, accent)
         for((view,step) in listOf(R.id.widget_previous to -1L,R.id.widget_next to 1L)) {
             val target=selectedDay.plusDays(step)
             val allowed=target>=first && target<=last
@@ -419,14 +454,17 @@ class ReminderReceiver : BroadcastReceiver() {
 
 class SurfaceRefreshReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (!SurfaceRefreshPolicy.accepts(intent.action)) return
         val pending=goAsync()
         AndroidSurfaces.enqueue {
             try {
-                AndroidSurfaces.scheduleReminders(context)
+                if (intent.action != SurfaceRefreshPolicy.MIDNIGHT) {
+                    AndroidSurfaces.scheduleReminders(context)
+                    ReminderRefreshJob.schedule(context)
+                    ReminderRefreshJob.schedule(context,true)
+                }
                 AndroidSurfaces.updateWidgets(context)
                 AndroidSurfaces.scheduleRefresh(context)
-                ReminderRefreshJob.schedule(context)
-                ReminderRefreshJob.schedule(context,true)
             } catch (error: Exception) { android.util.Log.w("TodorbitWidgets","Widget refresh failed",error) } finally { pending.finish() }
         }
     }
@@ -440,13 +478,13 @@ class TasksWidget : AppWidgetProvider() {
     }
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         val pending=goAsync()
-        AndroidSurfaces.enqueue { try { for(id in ids) AndroidSurfaces.render(context,manager,id,false) } catch (error: Exception) { android.util.Log.w("TodorbitWidgets","Widget refresh failed",error) } finally { pending.finish() } }
+        AndroidSurfaces.enqueue { try { AndroidSurfaces.scheduleRefresh(context); for(id in ids) AndroidSurfaces.render(context,manager,id,false) } catch (error: Exception) { android.util.Log.w("TodorbitWidgets","Widget refresh failed",error) } finally { pending.finish() } }
     }
     override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) {
         val pending=goAsync()
         AndroidSurfaces.enqueue { try { AndroidSurfaces.render(context,manager,id,false) } catch (error: Exception) { android.util.Log.w("TodorbitWidgets","Widget refresh failed",error) } finally { pending.finish() } }
     }
-    override fun onDeleted(context: Context, ids: IntArray) { for(id in ids) AndroidSurfaces.preferences(context).edit().remove("theme-$id").remove("filter-$id").remove("opacity-$id").remove("actions-$id").remove("date-$id").apply() }
+    override fun onDeleted(context: Context, ids: IntArray) { for(id in ids) AndroidSurfaces.preferences(context).edit().remove("theme-$id").remove("filter-$id").remove("opacity-$id").remove("actions-$id").remove("date-$id").remove("date-selected-on-$id").apply(); AndroidSurfaces.scheduleRefresh(context) }
 }
 class CalendarWidget : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -456,13 +494,13 @@ class CalendarWidget : AppWidgetProvider() {
     }
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         val pending=goAsync()
-        AndroidSurfaces.enqueue { try { for(id in ids) AndroidSurfaces.render(context,manager,id,true) } catch (error: Exception) { android.util.Log.w("TodorbitWidgets","Widget refresh failed",error) } finally { pending.finish() } }
+        AndroidSurfaces.enqueue { try { AndroidSurfaces.scheduleRefresh(context); for(id in ids) AndroidSurfaces.render(context,manager,id,true) } catch (error: Exception) { android.util.Log.w("TodorbitWidgets","Widget refresh failed",error) } finally { pending.finish() } }
     }
     override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) {
         val pending=goAsync()
         AndroidSurfaces.enqueue { try { AndroidSurfaces.render(context,manager,id,true) } catch (error: Exception) { android.util.Log.w("TodorbitWidgets","Widget refresh failed",error) } finally { pending.finish() } }
     }
-    override fun onDeleted(context: Context, ids: IntArray) { for(id in ids) AndroidSurfaces.preferences(context).edit().remove("theme-$id").remove("filter-$id").remove("opacity-$id").remove("actions-$id").remove("date-$id").apply() }
+    override fun onDeleted(context: Context, ids: IntArray) { for(id in ids) AndroidSurfaces.preferences(context).edit().remove("theme-$id").remove("filter-$id").remove("opacity-$id").remove("actions-$id").remove("date-$id").remove("date-selected-on-$id").apply(); AndroidSurfaces.scheduleRefresh(context) }
 }
 
 class WidgetConfigurationActivity : Activity() {
@@ -487,7 +525,8 @@ class WidgetConfigurationActivity : Activity() {
         layout.addView(Button(this).apply {text="Apply"; setOnClickListener {
             val edit=prefs.edit().putString("theme-$id",theme.selectedItem.toString()).putInt("opacity-$id",opacity.progress+40)
             filter?.let {edit.putString("filter-$id",it.selectedItem.toString())}; edit.apply()
-            AndroidSurfaces.enqueue { AndroidSurfaces.updateWidgets(this@WidgetConfigurationActivity) }
+            val context = applicationContext
+            AndroidSurfaces.enqueue { AndroidSurfaces.updateWidgets(context); AndroidSurfaces.scheduleRefresh(context) }
             setResult(RESULT_OK,Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id)); finish()
         }})
         setContentView(ScrollView(this).apply {

@@ -378,7 +378,12 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
 
   void navigate(WorkspaceView view, {String? id}) {
     search.clear();
-    setState(() => searching = false);
+    setState(() {
+      searching = false;
+      if (view == WorkspaceView.calendar) {
+        calendarDay = null;
+      }
+    });
     ref.read(appControllerProvider).navigate(view, id: id);
     if (view == WorkspaceView.today) {
       unawaited(

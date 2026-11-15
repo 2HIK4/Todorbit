@@ -45,7 +45,19 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    override fun onStart() { super.onStart(); activityVisible=true }
+    override fun onStart() {
+        super.onStart()
+        activityVisible = true
+        val context = applicationContext
+        AndroidSurfaces.enqueue {
+            try {
+                AndroidSurfaces.updateWidgets(context)
+                AndroidSurfaces.scheduleRefresh(context)
+            } catch (error: Exception) {
+                android.util.Log.w("TodorbitWidgets", "Resume refresh failed", error)
+            }
+        }
+    }
     override fun onStop() { activityVisible=false; AndroidSurfaces.foregroundUnlocked=false; super.onStop() }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

@@ -17,6 +17,13 @@ framework or component package to fix a UI defect.
 - Compare repeated padding, gaps, control heights, icon hit boxes and text baselines
   against existing tokens. Distinguish optical alignment from glyph bounds; do
   not force multiline controls to a single-line fixed height. Test real long labels.
+- Stacked form controls: compare label/input bounds and apply existing related-field
+  spacing where they collide. Test floating labels, errors and wrapped helper text
+  at larger text sizes; do not rely on borders alone to separate controls.
+- Modal/editor footer clearance: distinguish an overlaid footer from a sibling
+  below the scroll view. Reserve measured overlay/IME space only where needed;
+  use existing spacing tokens for ordinary separation. Verify the last control
+  remains reachable at narrow sizes and larger text, without arbitrary 48-64dp rules.
 - Give short/narrow dialogs bounded width/height and an intentional scroll region;
   keep actions reachable and reserve footer clearance. Avoid intrinsic layout on
   large lazy lists or wrapping all content in shrink-wrapped nested lists.
@@ -89,6 +96,14 @@ framework or component package to fix a UI defect.
 - Inspect nested `Theme`/cached painters and custom palette propagation. Cover
   light/dark/custom and live switching with dialogs open, including selected,
   focused, pressed and disabled states. Do not replace semantic roles with literals.
+- Rounded interactions: inspect the actual Material and ink shape. Use matching
+  border radii or local `clipBehavior: Clip.antiAlias` for affected interactive
+  cards when necessary, then inspect pressed/selected/focused frames. Do not infer
+  leakage from `Clip.none` alone or impose global clipping without consumer review.
+- Calendar selection: distinguish Today from the selected date and provide a clear
+  return-to-Today action. Follow Today must advance at foreground rollover and
+  resume; deliberate browsing must survive lifecycle refresh. Date-picker and
+  deep-link paths need the same explicit mode handling as day-cell selection.
 
 ## Forms and dependent input
 

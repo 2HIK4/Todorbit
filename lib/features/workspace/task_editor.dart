@@ -836,9 +836,9 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
       alarmFamilyReviewRevision: initialFamilyAlarmRule?.updatedAt ?? 'new',
       alarmReviewRevision:
           initialAlarmRule?.taskId == currentTask?.id &&
-                  initialAlarmRule != null
-              ? initialAlarmRule!.updatedAt
-              : 'new',
+              initialAlarmRule != null
+          ? initialAlarmRule!.updatedAt
+          : 'new',
       title: title.text,
       notes: notes.text,
       status: status,
@@ -924,9 +924,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         );
       } else {
         if (draft.scheduledDate == null) {
-          throw const FormatException(
-            'Select a scheduled day for recurrence',
-          );
+          throw const FormatException('Select a scheduled day for recurrence');
         }
         final interval = int.tryParse(recurrenceInterval.text.trim());
         final countText = recurrenceCount.text.trim();
@@ -1300,6 +1298,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(appControllerProvider);
+    final theme = Theme.of(context);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       for (final field in [title, notes, checklistEntry]) {
@@ -1346,730 +1345,863 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                     ),
                   ],
                 ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: Scrollbar(
-                controller: editorScroll,
-                thumbVisibility: true,
-                child: FadingListView(
-                  key: ValueKey(
-                    'task-editor:${widget.task?.id ?? widget.parentTaskId ?? 'new'}',
-                  ),
-                  controller: editorScroll,
-                  padding: AppSpacing.editorScrollPadding(
-                    context,
-                    bottom: AppSpacing.content,
-                  ),
-                  children: [
-                    if (widget.parentTaskId != null) ...[
-                      Text(
-                        'Subtask of ${ref.watch(appControllerProvider).tasks.where((item) => item.id == widget.parentTaskId).map((item) => item.title).firstOrNull ?? 'task'}',
+                const SizedBox(height: 12),
+                Expanded(
+                  child: Scrollbar(
+                    controller: editorScroll,
+                    thumbVisibility: true,
+                    child: FadingListView(
+                      key: ValueKey(
+                        'task-editor:${widget.task?.id ?? widget.parentTaskId ?? 'new'}',
                       ),
-                      const SizedBox(height: 8),
-                    ],
-                    Row(
+                      controller: editorScroll,
+                      padding: AppSpacing.editorScrollPadding(
+                        context,
+                        bottom: AppSpacing.section,
+                      ),
                       children: [
-                        Expanded(
-                          child: TextField(
-                            key: const ValueKey('task-title-field'),
-                            controller: title,
-                            autofocus: widget.task == null,
-                            decoration: const InputDecoration(
-                              labelText: 'Title *',
-                            ),
+                        if (widget.parentTaskId != null) ...[
+                          Text(
+                            'Subtask of ${ref.watch(appControllerProvider).tasks.where((item) => item.id == widget.parentTaskId).map((item) => item.title).firstOrNull ?? 'task'}',
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton.outlined(
-                          tooltip: 'Choose task icon',
-                          icon: Icon(
-                            iconForKey(
-                              iconKey ??
-                                  (widget.task?.recurrenceSeriesId == null
-                                      ? null
-                                      : controller
-                                            .iconKeys['series:${widget.task!.recurrenceSeriesId}']),
-                              Icons.task_alt_outlined,
-                            ),
-                          ),
-                          onPressed: () async {
-                            final choice = await chooseBuiltInIcon(
-                              context,
-                              current: iconKey,
-                            );
-                            if (choice.$1 && mounted) {
-                              setState(() => iconKey = choice.$2);
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    SettingsSection(
-                      title: 'Notes',
-                      initiallyExpanded: notes.text.isNotEmpty,
-                      children: [
-                        TextField(
-                          key: const ValueKey('task-notes-field'),
-                          controller: notes,
-                          minLines: 2,
-                          maxLines: 4,
-                          decoration: const InputDecoration(labelText: 'Notes'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Schedule',
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final planned = _dateRow(
-                          'Scheduled day',
-                          scheduled,
-                          () => _pickDate(false),
-                          () => setState(() => scheduled = null),
-                        );
-                        final due = _dateRow(
-                          'Deadline',
-                          deadline,
-                          () => _pickDate(true),
-                          () => setState(() => deadline = null),
-                        );
-                        if (constraints.maxWidth < 380) {
-                          return Column(children: [planned, due]);
-                        }
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(child: planned),
-                            const SizedBox(width: 12),
-                            Expanded(child: due),
-                          ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    SettingsSection(
-                      title: 'Organization',
-                      initiallyExpanded:
-                          categoryId != null || projectId != null,
-                      children: [
-                        AnchoredSelectField<String?>(
-                          key: ValueKey(
-                            'category:$categoryId:$organizationPickerRevision',
-                          ),
-                          initialValue: categoryId,
-                          decoration: const InputDecoration(
-                            labelText: 'Category',
-                          ),
-                          items: [
-                            const DropdownMenuItem<String?>(
-                              value: null,
-                              child: Text('None / Inbox'),
-                            ),
-                            ...controller.categories.map(
-                              (category) => DropdownMenuItem<String?>(
-                                value: category.id,
-                                child: Text(category.name),
-                              ),
-                            ),
-                            const DropdownMenuItem<String?>(
-                              value: '__new_category__',
-                              child: Text('+ New Category'),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            if (value == '__new_category__') {
-                              _createCategory();
-                              return;
-                            }
-                            setState(() {
-                              categoryId = value;
-                              projectId = null;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        AnchoredSelectField<String?>(
-                          key: ValueKey(
-                            'project:$projectId:$categoryId:$organizationPickerRevision',
-                          ),
-                          initialValue: projectId,
-                          decoration: const InputDecoration(
-                            labelText: 'Project',
-                          ),
-                          items: [
-                            const DropdownMenuItem<String?>(
-                              value: null,
-                              child: Text('None'),
-                            ),
-                            ...projectChoices.map(
-                              (project) => DropdownMenuItem<String?>(
-                                value: project.id,
-                                child: Text(project.name),
-                              ),
-                            ),
-                            const DropdownMenuItem<String?>(
-                              value: '__new_project__',
-                              child: Text('+ New Project'),
-                            ),
-                          ],
-                          onChanged: categoryId == null
-                              ? null
-                              : (value) {
-                                  if (value == '__new_project__') {
-                                    _createProject();
-                                  } else {
-                                    setState(() => projectId = value);
-                                  }
-                                },
-                        ),
-                      ],
-                    ),
-                    if (widget.task == null) ...[
-                      const SizedBox(height: 12),
-                      if (widget.parentTaskId == null)
-                        AnchoredSelectField<RecurrenceKind?>(
-                          initialValue: recurrenceKind,
-                          decoration: const InputDecoration(
-                            labelText: 'Repeat',
-                          ),
-                          items: const [
-                            DropdownMenuItem<RecurrenceKind?>(
-                              value: null,
-                              child: Text('Does not repeat'),
-                            ),
-                            DropdownMenuItem(
-                              value: RecurrenceKind.daily,
-                              child: Text('Daily'),
-                            ),
-                            DropdownMenuItem(
-                              value: RecurrenceKind.weekly,
-                              child: Text('Weekly'),
-                            ),
-                            DropdownMenuItem(
-                              value: RecurrenceKind.weekdays,
-                              child: Text('Selected weekdays'),
-                            ),
-                            DropdownMenuItem(
-                              value: RecurrenceKind.monthly,
-                              child: Text('Monthly'),
-                            ),
-                            DropdownMenuItem(
-                              value: RecurrenceKind.yearly,
-                              child: Text('Yearly'),
-                            ),
-                            DropdownMenuItem(
-                              value: RecurrenceKind.afterCompletion,
-                              child: Text('After completion'),
-                            ),
-                          ],
-                          onChanged: (value) => setState(() {
-                            recurrenceKind = value;
-                            if (value != null) status = TaskStatus.notStarted;
-                            if (value == RecurrenceKind.weekdays &&
-                                recurrenceWeekdays.isEmpty) {
-                              recurrenceWeekdays = {
-                                scheduled?.weekday ?? DateTime.now().weekday,
-                              };
-                            }
-                          }),
-                        ),
-                      if (recurrenceKind != null) ...[
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: recurrenceInterval,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText:
-                                recurrenceKind == RecurrenceKind.afterCompletion
-                                ? 'Days after completion'
-                                : 'Repeat every (days, weeks, months, or years)',
-                          ),
-                        ),
-                        if (recurrenceKind == RecurrenceKind.weekdays)
-                          Wrap(
-                            spacing: 4,
-                            children: [
-                              for (var weekday = 1; weekday <= 7; weekday++)
-                                FilterChip(
-                                  label: Text(
-                                    const [
-                                      'Mon',
-                                      'Tue',
-                                      'Wed',
-                                      'Thu',
-                                      'Fri',
-                                      'Sat',
-                                      'Sun',
-                                    ][weekday - 1],
-                                  ),
-                                  selected: recurrenceWeekdays.contains(
-                                    weekday,
-                                  ),
-                                  onSelected: (selected) => setState(() {
-                                    if (selected) {
-                                      recurrenceWeekdays.add(weekday);
-                                    } else {
-                                      recurrenceWeekdays.remove(weekday);
-                                    }
-                                  }),
-                                ),
-                            ],
-                          ),
-                        const SizedBox(height: 8),
-                        _dateRow(
-                          'Repeat until',
-                          recurrenceEnd,
-                          _pickRecurrenceEnd,
-                          () => setState(() => recurrenceEnd = null),
-                        ),
-                        TextField(
-                          controller: recurrenceCount,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText:
-                                'Stop after this many occurrences (optional)',
-                          ),
-                        ),
-                        if (recurrenceKind !=
-                            RecurrenceKind.afterCompletion) ...[
-                          const SizedBox(height: 12),
-                          TextField(
-                            controller: progressiveSteps,
-                            minLines: 2,
-                            maxLines: 6,
-                            decoration: const InputDecoration(
-                              labelText: 'Recurring task plan (optional)',
-                              hintText:
-                                  'One activity per line, in occurrence order',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: const Text('Repeat plan after final step'),
-                            value: repeatPlanAtEnd,
-                            onChanged: (value) =>
-                                setState(() => repeatPlanAtEnd = value),
-                          ),
+                          const SizedBox(height: 8),
                         ],
-                      ],
-                    ] else if (widget.task!.recurrenceSeriesId != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        'Recurring occurrence • ${widget.task!.nominalDate}. Edits here affect this occurrence.',
-                      ),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: OutlinedButton.icon(
-                          onPressed: _editSeries,
-                          icon: const Icon(Icons.repeat),
-                          label: const Text('Edit recurring series'),
-                        ),
-                      ),
-                      if (widget.task!.recurrenceKindName !=
-                          RecurrenceKind.afterCompletion.name) ...[
-                        _planStep(widget.task!),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: OutlinedButton.icon(
-                            onPressed: () => showDialog<void>(
-                              context: context,
-                              animationStyle: AppMotion.style(context),
-                              builder: (context) =>
-                                  ProgressivePlanDialog(task: widget.task!),
-                            ),
-                            icon: const Icon(Icons.library_books_outlined),
-                            label: const Text('Edit recurring task plan'),
-                          ),
-                        ),
-                      ],
-                      if (widget.task!.recurrenceDisposition == 'skipped')
-                        const Text('Skipped'),
-                      if (widget.task!.recurrenceDisposition == 'skipped' &&
-                          widget.task!.recurrenceKindName == 'afterCompletion')
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            onPressed: _resumeCompletionSeries,
-                            icon: const Icon(Icons.restart_alt),
-                            label: const Text('Resume series on a chosen day'),
-                          ),
-                        ),
-                      if (widget.task!.recurrenceRescheduled)
-                        const Text('Rescheduled from the nominal day'),
-                      if (widget.task!.isOpen)
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            onPressed: _skipOccurrence,
-                            icon: const Icon(Icons.skip_next),
-                            label: const Text('Skip this occurrence'),
-                          ),
-                        ),
-                    ],
-                    const SizedBox(height: AppSpacing.related),
-                    if (currentTask case final task?) ...[
-                      SettingsSection(
-                        title: 'Resources',
-                        description: 'Resource changes save immediately.',
-                        children: [
-                          TaskResourcesSection(
-                            key: ValueKey('resources:${task.id}'),
-                            taskId: task.id,
-                            repository: controller.repository,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      SettingsSection(
-                        title: 'Checklist and subtasks',
-                        description:
-                            'Checklist and subtask changes save immediately.',
-                        children: [
-                          TaskCompositionSection(
-                            task: task,
-                            onAddSubtask:
-                                ref
-                                    .watch(appControllerProvider)
-                                    .taskParents
-                                    .containsKey(task.id)
-                                ? null
-                                : () => _newSubtask(task),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    if (currentTask == null)
-                      SettingsSection(
-                        title: 'Checklist and subtasks',
-                        children: [
-                          if (recurrenceKind != null)
-                            const Text(
-                              'Checklists, subtasks and resources belong to the first occurrence.',
-                            ),
-                          DraftChecklistGroups(
-                            groups: draftChecklistGroups,
-                            onChanged: (value) =>
-                                setState(() => draftChecklistGroups = value),
-                          ),
-                          if (widget.parentTaskId == null)
-                            _draftCompositionSection(),
-                        ],
-                      ),
-                    if (currentTask == null)
-                      SettingsSection(
-                        title: 'Resources',
-                        children: [
-                          DraftResourcesSection(
-                            resources: draftResources,
-                            onChanged: (value) {
-                              if (Platform.isAndroid) {
-                                for (final removed in draftResources.where(
-                                  (r) =>
-                                      r.kind == TaskResourceKind.managed &&
-                                      !value.any(
-                                        (next) => next.target == r.target,
-                                      ),
-                                )) {
-                                  unawaited(
-                                    AndroidPlatform.releaseImportedDocument(
-                                      File(removed.target),
-                                    ).catchError((Object _) {}),
-                                  );
-                                }
-                              }
-                              setState(() => draftResources = value);
-                            },
-                          ),
-                        ],
-                      ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Column(
-                        children: [
-                          AlarmField(
-                            value: alarm,
-                            recurring:
-                                recurrenceKind != null ||
-                                currentTask?.recurrenceSeriesId != null,
-                            allowCustom: !alarmForFamily,
-                            onChanged: (value) => setState(() {
-                              alarm = value;
-                              if (value.enabled) {
-                                notification = const TaskNotification();
-                              }
-                            }),
-                          ),
-                          if (alarm.enabled &&
-                              alarm.mode == 'planned' &&
-                              scheduled == null)
-                            const Text(
-                              'Waiting for a planned day. Choose a day above or use an exact alarm time.',
-                            ),
-                          if (alarm.enabled &&
-                              alarm.mode == 'relative' &&
-                              !ref
-                                  .read(appControllerProvider)
-                                  .sessions
-                                  .any(
-                                    (s) =>
-                                        s.taskId == currentTask?.id &&
-                                        s.outcome == SessionOutcome.upcoming &&
-                                        s.startsAt.isAfter(DateTime.now()),
-                                  ))
-                            const Text(
-                              'Waiting for an upcoming work session. An exact alarm time works without one.',
-                            ),
-                          if (currentTask?.recurrenceSeriesId != null &&
-                              alarm.enabled)
-                            CheckboxListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: const Text(
-                                'Apply alarm to this recurring family',
-                              ),
-                              subtitle: const Text(
-                                "Replaces this occurrence's override. Other occurrence overrides stay unchanged.",
-                              ),
-                              value: alarmForFamily,
-                              onChanged: (v) =>
-                                  setState(() => alarmForFamily = v ?? false),
-                            ),
-                          if (notification.enabled && !alarm.enabled)
-                            TaskNotificationField(
-                              value: notification,
-                              onChanged: (value) =>
-                                  setState(() => notification = value),
-                            ),
-                        ],
-                      ),
-                    ),
-                    ExpansionTile(
-                      tilePadding: const EdgeInsets.symmetric(vertical: 4),
-                      initiallyExpanded:
-                          status != TaskStatus.notStarted || priority != 0,
-                      title: const Text('Status and priority'),
-                      subtitle: const Text('Optional for a new task'),
-                      children: [
-                        AnchoredSelectField<TaskStatus>(
-                          key: ValueKey('status:$status:$recurrenceKind'),
-                          initialValue: status,
-                          decoration: const InputDecoration(
-                            labelText: 'Status',
-                          ),
-                          items: TaskStatus.values
-                              .map(
-                                (value) => DropdownMenuItem(
-                                  value: value,
-                                  child: Text(_statusName(value)),
-                                ),
-                              )
-                              .toList(),
-                          onChanged:
-                              widget.task == null && recurrenceKind != null
-                              ? null
-                              : (value) => setState(() => status = value!),
-                        ),
-                        const SizedBox(height: 12),
-                        AnchoredSelectField<int>(
-                          initialValue: priority,
-                          decoration: const InputDecoration(
-                            labelText: 'Priority',
-                          ),
-                          items: const [
-                            DropdownMenuItem(value: 0, child: Text('None')),
-                            DropdownMenuItem(value: 1, child: Text('Low')),
-                            DropdownMenuItem(value: 2, child: Text('Medium')),
-                            DropdownMenuItem(value: 3, child: Text('High')),
-                          ],
-                          onChanged: (value) =>
-                              setState(() => priority = value!),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    ExpansionTile(
-                      tilePadding: const EdgeInsets.symmetric(vertical: 4),
-                      initiallyExpanded:
-                          plannedDuration.text.isNotEmpty ||
-                          remainingWork.text.isNotEmpty ||
-                          schedulingLocked,
-                      title: const Text('Estimates and schedule protection'),
-                      subtitle: const Text('Optional planning details'),
-                      children: [
                         Row(
                           children: [
                             Expanded(
                               child: TextField(
-                                controller: plannedDuration,
-                                keyboardType: TextInputType.number,
+                                key: const ValueKey('task-title-field'),
+                                controller: title,
+                                autofocus: widget.task == null,
                                 decoration: const InputDecoration(
-                                  labelText: 'Planned minutes',
+                                  labelText: 'Title *',
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: TextField(
-                                controller: remainingWork,
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
-                                  labelText: 'Remaining minutes',
+                            const SizedBox(width: 8),
+                            IconButton.outlined(
+                              tooltip: 'Choose task icon',
+                              icon: Icon(
+                                iconForKey(
+                                  iconKey ??
+                                      (widget.task?.recurrenceSeriesId == null
+                                          ? null
+                                          : controller
+                                                .iconKeys['series:${widget.task!.recurrenceSeriesId}']),
+                                  Icons.task_alt_outlined,
                                 ),
+                              ),
+                              onPressed: () async {
+                                final choice = await chooseBuiltInIcon(
+                                  context,
+                                  current: iconKey,
+                                );
+                                if (choice.$1 && mounted) {
+                                  setState(() => iconKey = choice.$2);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        SettingsSection(
+                          title: 'Notes',
+                          initiallyExpanded: notes.text.isNotEmpty,
+                          children: [
+                            TextField(
+                              key: const ValueKey('task-notes-field'),
+                              controller: notes,
+                              minLines: 2,
+                              maxLines: 4,
+                              decoration: const InputDecoration(
+                                labelText: 'Notes',
                               ),
                             ),
                           ],
                         ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('Protect schedule'),
-                          subtitle: const Text(
-                            'Smart Reschedule will not move this task or its sessions.',
-                          ),
-                          value: schedulingLocked,
-                          onChanged: (value) =>
-                              setState(() => schedulingLocked = value),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Schedule',
+                          style: Theme.of(context).textTheme.titleSmall,
                         ),
-                      ],
-                    ),
-                    if (widget.task != null) ...[
-                      const SizedBox(height: 16),
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          final task = currentTask;
-                          if (task == null) return;
-                          showSaveTemplateDialog(
-                            context,
-                            sourceName: task.title,
-                            save: (name) => ref
-                                .read(appControllerProvider)
-                                .saveTaskTemplate(task, name),
-                          );
-                        },
-                        icon: const Icon(Icons.copy_all_outlined),
-                        label: const Text('Save task or routine template'),
-                      ),
-                      const SizedBox(height: 8),
-                      OutlinedButton.icon(
-                        onPressed: () => showDialog<void>(
-                          context: context,
-                          animationStyle: AppMotion.style(context),
-                          builder: (_) =>
-                              TimeTrackingDialog(taskId: widget.task!.id),
+                        const SizedBox(height: 8),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final planned = _dateRow(
+                              'Scheduled day',
+                              scheduled,
+                              () => _pickDate(false),
+                              () => setState(() => scheduled = null),
+                            );
+                            final due = _dateRow(
+                              'Deadline',
+                              deadline,
+                              () => _pickDate(true),
+                              () => setState(() => deadline = null),
+                            );
+                            if (constraints.maxWidth < 380) {
+                              return Column(children: [planned, due]);
+                            }
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: planned),
+                                const SizedBox(width: 12),
+                                Expanded(child: due),
+                              ],
+                            );
+                          },
                         ),
-                        icon: const Icon(Icons.timer_outlined),
-                        label: const Text('Actual work and timer'),
-                      ),
-                      const SizedBox(height: 8),
-                      ExpansionTile(
-                        tilePadding: const EdgeInsets.symmetric(vertical: 4),
-                        title: const Text('Prerequisites'),
-                        subtitle: Text(
-                          controller.unmetPrerequisites(widget.task!.id).isEmpty
-                              ? 'No unmet prerequisites'
-                              : 'Blocked by ${controller.unmetPrerequisites(widget.task!.id).length} task(s)',
+                        const SizedBox(height: 16),
+                        SettingsSection(
+                          title: 'Organization',
+                          initiallyExpanded:
+                              categoryId != null || projectId != null,
+                          children: [
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final categoryField = AnchoredSelectField<String?>(
+                                  key: ValueKey(
+                                    'category:$categoryId:$organizationPickerRevision',
+                                  ),
+                                  initialValue: categoryId,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Category',
+                                  ),
+                                  items: [
+                                    const DropdownMenuItem<String?>(
+                                      value: null,
+                                      child: Text('None / Inbox'),
+                                    ),
+                                    ...controller.categories.map(
+                                      (category) => DropdownMenuItem<String?>(
+                                        value: category.id,
+                                        child: Text(category.name),
+                                      ),
+                                    ),
+                                    const DropdownMenuItem<String?>(
+                                      value: '__new_category__',
+                                      child: Text('+ New Category'),
+                                    ),
+                                  ],
+                                  onChanged: (value) {
+                                    if (value == '__new_category__') {
+                                      _createCategory();
+                                      return;
+                                    }
+                                    setState(() {
+                                      categoryId = value;
+                                      projectId = null;
+                                    });
+                                  },
+                                );
+                                final projectField = AnchoredSelectField<String?>(
+                                  key: ValueKey(
+                                    'project:$projectId:$categoryId:$organizationPickerRevision',
+                                  ),
+                                  initialValue: projectId,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Project',
+                                  ),
+                                  items: [
+                                    const DropdownMenuItem<String?>(
+                                      value: null,
+                                      child: Text('None'),
+                                    ),
+                                    ...projectChoices.map(
+                                      (project) => DropdownMenuItem<String?>(
+                                        value: project.id,
+                                        child: Text(project.name),
+                                      ),
+                                    ),
+                                    const DropdownMenuItem<String?>(
+                                      value: '__new_project__',
+                                      child: Text('+ New Project'),
+                                    ),
+                                  ],
+                                  onChanged: categoryId == null
+                                      ? null
+                                      : (value) {
+                                          if (value == '__new_project__') {
+                                            _createProject();
+                                          } else {
+                                            setState(() => projectId = value);
+                                          }
+                                        },
+                                );
+                                if (constraints.maxWidth <
+                                    380 *
+                                        MediaQuery.textScalerOf(context)
+                                            .scale(1)) {
+                                  return Column(
+                                    children: [
+                                      categoryField,
+                                      const SizedBox(height: 12),
+                                      projectField,
+                                    ],
+                                  );
+                                }
+                                return Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(child: categoryField),
+                                    const SizedBox(width: 12),
+                                    Expanded(child: projectField),
+                                  ],
+                                );
+                              },
+                            ),
+                          ],
                         ),
-                        children: [
-                          const Text(
-                            'A task can appear in any project. Sequence order is separate.',
-                          ),
-                          for (final candidate in controller.tasks.where(
-                            (item) => item.id != widget.task!.id,
-                          ))
-                            CheckboxListTile(
-                              dense: true,
-                              title: Text(candidate.title),
-                              subtitle: Text(
-                                candidate.status == TaskStatus.completed
-                                    ? 'Completed'
-                                    : 'Incomplete',
+                        if (widget.task == null) ...[
+                          const SizedBox(height: 12),
+                          if (widget.parentTaskId == null)
+                            AnchoredSelectField<RecurrenceKind?>(
+                              initialValue: recurrenceKind,
+                              decoration: const InputDecoration(
+                                labelText: 'Repeat',
                               ),
-                              value: prerequisiteIds.contains(candidate.id),
+                              items: const [
+                                DropdownMenuItem<RecurrenceKind?>(
+                                  value: null,
+                                  child: Text('Does not repeat'),
+                                ),
+                                DropdownMenuItem(
+                                  value: RecurrenceKind.daily,
+                                  child: Text('Daily'),
+                                ),
+                                DropdownMenuItem(
+                                  value: RecurrenceKind.weekly,
+                                  child: Text('Weekly'),
+                                ),
+                                DropdownMenuItem(
+                                  value: RecurrenceKind.weekdays,
+                                  child: Text('Selected weekdays'),
+                                ),
+                                DropdownMenuItem(
+                                  value: RecurrenceKind.monthly,
+                                  child: Text('Monthly'),
+                                ),
+                                DropdownMenuItem(
+                                  value: RecurrenceKind.yearly,
+                                  child: Text('Yearly'),
+                                ),
+                                DropdownMenuItem(
+                                  value: RecurrenceKind.afterCompletion,
+                                  child: Text('After completion'),
+                                ),
+                              ],
                               onChanged: (value) => setState(() {
-                                if (value == true) {
-                                  prerequisiteIds.add(candidate.id);
-                                } else {
-                                  prerequisiteIds.remove(candidate.id);
+                                recurrenceKind = value;
+                                if (value != null)
+                                  status = TaskStatus.notStarted;
+                                if (value == RecurrenceKind.weekdays &&
+                                    recurrenceWeekdays.isEmpty) {
+                                  recurrenceWeekdays = {
+                                    scheduled?.weekday ??
+                                        DateTime.now().weekday,
+                                  };
                                 }
                               }),
                             ),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: OutlinedButton(
-                              onPressed: savingPrerequisites
-                                  ? null
-                                  : _savePrerequisites,
-                              child: const Text('Save prerequisites'),
+                          if (recurrenceKind != null) ...[
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: recurrenceInterval,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText:
+                                    recurrenceKind ==
+                                        RecurrenceKind.afterCompletion
+                                    ? 'Days after completion'
+                                    : 'Repeat every (days, weeks, months, or years)',
+                              ),
                             ),
+                            if (recurrenceKind == RecurrenceKind.weekdays)
+                              Wrap(
+                                spacing: 4,
+                                children: [
+                                  for (var weekday = 1; weekday <= 7; weekday++)
+                                    FilterChip(
+                                      label: Text(
+                                        const [
+                                          'Mon',
+                                          'Tue',
+                                          'Wed',
+                                          'Thu',
+                                          'Fri',
+                                          'Sat',
+                                          'Sun',
+                                        ][weekday - 1],
+                                      ),
+                                      selected: recurrenceWeekdays.contains(
+                                        weekday,
+                                      ),
+                                      onSelected: (selected) => setState(() {
+                                        if (selected) {
+                                          recurrenceWeekdays.add(weekday);
+                                        } else {
+                                          recurrenceWeekdays.remove(weekday);
+                                        }
+                                      }),
+                                    ),
+                                ],
+                              ),
+                            const SizedBox(height: 8),
+                            _dateRow(
+                              'Repeat until',
+                              recurrenceEnd,
+                              _pickRecurrenceEnd,
+                              () => setState(() => recurrenceEnd = null),
+                            ),
+                            TextField(
+                              controller: recurrenceCount,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Stop after this many occurrences (optional)',
+                              ),
+                            ),
+                            if (recurrenceKind !=
+                                RecurrenceKind.afterCompletion) ...[
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: progressiveSteps,
+                                minLines: 2,
+                                maxLines: 6,
+                                decoration: const InputDecoration(
+                                  labelText: 'Recurring task plan (optional)',
+                                  hintText: 'One activity per line, in occurrence order',
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                              SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: const Text(
+                                  'Repeat plan after final step',
+                                ),
+                                value: repeatPlanAtEnd,
+                                onChanged: (value) =>
+                                    setState(() => repeatPlanAtEnd = value),
+                              ),
+                            ],
+                          ],
+                        ] else if (widget.task!.recurrenceSeriesId != null) ...[
+                          const SizedBox(height: 12),
+                          SettingsSection(
+                            title: 'Recurring occurrence',
+                            description:
+                                '${widget.task!.nominalDate} • Edits affect this occurrence',
+                            initiallyExpanded: true,
+                            children: [
+                              if (widget.task!.recurrenceDisposition ==
+                                      'skipped' ||
+                                  widget.task!.recurrenceRescheduled) ...[
+                                Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    if (widget.task!.recurrenceDisposition ==
+                                        'skipped')
+                                      Chip(
+                                        avatar: const Icon(
+                                          Icons.skip_next,
+                                          size: 16,
+                                        ),
+                                        label: const Text('Skipped'),
+                                      ),
+                                    if (widget.task!.recurrenceRescheduled)
+                                      Chip(
+                                        avatar: const Icon(
+                                          Icons.edit_calendar,
+                                          size: 16,
+                                        ),
+                                        label: const Text('Rescheduled'),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                              if (widget.task!.recurrenceKindName !=
+                                  RecurrenceKind.afterCompletion.name) ...[
+                                _planStep(widget.task!),
+                                const SizedBox(height: 12),
+                              ],
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  OutlinedButton.icon(
+                                    onPressed: _editSeries,
+                                    icon: const Icon(Icons.repeat, size: 18),
+                                    label: const Text('Edit series'),
+                                  ),
+                                  if (widget.task!.recurrenceKindName !=
+                                      RecurrenceKind.afterCompletion.name)
+                                    OutlinedButton.icon(
+                                      onPressed: () => showDialog<void>(
+                                        context: context,
+                                        animationStyle: AppMotion.style(
+                                          context,
+                                        ),
+                                        builder: (context) =>
+                                            ProgressivePlanDialog(
+                                              task: widget.task!,
+                                            ),
+                                      ),
+                                      icon: const Icon(
+                                        Icons.library_books_outlined,
+                                        size: 18,
+                                      ),
+                                      label: const Text('Edit plan'),
+                                    ),
+                                  if (widget.task!.recurrenceDisposition ==
+                                          'skipped' &&
+                                      widget.task!.recurrenceKindName ==
+                                          'afterCompletion')
+                                    OutlinedButton.icon(
+                                      onPressed: _resumeCompletionSeries,
+                                      icon: const Icon(
+                                        Icons.restart_alt,
+                                        size: 18,
+                                      ),
+                                      label: const Text('Resume series'),
+                                    ),
+                                  if (widget.task!.isOpen)
+                                    OutlinedButton.icon(
+                                      onPressed: _skipOccurrence,
+                                      icon: const Icon(
+                                        Icons.skip_next,
+                                        size: 18,
+                                      ),
+                                      label: const Text('Skip occurrence'),
+                                    ),
+                                ],
+                              ),
+                            ],
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'Planned work sessions',
-                              style: TextStyle(fontWeight: FontWeight.w700),
-                            ),
+                        const SizedBox(height: AppSpacing.related),
+                        if (currentTask case final task?) ...[
+                          SettingsSection(
+                            title: 'Resources',
+                            description: 'Attached files and links are updated directly.',
+                            children: [
+                              TaskResourcesSection(
+                                key: ValueKey('resources:${task.id}'),
+                                taskId: task.id,
+                                repository: controller.repository,
+                              ),
+                            ],
                           ),
-                          IconButton(
-                            tooltip: 'Add work session',
-                            onPressed: () => _editSession(),
-                            icon: const Icon(Icons.add),
+                          const SizedBox(height: 16),
+                          SettingsSection(
+                            title: 'Checklist and subtasks',
+                            description:
+                                'Subtasks and checklist steps update directly.',
+                            children: [
+                              TaskCompositionSection(
+                                task: task,
+                                onAddSubtask:
+                                    ref
+                                        .watch(appControllerProvider)
+                                        .taskParents
+                                        .containsKey(task.id)
+                                    ? null
+                                    : () => _newSubtask(task),
+                              ),
+                            ],
                           ),
+                          const SizedBox(height: 16),
                         ],
-                      ),
-                      for (final session in controller.sessions.where(
-                        (item) => item.taskId == widget.task!.id,
-                      ))
-                        ListTile(
-                          dense: true,
-                          title: Text(
-                            '${localDate(session.startsAt.toLocal())} · ${session.outcome.name}',
+                        if (currentTask == null)
+                          SettingsSection(
+                            title: 'Checklist and subtasks',
+                            children: [
+                              if (recurrenceKind != null)
+                                const Text(
+                                  'Checklists, subtasks and resources belong to the first occurrence.',
+                                ),
+                              DraftChecklistGroups(
+                                groups: draftChecklistGroups,
+                                onChanged: (value) => setState(
+                                  () => draftChecklistGroups = value,
+                                ),
+                              ),
+                              if (widget.parentTaskId == null)
+                                _draftCompositionSection(),
+                            ],
                           ),
-                          subtitle: Text(
-                            session.needsConfirmation
-                                ? 'Needs confirmation'
-                                : session.lateStart
-                                ? 'Late start'
-                                : 'Tap to edit',
+                        if (currentTask == null)
+                          SettingsSection(
+                            title: 'Resources',
+                            children: [
+                              DraftResourcesSection(
+                                resources: draftResources,
+                                onChanged: (value) {
+                                  if (Platform.isAndroid) {
+                                    for (final removed in draftResources.where(
+                                      (r) =>
+                                          r.kind == TaskResourceKind.managed &&
+                                          !value.any(
+                                            (next) => next.target == r.target,
+                                          ),
+                                    )) {
+                                      unawaited(
+                                        AndroidPlatform.releaseImportedDocument(
+                                          File(removed.target),
+                                        ).catchError((Object _) {}),
+                                      );
+                                    }
+                                  }
+                                  setState(() => draftResources = value);
+                                },
+                              ),
+                            ],
                           ),
-                          onTap: () => _editSession(session),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Column(
+                            children: [
+                              AlarmField(
+                                value: alarm,
+                                recurring:
+                                    recurrenceKind != null ||
+                                    currentTask?.recurrenceSeriesId != null,
+                                allowCustom: !alarmForFamily,
+                                onChanged: (value) => setState(() {
+                                  alarm = value;
+                                  if (value.enabled) {
+                                    notification = const TaskNotification();
+                                  }
+                                }),
+                              ),
+                              if (alarm.enabled &&
+                                  alarm.mode == 'planned' &&
+                                  scheduled == null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(
+                                        Icons.info_outline,
+                                        size: 16,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Waiting for a planned day. Choose a day above or use an exact alarm time.',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                color: theme
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              if (alarm.enabled &&
+                                  alarm.mode == 'relative' &&
+                                  !ref
+                                      .read(appControllerProvider)
+                                      .sessions
+                                      .any(
+                                        (s) =>
+                                            s.taskId == currentTask?.id &&
+                                            s.outcome ==
+                                                SessionOutcome.upcoming &&
+                                            s.startsAt.isAfter(DateTime.now()),
+                                      ))
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(
+                                        Icons.info_outline,
+                                        size: 16,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Waiting for an upcoming work session. An exact alarm time works without one.',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                color: theme
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              if (currentTask?.recurrenceSeriesId != null &&
+                                  alarm.enabled)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: CheckboxListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    title: const Text('Use as series alarm'),
+                                    subtitle: Text(
+                                      "Updates the series rule and replaces this occurrence's override. Other occurrence overrides stay unchanged.",
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: theme
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
+                                    ),
+                                    value: alarmForFamily,
+                                    onChanged: (v) => setState(
+                                      () => alarmForFamily = v ?? false,
+                                    ),
+                                  ),
+                                ),
+                              if (notification.enabled && !alarm.enabled)
+                                TaskNotificationField(
+                                  value: notification,
+                                  onChanged: (value) =>
+                                      setState(() => notification = value),
+                                ),
+                            ],
+                          ),
                         ),
-                    ],
-                  ],
+                        ExpansionTile(
+                          tilePadding: const EdgeInsets.symmetric(vertical: 4),
+                          initiallyExpanded:
+                              status != TaskStatus.notStarted || priority != 0,
+                          title: const Text('Status and priority'),
+                          subtitle: const Text('Optional for a new task'),
+                          children: [
+                            AnchoredSelectField<TaskStatus>(
+                              key: ValueKey('status:$status:$recurrenceKind'),
+                              initialValue: status,
+                              decoration: const InputDecoration(
+                                labelText: 'Status',
+                              ),
+                              items: TaskStatus.values
+                                  .map(
+                                    (value) => DropdownMenuItem(
+                                      value: value,
+                                      child: Text(_statusName(value)),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged:
+                                  widget.task == null && recurrenceKind != null
+                                  ? null
+                                  : (value) => setState(() => status = value!),
+                            ),
+                            const SizedBox(height: 12),
+                            AnchoredSelectField<int>(
+                              initialValue: priority,
+                              decoration: const InputDecoration(
+                                labelText: 'Priority',
+                              ),
+                              items: const [
+                                DropdownMenuItem(value: 0, child: Text('None')),
+                                DropdownMenuItem(value: 1, child: Text('Low')),
+                                DropdownMenuItem(
+                                  value: 2,
+                                  child: Text('Medium'),
+                                ),
+                                DropdownMenuItem(value: 3, child: Text('High')),
+                              ],
+                              onChanged: (value) =>
+                                  setState(() => priority = value!),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        ExpansionTile(
+                          tilePadding: const EdgeInsets.symmetric(vertical: 4),
+                          initiallyExpanded:
+                              plannedDuration.text.isNotEmpty ||
+                              remainingWork.text.isNotEmpty ||
+                              schedulingLocked,
+                          title: const Text(
+                            'Estimates and schedule protection',
+                          ),
+                          subtitle: const Text('Optional planning details'),
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: plannedDuration,
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Planned minutes',
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: TextField(
+                                    controller: remainingWork,
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Remaining minutes',
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Protect schedule'),
+                              subtitle: const Text(
+                                'Smart Reschedule will not move this task or its sessions.',
+                              ),
+                              value: schedulingLocked,
+                              onChanged: (value) =>
+                                  setState(() => schedulingLocked = value),
+                            ),
+                          ],
+                        ),
+                        if (widget.task != null) ...[
+                          const SizedBox(height: 16),
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              final task = currentTask;
+                              if (task == null) return;
+                              showSaveTemplateDialog(
+                                context,
+                                sourceName: task.title,
+                                save: (name) => ref
+                                    .read(appControllerProvider)
+                                    .saveTaskTemplate(task, name),
+                              );
+                            },
+                            icon: const Icon(Icons.copy_all_outlined),
+                            label: const Text('Save task or routine template'),
+                          ),
+                          const SizedBox(height: 8),
+                          OutlinedButton.icon(
+                            onPressed: () => showDialog<void>(
+                              context: context,
+                              animationStyle: AppMotion.style(context),
+                              builder: (_) =>
+                                  TimeTrackingDialog(taskId: widget.task!.id),
+                            ),
+                            icon: const Icon(Icons.timer_outlined),
+                            label: const Text('Actual work and timer'),
+                          ),
+                          const SizedBox(height: 8),
+                          ExpansionTile(
+                            tilePadding: const EdgeInsets.symmetric(
+                              vertical: 4,
+                            ),
+                            title: const Text('Prerequisites'),
+                            subtitle: Text(
+                              controller
+                                      .unmetPrerequisites(widget.task!.id)
+                                      .isEmpty
+                                  ? 'No unmet prerequisites'
+                                  : 'Blocked by ${controller.unmetPrerequisites(widget.task!.id).length} task(s)',
+                            ),
+                            children: [
+                              const Text(
+                                'A task can appear in any project. Sequence order is separate.',
+                              ),
+                              for (final candidate in controller.tasks.where(
+                                (item) => item.id != widget.task!.id,
+                              ))
+                                CheckboxListTile(
+                                  dense: true,
+                                  title: Text(candidate.title),
+                                  subtitle: Text(
+                                    candidate.status == TaskStatus.completed
+                                        ? 'Completed'
+                                        : 'Incomplete',
+                                  ),
+                                  value: prerequisiteIds.contains(candidate.id),
+                                  onChanged: (value) => setState(() {
+                                    if (value == true) {
+                                      prerequisiteIds.add(candidate.id);
+                                    } else {
+                                      prerequisiteIds.remove(candidate.id);
+                                    }
+                                  }),
+                                ),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: OutlinedButton(
+                                  onPressed: savingPrerequisites
+                                      ? null
+                                      : _savePrerequisites,
+                                  child: const Text('Save prerequisites'),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              const Expanded(
+                                child: Text(
+                                  'Planned work sessions',
+                                  style: TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: 'Add work session',
+                                onPressed: () => _editSession(),
+                                icon: const Icon(Icons.add),
+                              ),
+                            ],
+                          ),
+                          for (final session in controller.sessions.where(
+                            (item) => item.taskId == widget.task!.id,
+                          ))
+                            ListTile(
+                              dense: true,
+                              title: Text(
+                                '${localDate(session.startsAt.toLocal())} · ${session.outcome.name}',
+                              ),
+                              subtitle: Text(
+                                session.needsConfirmation
+                                    ? 'Needs confirmation'
+                                    : session.lateStart
+                                    ? 'Late start'
+                                    : 'Tap to edit',
+                              ),
+                              onTap: () => _editSession(session),
+                            ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Tooltip(
-              message: widget.task == null
-                  ? 'Create task (Ctrl+S, Ctrl+Enter)'
-                  : 'Save changes (Ctrl+S, Ctrl+Enter)',
-              child: FilledButton.icon(
-                onPressed: saving ? null : _save,
-                icon: const Icon(Icons.save_outlined),
-                label: Text(
-                  saving
-                      ? 'Saving…'
-                      : widget.task == null
-                      ? 'Create task'
-                      : 'Save changes',
+                const SizedBox(height: 12),
+                Tooltip(
+                  message: widget.task == null
+                      ? 'Create task (Ctrl+S, Ctrl+Enter)'
+                      : 'Save changes (Ctrl+S, Ctrl+Enter)',
+                  child: FilledButton.icon(
+                    onPressed: saving ? null : _save,
+                    icon: const Icon(Icons.save_outlined),
+                    label: Text(
+                      saving
+                          ? 'Saving…'
+                          : widget.task == null
+                          ? 'Create task'
+                          : 'Save changes',
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
-    ),
-  ),
-);
+    );
   }
 
   Widget _dateRow(
@@ -2096,7 +2228,8 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                     date == null
                         ? 'No date'
                         : Platform.isAndroid
-                        ? MaterialLocalizations.of(context).formatMediumDate(date)
+                        ? MaterialLocalizations.of(context)
+                              .formatMediumDate(date)
                         : localDate(date),
                     overflow: TextOverflow.ellipsis,
                     semanticsLabel:

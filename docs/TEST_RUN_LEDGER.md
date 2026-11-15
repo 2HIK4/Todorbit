@@ -1,5 +1,19 @@
 # Persistent test run ledger
 
+## UIUX-02 independent review (2026-11-15, UTC+03:00)
+
+Preserved HEAD `61bde1c`, dirty-source identities and every focused invocation,
+failed preflight/regression/fixture attempt, reuse decision and tooling limit:
+[review receipt](UIUX02_CODEX_REVIEW_2026_11_15.md). Fifteen distinct Flutter
+checks and four JVM checks passed across scoped runs; no final all-suite claim.
+Final missing visual cases: Dark/Light 360/393dp defaults and Dark 393dp/1.5×,
+320dp/2×, 24 PNGs with observed metadata. Final scoped analyzer clean; earlier
+wider scoped analyzer had two existing style infos and no errors/warnings.
+Gemini counts lacked reusable exact-source receipts. Unchanged data/Sync/native
+Windows boundaries were not rerun. Installed upgrade/Doze/platform acceptance
+and unavailable DTD/official PyYAML skill validator remain accurately bounded.
+
+
 ## Linux helper-diagnostic portability repair (2026-11-14)
 
 [Second cloud run](https://github.com/2HIK4/Todorbit/actions/runs/43637305743)

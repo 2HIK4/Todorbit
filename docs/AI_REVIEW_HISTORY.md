@@ -3,6 +3,27 @@
 Completed entries are archived here before removal from
 [the pending queue](AI_REVIEW_QUEUE.md). Preserve significant defects and fixes.
 
+## UIUX-02 — Approved with limitations after repairs (2026-11-15)
+
+Reviewed dirty source on preserved HEAD `61bde1c`, branch
+`codex/independent-beta-review`. Restored a private, action-validated Android
+refresh receiver; bounded idle scheduling to installed widgets; preserved
+explicit browsing and restored Today following; repaired foreground/date-picker
+state, large-text composition, misleading series-alarm copy and low-contrast
+empty guidance. Global clipping was replaced by local calendar-card clipping.
+Corrected the three modified skill references and unsupported audit claims.
+
+Fifteen distinct focused Flutter tests and four JVM policy tests passed across
+scoped runs, with failures/fixture corrections/source limits fully recorded.
+Two app screens plus AlarmField were rendered; final 24 PNGs include Dark/Light
+360/393dp defaults and separate Dark 1.5×/2× stress cases. No installed Android
+or Windows runtime acceptance is inferred. Only scoped source/host-visual work is
+archived; [device/upgrade/Doze gaps](DEFERRED_VERIFICATION.md) remain pending.
+See [receipt](UIUX02_CODEX_REVIEW_2026_11_15.md),
+[source identity](UIUX02_REVIEW_SOURCE_MANIFEST_2026_11_15.json) and
+[screenshot configurations](UIUX02_SCREENSHOT_MANIFEST_2026_11_15.json).
+No commit/push/build release/publication performed.
+
 ## ARCH-01 — Approved after repairs (2026-11-14)
 
 Reviewed against preserved HEAD `9cfdd0c619abffd94f3dacef1a794cede12ba9d2`

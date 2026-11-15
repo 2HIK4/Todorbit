@@ -50,6 +50,9 @@ and relevant platform receipts; it does not prove the unperformed procedures her
 | DEF-AND-WORKFLOW | Mobile editing/SQLite/restore; Android engineer | 3; disposable API-35 AVD | PENDING | Actual android_workflow_test.dart run; update/Drive fixture and host passes do not cover it. |
 | DEF-CAL-INPUT | Flutter CAL-03 resize/input; calendar engineer | 4; isolated Windows profile, physical mouse/mixed DPI | PENDING | Candidate app hash; real mouse dwell/reversal/multimonitor behavior absent. Native companion self-test is separate. |
 | DEF-CI-CLOUD | INFRA-01 / ARCH-01; repository owner/CI maintainer | 3; GitHub-hosted runners and repository rules | PENDING | Final committed candidate including reviewed architecture guards; real automatic/manual/check/artifact/cold-timing evidence absent. |
+| DEF-AND-WIDGET-DOZE | Android widget date rollover; Android engineer | 4; physical Android 12-15 device in Doze mode | PENDING | Final UIUX-02 source/artifact; observe actual inexact/delayed delivery, Follow Today and deliberate browsing separately. No exact-midnight guarantee. |
+| DEF-AND-WIDGET-UPGRADE | Android widget upgrade preservation; release engineer | 4; physical Android device / emulator | PENDING | In-place APK update over existing install verifying `ACTION_MY_PACKAGE_REPLACED` preserves widget instances and config without data wipe. |
+| DEF-UIUX02-DEVICE | UIUX-02; UI/Android engineer | 4; isolated Android runtime/device and affected Windows UI | PENDING | Offscreen default/stress cases pass; real IME/nonlinear text/TalkBack/locale/input and platform visual acceptance remain unobserved. |
 
 ## Procedures and prerequisites
 
@@ -190,3 +193,42 @@ migrated; retain exact-candidate Windows/Android gates. Record remote run URLs,
 conclusions and source; no local lint/parser/mock result closes this item.
 No push, dispatch, repository setting change, signing or publication is authorized
 by creation of this backlog.
+
+### DEF-AND-WIDGET-DOZE
+
+Owner: Android engineer. Use a dedicated test device (Android 12–16), synthetic
+data and no personal accounts. Place Tasks and Calendar widgets, including two
+differently configured instances. Record APK SHA, SDK, zone, clock, alarm state
+and per-instance settings. Select Today on one and browse another date on the
+other. Observe a real overnight rollover, USB disconnected/device idle; record
+requested and actual delivery times. `setAndAllowWhileIdle(RTC_WAKEUP)` remains
+inexact and may be batched/delayed. Verify Today advances on render, browsing
+remains intentional, and return to Today works. Check clock/zone changes and
+reboot followed by unlock restore one alarm; removing all widgets cancels it.
+Forced-idle/clock-change tests in a disposable emulator are supplementary, not
+proof of physical overnight behavior. Never change the personal host clock or
+use personal data. No execution occurred in this review.
+
+### DEF-AND-WIDGET-UPGRADE
+
+Owner: release engineer. Use a disposable install with synthetic data, configured
+launcher widgets and a previous compatible APK. Record both APK hashes, signing/
+application identity, widget IDs/providers, settings, PendingIntent destinations,
+content and alarm state. Install in place (`adb install -r <candidate.apk>`)
+without data clearance, uninstall/downgrade fallback or widget recreation.
+Observe actual MY_PACKAGE_REPLACED handling and retained IDs/config/content/
+navigation, restored midnight alarm and synthetic-data continuity. Provider
+names/XML and preference keys are statically compatible in UIUX-02; this is not
+installed-upgrade acceptance. No running disposable emulator/source-compatible
+installed candidate was available for a targeted upgrade run.
+
+### DEF-UIUX02-DEVICE
+
+Owner: UI/Android engineer. Level 4, PENDING. The
+[UIUX-02 receipt](UIUX02_CODEX_REVIEW_2026_11_15.md) covers two screens plus an
+alarm component, Dark/Light 360/393dp defaults and separate 1.5×/2× linear stress
+cases. Verify a candidate APK in an isolated actual Android runtime: OEM fonts,
+nonlinear accessibility scaling, IME/safe insets, physical pressed/focused input,
+TalkBack, locale/RTL and launcher behavior. Verify affected Windows pointer/
+keyboard/agenda appearance before shared UI release acceptance. A complete 24×11
+product audit was never established and is not claimed by this scoped review.

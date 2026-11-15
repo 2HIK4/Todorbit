@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../shared/scroll_edge_fade.dart';
 import '../shared/item_filters.dart';
 import '../shared/status_snackbar.dart';
@@ -30,24 +32,34 @@ class MobileCalendar extends ConsumerStatefulWidget {
     required this.addTask,
     this.initialDay,
     this.onEditorClosed,
+    this.clock = DateTime.now,
   });
   final ValueChanged<LifeTask> openTask;
   final ValueChanged<DateTime> addTask;
   final DateTime? initialDay;
   final Future<void> Function()? onEditorClosed;
+  final DateTime Function() clock;
   @override
   ConsumerState<MobileCalendar> createState() => _MobileCalendarState();
 }
 
-class _MobileCalendarState extends ConsumerState<MobileCalendar> {
-  late DateTime selected = DateUtils.dateOnly(
-    widget.initialDay ?? DateTime.now(),
-  );
+class _MobileCalendarState extends ConsumerState<MobileCalendar>
+    with WidgetsBindingObserver {
+  late DateTime selected;
+  late bool followingToday;
+  Timer? dayRefresh;
   String mode = 'month';
 
   @override
   void initState() {
     super.initState();
+    final today = widget.clock();
+    selected = DateUtils.dateOnly(widget.initialDay ?? today);
+    followingToday =
+        widget.initialDay == null ||
+        DateUtils.isSameDay(widget.initialDay, today);
+    WidgetsBinding.instance.addObserver(this);
+    scheduleDayRefresh();
     final controller = ref.read(appControllerProvider);
     mode =
         controller.lastCalendarMode ??
@@ -59,8 +71,76 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
     }
   }
 
+  @override
+  void dispose() {
+    dayRefresh?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    dayRefresh?.cancel();
+    if (state == AppLifecycleState.resumed) {
+      refreshDay();
+      scheduleDayRefresh();
+    }
+  }
+
+  void refreshDay() {
+    final today = DateUtils.dateOnly(widget.clock());
+    final changed = followingToday && !DateUtils.isSameDay(selected, today);
+    // Browsing stays put, but Today's indicator must still move on rollover.
+    setState(() {
+      if (followingToday) selected = today;
+    });
+    if (changed) unawaited(move(0));
+  }
+
+  void scheduleDayRefresh() {
+    dayRefresh?.cancel();
+    final now = widget.clock();
+    final nextDay = DateTime(now.year, now.month, now.day + 1);
+    dayRefresh = Timer(nextDay.difference(now), () {
+      if (!mounted) return;
+      refreshDay();
+      scheduleDayRefresh();
+    });
+  }
+
+  void changeMode(String value) {
+    setState(() => mode = value);
+    ref.read(appControllerProvider).setLastCalendarMode(value);
+  }
+
+  void returnToToday() {
+    setState(() {
+      selected = DateUtils.dateOnly(widget.clock());
+      followingToday = true;
+    });
+    unawaited(move(0));
+  }
+
+  Future<void> pickDay() async {
+    final day = await showDatePicker(
+      context: context,
+      initialDate: selected,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (day == null || !mounted) return;
+    setState(() {
+      selected = day;
+      followingToday = DateUtils.isSameDay(day, widget.clock());
+    });
+    await move(0);
+  }
+
   Future<void> move(int delta) async {
     setState(() {
+      if (delta != 0) {
+        followingToday = false;
+      }
       if (mode == 'month') {
         final first = DateTime(selected.year, selected.month + delta);
         selected = DateTime(
@@ -159,57 +239,92 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
       children: [
         const ItemFilters(),
-        SegmentedButton<String>(
-          segments: const [
-            ButtonSegment(value: 'day', label: Text('Day')),
-            ButtonSegment(value: 'week', label: Text('Week')),
-            ButtonSegment(value: 'month', label: Text('Month')),
-          ],
-          selected: {mode},
-          onSelectionChanged: (value) {
-            setState(() => mode = value.first);
-            ref.read(appControllerProvider).setLastCalendarMode(value.first);
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth <
+                280 * MediaQuery.textScalerOf(context).scale(1)) {
+              return Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final (value, label) in [
+                    ('day', 'Day'),
+                    ('week', 'Week'),
+                    ('month', 'Month'),
+                  ])
+                    ChoiceChip(
+                      label: Text(label),
+                      selected: mode == value,
+                      onSelected: (_) => changeMode(value),
+                    ),
+                ],
+              );
+            }
+            return SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: 'day', label: Text('Day')),
+                ButtonSegment(value: 'week', label: Text('Week')),
+                ButtonSegment(value: 'month', label: Text('Month')),
+              ],
+              selected: {mode},
+              onSelectionChanged: (value) => changeMode(value.first),
+            );
           },
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            IconButton(
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final title = TextButton(
+              onPressed: pickDay,
+              child: Text(
+                local.formatMonthYear(selected),
+                textAlign: TextAlign.center,
+              ),
+            );
+            final previous = IconButton(
               tooltip: 'Previous $mode',
               onPressed: () => move(-1),
               icon: const Icon(Icons.chevron_left),
-            ),
-            Expanded(
-              child: TextButton(
-                onPressed: () async {
-                  final d = await showDatePicker(
-                    context: context,
-                    initialDate: selected,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                  );
-                  if (d != null && mounted) {
-                    setState(() => selected = d);
-                    await move(0);
-                  }
-                },
-                child: Text(local.formatMonthYear(selected)),
-              ),
-            ),
-            IconButton(
+            );
+            final next = IconButton(
               tooltip: 'Next $mode',
               onPressed: () => move(1),
               icon: const Icon(Icons.chevron_right),
-            ),
-            IconButton(
+            );
+            final today = IconButton(
               tooltip: 'Today',
-              onPressed: () {
-                setState(() => selected = DateUtils.dateOnly(DateTime.now()));
-                move(0);
-              },
+              style: DateUtils.isSameDay(selected, widget.clock())
+                  ? null
+                  : IconButton.styleFrom(
+                      foregroundColor: scheme.primary,
+                      backgroundColor: scheme.primaryContainer.withValues(
+                        alpha: 0.4,
+                      ),
+                    ),
+              onPressed: returnToToday,
               icon: const Icon(Icons.today),
-            ),
-          ],
+            );
+            if (constraints.maxWidth <
+                250 * MediaQuery.textScalerOf(context).scale(1)) {
+              return Column(
+                children: [
+                  title,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [previous, today, next],
+                  ),
+                ],
+              );
+            }
+            return Row(
+              children: [
+                previous,
+                Expanded(child: title),
+                next,
+                today,
+              ],
+            );
+          },
         ),
         if (mode != 'day') ...[
           Row(
@@ -258,17 +373,25 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
                         .length
                   : 0;
               final count = eventCount + taskCount + daySessions.length;
+              final isToday = DateUtils.isSameDay(date, widget.clock());
+              final isSelected = key == dayKey;
               return Semantics(
-                selected: key == dayKey,
+                selected: isSelected,
                 label:
-                    '${local.formatFullDate(date)}, $eventCount events, $taskCount planned tasks, ${daySessions.length} sessions',
+                    '${isToday ? 'Today, ' : ''}${local.formatFullDate(date)}, $eventCount events, $taskCount planned tasks, ${daySessions.length} sessions',
                 child: InkWell(
                   borderRadius: BorderRadius.circular(14),
-                  onTap: () => setState(() => selected = date),
+                  onTap: () => setState(() {
+                    selected = date;
+                    followingToday = isToday;
+                  }),
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: key == dayKey ? scheme.primaryContainer : null,
+                      color: isSelected ? scheme.primaryContainer : null,
                       borderRadius: BorderRadius.circular(14),
+                      border: isToday
+                          ? Border.all(color: scheme.primary, width: 1.5)
+                          : null,
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -278,11 +401,12 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
                           maxLines: 1,
                           softWrap: false,
                           style: TextStyle(
-                            fontWeight:
-                                DateUtils.isSameDay(date, DateTime.now())
+                            fontWeight: isToday || isSelected
                                 ? FontWeight.bold
                                 : null,
-                            color: date.month != selected.month
+                            color: isSelected
+                                ? scheme.onPrimaryContainer
+                                : date.month != selected.month
                                 ? scheme.onSurfaceVariant
                                 : null,
                           ),
@@ -315,9 +439,38 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
           ),
         ],
         const SizedBox(height: 20),
-        Text(
-          local.formatFullDate(selected),
-          style: Theme.of(context).textTheme.titleMedium,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isToday = DateUtils.isSameDay(selected, widget.clock());
+            final title = Text(
+              isToday
+                  ? 'Today \u00b7 ${local.formatFullDate(selected)}'
+                  : local.formatFullDate(selected),
+              style: Theme.of(context).textTheme.titleMedium,
+            );
+            if (isToday) return title;
+            final back = TextButton.icon(
+              icon: const Icon(Icons.today, size: 16),
+              label: const Text('Back to today'),
+              onPressed: returnToToday,
+            );
+            if (constraints.maxWidth <
+                350 * MediaQuery.textScalerOf(context).scale(1)) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  title,
+                  Align(alignment: AlignmentDirectional.centerEnd, child: back),
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: title),
+                back,
+              ],
+            );
+          },
         ),
         const SizedBox(height: 8),
         Wrap(
@@ -366,7 +519,7 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
                     'Use the action buttons above to schedule an event or task.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.outline,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -376,6 +529,7 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
         if (showEvents)
           for (final e in events)
             Card(
+              clipBehavior: Clip.antiAlias,
               margin: const EdgeInsets.symmetric(vertical: AppSpacing.small),
               child: ListTile(
                 leading: _eventIcon(e, controller),
@@ -387,6 +541,7 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
         if (showTasks) ...[
           for (final s in sessions)
             Card(
+              clipBehavior: Clip.antiAlias,
               margin: const EdgeInsets.symmetric(vertical: AppSpacing.small),
               child: ListTile(
                 leading: const Icon(Icons.schedule),
@@ -405,6 +560,7 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar> {
             ),
           for (final t in tasks)
             Card(
+              clipBehavior: Clip.antiAlias,
               margin: const EdgeInsets.symmetric(vertical: AppSpacing.small),
               child: ListTile(
                 leading: const Icon(Icons.task_alt_outlined),

@@ -1777,6 +1777,7 @@ class _CalendarViewState extends ConsumerState<CalendarView>
         : ref.read(appControllerProvider).effectiveEventColor(event);
     final accent = eventColor == null ? scheme.primary : Color(eventColor);
     return Card(
+      clipBehavior: Clip.antiAlias,
       color: event == null
           ? null
           : Color.lerp(scheme.surface, accent, event.cancelled ? 0.12 : 0.17),

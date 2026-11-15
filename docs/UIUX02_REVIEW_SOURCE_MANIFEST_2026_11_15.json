@@ -1,0 +1,104 @@
+{
+  "head": "61bde1c54c01d6d3f55dbc8b9a4585712cdf9750",
+  "branch": "codex/independent-beta-review",
+  "recordedAt": "2026-11-15T10:11:35.152549+03:00",
+  "fingerprint": "f6bb882b59dac7b458c8c5e3080ee8daa910534cac565614e016cf03838d407a",
+  "files": [
+    {
+      "path": ".agents/skills/todorbit-engineering-quality/SKILL.md",
+      "sha256": "22e6596fb97a350d44d85aa090a2e21b1c53d2a40063b483ace06fdc597aa9f7"
+    },
+    {
+      "path": ".agents/skills/todorbit-engineering-quality/references/cross-platform-architecture.md",
+      "sha256": "11e7457aecc2946df0f15e351bdcad51e2924b466ef23650a6b7ad8cb6bf455f"
+    },
+    {
+      "path": ".agents/skills/ultimate-ui-ux/SKILL.md",
+      "sha256": "baef581a716e3e19bb7ee415dd9604e7173f4440b6d8d568adcc8ed34b1f7cd7"
+    },
+    {
+      "path": ".agents/skills/ultimate-ui-ux/references/fix-patterns.md",
+      "sha256": "0cf9b02dec549dafbd9deeba5ee857713bcdc0b9c74fbbd6f740dbcfa0fbb917"
+    },
+    {
+      "path": ".agents/skills/ultimate-ui-ux/references/flutter-engineering.md",
+      "sha256": "ee92f74954a888547c32c2f076822e3efc68980accf896f17fde74fd52271309"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "sha256": "b40eff6637c3a18a7400e0f845978bae0b2eedefe0b27c997917f8963db88769"
+    },
+    {
+      "path": "android/app/src/main/AndroidManifest.xml",
+      "sha256": "2700fbc7400d9dd76927c8cc53e86d73c16405ab1bd8bd49a9c27fd36dcaf17c"
+    },
+    {
+      "path": "android/app/src/main/kotlin/io/github/hik4/todorbit/AndroidSurfaces.kt",
+      "sha256": "a0faba95d371ab69ea3080486fd808478d89de9ea96f4950a1cb4114f1010edd"
+    },
+    {
+      "path": "android/app/src/main/kotlin/io/github/hik4/todorbit/MainActivity.kt",
+      "sha256": "b8e965f94382b967a92e24cce2d6c54fefb1f65291d96b63eeca7bd4cfb6d383"
+    },
+    {
+      "path": "android/app/src/main/kotlin/io/github/hik4/todorbit/SurfaceRefreshPolicy.kt",
+      "sha256": "7ca7c8205ccb318211682361ead65e459e6fda1447dbeb79c563ba0112e76685"
+    },
+    {
+      "path": "android/app/src/testGithub/kotlin/io/github/hik4/todorbit/SurfaceRefreshPolicyTest.kt",
+      "sha256": "267bfc2e6b242ad423ab594c4d5029b89288d54e2ff1168ee4509cd56802c725"
+    },
+    {
+      "path": "android/gradle.properties",
+      "sha256": "57ca642b86b32a2202ea77f855208301195b071f8ec0acd6963f0d59115661ba"
+    },
+    {
+      "path": "lib/features/calendar/calendar_view.dart",
+      "sha256": "cb9ed8c962bde602fca8c1d8180e3e3a6ec0ed4d2c3f393cd97e295bd2df840c"
+    },
+    {
+      "path": "lib/features/mobile/mobile_calendar.dart",
+      "sha256": "5d488ceeeaedf1667b1bb3c192702b71c2fff6e884503eb8652fcde8c30e694d"
+    },
+    {
+      "path": "lib/features/mobile/mobile_workspace.dart",
+      "sha256": "4c7ee0ab5f5b1976e2ad40408798831d7d3e4469f3d4da68777bc13c47b74046"
+    },
+    {
+      "path": "lib/features/shared/alarm_field.dart",
+      "sha256": "a7735fa94359176ad203f9b0de691a707b4aaa9a205e866b3c161584e0f21ef4"
+    },
+    {
+      "path": "lib/features/workspace/task_editor.dart",
+      "sha256": "47dfa01e6f7c1ba82f2c67a4b7616e50c62a1da38aa7344aaa0aa488e6a1b4b3"
+    },
+    {
+      "path": "pubspec.lock",
+      "sha256": "d7f08f3cbe6018bda46a67719b60b4a09a55492dc4862ff4d4c08169d23b6194"
+    },
+    {
+      "path": "pubspec.yaml",
+      "sha256": "d3ea1a48ab2cbf6a6a75291f2f64e06da5bf3c7566907735da0266d0b4699dc0"
+    },
+    {
+      "path": "test/alarm_field_test.dart",
+      "sha256": "b01fee69077bbb7b2fa302c4e4d4a789a23038f721e666430dc16b7371145393"
+    },
+    {
+      "path": "test/mobile_calendar_date_following_test.dart",
+      "sha256": "c7fffb4ce9038f5fa3d3864005dcda9f3af666188074b8d571c78b92fff0c25d"
+    },
+    {
+      "path": "test/support/uiux_review_capture.dart",
+      "sha256": "9dd2a1798158716835dbda0cf691831de4a1fb78154d92b9c41d39169dc09f33"
+    },
+    {
+      "path": "test/task_editor_schedule_layout_test.dart",
+      "sha256": "78be713699548e0a1c276f6c8134ee0a2ec4094ca10d28a70eab96c52c95f392"
+    },
+    {
+      "path": "test/task_editor_ui_polish_test.dart",
+      "sha256": "af13ffd523f966eaffe4be00f9626a122d90a6f5cd2e7662311d4dc14cae3c8e"
+    }
+  ]
+}

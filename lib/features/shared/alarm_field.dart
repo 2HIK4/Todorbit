@@ -41,6 +41,11 @@ class AlarmField extends StatelessWidget {
         ),
       );
     }
+    final theme = Theme.of(context);
+    final helperStyle = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+      height: 1.4,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -56,6 +61,7 @@ class AlarmField extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 8),
         AnchoredSelectField<String>(
           key: ValueKey('alarm-mode-${value.mode}'),
           initialValue: value.mode,
@@ -92,7 +98,8 @@ class AlarmField extends StatelessWidget {
             if (v != null) onChanged(value.copyWith(mode: v));
           },
         ),
-        if (value.mode == 'custom')
+        if (value.mode == 'custom') ...[
+          const SizedBox(height: 12),
           TextButton.icon(
             icon: const Icon(Icons.event),
             label: Text(
@@ -128,7 +135,9 @@ class AlarmField extends StatelessWidget {
               }
             },
           ),
-        if (value.mode == 'planned')
+        ],
+        if (value.mode == 'planned') ...[
+          const SizedBox(height: 12),
           TextButton.icon(
             icon: const Icon(Icons.schedule),
             label: Text(
@@ -152,7 +161,9 @@ class AlarmField extends StatelessWidget {
               }
             },
           ),
-        if (value.mode != 'custom')
+        ],
+        if (value.mode != 'custom') ...[
+          const SizedBox(height: 12),
           AnchoredSelectField<int>(
             key: ValueKey('alarm-offset-${value.minutesBefore}'),
             initialValue: value.minutesBefore,
@@ -221,10 +232,15 @@ class AlarmField extends StatelessWidget {
               }
             },
           ),
-        if (recurring)
-          const Text(
+        ],
+        if (recurring) ...[
+          const SizedBox(height: 8),
+          Text(
             'Planned-day and session timing repeats for each occurrence. An exact date applies only to the first occurrence.',
+            style: helperStyle,
           ),
+        ],
+        const SizedBox(height: 8),
         ExpansionTile(
           title: const Text('Sound and options'),
           tilePadding: EdgeInsets.zero,
@@ -248,6 +264,7 @@ class AlarmField extends StatelessWidget {
                 if (v != null) onChanged(value.copyWith(sound: v));
               },
             ),
+            const SizedBox(height: 12),
             AnchoredSelectField<int>(
               key: ValueKey('alarm-duration-${value.durationSeconds}'),
               initialValue: value.durationSeconds,
@@ -260,13 +277,17 @@ class AlarmField extends StatelessWidget {
                 if (v != null) onChanged(value.copyWith(durationSeconds: v));
               },
             ),
+            const SizedBox(height: 8),
             SwitchListTile(
+              contentPadding: EdgeInsets.zero,
               title: const Text('Vibrate on Android'),
               value: value.vibrate,
               onChanged: (v) => onChanged(value.copyWith(vibrate: v)),
             ),
-            const Text(
+            const SizedBox(height: 4),
+            Text(
               'Snooze: 5, 10 or 15 minutes. Each device delivers its own alarms. Notification, quiet-hour and system restrictions apply.',
+              style: helperStyle,
             ),
           ],
         ),
