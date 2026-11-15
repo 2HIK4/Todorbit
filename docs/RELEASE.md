@@ -3,21 +3,26 @@
 ## Current status
 
 The latest published experimental release verified on 2026-11-15 is
-**[v1.0.19-beta.21](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.21)**,
-version `1.0.19-beta.21+44`, schema 28, source/tag `e7810d2`.
-[Publication receipt](TODORBIT_BETA_21_PUBLICATION.md) records restoration of the
-approved Windows Desktop Drive configuration. Windows packages remain unsigned;
-Stable and earlier releases are unchanged.
+**[v1.0.19-beta.22](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.22)**,
+version `1.0.19-beta.22+45`, schema29, source/tag `1a5560a5352b928c3800103cc426c3adcb02e340`.
+[Publication receipt](UIUX03_BETA_22_PUBLICATION.md) and
+[final asset identities](UIUX03_BETA_22_PUBLICATION_ASSETS.json) bind all ten assets.
+Exact-source Windows/Android/lightweight CI and actual production APK 16-KiB
+runtime pass. Production Windows setup/portable and Android beta discovery pass;
+Stable excludes this version. Android retains production signing; Windows remains
+unsigned under the established policy. All paired devices must upgrade before
+schema29 Sync. Actual updater installation, Chrome/physical/device lifecycle and
+real two-client Drive acceptance remain manual; see Deferred Verification.
 
-**Unpublished local candidate:** `1.0.19-beta.22+45`, schema 29, reviewed UIUX-03.
-[Preparation receipt](UIUX03_BETA_22_CANDIDATE.md) and
-[artifact/source manifest](UIUX03_BETA_22_CANDIDATE_MANIFEST.json) record signed
-Android and Windows packages, checksums, updater contracts and isolated Beta21->22
-installer preservation. Exact-source CI, Android 16-KiB runtime and unperformed
-updater/device/manual acceptance remain open. No push/upload/publication has been
-performed or authorized by this preparation. The release gates below still apply.
-Beta 20's [publication receipt](UIUX02_BETA_20_PUBLICATION.md) remains historical
-for its own source/artifacts, including its prior disabled Windows Drive bundle.
+The [initial candidate](UIUX03_BETA_22_CANDIDATE.md) and its manifest are historical;
+three confirmed CI product repairs required the final replacement packages. A
+later test/docs-only correction preserves compiled-input equivalence and does not
+require another binary rebuild. Owner-reported normal Windows task/Details/Focus
+smoke acceptance passes; desktop automation could not initialize. No further
+Sandbox testing is used at the owner's request. Beta21's
+[receipt](TODORBIT_BETA_21_PUBLICATION.md) remains historical for its schema28
+packages and approved enabled Drive configuration. Stable and previous releases
+remain untouched; the release gates below still apply to future candidates.
 
 Historical coordinated release: **[v1.0.19-beta.12](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.12)**,
 Windows + Android, version `1.0.19-beta.12+35`, Android code 35, schema 26,

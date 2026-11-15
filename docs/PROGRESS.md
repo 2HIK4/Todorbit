@@ -1,5 +1,21 @@
 # Progress
 
+## UIUX-03 Beta22 published (2026-11-15)
+
+Published experimental `v1.0.19-beta.22`, version1.0.19-beta.22+45/schema29,
+source/tag1a5560a. Exact-source Windows CI43743309457 passes1022 tests/9 opt-in skips
+and all packaging/native gates; Android43743313599 and lightweight43743313640 pass.
+Production-signed replacement APK actual 16-KiB runtime43741858701 passes; final
+packages built from62593e3 retain identical product trees after the test/docs-only
+follow-up. Production Windows setup/portable and Android ARM64/x64 beta discovery
+pass; Stable excludes Beta22. Owner reports the normal Windows app task/Details/
+Focus smoke test passes on its isolated profile. No further Sandbox tests. The
+[publication receipt](UIUX03_BETA_22_PUBLICATION.md) retains failures/fixes, source
+identities, public verification and remaining updater/device/Drive manual work.
+All ten public download/hash contracts pass; previous releases/assets/drafts and
+tag targets are unchanged. No main merge or Stable change; three unrelated
+documents remain preserved.
+
 ## Beta22 replacement candidate; final CI pending (2026-11-15)
 
 Replacement packages built from62593e3 pass signing/alignment/byte/configuration/

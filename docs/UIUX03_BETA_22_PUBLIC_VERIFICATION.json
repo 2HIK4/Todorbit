@@ -1,0 +1,192 @@
+{
+  "id": 446173243,
+  "tag": "v1.0.19-beta.22",
+  "target": "1a5560a5352b928c3800103cc426c3adcb02e340",
+  "publishedAt": "2026-11-15T18:21:36Z",
+  "draft": false,
+  "prerelease": true,
+  "stableAndAllHistoricalReleasesUnchanged": true,
+  "assets": [
+    {
+      "name": "ANDROID-RELEASE-NOTES.md",
+      "bytes": 2403,
+      "sha256": "0e4577d279c7adecd0ddb66c5ff3768c7c791c446b281f55db33a495385feedb",
+      "anonymousHttp": 200,
+      "downloadedAndHashed": true,
+      "serverSha256MatchesApprovedPackage": true,
+      "downloadResponseVerified": true,
+      "method": "full GET hash",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.22/ANDROID-RELEASE-NOTES.md"
+    },
+    {
+      "name": "ANDROID-SHA256SUMS.txt",
+      "bytes": 316,
+      "sha256": "e4f4097fd4c4d288f77b7d81e1134d6b7599f18893ef9f78ffbca4f060d2a41e",
+      "anonymousHttp": 200,
+      "downloadedAndHashed": true,
+      "serverSha256MatchesApprovedPackage": true,
+      "downloadResponseVerified": true,
+      "method": "full GET hash",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.22/ANDROID-SHA256SUMS.txt"
+    },
+    {
+      "name": "Todorbit-1.0.19-beta.22-android-universal.apk",
+      "bytes": 54170139,
+      "sha256": "df851faed31acb1d683641f9f91a6a7981c65a31a9a5d9e99308cefc89ab485d",
+      "anonymousHttp": 200,
+      "downloadedAndHashed": true,
+      "serverSha256MatchesApprovedPackage": true,
+      "downloadResponseVerified": true,
+      "method": "retained completed full APK GET hash",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.22/Todorbit-1.0.19-beta.22-android-universal.apk"
+    },
+    {
+      "name": "Todorbit-1.0.19-beta.22-android-universal.apk.sha256",
+      "bytes": 112,
+      "sha256": "3e79768fc83ca4d8b23fc86ed73006cff6e052a50bc6cf00529cb6b8980a89d6",
+      "anonymousHttp": 200,
+      "downloadedAndHashed": true,
+      "serverSha256MatchesApprovedPackage": true,
+      "downloadResponseVerified": true,
+      "method": "full GET hash",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.22/Todorbit-1.0.19-beta.22-android-universal.apk.sha256"
+    },
+    {
+      "name": "Todorbit-1.0.19-beta.22-android-update.json",
+      "bytes": 421,
+      "sha256": "f4393c35c24074e9eb40767f446898dadadc40957a38902c12e889a4d0d738cf",
+      "anonymousHttp": 200,
+      "downloadedAndHashed": true,
+      "serverSha256MatchesApprovedPackage": true,
+      "downloadResponseVerified": true,
+      "method": "full GET hash",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.22/Todorbit-1.0.19-beta.22-android-update.json"
+    },
+    {
+      "name": "Todorbit-1.0.19-beta.22-SHA256SUMS.txt",
+      "bytes": 221,
+      "sha256": "94bc83d597b060afea035d279ebfa956bc4d49c8b69e796f0698a63a9ba8cf3f",
+      "anonymousHttp": 200,
+      "downloadedAndHashed": true,
+      "serverSha256MatchesApprovedPackage": true,
+      "downloadResponseVerified": true,
+      "method": "full GET hash",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.22/Todorbit-1.0.19-beta.22-SHA256SUMS.txt"
+    },
+    {
+      "name": "Todorbit-1.0.19-beta.22-win-x64-portable.zip",
+      "bytes": 65347962,
+      "sha256": "6e39f9074d45295448b4ae9ba8d3305978387b87617a94e82fa0f8c2f6fba6f1",
+      "anonymousHttp": 200,
+      "downloadedAndHashed": false,
+      "serverSha256MatchesApprovedPackage": true,
+      "downloadResponseVerified": true,
+      "method": "HEAD size + ranged GET prefix + GitHub SHA256",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.22/Todorbit-1.0.19-beta.22-win-x64-portable.zip"
+    },
+    {
+      "name": "Todorbit-1.0.19-beta.22-win-x64-portable.zip.sha256",
+      "bytes": 112,
+      "sha256": "5faba8cc95cd632aa840dbf1c2d3128d1d4c19da21528411087f71124dcb88ae",
+      "anonymousHttp": 200,
+      "downloadedAndHashed": true,
+      "serverSha256MatchesApprovedPackage": true,
+      "downloadResponseVerified": true,
+      "method": "full GET hash",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.22/Todorbit-1.0.19-beta.22-win-x64-portable.zip.sha256"
+    },
+    {
+      "name": "Todorbit-1.0.19-beta.22-win-x64-setup.exe",
+      "bytes": 47943276,
+      "sha256": "97a6765f6d39a3ddf8e29dc3c5fd16878fe07b7d9937d30d56500ed4b7bd2043",
+      "anonymousHttp": 200,
+      "downloadedAndHashed": false,
+      "serverSha256MatchesApprovedPackage": true,
+      "downloadResponseVerified": true,
+      "method": "HEAD size + ranged GET prefix + GitHub SHA256",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.22/Todorbit-1.0.19-beta.22-win-x64-setup.exe"
+    },
+    {
+      "name": "Todorbit-1.0.19-beta.22-win-x64-setup.exe.sha256",
+      "bytes": 109,
+      "sha256": "0b476090fb4a2f79a012054fe8116f48f75fbbc8c8b189b1ab40dc958166f4af",
+      "anonymousHttp": 200,
+      "downloadedAndHashed": true,
+      "serverSha256MatchesApprovedPackage": true,
+      "downloadResponseVerified": true,
+      "method": "full GET hash",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.22/Todorbit-1.0.19-beta.22-win-x64-setup.exe.sha256"
+    }
+  ],
+  "validatedReleaseCommit": "1a5560a5352b928c3800103cc426c3adcb02e340",
+  "compiledProductSource": "62593e35c9236f1c7ae11d1758baff9071e3fb4b",
+  "compiledInputEquivalenceVerified": true,
+  "requiredCi": {
+    "windows": {
+      "conclusion": "success",
+      "headSha": "1a5560a5352b928c3800103cc426c3adcb02e340",
+      "status": "completed",
+      "url": "https://github.com/2HIK4/Todorbit/actions/runs/43743309457"
+    },
+    "android": {
+      "conclusion": "success",
+      "headSha": "1a5560a5352b928c3800103cc426c3adcb02e340",
+      "status": "completed",
+      "url": "https://github.com/2HIK4/Todorbit/actions/runs/43743313599"
+    },
+    "lightweight": {
+      "conclusion": "success",
+      "headSha": "1a5560a5352b928c3800103cc426c3adcb02e340",
+      "status": "completed",
+      "url": "https://github.com/2HIK4/Todorbit/actions/runs/43743313640"
+    }
+  },
+  "android16KiBRuntime": {
+    "run": {
+      "conclusion": "success",
+      "headSha": "62593e35c9236f1c7ae11d1758baff9071e3fb4b",
+      "status": "completed",
+      "url": "https://github.com/2HIK4/Todorbit/actions/runs/43741858701"
+    },
+    "receipt": {
+      "apkSha256": "df851faed31acb1d683641f9f91a6a7981c65a31a9a5d9e99308cefc89ab485d",
+      "pageSize": 16384,
+      "systemImage": "google/sdk_gphone16k_x86_64/emu64xa16k:16/BE2A.250530.026.F3/13894323:userdebug/dev-keys",
+      "noAppBaselineSeconds": 40,
+      "systemStableWithoutApp": true,
+      "flutterRendered": true,
+      "taskCreatedAndRetainedAfterRestart": true,
+      "taskCompletionInteraction": true,
+      "noCrashOrAnrObserved": true,
+      "previousApkSha256": null,
+      "previousVersionCode": null,
+      "upgradedVersionCode": null,
+      "productionInPlaceUpgradeRetainedTask": false
+    }
+  },
+  "normalWindowsAcceptance": {
+    "isolatedChildAppDataAndDatabaseVerified": true,
+    "schema": 29,
+    "integrity": "ok",
+    "userReportedPass": [
+      "task creation",
+      "Task Details -> Edit -> save",
+      "Focus start/pause"
+    ],
+    "automatedGuiInteraction": "UNVERIFIED: desktop-control initialization failed"
+  },
+  "productionUpdaterNetworkCheck": {
+    "result": "PASS",
+    "durationSeconds": 6,
+    "fromVersion": "1.0.19-beta.21+44",
+    "offers": [
+      "Windows installer",
+      "Windows portable",
+      "Android arm64-v8a code45",
+      "Android x86_64 code45"
+    ],
+    "expectedApkSha256": "df851faed31acb1d683641f9f91a6a7981c65a31a9a5d9e99308cefc89ab485d",
+    "stableExcludesBeta22": true,
+    "realUpdaterInstallation": "NOT PERFORMED"
+  }
+}

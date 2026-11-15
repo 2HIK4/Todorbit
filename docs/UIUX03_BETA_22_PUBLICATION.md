@@ -4,13 +4,52 @@ Owner authorization on 2026-11-15 explicitly permits push and automatic experime
 publication after all mandatory gates pass. Stable must remain unchanged.
 Version: `1.0.19-beta.22+45`; intended tag: `v1.0.19-beta.22`.
 
-Status: **DRAFT / CI GATED**. No public updater installation is claimed.
+Status: **PUBLISHED** at `2026-11-15T18:21:36Z`.
+[Public experimental release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.22),
+tag/source `1a5560a5352b928c3800103cc426c3adcb02e340`. No real-device updater
+installation is claimed.
 The initial candidate packages/runtime receipt are **SUPERSEDED**. Replacement
 packages below include only the three confirmed CI product repairs; final CI gates
-remain mandatory. No unchanged binary was rebuilt after the test-only follow-up.
+have passed. No unchanged binary was rebuilt after the test-only follow-up.
 Public review branch: `codex/beta22-release`; local branch:
 `codex/independent-beta-review`. [PR #2](https://github.com/2HIK4/Todorbit/pull/2)
 targets the preceding reviewed beta branch, avoiding unrelated history on main.
+
+## Final exact-source CI and public verification
+
+All required workflows pass on **1a5560a5352b928c3800103cc426c3adcb02e340**:
+
+| Workflow | Result |
+| --- | --- |
+| [Windows43743309457](https://github.com/2HIK4/Todorbit/actions/runs/43743309457) | PASS:1022 host tests,9 existing opt-in skips; full analysis, helper/schema/OAuth gates, enabled Release build, CRT, portable, native writer/background barriers, native self-test, installer/checksums. |
+| [Android43743313599](https://github.com/2HIK4/Todorbit/actions/runs/43743313599) | PASS:host platform/native/unit/build and API35 disposable-device workflow, including Details edit/persistence/snapshot and native APK updater gates. |
+| [Lightweight43743313640](https://github.com/2HIK4/Todorbit/actions/runs/43743313640) | PASS:source, documentation, workflow/architecture and configured critical checks. |
+
+Before publication, an explicit gate verified those exact SHAs, actual replacement
+APK runtime, clean compiled-input equivalence, normal Windows acceptance, ten
+uploaded server digests/sizes, exact notes, unused tag and three protected document
+hashes. The API publication request explicitly set `draft:false`, `prerelease:true`
+and `make_latest:false`. Release ID446173243, target/tag1a5560a, published18:21:36Z.
+
+**Production updater network check:PASS**,6s, fresh isolated APPDATA/LOCALAPPDATA.
+Real `SoftwareUpdateService` and `AndroidUpdateService` discover Beta22 from Beta21:
+Windows setup/portable and Android ARM64/x64, Android code45 and exact APK hash.
+Both Stable selectors exclude Beta22. This was real public discovery, separate from
+fixture-based parser contracts. Actual download/install UI handoff remains manual.
+
+Public anonymous verification: **PASS**. All ten downloads are nonempty and
+accessible, with matching GitHub server SHA-256 identities, sizes and sidecars.
+The APK was downloaded and hashed in full, as were all seven small metadata/
+checksum/note assets. Windows installer/portable use HEAD size plus a ranged GET
+matching local bytes and GitHub's full-file SHA-256, reusing the approved full
+local package audits. Redundant full Windows transfers were stopped. This follows
+the established public verification approach without claiming full Windows
+re-downloads. [Durable public/CI/runtime record](UIUX03_BETA_22_PUBLIC_VERIFICATION.json).
+All previous tag refs are unchanged; exactly `v1.0.19-beta.22` was added at1a5560a.
+All35 previous release/draft identities and asset names/IDs/sizes/digests/content
+remain unchanged; access/download counters are not content mutations. No extra
+release or accidental draft was created; the pre-existing draft remains untouched.
+No merge to main or Stable publication is performed.
 
 ## Evidence retained and artifact equivalence
 
@@ -93,7 +132,7 @@ Primary replacement hashes:
 | Windows portable ZIP | `6e39f9074d45295448b4ae9ba8d3305978387b87617a94e82fa0f8c2f6fba6f1` |
 | Windows installer | `97a6765f6d39a3ddf8e29dc3c5fd16878fe07b7d9937d30d56500ed4b7bd2043` |
 
-## CI and publication gates
+## CI failures and repairs (historical sequence)
 
 Windows run [43732459000](https://github.com/2HIK4/Todorbit/actions/runs/43732459000)
 on `0e12e96` completed with **1004 pass / 18 fail / 9 opt-in skip**. Diagnosis and
@@ -140,8 +179,8 @@ and both Android CI43740736200 jobs pass. Windows CI43740731448 reaches1021 pass
 1 fail/9 opt-in skip: my broad fixture replacement accidentally applied the Details
 expectation to the separate draft-editor test. Restore its original disclosure
 sequence; both composition tests now pass. No product input or package changes for
-this correction. Required final exact-source CI remains pending. Draft release ID `446173243` contains the ten
-approved assets; a draft is deliberately unavailable to production updaters.
+this correction. The final exact-source pass is recorded above. At that checkpoint draft release ID `446173243` held the ten approved assets;
+it remained unavailable to production updaters until the gated publication above.
 
 ## Data safety and remaining manual acceptance
 

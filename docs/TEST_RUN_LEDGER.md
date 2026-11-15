@@ -1,5 +1,21 @@
 # Persistent test run ledger
 
+## Beta22 final publication acceptance (2026-11-15)
+
+[Publication receipt](UIUX03_BETA_22_PUBLICATION.md), exact tag/source1a5560a:
+Windows43743309457 PASS1022/9 opt-in skips, full analysis and all packaging/native/
+configuration gates; Android43743313599 and lightweight43743313640 PASS. Replacement
+production APK runtime43741858701 PASS on actual16384-byte pages, bound to final
+APK hash and unchanged62593e3 product trees. Normal Windows host profile schema29/
+integrity PASS; owner-reported task create/Details editing/Focus start-pause PASS.
+Both composition tests PASS after the narrow test-only correction. Production
+public updater network check PASS6s, Windows setup/portable and Android ARM64/x64
+fromBeta21, code45/hash and Stable isolation. No actual updater install is claimed.
+Published18:21:36Z, experimental/prerelease/latestfalse. Anonymous public asset verification PASS:ten download/hash contracts, full APK
+and seven small-file hashes, Windows ranged bytes/server SHA256, historical
+release/draft/asset identities and all old tag targets unchanged. Reuse prior84 focused checks and scoped
+release evidence; no local full suite or unchanged binary rebuild was repeated.
+
 ## Beta22 publication CI repairs (2026-11-15)
 
 Replacement source62593e3: Windows Release140.6s, signed Android Gradle324.5s,
