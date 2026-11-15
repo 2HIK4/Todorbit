@@ -420,8 +420,9 @@ class _CalendarWeekViewState extends State<CalendarWeekView> {
                             _cancelEdgeDwell();
                             if (widget.interactionController.ownsPointer(
                               event.pointer,
-                            ))
+                            )) {
                               widget.interactionController.forceCancel();
+                            }
                           },
                           child: SizedBox(
                             key: _gridKey,

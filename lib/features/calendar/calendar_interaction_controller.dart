@@ -77,8 +77,9 @@ class CalendarInteractionController extends ChangeNotifier {
   int? _pointerId;
   Offset? _navigationAnchor;
   void trackPointer(int pointer) {
-    if (gestureKind == CalendarGestureKind.none && !_isCommitting)
+    if (gestureKind == CalendarGestureKind.none && !_isCommitting) {
       _pointerId = pointer;
+    }
   }
 
   bool ownsPointer(int pointer) =>
@@ -122,8 +123,9 @@ class CalendarInteractionController extends ChangeNotifier {
         _isCommitting ||
         resolvingChoice ||
         !config.enableDragMove ||
-        !item.isTimed)
+        !item.isTimed) {
       return;
+    }
     gestureKind = CalendarGestureKind.move;
     activeItem = item;
     originStartsAt = item.startsAt;
@@ -154,8 +156,9 @@ class CalendarInteractionController extends ChangeNotifier {
         _isCommitting ||
         resolvingChoice ||
         !config.enableResize ||
-        !item.isTimed)
+        !item.isTimed) {
       return;
+    }
     gestureKind = CalendarGestureKind.resizeStart;
     activeItem = item;
     originStartsAt = item.startsAt;
@@ -181,8 +184,9 @@ class CalendarInteractionController extends ChangeNotifier {
         _isCommitting ||
         resolvingChoice ||
         !config.enableResize ||
-        !item.isTimed)
+        !item.isTimed) {
       return;
+    }
     gestureKind = CalendarGestureKind.resizeEnd;
     activeItem = item;
     originStartsAt = item.startsAt;
@@ -205,8 +209,9 @@ class CalendarInteractionController extends ChangeNotifier {
     if (_isHistoryBusy ||
         _isCommitting ||
         resolvingChoice ||
-        !config.enableCrossDayMove)
+        !config.enableCrossDayMove) {
       return;
+    }
     gestureKind = CalendarGestureKind.dateDrag;
     activeItem = item;
     activeDayDate = originDate;
@@ -506,8 +511,9 @@ class CalendarInteractionController extends ChangeNotifier {
     DateTime target,
   ) {
     final repeat = master.repeat;
-    if (repeat == null)
+    if (repeat == null) {
       return 'The recurring series no longer exists. Reopen it.';
+    }
     final next = calculateProposedSeriesRepeat(
       master: master,
       originStart: origin,
@@ -667,8 +673,9 @@ class CalendarInteractionController extends ChangeNotifier {
             (event.repeat != null || isOccurrence)) {
           final FixedEvent master;
           if (approvedSeriesMaster != null) {
-            if (approvedSeriesMaster.id != event.id)
+            if (approvedSeriesMaster.id != event.id) {
               throw StateError('Series selection changed. Reopen the event.');
+            }
             master = approvedSeriesMaster;
           } else if (event.nominalDate == null) {
             master = event;
@@ -1094,7 +1101,7 @@ class CalendarInteractionController extends ChangeNotifier {
     if (current == null && previous.nominalDate != null) {
       for (final start in [
         previous.startsAt,
-        if (otherStart != null) otherStart,
+        ?otherStart,
       ]) {
         final date = localDate(start.toLocal());
         final occurrences = await controller.repository.eventOccurrences(

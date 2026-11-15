@@ -301,8 +301,9 @@ class AppController extends ChangeNotifier {
     _midnightTimer?.cancel();
     if (_disposed) return;
     if (Platform.environment.containsKey('FLUTTER_TEST') &&
-        !enableMidnightTimerInTests)
+        !enableMidnightTimerInTests) {
       return;
+    }
     final now = DateTime.now();
     final nextMidnight = DateTime(now.year, now.month, now.day + 1);
     final delay =

@@ -95,7 +95,7 @@ void main() {
     expect(interaction.undoCount, 0);
   });
   test('series move cannot detach existing cancelled occurrence', () async {
-    final e = await event(
+    await event(
       repeat: const EventRepeat(kind: EventRepeatKind.weekly),
     );
     final occurrences = await repo.eventOccurrences('2026-11-16', '2026-11-30');
@@ -191,17 +191,18 @@ void main() {
                   body: StatefulBuilder(
                     builder: (context, setState) {
                       rebuild = setState;
-                      if (dayView)
+                      if (dayView) {
                         return CalendarDayView(
                           dayDate: visible,
                           items: [item(saved)],
                           config: config,
                           interactionController: interaction,
                           onItemTap: (_) {},
-                          onSlotSecondaryTap: (_, __) {},
+                          onSlotSecondaryTap: (_, _) {},
                           onNavigateDay: navigate,
                           onInteractionFinished: finish,
                         );
+                      }
                       return CalendarWeekView(
                         weekStart: visible,
                         config: config,
@@ -217,7 +218,7 @@ void main() {
                             ],
                         },
                         onItemTap: (_) {},
-                        onSlotSecondaryTap: (_, __) {},
+                        onSlotSecondaryTap: (_, _) {},
                         onDayHeaderTap: (_) {},
                         onNavigateWeek: navigate,
                         onInteractionFinished: finish,
@@ -554,7 +555,7 @@ void main() {
                 monday: [item(saved)],
               },
               onItemTap: (_) {},
-              onSlotSecondaryTap: (_, __) {},
+              onSlotSecondaryTap: (_, _) {},
               onDayHeaderTap: (_) {},
               onInteractionFinished: () async {
                 await interaction.commit(app);
@@ -601,7 +602,7 @@ void main() {
                 interactionController: interaction,
                 scrollController: scroller,
                 onItemTap: (_) {},
-                onSlotSecondaryTap: (_, __) {},
+                onSlotSecondaryTap: (_, _) {},
               ),
             ),
           ),

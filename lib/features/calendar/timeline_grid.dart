@@ -132,8 +132,9 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
     _autoScrollTimer = Timer.periodic(const Duration(milliseconds: 30), (_) {
       if (!mounted ||
           !scroller.hasClients ||
-          _lastGlobalPointerPosition == null)
+          _lastGlobalPointerPosition == null) {
         return;
+      }
       final target =
           (scroller.offset +
                   _autoScrollDirection * widget.config.autoScrollSpeed)
