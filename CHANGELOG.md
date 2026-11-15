@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.19-beta.21+44 - Windows Google Drive and Smart Sync release configuration restoration
+
+- Restore Google Drive and Smart Sync in Windows release distributions by resolving approved Desktop OAuth release configuration.
+- Enforce release bundle validation rejecting Windows releases produced without active Google Drive configuration.
+- Retain existing local SQLite tables, sync journals, CAS tokens, stored credentials, and local backup/recovery without data loss.
+- Experimental prerelease. Windows remains unsigned; real Google OAuth and physical multi-device acceptance are recorded in `docs/TODORBIT_BETA_21_PUBLICATION.md`.
+
 ## 1.0.19-beta.20+43 - reviewed calendar and editor usability repairs
 
 - Improve widget Today/date following and private receiver security; preserve deliberate browsing.

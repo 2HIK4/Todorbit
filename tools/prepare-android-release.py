@@ -14,6 +14,38 @@ import subprocess
 import urllib.request
 
 
+def _ensure_android_tools_on_path():
+    if shutil.which('apksigner') and shutil.which('aapt2'):
+        return
+    candidates = []
+    for var in ['ANDROID_HOME', 'ANDROID_SDK_ROOT']:
+        val = os.environ.get(var)
+        if val:
+            candidates.append(Path(val) / 'build-tools')
+    candidates.append(Path.home() / 'AppData' / 'Local' / 'Android' / 'Sdk' / 'build-tools')
+    for bt_dir in candidates:
+        if bt_dir.is_dir():
+            versions = sorted(bt_dir.iterdir(), reverse=True)
+            for v in versions:
+                if (v / 'apksigner.bat').is_file() or (v / 'apksigner').is_file() or (v / 'aapt2.exe').is_file() or (v / 'aapt2').is_file():
+                    os.environ['PATH'] = str(v) + os.pathsep + os.environ.get('PATH', '')
+                    break
+            if shutil.which('apksigner') and shutil.which('aapt2'):
+                break
+    java_home = os.environ.get('JAVA_HOME')
+    if not java_home:
+        for jcand in [Path('C:/Program Files/Android/openjdk/jdk-21.0.8'), Path('C:/Program Files/Android/openjdk')]:
+            if (jcand / 'bin' / 'java.exe').is_file():
+                os.environ['JAVA_HOME'] = str(jcand)
+                os.environ['PATH'] = str(jcand / 'bin') + os.pathsep + os.environ.get('PATH', '')
+                break
+    elif shutil.which('java') is None and (Path(java_home) / 'bin' / 'java.exe').is_file():
+        os.environ['PATH'] = str(Path(java_home) / 'bin') + os.pathsep + os.environ.get('PATH', '')
+
+
+_ensure_android_tools_on_path()
+
+
 def run(*args):
     executable = shutil.which(args[0])
     if executable is None:
@@ -67,13 +99,24 @@ def verify_bundle(file, version, code):
 
 def request_json(url):
     headers = {'Accept': 'application/vnd.github+json', 'User-Agent': 'Todorbit-Android-Release'}
-    if os.environ.get('GH_TOKEN'):
-        headers['Authorization'] = 'Bearer ' + os.environ['GH_TOKEN']
-    with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=30) as response:
-        data = response.read(8 * 1024 * 1024 + 1)
-    if len(data) > 8 * 1024 * 1024:
-        raise ValueError('Release response too large')
-    return json.loads(data)
+    token = os.environ.get('GH_TOKEN') or os.environ.get('GITHUB_TOKEN')
+    if not token:
+        try:
+            token = subprocess.check_output(['gh', 'auth', 'token'], text=True).strip()
+        except Exception:
+            token = None
+    if token:
+        headers['Authorization'] = 'Bearer ' + token
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=30) as response:
+                data = response.read(8 * 1024 * 1024 + 1)
+            if len(data) > 8 * 1024 * 1024:
+                raise ValueError('Release response too large')
+            return json.loads(data)
+        except Exception:
+            if attempt == 2:
+                raise
 
 
 def published_floor():

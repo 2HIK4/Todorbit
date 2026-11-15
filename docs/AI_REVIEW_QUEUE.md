@@ -1,5 +1,11 @@
 # AI Review Queue
 
+## DRV-01 (Beta 21) — Independent self-review (2026-11-15)
+
+Codex usage is exhausted. Per user authorization, Gemini completed root-cause investigation, configuration repair, testing, packaging, and prerelease publication without waiting for Codex approval. Restored approved Desktop OAuth configuration resolution and enforced `googleDriveEnabled: true` release bundle validation. 20 config checks, 23 cloud tests, 2 sync controller tests, CRT validation, and Android 16-KiB alignment passed. Documented in [Beta 21 publication receipt](TODORBIT_BETA_21_PUBLICATION.md).
+
+---
+
 ## UIUX-02 — Review completed after repairs (2026-11-15)
 
 Scoped code/host-visual work is **APPROVED WITH LIMITATIONS AFTER REPAIRS** and

@@ -78,3 +78,18 @@ Android functionality resides under `lib/platform/android/` (Dart) and `android/
   - `setAndAllowWhileIdle` is inexact and can still be batched/delayed in Doze. For a justified date refresh, bound wakeups to installed widgets, reuse one immutable explicit PendingIntent, cancel when none remain, and recompute civil midnight in the current zone. Never add exact-alarm permission just for widget dates. See [AlarmManager](https://developer.android.com/reference/android/app/AlarmManager#setAndAllowWhileIdle(int,%20long,%20android.app.PendingIntent)).
   - Distinguish Follow Today from deliberate browsing. Selecting Today clears a pinned date; do not silently expire an active selection without an explicit product rule. Preserve legacy per-instance preferences whose provenance is unknown.
   - Restore schedules after boot/unlock and own-package replacement, and reconcile on clock/zone changes, widget creation and app resume. Use application context for queued work and keep widget-only refresh separate from reminders/Sync jobs. Verify actual device/upgrade behavior separately from host policy tests.
+
+
+---
+
+## 4. Desktop OAuth & Cloud Release Configuration Gate
+
+Google Drive and Smart Sync require platform-specific OAuth authentication:
+- **Windows Desktop**: Uses desktop loopback OAuth with PKCE. Requires compile-time flags (`GOOGLE_DRIVE_ENABLED=true` and a registered Desktop OAuth Client ID).
+- **Android**: Uses Google Play Services platform auth (`GOOGLE_DRIVE_ANDROID_ENABLED=true` default).
+
+### Windows Release Packaging Gate:
+- Windows release builds must embed an active Google Drive release configuration.
+- `tools/google-drive-release-config.ps1` resolves the configuration via `Resolve-GoogleDriveReleaseConfigPath` (checking `$env:TODORBIT_GOOGLE_DRIVE_CONFIG` and `D:\AI_Projects\Secrets\TodorbitPrivate-drive-enabled-20261106-ab9a4087\drive-build.json`).
+- `Assert-GoogleDriveReleaseBundle` verifies that `googleDriveEnabled: true` in the output `todorbit-build.json` metadata. Packaging scripts (`build-windows-release.ps1`, `installer/build-installer.ps1`, `tools/build-portable.ps1`) fail immediately if `googleDriveEnabled` is false, unless `-AllowDisabledDrive` is explicitly passed for test builds.
+- This gate prevents accidental deployment of disabled cloud integration builds where users see "Google Drive is unavailable in this build".

@@ -1,5 +1,15 @@
 # Persistent test run ledger
 
+## DRV-01 beta 21 release qualification/publication (2026-11-15, UTC+03:00)
+
+[Publication receipt](TODORBIT_BETA_21_PUBLICATION.md) records version 1.0.19-beta.21+44, code 44, Windows numeric PE 1.0.19.44.
+OAuth configuration suite: `tools/test-google-drive-release-config.ps1` passes 20 checks.
+Cloud & Sync unit test suites: `test/cloud/google_drive_test.dart` and `test/cloud/backups_cloud_page_test.dart` pass 23 tests; `test/sync_controller_test.dart` passes 2 tests.
+Windows Release build bundle `todorbit-build.json` verified (`googleDriveEnabled: true`, desktop client ID `209146995786-37g75kar17ne5m6cs2vk3udll1eapr4s.apps.googleusercontent.com`).
+Windows CRT validation: `tools/test-windows-crt.ps1` passes.
+Android universal APK: production certificate `00226dad75ac907ac51c86df2c5011f0b6e2ce8291994103975f11a8eb574a99` verified; all 8 native libraries 16 KiB load-segment aligned and APK ZIP page-aligned; non-debuggable; minSdk 26, targetSdk 36, code 44 verified.
+All ten release assets and sidecar hashes match local build outputs.
+
 ## UIUX-02 beta 20 release qualification/publication (2026-11-15, UTC+03:00)
 
 [Publication receipt](UIUX02_BETA_20_PUBLICATION.md) records checkpoint `6d32ce8`,

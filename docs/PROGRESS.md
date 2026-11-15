@@ -1,5 +1,9 @@
 # Progress
 
+## DRV-01 Windows Google Drive repair and beta 21 published (2026-11-15)
+
+Version 1.0.19-beta.21+44, Android code 44, numeric Windows PE 1.0.19.44. Restored approved Desktop OAuth release configuration resolution (`Resolve-GoogleDriveReleaseConfigPath`) and enforced release bundle validation (`Assert-GoogleDriveReleaseBundle`), resolving the Beta 20 regression where Windows builds reported Google Drive unavailable. 20 config tests, 23 cloud tests, 2 sync controller tests, CRT validation, and Android 16-KiB alignment verified. Published Windows installer/portable and production-signed Android universal APK. Documented in [publication receipt](TODORBIT_BETA_21_PUBLICATION.md).
+
 ## UIUX-02 checkpoint and beta 20 published (2026-11-15)
 
 Checkpoint `6d32ce8`; immutable tag `v1.0.19-beta.20` at `6156613`, version

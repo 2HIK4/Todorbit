@@ -5,9 +5,7 @@ $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 . (Join-Path $PSScriptRoot 'google-drive-release-config.ps1')
 . (Join-Path $PSScriptRoot 'dev/native-command.ps1')
 . (Join-Path $PSScriptRoot 'windows-crt.ps1')
-$configPath = if ($GoogleDriveConfigPath) {
-  (Resolve-Path -LiteralPath $GoogleDriveConfigPath -ErrorAction Stop).Path
-} else { Join-Path $repo 'config\google-drive.json' }
+$configPath = Resolve-GoogleDriveReleaseConfigPath $GoogleDriveConfigPath $repo
 $config = Read-GoogleDriveReleaseConfig $configPath
 $previousPrivateBuildEnvironment = $env:TODORBIT_PRIVATE_DRIVE_TEST_BUILD
 $env:TODORBIT_PRIVATE_DRIVE_TEST_BUILD = if ($PrivateDriveTest) { '1' } else { $null }

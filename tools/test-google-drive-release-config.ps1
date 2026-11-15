@@ -105,6 +105,27 @@ try {
   $checks++
   Assert-GoogleDriveReleaseBundle $bundle $testRoot $externalPath
   $checks++
+  # A bundle compiled with Google Drive disabled must be rejected unless -AllowDisabledDrive is passed
+  $disabledBundleReceipt = Join-Path $bundle 'data\todorbit-build.json'
+  @{
+    googleDriveEnabled = $false
+    clientId = ''
+    configSha256 = (Get-FileHash -LiteralPath $configPath -Algorithm SHA256).Hash
+    mainSha256 = (Get-FileHash -LiteralPath (Join-Path $bundle 'Todorbit.exe') -Algorithm SHA256).Hash
+    aotSha256 = (Get-FileHash -LiteralPath (Join-Path $bundle 'data\app.so') -Algorithm SHA256).Hash
+  } | ConvertTo-Json | Set-Content -LiteralPath $disabledBundleReceipt -Encoding UTF8
+  Expect-Rejected { Assert-GoogleDriveReleaseBundle $bundle $testRoot $configPath }
+  $checks++
+  Assert-GoogleDriveReleaseBundle $bundle $testRoot $configPath -AllowDisabledDrive
+  $checks++
+  # Restore the valid enabled receipt
+  @{
+    googleDriveEnabled = $true
+    clientId = $config.GOOGLE_DRIVE_CLIENT_ID
+    configSha256 = (Get-FileHash -LiteralPath $externalPath -Algorithm SHA256).Hash
+    mainSha256 = (Get-FileHash -LiteralPath (Join-Path $bundle 'Todorbit.exe') -Algorithm SHA256).Hash
+    aotSha256 = (Get-FileHash -LiteralPath (Join-Path $bundle 'data\app.so') -Algorithm SHA256).Hash
+  } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $bundle 'data\todorbit-build.json') -Encoding UTF8
   $changedConfig = $config.Clone()
   $changedConfig.GOOGLE_DRIVE_CLIENT_SECRET = 'another-fixture-parameter'
   $changedConfig | ConvertTo-Json | Set-Content -LiteralPath $externalPath -Encoding UTF8

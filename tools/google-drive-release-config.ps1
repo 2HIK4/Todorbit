@@ -26,7 +26,30 @@ function Read-GoogleDriveReleaseConfig([string]$Path) {
   return $config
 }
 
-function Assert-GoogleDriveReleaseBundle([string]$Bundle, [string]$Repo, [string]$ConfigPath = '') {
+function Resolve-GoogleDriveReleaseConfigPath([string]$ConfigPath = '', [string]$Repo = '') {
+  if ($ConfigPath) {
+    return (Resolve-Path -LiteralPath $ConfigPath -ErrorAction Stop).Path
+  }
+  if ($env:TODORBIT_GOOGLE_DRIVE_CONFIG -and (Test-Path -LiteralPath $env:TODORBIT_GOOGLE_DRIVE_CONFIG)) {
+    return (Resolve-Path -LiteralPath $env:TODORBIT_GOOGLE_DRIVE_CONFIG -ErrorAction Stop).Path
+  }
+  $standardSecretsPath = 'D:\AI_Projects\Secrets\TodorbitPrivate-drive-enabled-20261106-ab9a4087\drive-build.json'
+  if (Test-Path -LiteralPath $standardSecretsPath) {
+    $realRepo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+    if (-not $Repo -or (Resolve-Path $Repo).Path -eq $realRepo) {
+      return (Resolve-Path -LiteralPath $standardSecretsPath -ErrorAction Stop).Path
+    }
+  }
+  $defaultPath = if ($Repo) { Join-Path $Repo 'config\google-drive.json' } else { 'config\google-drive.json' }
+  return (Resolve-Path -LiteralPath $defaultPath -ErrorAction Stop).Path
+}
+
+function Assert-GoogleDriveReleaseBundle(
+  [string]$Bundle,
+  [string]$Repo,
+  [string]$ConfigPath = '',
+  [switch]$AllowDisabledDrive
+) {
   $privateFiles = Get-ChildItem -LiteralPath $Bundle -Recurse -File | Where-Object {
     $_.Name -match '(?i)\.(sqlite|db)(-(wal|shm))?$|\.tdbackup$|\.log$|\.(pfx|p12|pem|key)$|client_secret.*\.json$|(?:credentials|tokens|desktop-oauth)\.json$|(-settings|privacy-session|pending-restore|restore-status)\.json$' -or
     $_.FullName -match '(?i)[\\/]backups[\\/]'
@@ -55,10 +78,11 @@ function Assert-GoogleDriveReleaseBundle([string]$Bundle, [string]$Repo, [string
   } elseif (Test-Path -LiteralPath $widget) {
     throw 'Private test bundle must not contain the native companion.'
   }
-  $selectedConfigPath = if ($ConfigPath) {
-    (Resolve-Path -LiteralPath $ConfigPath -ErrorAction Stop).Path
-  } else { Join-Path $Repo 'config\google-drive.json' }
+  $selectedConfigPath = Resolve-GoogleDriveReleaseConfigPath $ConfigPath $Repo
   $config = Read-GoogleDriveReleaseConfig $selectedConfigPath
+  if ($receipt.privateDriveTest -ne $true -and -not $AllowDisabledDrive -and -not $config.GOOGLE_DRIVE_ENABLED) {
+    throw 'Production release bundle must have Google Drive enabled. Pass an approved OAuth config or pass -AllowDisabledDrive for test builds.'
+  }
   $aotHash = (Get-FileHash -LiteralPath (Join-Path $Bundle 'data\app.so') -Algorithm SHA256).Hash
   $configHash = (Get-FileHash -LiteralPath $selectedConfigPath -Algorithm SHA256).Hash
   $mainHash = (Get-FileHash -LiteralPath (Join-Path $Bundle 'Todorbit.exe') -Algorithm SHA256).Hash
