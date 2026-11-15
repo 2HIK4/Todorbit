@@ -282,8 +282,8 @@ void main() {
       find.widgetWithText(TextField, 'Notes'),
       'Occurrence-only notes that are not saved yet',
     );
-    await reveal(tester, find.text('Edit recurring series'));
-    await tester.tap(find.text('Edit recurring series'));
+    await reveal(tester, find.text('Edit series'));
+    await tester.tap(find.text('Edit series'));
     await tester.pumpAndSettle();
     expect(find.text('Discard unsaved changes?'), findsNothing);
     await tester.enterText(
@@ -336,8 +336,8 @@ void main() {
       find.text('Occurrence-only notes that are not saved yet'),
       findsOneWidget,
     );
-    await reveal(tester, find.text('Edit recurring series'));
-    await tester.tap(find.text('Edit recurring series'));
+    await reveal(tester, find.text('Edit series'));
+    await tester.tap(find.text('Edit series'));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.widgetWithText(TextField, 'Shared title'),
@@ -384,8 +384,8 @@ void main() {
     );
     await controller.refresh();
     await open(tester, task: task, size: const Size(390, 700), scale: 2);
-    await reveal(tester, find.text('Edit recurring series'));
-    await tester.tap(find.text('Edit recurring series'));
+    await reveal(tester, find.text('Edit series'));
+    await tester.tap(find.text('Edit series'));
     await tester.pumpAndSettle();
     final sharedTitle = find.widgetWithText(TextField, 'Shared title');
     await tester.scrollUntilVisible(

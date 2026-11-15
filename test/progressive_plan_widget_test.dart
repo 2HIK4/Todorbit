@@ -58,11 +58,11 @@ void main() {
             )
             .first;
         await tester.scrollUntilVisible(
-          find.text('Edit recurring task plan'),
+          find.text('Edit plan'),
           250,
           scrollable: editorScroll,
         );
-        await tester.tap(find.text('Edit recurring task plan'));
+        await tester.tap(find.text('Edit plan'));
         await tester.pumpAndSettle();
         expect(find.text('Recurring task plan'), findsOneWidget);
         await tester.enterText(

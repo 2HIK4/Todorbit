@@ -112,6 +112,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Sound and options'));
       await tester.tap(find.text('Sound and options'));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('System sound'));

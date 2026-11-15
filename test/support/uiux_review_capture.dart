@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const reviewCaptureKey = ValueKey('uiux-review-capture');
+String? loadedReviewFont;
 
 const reviewDisplayConfigurations = [
   (size: Size(360, 800), scale: 1.0, brightness: Brightness.light),
@@ -19,16 +20,28 @@ const reviewDisplayConfigurations = [
 ];
 
 Future<void> loadReviewFonts() async {
+  final configFile = File('.dart_tool/package_config.json');
+  final packages =
+      (jsonDecode(configFile.readAsStringSync()) as Map)['packages'] as List;
+  final flutterPackage = packages.cast<Map>().singleWhere(
+    (p) => p['name'] == 'flutter',
+  );
+  final sdk = Directory.fromUri(
+    configFile.uri.resolve(flutterPackage['rootUri'] as String),
+  ).parent.parent;
+  final materialFonts = sdk.uri.resolve('bin/cache/artifacts/material_fonts/');
   for (final entry in {
-    'Roboto': Platform.environment['UIUX_CAPTURE_FONT'],
-    'MaterialIcons': Platform.environment['UIUX_CAPTURE_ICONS'],
+    'Roboto':
+        Platform.environment['UIUX_CAPTURE_FONT'] ??
+        File.fromUri(materialFonts.resolve('roboto-regular.ttf')).path,
+    'MaterialIcons':
+        Platform.environment['UIUX_CAPTURE_ICONS'] ??
+        File.fromUri(materialFonts.resolve('materialicons-regular.otf')).path,
   }.entries) {
-    if (entry.value == null) continue;
+    if (entry.key == 'Roboto') loadedReviewFont = entry.value;
     final loader = FontLoader(entry.key)
       ..addFont(
-        Future.value(
-          ByteData.sublistView(File(entry.value!).readAsBytesSync()),
-        ),
+        Future.value(ByteData.sublistView(File(entry.value).readAsBytesSync())),
       );
     await loader.load();
   }
@@ -49,7 +62,7 @@ Future<void> captureReview(WidgetTester tester, String name) async {
     'textScaleAt16sp': media.textScaler.scale(16) / 16,
     'theme': Theme.of(context).brightness.name,
     'locale': Localizations.localeOf(context).toLanguageTag(),
-    'fontFile': Platform.environment['UIUX_CAPTURE_FONT'],
+    'fontFile': loadedReviewFont,
     'captureType':
         'offscreen Flutter widget test; no OS chrome or real Android runtime',
   };

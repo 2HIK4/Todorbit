@@ -192,7 +192,12 @@ void main() {
     await tester.tap(find.text('Day'));
     await tester.pumpAndSettle();
     expect(find.text('Overnight preparation'), findsOneWidget);
-    expect(find.text('Continues'), findsOneWidget);
+    expect(find.text('← 00:00 – 01:00'), findsOneWidget);
+    expect(find.text('23:00 – 01:00'), findsNothing);
+    final overnight = (await repo.events()).singleWhere(
+      (event) => event.title == 'Overnight preparation',
+    );
+    expect(overnight.startsAt.toLocal().hour, 23);
     expect(find.text('All day'), findsOneWidget);
     await capture(tester, 'overnight-day');
     expect(tester.takeException(), isNull);
