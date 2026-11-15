@@ -39,6 +39,7 @@ const portableSyncTables = <String>{
   'saved_views',
   'deletion_tombstones',
   'task_resources',
+  'task_resource_subtasks',
   'event_occurrence_changes',
   'entity_icons',
   'task_parent_links',
@@ -55,7 +56,10 @@ const syncOperationUuidSql =
 const syncDeviceClockPathSql = r"'$.' || json_quote(device_id)";
 
 String syncRowIsPortable(String table, String prefix) =>
-    table == 'task_resources'
+    table == 'task_resource_subtasks'
+    // A cascade runs after its parent disappears. Capture its tombstone too.
+    ? "(NOT EXISTS (SELECT 1 FROM task_resources r WHERE r.id=${prefix}resource_id) OR EXISTS (SELECT 1 FROM task_resources r WHERE r.id=${prefix}resource_id AND ${syncRowIsPortable('task_resources', 'r.')}))"
+    : table == 'task_resources'
     ? "(${prefix}kind='managed' OR (${prefix}kind='url' AND (${prefix}target LIKE 'https://%' OR ${prefix}target LIKE 'http://%')))"
     : '1';
 

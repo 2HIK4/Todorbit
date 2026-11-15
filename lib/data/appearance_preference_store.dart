@@ -70,6 +70,12 @@ class AppearancePreferenceStore {
       compositionTextDisplay: data['compositionTextDisplay'] == 'full'
           ? CompositionTextDisplay.full
           : CompositionTextDisplay.compact,
+      hiddenStandardCategories:
+          (data['hiddenStandardCategories'] as List? ?? [])
+              .cast<String>()
+              .toSet(),
+      hiddenStandardProjects:
+          (data['hiddenStandardProjects'] as List? ?? []).cast<String>().toSet(),
     );
   }
 
@@ -80,6 +86,8 @@ class AppearancePreferenceStore {
       'keepCompletedVisible': value.keepCompletedVisible,
       'spellCheckEnabled': value.spellCheckEnabled,
       'compositionTextDisplay': value.compositionTextDisplay.name,
+      'hiddenStandardCategories': value.hiddenStandardCategories.toList(),
+      'hiddenStandardProjects': value.hiddenStandardProjects.toList(),
     });
   }
 

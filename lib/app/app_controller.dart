@@ -1,3 +1,4 @@
+import '../domain/focus_session.dart';
 import '../domain/task_resources.dart';
 
 import 'dart:async';
@@ -113,6 +114,108 @@ class AppController extends ChangeNotifier {
   List<LifeTask> archivedTasks = [];
   List<ArchivedSeries> archivedSeries = [];
   List<LifeTask> reportTasks = [];
+  final focusSessions = <String, FocusSession>{};
+  Timer? _focusTicker;
+  bool _focusBusy = false;
+  FocusSession focusSessionFor(String taskId) =>
+      focusSessions.putIfAbsent(taskId, () => FocusSession());
+
+  Future<void> changeFocusPhase(
+    String taskId, {
+    FocusMode? mode,
+    PomodoroPhase? phase,
+  }) async {
+    await pauseFocus(taskId);
+    final session = focusSessionFor(taskId);
+    if (mode != null) session.mode = mode;
+    if (phase != null) session.phase = phase;
+    session.reset();
+    notifyListeners();
+  }
+
+  Future<void> pauseFocus(String taskId, {DateTime? endsAt}) async {
+    final session = focusSessionFor(taskId);
+    if (activeTimer?.taskId == taskId &&
+        activeTimer?.state == TimerState.running) {
+      await repository.pauseTimer(activeTimer!, endsAt: endsAt);
+      await refresh();
+    }
+    session.pause();
+    notifyListeners();
+  }
+
+  Future<void> toggleFocus(String taskId) async {
+    final session = focusSessionFor(taskId);
+    if (session.mode == FocusMode.stopwatch) {
+      if (activeTimer?.taskId == taskId &&
+          activeTimer?.state == TimerState.running) {
+        await pauseTimer();
+      } else {
+        await _startFocusWork(taskId);
+      }
+      return;
+    }
+    if (session.running) {
+      await pauseFocus(taskId);
+      return;
+    }
+    if (session.remaining == Duration.zero) session.reset();
+    if (session.recordsWork) {
+      await _startFocusWork(taskId);
+      final open = timeEntries.firstWhere(
+        (entry) => entry.timerRunId == activeTimer?.id && entry.endsAt == null,
+      );
+      session.workDeadline = open.startsAt.add(session.remaining);
+    } else {
+      await pauseFocus(taskId);
+      session.workDeadline = null;
+    }
+    session.start();
+    _focusTicker ??= Timer.periodic(
+      const Duration(milliseconds: 250),
+      (_) => _tickFocus(),
+    );
+    notifyListeners();
+  }
+
+  Future<void> _startFocusWork(String taskId) async {
+    if (activeTimer != null && activeTimer!.taskId != taskId) {
+      throw StateError('Stop the existing timer before focusing another task.');
+    }
+    if (activeTimer == null) {
+      await startFocusTask(tasks.firstWhere((task) => task.id == taskId));
+    } else if (activeTimer!.state == TimerState.paused) {
+      await resumeTimer();
+    } else if (!activeTimer!.canControl ||
+        activeTimer!.needsReview(DateTime.now())) {
+      throw StateError('Review the existing timer before continuing.');
+    }
+  }
+
+  Future<void> _tickFocus() async {
+    if (_focusBusy || _disposed) return;
+    _focusBusy = true;
+    try {
+      for (final item in focusSessions.entries.toList()) {
+        final session = item.value;
+        if (!session.running || session.remaining > Duration.zero) continue;
+        await pauseFocus(item.key, endsAt: session.workDeadline);
+        session.finish();
+        notifyListeners();
+      }
+    } catch (error) {
+      for (final session in focusSessions.values) {
+        session.pause();
+      }
+      timerError = '$error';
+      notifyListeners();
+    } finally {
+      _focusBusy = false;
+    }
+  }
+
+  bool _timerLoaded = false;
+  String? _interruptedTimerId;
   TimerRun? activeTimer;
   String? timerError;
   Timer? _timerHeartbeat;
@@ -274,6 +377,15 @@ class AppController extends ChangeNotifier {
     goalMilestones = result[13] as List<GoalMilestone>;
     timeEntries = result[14] as List<TimeEntry>;
     activeTimer = result[15] as TimerRun?;
+    if (!_timerLoaded) {
+      _timerLoaded = true;
+      if (activeTimer?.state == TimerState.running && activeTimer!.canControl) {
+        _interruptedTimerId = activeTimer!.id;
+      }
+    }
+    if (activeTimer?.id == _interruptedTimerId && activeTimer != null) {
+      activeTimer = activeTimer!.forRecovery();
+    }
     templates = result[16] as List<LifeTemplate>;
     savedViews = result[17] as List<SavedView>;
     trashItems = result[18] as List<TrashItem>;
@@ -378,6 +490,7 @@ class AppController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _timerHeartbeat?.cancel();
+    _focusTicker?.cancel();
     _midnightTimer?.cancel();
     super.dispose();
   }
@@ -441,6 +554,10 @@ class AppController extends ChangeNotifier {
         'lastCalendarMode': lastCalendarMode,
         'keepCompletedVisible': taskViewPreferences.keepCompletedVisible,
         'spellCheckEnabled': taskViewPreferences.spellCheckEnabled,
+        'hiddenStandardCategories': taskViewPreferences.hiddenStandardCategories
+            .toList(),
+        'hiddenStandardProjects': taskViewPreferences.hiddenStandardProjects
+            .toList(),
         'newTaskPlannedDay': taskViewPreferences.newTaskPlannedDay.name,
         'compositionTextDisplay':
             taskViewPreferences.compositionTextDisplay.name,
@@ -470,6 +587,12 @@ class AppController extends ChangeNotifier {
     taskViewPreferences = taskViewPreferences.copyWith(
       keepCompletedVisible: values['keepCompletedVisible'] as bool?,
       spellCheckEnabled: values['spellCheckEnabled'] as bool?,
+      hiddenStandardCategories: (values['hiddenStandardCategories'] as List?)
+          ?.cast<String>()
+          .toSet(),
+      hiddenStandardProjects: (values['hiddenStandardProjects'] as List?)
+          ?.cast<String>()
+          .toSet(),
       newTaskPlannedDay: values['newTaskPlannedDay'] is String
           ? NewTaskPlannedDay.values.byName(
               values['newTaskPlannedDay'] as String,
@@ -481,6 +604,7 @@ class AppController extends ChangeNotifier {
             )
           : null,
     );
+    _invalidateTaskCaches();
     // SQL is the durable source after sync. Profile JSON remains a compatible
     // projection for existing native readers and portable settings exports.
     await appearanceStore?.save(theme);
@@ -496,11 +620,14 @@ class AppController extends ChangeNotifier {
     await repository.savePortablePreferences({
       'keepCompletedVisible': value.keepCompletedVisible,
       'spellCheckEnabled': value.spellCheckEnabled,
+      'hiddenStandardCategories': value.hiddenStandardCategories.toList(),
+      'hiddenStandardProjects': value.hiddenStandardProjects.toList(),
       'newTaskPlannedDay': value.newTaskPlannedDay.name,
       'compositionTextDisplay': value.compositionTextDisplay.name,
     });
     await appearanceStore?.saveTaskViewPreferences(value);
     taskViewPreferences = value;
+    _invalidateTaskCaches();
     notifyListeners();
     onLocalChange?.call();
   }
@@ -726,6 +853,156 @@ class AppController extends ChangeNotifier {
     return sessions.where((session) => ids.contains(session.taskId)).toList();
   }
 
+  bool isStandardView(WorkspaceView v) =>
+      v == WorkspaceView.today ||
+      v == WorkspaceView.anytime ||
+      v == WorkspaceView.all ||
+      v == WorkspaceView.inbox ||
+      v == WorkspaceView.upcoming ||
+      v == WorkspaceView.overdue ||
+      v == WorkspaceView.waiting ||
+      v == WorkspaceView.completed;
+
+  bool isTaskHiddenFromStandard(LifeTask task) {
+    if (task.categoryId != null &&
+        taskViewPreferences.hiddenStandardCategories.contains(
+          task.categoryId,
+        )) {
+      return true;
+    }
+    if (task.projectId != null &&
+        taskViewPreferences.hiddenStandardProjects.contains(task.projectId)) {
+      return true;
+    }
+    return false;
+  }
+
+  bool isCategoryShownInStandardViews(String categoryId) =>
+      !taskViewPreferences.hiddenStandardCategories.contains(categoryId);
+
+  bool isProjectShownInStandardViews(String projectId) =>
+      !taskViewPreferences.hiddenStandardProjects.contains(projectId);
+
+  Future<void> toggleCategoryStandardVisibility(String categoryId) async {
+    final hidden = Set<String>.from(
+      taskViewPreferences.hiddenStandardCategories,
+    );
+    if (hidden.contains(categoryId)) {
+      hidden.remove(categoryId);
+    } else {
+      hidden.add(categoryId);
+    }
+    await setTaskViewPreferences(
+      taskViewPreferences.copyWith(hiddenStandardCategories: hidden),
+    );
+  }
+
+  Future<void> toggleProjectStandardVisibility(String projectId) async {
+    final hidden = Set<String>.from(taskViewPreferences.hiddenStandardProjects);
+    if (hidden.contains(projectId)) {
+      hidden.remove(projectId);
+    } else {
+      hidden.add(projectId);
+    }
+    await setTaskViewPreferences(
+      taskViewPreferences.copyWith(hiddenStandardProjects: hidden),
+    );
+  }
+
+  int get hiddenStandardTasksCount {
+    if (!isStandardView(view)) return 0;
+    final today = localDate(DateTime.now());
+    bool active(LifeTask task) =>
+        task.isOpen ||
+        (taskViewPreferences.keepCompletedVisible &&
+            task.status == TaskStatus.completed) ||
+        activeFilter.statuses.contains(task.status);
+    return filteredTasks.where((task) {
+      if (!isTaskHiddenFromStandard(task)) return false;
+      switch (view) {
+        case WorkspaceView.today:
+          return active(task) && task.scheduledDate == today;
+        case WorkspaceView.anytime:
+          return active(task) &&
+              task.scheduledDate == null &&
+              task.deadlineDate == null;
+        case WorkspaceView.all:
+          return active(task);
+        case WorkspaceView.inbox:
+          return active(task) &&
+              task.categoryId == null &&
+              task.projectId == null;
+        case WorkspaceView.upcoming:
+          return active(task) &&
+              task.scheduledDate != null &&
+              task.scheduledDate!.compareTo(today) > 0;
+        case WorkspaceView.overdue:
+          return active(task) &&
+              task.deadlineDate != null &&
+              task.deadlineDate!.compareTo(today) < 0;
+        case WorkspaceView.waiting:
+          return task.status == TaskStatus.waiting ||
+              task.status == TaskStatus.onHold;
+        case WorkspaceView.completed:
+          return task.status == TaskStatus.completed ||
+              task.status == TaskStatus.cancelled;
+        default:
+          return false;
+      }
+    }).length;
+  }
+
+  Future<SavedView> duplicateSavedView(
+    SavedView original, [
+    String? newName,
+  ]) async {
+    final name = newName ?? '${original.name} (copy)';
+    final created = await repository.duplicateSavedView(original, name);
+    savedViews = await repository.savedViews();
+    _invalidateTaskCaches();
+    notifyListeners();
+    return created;
+  }
+
+  Future<void> renameSavedView(SavedView previous, String newName) async {
+    await repository.renameSavedView(previous, newName);
+    savedViews = await repository.savedViews();
+    _invalidateTaskCaches();
+    notifyListeners();
+  }
+
+  Future<void> deleteArchivedTask(LifeTask task) async {
+    await repository.deleteArchivedTask(task);
+    await refresh();
+  }
+
+  Future<void> deleteArchivedSeries(ArchivedSeries series) async {
+    await repository.deleteArchivedSeries(series);
+    await refresh();
+  }
+
+  Future<Map<String, List<String>>> taskResourceSubtaskMap(String taskId) =>
+      repository.taskResourceSubtaskMap(taskId);
+
+  Future<void> assignResourceToSubtasks(
+    String resourceId,
+    List<String> subtaskIds,
+  ) async {
+    await repository.assignResourceToSubtasks(resourceId, subtaskIds);
+    notifyListeners();
+  }
+
+  Future<void> moveSavedView(String viewId, int direction) async {
+    final current = List<String>.from(orderedSavedViews.map((v) => v.id));
+    final index = current.indexOf(viewId);
+    if (index == -1) return;
+    final target = index + direction;
+    if (target < 0 || target >= current.length) return;
+    final item = current.removeAt(index);
+    current.insert(target, item);
+    await setNavigationState(customOrder: current);
+  }
+
   List<LifeTask> get visibleTasks {
     final today = localDate(DateTime.now());
     if (_cachedVisibleTasks != null && _cachedVisibleTasksDate == today) {
@@ -742,7 +1019,26 @@ class AppController extends ChangeNotifier {
     final savedIds = view == WorkspaceView.saved && selectedView != null
         ? searchTasks(selectedView.filter).map((task) => task.id).toSet()
         : <String>{};
+
+    bool customViewAllows(LifeTask task, SavedView? v) {
+      if (!isTaskHiddenFromStandard(task)) return true;
+      if (v == null) return false;
+      final f = v.filter;
+      final includesCategory =
+          task.categoryId != null &&
+          (f.categoryIds.contains(task.categoryId) ||
+              f.categoryId == task.categoryId);
+      final includesProject =
+          task.projectId != null &&
+          (f.projectIds.contains(task.projectId) ||
+              f.projectId == task.projectId);
+      return includesCategory || includesProject;
+    }
+
     final items = filteredTasks.where((task) {
+      if (isStandardView(view) && isTaskHiddenFromStandard(task)) {
+        return false;
+      }
       switch (view) {
         case WorkspaceView.today:
           return active(task) && task.scheduledDate == today;
@@ -777,7 +1073,8 @@ class AppController extends ChangeNotifier {
         case WorkspaceView.contributors:
           return false;
         case WorkspaceView.saved:
-          return savedIds.contains(task.id);
+          return savedIds.contains(task.id) &&
+              customViewAllows(task, selectedView);
         case WorkspaceView.category:
           return active(task) && task.categoryId == scopeId;
         case WorkspaceView.project:
@@ -1040,7 +1337,9 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> pauseTimer() async {
+    final session = focusSessions[activeTimer?.taskId];
     await repository.pauseTimer(activeTimer!);
+    session?.pause();
     await refresh();
   }
 
@@ -1055,17 +1354,21 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> stopTimer() async {
+    final session = focusSessions[activeTimer?.taskId];
     await repository.stopTimer(activeTimer!);
+    session?.pause();
     await refresh();
   }
 
   Future<void> keepRecoveredTimer() async {
     await repository.keepRecoveredTimer(activeTimer!);
+    _interruptedTimerId = null;
     await refresh();
   }
 
   Future<void> stopRecoveredTimerAtCheckpoint() async {
     await repository.stopRecoveredTimerAtCheckpoint(activeTimer!);
+    _interruptedTimerId = null;
     await refresh();
   }
 
@@ -1245,8 +1548,7 @@ class AppController extends ChangeNotifier {
   Future<String?> calendarSeriesMoveProblem(
     FixedEvent master, [
     EventDraft? draft,
-  ]) =>
-      repository.calendarSeriesMoveProblem(master, draft);
+  ]) => repository.calendarSeriesMoveProblem(master, draft);
 
   Future<void> updateEventOccurrence(
     FixedEvent occurrence,

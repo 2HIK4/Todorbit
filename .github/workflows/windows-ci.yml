@@ -2,6 +2,9 @@ name: Windows checks
 
 on:
   workflow_call:
+    secrets:
+      GOOGLE_DRIVE_RELEASE_CONFIG:
+        required: false
   workflow_dispatch:
 
 permissions:
@@ -54,6 +57,20 @@ jobs:
       - name: Check public OAuth configuration and packaging gates
         shell: pwsh
         run: ./tools/test-google-drive-release-config.ps1
+      - name: Load approved Desktop Drive release configuration
+        shell: pwsh
+        env:
+          DRIVE_BUILD_CONFIG: ${{ secrets.GOOGLE_DRIVE_RELEASE_CONFIG }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:DRIVE_BUILD_CONFIG)) {
+            throw 'The approved GOOGLE_DRIVE_RELEASE_CONFIG secret is required for enabled release packaging.'
+          }
+          $driveConfigPath = Join-Path $env:RUNNER_TEMP 'todorbit-drive-build.json'
+          [System.IO.File]::WriteAllText($driveConfigPath, $env:DRIVE_BUILD_CONFIG, [System.Text.UTF8Encoding]::new($false))
+          . ./tools/google-drive-release-config.ps1
+          $driveConfig = Read-GoogleDriveReleaseConfig $driveConfigPath
+          if (-not $driveConfig.GOOGLE_DRIVE_ENABLED) { throw 'Release packaging requires the approved enabled configuration.' }
+          "TODORBIT_GOOGLE_DRIVE_CONFIG=$driveConfigPath" >> $env:GITHUB_ENV
       - name: Build Windows Release
         shell: pwsh
         run: ./tools/build-windows-release.ps1
@@ -98,3 +115,9 @@ jobs:
           path: .buildlog/verification/windows-*.log
           if-no-files-found: warn
           retention-days: 7
+      - name: Remove temporary build configuration
+        if: always()
+        shell: pwsh
+        run: |
+          $driveConfigPath = Join-Path $env:RUNNER_TEMP 'todorbit-drive-build.json'
+          if (Test-Path -LiteralPath $driveConfigPath) { Remove-Item -LiteralPath $driveConfigPath -Force }

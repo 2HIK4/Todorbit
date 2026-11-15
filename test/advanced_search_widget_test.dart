@@ -43,7 +43,7 @@ void main() {
         );
         await tester.tap(find.text('New saved view'));
         await tester.pumpAndSettle();
-        expect(find.text('Create saved view'), findsOneWidget);
+        expect(find.text('Create Custom View'), findsNWidgets(2));
         expect(find.text('0 matching tasks'), findsOneWidget);
         await tester.enterText(
           find.widgetWithText(TextField, 'View name *'),
@@ -60,7 +60,9 @@ void main() {
           find.widgetWithText(TextField, 'View name *'),
           'Empty plan',
         );
-        await tester.tap(find.text('Create view'));
+        await tester.tap(
+          find.widgetWithText(FilledButton, 'Create Custom View'),
+        );
         await tester.pumpAndSettle();
         expect(controller.savedViews.single.name, 'Empty plan');
         expect(controller.view, WorkspaceView.saved);
@@ -114,7 +116,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('1 matching tasks'), findsOneWidget);
-      await tester.tap(find.text('Save as view'));
+      await tester.tap(find.text('Save as Custom View'));
       await tester.pumpAndSettle();
       await tester.enterText(
         find.widgetWithText(TextFormField, 'View name'),

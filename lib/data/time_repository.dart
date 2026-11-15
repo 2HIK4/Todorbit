@@ -140,7 +140,7 @@ extension TimeRepository on LifeRepository {
     return db.transaction(() async {
       final current = await _currentRun(previous, 'running');
       final now = DateTime.now().toUtc();
-      if (current.needsReview(now)) return null;
+      if (previous.needsReview(now) || current.needsReview(now)) return null;
       await db.customUpdate(
         'UPDATE timer_runs SET last_seen_at=? WHERE id=?',
         variables: [
@@ -172,14 +172,16 @@ extension TimeRepository on LifeRepository {
     );
   }
 
-  Future<void> pauseTimer(TimerRun previous) async {
+  Future<void> pauseTimer(TimerRun previous, {DateTime? endsAt}) async {
     await db.transaction(() async {
       final current = await _currentRun(previous, 'running');
       final now = DateTime.now().toUtc();
-      if (current.needsReview(now)) {
+      if (previous.needsReview(now) || current.needsReview(now)) {
         throw StateError('Review the recovered timer before pausing it');
       }
-      await _closeOpenInterval(previous.id, now);
+      final end = endsAt?.toUtc() ?? now;
+      if (end.isAfter(now)) throw ArgumentError('Work end is in the future');
+      await _closeOpenInterval(previous.id, end);
       await db.customUpdate(
         "UPDATE timer_runs SET state='paused',last_seen_at=?,updated_at=? WHERE id=?",
         variables: [
@@ -224,7 +226,7 @@ extension TimeRepository on LifeRepository {
       final current = await _currentRun(previous, previous.state.name);
       final now = DateTime.now().toUtc();
       if (current.state == TimerState.running) {
-        if (current.needsReview(now)) {
+        if (previous.needsReview(now) || current.needsReview(now)) {
           throw StateError('Review the recovered timer before stopping it');
         }
         await _closeOpenInterval(previous.id, now);
@@ -299,7 +301,8 @@ extension TimeRepository on LifeRepository {
   Future<void> stopRecoveredTimerAtCheckpoint(TimerRun previous) async {
     await db.transaction(() async {
       final current = await _currentRun(previous, 'running');
-      if (!current.needsReview(DateTime.now().toUtc())) {
+      if (!previous.needsReview(DateTime.now().toUtc()) &&
+          !current.needsReview(DateTime.now().toUtc())) {
         throw StateError('Timer does not need recovery');
       }
       await _closeOpenInterval(previous.id, current.lastSeenAt);

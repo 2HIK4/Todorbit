@@ -279,6 +279,24 @@ void main() {
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
       expect(controller.trashItems.single.id, task.id);
+      await tester.tap(find.text('Select'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(Checkbox).first);
+      await tester.pumpAndSettle();
+      final bulkDelete = find.text('Permanently delete (1)').hitTestable();
+      expect(bulkDelete, findsOneWidget);
+      await capture(tester, 'trash-bulk-large-text');
+      await tester.tap(bulkDelete);
+      await tester.pumpAndSettle();
+      expect(find.text('Permanently delete selected?'), findsOneWidget);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.text('Cancel'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(controller.trashItems.single.id, task.id);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },

@@ -314,7 +314,9 @@ class SyncBatchCodec {
         );
         if (batch.schema != expectedSchema &&
             !((expectedSchema == 27 && batch.schema == 26) ||
-                (expectedSchema == 28 && {26, 27}.contains(batch.schema)))) {
+                (expectedSchema == 28 && {26, 27}.contains(batch.schema)) ||
+                (expectedSchema == 29 &&
+                    {26, 27, 28}.contains(batch.schema)))) {
           throw const SyncSchemaMismatch();
         }
         return batch;
@@ -340,7 +342,8 @@ class SyncBatchCodec {
       );
       if (batch.schema != expectedSchema &&
           !((expectedSchema == 27 && batch.schema == 26) ||
-              (expectedSchema == 28 && {26, 27}.contains(batch.schema)))) {
+              (expectedSchema == 28 && {26, 27}.contains(batch.schema)) ||
+              (expectedSchema == 29 && {26, 27, 28}.contains(batch.schema)))) {
         throw const SyncSchemaMismatch();
       }
       return batch;

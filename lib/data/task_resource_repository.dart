@@ -1,5 +1,33 @@
 part of 'life_repository.dart';
 
+String normalizeResourceUrl(String target) {
+  var cleaned = target.trim();
+  if (cleaned.isEmpty) {
+    throw ArgumentError('Enter a valid website or application link');
+  }
+  if (!RegExp(r'^[a-zA-Z][a-zA-Z0-9+.-]*:').hasMatch(cleaned)) {
+    cleaned = 'https://$cleaned';
+  }
+  final uri = Uri.tryParse(cleaned);
+  if (uri == null ||
+      !uri.hasScheme ||
+      uri.scheme.length < 2 ||
+      const {
+        'file',
+        'javascript',
+        'data',
+        'vbscript',
+        'shell',
+      }.contains(uri.scheme.toLowerCase()) ||
+      ((uri.scheme == 'http' || uri.scheme == 'https') &&
+          (uri.host.isEmpty ||
+              RegExp(r'[\s\x00-\x1f\x7f]')
+                  .hasMatch(Uri.decodeComponent(uri.host))))) {
+    throw ArgumentError('Enter a valid website or application link');
+  }
+  return uri.toString();
+}
+
 extension TaskResourceRepository on LifeRepository {
   static const maxAttachmentBytes = 16 * 1024 * 1024;
 
@@ -116,22 +144,7 @@ extension TaskResourceRepository on LifeRepository {
     String stored;
     int? size;
     if (kind == TaskResourceKind.url) {
-      final uri = Uri.tryParse(cleaned);
-      if (uri == null ||
-          !uri.hasScheme ||
-          uri.scheme.length < 2 ||
-          const {
-            'file',
-            'javascript',
-            'data',
-            'vbscript',
-            'shell',
-          }.contains(uri.scheme.toLowerCase()) ||
-          ((uri.scheme == 'http' || uri.scheme == 'https') &&
-              uri.host.isEmpty)) {
-        throw ArgumentError('Enter a valid website or application link');
-      }
-      stored = uri.toString();
+      stored = normalizeResourceUrl(cleaned);
     } else {
       final entity = FileSystemEntity.typeSync(cleaned, followLinks: false);
       final expected = kind == TaskResourceKind.externalFile
@@ -191,24 +204,11 @@ extension TaskResourceRepository on LifeRepository {
 
   Future<void> updateTaskUrl(TaskResource resource, String target) async {
     if (resource.kind != TaskResourceKind.url) throw ArgumentError('Not a URL');
-    final uri = Uri.tryParse(target.trim());
-    if (uri == null ||
-        !uri.hasScheme ||
-        uri.scheme.length < 2 ||
-        const {
-          'file',
-          'javascript',
-          'data',
-          'vbscript',
-          'shell',
-        }.contains(uri.scheme.toLowerCase()) ||
-        ((uri.scheme == 'http' || uri.scheme == 'https') && uri.host.isEmpty)) {
-      throw ArgumentError('Enter a valid website or application link');
-    }
+    final stored = normalizeResourceUrl(target);
     final changed = await db.customUpdate(
       'UPDATE task_resources SET target=?,updated_at=? WHERE id=? AND updated_at=?',
       variables: [
-        Variable.withString(uri.toString()),
+        Variable.withString(stored),
         Variable.withString(DateTime.now().toUtc().toIso8601String()),
         Variable.withString(resource.id),
         Variable.withString(resource.updatedAt.toUtc().toIso8601String()),
@@ -252,5 +252,71 @@ extension TaskResourceRepository on LifeRepository {
       throw StateError('Attachment failed integrity verification');
     }
     return bytes;
+  }
+
+  Future<List<String>> resourceSubtasks(String resourceId) async {
+    final rows = await db
+        .customSelect(
+          'SELECT subtask_id FROM task_resource_subtasks WHERE resource_id=? ORDER BY created_at',
+          variables: [Variable.withString(resourceId)],
+        )
+        .get();
+    return rows.map((r) => r.read<String>('subtask_id')).toList();
+  }
+
+  Future<void> assignResourceToSubtasks(
+    String resourceId,
+    List<String> subtaskIds,
+  ) async {
+    await db.transaction(() async {
+      await db.customUpdate(
+        'DELETE FROM task_resource_subtasks WHERE resource_id=?',
+        variables: [Variable.withString(resourceId)],
+      );
+      final now = DateTime.now().toUtc().toIso8601String();
+      for (final subtaskId in subtaskIds) {
+        await db.customInsert(
+          'INSERT INTO task_resource_subtasks(resource_id,subtask_id,created_at) VALUES(?,?,?)',
+          variables: [
+            Variable.withString(resourceId),
+            Variable.withString(subtaskId),
+            Variable.withString(now),
+          ],
+        );
+      }
+    });
+  }
+
+  Future<List<String>> subtaskResourceIds(String subtaskId) async {
+    final rows = await db
+        .customSelect(
+          'SELECT resource_id FROM task_resource_subtasks WHERE subtask_id=? ORDER BY created_at',
+          variables: [Variable.withString(subtaskId)],
+        )
+        .get();
+    return rows.map((r) => r.read<String>('resource_id')).toList();
+  }
+
+  Future<Map<String, List<String>>> taskResourceSubtaskMap(
+    String taskId,
+  ) async {
+    final rows = await db
+        .customSelect(
+          '''
+          SELECT s.resource_id, s.subtask_id
+          FROM task_resource_subtasks s
+          JOIN task_resources r ON r.id = s.resource_id
+          WHERE r.task_id = ?
+          ''',
+          variables: [Variable.withString(taskId)],
+        )
+        .get();
+    final map = <String, List<String>>{};
+    for (final row in rows) {
+      final resId = row.read<String>('resource_id');
+      final subId = row.read<String>('subtask_id');
+      (map[resId] ??= []).add(subId);
+    }
+    return map;
   }
 }

@@ -5,19 +5,19 @@ extension SavedViewRepository on LifeRepository {
     final rows = await db
         .customSelect('SELECT * FROM saved_views ORDER BY name COLLATE NOCASE')
         .get();
-    return rows
-        .map(
-          (row) => SavedView(
-            id: row.read<String>('id'),
-            name: row.read<String>('name'),
-            filter: TaskFilter.fromJson(
-              (jsonDecode(row.read<String>('filter_json')) as Map)
-                  .cast<String, dynamic>(),
-            ),
-            updatedAt: DateTime.parse(row.read<String>('updated_at')),
-          ),
-        )
-        .toList();
+    return rows.map((row) {
+      final filter = TaskFilter.fromJson(
+        (jsonDecode(row.read<String>('filter_json')) as Map)
+            .cast<String, dynamic>(),
+      );
+      return SavedView(
+        id: row.read<String>('id'),
+        name: row.read<String>('name'),
+        filter: filter,
+        updatedAt: DateTime.parse(row.read<String>('updated_at')),
+        iconKey: filter.iconKey,
+      );
+    }).toList();
   }
 
   void _validateTaskFilter(TaskFilter filter) {
@@ -76,4 +76,10 @@ extension SavedViewRepository on LifeRepository {
     );
     if (count != 1) throw StateError('Saved view changed. Refresh first.');
   }
+
+  Future<SavedView> duplicateSavedView(SavedView original, String newName) =>
+      addSavedView(newName, original.filter);
+
+  Future<void> renameSavedView(SavedView previous, String newName) =>
+      updateSavedView(previous, newName, previous.filter);
 }

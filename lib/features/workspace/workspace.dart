@@ -1,3 +1,4 @@
+import '../../domain/focus_session.dart';
 import '../../domain/alarm_plan.dart';
 import '../shared/alarm_indicator.dart';
 import '../shared/app_motion.dart';
@@ -37,7 +38,6 @@ import '../reports/reports_view.dart';
 import '../shared/about_view_button.dart';
 import '../shared/sync_status_button.dart';
 import '../contributors/contributors_view.dart';
-import '../time_tracking/time_tracking_dialog.dart';
 import '../templates/templates_dialog.dart';
 import '../search/advanced_search_dialog.dart';
 import '../settings/backup_dialog.dart';
@@ -52,8 +52,9 @@ import '../shared/sidebar_items.dart';
 import '../widget/native_widget_service.dart';
 import 'task_editor.dart';
 import 'sequence_dialog.dart';
-import 'quick_search.dart';
 import 'trash_dialog.dart';
+import 'task_details_view.dart';
+import '../time_tracking/focus_workspace.dart';
 
 class Workspace extends ConsumerStatefulWidget {
   const Workspace({
@@ -93,6 +94,8 @@ String _viewDescription(WorkspaceView view) => switch (view) {
 
 class _WorkspaceState extends ConsumerState<Workspace> {
   final categoryDisclosure = ExpansibleController();
+  final _sidebarSearchQuery = TextEditingController();
+  final _sidebarSearchFocus = FocusNode();
   Future<void> _chooseCategoryEventColor(Category category) async {
     final selected = await showDialog<int>(
       context: context,
@@ -255,6 +258,35 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   bool changingEditor = false;
   int editorRevision = 0;
   final editorNavigation = TaskEditorController();
+  String? _focusWorkspaceTaskId;
+  bool _viewingTaskDetails = false;
+
+  void _openFocusWorkspace(String taskId) {
+    setState(() {
+      _focusWorkspaceTaskId = taskId;
+      _viewingTaskDetails = false;
+      creating = false;
+    });
+  }
+
+  Future<void> _editTaskDialog(LifeTask task) async {
+    await showDialog<void>(
+      context: context,
+      animationStyle: AppMotion.style(context),
+      builder: (dialogContext) => Dialog(
+        child: SizedBox(
+          width: math.min(600, MediaQuery.sizeOf(dialogContext).width - 48),
+          height: math.min(680, MediaQuery.sizeOf(dialogContext).height - 64),
+          child: TaskEditor(
+            protectUnsavedEdits: true,
+            task: task,
+            onSaved: () => Navigator.pop(dialogContext),
+            onCancel: () => Navigator.pop(dialogContext),
+          ),
+        ),
+      ),
+    );
+  }
 
   Future<bool> _prepareEditorChange() async {
     if (changingEditor) return false;
@@ -263,6 +295,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       if (!await editorNavigation.confirmLeave() || !mounted) return false;
       setState(() {
         creating = false;
+        _viewingTaskDetails = false;
+        _focusWorkspaceTaskId = null;
         editorRevision++;
       });
       return true;
@@ -279,10 +313,13 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   Future<void> _openTask(LifeTask task, bool wide) async {
     final controller = ref.read(appControllerProvider);
-    if (wide && !creating && controller.selectedTaskId == task.id) return;
     if (!await _prepareEditorChange() || !mounted) return;
     controller.select(task.id);
-    if (!wide) await _showNarrowEditor(task);
+    setState(() {
+      _viewingTaskDetails = true;
+      _focusWorkspaceTaskId = null;
+      creating = false;
+    });
   }
 
   DateTime? newTaskInitialDate;
@@ -427,6 +464,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   @override
   void dispose() {
+    _sidebarSearchQuery.dispose();
+    _sidebarSearchFocus.dispose();
     categoryDisclosure.dispose();
     _widgetSettingsController.dispose();
     HardwareKeyboard.instance.removeHandler(_handleHotkey);
@@ -638,16 +677,51 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   }
 
   Future<void> _showSearch() async {
-    FixedEvent? selected;
-    await showDialog<void>(
-      context: context,
-      animationStyle: AppMotion.style(context),
-      builder: (_) => QuickSearchDialog(
-        beforeNavigate: _prepareEditorChange,
-        onEventTap: (event) => selected = event,
-      ),
+    _sidebarSearchFocus.requestFocus();
+    _sidebarSearchQuery.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: _sidebarSearchQuery.text.length,
     );
-    if (mounted && selected != null) await _openEventDetails(selected!);
+  }
+
+  Future<void> _showSequences() => showDialog<void>(
+    context: context,
+    animationStyle: AppMotion.style(context),
+    builder: (_) => const SequenceDialog(),
+  );
+
+  Future<void> _renameSavedView(SavedView savedView) async {
+    final name = await _nameDialog(
+      'Rename Custom View',
+      initial: savedView.name,
+    );
+    if (name != null && name.trim().isNotEmpty) {
+      await _run(
+        () => ref
+            .read(appControllerProvider)
+            .renameSavedView(savedView, name.trim()),
+      );
+    }
+  }
+
+  Future<void> _duplicateSavedView(SavedView savedView) async {
+    final name = await _nameDialog(
+      'Duplicate Custom View',
+      initial: '${savedView.name} (copy)',
+    );
+    if (name != null && name.trim().isNotEmpty) {
+      await _run(
+        () => ref
+            .read(appControllerProvider)
+            .duplicateSavedView(savedView, name.trim()),
+      );
+    }
+  }
+
+  Future<void> _moveSavedView(String viewId, int direction) async {
+    await _run(
+      () => ref.read(appControllerProvider).moveSavedView(viewId, direction),
+    );
   }
 
   Future<void> _showTemplates() => showDialog<void>(
@@ -682,11 +756,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     }
   }
 
-  Future<void> _showActiveTimer(String taskId) => showDialog<void>(
-    context: context,
-    animationStyle: AppMotion.style(context),
-    builder: (_) => TimeTrackingDialog(taskId: taskId),
-  );
+  Future<void> _showActiveTimer(String taskId) async {
+    _openFocusWorkspace(taskId);
+  }
 
   Future<void> _changeIcon(String kind, String id) async {
     final controller = ref.read(appControllerProvider);
@@ -851,7 +923,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           body: LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 1050;
-              final editor = creating || controller.selectedTask != null;
+              final editor =
+                  creating ||
+                  (controller.selectedTask != null &&
+                      !_viewingTaskDetails &&
+                      _focusWorkspaceTaskId == null);
               final inlineEditor =
                   editor && (wide || editorNavigation.isAttached);
               final sidebarWidth = constraints.maxWidth < 760
@@ -859,7 +935,10 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   : controller.customization.sidebarWidth.toDouble();
               return Row(
                 children: [
-                  SizedBox(width: sidebarWidth, child: _sidebar(controller)),
+                  SizedBox(
+                    width: sidebarWidth,
+                    child: _sidebar(controller, wide: wide),
+                  ),
                   VerticalDivider(
                     width: 1,
                     color: Theme.of(context).colorScheme.outlineVariant,
@@ -868,9 +947,54 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     Expanded(
                       child: Column(
                         children: [
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: SyncStatusButton(allowAutomatic: !editor),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 12, 4),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                PopupMenuButton<String>(
+                                  tooltip: 'Library',
+                                  icon: const Icon(
+                                    Icons.collections_bookmark_outlined,
+                                    size: 19,
+                                  ),
+                                  onSelected: (action) {
+                                    if (action == 'templates') _showTemplates();
+                                    if (action == 'sequences') _showSequences();
+                                  },
+                                  itemBuilder: (_) => const [
+                                    PopupMenuItem(
+                                      value: 'templates',
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.copy_all_outlined,
+                                            size: 18,
+                                          ),
+                                          SizedBox(width: 10),
+                                          Text('Templates'),
+                                        ],
+                                      ),
+                                    ),
+                                    PopupMenuItem(
+                                      value: 'sequences',
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.format_list_numbered,
+                                            size: 18,
+                                          ),
+                                          SizedBox(width: 10),
+                                          Text('Sequences'),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(width: 4),
+                                SyncStatusButton(allowAutomatic: !editor),
+                              ],
+                            ),
                           ),
                           Expanded(child: _mainPanel(controller, wide)),
                         ],
@@ -914,11 +1038,149 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     );
   }
 
-  Widget _sidebar(AppController controller) {
+  Widget _buildSidebarSearchResults(
+    AppController controller,
+    String query,
+    bool wide,
+  ) {
+    final needle = query.trim().toLowerCase();
+    final categories = {
+      for (final item in controller.categories) item.id: item,
+    };
+    final projects = {for (final item in controller.projects) item.id: item};
+
+    final matchingCategories = controller.categories
+        .where((c) => c.name.toLowerCase().contains(needle))
+        .toList();
+    final matchingProjects = controller.projects
+        .where((p) => p.name.toLowerCase().contains(needle))
+        .toList();
+    final matchingTasks = controller.tasks.where((t) {
+      final title = t.title.toLowerCase();
+      final cat = categories[t.categoryId]?.name.toLowerCase() ?? '';
+      final proj = projects[t.projectId]?.name.toLowerCase() ?? '';
+      final notes = t.notes.toLowerCase();
+      return title.contains(needle) ||
+          cat.contains(needle) ||
+          proj.contains(needle) ||
+          notes.contains(needle);
+    }).toList();
+
+    if (matchingCategories.isEmpty &&
+        matchingProjects.isEmpty &&
+        matchingTasks.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'No results for "$query"',
+                style: Theme.of(context).textTheme.bodySmall,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => _showAdvancedSearch(),
+                child: const Text('Open Advanced Search'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return FadingListView(
+      topFadeColor: Theme.of(context).colorScheme.surfaceContainerLow,
+      bottomFadeColor: Theme.of(context).colorScheme.surfaceContainerLow,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      children: [
+        if (matchingCategories.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: Text(
+              'CATEGORIES',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+          for (final cat in matchingCategories)
+            _nav(
+              controller,
+              WorkspaceView.category,
+              cat.name,
+              Icons.folder_outlined,
+              id: cat.id,
+            ),
+        ],
+        if (matchingProjects.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: Text(
+              'PROJECTS',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+          for (final proj in matchingProjects)
+            _nav(
+              controller,
+              WorkspaceView.project,
+              proj.name,
+              Icons.segment_outlined,
+              id: proj.id,
+            ),
+        ],
+        if (matchingTasks.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: Text(
+              'TASKS (${matchingTasks.length})',
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+          for (final task in matchingTasks.take(30))
+            ListTile(
+              dense: true,
+              leading: Icon(
+                task.isOpen ? Icons.check_box_outline_blank : Icons.task_alt,
+                size: 18,
+              ),
+              title: Text(
+                task.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                task.scheduledDate != null
+                    ? 'Plan ${task.scheduledDate}'
+                    : (task.isOpen ? 'Active' : 'Completed'),
+                style: const TextStyle(fontSize: 11),
+              ),
+              onTap: () {
+                controller.navigate(WorkspaceView.all);
+                _openTask(task, wide);
+              },
+            ),
+        ],
+      ],
+    );
+  }
+
+  Widget _sidebar(AppController controller, {bool wide = true}) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-    final shadowColor = scheme.shadow;
     return Material(
       color: scheme.surfaceContainerLow,
       child: Column(
@@ -964,6 +1226,13 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                         onSelected: (value) => _run(
                           () => value == 'stop'
                               ? controller.stopTimer()
+                              : controller.focusSessions[run.taskId]?.mode !=
+                                        null &&
+                                    controller
+                                            .focusSessions[run.taskId]
+                                            ?.mode !=
+                                        FocusMode.stopwatch
+                              ? controller.toggleFocus(run.taskId!)
                               : run.state == TimerState.running
                               ? controller.pauseTimer()
                               : controller.resumeTimer(),
@@ -972,7 +1241,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                           PopupMenuItem(
                             value: 'toggle',
                             child: Text(
-                              run.state == TimerState.running
+                              (controller.focusSessions[run.taskId]?.running ==
+                                          true ||
+                                      run.state == TimerState.running)
                                   ? 'Pause'
                                   : 'Resume',
                             ),
@@ -986,7 +1257,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 8, 14),
+            padding: const EdgeInsets.fromLTRB(16, 16, 8, 10),
             child: Row(
               children: [
                 const BrandMark(),
@@ -1017,336 +1288,527 @@ class _WorkspaceState extends ConsumerState<Workspace> {
               ],
             ),
           ),
-          Expanded(
-            child: FadingListView(
-              topFadeColor: shadowColor.withValues(alpha: isDark ? 0.25 : 0.08),
-              bottomFadeColor: shadowColor.withValues(alpha: isDark ? 0.35 : 0.12),
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              children: [
-                for (final view in controller.sidebarOrder.where(
-                  (v) => !controller.hiddenNavigation.contains(v.name),
-                ))
-                  _nav(controller, view, sidebarName(view), sidebarIcon(view)),
-                const SizedBox(height: 8),
-                ExpansionTile(
-                  key: const PageStorageKey('sidebar-categories'),
-                  controller: categoryDisclosure,
-                  tilePadding: EdgeInsets.zero,
-                  initiallyExpanded: controller.categoriesExpanded,
-                  onExpansionChanged: (expanded) {
-                    if (expanded != controller.categoriesExpanded) {
-                      _run(
-                        () => controller.setNavigationState(expanded: expanded),
-                      );
-                    }
-                  },
-                  title: Row(
-                    children: [
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 12),
-                          child: Semantics(
-                            header: true,
-                            child: Text(
-                              'Categories (${controller.categories.length})',
-                              style: Theme.of(context).textTheme.titleSmall,
-                            ),
-                          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+            child: Container(
+              height: 36,
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainer,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: _sidebarSearchFocus.hasFocus
+                      ? scheme.primary
+                      : scheme.outlineVariant.withValues(alpha: 0.5),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(width: 4),
+                  IconButton(
+                    iconSize: 18,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 26,
+                      minHeight: 26,
+                    ),
+                    tooltip: 'Quick Search (Ctrl+K)',
+                    icon: Icon(
+                      Icons.search,
+                      size: 18,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                    onPressed: _showSearch,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: TextField(
+                      controller: _sidebarSearchQuery,
+                      focusNode: _sidebarSearchFocus,
+                      style: const TextStyle(fontSize: 13),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText:
+                            'Search tasks, events, categories, and projects',
+                        hintStyle: TextStyle(
+                          fontSize: 13,
+                          color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
                         ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 8),
                       ),
-                      IconButton(
-                        tooltip: 'Add category',
-                        icon: const Icon(Icons.add, size: 19),
-                        onPressed: () async {
-                          final name = await _nameDialog('New category');
-                          if (name != null && name.isNotEmpty) {
-                            await _run(() async {
-                              await controller.addCategory(name);
-                              await controller.setNavigationState(
-                                expanded: true,
-                              );
-                              if (mounted) categoryDisclosure.expand();
-                            });
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                  if (_sidebarSearchQuery.text.isNotEmpty)
+                    IconButton(
+                      iconSize: 16,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 26,
+                        minHeight: 26,
+                      ),
+                      tooltip: 'Clear search',
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        _sidebarSearchQuery.clear();
+                        setState(() {});
+                      },
+                    ),
+                  IconButton(
+                    iconSize: 17,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 26,
+                      minHeight: 26,
+                    ),
+                    tooltip: 'Advanced search',
+                    icon: const Icon(Icons.tune_outlined),
+                    onPressed: () => _showAdvancedSearch(),
+                  ),
+                  const SizedBox(width: 2),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: _sidebarSearchQuery.text.trim().isNotEmpty
+                ? _buildSidebarSearchResults(
+                    controller,
+                    _sidebarSearchQuery.text,
+                    wide,
+                  )
+                : FadingListView(
+                    topFadeColor: scheme.surfaceContainerLow,
+                    bottomFadeColor: scheme.surfaceContainerLow,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    children: [
+                      for (final view in controller.sidebarOrder.where(
+                        (v) => !controller.hiddenNavigation.contains(v.name),
+                      ))
+                        _nav(
+                          controller,
+                          view,
+                          sidebarName(view),
+                          sidebarIcon(view),
+                        ),
+                      const SizedBox(height: 8),
+                      ExpansionTile(
+                        key: const PageStorageKey('sidebar-categories'),
+                        controller: categoryDisclosure,
+                        tilePadding: EdgeInsets.zero,
+                        initiallyExpanded: controller.categoriesExpanded,
+                        onExpansionChanged: (expanded) {
+                          if (expanded != controller.categoriesExpanded) {
+                            _run(
+                              () => controller.setNavigationState(
+                                expanded: expanded,
+                              ),
+                            );
                           }
                         },
-                      ),
-                    ],
-                  ),
-                  children: [
-                    if (controller.categories.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 2, 8, 10),
-                        child: Text(
-                          'Organize tasks with categories',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ),
-                    for (final category in controller.categories) ...[
-                      _nav(
-                        controller,
-                        WorkspaceView.category,
-                        category.name,
-                        iconForKey(
-                          controller.iconKeys['category:${category.id}'],
-                          Icons.folder_outlined,
-                        ),
-                        id: category.id,
-                        trailing: PopupMenuButton<String>(
-                          tooltip: 'Category actions',
-                          itemBuilder: (_) => const [
-                            PopupMenuItem(
-                              value: 'project',
-                              child: Text('Add project'),
-                            ),
-                            PopupMenuItem(
-                              value: 'rename',
-                              child: Text('Rename'),
-                            ),
-                            PopupMenuItem(
-                              value: 'event-color',
-                              child: Text('Default event color'),
-                            ),
-                            PopupMenuItem(
-                              value: 'icon',
-                              child: Text('Change icon'),
-                            ),
-                            PopupMenuItem(
-                              value: 'delete',
-                              child: Text('Delete'),
-                            ),
-                          ],
-                          onSelected: (action) async {
-                            if (action == 'project') {
-                              final name = await _nameDialog('New project');
-                              if (name != null && name.isNotEmpty) {
-                                _run(
-                                  () =>
-                                      controller.addProject(category.id, name),
-                                );
-                              }
-                            } else if (action == 'icon') {
-                              await _changeIcon('category', category.id);
-                            } else if (action == 'event-color') {
-                              await _chooseCategoryEventColor(category);
-                            } else if (action == 'rename') {
-                              final name = await _nameDialog(
-                                'Rename category',
-                                initial: category.name,
-                              );
-                              if (name != null && name.isNotEmpty) {
-                                _run(
-                                  () => controller.renameCategory(
-                                    category.id,
-                                    name,
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 12),
+                                child: Semantics(
+                                  header: true,
+                                  child: Text(
+                                    'Categories (${controller.categories.length})',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall,
                                   ),
-                                );
-                              }
-                            } else if (await _confirm(
-                                  'Delete category?',
-                                  'Move this category to Trash? Its projects and tasks will be hidden until restored.',
-                                ) &&
-                                await _prepareEditorChange()) {
-                              _run(
-                                () => controller.deleteCategory(category.id),
-                              );
-                            }
-                          },
-                        ),
-                      ),
-                      for (final project in controller.projects.where(
-                        (p) => p.categoryId == category.id,
-                      ))
-                        Padding(
-                          padding: const EdgeInsets.only(left: 16),
-                          child: _nav(
-                            controller,
-                            WorkspaceView.project,
-                            project.name,
-                            iconForKey(
-                              controller.iconKeys['project:${project.id}'],
-                              Icons.segment_outlined,
+                                ),
+                              ),
                             ),
-                            id: project.id,
-                            trailing: PopupMenuButton<String>(
-                              tooltip: 'Project actions',
-                              itemBuilder: (_) => const [
-                                PopupMenuItem(
-                                  value: 'template',
-                                  child: Text('Save as template'),
-                                ),
-                                PopupMenuItem(
-                                  value: 'rename',
-                                  child: Text('Rename'),
-                                ),
-                                PopupMenuItem(
-                                  value: 'icon',
-                                  child: Text('Change icon'),
-                                ),
-                                PopupMenuItem(
-                                  value: 'delete',
-                                  child: Text('Delete'),
-                                ),
-                              ],
-                              onSelected: (action) async {
-                                if (action == 'template') {
-                                  await showSaveTemplateDialog(
-                                    context,
-                                    sourceName: project.name,
-                                    save: (name) => controller
-                                        .saveProjectTemplate(project, name),
-                                  );
-                                } else if (action == 'icon') {
-                                  await _changeIcon('project', project.id);
-                                } else if (action == 'rename') {
-                                  final name = await _nameDialog(
-                                    'Rename project',
-                                    initial: project.name,
-                                  );
-                                  if (name != null && name.isNotEmpty) {
-                                    _run(
-                                      () => controller.renameProject(
-                                        project.id,
-                                        name,
-                                      ),
+                            IconButton(
+                              tooltip: 'Add category',
+                              icon: const Icon(Icons.add, size: 19),
+                              onPressed: () async {
+                                final name = await _nameDialog('New category');
+                                if (name != null && name.isNotEmpty) {
+                                  await _run(() async {
+                                    await controller.addCategory(name);
+                                    await controller.setNavigationState(
+                                      expanded: true,
                                     );
-                                  }
-                                } else if (await _confirm(
-                                      'Delete project?',
-                                      'Move this project to Trash? Its tasks will be hidden until restored.',
-                                    ) &&
-                                    await _prepareEditorChange()) {
-                                  _run(
-                                    () => controller.deleteProject(project.id),
-                                  );
+                                    if (mounted) categoryDisclosure.expand();
+                                  });
                                 }
                               },
                             ),
+                          ],
+                        ),
+                        children: [
+                          if (controller.categories.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 2, 8, 10),
+                              child: Text(
+                                'Organize tasks with categories',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                          for (final category in controller.categories) ...[
+                            _nav(
+                              controller,
+                              WorkspaceView.category,
+                              category.name,
+                              iconForKey(
+                                controller.iconKeys['category:${category.id}'],
+                                Icons.folder_outlined,
+                              ),
+                              id: category.id,
+                              trailing: PopupMenuButton<String>(
+                                tooltip: 'Category actions',
+                                itemBuilder: (_) => [
+                                  const PopupMenuItem(
+                                    value: 'project',
+                                    child: Text('Add project'),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: 'rename',
+                                    child: Text('Rename'),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: 'event-color',
+                                    child: Text('Default event color'),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: 'icon',
+                                    child: Text('Change icon'),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'show-in-standard',
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          controller
+                                                  .isCategoryShownInStandardViews(
+                                                    category.id,
+                                                  )
+                                              ? Icons.check_box_outlined
+                                              : Icons.check_box_outline_blank,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Expanded(
+                                          child: Text('Show in standard views'),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: 'delete',
+                                    child: Text('Delete'),
+                                  ),
+                                ],
+                                onSelected: (action) async {
+                                  if (action == 'project') {
+                                    final name = await _nameDialog(
+                                      'New project',
+                                    );
+                                    if (name != null && name.isNotEmpty) {
+                                      _run(
+                                        () => controller.addProject(
+                                          category.id,
+                                          name,
+                                        ),
+                                      );
+                                    }
+                                  } else if (action == 'icon') {
+                                    await _changeIcon('category', category.id);
+                                  } else if (action == 'event-color') {
+                                    await _chooseCategoryEventColor(category);
+                                  } else if (action == 'show-in-standard') {
+                                    await _run(
+                                      () => controller
+                                          .toggleCategoryStandardVisibility(
+                                            category.id,
+                                          ),
+                                    );
+                                  } else if (action == 'rename') {
+                                    final name = await _nameDialog(
+                                      'Rename category',
+                                      initial: category.name,
+                                    );
+                                    if (name != null && name.isNotEmpty) {
+                                      _run(
+                                        () => controller.renameCategory(
+                                          category.id,
+                                          name,
+                                        ),
+                                      );
+                                    }
+                                  } else if (await _confirm(
+                                        'Delete category?',
+                                        'Move this category to Trash? Its projects and tasks will be hidden until restored.',
+                                      ) &&
+                                      await _prepareEditorChange()) {
+                                    _run(
+                                      () => controller.deleteCategory(
+                                        category.id,
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
+                            ),
+                            for (final project in controller.projects.where(
+                              (p) => p.categoryId == category.id,
+                            ))
+                              Padding(
+                                padding: const EdgeInsets.only(left: 16),
+                                child: _nav(
+                                  controller,
+                                  WorkspaceView.project,
+                                  project.name,
+                                  iconForKey(
+                                    controller
+                                        .iconKeys['project:${project.id}'],
+                                    Icons.segment_outlined,
+                                  ),
+                                  id: project.id,
+                                  trailing: PopupMenuButton<String>(
+                                    tooltip: 'Project actions',
+                                    itemBuilder: (_) => [
+                                      const PopupMenuItem(
+                                        value: 'template',
+                                        child: Text('Save as template'),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 'rename',
+                                        child: Text('Rename'),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 'icon',
+                                        child: Text('Change icon'),
+                                      ),
+                                      PopupMenuItem(
+                                        value: 'show-in-standard',
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              controller
+                                                      .isProjectShownInStandardViews(
+                                                        project.id,
+                                                      )
+                                                  ? Icons.check_box_outlined
+                                                  : Icons
+                                                        .check_box_outline_blank,
+                                              size: 18,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            const Expanded(
+                                              child: Text(
+                                                'Show in standard views',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 'delete',
+                                        child: Text('Delete'),
+                                      ),
+                                    ],
+                                    onSelected: (action) async {
+                                      if (action == 'template') {
+                                        await showSaveTemplateDialog(
+                                          context,
+                                          sourceName: project.name,
+                                          save: (name) =>
+                                              controller.saveProjectTemplate(
+                                                project,
+                                                name,
+                                              ),
+                                        );
+                                      } else if (action == 'icon') {
+                                        await _changeIcon(
+                                          'project',
+                                          project.id,
+                                        );
+                                      } else if (action == 'show-in-standard') {
+                                        await _run(
+                                          () => controller
+                                              .toggleProjectStandardVisibility(
+                                                project.id,
+                                              ),
+                                        );
+                                      } else if (action == 'rename') {
+                                        final name = await _nameDialog(
+                                          'Rename project',
+                                          initial: project.name,
+                                        );
+                                        if (name != null && name.isNotEmpty) {
+                                          _run(
+                                            () => controller.renameProject(
+                                              project.id,
+                                              name,
+                                            ),
+                                          );
+                                        }
+                                      } else if (await _confirm(
+                                            'Delete project?',
+                                            'Move this project to Trash? Its tasks will be hidden until restored.',
+                                          ) &&
+                                          await _prepareEditorChange()) {
+                                        _run(
+                                          () => controller.deleteProject(
+                                            project.id,
+                                          ),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Padding(
+                              padding: EdgeInsets.only(left: 12),
+                              child: Text(
+                                'CUSTOM VIEWS',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ),
                           ),
+                          IconButton(
+                            tooltip: 'Add Custom View',
+                            onPressed: () => showDialog<void>(
+                              context: context,
+                              animationStyle: AppMotion.style(context),
+                              builder: (_) => AdvancedSearchDialog(
+                                creatingSavedView: true,
+                                beforeNavigate: _prepareEditorChange,
+                              ),
+                            ),
+                            icon: const Icon(Icons.add, size: 19),
+                          ),
+                        ],
+                      ),
+                      for (final (index, savedView)
+                          in controller.orderedSavedViews
+                              .where(
+                                (v) =>
+                                    !controller.hiddenNavigation.contains(v.id),
+                              )
+                              .indexed)
+                        _nav(
+                          controller,
+                          WorkspaceView.saved,
+                          savedView.name,
+                          iconForKey(
+                            savedView.iconKey ?? savedView.filter.iconKey,
+                            Icons.bookmark_outline,
+                          ),
+                          id: savedView.id,
+                          trailing: PopupMenuButton<String>(
+                            tooltip: 'Custom view actions',
+                            itemBuilder: (_) => [
+                              const PopupMenuItem(
+                                value: 'rename',
+                                child: Text('Rename'),
+                              ),
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: Text('Edit filters'),
+                              ),
+                              const PopupMenuItem(
+                                value: 'duplicate',
+                                child: Text('Duplicate'),
+                              ),
+                              if (index > 0)
+                                const PopupMenuItem(
+                                  value: 'move_up',
+                                  child: Text('Move up'),
+                                ),
+                              if (index <
+                                  controller.orderedSavedViews.length - 1)
+                                const PopupMenuItem(
+                                  value: 'move_down',
+                                  child: Text('Move down'),
+                                ),
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Text('Delete view'),
+                              ),
+                            ],
+                            onSelected: (action) {
+                              if (action == 'rename') {
+                                _renameSavedView(savedView);
+                              }
+                              if (action == 'edit') {
+                                _showAdvancedSearch(savedView);
+                              }
+                              if (action == 'duplicate') {
+                                _duplicateSavedView(savedView);
+                              }
+                              if (action == 'move_up') {
+                                _moveSavedView(savedView.id, -1);
+                              }
+                              if (action == 'move_down') {
+                                _moveSavedView(savedView.id, 1);
+                              }
+                              if (action == 'delete') {
+                                _deleteSavedView(savedView);
+                              }
+                            },
+                          ),
+                        ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 2,
+                          horizontal: 4,
+                        ),
+                        child: TextButton.icon(
+                          style: TextButton.styleFrom(
+                            alignment: Alignment.centerLeft,
+                            foregroundColor: Theme.of(context)
+                                .colorScheme
+                                .primary,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                          ),
+                          icon: const Icon(Icons.add, size: 18),
+                          label: const Text('Add View'),
+                          onPressed: () => showDialog<void>(
+                            context: context,
+                            animationStyle: AppMotion.style(context),
+                            builder: (_) => AdvancedSearchDialog(
+                              creatingSavedView: true,
+                              beforeNavigate: _prepareEditorChange,
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (!controller.hiddenNavigation.contains('reports'))
+                        _nav(
+                          controller,
+                          WorkspaceView.reports,
+                          'Reports',
+                          Icons.bar_chart_outlined,
+                        ),
+                      if (!controller.hiddenNavigation.contains('contributors'))
+                        _nav(
+                          controller,
+                          WorkspaceView.contributors,
+                          'Contributors',
+                          Icons.groups_outlined,
                         ),
                     ],
-                  ],
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.only(left: 12),
-                        child: Text(
-                          'SAVED VIEWS',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Create saved view',
-                      onPressed: () => showDialog<void>(
-                        context: context,
-                        animationStyle: AppMotion.style(context),
-                        builder: (_) => AdvancedSearchDialog(
-                          creatingSavedView: true,
-                          beforeNavigate: _prepareEditorChange,
-                        ),
-                      ),
-                      icon: const Icon(Icons.add, size: 19),
-                    ),
-                  ],
-                ),
-                for (final savedView in controller.orderedSavedViews.where(
-                  (v) => !controller.hiddenNavigation.contains(v.id),
-                ))
-                  _nav(
-                    controller,
-                    WorkspaceView.saved,
-                    savedView.name,
-                    Icons.bookmark_outline,
-                    id: savedView.id,
-                    trailing: PopupMenuButton<String>(
-                      tooltip: 'Saved view actions',
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(
-                          value: 'edit',
-                          child: Text('Edit filters'),
-                        ),
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: Text('Delete view'),
-                        ),
-                      ],
-                      onSelected: (action) => action == 'edit'
-                          ? _showAdvancedSearch(savedView)
-                          : _deleteSavedView(savedView),
-                    ),
                   ),
-                if (!controller.hiddenNavigation.contains('reports'))
-                  _nav(
-                    controller,
-                    WorkspaceView.reports,
-                    'Reports',
-                    Icons.bar_chart_outlined,
-                  ),
-                if (!controller.hiddenNavigation.contains('contributors'))
-                  _nav(
-                    controller,
-                    WorkspaceView.contributors,
-                    'Contributors',
-                    Icons.groups_outlined,
-                  ),
-              ],
-            ),
-          ),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  constraints: const BoxConstraints.tightFor(
-                    width: 40,
-                    height: 40,
-                  ),
-                  tooltip:
-                      'Quick Search (${controller.hotkeys.bindings[HotkeyAction.quickSearch]!.display})',
-                  onPressed: _showSearch,
-                  icon: const Icon(Icons.search_outlined),
-                ),
-                IconButton(
-                  constraints: const BoxConstraints.tightFor(
-                    width: 40,
-                    height: 40,
-                  ),
-                  tooltip: 'Advanced search',
-                  onPressed: () => _showAdvancedSearch(),
-                  icon: const Icon(Icons.manage_search_outlined),
-                ),
-                IconButton(
-                  constraints: const BoxConstraints.tightFor(
-                    width: 40,
-                    height: 40,
-                  ),
-                  tooltip: 'Task sequences',
-                  onPressed: () => showDialog<void>(
-                    context: context,
-                    animationStyle: AppMotion.style(context),
-                    builder: (_) => const SequenceDialog(),
-                  ),
-                  icon: const Icon(Icons.format_list_numbered),
-                ),
-                IconButton(
-                  constraints: const BoxConstraints.tightFor(
-                    width: 40,
-                    height: 40,
-                  ),
-                  tooltip: 'Templates',
-                  onPressed: _showTemplates,
-                  icon: const Icon(Icons.copy_all_outlined),
-                ),
-              ],
-            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
@@ -1452,6 +1914,20 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   }
 
   Widget _mainPanel(AppController controller, bool wide) {
+    if (_focusWorkspaceTaskId != null) {
+      return FocusWorkspace(
+        taskId: _focusWorkspaceTaskId!,
+        onBack: () => setState(() => _focusWorkspaceTaskId = null),
+      );
+    }
+    if (_viewingTaskDetails && controller.selectedTask != null) {
+      return TaskDetailsView(
+        task: controller.selectedTask!,
+        onBack: () => setState(() => _viewingTaskDetails = false),
+        onEdit: () => _editTaskDialog(controller.selectedTask!),
+        onStartFocus: () => _openFocusWorkspace(controller.selectedTask!.id),
+      );
+    }
     if (controller.view == WorkspaceView.habits) {
       return const HabitsView();
     }
@@ -1692,6 +2168,39 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
                   child: ItemFilters(),
                 ),
+                if (controller.hiddenStandardTasksCount > 0)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 0, 24, 10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.visibility_off_outlined,
+                            size: 15,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${controller.hiddenStandardTasksCount} task${controller.hiddenStandardTasksCount == 1 ? '' : 's'} hidden by category or project settings',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 if ({
                   WorkspaceView.project,
                   WorkspaceView.category,
@@ -2082,25 +2591,5 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         ),
       ),
     );
-  }
-
-  Future<void> _showNarrowEditor(LifeTask task) async {
-    await showDialog<void>(
-      context: context,
-      animationStyle: AppMotion.style(context),
-      builder: (context) => Dialog(
-        child: SizedBox(
-          width: math.min(520, MediaQuery.sizeOf(context).width - 48),
-          height: math.min(620, MediaQuery.sizeOf(context).height - 64),
-          child: TaskEditor(
-            protectUnsavedEdits: true,
-            task: task,
-            onSaved: () => Navigator.pop(context),
-            onCancel: () => Navigator.pop(context),
-          ),
-        ),
-      ),
-    );
-    if (mounted) ref.read(appControllerProvider).select(null);
   }
 }

@@ -130,6 +130,8 @@ jobs:
     name: Windows Full Verification
     if: inputs.test_group == 'windows-verification'
     uses: ./.github/workflows/windows-ci.yml
+    secrets:
+      GOOGLE_DRIVE_RELEASE_CONFIG: ${{ secrets.GOOGLE_DRIVE_RELEASE_CONFIG }}
 
   android-verification:
     name: Android Full Verification

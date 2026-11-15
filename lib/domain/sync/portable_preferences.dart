@@ -27,6 +27,8 @@ Object? validatePortablePreference(String key, Object? value) {
     'compositionTextDisplay' =>
       value is String &&
           CompositionTextDisplay.values.any((v) => v.name == value),
+    'hiddenStandardCategories' || 'hiddenStandardProjects' =>
+      value is List && value.every((id) => id is String && id.isNotEmpty),
     'customization' => value is Map,
     _ => false,
   };

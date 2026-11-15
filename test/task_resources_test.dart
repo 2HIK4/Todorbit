@@ -370,4 +370,92 @@ void main() {
       await directory.delete(recursive: true);
     }
   });
+
+  test('URL normalization rejects dangerous schemes and prepends https', () {
+    expect(normalizeResourceUrl('youtube.com'), 'https://youtube.com');
+    expect(
+      normalizeResourceUrl('www.google.com/search?q=todorbit'),
+      'https://www.google.com/search?q=todorbit',
+    );
+    expect(normalizeResourceUrl('https://flutter.dev'), 'https://flutter.dev');
+    expect(
+      normalizeResourceUrl('http://localhost:8080/doc'),
+      'http://localhost:8080/doc',
+    );
+
+    expect(() => normalizeResourceUrl(''), throwsArgumentError);
+    expect(() => normalizeResourceUrl('   '), throwsArgumentError);
+    for (final invalid in [
+      'not a URL',
+      'https://bad%20host/doc',
+      'https://bad%09host',
+    ]) {
+      expect(() => normalizeResourceUrl(invalid), throwsArgumentError);
+    }
+    expect(
+      normalizeResourceUrl('example.com/a b'),
+      'https://example.com/a%20b',
+    );
+    expect(
+      () => normalizeResourceUrl('javascript:alert(1)'),
+      throwsArgumentError,
+    );
+    expect(
+      () => normalizeResourceUrl('data:text/html,<h1>bad</h1>'),
+      throwsArgumentError,
+    );
+    expect(
+      () => normalizeResourceUrl('vbscript:msgbox(1)'),
+      throwsArgumentError,
+    );
+    expect(() => normalizeResourceUrl('shell:startup'), throwsArgumentError);
+    expect(
+      () => normalizeResourceUrl('file:///C:/secret.txt'),
+      throwsArgumentError,
+    );
+  });
+
+  test('subtask resource assignments map and persist correctly', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    final repository = LifeRepository(db);
+    try {
+      final parent = await repository.addTask(const TaskDraft(title: 'Parent'));
+      final sub1 = await repository.addTask(
+        const TaskDraft(title: 'Subtask 1'),
+      );
+      final sub2 = await repository.addTask(
+        const TaskDraft(title: 'Subtask 2'),
+      );
+
+      final res = await repository.addExternalResource(
+        parent.id,
+        TaskResourceKind.url,
+        'https://example.com/guide',
+        label: 'Guide',
+      );
+
+      expect(await repository.resourceSubtasks(res.id), isEmpty);
+      expect(await repository.subtaskResourceIds(sub1.id), isEmpty);
+
+      // Assign to sub1 and sub2
+      await repository.assignResourceToSubtasks(res.id, [sub1.id, sub2.id]);
+      expect(
+        await repository.resourceSubtasks(res.id),
+        unorderedEquals([sub1.id, sub2.id]),
+      );
+      expect(await repository.subtaskResourceIds(sub1.id), [res.id]);
+      expect(await repository.subtaskResourceIds(sub2.id), [res.id]);
+
+      final map = await repository.taskResourceSubtaskMap(parent.id);
+      expect(map[res.id], unorderedEquals([sub1.id, sub2.id]));
+
+      // Reassign to sub2 only
+      await repository.assignResourceToSubtasks(res.id, [sub2.id]);
+      expect(await repository.resourceSubtasks(res.id), [sub2.id]);
+      expect(await repository.subtaskResourceIds(sub1.id), isEmpty);
+      expect(await repository.subtaskResourceIds(sub2.id), [res.id]);
+    } finally {
+      await db.close();
+    }
+  });
 }

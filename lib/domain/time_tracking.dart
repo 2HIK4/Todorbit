@@ -21,6 +21,7 @@ class TimerRun {
     this.stoppedAt,
     this.ownerDeviceId,
     this.canControl = true,
+    this.recoveryRequired = false,
   });
   final String id;
   final String? taskId;
@@ -31,10 +32,24 @@ class TimerRun {
   final DateTime? stoppedAt;
   final String? ownerDeviceId;
   final bool canControl;
+  final bool recoveryRequired;
   bool get active => state != TimerState.stopped;
   bool needsReview(DateTime now) =>
       state == TimerState.running &&
-      now.toUtc().difference(lastSeenAt).inSeconds > 120;
+      (recoveryRequired || now.toUtc().difference(lastSeenAt).inSeconds > 120);
+
+  TimerRun forRecovery() => TimerRun(
+    id: id,
+    taskId: taskId,
+    state: state,
+    startedAt: startedAt,
+    lastSeenAt: lastSeenAt,
+    updatedAt: updatedAt,
+    stoppedAt: stoppedAt,
+    ownerDeviceId: ownerDeviceId,
+    canControl: canControl,
+    recoveryRequired: true,
+  );
 
   TimerRun withLastSeen(DateTime value) => TimerRun(
     id: id,
@@ -46,6 +61,7 @@ class TimerRun {
     stoppedAt: stoppedAt,
     ownerDeviceId: ownerDeviceId,
     canControl: canControl,
+    recoveryRequired: recoveryRequired,
   );
 }
 

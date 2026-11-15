@@ -130,4 +130,60 @@ void main() {
       await directory.delete(recursive: true);
     }
   });
+
+  test('multi-value OR within filter types and AND across filter types with duplicate & rename', () async {
+    final catA = await repository.addCategory('Work');
+    final catB = await repository.addCategory('Personal');
+    final catC = await repository.addCategory('Other');
+
+    final projA = await repository.addProject(catA.id, 'Project Alpha');
+    final projB = await repository.addProject(catB.id, 'Project Beta');
+
+    // Task 1: Work, Project Alpha, Priority 3 (High)
+    final t1 = await repository.addTask(
+      TaskDraft(title: 'T1', categoryId: catA.id, projectId: projA.id, priority: 3),
+    );
+    // Task 2: Personal, Project Beta, Priority 1 (Low)
+    final t2 = await repository.addTask(
+      TaskDraft(title: 'T2', categoryId: catB.id, projectId: projB.id, priority: 1),
+    );
+    // Task 3: Other, no project, Priority 3 (High)
+    final t3 = await repository.addTask(
+      TaskDraft(title: 'T3', categoryId: catC.id, priority: 3),
+    );
+
+    final controller = AppController(repository);
+    await controller.refresh();
+
+    // OR test: categoryIds {catA, catB} matches t1 and t2, but NOT t3
+    final orFilter = TaskFilter(categoryIds: {catA.id, catB.id});
+    final orResults = controller.searchTasks(orFilter).map((t) => t.id).toSet();
+    expect(orResults, {t1.id, t2.id});
+    expect(orResults.contains(t3.id), isFalse);
+
+    // AND across filter types: categoryIds {catA, catB} AND priorities {3} -> only t1 matches
+    final andFilter = TaskFilter(
+      categoryIds: {catA.id, catB.id},
+      priorities: {3},
+      iconKey: 'star',
+    );
+    final andResults = controller.searchTasks(andFilter).map((t) => t.id).toSet();
+    expect(andResults, {t1.id});
+
+    // Test saved view duplicate & rename
+    final saved = await controller.addSavedView('Original View', andFilter);
+    expect(saved.name, 'Original View');
+    expect(saved.iconKey, 'star');
+
+    final dup = await controller.duplicateSavedView(saved);
+    expect(dup.name, 'Original View (copy)');
+    expect(dup.filter.categoryIds, {catA.id, catB.id});
+    expect(dup.filter.priorities, {3});
+    expect(dup.iconKey, 'star');
+
+    await controller.renameSavedView(dup, 'Renamed View');
+    final views = await repository.savedViews();
+    final renamed = views.firstWhere((v) => v.id == dup.id);
+    expect(renamed.name, 'Renamed View');
+  });
 }

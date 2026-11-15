@@ -67,6 +67,9 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text(task.title));
         await tester.pumpAndSettle();
+        expect(find.byTooltip('Back to tasks'), findsOneWidget);
+        await tester.tap(find.byTooltip('Edit task'));
+        await tester.pumpAndSettle();
         await tester.enterText(
           find.byKey(const ValueKey('task-title-field')),
           'Edited Android task',
@@ -76,6 +79,10 @@ void main() {
         final edited = (await repository.tasks()).single;
         expect(edited.id, task.id);
         expect(edited.title, 'Edited Android task');
+        expect(find.byTooltip('Back to tasks'), findsOneWidget);
+        expect(find.text(edited.title), findsOneWidget);
+        await tester.tap(find.byTooltip('Back to tasks'));
+        await tester.pumpAndSettle();
         await repository.updateTask(
           edited,
           TaskDraft(

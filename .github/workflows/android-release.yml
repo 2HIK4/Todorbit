@@ -16,6 +16,8 @@ jobs:
     uses: ./.github/workflows/android-ci.yml
   windows-regression:
     uses: ./.github/workflows/windows-ci.yml
+    secrets:
+      GOOGLE_DRIVE_RELEASE_CONFIG: ${{ secrets.GOOGLE_DRIVE_RELEASE_CONFIG }}
   candidate:
     needs: [validate, windows-regression]
     runs-on: windows-2022

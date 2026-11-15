@@ -1,5 +1,60 @@
 # Progress
 
+## Beta22 replacement candidate; final CI pending (2026-11-15)
+
+Replacement packages built from62593e3 pass signing/alignment/byte/configuration/
+checksum gates; actual replacement APK 16-KiB runtime43741858701 passes. The owner
+reports normal Windows app task create/Details editing/Focus start-pause PASS on an
+isolated profile. Desktop automation cannot initialize; no further Sandbox tests.
+Windows CI reaches1021 pass/1 fail/9 skip; repaired an accidentally changed draft-
+editor fixture and verified both composition tests. This follow-up changes tests/
+receipts only: reuse all replacement binaries and runtime evidence. Exact-source
+CI and anonymous public updater/download verification remain mandatory.
+
+## Beta22 publication CI repair checkpoint (2026-11-15)
+
+Owner authorized automatic experimental publication only after gates pass. Public
+review branch/PR #2 and private ten-asset draft exist. Original signed APK passed
+actual 16-KiB runtime. Required Windows CI revealed 18 failing scenarios: repaired
+stale fixtures and three confirmed URL/Trash/visibility defects; all 18 now have
+focused passing evidence, plus seven resource and five workflow checks. CI now
+receives the existing approved enabled Desktop Drive configuration through a
+named encrypted secret, retaining packaging gates. Source/diff review is scoped;
+alarm implementation, Stable and three unrelated documents remain untouched.
+[Publication verification](UIUX03_BETA_22_PUBLICATION.md) preserves failures and
+evidence. Replacement packages/runtime and final exact-source CI are pending;
+the initial candidate hashes are superseded for publication.
+
+## UIUX-03 beta 22 local candidate prepared; approval gate (2026-11-15)
+
+Committed the 45 reviewed paths as `5f30fd9`, versioned Beta 22/build45 as
+`865468d`, and updated the release Sandbox guard for schema29/55 tables in
+`41b6aff`. [Candidate receipt](UIUX03_BETA_22_CANDIDATE.md) and manifest bind all
+10 local assets, signatures, versions and exact hashes. Windows installer/portable,
+production-signed Android universal APK, enabled Desktop Drive configuration,
+checksums and three artifact-bound updater contracts pass. Sandbox actual
+Beta21->22 installer registration and populated database-byte retention pass;
+candidate portable creates/reopens schema29. Reused the 84 focused checks and
+source-equivalent analysis; no broad suite/review repeated. Seven narrow release
+harness checks pass. Android's initial CMake discovery failure was corrected only
+in ignored local toolchain configuration. Stable, alarms, prior releases/tags and
+three unrelated documents remain unchanged. No push/draft/upload/publication.
+Required exact-source CI and Android 16-KiB runtime plus manual updater/device
+acceptance remain open; stopped at the owner's release approval gate.
+
+## UIUX-03 independent review and beta blockers repaired (2026-11-15)
+
+Reviewed the three uncommitted Gemini batches on `codex/independent-beta-review`
+from `e7810d2`. Repaired explicit schema-29 migration/backup gate, portable resource
+assignments and visibility; native Chrome URL drops; Focus work/break/deadline/
+restart accounting and navigation; Details edit/return and bulk deletion safety.
+84 focused Flutter checks have final passing evidence; affected-path analysis,
+Windows Release and isolated native self-test pass. [Receipt and source identities](UIUX03_CODEX_REVIEW_2026_11_15.md)
+retain failures, reuse and limitations. Separate alarm implementation and three
+unrelated untracked documents are preserved. **Publication is not approved yet**:
+actual Chrome input, Android/device/background behavior and candidate acceptance
+remain in Deferred Verification. No push, merge, version bump or publication.
+
 ## DRV-01 Windows Google Drive repair and beta 21 published (2026-11-15)
 
 Version 1.0.19-beta.21+44, Android code 44, numeric Windows PE 1.0.19.44. Restored approved Desktop OAuth release configuration resolution (`Resolve-GoogleDriveReleaseConfigPath`) and enforced release bundle validation (`Assert-GoogleDriveReleaseBundle`), resolving the Beta 20 regression where Windows builds reported Google Drive unavailable. 20 config tests, 23 cloud tests, 2 sync controller tests, CRT validation, and Android 16-KiB alignment verified. Published Windows installer/portable and production-signed Android universal APK. Documented in [publication receipt](TODORBIT_BETA_21_PUBLICATION.md).

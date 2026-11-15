@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.19-beta.22+45 - reviewed navigation, resources, Task Details and Focus Workspace
+
+- Add Custom View multi-select filters, icons and category/project task visibility; synchronize saved visibility across devices.
+- Unify task resources and subtask assignments, with portable managed attachments and webpage URL drops on Windows.
+- Add dedicated Task Details and Focus Workspace with Stopwatch, Countdown and Pomodoro; preserve work/break accounting and explicit interruption recovery.
+- Protect Archive/Trash bulk operations with confirmed snapshots, transactions and stale-record checks.
+- Upgrade shared database schema to 29 through the existing verified Before Upgrade flow; preserve older snapshots and sync history. Update all paired clients before exchanging new schema-29 batches.
+- Experimental candidate only; Android retains its production certificate and Windows packages remain unsigned. Actual updater installation/device acceptance is tracked separately. No Stable or alarm implementation changes.
+
 ## 1.0.19-beta.21+44 - Windows Google Drive and Smart Sync release configuration restoration
 
 - Restore Google Drive and Smart Sync in Windows release distributions by resolving approved Desktop OAuth release configuration.

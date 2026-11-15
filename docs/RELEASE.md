@@ -3,15 +3,21 @@
 ## Current status
 
 The latest published experimental release verified on 2026-11-15 is
-**[v1.0.19-beta.20](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.20)**,
-version `1.0.19-beta.20+43`, schema 28, tag/source `6156613`.
-[Publication receipt](UIUX02_BETA_20_PUBLICATION.md) records the reviewed UIUX-02
-checkpoint, strict-CI qualification repairs, 999 passing Windows host tests,
-signed Android runtime/upgrade, Sandbox Beta 19→20 installer preservation, public
-assets/updater checks and remaining physical acceptance. Windows Drive remains
-disabled, Windows packages unsigned, Stable/prior releases unchanged.
-Beta 19's [receipt](TODORBIT_BETA_19_PUBLICATION.md) and Beta 18's
-[corrected historical receipt](TODORBIT_BETA_18_PUBLICATION.md) remain historical.
+**[v1.0.19-beta.21](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.21)**,
+version `1.0.19-beta.21+44`, schema 28, source/tag `e7810d2`.
+[Publication receipt](TODORBIT_BETA_21_PUBLICATION.md) records restoration of the
+approved Windows Desktop Drive configuration. Windows packages remain unsigned;
+Stable and earlier releases are unchanged.
+
+**Unpublished local candidate:** `1.0.19-beta.22+45`, schema 29, reviewed UIUX-03.
+[Preparation receipt](UIUX03_BETA_22_CANDIDATE.md) and
+[artifact/source manifest](UIUX03_BETA_22_CANDIDATE_MANIFEST.json) record signed
+Android and Windows packages, checksums, updater contracts and isolated Beta21->22
+installer preservation. Exact-source CI, Android 16-KiB runtime and unperformed
+updater/device/manual acceptance remain open. No push/upload/publication has been
+performed or authorized by this preparation. The release gates below still apply.
+Beta 20's [publication receipt](UIUX02_BETA_20_PUBLICATION.md) remains historical
+for its own source/artifacts, including its prior disabled Windows Drive bundle.
 
 Historical coordinated release: **[v1.0.19-beta.12](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.12)**,
 Windows + Android, version `1.0.19-beta.12+35`, Android code 35, schema 26,

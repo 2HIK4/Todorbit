@@ -10,6 +10,7 @@ import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/domain/models.dart';
 import 'package:life_manager/main.dart';
 import 'package:life_manager/features/workspace/task_editor.dart';
+import 'package:life_manager/features/workspace/task_details_view.dart';
 
 void main() {
   testWidgets('draft subtask dialog closes without a disposed spelling field', (
@@ -78,13 +79,11 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Course'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Checklist and subtasks'));
-      await tester.tap(find.text('Checklist and subtasks'));
-      await tester.pumpAndSettle();
+      expect(find.text('Task Details'), findsOneWidget);
       final checklist = find.widgetWithText(TextField, 'New checklist item');
       final editorScroll = find
           .descendant(
-            of: find.byType(TaskEditor),
+            of: find.byType(TaskDetailsView),
             matching: find.byType(Scrollable),
           )
           .first;

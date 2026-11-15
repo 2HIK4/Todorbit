@@ -4,7 +4,7 @@ import '../../domain/task_composition.dart';
 import 'checklist_groups_section.dart';
 import '../shared/scroll_edge_fade.dart';
 import '../../domain/task_resources.dart';
-import 'draft_resources_section.dart';
+import 'unified_resources_section.dart';
 import '../shared/settings_section.dart';
 
 import 'package:life_manager/features/shared/anchored_select_field.dart';
@@ -38,7 +38,6 @@ import '../shared/unsaved_editor_guard.dart';
 import '../time_tracking/time_tracking_dialog.dart';
 import '../templates/templates_dialog.dart';
 import 'series_editor.dart';
-import 'task_resources_section.dart';
 import 'task_composition_section.dart';
 import 'checklist_item_dialog.dart';
 import 'composition_text.dart';
@@ -1786,10 +1785,27 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                             title: 'Resources',
                             description: 'Attached files and links are updated directly.',
                             children: [
-                              TaskResourcesSection(
+                              UnifiedResourcesSection.persisted(
                                 key: ValueKey('resources:${task.id}'),
                                 taskId: task.id,
                                 repository: controller.repository,
+                                subtasks: controller.tasks
+                                    .where(
+                                      (t) =>
+                                          controller.taskParents[t.id] ==
+                                          task.id,
+                                    )
+                                    .toList(),
+                                onAddSubtask: (title) async {
+                                  LifeTask? created;
+                                  await controller.addSubtask(
+                                    task,
+                                    TaskDraft(title: title),
+                                    onCommitted: (child) => created = child,
+                                  );
+                                  controller.select(task.id);
+                                  return created;
+                                },
                               ),
                             ],
                           ),
@@ -1835,7 +1851,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                           SettingsSection(
                             title: 'Resources',
                             children: [
-                              DraftResourcesSection(
+                              UnifiedResourcesSection.draft(
                                 resources: draftResources,
                                 onChanged: (value) {
                                   if (Platform.isAndroid) {

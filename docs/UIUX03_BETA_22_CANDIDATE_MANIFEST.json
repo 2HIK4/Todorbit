@@ -1,0 +1,178 @@
+{
+  "version": "1.0.19-beta.22",
+  "build": 45,
+  "schema": 29,
+  "branch": "codex/independent-beta-review",
+  "candidateSource": "41b6aff76be82ea8c9e0c34cebfb85ba255cc3f5",
+  "implementationCheckpoint": "5f30fd9b46264542a758ad6daf6f8fb12ce656d1",
+  "windowsBuildSource": "865468d995d3475dd20d993969e472baa2ca1590",
+  "androidBuildSource": "41b6aff76be82ea8c9e0c34cebfb85ba255cc3f5",
+  "compiledInputsEquivalent": true,
+  "assets": [
+    {
+      "name": "ANDROID-RELEASE-NOTES.md",
+      "bytes": 1758,
+      "sha256": "63b8f4ba7fb23fa708d23932632f07837290eec488c0b139d09479356691a51a"
+    },
+    {
+      "name": "ANDROID-SHA256SUMS.txt",
+      "bytes": 316,
+      "sha256": "91646a397f4206f9c017e72a388aa6bba5cd13ed4a14034dbe792301cd8af5de"
+    },
+    {
+      "name": "Todorbit-1.0.19-beta.22-android-universal.apk",
+      "bytes": 54170139,
+      "sha256": "01686c128c63f55b69aa03fe55768fa81f2d5016a200de78649301b7d13986ad"
+    },
+    {
+      "name": "Todorbit-1.0.19-beta.22-android-universal.apk.sha256",
+      "bytes": 113,
+      "sha256": "cbd5a112756b1e2749583e5a21ce2bcc62a0a889ffc2c11a818dc18b2ca787d9"
+    },
+    {
+      "name": "Todorbit-1.0.19-beta.22-android-update.json",
+      "bytes": 421,
+      "sha256": "5de26e6574a10fa270e5d37c1084521e9e59e1b5a9fbd8c46d82bbb13b2b1ddc"
+    },
+    {
+      "name": "Todorbit-1.0.19-beta.22-SHA256SUMS.txt",
+      "bytes": 221,
+      "sha256": "4d6aaa4af8e53f984d524eb95cb478deb07df50b1a7a3f3724f8f445fe9d5d97"
+    },
+    {
+      "name": "Todorbit-1.0.19-beta.22-win-x64-portable.zip",
+      "bytes": 65347850,
+      "sha256": "41282406ec54bb055a22593b2cfa3d4aabf2bec7e9b213404d1397713c130ca2"
+    },
+    {
+      "name": "Todorbit-1.0.19-beta.22-win-x64-portable.zip.sha256",
+      "bytes": 112,
+      "sha256": "5d7227c3d3cd2761960a7162d775594c4d1ff8dc6b373ba1b8bb24128273e5b2"
+    },
+    {
+      "name": "Todorbit-1.0.19-beta.22-win-x64-setup.exe",
+      "bytes": 47943233,
+      "sha256": "a8280080118db27b75226a262da9686056ae6a19c0be7a0c41cfa54d1f12b33d"
+    },
+    {
+      "name": "Todorbit-1.0.19-beta.22-win-x64-setup.exe.sha256",
+      "bytes": 109,
+      "sha256": "cde2f00e6de93194eaf91f1e6390f7773ab29c7adbf9e1f6cffd3c2c93c05abe"
+    }
+  ],
+  "windowsIdentity": [
+    {
+      "Name": "Todorbit.exe",
+      "FileVersion": "1.0.19-beta.22+45",
+      "ProductVersion": "1.0.19-beta.22+45",
+      "NumericVersion": "1.0.19.45"
+    },
+    {
+      "Name": "TodorbitWidget.exe",
+      "FileVersion": "1.0.19.45",
+      "ProductVersion": "1.0.19-beta.22+45",
+      "NumericVersion": "1.0.19.45"
+    }
+  ],
+  "androidCertificateSha256": "00226dad75ac907ac51c86df2c5011f0b6e2ce8291994103975f11a8eb574a99",
+  "androidMetadata": {
+    "formatVersion": 1,
+    "packageName": "io.github.hik4.todorbit",
+    "versionName": "1.0.19-beta.22",
+    "versionCode": 45,
+    "minSdk": 26,
+    "apks": [
+      {
+        "name": "Todorbit-1.0.19-beta.22-android-universal.apk",
+        "abis": [
+          "arm64-v8a",
+          "x86_64"
+        ],
+        "size": 54170139,
+        "sha256": "01686c128c63f55b69aa03fe55768fa81f2d5016a200de78649301b7d13986ad"
+      }
+    ]
+  },
+  "stableAndAllRemoteReleasesTagsUnchanged": true,
+  "published": false,
+  "pending": [
+    "Required exact-source CI after authorized push",
+    "Exact Android 16KiB runtime/device acceptance",
+    "Actual built-in beta updater installation journeys",
+    "Physical Chrome/input/real Drive acceptance"
+  ],
+  "bundleSha256": {
+    "build/windows/x64/runner/Release/Todorbit.exe": "da011a1919390ebbb89d45f97cbec2aad0337b1acaeef5ae15c8174db588c947",
+    "build/windows/x64/runner/Release/TodorbitWidget.exe": "57548b13441e4e3cc39a266afcac88aac94ec6466785323609e4367ff9046843",
+    "build/windows/x64/runner/Release/data/app.so": "566a5704e18dbc3ad99fc88f5e994172b510cd9581fdf38af9b92a33dd60441d"
+  },
+  "windowsSandbox": {
+    "cleanWindowsIdentity": true,
+    "status": "PASS",
+    "gui": "UNVERIFIED",
+    "checks": [
+      "Both package SHA-256 values match the prepared manifest",
+      "Previous Beta 21 per-user installer succeeds with matching registered version/path",
+      "Previous installed schema-28 and candidate portable schema-29 profiles create/reopen with integrity OK",
+      "Packaged native widget self-test succeeds",
+      "Actual Beta21 to Beta22 installer upgrade advances registration/version and retains path",
+      "In-place setup preserves a populated database byte-for-byte and retains its sentinel task",
+      "Uninstall removes registration while preserving database bytes; reinstall succeeds"
+    ],
+    "google": "UNVERIFIED"
+  },
+  "releaseChecks": {
+    "windowsBuild": "PASS",
+    "packagedNativeSelfTest": "PASS",
+    "windowsInstallerPortableAudit": "PASS",
+    "androidProductionSignatureVersionAbiAlignment": "PASS",
+    "artifactBoundUpdaterContracts": "3 PASS",
+    "sandboxPreparationHarness": "7 PASS",
+    "windowsBeta21To22InstallerPreservation": "PASS",
+    "guiUpgrade": "NOT TESTED",
+    "android16KiBRuntime": "NOT TESTED",
+    "exactSourceCI": "NOT RUN: no push authorized"
+  },
+  "evidenceSha256": {
+    "android-build-fixed.log": "8442d11c89e1ed06d7f104d87327dc63ce79ff9372c0cb39c5e0075285aefc20",
+    "android-build.log": "9c07851002d98e5109d766119d906081787e39a7ca452662c80308eff7826317",
+    "android-preparation.log": "7262289840334b002b6c7cfc5a4d6d4c1f8a6cd5aa51d373022d1b773f06fdaf",
+    "gradle-stop.log": "63b3b053d39a00d0131788861236a840924e2034075e93e2733cd8bf4cf52003",
+    "installer.log": "20bf16d2792bca71e14451de07478fdb90130be6b38e577689f56c92258941d4",
+    "packaged-self-test.log": "a58736026484dfdb073dcf5d2d05f55228b3dcc45145e87adc418eb2908cac67",
+    "portable.log": "96b68f910e8104ee29fce4bf142facb51663a0b50b475026912bb32d7221682c",
+    "sandbox-prepare.log": "0e98802216099203fe00085b9a9c6527ea7dccf668e5a57e8f8e13e8627c1243",
+    "sandbox-schema-final.log": "6ba65ff8d4ef5e0ab10028fddc0fa93bc1ab5c76be106e070dc3a1320b31395d",
+    "sandbox-schema-pre.log": "b67874985970ab1a4171f8515d3e9522d0f1ec6d923f9d691dc5992efb81fee4",
+    "updater-contracts.log": "77f1ac6b8837b8563cd983a3adb63d0603db46e525782458709148a330b76031",
+    "windows-build.log": "32d77120d7376e993deccbf8ad1da25844426181770762aae4f0006983388da8",
+    "windows-checksums.log": "4d6aaa4af8e53f984d524eb95cb478deb07df50b1a7a3f3724f8f445fe9d5d97",
+    "windows-package-audit.log": "a42e5ec50230c7f23f91f4216ba9d55e3585ffc0a636a7de28c91cadb7e832d3"
+  },
+  "androidIdentity": {
+    "packageName": "io.github.hik4.todorbit",
+    "versionName": "1.0.19-beta.22",
+    "versionCode": 45,
+    "minSdk": 26,
+    "targetSdk": 36,
+    "debuggable": false,
+    "productionCertificateSha256": "00226dad75ac907ac51c86df2c5011f0b6e2ce8291994103975f11a8eb574a99"
+  },
+  "releaseHarnessSha256": {
+    "tools/prepare-windows-sandbox-acceptance.ps1": "6317c474afa4acb9488eac35b62fb036c855992e68a31ae9bba5224aaf34a334",
+    "tools/windows-sandbox-acceptance.ps1": "d4f24ffcc9092b2e462ac24e97e2584a567526bb8387b75698e27a89af4d4a4b",
+    "tools/test_windows_sandbox_prepare.py": "89f5160e412758a01076363f24dfaafe17c5c832911a494c4204bbd283d31b25",
+    "tools/build-windows-release.ps1": "30ef4ead3b981346f119a4eca277e7b3c0a211e6756a4d952e788f0585b16141",
+    "installer/build-installer.ps1": "9d8c83859e4d370b15ef61129362572fcf417581df06ff4277c036ab9be9aa92",
+    "tools/build-portable.ps1": "21c681621cbca1c75f4f5e3eb4de265fc14ac845be1a3b975a18c89a76beea9c",
+    "tools/write-release-checksums.ps1": "5cdd5dd5ac0c003fcacbfe048c49ce18ff3c209e21695501d5cef6b7213d5b59",
+    "tools/build-android.ps1": "8d41832fa1289a38098b6626613f760253dec2341e690434142d60d5d8ef956a",
+    "tools/prepare-android-release.py": "a60ebf63b954cc53bc6da7542f3dd395555d65ec665d9d659199f5c8037a34b2",
+    "tools/verify-android-artifact.py": "a4b43f956986538c078aa52e93b247fa7e69741d87d09b5d85b8cb4f9c83db52",
+    ".buildlog/uiux03-beta22/candidate_updater_test.dart": "cab844306d597ce4de2697c59acc3dc43cd9b232fd44e6ddd8f445d830afe6ec",
+    ".buildlog/uiux03-beta22/audit-windows.py": "00a60211eece207ce880c29fdce0536be9c5d1ad034c21a2cfc59e39b648f938",
+    ".buildlog/sandbox-acceptance-0c7c8ce08c344645b95f36ea3ea9d814/payload/windows-sandbox-acceptance.ps1": "bb97b9d26b9e1c13c0f2b592c0a4d161f5aa0130331d743de7a709476aa9f8c2"
+  },
+  "verifiedAt": "2026-11-15T18:47:16.039373+03:00",
+  "allLocalPreparationChecksPassed": true
+}

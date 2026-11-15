@@ -1,5 +1,65 @@
 # Persistent test run ledger
 
+## Beta22 publication CI repairs (2026-11-15)
+
+Replacement source62593e3: Windows Release140.6s, signed Android Gradle324.5s,
+packaging/byte/configuration/private-file/hash audits and3 artifact-specific updater
+contracts PASS. Actual replacement APK 16-KiB runtime43741858701 PASS, SHA-256
+`df851faed31acb1d683641f9f91a6a7981c65a31a9a5d9e99308cefc89ab485d`.
+Normal Windows host app initializes an isolated schema29 database/integrity OK;
+owner reports task create/Details editing/Focus start-pause PASS. Desktop automation
+helper initialization failed; do not claim automated host interaction. Owner requested
+normal-app testing; no further Sandbox runs. Windows CI43740731448:1021 pass/1 fail/
+9 skip; restore the draft-editor fixture accidentally changed with the Details fixture.
+Both composition cases PASS after correction; scoped analysis clean. Reuse these
+unchanged packages/runtime on the test/docs-only follow-up; final exact-source CI
+remains required. No local broad suite or second unchanged binary build.
+
+[Publication verification](UIUX03_BETA_22_PUBLICATION.md) records initial exact-source
+Windows CI `43732459000` (1004 pass/18 fail/9 opt-in skip), Android stale Details
+fixture failure, its repaired host fixture PASS and Android CI `43734270117` PASS
+on `acf739c`. Diagnosed three actual defects (invalid encoded-whitespace HTTP host,
+narrow/large-text Trash controls and unconstrained visibility-menu labels) and
+stale UI/schema fixtures. Focused failure rerun:15 pass/3 fail; repaired remaining
+three plus extended Trash bulk cancellation:4/4 pass. Resource repository:7/7 pass;
+workflow contracts:5/5 pass. Scoped 14-path analysis found one obsolete test import,
+removed and reanalyzed cleanly. Existing 84-check evidence is reused for unchanged
+boundaries. No local full suite. Product repairs invalidate the original package
+and APK runtime identities for publication; replacement builds, exact-source CI
+and actual replacement APK 16-KiB runtime are required.
+
+## UIUX-03 beta 22 release-only preparation (2026-11-15, UTC+03:00)
+
+[Candidate receipt](UIUX03_BETA_22_CANDIDATE.md) / [source and artifact identities](UIUX03_BETA_22_CANDIDATE_MANIFEST.json).
+Source checkpoints `5f30fd9` / `865468d` / `41b6aff`; only version metadata and the
+narrow Sandbox schema guard follow the completed review. Reused all 84 focused
+passes/analysis after checking source/assertion/dependency equivalence. No full
+suite or broad audit repeated. New release-specific evidence: schema-29 staging
+regression fails before correction, then 7 helper checks PASS; Windows build,
+packaged self-test, installer/portable/hash/configuration/CRT/byte audits PASS;
+Android first build FAILS CMake discovery, corrected ignored local toolchain retry
+PASSES, production signer/package/45-code/ABI/minSdk/alignment/metadata PASS;
+3 actual-artifact production updater parser/channel/digest contracts PASS.
+Clean Sandbox Beta21->22 installer registration/database-byte preservation,
+portable schema29 reopen/integrity and uninstall/reinstall preservation PASS.
+GUI migration/updater installation, real OAuth, Android 16-KiB runtime and required
+exact-source CI are not claimed. All remote release/assets/tags unchanged.
+
+## UIUX-03 independent review (2026-11-15, UTC+03:00)
+
+Base `e7810d2` plus [dirty-source/assertion/dependency identities](UIUX03_REVIEW_SOURCE_MANIFEST_2026_11_15.json).
+[Receipt](UIUX03_CODEX_REVIEW_2026_11_15.md) records every scoped invocation,
+fixture/probe failure, confirmation and reason for reruns/reuse. 84 distinct focused
+Flutter checks have final passing evidence, including migration/gate/kill safety,
+resource/saved-view/visibility exchange, scheduled restore, schema-26/27/28 batch
+read compatibility and old-client rejection, timer work/break/recovery boundaries,
+atomic deletion, both navigation shells and schema-29 native writer compatibility.
+Final analysis: 36 affected Dart paths, zero issues. Windows Release using the
+existing approved configuration/CRT wrapper and isolated native self-test pass.
+No full suite or unrelated broad audit repeated. Gemini's unbound implementation
+summary was not counted as a source-matched pass. Actual Chrome/Android/physical
+and exact-candidate acceptance remain deferred; no beta publication approval.
+
 ## DRV-01 beta 21 release qualification/publication (2026-11-15, UTC+03:00)
 
 [Publication receipt](TODORBIT_BETA_21_PUBLICATION.md) records version 1.0.19-beta.21+44, code 44, Windows numeric PE 1.0.19.44.

@@ -198,7 +198,7 @@ void main() {
               .customSelect('PRAGMA user_version')
               .getSingle()
               .then((r) => r.data.values.single),
-          28,
+          29,
         );
         expect(
           (await db.customSelect('PRAGMA foreign_key_check').get()),
