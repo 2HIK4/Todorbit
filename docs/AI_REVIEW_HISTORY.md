@@ -22,7 +22,10 @@ archived; [device/upgrade/Doze gaps](DEFERRED_VERIFICATION.md) remain pending.
 See [receipt](UIUX02_CODEX_REVIEW_2026_11_15.md),
 [source identity](UIUX02_REVIEW_SOURCE_MANIFEST_2026_11_15.json) and
 [screenshot configurations](UIUX02_SCREENSHOT_MANIFEST_2026_11_15.json).
-No commit/push/build release/publication performed.
+No commit/push/build release/publication was performed during that review.
+Subsequent explicitly authorized checkpoint and experimental beta 20 publication
+are recorded separately in the [release receipt](UIUX02_BETA_20_PUBLICATION.md);
+physical acceptance limits remain open.
 
 ## ARCH-01 — Approved after repairs (2026-11-14)
 

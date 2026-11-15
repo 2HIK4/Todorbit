@@ -1,5 +1,21 @@
 # Persistent test run ledger
 
+## UIUX-02 beta 20 release qualification/publication (2026-11-15, UTC+03:00)
+
+[Publication receipt](UIUX02_BETA_20_PUBLICATION.md) records checkpoint `6d32ce8`,
+tag/source `6156613`, APK build-source equivalence, exact commands, failed CI
+analysis (18 diagnostics), failed full host run (992 pass/7 fail/9 skip), seven
+focused fixture repairs/pass, scoped analysis and final exact-source Windows CI
+(999 pass/9 skip) with packaging/native gates. Signed APK build/alignment,
+production certificate/code/manifest continuity, 16-KiB runtime and production
+Android 42→43 retention pass. Sandbox actual Windows Beta 19→20 preserves
+registration and populated database bytes; portable/schema/native checks pass.
+All ten public assets/hashes and production updater service discovery pass;
+Stable and all old releases/tags unchanged. Reused original UIUX-02 evidence and
+unchanged-boundary Android validation; no duplicate local full product/JVM suite.
+Physical/launcher/input/real-account acceptance remains in Deferred Verification.
+
+
 ## UIUX-02 independent review (2026-11-15, UTC+03:00)
 
 Preserved HEAD `61bde1c`, dirty-source identities and every focused invocation,

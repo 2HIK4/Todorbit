@@ -44,8 +44,8 @@ and relevant platform receipts; it does not prove the unperformed procedures her
 | --- | --- | --- | --- | --- |
 | DEF-CAL-DST | CAL-01/CAL-03; calendar engineer | 3; isolated Windows VM with DST zone | PENDING | Reviewed product baseline, then candidate; actual transition-date persistence/rendering acceptance absent. |
 | DEF-DRV-OAUTH | Drive Sync/recovery; release owner with authorized test-account operator | 4; two isolated Win/Android clients | PENDING | Candidate source/binaries/account authorization; real pairing/refresh/dual-client exchange absent. |
-| DEF-AND-16K | Android candidate; release engineer | 4; Linux/KVM API-36 ps16k AVD | PENDING | Candidate x64 asset ID and SHA, optional prior APK; exact-artifact runtime evidence absent. |
-| DEF-WIN-PKG | Windows installer/update; release engineer | 4; disposable Windows VM/Sandbox | PENDING | Candidate installer/portable hashes plus previous version; install/upgrade/uninstall evidence absent. |
+| DEF-AND-16K | Android candidate; release engineer | 4; Linux/KVM API-36 ps16k AVD | PASSED | Beta 20 APK `f7277b05…edf0`, asset 750329257: run 43694416334, 16384-byte pages, render/task/restart/production 42→43 retention pass. Applies only to this exact universal APK on x64; future candidates/physical ARM64 need their own acceptance. |
+| DEF-WIN-PKG | Windows installer/update; release engineer | 4; disposable Windows VM/Sandbox | PENDING | Beta 20 Sandbox Beta 19→20 installer registration/database-byte preservation, uninstall/reinstall and portable startup pass; actual registered in-app handoff/GUI and physical Windows acceptance remain pending. See UIUX02_BETA_20_PUBLICATION.md. |
 | DEF-WIN-WIDGET | Native companion; Windows widget engineer | 4; disposable Windows user, physical mixed-DPI monitors | PENDING | Candidate native executable hash; physical companion DPI/hit-test evidence absent. |
 | DEF-AND-WORKFLOW | Mobile editing/SQLite/restore; Android engineer | 3; disposable API-35 AVD | PENDING | Actual android_workflow_test.dart run; update/Drive fixture and host passes do not cover it. |
 | DEF-CAL-INPUT | Flutter CAL-03 resize/input; calendar engineer | 4; isolated Windows profile, physical mouse/mixed DPI | PENDING | Candidate app hash; real mouse dwell/reversal/multimonitor behavior absent. Native companion self-test is separate. |
@@ -53,6 +53,16 @@ and relevant platform receipts; it does not prove the unperformed procedures her
 | DEF-AND-WIDGET-DOZE | Android widget date rollover; Android engineer | 4; physical Android 12-15 device in Doze mode | PENDING | Final UIUX-02 source/artifact; observe actual inexact/delayed delivery, Follow Today and deliberate browsing separately. No exact-midnight guarantee. |
 | DEF-AND-WIDGET-UPGRADE | Android widget upgrade preservation; release engineer | 4; physical Android device / emulator | PENDING | In-place APK update over existing install verifying `ACTION_MY_PACKAGE_REPLACED` preserves widget instances and config without data wipe. |
 | DEF-UIUX02-DEVICE | UIUX-02; UI/Android engineer | 4; isolated Android runtime/device and affected Windows UI | PENDING | Offscreen default/stress cases pass; real IME/nonlinear text/TalkBack/locale/input and platform visual acceptance remain unobserved. |
+
+## Beta 20 executed evidence (2026-11-15)
+
+[Publication receipt](UIUX02_BETA_20_PUBLICATION.md) binds current package hashes
+and commands. Exact signed APK 16-KiB x64 runtime/production-package upgrade and
+fresh Windows Sandbox Beta 19→20 installer preservation passed. These do not
+verify launcher widget IDs/preferences/navigation, physical overnight behavior,
+nonlinear Android text/IME/TalkBack, real accounts or actual desktop input/update
+GUI. All such pending rows remain open; future artifacts invalidate exact-package
+passes. No personal profiles/accounts or host clock were used.
 
 ## Procedures and prerequisites
 

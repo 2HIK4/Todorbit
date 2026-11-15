@@ -1,5 +1,19 @@
 # Progress
 
+## UIUX-02 checkpoint and beta 20 published (2026-11-15)
+
+Checkpoint `6d32ce8`; immutable tag `v1.0.19-beta.20` at `6156613`, version
+1.0.19-beta.20+43. Published Windows installer/portable and production-signed
+Android universal APK through the existing prerelease updater. Exact-source
+Windows CI passes 999 tests/9 opt-in skips; signed 16-KiB runtime/production
+Android 42→43 upgrade and isolated Windows Beta 19→20 installer checks pass.
+Anonymous assets, production updater discovery and prior release/tag preservation
+verified. CI failures and narrowly repaired lint/fixtures retained in the
+[publication receipt](UIUX02_BETA_20_PUBLICATION.md). Physical launcher, accessibility,
+Windows input/in-app handoff and broader audit gaps remain pending. Three unrelated
+untracked documents preserved; no data/protocol/key/profile/license migration.
+
+
 ## UIUX-02 independent review and repairs (2026-11-15)
 
 Scoped code/host-visual review approved with limitations after receiver security,
