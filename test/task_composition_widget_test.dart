@@ -32,7 +32,9 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Task Details'), findsOneWidget);
+      await tester.ensureVisible(find.text('Checklist and subtasks'));
+      await tester.tap(find.text('Checklist and subtasks'));
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Add subtask'));
       await tester.tap(find.text('Add subtask'));
       await tester.pumpAndSettle();

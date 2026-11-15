@@ -5,8 +5,9 @@ publication after all mandatory gates pass. Stable must remain unchanged.
 Version: `1.0.19-beta.22+45`; intended tag: `v1.0.19-beta.22`.
 
 Status: **DRAFT / CI GATED**. No public updater installation is claimed.
-The initial packages/runtime receipt below are now **SUPERSEDED for publication**:
-confirmed CI defects require three small application repairs and fresh packages.
+The initial candidate packages/runtime receipt are **SUPERSEDED**. Replacement
+packages below include only the three confirmed CI product repairs; final CI gates
+remain mandatory. No unchanged binary was rebuilt after the test-only follow-up.
 Public review branch: `codex/beta22-release`; local branch:
 `codex/independent-beta-review`. [PR #2](https://github.com/2HIK4/Todorbit/pull/2)
 targets the preceding reviewed beta branch, avoiding unrelated history on main.
@@ -28,12 +29,10 @@ It changes no compiled product input, package, migration, alarm or dependency.
 Scoped analysis passes; the entire repaired integration fixture also passes in
 the host widget runner (not an Android/device claim).
 
-[Publication asset identities](UIUX03_BETA_22_PUBLICATION_ASSETS.json) account for
-all ten files. Only `ANDROID-RELEASE-NOTES.md` and its entry in
-`ANDROID-SHA256SUMS.txt` differ from the original candidate manifest: the notes
-now match [the public release body](UIUX03_BETA_22_PUBLICATION_NOTES.md), replacing
-the obsolete local-only status. All executable packages, updater manifest and
-their checksum sidecars remain byte-identical to the approved candidate.
+Initial draft staging changed only `ANDROID-RELEASE-NOTES.md` and its checksum
+entry to match [the public release body](UIUX03_BETA_22_PUBLICATION_NOTES.md).
+The confirmed product repairs then required the replacement package set below;
+the original candidate hashes are not the final publication hashes.
 
 ## Actual Android 16-KiB runtime: PASS
 
@@ -54,6 +53,45 @@ previous-APK upgrade path was not executed; physical-device updater installation
 remains manual. Local raw evidence is under
 `.buildlog/uiux03-beta22-publication/runtime`; the cloud artifact retains the
 receipt, logs, UI hierarchies and screenshots.
+
+## Replacement candidate acceptance
+
+Compiled product source: `62593e35c9236f1c7ae11d1758baff9071e3fb4b`. Subsequent changes
+are the host draft-editor fixture correction and release receipts/asset identities;
+the compiled source trees and dependencies must remain identical before publication.
+Version remains `1.0.19-beta.22+45`. The original candidate manifest remains historical;
+[publication asset identities](UIUX03_BETA_22_PUBLICATION_ASSETS.json) now bind all ten
+replacement files. Package changes are explained by the three confirmed fixes below.
+
+- Windows Release: PASS, 140.6s; approved enabled Drive configuration and signed CRT.
+- Portable ZIP and installer: PASS; ZIP CRC, exact bundle bytes, licenses/helper,
+  private-file exclusion, AOT/configuration receipt and checksum contracts pass.
+- Signed Android rebuild: PASS, Gradle324.5s; eight ELF/ZIP native libraries aligned.
+  Preparation verifies package, production certificate and code45 above published44.
+- Replacement artifact-specific production updater contracts:3/3 PASS. An initial
+  test compiler launch failed because its OS temporary `output.dill` disappeared;
+  using a dedicated task-local TEMP/TMP resolved that environment failure.
+- Replacement APK actual 16-KiB runtime:
+  [43741858701](https://github.com/2HIK4/Todorbit/actions/runs/43741858701) PASS on62593e3.
+  Receipt binds SHA-256 `df851faed31acb1d683641f9f91a6a7981c65a31a9a5d9e99308cefc89ab485d`,
+  actual page size16384, Android16 x64 `google_apis_ps16k`, install/render, task create,
+  persisted restart/completion and no observed crash/ANR. This is actual runtime,
+  not alignment-only evidence. No previous-production-APK upgrade was exercised.
+- Normal Windows Release application: launched on the host with child APPDATA and
+  LOCALAPPDATA under `.buildlog/uiux03-beta22-publication/host-profile`; verified
+  the resolved database before interaction. Its schema29 initializes and read-only
+  integrity check is OK. **User-reported PASS** for create task, Details -> Edit ->
+  save and Focus start/pause. Automated desktop interaction is UNVERIFIED: both
+  desktop-control interfaces fail to initialize (`failed to write kernel assets`).
+  The owner requested normal-app testing; no further Sandbox testing is used.
+
+Primary replacement hashes:
+
+| Asset | SHA-256 |
+| --- | --- |
+| Android universal APK | `df851faed31acb1d683641f9f91a6a7981c65a31a9a5d9e99308cefc89ab485d` |
+| Windows portable ZIP | `6e39f9074d45295448b4ae9ba8d3305978387b87617a94e82fa0f8c2f6fba6f1` |
+| Windows installer | `97a6765f6d39a3ddf8e29dc3c5fd16878fe07b7d9937d30d56500ed4b7bd2043` |
 
 ## CI and publication gates
 
@@ -89,16 +127,20 @@ three-field public Desktop build configuration from encrypted repository secret
 temporary storage and removes it with an always cleanup step. Reusable manual/
 Android release callers forward only that named secret. No key, user token or
 configuration file is committed; the enabled-bundle gate is not bypassed. All
-five workflow contract tests pass. Fresh exact-source Windows/Android/lightweight
-CI and replacement signed APK runtime must pass before publication.
+five workflow contract tests pass. Final exact-source Windows/Android/lightweight
+CI must pass before publication; the replacement signed APK runtime now passes.
 
 Initial source `0e12e96`: lightweight CI
 [43732459572](https://github.com/2HIK4/Todorbit/actions/runs/43732459572) passes.
 Android host/native gates pass in
 [43732459495](https://github.com/2HIK4/Todorbit/actions/runs/43732459495), while the
 mobile workflow fails at the stale direct-editor expectation. Its narrow fixture
-repair must pass on Android before publication. Required Windows CI and final
-exact-source checks remain pending. Draft release ID `446173243` contains the ten
+repair passes in Android CI43734270117 onacf739c. On62593e3, lightweight CI43740736192
+and both Android CI43740736200 jobs pass. Windows CI43740731448 reaches1021 pass/
+1 fail/9 opt-in skip: my broad fixture replacement accidentally applied the Details
+expectation to the separate draft-editor test. Restore its original disclosure
+sequence; both composition tests now pass. No product input or package changes for
+this correction. Required final exact-source CI remains pending. Draft release ID `446173243` contains the ten
 approved assets; a draft is deliberately unavailable to production updaters.
 
 ## Data safety and remaining manual acceptance

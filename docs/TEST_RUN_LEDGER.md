@@ -2,6 +2,19 @@
 
 ## Beta22 publication CI repairs (2026-11-15)
 
+Replacement source62593e3: Windows Release140.6s, signed Android Gradle324.5s,
+packaging/byte/configuration/private-file/hash audits and3 artifact-specific updater
+contracts PASS. Actual replacement APK 16-KiB runtime43741858701 PASS, SHA-256
+`df851faed31acb1d683641f9f91a6a7981c65a31a9a5d9e99308cefc89ab485d`.
+Normal Windows host app initializes an isolated schema29 database/integrity OK;
+owner reports task create/Details editing/Focus start-pause PASS. Desktop automation
+helper initialization failed; do not claim automated host interaction. Owner requested
+normal-app testing; no further Sandbox runs. Windows CI43740731448:1021 pass/1 fail/
+9 skip; restore the draft-editor fixture accidentally changed with the Details fixture.
+Both composition cases PASS after correction; scoped analysis clean. Reuse these
+unchanged packages/runtime on the test/docs-only follow-up; final exact-source CI
+remains required. No local broad suite or second unchanged binary build.
+
 [Publication verification](UIUX03_BETA_22_PUBLICATION.md) records initial exact-source
 Windows CI `43732459000` (1004 pass/18 fail/9 opt-in skip), Android stale Details
 fixture failure, its repaired host fixture PASS and Android CI `43734270117` PASS

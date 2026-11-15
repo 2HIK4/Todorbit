@@ -1,5 +1,16 @@
 # Progress
 
+## Beta22 replacement candidate; final CI pending (2026-11-15)
+
+Replacement packages built from62593e3 pass signing/alignment/byte/configuration/
+checksum gates; actual replacement APK 16-KiB runtime43741858701 passes. The owner
+reports normal Windows app task create/Details editing/Focus start-pause PASS on an
+isolated profile. Desktop automation cannot initialize; no further Sandbox tests.
+Windows CI reaches1021 pass/1 fail/9 skip; repaired an accidentally changed draft-
+editor fixture and verified both composition tests. This follow-up changes tests/
+receipts only: reuse all replacement binaries and runtime evidence. Exact-source
+CI and anonymous public updater/download verification remain mandatory.
+
 ## Beta22 publication CI repair checkpoint (2026-11-15)
 
 Owner authorized automatic experimental publication only after gates pass. Public
