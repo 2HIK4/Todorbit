@@ -13,7 +13,6 @@ import 'package:life_manager/domain/recurrence.dart';
 import 'package:life_manager/features/goals/goal_dialogs.dart';
 import 'package:life_manager/features/habits/habit_editor.dart';
 import 'package:life_manager/features/search/advanced_search_dialog.dart';
-import 'package:life_manager/features/shared/anchored_select_field.dart';
 
 void main() {
   testWidgets('new and edit Habit and Goal forms keep controls reachable', (
@@ -108,7 +107,7 @@ void main() {
     }
   });
 
-  testWidgets('Advanced Search select fields reserve floating-label gaps', (
+  testWidgets('Advanced Search priority chips remain usable with large text', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
@@ -131,18 +130,17 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      final category = find.widgetWithText(
-        AnchoredSelectField<String?>,
-        'Any category',
+      final high = find.widgetWithText(FilterChip, 'High');
+      await tester.scrollUntilVisible(
+        high,
+        120,
+        scrollable: find.byType(Scrollable).first,
       );
-      final priority = find.widgetWithText(
-        AnchoredSelectField<int>,
-        'Any priority',
-      );
-      expect(
-        tester.getRect(priority).top - tester.getRect(category).bottom,
-        greaterThanOrEqualTo(10),
-      );
+      await tester.pumpAndSettle();
+      expect(tester.getSize(high).height, greaterThanOrEqualTo(40));
+      await tester.tap(high);
+      await tester.pumpAndSettle();
+      expect(tester.widget<FilterChip>(high).selected, isTrue);
       await tester.binding.setSurfaceSize(const Size(430, 620));
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(

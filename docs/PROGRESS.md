@@ -1,5 +1,19 @@
 # Progress
 
+## Beta22 publication CI repair checkpoint (2026-11-15)
+
+Owner authorized automatic experimental publication only after gates pass. Public
+review branch/PR #2 and private ten-asset draft exist. Original signed APK passed
+actual 16-KiB runtime. Required Windows CI revealed 18 failing scenarios: repaired
+stale fixtures and three confirmed URL/Trash/visibility defects; all 18 now have
+focused passing evidence, plus seven resource and five workflow checks. CI now
+receives the existing approved enabled Desktop Drive configuration through a
+named encrypted secret, retaining packaging gates. Source/diff review is scoped;
+alarm implementation, Stable and three unrelated documents remain untouched.
+[Publication verification](UIUX03_BETA_22_PUBLICATION.md) preserves failures and
+evidence. Replacement packages/runtime and final exact-source CI are pending;
+the initial candidate hashes are superseded for publication.
+
 ## UIUX-03 beta 22 local candidate prepared; approval gate (2026-11-15)
 
 Committed the 45 reviewed paths as `5f30fd9`, versioned Beta 22/build45 as

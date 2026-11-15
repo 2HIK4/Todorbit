@@ -385,6 +385,17 @@ void main() {
 
     expect(() => normalizeResourceUrl(''), throwsArgumentError);
     expect(() => normalizeResourceUrl('   '), throwsArgumentError);
+    for (final invalid in [
+      'not a URL',
+      'https://bad%20host/doc',
+      'https://bad%09host',
+    ]) {
+      expect(() => normalizeResourceUrl(invalid), throwsArgumentError);
+    }
+    expect(
+      normalizeResourceUrl('example.com/a b'),
+      'https://example.com/a%20b',
+    );
     expect(
       () => normalizeResourceUrl('javascript:alert(1)'),
       throwsArgumentError,

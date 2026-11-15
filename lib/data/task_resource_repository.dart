@@ -19,7 +19,10 @@ String normalizeResourceUrl(String target) {
         'vbscript',
         'shell',
       }.contains(uri.scheme.toLowerCase()) ||
-      ((uri.scheme == 'http' || uri.scheme == 'https') && uri.host.isEmpty)) {
+      ((uri.scheme == 'http' || uri.scheme == 'https') &&
+          (uri.host.isEmpty ||
+              RegExp(r'[\s\x00-\x1f\x7f]')
+                  .hasMatch(Uri.decodeComponent(uri.host))))) {
     throw ArgumentError('Enter a valid website or application link');
   }
   return uri.toString();
@@ -294,7 +297,9 @@ extension TaskResourceRepository on LifeRepository {
     return rows.map((r) => r.read<String>('resource_id')).toList();
   }
 
-  Future<Map<String, List<String>>> taskResourceSubtaskMap(String taskId) async {
+  Future<Map<String, List<String>>> taskResourceSubtaskMap(
+    String taskId,
+  ) async {
     final rows = await db
         .customSelect(
           '''

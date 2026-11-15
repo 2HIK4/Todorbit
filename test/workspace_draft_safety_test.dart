@@ -12,7 +12,6 @@ import 'package:life_manager/domain/models.dart';
 import 'package:life_manager/features/workspace/task_editor.dart';
 import 'package:life_manager/features/calendar/event_editor.dart';
 import 'package:life_manager/features/calendar/session_editor.dart';
-import 'package:life_manager/features/workspace/quick_search.dart';
 import 'package:life_manager/main.dart';
 
 import 'test_privacy.dart';
@@ -61,18 +60,29 @@ void main() {
         await open(tester);
         await tester.tap(find.text('Resource source'));
         await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Edit task'));
+        await tester.pumpAndSettle();
         await tester.enterText(
           find.byKey(const ValueKey('task-title-field')),
           'Unsaved resource draft',
         );
         await expandEditorSection(tester, 'Resources');
-        await tester.ensureVisible(find.byTooltip('Add a URL'));
+        final addUrl = find.descendant(
+          of: find.byType(TaskEditor),
+          matching: find.text('Add URL'),
+        );
+        await tester.ensureVisible(addUrl);
         await tester.pumpAndSettle();
-        await tester.tap(find.byTooltip('Add a URL'));
+        await tester.tap(addUrl);
         await tester.pumpAndSettle();
         await tester.tap(find.text('Cancel'));
         await tester.pumpAndSettle();
-        await tester.tap(find.byTooltip('Attach a copy of a file'));
+        await tester.tap(
+          find.descendant(
+            of: find.byType(TaskEditor),
+            matching: find.text('Attach copy'),
+          ),
+        );
         await tester.pumpAndSettle();
         expect(find.text('Discard unsaved changes?'), findsNothing);
         await tester.scrollUntilVisible(
@@ -131,7 +141,7 @@ void main() {
   }
 
   testWidgets(
-    'switching desktop tasks preserves draft when discard is declined',
+    'saved-task editing guards close and permits switching only after discard',
     (tester) async {
       final first = await controller.repository.addTask(
         TaskDraft(title: 'First saved task'),
@@ -144,11 +154,13 @@ void main() {
       await open(tester);
       await tester.tap(find.text('First saved task'));
       await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Edit task'));
+      await tester.pumpAndSettle();
       await tester.enterText(
         find.byKey(const ValueKey('task-title-field')),
         'Unsaved first task',
       );
-      await tester.tap(find.text('Second saved task'));
+      await tester.tap(find.byTooltip('Close details'));
       await tester.pumpAndSettle();
       expect(find.text('Discard unsaved changes?'), findsOneWidget);
       await tester.tap(find.text('Keep editing'));
@@ -161,6 +173,15 @@ void main() {
             .title,
         'First saved task',
       );
+      await tester.tap(find.byTooltip('Close details'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Discard changes'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Back to tasks'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Second saved task'));
+      await tester.pumpAndSettle();
+      expect(controller.selectedTask?.title, 'Second saved task');
       await tester.pumpWidget(const SizedBox());
     },
   );
@@ -254,13 +275,15 @@ void main() {
         find.byKey(const ValueKey('task-title-field')),
         'Search-safe draft',
       );
-      await tester.tap(find.byIcon(Icons.search_outlined));
+      await tester.tap(find.byTooltip('Quick Search (Ctrl+K)'));
       await tester.pumpAndSettle();
       expect(find.text('Discard unsaved changes?'), findsNothing);
       await tester.enterText(
-        find.descendant(
-          of: find.byType(QuickSearchDialog),
-          matching: find.byType(TextField),
+        find.byWidgetPredicate(
+          (w) =>
+              w is TextField &&
+              w.decoration?.hintText ==
+                  'Search tasks, events, categories, and projects',
         ),
         'Search target',
       );
@@ -270,7 +293,7 @@ void main() {
       expect(find.text('Discard unsaved changes?'), findsOneWidget);
       await tester.tap(find.text('Keep editing'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Close search'));
+      await tester.tap(find.byTooltip('Clear search'));
       await tester.pumpAndSettle();
       expect(find.text('Search-safe draft'), findsOneWidget);
       expect(controller.selectedTaskId, isNull);
@@ -288,11 +311,16 @@ void main() {
       find.byKey(const ValueKey('task-title-field')),
       'Saved-view-safe draft',
     );
-    final createView = find.byTooltip('Create saved view');
+    final createView = find.byTooltip('Add Custom View');
     await tester.scrollUntilVisible(
       createView,
       160,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView).first,
+            matching: find.byType(Scrollable),
+          )
+          .first,
     );
     await tester.ensureVisible(createView);
     await tester.pumpAndSettle();
@@ -303,7 +331,7 @@ void main() {
       find.widgetWithText(TextField, 'View name *'),
       'Audit view',
     );
-    await tester.tap(find.text('Create view'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Create Custom View'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Keep editing'));
     await tester.pumpAndSettle();
@@ -328,7 +356,9 @@ void main() {
         find.byKey(const ValueKey('task-title-field')),
         'Template-safe draft',
       );
-      final templates = find.byTooltip('Templates');
+      await tester.tap(find.byTooltip('Library'));
+      await tester.pumpAndSettle();
+      final templates = find.text('Templates');
       await tester.ensureVisible(templates);
       await tester.tap(templates);
       await tester.pumpAndSettle();
@@ -365,7 +395,12 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Categories (1)'),
       160,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView).first,
+            matching: find.byType(Scrollable),
+          )
+          .first,
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Categories (1)'));
@@ -374,7 +409,12 @@ void main() {
     await tester.scrollUntilVisible(
       categoryActions,
       160,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView).first,
+            matching: find.byType(Scrollable),
+          )
+          .first,
     );
     await tester.tap(categoryActions);
     await tester.pumpAndSettle();

@@ -238,47 +238,62 @@ class _ArchiveTrashDialogState extends ConsumerState<ArchiveTrashDialog>
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 20, 16, 0),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: Text(
-                      'Archive and Trash',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
-                  if (!selecting) ...[
-                    TextButton.icon(
-                      onPressed: () => setState(() => selecting = true),
-                      icon: const Icon(Icons.checklist, size: 18),
-                      label: const Text('Select'),
-                    ),
-                    if (!isArchiveTab && totalTrash > 0)
-                      TextButton.icon(
-                        style: TextButton.styleFrom(
-                          foregroundColor: Theme.of(context).colorScheme.error,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Archive and Trash',
+                          style: Theme.of(context).textTheme.titleLarge,
                         ),
-                        onPressed: busy
-                            ? null
-                            : () => _confirmEmptyTrash(controller),
-                        icon: const Icon(Icons.delete_sweep_outlined, size: 18),
-                        label: const Text('Empty Trash'),
                       ),
-                  ] else ...[
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          selecting = false;
-                          _clearSelection();
-                        });
-                      },
-                      child: const Text('Cancel'),
-                    ),
-                  ],
-                  const SizedBox(width: 4),
-                  IconButton(
-                    tooltip: 'Close',
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
+                      IconButton(
+                        tooltip: 'Close',
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      if (!selecting) ...[
+                        TextButton.icon(
+                          onPressed: () => setState(() => selecting = true),
+                          icon: const Icon(Icons.checklist, size: 18),
+                          label: const Text('Select'),
+                        ),
+                        if (!isArchiveTab && totalTrash > 0)
+                          TextButton.icon(
+                            style: TextButton.styleFrom(
+                              foregroundColor: Theme.of(context)
+                                  .colorScheme
+                                  .error,
+                            ),
+                            onPressed: busy
+                                ? null
+                                : () => _confirmEmptyTrash(controller),
+                            icon: const Icon(
+                              Icons.delete_sweep_outlined,
+                              size: 18,
+                            ),
+                            label: const Text('Empty Trash'),
+                          ),
+                      ] else ...[
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              selecting = false;
+                              _clearSelection();
+                            });
+                          },
+                          child: const Text('Cancel'),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),
@@ -319,7 +334,10 @@ class _ArchiveTrashDialogState extends ConsumerState<ArchiveTrashDialog>
                   vertical: 8,
                 ),
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                child: Row(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Checkbox(
                       value: isArchiveTab
@@ -362,7 +380,6 @@ class _ArchiveTrashDialogState extends ConsumerState<ArchiveTrashDialog>
                           : '$selectedTrashCount of $totalTrash selected',
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
-                    const Spacer(),
                     if (isArchiveTab && selectedArchiveCount > 0)
                       FilledButton.icon(
                         style: FilledButton.styleFrom(

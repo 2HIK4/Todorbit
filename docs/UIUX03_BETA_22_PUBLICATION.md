@@ -5,6 +5,8 @@ publication after all mandatory gates pass. Stable must remain unchanged.
 Version: `1.0.19-beta.22+45`; intended tag: `v1.0.19-beta.22`.
 
 Status: **DRAFT / CI GATED**. No public updater installation is claimed.
+The initial packages/runtime receipt below are now **SUPERSEDED for publication**:
+confirmed CI defects require three small application repairs and fresh packages.
 Public review branch: `codex/beta22-release`; local branch:
 `codex/independent-beta-review`. [PR #2](https://github.com/2HIK4/Todorbit/pull/2)
 targets the preceding reviewed beta branch, avoiding unrelated history on main.
@@ -54,6 +56,41 @@ remains manual. Local raw evidence is under
 receipt, logs, UI hierarchies and screenshots.
 
 ## CI and publication gates
+
+Windows run [43732459000](https://github.com/2HIK4/Todorbit/actions/runs/43732459000)
+on `0e12e96` completed with **1004 pass / 18 fail / 9 opt-in skip**. Diagnosis and
+focused corrections retain the original assertions' data-safety purposes:
+
+- URL normalization accepted spaces in an HTTP hostname after URI percent-encoding.
+  Reject decoded host whitespace/control characters; retain spaces in URL paths.
+  All seven resource repository checks, including new invalid-host assertions,
+  pass. The pre-fix invalid-input UI regression failed; it now passes.
+- Archive/Trash title and actions overflowed at 390px/200% text and made deletion
+  controls unreachable. Separate the title/close row from wrapping actions and
+  wrap bulk controls. The existing long-title cancellation test passes, extended
+  to exercise selection and cancel bulk deletion without removing records.
+- Category/project visibility popup labels lacked a flex constraint. The updated
+  category deletion journey reproduced an 80px overflow; both equivalent menu
+  labels now wrap. That journey passes and retains unsaved input/records.
+- Update stale Custom View/Resources/Details/Focus UI fixtures, scope sidebar
+  scrolling to its ListView (the new search TextField has its own Scrollable),
+  and preserve the saved-task modal close/discard/switch journey. Only the alarm
+  test's expected database version changes from28 to29; alarm code is untouched.
+
+Focused CI repair run: 15 pass/3 fail, then the three remaining repaired cases and
+the extended Trash case pass (4/4). This accounts for all 18 initial failures;
+the failed intermediate fixture assumptions remain in local logs. The original
+84 checks are reused where their inputs are unaffected. No broad local suite.
+
+Clean-runner packaging diagnosis also reproduced the enabled-Drive gate rejecting
+the tracked disabled configuration. Windows CI now reads the existing approved
+three-field public Desktop build configuration from encrypted repository secret
+`GOOGLE_DRIVE_RELEASE_CONFIG`, validates enabled state, writes only to runner
+temporary storage and removes it with an always cleanup step. Reusable manual/
+Android release callers forward only that named secret. No key, user token or
+configuration file is committed; the enabled-bundle gate is not bypassed. All
+five workflow contract tests pass. Fresh exact-source Windows/Android/lightweight
+CI and replacement signed APK runtime must pass before publication.
 
 Initial source `0e12e96`: lightweight CI
 [43732459572](https://github.com/2HIK4/Todorbit/actions/runs/43732459572) passes.

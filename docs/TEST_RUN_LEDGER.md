@@ -1,5 +1,20 @@
 # Persistent test run ledger
 
+## Beta22 publication CI repairs (2026-11-15)
+
+[Publication verification](UIUX03_BETA_22_PUBLICATION.md) records initial exact-source
+Windows CI `43732459000` (1004 pass/18 fail/9 opt-in skip), Android stale Details
+fixture failure, its repaired host fixture PASS and Android CI `43734270117` PASS
+on `acf739c`. Diagnosed three actual defects (invalid encoded-whitespace HTTP host,
+narrow/large-text Trash controls and unconstrained visibility-menu labels) and
+stale UI/schema fixtures. Focused failure rerun:15 pass/3 fail; repaired remaining
+three plus extended Trash bulk cancellation:4/4 pass. Resource repository:7/7 pass;
+workflow contracts:5/5 pass. Scoped 14-path analysis found one obsolete test import,
+removed and reanalyzed cleanly. Existing 84-check evidence is reused for unchanged
+boundaries. No local full suite. Product repairs invalidate the original package
+and APK runtime identities for publication; replacement builds, exact-source CI
+and actual replacement APK 16-KiB runtime are required.
+
 ## UIUX-03 beta 22 release-only preparation (2026-11-15, UTC+03:00)
 
 [Candidate receipt](UIUX03_BETA_22_CANDIDATE.md) / [source and artifact identities](UIUX03_BETA_22_CANDIDATE_MANIFEST.json).

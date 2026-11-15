@@ -111,9 +111,9 @@ void main() {
       );
       expect(find.byKey(const ValueKey('task-notes-field')), findsNothing);
       await reveal(tester, 'Resources');
-      await tester.ensureVisible(find.text('Attach a copy'));
+      await tester.ensureVisible(find.text('Attach copy'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Attach a copy'));
+      await tester.tap(find.text('Attach copy'));
       await tester.pumpAndSettle();
       expect(find.text('reference.txt'), findsOneWidget);
       expect(await controller.repository.tasks(), isEmpty);
@@ -142,9 +142,9 @@ void main() {
       'Task with attachment',
     );
     await reveal(tester, 'Resources');
-    await tester.ensureVisible(find.text('Attach a copy'));
+    await tester.ensureVisible(find.text('Attach copy'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Attach a copy'));
+    await tester.tap(find.text('Attach copy'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Create task'));
     final watch = Stopwatch()..start();

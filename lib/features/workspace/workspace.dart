@@ -1492,7 +1492,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                                           size: 18,
                                         ),
                                         const SizedBox(width: 8),
-                                        const Text('Show in standard views'),
+                                        const Expanded(
+                                          child: Text('Show in standard views'),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -1597,8 +1599,10 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                                               size: 18,
                                             ),
                                             const SizedBox(width: 8),
-                                            const Text(
-                                              'Show in standard views',
+                                            const Expanded(
+                                              child: Text(
+                                                'Show in standard views',
+                                              ),
                                             ),
                                           ],
                                         ),

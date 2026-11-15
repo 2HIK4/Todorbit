@@ -45,8 +45,9 @@ void main() {
       await tester.tap(find.text('Start Focus Session'));
       await tester.pumpAndSettle();
       expect((await repository.activeTimerRun())?.taskId, task.id);
-      expect(find.text('Current focus session'), findsOneWidget);
-      await tester.tap(find.byTooltip('Close actual work'));
+      expect(find.text('Stopwatch'), findsOneWidget);
+      expect(find.byTooltip('Return to tasks'), findsOneWidget);
+      await tester.tap(find.byTooltip('Return to tasks'));
       await tester.pumpAndSettle();
       expect(find.byTooltip('Timer controls'), findsOneWidget);
       await tester.tap(find.widgetWithText(ListTile, 'Calendar'));

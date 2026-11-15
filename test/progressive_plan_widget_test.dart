@@ -51,6 +51,9 @@ void main() {
         );
         await tester.tap(find.textContaining('Current step: Watch lessons'));
         await tester.pumpAndSettle();
+        expect(find.text('Task Details'), findsOneWidget);
+        await tester.tap(find.byTooltip('Edit task'));
+        await tester.pumpAndSettle();
         final editorScroll = find
             .descendant(
               of: find.byType(TaskEditor),
@@ -58,7 +61,7 @@ void main() {
             )
             .first;
         await tester.scrollUntilVisible(
-          find.text('Edit plan'),
+          find.text('Edit plan').hitTestable(),
           250,
           scrollable: editorScroll,
         );
