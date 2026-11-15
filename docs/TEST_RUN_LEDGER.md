@@ -1,5 +1,22 @@
 # Persistent test run ledger
 
+## UIUX-03 beta 22 release-only preparation (2026-11-15, UTC+03:00)
+
+[Candidate receipt](UIUX03_BETA_22_CANDIDATE.md) / [source and artifact identities](UIUX03_BETA_22_CANDIDATE_MANIFEST.json).
+Source checkpoints `5f30fd9` / `865468d` / `41b6aff`; only version metadata and the
+narrow Sandbox schema guard follow the completed review. Reused all 84 focused
+passes/analysis after checking source/assertion/dependency equivalence. No full
+suite or broad audit repeated. New release-specific evidence: schema-29 staging
+regression fails before correction, then 7 helper checks PASS; Windows build,
+packaged self-test, installer/portable/hash/configuration/CRT/byte audits PASS;
+Android first build FAILS CMake discovery, corrected ignored local toolchain retry
+PASSES, production signer/package/45-code/ABI/minSdk/alignment/metadata PASS;
+3 actual-artifact production updater parser/channel/digest contracts PASS.
+Clean Sandbox Beta21->22 installer registration/database-byte preservation,
+portable schema29 reopen/integrity and uninstall/reinstall preservation PASS.
+GUI migration/updater installation, real OAuth, Android 16-KiB runtime and required
+exact-source CI are not claimed. All remote release/assets/tags unchanged.
+
 ## UIUX-03 independent review (2026-11-15, UTC+03:00)
 
 Base `e7810d2` plus [dirty-source/assertion/dependency identities](UIUX03_REVIEW_SOURCE_MANIFEST_2026_11_15.json).

@@ -57,8 +57,9 @@ and relevant platform receipts; it does not prove the unperformed procedures her
 ## UIUX-03 candidate acceptance (2026-11-15)
 
 Code review is complete after repairs; this is **not experimental publication
-approval**. Target is base `e7810d2` plus [reviewed source identities](UIUX03_REVIEW_SOURCE_MANIFEST_2026_11_15.json),
-then the exact candidate binary hashes. [Review receipt](UIUX03_CODEX_REVIEW_2026_11_15.md)
+approval**. Beta22/build45 source `41b6aff` and exact local artifacts are bound in
+[the candidate manifest](UIUX03_BETA_22_CANDIDATE_MANIFEST.json), following the
+[reviewed source identities](UIUX03_REVIEW_SOURCE_MANIFEST_2026_11_15.json). [Review receipt](UIUX03_CODEX_REVIEW_2026_11_15.md)
 contains current Level 1/2 host evidence; none of these rows defers a failing
 critical invariant.
 
@@ -67,6 +68,15 @@ critical invariant.
 | DEF-UIUX03-CHROME | Resources / Windows reviewer | 4; actual Chrome + candidate in disposable Windows profile | PENDING | Drag address-bar and actual hyperlink URLs (no `.url` prerequisite), files, images, folders and `.url` shortcuts; attach/link/cancel, normalization/rejection, nested editor close and receiver restoration, window/DPI coordinates. Record persisted target/bytes and app hash. Channel/widget tests and native compile do not close physical input. |
 | DEF-UIUX03-DEVICE | Focus/Details/navigation / platform reviewer | 4; isolated Android runtime/device and Windows physical input | PENDING | Details edit/save/Back, Custom View hidden-scope behavior, Archive/Trash cancel/blocker flows, Stopwatch/Countdown/Pomodoro pause/reset/phase/expiry, leave/return through mini timer, background/suspend/process death/short restart and explicit checkpoint recovery; no powered-off work by default. IME/rotation/nonlinear text/touch/keyboard/DPI/accessibility. Record exact build/profile and observed states. |
 | DEF-UIUX03-CANDIDATE | Schema-29 beta / release owner | 4; exact Windows/Android artifacts and isolated upgrade profiles | PENDING | Applicable existing installer/updater/16-KiB/native-widget gates and old-schema upgrade preserving synthetic data/attachments/views/preferences. Real two-client Drive exchange belongs to DEF-DRV-OAUTH; update all clients before schema-29 exchange and retain older-batch recovery. No downgrade migration is provided. No package publishing authorized by this row. |
+
+Executed local candidate evidence: [Beta22 receipt](UIUX03_BETA_22_CANDIDATE.md).
+Windows/Android packages, signer/version/alignment/hash contracts, three updater
+selectors and actual Sandbox Beta21->22 installer database-byte retention passed.
+Candidate portable schema29 create/reopen and native self-test also passed.
+These do not prove installed first-start migration approval, actual updater GUI,
+Android 16-KiB runtime, physical input/background or real service exchange.
+Required exact-source Windows CI remains PENDING until push is authorized;
+previous-candidate CI is historical. No gate is waived by local preparation.
 
 ## Beta 20 executed evidence (2026-11-15)
 

@@ -1,5 +1,22 @@
 # Progress
 
+## UIUX-03 beta 22 local candidate prepared; approval gate (2026-11-15)
+
+Committed the 45 reviewed paths as `5f30fd9`, versioned Beta 22/build45 as
+`865468d`, and updated the release Sandbox guard for schema29/55 tables in
+`41b6aff`. [Candidate receipt](UIUX03_BETA_22_CANDIDATE.md) and manifest bind all
+10 local assets, signatures, versions and exact hashes. Windows installer/portable,
+production-signed Android universal APK, enabled Desktop Drive configuration,
+checksums and three artifact-bound updater contracts pass. Sandbox actual
+Beta21->22 installer registration and populated database-byte retention pass;
+candidate portable creates/reopens schema29. Reused the 84 focused checks and
+source-equivalent analysis; no broad suite/review repeated. Seven narrow release
+harness checks pass. Android's initial CMake discovery failure was corrected only
+in ignored local toolchain configuration. Stable, alarms, prior releases/tags and
+three unrelated documents remain unchanged. No push/draft/upload/publication.
+Required exact-source CI and Android 16-KiB runtime plus manual updater/device
+acceptance remain open; stopped at the owner's release approval gate.
+
 ## UIUX-03 independent review and beta blockers repaired (2026-11-15)
 
 Reviewed the three uncommitted Gemini batches on `codex/independent-beta-review`
