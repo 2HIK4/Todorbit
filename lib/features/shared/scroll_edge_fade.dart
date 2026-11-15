@@ -153,14 +153,21 @@ class _ScrollEdgeFadeState extends State<ScrollEdgeFade> {
               if (moreAbove)
                 Positioned(
                   left: 0,
-                  right: 12,
+                  right: 0,
                   top: 0,
-                  height: 12,
+                  height: 14,
                   child: IgnorePointer(
                     child: ExcludeSemantics(
                       child: DecoratedBox(
                         key: const ValueKey('scroll-top-fade'),
                         decoration: BoxDecoration(
+                          border: Border(
+                            top: BorderSide(
+                              color: theme.colorScheme.outlineVariant
+                                  .withValues(alpha: 0.35),
+                              width: 1,
+                            ),
+                          ),
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
@@ -177,14 +184,21 @@ class _ScrollEdgeFadeState extends State<ScrollEdgeFade> {
               if (moreBelow)
                 Positioned(
                   left: 0,
-                  right: 12,
+                  right: 0,
                   bottom: 0,
-                  height: 18,
+                  height: 16,
                   child: IgnorePointer(
                     child: ExcludeSemantics(
                       child: DecoratedBox(
                         key: const ValueKey('scroll-bottom-fade'),
                         decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                              color: theme.colorScheme.outlineVariant
+                                  .withValues(alpha: 0.35),
+                              width: 1,
+                            ),
+                          ),
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,

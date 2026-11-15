@@ -1,5 +1,6 @@
 import '../shared/scroll_edge_fade.dart';
 import '../shared/app_motion.dart';
+import '../shared/icon_picker.dart';
 
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 
@@ -39,9 +40,24 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
   late SavedViewSort sort =
       widget.savedView?.filter.sort ?? SavedViewSort.scheduled;
   late Set<TaskStatus> statuses = {...?widget.savedView?.filter.statuses};
-  late String? categoryId = widget.savedView?.filter.categoryId;
-  late String? projectId = widget.savedView?.filter.projectId;
-  late int minimumPriority = widget.savedView?.filter.minimumPriority ?? 0;
+  late Set<String> categoryIds = {
+    ...?widget.savedView?.filter.categoryIds,
+    if (widget.savedView?.filter.categoryId != null)
+      widget.savedView!.filter.categoryId!,
+  };
+  late Set<String> projectIds = {
+    ...?widget.savedView?.filter.projectIds,
+    if (widget.savedView?.filter.projectId != null)
+      widget.savedView!.filter.projectId!,
+  };
+  late Set<int> priorities = {
+    ...?widget.savedView?.filter.priorities,
+    if (widget.savedView?.filter.minimumPriority != null &&
+        widget.savedView!.filter.minimumPriority > 0)
+      for (var i = widget.savedView!.filter.minimumPriority; i <= 3; i++) i,
+  };
+  late String? iconKey =
+      widget.savedView?.iconKey ?? widget.savedView?.filter.iconKey;
   late ScheduledFilter scheduled =
       widget.savedView?.filter.scheduled ?? ScheduledFilter.any;
   late DeadlineFilter deadline =
@@ -65,9 +81,9 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
   TaskFilter get filter => TaskFilter(
     text: text.text,
     statuses: statuses,
-    categoryId: categoryId,
-    projectId: projectId,
-    minimumPriority: minimumPriority,
+    categoryIds: categoryIds,
+    projectIds: projectIds,
+    priorities: priorities,
     scheduled: scheduled,
     deadline: deadline,
     recurringOnly: recurringOnly,
@@ -76,6 +92,7 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
     throughDate: throughDate,
     blockedOnly: blockedOnly,
     sort: sort,
+    iconKey: iconKey,
   );
 
   Future<void> _save() async {
@@ -140,14 +157,10 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
   Widget build(BuildContext context) {
     final controller = ref.watch(appControllerProvider);
     final matches = controller.searchTasks(filter);
-    final projects = controller.projects.where(
-      (item) => item.categoryId == categoryId,
-    );
-    final missingCategory =
-        categoryId != null &&
-        !controller.categories.any((item) => item.id == categoryId);
-    final missingProject =
-        projectId != null && !projects.any((item) => item.id == projectId);
+    final relevantProjects = categoryIds.isEmpty
+        ? controller.projects
+        : controller.projects.where((p) => categoryIds.contains(p.categoryId));
+
     return Dialog(
       child: SizedBox(
         width: math.min(680, MediaQuery.sizeOf(context).width - 48),
@@ -163,8 +176,8 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                     child: Text(
                       widget.savedView == null
                           ? widget.creatingSavedView
-                                ? 'Create saved view'
-                                : 'Advanced search'
+                                ? 'Create Custom View'
+                                : 'Advanced Search'
                           : 'Edit ${widget.savedView!.name}',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
@@ -179,17 +192,63 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
               Expanded(
                 child: FadingListView(
                   key: const ValueKey('advanced-search-form-list'),
-                  padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
+                  padding: const EdgeInsets.fromLTRB(0, 4, 14, 12),
                   children: [
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 16,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Multiple values in the same filter use OR (any match). Different filter types use AND (all must match).',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     if (widget.creatingSavedView ||
                         widget.savedView != null) ...[
-                      TextField(
-                        controller: name,
-                        autofocus: widget.creatingSavedView,
-                        maxLength: 80,
-                        decoration: const InputDecoration(
-                          labelText: 'View name *',
-                        ),
+                      Row(
+                        children: [
+                          IconButton.outlined(
+                            tooltip: 'Choose view icon',
+                            onPressed: () async {
+                              final (chosen, key) = await chooseBuiltInIcon(
+                                context,
+                                current: iconKey,
+                              );
+                              if (chosen && mounted) {
+                                setState(() => iconKey = key);
+                              }
+                            },
+                            icon: Icon(
+                              iconForKey(iconKey, Icons.bookmark_outline),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: name,
+                              autofocus: widget.creatingSavedView,
+                              maxLength: 80,
+                              decoration: const InputDecoration(
+                                labelText: 'View name *',
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 8),
                     ],
@@ -205,9 +264,14 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                       onChanged: (_) => setState(() {}),
                     ),
                     const SizedBox(height: 12),
-                    const Text('Status (none selected means any)'),
+                    const Text(
+                      'Status (OR among selected · none selected means any)',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    const SizedBox(height: 4),
                     Wrap(
                       spacing: 6,
+                      runSpacing: 4,
                       children: [
                         for (final status in TaskStatus.values)
                           FilterChip(
@@ -224,79 +288,81 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    AnchoredSelectField<String?>(
-                      isExpanded: true,
-                      key: ValueKey('search-category:$categoryId'),
-                      initialValue: categoryId,
-                      decoration: const InputDecoration(labelText: 'Category'),
-                      items: [
-                        const DropdownMenuItem<String?>(
-                          value: null,
-                          child: Text('Any category'),
-                        ),
-                        if (missingCategory)
-                          DropdownMenuItem(
-                            value: categoryId,
-                            child: const Text('Deleted category'),
-                          ),
-                        for (final category in controller.categories)
-                          DropdownMenuItem(
-                            value: category.id,
-                            child: Text(category.name),
-                          ),
-                      ],
-                      onChanged: (value) => setState(() {
-                        categoryId = value;
-                        projectId = null;
-                      }),
+                    const Text(
+                      'Categories (OR among selected · none selected means any)',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                     ),
-                    if (categoryId != null) ...[
-                      const SizedBox(height: 12),
-                      AnchoredSelectField<String?>(
-                        isExpanded: true,
-                        key: ValueKey('search-project:$categoryId:$projectId'),
-                        initialValue: projectId,
-                        decoration: const InputDecoration(labelText: 'Project'),
-                        items: [
-                          const DropdownMenuItem<String?>(
-                            value: null,
-                            child: Text('Any project'),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        for (final category in controller.categories)
+                          FilterChip(
+                            label: Text(category.name),
+                            selected: categoryIds.contains(category.id),
+                            onSelected: (selected) => setState(() {
+                              if (selected) {
+                                categoryIds.add(category.id);
+                              } else {
+                                categoryIds.remove(category.id);
+                              }
+                            }),
                           ),
-                          if (missingProject)
-                            DropdownMenuItem(
-                              value: projectId,
-                              child: const Text('Deleted project'),
-                            ),
-                          for (final project in projects)
-                            DropdownMenuItem(
-                              value: project.id,
-                              child: Text(project.name),
-                            ),
-                        ],
-                        onChanged: (value) => setState(() => projectId = value),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    AnchoredSelectField<int>(
-                      isExpanded: true,
-                      initialValue: minimumPriority,
-                      decoration: const InputDecoration(
-                        labelText: 'Minimum priority',
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 0, child: Text('Any priority')),
-                        DropdownMenuItem(
-                          value: 1,
-                          child: Text('Low or higher'),
-                        ),
-                        DropdownMenuItem(
-                          value: 2,
-                          child: Text('Medium or higher'),
-                        ),
-                        DropdownMenuItem(value: 3, child: Text('High only')),
                       ],
-                      onChanged: (value) =>
-                          setState(() => minimumPriority = value!),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Projects (OR among selected · none selected means any)',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        for (final project in relevantProjects)
+                          FilterChip(
+                            label: Text(project.name),
+                            selected: projectIds.contains(project.id),
+                            onSelected: (selected) => setState(() {
+                              if (selected) {
+                                projectIds.add(project.id);
+                              } else {
+                                projectIds.remove(project.id);
+                              }
+                            }),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Priority (OR among selected · none selected means any)',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        for (final (level, label) in [
+                          (0, 'None'),
+                          (1, 'Low'),
+                          (2, 'Medium'),
+                          (3, 'High'),
+                        ])
+                          FilterChip(
+                            label: Text(label),
+                            selected: priorities.contains(level),
+                            onSelected: (selected) => setState(() {
+                              if (selected) {
+                                priorities.add(level);
+                              } else {
+                                priorities.remove(level);
+                              }
+                            }),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 12),
                     AnchoredSelectField<ScheduledFilter>(
@@ -420,10 +486,10 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                     icon: const Icon(Icons.bookmark_add_outlined),
                     label: Text(
                       widget.creatingSavedView
-                          ? 'Create view'
+                          ? 'Create Custom View'
                           : widget.savedView == null
-                          ? 'Save as view'
-                          : 'Update view',
+                          ? 'Save as Custom View'
+                          : 'Update Custom View',
                     ),
                   ),
                 ],

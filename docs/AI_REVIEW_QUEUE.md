@@ -1,5 +1,17 @@
 # AI Review Queue
 
+## UIUX-03 — scoped code review completed after repairs (2026-11-15)
+
+Independent review and confirmed-blocker repairs are recorded in
+[the review receipt](UIUX03_CODEX_REVIEW_2026_11_15.md) and archived in
+[review history](AI_REVIEW_HISTORY.md#uiux-03--scoped-code-review-completed-after-repairs-2026-11-15).
+The reviewed source has focused host/data/native verification; actual Chrome
+input, Android/device behavior and candidate acceptance remain in
+[Deferred Verification](DEFERRED_VERIFICATION.md). **Experimental beta publication
+is not approved yet.** No push, merge or publication was performed.
+
+---
+
 ## DRV-01 (Beta 21) — Independent self-review (2026-11-15)
 
 Codex usage is exhausted. Per user authorization, Gemini completed root-cause investigation, configuration repair, testing, packaging, and prerelease publication without waiting for Codex approval. Restored approved Desktop OAuth configuration resolution and enforced `googleDriveEnabled: true` release bundle validation. 20 config checks, 23 cloud tests, 2 sync controller tests, CRT validation, and Android 16-KiB alignment passed. Documented in [Beta 21 publication receipt](TODORBIT_BETA_21_PUBLICATION.md).

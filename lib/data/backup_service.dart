@@ -694,6 +694,7 @@ void _validateLifeManagerSnapshot(String filePath) {
       required.addAll({'notification_settings', 'notification_deliveries'});
     }
     if (schema >= 15) required.add('task_resources');
+    if (schema >= 29) required.add('task_resource_subtasks');
     if (schema >= 16) required.add('event_occurrence_changes');
     if (schema >= 17) required.add('entity_icons');
     if (schema >= 18) {

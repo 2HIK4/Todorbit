@@ -1,0 +1,309 @@
+{
+  "baseCommit": "e7810d2cf9b2ee19dd7506dc1807550fa919f2fd",
+  "branch": "codex/independent-beta-review",
+  "capturedAt": "2026-11-15T17:43:50.554387+03:00",
+  "initialDirtyFiles": {
+    "docs/AI_REVIEW_QUEUE.md": "4e2e70ac60d5d50d9938b1e3b3ccfb7850849ad2acdaccae8592d9293500394f",
+    "lib/app/app_controller.dart": "d0b8e5d16bd3c1d94406cea6128ca8397c0a5064cff3e92a4bea34b4ea140988",
+    "lib/data/app_database.dart": "a538a8cd6f6747ba9b91730e5350dbf49f0154a01adad65238af1afe1cfbbccb",
+    "lib/data/appearance_preference_store.dart": "f68013ba3a81abacff84f84c25602d046c8d583bd03736c7f8f0a29561e8a160",
+    "lib/data/saved_view_repository.dart": "1fa89e81fec27658c33be6494aaccfcd2f5d012f9b957e2e5f840f5325516dbe",
+    "lib/data/task_resource_repository.dart": "198519fc9b3c648a110247179067491b4f450d8f3c74083d0c641e056e213aa4",
+    "lib/data/trash_repository.dart": "825dfb376aae83f0736067ace3223a5da1ec6f437208c651094821e3529ed1a3",
+    "lib/domain/saved_views.dart": "acb1f9db3dcc281071daadcf1e2d3bc74073deeded1d0d46239ec0db242266fc",
+    "lib/domain/task_view_preferences.dart": "11b2dd880f5d24513cf45c0f9b0eacc30bfb32df7803c3e497fb5968b44097c4",
+    "lib/features/mobile/mobile_workspace.dart": "50a27fa2f0e0483b785ebc9b4ac901871167a2faaeed6fe61ba28b2dd081db99",
+    "lib/features/search/advanced_search_dialog.dart": "97e71473e6201f904d2078afe64e2935c368cfbd330260bc3c38516f3fcacf53",
+    "lib/features/shared/scroll_edge_fade.dart": "cf3eb45fbc9e7fead651362cab2bffb25e4bcb0a2c2edd807031d257446ec337",
+    "lib/features/workspace/task_composition_section.dart": "bb3d903c43c6add44b5c40b8da0a2272259e5e90bffc7a9a297ba902b6a838a8",
+    "lib/features/workspace/task_editor.dart": "3bb261dedadc610b6f199875c9d2198818ed87fb08264bab364dfb40e8cbc30a",
+    "lib/features/workspace/trash_dialog.dart": "3f0573d9aa2b319dc301cbef26c5922186fb1b4fb94bd7db02c5c12f5ef475fd",
+    "lib/features/workspace/workspace.dart": "065e4fb881693f7bf58cf1cab4192ce29009c3685fe5272176d8db8f90c5dc19",
+    "test/database_initialization_test.dart": "c4feac255d4c2ad2e2fe9431b2dd7779b8ecf8959e504fa983a7be14f5ef712f",
+    "test/saved_views_test.dart": "5e2ecfb8b3f059c7bab1c2fd7a3eb10af1cd067f062a2681cabba67b09cfa5ca",
+    "test/task_resources_test.dart": "4adb6aed0324ac13cb00a291509d905f2bd5aab99de9db967e5a5f1c6780c707",
+    "test/workspace_test.dart": "3269b0c6ef41430bf1f4f4a1b436db98feb639b57861f4498ab069b729fad0d6",
+    "docs/STORAGE_CLEANUP_2026_11_04.md": "7ab17ca434541d7f6947f3be991982841e220bc8097fe6b3fd3e86882c09f171",
+    "docs/STORAGE_MAINTENANCE.md": "0d618cf038b7da947e06b5b0f3bd4528491321147d97539d170c1dce098ced10",
+    "docs/TODORBIT_MODULAR_ARCHITECTURE_AUDIT.md": "0c6a7792d23463c6362badb5499b0422e070be239d43454f4ebf703d6feac5e2",
+    "lib/features/time_tracking/focus_workspace.dart": "7afa077cb9eb1a1c5b751c3be6601a7d0d895ca372cf2b11b537ec8bf39f30fd",
+    "lib/features/workspace/task_details_view.dart": "89224e9f2284cd9a8a0efd17f9d40ad62182f69b821749f9cea01e052802ab79",
+    "lib/features/workspace/unified_resources_section.dart": "71899233a9f03a133a77ddc5bdaf05667ebc46b3cb88eb34f1a48defd0caafb3"
+  },
+  "reviewedFiles": {
+    "analysis_options.yaml": {
+      "sha256": "dbdb095ba9629b1281dfb0a1c3ac0d37da578d48b26d02f75b3cb9b6b21142f4",
+      "gitBlob": "b184301c4d403ce431eb7a76613f9c30be8fa309"
+    },
+    "experiments/widget-shell-probe/LifeManagerWidgetRepository.cs": {
+      "sha256": "7a0f0eec8ee4680a5e93479a79b21d38f35379a19c16d059bf47187e29411f0a",
+      "gitBlob": "e165a55b5b4e2b4fa7aed78e940d2e6d9672f7ff"
+    },
+    "experiments/widget-shell-probe/widget-shell-probe.csproj": {
+      "sha256": "7a1d7c3ac5f5d13e8ee2da219472f4facaaa7f60ac77d316554165298cd50afe",
+      "gitBlob": "1767384e137fb76049eff9c95e520f620ca38ba0"
+    },
+    "lib/app/app_controller.dart": {
+      "sha256": "bace8b0a0de1df854d466c54e3afa3f9cf22b396165edf754c34c665d93ab8f1",
+      "gitBlob": "3279333a5b2481334fc2742d528622897af060bd"
+    },
+    "lib/data/app_database.dart": {
+      "sha256": "47baaaa1803b945d7df31b1a45c19849b65f308c4ea0e2a3fac3b12e8a8c914f",
+      "gitBlob": "e671b6709c10570742326e22a6e670e9925cc2fe"
+    },
+    "lib/data/appearance_preference_store.dart": {
+      "sha256": "f68013ba3a81abacff84f84c25602d046c8d583bd03736c7f8f0a29561e8a160",
+      "gitBlob": "7d97f632943534289fcc32ea0f932c8acf6bc799"
+    },
+    "lib/data/backup_service.dart": {
+      "sha256": "f356c91ce10d4eb3cc601d5393d73e28a89f3db2fe8c9ec2dfb1a0b3845a0c61",
+      "gitBlob": "59cae65de0c6b4e8ccc4c90fa7f477ac19e7600e"
+    },
+    "lib/data/cloud/sync_batch_codec.dart": {
+      "sha256": "0ffa3534cb2d3d11c750217cb536f9ea82d50186c6a3b22c25bf88c2b7f7151e",
+      "gitBlob": "567de2c33aae30b80000efce6ad43f616735cfe3"
+    },
+    "lib/data/saved_view_repository.dart": {
+      "sha256": "1fa89e81fec27658c33be6494aaccfcd2f5d012f9b957e2e5f840f5325516dbe",
+      "gitBlob": "2dbbd6250b03bed71fc4a64efa029ba8d020734f"
+    },
+    "lib/data/sync_schema.dart": {
+      "sha256": "1165e2d1e6db59dbe9b515ba29bbbed2b216ac39f9a33071ddea8c16f3a4c689",
+      "gitBlob": "82efc530845b34dcd5ebe00f68b0add056d06acb"
+    },
+    "lib/data/task_resource_repository.dart": {
+      "sha256": "198519fc9b3c648a110247179067491b4f450d8f3c74083d0c641e056e213aa4",
+      "gitBlob": "b62fbaac268d3c574a3f1d7ebd7c46067ff75134"
+    },
+    "lib/data/time_repository.dart": {
+      "sha256": "9e2053aaa7a409992298ae830265cada33590050728f3f6ac1b9299155ccaa86",
+      "gitBlob": "76c2fbc4e5db61235d1517faa70f09e80b2a6499"
+    },
+    "lib/data/trash_repository.dart": {
+      "sha256": "f8a97b0b56adf05d5a9dc83168271e5f8ffc06bec26b9c9ef08283adcf433e5f",
+      "gitBlob": "c21e89ead6d2e9cf712c3a7a0cc37b9df03d1719"
+    },
+    "lib/domain/focus_session.dart": {
+      "sha256": "3af9ea5413844392fb1d6bcee92a06a7d4144a9dd7e8bff995343149be356e92",
+      "gitBlob": "e059518d219413108ce0609256c1f8c19f1638b6"
+    },
+    "lib/domain/saved_views.dart": {
+      "sha256": "acb1f9db3dcc281071daadcf1e2d3bc74073deeded1d0d46239ec0db242266fc",
+      "gitBlob": "d74b17a9ed436fd1fddde054bbccae360fbe018e"
+    },
+    "lib/domain/sync/portable_preferences.dart": {
+      "sha256": "f1eab4a867b2e6da94bc4bf4a38a8b4b208354ef05fa701addfbd2b6423fdcb7",
+      "gitBlob": "8838292fe07520c62c37709263c705c28528bed4"
+    },
+    "lib/domain/task_view_preferences.dart": {
+      "sha256": "11b2dd880f5d24513cf45c0f9b0eacc30bfb32df7803c3e497fb5968b44097c4",
+      "gitBlob": "cb64a4a3ae8f9c17768179f6342f3d3a7cf1b5a3"
+    },
+    "lib/domain/time_tracking.dart": {
+      "sha256": "5dd63f0cdc88839956c88c46ac9df71feefcf29184c84f8da626875edaffd460",
+      "gitBlob": "6d5773a1137d3b5beb15efd5ebb1403fb681f284"
+    },
+    "lib/features/mobile/mobile_workspace.dart": {
+      "sha256": "b8c4f1f1779ae2e2b4d78b89069ff1ddb9d28350017d5b5cb6643de812ff0e4a",
+      "gitBlob": "d3299ee0b2f9c0040556ea9f0ca1d4985d23b755"
+    },
+    "lib/features/search/advanced_search_dialog.dart": {
+      "sha256": "97e71473e6201f904d2078afe64e2935c368cfbd330260bc3c38516f3fcacf53",
+      "gitBlob": "c46c879b6f33f7c33b1a7a9ad458b181fe043e42"
+    },
+    "lib/features/shared/scroll_edge_fade.dart": {
+      "sha256": "cf3eb45fbc9e7fead651362cab2bffb25e4bcb0a2c2edd807031d257446ec337",
+      "gitBlob": "78d165ac71a08c946042f5b6579cf119c4a1a3e0"
+    },
+    "lib/features/time_tracking/focus_workspace.dart": {
+      "sha256": "97b4a1a73c4898c9eca45429e3025330bad59e2e45b30fdae469055967016ef5",
+      "gitBlob": "36a28c3f950f43c4679ef59b7b54529519b78e58"
+    },
+    "lib/features/workspace/task_composition_section.dart": {
+      "sha256": "bb3d903c43c6add44b5c40b8da0a2272259e5e90bffc7a9a297ba902b6a838a8",
+      "gitBlob": "73e382ee37231060025f251044351009bce08f69"
+    },
+    "lib/features/workspace/task_details_view.dart": {
+      "sha256": "8b981cbadd56aad7df83135d3daadc37913499643abd6b1aa83bbd863b07f670",
+      "gitBlob": "3aec19065c1f3cc71c4d880968a8409d6234b1a5"
+    },
+    "lib/features/workspace/task_editor.dart": {
+      "sha256": "ccf295dac71d2d23bb289ef79ef0c50c57ccb96e4d665d776573d2e7967d5505",
+      "gitBlob": "1345eb0de07b7b1f6ed6fecd6b2cb23cd54c6e67"
+    },
+    "lib/features/workspace/trash_dialog.dart": {
+      "sha256": "b99a157e72f5d562a0eb54748c0ac8cc2746a375e25da959346c0c99c8731fe0",
+      "gitBlob": "15af229c0639d5454cb39679a22c0cf17e53b22d"
+    },
+    "lib/features/workspace/unified_resources_section.dart": {
+      "sha256": "16ad7bbf412a9c0c2aaec4db428b3c4a3bcf36c89b1d1e77afecb68d4c94bf65",
+      "gitBlob": "7aaa05cbac33d4fc7076d054e07522cfe96c88a4"
+    },
+    "lib/features/workspace/workspace.dart": {
+      "sha256": "59ed751a7099df8d670d1812c53470881fd44b1a3366d0cc6e7a959355b05486",
+      "gitBlob": "aa0ebfa20ebc883ce43a60c199f3dd48380e2623"
+    },
+    "pubspec.lock": {
+      "sha256": "d7f08f3cbe6018bda46a67719b60b4a09a55492dc4862ff4d4c08169d23b6194",
+      "gitBlob": "088ed8d633901b7551845e331248313e71f41679"
+    },
+    "pubspec.yaml": {
+      "sha256": "2a476e70ef2d017ef0ee6dc425567db4c9922d5e42b839c6085d7184905b1bfd",
+      "gitBlob": "bda957e29fbd4a68c35f5e560fd8f80487b86aad"
+    },
+    "test/database_initialization_test.dart": {
+      "sha256": "c4feac255d4c2ad2e2fe9431b2dd7779b8ecf8959e504fa983a7be14f5ef712f",
+      "gitBlob": "527839ae1c5da4994071236e0a9236d75d5d311a"
+    },
+    "test/focus_session_test.dart": {
+      "sha256": "3c0f79ef397911a9f3d78ee2738c0a1cd79a0b72758e7523eb39b8d17aadc459",
+      "gitBlob": "91d0dd814fdd97869ffc191e030b5b0a4ffaaa93"
+    },
+    "test/saved_views_test.dart": {
+      "sha256": "5e2ecfb8b3f059c7bab1c2fd7a3eb10af1cd067f062a2681cabba67b09cfa5ca",
+      "gitBlob": "ef51cd2670fcd8d3a93259bfeb0f6a3f9e241a4c"
+    },
+    "test/task_resources_test.dart": {
+      "sha256": "3f8d528467c7d66a91f8d11681e70d2860ea366091d52d7d0ddcacba045b7aa0",
+      "gitBlob": "31d05f7b49e93b03f5a3ae26c9100cf965938bd3"
+    },
+    "test/uiux03_focus_widget_test.dart": {
+      "sha256": "e8c6c51f46afad41149c70b87bd0e449b8b0e4e0bc86763966a1138e1d0ca930",
+      "gitBlob": "045465a3b7ccd79cffe1a9e49e966e09ded77d03"
+    },
+    "test/uiux03_navigation_test.dart": {
+      "sha256": "adf6fc9d73352a2a72a54f1a80fc8c9fac8e01be48b1d0cd919392c38a5e9f71",
+      "gitBlob": "d8093b236c5345f907b8535db767908e7294508d"
+    },
+    "test/uiux03_resources_widget_test.dart": {
+      "sha256": "3a91cd2caa418c6b9c7690c2b16e03f04a95fd7d930b103895fde8de832c2f7f",
+      "gitBlob": "69d96dd9afef4b78e9a005881d32449e9485555e"
+    },
+    "test/uiux03_review_test.dart": {
+      "sha256": "71c1bed4951a51e46f7c7dd81c5b284052c8a9efec036e813818d01d1e1ad7bd",
+      "gitBlob": "496bccfabcb5e1c101d600484a1651e5e0902590"
+    },
+    "test/uiux03_sync_test.dart": {
+      "sha256": "3bdd5640e85aa804e43b40ee337b7cd23baa65792f54df2ee7e334038a5ebbfc",
+      "gitBlob": "9730694c8b24b185f13043a9071ff5c948e21999"
+    },
+    "test/uiux03_transfer_test.dart": {
+      "sha256": "e105cc99b164b08235316dcbe4485cc8b3cf9eab1de32f8bb0d171476a154dca",
+      "gitBlob": "a49bfcc8c92b83e115de669af61a3e46971ddcba"
+    },
+    "test/workspace_test.dart": {
+      "sha256": "3269b0c6ef41430bf1f4f4a1b436db98feb639b57861f4498ab069b729fad0d6",
+      "gitBlob": "afe167ad2a83fd3e6d372e84da0afddeb19537e4"
+    },
+    "windows/CMakeLists.txt": {
+      "sha256": "bfbf2390db5060df8e26e79bdd2f6d6e04b1402a165f5c1b3a470926a98fbc89",
+      "gitBlob": "b43ccae4da158f82d9be6c5523d9cb3cd20aa09a"
+    },
+    "windows/runner/CMakeLists.txt": {
+      "sha256": "8a2846015ba7355ed9199eb9c4569efc3fbba3f2ce162f16d6e316e9542e95b4",
+      "gitBlob": "ef1cb8eb9d9b6a62074cc7174cdf288bab947a0a"
+    },
+    "windows/runner/flutter_window.cpp": {
+      "sha256": "b1053f3883389b579ff12dc3b15f37379c0fb7fcf7134b8af1558eac3ccbfbaf",
+      "gitBlob": "66fe87bcb7d34ac88bf27c2785e244a3ef546306"
+    }
+  },
+  "logs": {
+    "additional-final.log": "968856edfa236a1fa45684dc22bca1b70df328bd31afd3e6d664bfa6ca665220",
+    "analysis-clean.log": "56034d702842a9d778f15e75a6b7571aa5775fd842c628a1cbef100e9a6add31",
+    "analysis-final.log": "a7e364f11f8e562d199ebe7731c19308ba9027a964452c2f43f119c0bc44a6f7",
+    "analyze.log": "f223436e9b90191ce71ec22057d28abaf141b5aca95780f95a3e48c7ba7615fc",
+    "assignment-assertion.log": "b000335dddb79233ae14e19454d55fe0e7207965ae5ff5810992bb61138cb760",
+    "critical-final.log": "3dc31560f87fb01b76feb357516095767a4880701e5585ae2ab1bb5b6c50b380",
+    "defect-probes-valid.log": "3050808ddc46e832c1f611a77145016bee515773dc663e5fe262a562bfb44b65",
+    "defect-probes.log": "6cc37699ae0d47dbc0721764e865a686f08c04e3ff50740868f565cb778f4582",
+    "focus-critical-final.log": "21f516afc6c0f9275dd310103d9d8f85e356c3e96003d406ccace982584e9e95",
+    "focused.log": "db233f8e8fc41f0d2cd07f55d1f9760524d57b7b63c4fd53a4eddaf8f3df19cd",
+    "format-final.log": "cdb064cf4e15d7284566883f6df5702ef2f7748cedacccb8b0807246c3652fa3",
+    "format-focus.log": "840d19c928c6c7490a8ac1a94d4cd5af5731f1f51c8fd47de2379e018b5dc289",
+    "format-last.log": "0837b5e8f174ce2906bbfaf7275594808b364d5bea29e3772ff3166eb33e7744",
+    "format-navigation.log": "af71da605b2fc7dcbda0a44578b5dd6d384b19a5fb96ab5d7ec994f6d785c2cf",
+    "format-tests.log": "1b079e02e82efd931d068045a17cb1cad28a41ae40972d781895dc514bd28298",
+    "format-ui.log": "53e40df658cfdc4f6ce53b20588104aa4a62b43a9861ed319261256c354997d0",
+    "format.log": "b997534482401500b400d8a222e57b6f79c2e1f0c46b3ad9c049d8ae663cbef5",
+    "image-drop-diagnostic.log": "60419f769e23071811255a75dc96c75792804cbc2c12dcf38cf9e8b6bc0b2b23",
+    "journeys-final.log": "dd6a712a8c286f03bea5a9db65747081d6fa0ac38bcb7031b8471ff86d5e6a30",
+    "journeys-fixed.log": "9842180369b490e5d7c5a2404df45bb79b3810b5d6f7907857217470ba4d89c2",
+    "live-existing.log": "19ef644e332c9d1f04f9cc89e02ae10a879e9d9afd4d8d6b357451e29b93c3d2",
+    "live-probe-fixed.log": "d08828febf56234c30233be87f5653fccc5a17c82da5496c33ae04d90eef69b7",
+    "live-probe.log": "1f7ee9d2fc30be79b7d662598787be745b476c389eab73868d3208767e840426",
+    "native-self-test.log": "17222236bf8ff0b404be10da21ce5c631f89d7cec50aa85439dd561b19cfafbe",
+    "native-writer.log": "400666d13a2917e8ea91f9b267239c8115ae92350411a93cd5b69232940604a8",
+    "navigation-diagnostic.log": "fc3b3ea9275fedaeca2afa089ec5a62dd2d600ccdfb15fd44633e30f80892c59",
+    "navigation-regression.log": "f5fa34768dd7559186deba97d4cac2824cac567f399e02de837ee448a59692ad",
+    "pre-data.log": "8d6c89877997c71199f3f525058804e3984b5008c162b19d05556a0a529261c2",
+    "pre-drop.log": "ec8e79620ef520bf0682dc99082f6d71fc7456ef6a87b8e59b42a5da01ebffa9",
+    "pre-focus.log": "a8357f6b1d8586c9e275fb177256287b36252771b1ce1986ed73c6a9b1a9eccf",
+    "runtime-transcript.txt": "a6d0db569a4a25ba60af113cd1b24fc3e15ee5be2d67424640d7c53b3f5af6bd",
+    "sync-rerun.log": "59d93cb6900edd5e0bbd1208710c73db6a98f234d973572cc7868458b9c9cbcd",
+    "ui-final.log": "816b223bfd76f014105d92e174641e7d21ae60a8cacdf5894bb796b8ccb5fc45",
+    "windows-release.log": "6fc7d01eb517f67debf9a329c2b20b081322bb5f74884942c8590c2c3608da54"
+  },
+  "verificationClosedAt": "2026-11-15T18:13:38.756804+03:00",
+  "artifacts": {
+    "build/windows/x64/runner/Release/Todorbit.exe": "30e421ecaaf56e0eaa56fd88a2361615caa966ba1312fe3e043deb4d5f981ae5",
+    "build/windows/x64/runner/Release/TodorbitWidget.exe": "d97e5460c25f679d45849f4d421252d1865929e928e32ceb19453f6005a59d96",
+    "build/windows/x64/runner/Release/data/app.so": "566a5704e18dbc3ad99fc88f5e994172b510cd9581fdf38af9b92a33dd60441d",
+    ".buildlog/uiux03-review/runtime-focus.png": "0b411dfdf7a1815b7d609e02086ee0cbd1d327213046145ddb04fd79ab5e92a1"
+  },
+  "gitCheckpoint": "HEAD unchanged; reviewed implementation and review records staged explicitly; three initial unrelated documents left untracked",
+  "toolchain": {
+    "frameworkVersion": "3.47.7",
+    "frameworkRevision": "abaf9c523780a608bd46686fd5e53740a07077f8",
+    "engineRevision": "deb287481e3ce9468f3434937ced4240a70539ca",
+    "dartSdkVersion": "3.13.5",
+    "channel": "stable"
+  },
+  "stagedReviewPaths": [
+    "docs/AI_REVIEW_HISTORY.md",
+    "docs/AI_REVIEW_QUEUE.md",
+    "docs/DEFERRED_VERIFICATION.md",
+    "docs/PROGRESS.md",
+    "docs/TEST_RUN_LEDGER.md",
+    "docs/UIUX03_CODEX_REVIEW_2026_11_15.md",
+    "docs/UIUX03_REVIEW_SOURCE_MANIFEST_2026_11_15.json",
+    "experiments/widget-shell-probe/LifeManagerWidgetRepository.cs",
+    "lib/app/app_controller.dart",
+    "lib/data/app_database.dart",
+    "lib/data/appearance_preference_store.dart",
+    "lib/data/backup_service.dart",
+    "lib/data/cloud/sync_batch_codec.dart",
+    "lib/data/saved_view_repository.dart",
+    "lib/data/sync_schema.dart",
+    "lib/data/task_resource_repository.dart",
+    "lib/data/time_repository.dart",
+    "lib/data/trash_repository.dart",
+    "lib/domain/focus_session.dart",
+    "lib/domain/saved_views.dart",
+    "lib/domain/sync/portable_preferences.dart",
+    "lib/domain/task_view_preferences.dart",
+    "lib/domain/time_tracking.dart",
+    "lib/features/mobile/mobile_workspace.dart",
+    "lib/features/search/advanced_search_dialog.dart",
+    "lib/features/shared/scroll_edge_fade.dart",
+    "lib/features/time_tracking/focus_workspace.dart",
+    "lib/features/workspace/task_composition_section.dart",
+    "lib/features/workspace/task_details_view.dart",
+    "lib/features/workspace/task_editor.dart",
+    "lib/features/workspace/trash_dialog.dart",
+    "lib/features/workspace/unified_resources_section.dart",
+    "lib/features/workspace/workspace.dart",
+    "test/database_initialization_test.dart",
+    "test/focus_session_test.dart",
+    "test/saved_views_test.dart",
+    "test/task_resources_test.dart",
+    "test/uiux03_focus_widget_test.dart",
+    "test/uiux03_navigation_test.dart",
+    "test/uiux03_resources_widget_test.dart",
+    "test/uiux03_review_test.dart",
+    "test/uiux03_sync_test.dart",
+    "test/uiux03_transfer_test.dart",
+    "test/workspace_test.dart",
+    "windows/runner/flutter_window.cpp"
+  ]
+}

@@ -1,5 +1,20 @@
 # Persistent test run ledger
 
+## UIUX-03 independent review (2026-11-15, UTC+03:00)
+
+Base `e7810d2` plus [dirty-source/assertion/dependency identities](UIUX03_REVIEW_SOURCE_MANIFEST_2026_11_15.json).
+[Receipt](UIUX03_CODEX_REVIEW_2026_11_15.md) records every scoped invocation,
+fixture/probe failure, confirmation and reason for reruns/reuse. 84 distinct focused
+Flutter checks have final passing evidence, including migration/gate/kill safety,
+resource/saved-view/visibility exchange, scheduled restore, schema-26/27/28 batch
+read compatibility and old-client rejection, timer work/break/recovery boundaries,
+atomic deletion, both navigation shells and schema-29 native writer compatibility.
+Final analysis: 36 affected Dart paths, zero issues. Windows Release using the
+existing approved configuration/CRT wrapper and isolated native self-test pass.
+No full suite or unrelated broad audit repeated. Gemini's unbound implementation
+summary was not counted as a source-matched pass. Actual Chrome/Android/physical
+and exact-candidate acceptance remain deferred; no beta publication approval.
+
 ## DRV-01 beta 21 release qualification/publication (2026-11-15, UTC+03:00)
 
 [Publication receipt](TODORBIT_BETA_21_PUBLICATION.md) records version 1.0.19-beta.21+44, code 44, Windows numeric PE 1.0.19.44.

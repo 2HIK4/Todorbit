@@ -35,10 +35,11 @@ import '../shared/text_prompt_dialog.dart';
 import '../shared/icon_picker.dart';
 import '../shared/event_color_picker.dart';
 import '../templates/templates_dialog.dart';
-import '../time_tracking/time_tracking_dialog.dart';
 import '../workspace/sequence_dialog.dart';
 import '../workspace/task_editor.dart';
 import '../workspace/trash_dialog.dart';
+import '../workspace/task_details_view.dart';
+import '../time_tracking/focus_workspace.dart';
 import 'mobile_calendar.dart';
 import 'mobile_settings.dart';
 import 'mobile_ui.dart';
@@ -452,6 +453,36 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
             : Text(title(c)),
         actions: [
           SyncStatusButton(allowAutomatic: !searching),
+          PopupMenuButton<String>(
+            tooltip: 'Library',
+            icon: const Icon(Icons.collections_bookmark_outlined),
+            onSelected: (value) {
+              if (value == 'templates') dialog(const TemplatesDialog());
+              if (value == 'sequences') dialog(const SequenceDialog());
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'templates',
+                child: Row(
+                  children: [
+                    Icon(Icons.copy_all_outlined, size: 20),
+                    SizedBox(width: 12),
+                    Text('Templates and routines'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'sequences',
+                child: Row(
+                  children: [
+                    Icon(Icons.linear_scale, size: 20),
+                    SizedBox(width: 12),
+                    Text('Task sequences'),
+                  ],
+                ),
+              ),
+            ],
+          ),
           IconButton(
             tooltip: searching ? 'Close search' : 'Search tasks and events',
             onPressed: () => setState(() {
@@ -527,7 +558,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: timer.taskId == null
                       ? null
-                      : () => dialog(TimeTrackingDialog(taskId: timer.taskId!)),
+                      : () => openFocus(timer.taskId!),
                 ),
               ),
             if (pendingLink != null)
@@ -664,6 +695,46 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const ItemFilters(),
+                if (c.isStandardView(c.view) && c.hiddenStandardTasksCount > 0)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest
+                          .withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant
+                            .withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.visibility_off_outlined,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${c.hiddenStandardTasksCount} tasks hidden by category or project settings',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 if ({
                       WorkspaceView.project,
                       WorkspaceView.category,
@@ -890,7 +961,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                   children: subtitleParts,
                 ),
               ),
-        onTap: () => task(t),
+        onTap: () => openTaskDetails(t),
         onLongPress: () => actions(t, c),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -914,6 +985,40 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
               onPressed: () => actions(t, c),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void openTaskDetails(LifeTask t) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TaskDetailsView(
+          task: t,
+          onBack: () => Navigator.pop(context),
+          onEdit: () => task(
+            ref
+                .read(appControllerProvider)
+                .tasks
+                .firstWhere((current) => current.id == t.id),
+          ),
+          onStartFocus: () {
+            Navigator.pop(context);
+            openFocus(t.id);
+          },
+        ),
+      ),
+    );
+  }
+
+  void openFocus(String taskId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FocusWorkspace(
+          taskId: taskId,
+          onBack: () => Navigator.pop(context),
         ),
       ),
     );
@@ -956,7 +1061,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
       case 'reschedule':
         await dialog(SmartRescheduleDialog(scope: t.title, taskIds: [t.id]));
       case 'timer':
-        await dialog(TimeTrackingDialog(taskId: t.id));
+        openFocus(t.id);
       case 'archive':
         await run(() => c.archiveTask(t));
       case 'delete':
@@ -1043,25 +1148,72 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                   ),
               ],
             ),
+          const Divider(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Text(
+              'CUSTOM VIEWS',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                letterSpacing: 1.2,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
           for (final saved in c.orderedSavedViews.where(
             (v) => !c.hiddenNavigation.contains(v.id),
           ))
             ListTile(
-              leading: const Icon(Icons.bookmark_outline),
+              leading: Icon(iconForKey(saved.iconKey, Icons.bookmark_outline)),
               title: Text(saved.name),
+              selected: c.view == WorkspaceView.saved && c.scopeId == saved.id,
               onTap: () {
                 Navigator.pop(context);
                 navigate(WorkspaceView.saved, id: saved.id);
               },
-              trailing: IconButton(
-                tooltip: 'Edit saved view',
-                icon: const Icon(Icons.edit_outlined),
-                onPressed: () {
-                  Navigator.pop(context);
-                  dialog(AdvancedSearchDialog(savedView: saved));
+              trailing: PopupMenuButton<String>(
+                tooltip: 'View options',
+                icon: const Icon(Icons.more_vert, size: 20),
+                onSelected: (value) async {
+                  if (value == 'edit') {
+                    Navigator.pop(context);
+                    dialog(AdvancedSearchDialog(savedView: saved));
+                  } else if (value == 'rename') {
+                    Navigator.pop(context);
+                    final name = await showDialog<String>(
+                      context: context,
+                      animationStyle: AppMotion.style(context),
+                      builder: (_) => TextPromptDialog(
+                        title: 'Rename custom view',
+                        initial: saved.name,
+                      ),
+                    );
+                    if (name != null && name.trim().isNotEmpty) {
+                      await run(() => c.renameSavedView(saved, name.trim()));
+                    }
+                  } else if (value == 'duplicate') {
+                    await run(() => c.duplicateSavedView(saved));
+                  } else if (value == 'delete') {
+                    await run(() => c.deleteSavedView(saved));
+                  }
                 },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'edit', child: Text('Edit filters')),
+                  PopupMenuItem(value: 'rename', child: Text('Rename')),
+                  PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
+                  PopupMenuItem(value: 'delete', child: Text('Delete view')),
+                ],
               ),
             ),
+          ListTile(
+            leading: const Icon(Icons.add),
+            title: const Text('Add View'),
+            onTap: () {
+              Navigator.pop(context);
+              dialog(const AdvancedSearchDialog());
+            },
+          ),
+          const Divider(),
           ListTile(
             leading: const Icon(Icons.tune),
             title: const Text('Customize navigation'),
@@ -1076,30 +1228,6 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
             onTap: () {
               Navigator.pop(context);
               organization(c);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.filter_list),
-            title: const Text('Search and saved views'),
-            onTap: () {
-              Navigator.pop(context);
-              dialog(const AdvancedSearchDialog());
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.copy_all_outlined),
-            title: const Text('Templates and routines'),
-            onTap: () {
-              Navigator.pop(context);
-              dialog(const TemplatesDialog());
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.linear_scale),
-            title: const Text('Task sequences'),
-            onTap: () {
-              Navigator.pop(context);
-              dialog(const SequenceDialog());
             },
           ),
           ListTile(
@@ -1257,6 +1385,18 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                             () => c.setCategoryEventColor(category.id, null),
                           ),
                         ),
+                      SwitchListTile(
+                        title: const Text('Show in standard views'),
+                        subtitle: const Text(
+                          'When off, tasks appear only in search and custom views',
+                        ),
+                        value: current.isCategoryShownInStandardViews(
+                          category.id,
+                        ),
+                        onChanged: (_) => run(
+                          () => c.toggleCategoryStandardVisibility(category.id),
+                        ),
+                      ),
                       ListTile(
                         title: const Text('Rename category'),
                         onTap: () async {
@@ -1313,21 +1453,33 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                           },
                           trailing: PopupMenuButton<String>(
                             tooltip: 'Project actions',
-                            itemBuilder: (_) => const [
-                              PopupMenuItem(
+                            itemBuilder: (_) => [
+                              const PopupMenuItem(
                                 value: 'icon',
                                 child: Text('Project icon'),
                               ),
-                              PopupMenuItem(
+                              CheckedPopupMenuItem(
+                                value: 'standard_views',
+                                checked: current.isProjectShownInStandardViews(
+                                  p.id,
+                                ),
+                                child: const Text('Show in standard views'),
+                              ),
+                              const PopupMenuItem(
                                 value: 'template',
                                 child: Text('Save project template'),
                               ),
-                              PopupMenuItem(
+                              const PopupMenuItem(
                                 value: 'delete',
                                 child: Text('Delete empty project'),
                               ),
                             ],
                             onSelected: (value) async {
+                              if (value == 'standard_views') {
+                                await run(
+                                  () => c.toggleProjectStandardVisibility(p.id),
+                                );
+                              }
                               if (value == 'delete') {
                                 await run(() => c.deleteProject(p.id));
                               }

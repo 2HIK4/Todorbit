@@ -187,6 +187,63 @@ extension TrashRepository on LifeRepository {
     });
   }
 
+  Future<void> deleteArchivedSeries(ArchivedSeries series) async {
+    await db.transaction(() async {
+      await _requireNoFamilyTimer(series.familyId);
+      final changed = await db.customUpdate(
+        "UPDATE recurrence_series SET deleted_at=?,archived_at=NULL,updated_at=? "
+        "WHERE family_id=? AND archived_at=? AND deleted_at IS NULL",
+        variables: [
+          Variable.withString(DateTime.now().toUtc().toIso8601String()),
+          Variable.withString(DateTime.now().toUtc().toIso8601String()),
+          Variable.withString(series.familyId),
+          Variable.withString(series.archivedAt.toUtc().toIso8601String()),
+        ],
+      );
+      if (changed == 0) {
+        throw StateError('Archived series changed; refresh first');
+      }
+    });
+  }
+
+  Future<void> deleteArchivedTask(LifeTask previous) =>
+      db.transaction(() async {
+        await _requireNoActiveTimerForTask(previous.id);
+        final now = _nextTaskRevision(previous.updatedAt).toIso8601String();
+        final changed = await db.customUpdate(
+          "UPDATE tasks SET deleted_at=?,archived_at=NULL,updated_at=? "
+          "WHERE id=? AND updated_at=? AND archived_at IS NOT NULL AND deleted_at IS NULL",
+          variables: [
+            Variable.withString(now),
+            Variable.withString(now),
+            Variable.withString(previous.id),
+            Variable.withString(previous.updatedAt.toUtc().toIso8601String()),
+          ],
+        );
+        if (changed != 1) {
+          throw StateError('Archived task changed; refresh first');
+        }
+      });
+
+  Future<void> deleteArchivedSelection(
+    List<ArchivedSeries> series,
+    List<LifeTask> tasks,
+  ) => db.transaction(() async {
+    for (final item in series) {
+      await deleteArchivedSeries(item);
+    }
+    for (final task in tasks) {
+      await deleteArchivedTask(task);
+    }
+  });
+
+  Future<void> purgeTrashSelection(List<TrashItem> items) =>
+      db.transaction(() async {
+        for (final item in items) {
+          await permanentlyDelete(item);
+        }
+      });
+
   Future<void> deleteSeries(LifeTask task) async {
     await db.transaction(() async {
       final familyId = await _familyForTask(task);

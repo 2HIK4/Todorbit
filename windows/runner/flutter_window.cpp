@@ -79,7 +79,10 @@ class ExplorerFileDropTarget final : public IDropTarget {
   HRESULT STDMETHODCALLTYPE DragEnter(IDataObject* data, DWORD,
       POINTL position, DWORD* effect) override {
     FORMATETC format{CF_HDROP, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
-    accepts_ = data != nullptr && SUCCEEDED(data->QueryGetData(&format));
+    FORMATETC url{static_cast<CLIPFORMAT>(::RegisterClipboardFormatW(L"UniformResourceLocatorW")),
+                  nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
+    accepts_ = data != nullptr && (SUCCEEDED(data->QueryGetData(&format)) ||
+                                  SUCCEEDED(data->QueryGetData(&url)));
     *effect = accepts_ ? DROPEFFECT_COPY : DROPEFFECT_NONE;
     if (accepts_) callback_("hover", POINT{position.x, position.y}, {});
     return S_OK;
@@ -103,7 +106,26 @@ class ExplorerFileDropTarget final : public IDropTarget {
     accepts_ = false;
     FORMATETC format{CF_HDROP, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
     STGMEDIUM medium{};
-    if (FAILED(data->GetData(&format, &medium))) return S_OK;
+    if (FAILED(data->GetData(&format, &medium))) {
+      FORMATETC url{static_cast<CLIPFORMAT>(::RegisterClipboardFormatW(L"UniformResourceLocatorW")),
+                    nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
+      if (FAILED(data->GetData(&url, &medium))) return S_OK;
+      const SIZE_T size = ::GlobalSize(medium.hGlobal) / sizeof(wchar_t);
+      const auto* value = static_cast<const wchar_t*>(::GlobalLock(medium.hGlobal));
+      std::wstring target;
+      if (value != nullptr && size > 0 && size <= 32768) {
+        const auto* end = std::find(value, value + size, L'\0');
+        if (end != value + size) target.assign(value, end);
+      }
+      if (value != nullptr) ::GlobalUnlock(medium.hGlobal);
+      ::ReleaseStgMedium(&medium);
+      if (!target.empty()) {
+        callback_("urlDrop", POINT{position.x, position.y},
+                  {Utf8FromUtf16(target.c_str())});
+        *effect = DROPEFFECT_COPY;
+      }
+      return S_OK;
+    }
     std::vector<std::string> paths;
     const HDROP files = static_cast<HDROP>(medium.hGlobal);
     const UINT count = ::DragQueryFileW(files, 0xFFFFFFFF, nullptr, 0);
@@ -503,7 +525,7 @@ bool FlutterWindow::OnCreate() {
         }
         flutter::EncodableList files;
         for (const auto& path : paths) files.emplace_back(path);
-        details[flutter::EncodableValue("files")] = flutter::EncodableValue(files);
+        details[flutter::EncodableValue(std::string(event) == "urlDrop" ? "urls" : "files")] = flutter::EncodableValue(files);
         file_drop_channel_->InvokeMethod(event,
             std::make_unique<flutter::EncodableValue>(details));
       });

@@ -16,9 +16,9 @@ import 'sync_device_schema.dart';
 class AppDatabase extends GeneratedDatabase {
   AppDatabase(super.executor);
 
-  static const currentSchemaVersion = 28;
+  static const currentSchemaVersion = 29;
   // These versions have identical immutable Sync recovery-table layouts.
-  static const compatibleSyncHistorySchemas = {26, 27, 28};
+  static const compatibleSyncHistorySchemas = {26, 27, 28, 29};
   bool _syncGroupingReady = false;
   final Object _syncGroupZone = Object();
 
@@ -300,12 +300,13 @@ class AppDatabase extends GeneratedDatabase {
             to != currentSchemaVersion) {
           throw StateError('No migration registered from schema $from to $to');
         }
-        if (from == 26 || from == 27) {
+        if (from == 26 || from == 27 || from == 28) {
           if (from == 26) {
             await _createEventProjects();
             await _createChecklistGroups();
           }
-          await _createAlarmRules();
+          if (from < 28) await _createAlarmRules();
+          await _createTaskResources();
           final triggers = await customSelect(
             "SELECT name FROM sqlite_schema WHERE type='trigger' AND name GLOB 'sync_capture_*'",
           ).get();
@@ -467,6 +468,15 @@ class AppDatabase extends GeneratedDatabase {
     )''');
     await customStatement(
       'CREATE INDEX IF NOT EXISTS task_resources_task ON task_resources(task_id, created_at)',
+    );
+    await customStatement('''CREATE TABLE IF NOT EXISTS task_resource_subtasks (
+      resource_id TEXT NOT NULL REFERENCES task_resources(id) ON DELETE CASCADE,
+      subtask_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (resource_id, subtask_id)
+    )''');
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS task_resource_subtasks_subtask ON task_resource_subtasks(subtask_id)',
     );
   }
 

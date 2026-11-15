@@ -1,5 +1,18 @@
 # Progress
 
+## UIUX-03 independent review and beta blockers repaired (2026-11-15)
+
+Reviewed the three uncommitted Gemini batches on `codex/independent-beta-review`
+from `e7810d2`. Repaired explicit schema-29 migration/backup gate, portable resource
+assignments and visibility; native Chrome URL drops; Focus work/break/deadline/
+restart accounting and navigation; Details edit/return and bulk deletion safety.
+84 focused Flutter checks have final passing evidence; affected-path analysis,
+Windows Release and isolated native self-test pass. [Receipt and source identities](UIUX03_CODEX_REVIEW_2026_11_15.md)
+retain failures, reuse and limitations. Separate alarm implementation and three
+unrelated untracked documents are preserved. **Publication is not approved yet**:
+actual Chrome input, Android/device/background behavior and candidate acceptance
+remain in Deferred Verification. No push, merge, version bump or publication.
+
 ## DRV-01 Windows Google Drive repair and beta 21 published (2026-11-15)
 
 Version 1.0.19-beta.21+44, Android code 44, numeric Windows PE 1.0.19.44. Restored approved Desktop OAuth release configuration resolution (`Resolve-GoogleDriveReleaseConfigPath`) and enforced release bundle validation (`Assert-GoogleDriveReleaseBundle`), resolving the Beta 20 regression where Windows builds reported Google Drive unavailable. 20 config tests, 23 cloud tests, 2 sync controller tests, CRT validation, and Android 16-KiB alignment verified. Published Windows installer/portable and production-signed Android universal APK. Documented in [publication receipt](TODORBIT_BETA_21_PUBLICATION.md).

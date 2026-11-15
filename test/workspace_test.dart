@@ -328,6 +328,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Dependent').first);
       await tester.pumpAndSettle();
+      if (find.text('Edit').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Edit').first);
+        await tester.pumpAndSettle();
+      }
       await tester.enterText(
         find.widgetWithText(TextField, 'Title *'),
         'Edited dependent',

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
+import '../../data/life_repository.dart';
 import '../../domain/models.dart';
 import '../../domain/task_composition.dart';
 import '../../domain/task_view_preferences.dart';
@@ -145,16 +146,47 @@ class _TaskCompositionSectionState
         for (var index = 0; index < children.length; index++)
           ListTile(
             dense: true,
-            leading: Icon(
-              children[index].status == TaskStatus.completed
-                  ? Icons.check_circle
-                  : Icons.radio_button_unchecked,
+            leading: IconButton(
+              icon: Icon(
+                children[index].status == TaskStatus.completed
+                    ? Icons.check_circle
+                    : Icons.radio_button_unchecked,
+                color: children[index].status == TaskStatus.completed
+                    ? Theme.of(context).colorScheme.primary
+                    : null,
+                size: 20,
+              ),
+              onPressed: () => _run(() => controller.setComplete(
+                children[index],
+                children[index].status != TaskStatus.completed,
+              )),
             ),
             title: CompositionText(
               text: children[index].title,
               display: controller.taskViewPreferences.compositionTextDisplay,
             ),
             subtitle: Text(_statusLabel(children[index].status)),
+            trailing: PopupMenuButton<String>(
+              tooltip: 'Subtask options',
+              icon: const Icon(Icons.more_vert, size: 18),
+              onSelected: (action) {
+                if (action == 'resources') {
+                  _manageSubtaskResources(children[index], controller);
+                } else if (action == 'delete') {
+                  _run(() => controller.deleteTask(children[index].id));
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'resources',
+                  child: Text('Resources'),
+                ),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Text('Delete subtask'),
+                ),
+              ],
+            ),
             onTap: () => controller.select(children[index].id),
           ),
         if (error != null)
@@ -163,6 +195,85 @@ class _TaskCompositionSectionState
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
       ],
+    );
+  }
+
+  Future<void> _manageSubtaskResources(
+    LifeTask subtask,
+    AppController controller,
+  ) async {
+    final parentId = widget.task.id;
+    final parentResources = await controller.repository.taskResources(parentId);
+    if (!mounted) return;
+    if (parentResources.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No resources attached to the parent task yet.'),
+        ),
+      );
+      return;
+    }
+    final assigned =
+        (await controller.repository.subtaskResourceIds(subtask.id)).toSet();
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              title: Text('Resources for "${subtask.title}"'),
+              content: SizedBox(
+                width: 400,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: parentResources.length,
+                  itemBuilder: (ctx, i) {
+                    final res = parentResources[i];
+                    final isChecked = assigned.contains(res.id);
+                    return CheckboxListTile(
+                      dense: true,
+                      title: Text(res.label),
+                      subtitle: Text(
+                        res.kind.name,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      value: isChecked,
+                      onChanged: (val) async {
+                        if (val == true) {
+                          assigned.add(res.id);
+                        } else {
+                          assigned.remove(res.id);
+                        }
+                        setDialogState(() {});
+                        final currentSubtasks =
+                            (await controller.repository.resourceSubtasks(res.id))
+                                .toSet();
+                        if (val == true) {
+                          currentSubtasks.add(subtask.id);
+                        } else {
+                          currentSubtasks.remove(subtask.id);
+                        }
+                        await controller.repository.assignResourceToSubtasks(
+                          res.id,
+                          currentSubtasks.toList(),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Done'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

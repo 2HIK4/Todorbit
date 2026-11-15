@@ -3,6 +3,23 @@
 Completed entries are archived here before removal from
 [the pending queue](AI_REVIEW_QUEUE.md). Preserve significant defects and fixes.
 
+## UIUX-03 — scoped code review completed after repairs (2026-11-15)
+
+Base `e7810d2`, branch `codex/independent-beta-review`, plus the source identities
+in [the review receipt](UIUX03_CODEX_REVIEW_2026_11_15.md). Reviewed Navigation,
+Custom Views, Resources, Task Details and Focus Workspace on both shells.
+Repaired schema/gate/backup/sync omissions, portable visibility, actual Chrome URL
+payload handling, timer accounting/recovery/navigation, stale Details editing,
+bulk snapshot/transaction safety and the observed narrow Focus overflow.
+
+84 distinct focused Flutter/native-writer checks have final passing evidence,
+with the initial failures, fixture corrections and reused results retained in the
+receipt. Scoped analysis is clean; Windows Release and isolated native self-test
+pass. This closes the scoped code-review entry, **not publication approval**.
+Actual Chrome drag/drop, physical/device input/background and candidate
+packaging/upgrade/service acceptance remain in Deferred Verification. No alarm
+implementation, release channels, tags or Stable assets were changed.
+
 ## UIUX-02 — Approved with limitations after repairs (2026-11-15)
 
 Reviewed dirty source on preserved HEAD `61bde1c`, branch
