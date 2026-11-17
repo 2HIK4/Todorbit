@@ -1,3 +1,4 @@
+import 'planned_session_delete.dart';
 import '../../data/alarm_device_store.dart';
 import '../shared/app_motion.dart';
 import '../../domain/task_composition.dart';
@@ -1791,16 +1792,20 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                                           task.id,
                                     )
                                     .toList(),
-                                onAddSubtask: (title) async {
-                                  LifeTask? created;
-                                  await controller.addSubtask(
-                                    task,
-                                    TaskDraft(title: title),
-                                    onCommitted: (child) => created = child,
-                                  );
-                                  controller.select(task.id);
-                                  return created;
-                                },
+                                onAddSubtask:
+                                    controller.taskParents.containsKey(task.id)
+                                    ? null
+                                    : (title) async {
+                                        LifeTask? created;
+                                        await controller.addSubtask(
+                                          task,
+                                          TaskDraft(title: title),
+                                          onCommitted: (child) =>
+                                              created = child,
+                                        );
+                                        controller.select(task.id);
+                                        return created;
+                                      },
                               ),
                             ],
                           ),
@@ -2184,6 +2189,11 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                                     ? 'Late start'
                                     : 'Tap to edit',
                               ),
+                              trailing:
+                                  session.outcome == SessionOutcome.upcoming &&
+                                      session.actualStartedAt == null
+                                  ? PlannedSessionDelete(session: session)
+                                  : null,
                               onTap: () => _editSession(session),
                             ),
                         ],

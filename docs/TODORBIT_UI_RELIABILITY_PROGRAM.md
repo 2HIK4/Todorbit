@@ -6,6 +6,18 @@
 
 ---
 
+## Current assignment override — Prompt 2 (2026-11-17)
+
+The user's current Prompt 2 is **task timers, details, checklists, subtasks and
+planned session deletion**, on `feature/todorbit-task-ux` in the task worktree,
+base `5803e52`. Codex owns this implementation. This overrides the older prompt
+numbering and agent allocation below for this assignment. Calendar/navigation
+work outside these task journeys belongs to the separate assignment. No merge,
+rebase, push, beta publication, schema/version change or Stable modification.
+
+Implementation and scoped evidence: [Prompt 2 receipt](PROMPT2_TASK_UX_2026_11_17.md).
+The old section 8 is historical planning, not authorization for integration.
+
 ## 1. Executive Summary & Ground Rules
 
 1. **Grounded Source Analysis**: Screenshots and user images are treated as visual reference clues and symptom reports, **never** as proof of a code-level root cause. Every code-level finding is anchored in verified source paths under `lib/`, `windows/`, or `android/`.
@@ -23,7 +35,7 @@
    - **Prompt 0 (Completed)**: Agent skills, quality gates, and grounded issue inventory (documentation and skill updates only).
    - **Prompt 0.5 (Foundational Baseline)**: Viewport constraints, keyboard-inset / IME-aware dialogs, responsive breakpoint wrapping, and card geometry alignment across variants (committed in `a451000`).
    - **Prompt 1 (Authoritative Scope)**: Search UX token unification, progressive disclosure for advanced search, Android IME keyboard-inset form adaptation, and single-route task/event detail presentation (`sidePanel` default vs `fullPage` preference, with zero stale secondary editors).
-   - **Prompt 2**: Navigation integrity, route deduplication, scroll stability, and parent-child continuity.
+   - **Prompt 2 (current authoritative assignment)**: Task timer entry/idempotency, task details, checklist groups/items, one-level subtasks and planned-session deletion. See the current assignment override above.
    - **Prompt 3**: Timer idempotency, monotonic clocks, Focus Workspace lifecycle, and window-focus hover cancellation.
    - **Prompt 4**: Accessibility (WCAG AA contrast >=4.5:1), keyboard traversal (<kbd>Tab</kbd>), screen reader semantics, and reduced motion.
    - **Prompt 5**: Platform-specific integration: Android Content URI persistence and destructive action clarity.
@@ -257,7 +269,7 @@ flutter test --no-pub --concurrency=1 test/repository_test.dart test/task_revisi
 
 ---
 
-## 8. Parallel Worktree Configuration & Integration Plan (Prompts 2 & 3)
+## 8. Historical Parallel Worktree Configuration & Integration Plan (superseded allocation)
 
 ### Worktree Allocation
 - **Shared Base Commit**: `5fbce95687f4c4aa179bcdd6137b3c76d580a23e` (`5fbce95`, Prompt 1 verified checkpoint)

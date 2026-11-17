@@ -1,5 +1,25 @@
 # Deferred Verification Backlog
 
+## Prompt 2 task timer/composition acceptance — 2026-11-17
+
+Target: `feature/todorbit-task-ux`, base `5803e52` + [source manifest](PROMPT2_TASK_UX_2026_11_17_SOURCE.json).
+Owner: next Codex integration/release reviewer. [Executed Level 1/2 evidence](PROMPT2_TASK_UX_2026_11_17.md)
+is complete for changed critical boundaries; the items below are additional
+acceptance, not deferred critical unit/persistence verification.
+
+- Level 3 PENDING: wider shell integration, new compact/menu controls at 2x text,
+  light/dark, RTL, long labels, keyboard/semantics permutations.
+- Live debug BLOCKED: no DTD/debug app; requested hot reload had no target.
+  Flutter dependency setup reports Windows native plugin symlink support missing;
+  use an authorized isolated profile after Developer Mode/tooling is available.
+- Level 4 PENDING: Windows physical pointer/keyboard/DPI, Android physical Back,
+  TalkBack/background/kill/restart/checkpoint review. Confirm same-session identity,
+  one work interval, cancellation route retention, finish/recovery and task/status/
+  plan separation. Process-local focus phase is intentionally not restart-persisted.
+- Level 4 PENDING before any release: exact-candidate packaging/install/update,
+  Android 16-KiB runtime and existing real-service/release gates. No beta authorized.
+
+
 This backlog tracks unperformed Level 3 regression and Level 4 acceptance.
 [AI Review Queue](AI_REVIEW_QUEUE.md) tracks unreviewed code independently.
 An approved code review or empty queue does not establish platform/release readiness.

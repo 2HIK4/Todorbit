@@ -1,5 +1,19 @@
 # Persistent test run ledger
 
+## Prompt 2 task timer/composition (2026-11-17 20:38 +03:00)
+
+Base `5803e52`, branch `feature/todorbit-task-ux`; [final source/assertion/config manifest](PROMPT2_TASK_UX_2026_11_17_SOURCE.json).
+[Receipt](PROMPT2_TASK_UX_2026_11_17.md) retains exact commands and failed/debug
+iterations. Serial Windows host/Flutter 3.47.7/Dart 3.13.5; disposable data only.
+Final focused batch PASS43; final dialog callback follow-up PASS2 (one repeated,
+one added) =44 distinct focused checks. Lifecycle/accounting PASS3; filtered adjacent PASS3 (two sync timer
+ownership checks and one mobile row). Full relevant analysis + follow-up PASS,
+22 changed Dart format PASS, diff check PASS. New `task-timers` gate plan resolves.
+Changed timer/Trash/UI behavior invalidated prior receipts; unchanged assertions
+are reused after the narrowly verified dialog callback follow-up. Physical/live,
+full integration and release acceptance are pending, not inferred from host passes.
+
+
 ## Beta22 final publication acceptance (2026-11-15)
 
 [Publication receipt](UIUX03_BETA_22_PUBLICATION.md), exact tag/source1a5560a:

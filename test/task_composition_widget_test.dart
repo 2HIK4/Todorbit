@@ -64,6 +64,9 @@ void main() {
     final repository = LifeRepository(database);
     final parent = await repository.addTask(const TaskDraft(title: 'Course'));
     final controller = AppController(repository);
+    controller.taskViewPreferences = controller.taskViewPreferences.copyWith(
+      detailPresentation: 'fullPage',
+    );
     await controller.refresh();
     try {
       await tester.pumpWidget(

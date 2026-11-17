@@ -593,6 +593,24 @@ class LifeRepository {
     await moveToTrash(TrashKind.session, id);
   }
 
+  Future<void> deletePlannedSession(WorkSession previous) => db.transaction(
+    () async {
+      final row = await db
+          .customSelect(
+            "SELECT 1 FROM work_sessions WHERE id=? AND updated_at=? AND outcome='upcoming' AND actual_started_at IS NULL AND deleted_at IS NULL",
+            variables: [
+              Variable.withString(previous.id),
+              Variable.withString(previous.updatedAt.toUtc().toIso8601String()),
+            ],
+          )
+          .getSingleOrNull();
+      if (row == null) {
+        throw StateError('This session changed. Reopen it before deleting.');
+      }
+      await deleteSession(previous.id);
+    },
+  );
+
   void _validateSession(SessionDraft draft) {
     if (!draft.endsAt.isAfter(draft.startsAt)) {
       throw ArgumentError('Session end must be after its start');

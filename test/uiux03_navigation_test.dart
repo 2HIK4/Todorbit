@@ -66,6 +66,8 @@ void main() {
         expect(find.text('Task Details'), findsOneWidget);
         await tester.tap(find.text('Start Focus Session'));
         await tester.pumpAndSettle();
+        expect(c.activeTimer?.taskId, task.id);
+        expect(c.tasks.single.status, TaskStatus.notStarted);
         await tester.tap(find.text('Countdown'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Start'));

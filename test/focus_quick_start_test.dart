@@ -12,7 +12,7 @@ import 'package:life_manager/domain/time_tracking.dart';
 import 'package:life_manager/main.dart';
 
 void main() {
-  testWidgets('task row starts work and a focus timer without completion', (
+  testWidgets('task row starts timer directly without changing task status', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1280, 850));
@@ -33,17 +33,9 @@ void main() {
       );
       await tester.tap(find.widgetWithText(ListTile, 'All tasks'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Start task or focus'));
+      await tester.tap(find.byTooltip('Start Task'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Start Task'));
-      await tester.pumpAndSettle();
-      expect((await repository.tasks()).single.status, TaskStatus.inProgress);
-      expect(await repository.timeEntries(taskId: task.id), isEmpty);
-
-      await tester.tap(find.byTooltip('Work or focus actions'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Start Focus Session'));
-      await tester.pumpAndSettle();
+      expect((await repository.tasks()).single.status, TaskStatus.notStarted);
       expect((await repository.activeTimerRun())?.taskId, task.id);
       expect(find.text('Stopwatch'), findsOneWidget);
       expect(find.byTooltip('Return to tasks'), findsOneWidget);
@@ -69,7 +61,7 @@ void main() {
       await tester.tap(find.text('Stop').last);
       await tester.pumpAndSettle();
       expect(await repository.activeTimerRun(), isNull);
-      expect((await repository.tasks()).single.status, TaskStatus.inProgress);
+      expect((await repository.tasks()).single.status, TaskStatus.notStarted);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
       await database.close();
