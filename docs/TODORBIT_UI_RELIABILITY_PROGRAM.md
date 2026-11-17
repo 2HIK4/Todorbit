@@ -59,8 +59,8 @@ The old section 8 is historical planning, not authorization for integration.
    - **Prompt 1 (Authoritative Scope)**: Search UX token unification, progressive disclosure for advanced search, Android IME keyboard-inset form adaptation, and single-route task/event detail presentation (`sidePanel` default vs `fullPage` preference, with zero stale secondary editors).
    - **Prompt 2 (current authoritative assignment)**: Task timer entry/idempotency, task details, checklist groups/items, one-level subtasks and planned-session deletion. See the current assignment override above.
    - **Prompt 3 (authoritative delivered scope)**: Calendar responsiveness, event organization/color editing, exact month prefetch and navigation. Earlier issue-routing numbers below remain historical.
-   - **Prompt 4**: Accessibility (WCAG AA contrast >=4.5:1), keyboard traversal (<kbd>Tab</kbd>), screen reader semantics, and reduced motion.
-   - **Prompt 5**: Platform-specific integration: Android Content URI persistence and destructive action clarity.
+   - **Prompt 4 (current authoritative assignment)**: Smart Reschedule (dialog, algorithm, schedule change persistence, calendar/workspace triggers).
+   - **Prompt 5 (current authoritative assignment)**: Android Share Inbox (intent filter ACTION_SEND, shared text/link handling, Inbox task ingestion).
    - **Prompt 6**: Local-First Data Flow & Sync conflict review presentation refinement.
    - **Prompt 7**: Performance profiling, load-time evidence, and memory benchmarking.
    - **Prompt 8**: Verification hardening, Reusable Visual Audit Matrix execution, and release gate readiness.
@@ -338,3 +338,41 @@ The following shared files are touched by both task and calendar workflows and c
 *Mitigation Strategy*:
 - Keep additions modular: implement new logic in dedicated helper classes or extension methods rather than appending broad changes to the middle of `workspace.dart` or `app_controller.dart`.
 - Merge order: Integrate `feature/todorbit-task-ux` (Prompt 2) first, followed by rebasing or merging `feature/todorbit-calendar-events` (Prompt 3), resolving any shell coordination diffs with focused regression tests.
+
+---
+
+## 9. Parallel Worktree Configuration & Integration Plan (Prompts 4 & 5)
+
+### Current Checkpoint & Allocation (2026-11-17)
+- **Verified Integration Base Commit**: `4d9292cd04455033c81e8ba7884806601f328806` (`4d9292c`, Prompts 2 and 3 integrated)
+- **Integration Branch**: `integration/ui-reliability-p2-p3`
+- **Integration Worktree**: `D:\AI_Projects\life_manager_worktrees\integration-ui-p2-p3`
+
+### Parallel Feature Worktrees
+- **Worktree 1 (Codex — Prompt 4: Smart Reschedule)**:
+  - **Path**: `D:\AI_Projects\life_manager_worktrees\feature-todorbit-smart-reschedule`
+  - **Branch**: `feature/todorbit-smart-reschedule`
+  - **Starting Base Commit**: `4d9292cd04455033c81e8ba7884806601f328806`
+  - **Ownership Scope**: Smart Reschedule dialog, algorithm, schedule change persistence, calendar/workspace triggers (`lib/features/scheduling/smart_reschedule.dart`, `lib/domain/scheduling_models.dart`, `lib/data/life_repository.dart`, `lib/features/calendar/calendar_view.dart`, `lib/features/workspace/workspace.dart`).
+- **Worktree 2 (Gemini — Prompt 5: Android Share Inbox)**:
+  - **Path**: `D:\AI_Projects\life_manager_worktrees\feature-todorbit-android-share-inbox`
+  - **Branch**: `feature/todorbit-android-share-inbox`
+  - **Starting Base Commit**: `4d9292cd04455033c81e8ba7884806601f328806`
+  - **Ownership Scope**: Android intent filter (`ACTION_SEND` / `ACTION_SEND_MULTIPLE`), incoming shared text/link handling, Inbox task ingestion, Android platform channel (`android/app/src/main/AndroidManifest.xml`, `android/app/src/main/kotlin/.../MainActivity.kt`, `lib/platform/android/`).
+
+### Isolation Rules & Independence
+1. **Strict Directory Isolation**: Each agent operates exclusively within its designated worktree root. Neither agent modifies the main repository (`D:/AI_Projects/life_manager`), earlier implementation worktrees (`feature-todorbit-task-ux`, `feature-todorbit-calendar-events`), the integration worktree, nor the peer agent's worktree.
+2. **Schema & Data Invariance**: Both worktrees preserve SQLite Schema at **29**; zero migrations, zero table alters, zero cloud service additions, zero beta publishing.
+3. **Independent Verification**: Each agent runs its own focused Level 1/2 tests inside its worktree before proposing integration.
+4. **Exact Shared Base**: Both feature branches start from exactly the same integration commit (`4d9292cd04455033c81e8ba7884806601f328806`).
+
+### Shared Surface Warnings & Conflict Mitigation
+The following shared files carry potential conflict risk between Prompt 4 (Smart Reschedule) and Prompt 5 (Android Share Inbox):
+- `lib/app/app_controller.dart`: Central controller coordinating task creation (Inbox) and schedule mutation events.
+- `lib/data/life_repository.dart`: Central repository accessed for inserting shared tasks and executing smart reschedule updates.
+- `lib/features/mobile/mobile_workspace.dart`: Mobile shell where inbox tasks and mobile reschedule triggers interface.
+
+*Mitigation Strategy*:
+- Keep additions modular: Prompt 5 (Android Share Inbox) should isolate platform channel intent receivers in `lib/platform/android/` and invoke existing standard `LifeRepository.addTask` methods with `TaskDraft` rather than refactoring repository internals.
+- Prompt 4 (Smart Reschedule) should keep rescheduling algorithms and dialog logic encapsulated within `lib/features/scheduling/smart_reschedule.dart` and domain scheduling models.
+- Neither prompt should alter shared persistence schemas (Schema 29 invariant).
