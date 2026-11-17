@@ -80,3 +80,15 @@ Break phases start without creating work intervals. `deletePlannedSession` check
 session revision, upcoming outcome and absent actual start inside the Trash
 transaction; actual work and task identity survive. Cover these contracts using
 `task-timers` in `tools/dev/features.json`. Schema remains 29; no migration applies.
+
+## Scheduling proposal boundaries
+
+- Deduplicate scoped UUIDs before building a scheduling proposal; a Set used for
+  checkboxes does not deduplicate a separate ordered input list. Verify one
+  change/history entry per target and guard preview/apply re-entry before await.
+- Preview and cancellation are reads only. Apply the complete reviewed proposal
+  through the existing transaction/stale checks; do not silently filter partial
+  swaps, recurrence collisions or eligibility issues after review.
+- A post-commit refresh can fail after persistence succeeds. Report an unconfirmed
+  result accurately, invalidate the proposal, and require a fresh read before
+  retrying; never promise rollback solely because the UI await threw.

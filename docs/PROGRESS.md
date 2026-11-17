@@ -1,5 +1,19 @@
 # Progress
 
+## Prompt 4 — Smart Reschedule implementation (2026-11-17)
+
+Assigned branch `feature/todorbit-smart-reschedule`, base `4d9292c`. Hierarchical
+independent selection, collapsed recurring families, grouped collision review,
+explicit Apply reasons, whole-proposal safety, input invalidation, re-entry/UUID
+guards and keyed scroll/expansion state implemented. Existing engine/repository,
+series identities, exceptions, history, alarms and actual work preserved.
+64 distinct host tests PASS / 0 final FAIL / 0 SKIP; full analysis, formatting and
+doc/diff checks PASS. [Receipt](PROMPT4_SMART_RESCHEDULE_2026_11_17.md) and
+[fingerprints](PROMPT4_SMART_RESCHEDULE_2026_11_17_SOURCE.json). Awaiting independent
+integration review; manual/device/release gates remain in Deferred Verification.
+No version/schema, Stable, publication, merge/rebase or remote changes.
+
+
 ## Prompts 2/3 integrated - verified development checkpoint (2026-11-17)
 
 Isolated branch `integration/ui-reliability-p2-p3`, worktree

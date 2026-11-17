@@ -13,6 +13,8 @@ import '../../domain/scheduling_engine.dart';
 import '../../domain/series_edit.dart';
 import '../shared/weekdays.dart';
 import '../shared/dialog_action_bar.dart';
+import 'schedule_task_list.dart';
+import 'schedule_preview_details.dart';
 
 class SmartRescheduleDialog extends ConsumerStatefulWidget {
   const SmartRescheduleDialog({
@@ -34,7 +36,6 @@ class SmartRescheduleDialog extends ConsumerStatefulWidget {
 class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
   final engine = const SchedulingEngine();
   final selected = <String>{};
-  final included = <String>{};
   ScheduleOperationType operation = ScheduleOperationType.move;
   SchedulingPreview? preview;
   List<SeriesScheduleCollision> seriesCollisions = const [];
@@ -47,6 +48,16 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
   bool allowWarnings = false;
   bool allowOverlap = false;
   bool applying = false;
+  bool generating = false;
+  String? previewError;
+
+  void _invalidatePreview() {
+    preview = null;
+    previewError = null;
+    seriesCollisions = const [];
+    seriesChoices.clear();
+    allowWarnings = false;
+  }
 
   bool get sessionMode => widget.sessionIds.isNotEmpty;
 
@@ -77,90 +88,30 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
         ];
 
   Future<void> _generate(AppController controller) async {
-    SchedulingPreview next;
-    if (sessionMode) {
-      final sessions = controller.sessions
-          .where((item) => selected.contains(item.id))
-          .toList();
-      final others = controller.sessions
-          .where((item) => !selected.contains(item.id))
-          .toList();
-      final tasks = {for (final task in controller.tasks) task.id: task};
-      final firstStart = DateTime(
-        targetDay.year,
-        targetDay.month,
-        targetDay.day,
-        targetTime.hour,
-        targetTime.minute,
-      );
-      next = switch (operation) {
-        ScheduleOperationType.move => engine.moveSessions(
-          selected: sessions,
-          otherSessions: others,
-          fixedEvents: controller.events,
-          tasksById: tasks,
-          firstStart: firstStart,
-          scope: widget.scope,
-          buffer: Duration(minutes: bufferMinutes),
-          allowOverlap: allowOverlap,
-        ),
-        ScheduleOperationType.shift => engine.shiftSessions(
-          selected: sessions,
-          otherSessions: others,
-          fixedEvents: controller.events,
-          tasksById: tasks,
-          days: offsetDays,
-          scope: widget.scope,
-          allowOverlap: allowOverlap,
-        ),
-        ScheduleOperationType.push => engine.shiftSessions(
-          selected: sessions,
-          otherSessions: others,
-          fixedEvents: controller.events,
-          tasksById: tasks,
-          days: offsetDays.abs(),
-          scope: widget.scope,
-          operation: ScheduleOperationType.push,
-          allowOverlap: allowOverlap,
-        ),
-        ScheduleOperationType.pull => engine.shiftSessions(
-          selected: sessions,
-          otherSessions: others,
-          fixedEvents: controller.events,
-          tasksById: tasks,
-          days: -offsetDays.abs(),
-          scope: widget.scope,
-          operation: ScheduleOperationType.pull,
-          allowOverlap: allowOverlap,
-        ),
-        ScheduleOperationType.swap when sessions.length == 2 =>
-          engine.swapSessions(
-            first: sessions[0],
-            second: sessions[1],
-            tasksById: tasks,
-            scope: widget.scope,
-          ),
-        ScheduleOperationType.repack => engine.repack(
-          selected: sessions,
-          otherSessions: others,
-          fixedEvents: controller.events,
-          tasksById: tasks,
-          availability: controller.availability,
-          earliest: firstStart,
-          scope: widget.scope,
-          buffer: Duration(minutes: bufferMinutes),
-        ),
-        ScheduleOperationType.split when sessions.length == 1 =>
-          engine.splitSession(
-            session: sessions.single,
-            task: tasks[sessions.single.taskId],
-            firstMinutes: splitMinutes,
-            newSessionId: const Uuid().v4(),
-            scope: widget.scope,
-            gap: Duration(minutes: bufferMinutes),
-          ),
-        ScheduleOperationType.reorder => _asOperation(
-          engine.moveSessions(
+    if (generating || applying) return;
+    setState(() {
+      _invalidatePreview();
+      generating = true;
+    });
+    try {
+      SchedulingPreview next;
+      if (sessionMode) {
+        final sessions = controller.sessions
+            .where((item) => selected.contains(item.id))
+            .toList();
+        final others = controller.sessions
+            .where((item) => !selected.contains(item.id))
+            .toList();
+        final tasks = {for (final task in controller.tasks) task.id: task};
+        final firstStart = DateTime(
+          targetDay.year,
+          targetDay.month,
+          targetDay.day,
+          targetTime.hour,
+          targetTime.minute,
+        );
+        next = switch (operation) {
+          ScheduleOperationType.move => engine.moveSessions(
             selected: sessions,
             otherSessions: others,
             fixedEvents: controller.events,
@@ -170,124 +121,195 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
             buffer: Duration(minutes: bufferMinutes),
             allowOverlap: allowOverlap,
           ),
-          ScheduleOperationType.reorder,
-        ),
-        _ => _invalidPreview(
-          operation,
-          'This operation needs exactly ${operation == ScheduleOperationType.swap ? 'two' : 'one'} selected sessions.',
-        ),
-      };
-    } else {
-      final tasksById = {for (final item in controller.tasks) item.id: item};
-      final tasks = widget.taskIds
-          .where(selected.contains)
-          .map((id) => tasksById[id])
-          .whereType<LifeTask>()
-          .toList();
-      next = switch (operation) {
-        ScheduleOperationType.move => engine.moveTasks(
-          selected: tasks,
-          targetDay: targetDay,
-          scope: widget.scope,
-        ),
-        ScheduleOperationType.shift => engine.shiftTasks(
-          selected: tasks,
-          days: offsetDays,
-          scope: widget.scope,
-        ),
-        ScheduleOperationType.push => engine.shiftTasks(
-          selected: tasks,
-          days: offsetDays.abs(),
-          scope: widget.scope,
-          operation: ScheduleOperationType.push,
-        ),
-        ScheduleOperationType.pull => engine.shiftTasks(
-          selected: tasks,
-          days: -offsetDays.abs(),
-          scope: widget.scope,
-          operation: ScheduleOperationType.pull,
-        ),
-        ScheduleOperationType.swap when tasks.length == 2 => engine.swapTasks(
-          first: tasks[0],
-          second: tasks[1],
-          scope: widget.scope,
-        ),
-        ScheduleOperationType.reorder => engine.reorderTasks(
-          ordered: tasks,
-          firstDay: targetDay,
-          scope: widget.scope,
-        ),
-        _ => _invalidPreview(
-          operation,
-          'Swap needs exactly two selected tasks.',
-        ),
-      };
-    }
-    final dependencyIssues = <ScheduleIssue>[];
-    final tasksById = {for (final task in controller.tasks) task.id: task};
-    final sessionsById = {
-      for (final session in controller.sessions) session.id: session,
-    };
-    final proposedTaskDays = <String, String?>{
-      for (final change in next.changes)
-        if (change.targetKind == ScheduleTargetKind.task)
-          change.targetId: change.afterDate,
-    };
-    for (final change in next.changes) {
-      final taskId = change.targetKind == ScheduleTargetKind.task
-          ? change.targetId
-          : change.taskId ?? sessionsById[change.targetId]?.taskId;
-      if (taskId == null) continue;
-      final proposedDay = change.targetKind == ScheduleTargetKind.task
-          ? change.afterDate
-          : change.afterStartsAt == null
-          ? null
-          : localDate(change.afterStartsAt!.toLocal());
-      if (proposedDay == null) continue;
-      for (final dependency in controller.dependencies.where(
-        (link) => link.taskId == taskId,
-      )) {
-        final prerequisite = tasksById[dependency.prerequisiteId];
-        if (prerequisite == null ||
-            prerequisite.status == TaskStatus.completed) {
-          continue;
-        }
-        final prerequisiteDay = proposedTaskDays.containsKey(prerequisite.id)
-            ? proposedTaskDays[prerequisite.id]
-            : prerequisite.scheduledDate;
-        if (prerequisiteDay == null ||
-            proposedDay.compareTo(prerequisiteDay) <= 0) {
-          dependencyIssues.add(
-            ScheduleIssue(
-              kind: ScheduleIssueKind.dependencyOrder,
-              severity: ScheduleIssueSeverity.warning,
-              targetId: change.targetId,
-              relatedId: prerequisite.id,
-              message:
-                  '“${tasksById[taskId]?.title ?? 'Task'}” is planned before unfinished prerequisite “${prerequisite.title}”.',
+          ScheduleOperationType.shift => engine.shiftSessions(
+            selected: sessions,
+            otherSessions: others,
+            fixedEvents: controller.events,
+            tasksById: tasks,
+            days: offsetDays,
+            scope: widget.scope,
+            allowOverlap: allowOverlap,
+          ),
+          ScheduleOperationType.push => engine.shiftSessions(
+            selected: sessions,
+            otherSessions: others,
+            fixedEvents: controller.events,
+            tasksById: tasks,
+            days: offsetDays.abs(),
+            scope: widget.scope,
+            operation: ScheduleOperationType.push,
+            allowOverlap: allowOverlap,
+          ),
+          ScheduleOperationType.pull => engine.shiftSessions(
+            selected: sessions,
+            otherSessions: others,
+            fixedEvents: controller.events,
+            tasksById: tasks,
+            days: -offsetDays.abs(),
+            scope: widget.scope,
+            operation: ScheduleOperationType.pull,
+            allowOverlap: allowOverlap,
+          ),
+          ScheduleOperationType.swap when sessions.length == 2 =>
+            engine.swapSessions(
+              first: sessions[0],
+              second: sessions[1],
+              tasksById: tasks,
+              scope: widget.scope,
             ),
-          );
+          ScheduleOperationType.repack => engine.repack(
+            selected: sessions,
+            otherSessions: others,
+            fixedEvents: controller.events,
+            tasksById: tasks,
+            availability: controller.availability,
+            earliest: firstStart,
+            scope: widget.scope,
+            buffer: Duration(minutes: bufferMinutes),
+          ),
+          ScheduleOperationType.split when sessions.length == 1 =>
+            engine.splitSession(
+              session: sessions.single,
+              task: tasks[sessions.single.taskId],
+              firstMinutes: splitMinutes,
+              newSessionId: const Uuid().v4(),
+              scope: widget.scope,
+              gap: Duration(minutes: bufferMinutes),
+            ),
+          ScheduleOperationType.reorder => _asOperation(
+            engine.moveSessions(
+              selected: sessions,
+              otherSessions: others,
+              fixedEvents: controller.events,
+              tasksById: tasks,
+              firstStart: firstStart,
+              scope: widget.scope,
+              buffer: Duration(minutes: bufferMinutes),
+              allowOverlap: allowOverlap,
+            ),
+            ScheduleOperationType.reorder,
+          ),
+          _ => _invalidPreview(
+            operation,
+            'This operation needs exactly ${operation == ScheduleOperationType.swap ? 'two' : 'one'} selected sessions.',
+          ),
+        };
+      } else {
+        final tasksById = {for (final item in controller.tasks) item.id: item};
+        final tasks = widget.taskIds
+            .toSet()
+            .where(selected.contains)
+            .map((id) => tasksById[id])
+            .whereType<LifeTask>()
+            .toList();
+        next = switch (operation) {
+          ScheduleOperationType.move => engine.moveTasks(
+            selected: tasks,
+            targetDay: targetDay,
+            scope: widget.scope,
+          ),
+          ScheduleOperationType.shift => engine.shiftTasks(
+            selected: tasks,
+            days: offsetDays,
+            scope: widget.scope,
+          ),
+          ScheduleOperationType.push => engine.shiftTasks(
+            selected: tasks,
+            days: offsetDays.abs(),
+            scope: widget.scope,
+            operation: ScheduleOperationType.push,
+          ),
+          ScheduleOperationType.pull => engine.shiftTasks(
+            selected: tasks,
+            days: -offsetDays.abs(),
+            scope: widget.scope,
+            operation: ScheduleOperationType.pull,
+          ),
+          ScheduleOperationType.swap when tasks.length == 2 => engine.swapTasks(
+            first: tasks[0],
+            second: tasks[1],
+            scope: widget.scope,
+          ),
+          ScheduleOperationType.reorder => engine.reorderTasks(
+            ordered: tasks,
+            firstDay: targetDay,
+            scope: widget.scope,
+          ),
+          _ => _invalidPreview(
+            operation,
+            'Swap needs exactly two selected tasks.',
+          ),
+        };
+      }
+      final dependencyIssues = <ScheduleIssue>[];
+      final tasksById = {for (final task in controller.tasks) task.id: task};
+      final sessionsById = {
+        for (final session in controller.sessions) session.id: session,
+      };
+      final proposedTaskDays = <String, String?>{
+        for (final change in next.changes)
+          if (change.targetKind == ScheduleTargetKind.task)
+            change.targetId: change.afterDate,
+      };
+      for (final change in next.changes) {
+        final taskId = change.targetKind == ScheduleTargetKind.task
+            ? change.targetId
+            : change.taskId ?? sessionsById[change.targetId]?.taskId;
+        if (taskId == null) continue;
+        final proposedDay = change.targetKind == ScheduleTargetKind.task
+            ? change.afterDate
+            : change.afterStartsAt == null
+            ? null
+            : localDate(change.afterStartsAt!.toLocal());
+        if (proposedDay == null) continue;
+        for (final dependency in controller.dependencies.where(
+          (link) => link.taskId == taskId,
+        )) {
+          final prerequisite = tasksById[dependency.prerequisiteId];
+          if (prerequisite == null ||
+              prerequisite.status == TaskStatus.completed) {
+            continue;
+          }
+          final prerequisiteDay = proposedTaskDays.containsKey(prerequisite.id)
+              ? proposedTaskDays[prerequisite.id]
+              : prerequisite.scheduledDate;
+          if (prerequisiteDay == null ||
+              proposedDay.compareTo(prerequisiteDay) <= 0) {
+            dependencyIssues.add(
+              ScheduleIssue(
+                kind: ScheduleIssueKind.dependencyOrder,
+                severity: ScheduleIssueSeverity.warning,
+                targetId: change.targetId,
+                relatedId: prerequisite.id,
+                message:
+                    '“${tasksById[taskId]?.title ?? 'Task'}” is planned before unfinished prerequisite “${prerequisite.title}”.',
+              ),
+            );
+          }
         }
       }
+      next = SchedulingPreview(
+        operation: next.operation,
+        scope: next.scope,
+        changes: next.changes,
+        issues: [...next.issues, ...dependencyIssues],
+        createdAt: next.createdAt,
+      );
+      final collisions = await controller.scheduleSeriesCollisions(next);
+      if (!mounted) return;
+      setState(() {
+        preview = next;
+        seriesCollisions = collisions;
+        seriesChoices.clear();
+        allowWarnings = false;
+      });
+    } catch (error) {
+      if (mounted) {
+        setState(() => previewError = 'Preview could not be generated: $error');
+      }
+    } finally {
+      if (mounted) setState(() => generating = false);
     }
-    next = SchedulingPreview(
-      operation: next.operation,
-      scope: next.scope,
-      changes: next.changes,
-      issues: [...next.issues, ...dependencyIssues],
-      createdAt: next.createdAt,
-    );
-    final collisions = await controller.scheduleSeriesCollisions(next);
-    if (!mounted) return;
-    setState(() {
-      preview = next;
-      seriesCollisions = collisions;
-      seriesChoices.clear();
-      included
-        ..clear()
-        ..addAll(next.changes.map((change) => change.targetId));
-      allowWarnings = false;
-    });
   }
 
   SchedulingPreview _asOperation(
@@ -315,11 +337,15 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
   );
 
   Future<void> _apply(AppController controller) async {
-    final reviewed = preview?.including(included);
-    if (reviewed == null || !reviewed.canApply) return;
-    final reviewedCollisions = seriesCollisions
-        .where((item) => included.contains(item.movedTaskId))
-        .toList();
+    final reviewed = preview;
+    if (applying ||
+        generating ||
+        reviewed == null ||
+        !reviewed.canApply ||
+        (reviewed.issues.any((issue) => !issue.isHard) && !allowWarnings)) {
+      return;
+    }
+    final reviewedCollisions = seriesCollisions;
     if (reviewedCollisions.any(
       (item) => !seriesChoices.containsKey(item.movedTaskId),
     )) {
@@ -336,11 +362,14 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Schedule was not applied: $error')),
+          SnackBar(
+            content: Text(
+              'Schedule result could not be confirmed. Generate a new preview before trying again: $error',
+            ),
+          ),
         );
         setState(() {
           preview = null;
-          included.clear();
           seriesCollisions = const [];
           seriesChoices.clear();
         });
@@ -360,409 +389,474 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
         : controller.tasks
               .where((item) => widget.taskIds.contains(item.id))
               .toList();
-    final reviewed = preview?.including(included);
+    final reviewed = preview;
     final hasWarnings = reviewed?.issues.any((issue) => !issue.isHard) ?? false;
     final unresolvedSeriesCollisions = seriesCollisions.any(
-      (item) =>
-          included.contains(item.movedTaskId) &&
-          !seriesChoices.containsKey(item.movedTaskId),
+      (item) => !seriesChoices.containsKey(item.movedTaskId),
     );
     final sourceTiles = <Widget>[
-      const ListTile(
-        dense: true,
-        title: Text(
-          'Included items',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-        subtitle: Text('Changing selection clears the preview.'),
+      ListTile(
+        title: Text('Included items · ${selected.length} selected'),
+        subtitle: const Text('Choose tasks independently.'),
       ),
-      for (final item in source)
-        CheckboxListTile(
-          dense: true,
-          value: selected.contains(_sourceId(item)),
-          title: Text(_sourceTitle(item, controller)),
-          subtitle: Text(_sourceSchedule(item)),
-          onChanged: (value) => setState(() {
-            value == true
-                ? selected.add(_sourceId(item))
-                : selected.remove(_sourceId(item));
-            preview = null;
-            seriesCollisions = const [];
-            seriesChoices.clear();
+      if (sessionMode)
+        for (final item in source)
+          CheckboxListTile(
+            value: selected.contains(_sourceId(item)),
+            title: Text(_sourceTitle(item, controller)),
+            subtitle: Text(_sourceSchedule(item)),
+            onChanged: (value) => setState(() {
+              value == true
+                  ? selected.add(_sourceId(item))
+                  : selected.remove(_sourceId(item));
+              _invalidatePreview();
+            }),
+          )
+      else
+        ScheduleTaskList(
+          tasks: controller.tasks,
+          parents: controller.taskParents,
+          taskIds: widget.taskIds.toSet(),
+          selected: selected,
+          onChanged: (id, value) => setState(() {
+            value ? selected.add(id) : selected.remove(id);
+            _invalidatePreview();
           }),
         ),
     ];
+    final applyReason = generating
+        ? 'Generating preview…'
+        : preview == null
+        ? 'Generate a preview to continue.'
+        : preview!.changes.isEmpty
+        ? 'No eligible scheduling changes. Adjust the selection or dates.'
+        : !preview!.canApply
+        ? 'Resolve the blocking issues and generate a new preview.'
+        : unresolvedSeriesCollisions
+        ? 'Review the recurring collision groups before applying.'
+        : hasWarnings && !allowWarnings
+        ? 'Review and acknowledge the warnings before applying.'
+        : '${preview!.changes.length} changes ready. Not applied.';
     final previewTiles = <Widget>[
+      if (previewError != null)
+        ListTile(
+          leading: const Icon(Icons.error_outline),
+          title: Text(previewError!),
+        ),
       if (preview == null)
         const Padding(
           padding: EdgeInsets.all(12),
           child: Text('Generate a preview. Nothing is changed until Apply.'),
         )
-      else ...[
-        for (final collision in seriesCollisions.where(
-          (item) => included.contains(item.movedTaskId),
-        ))
-          AnchoredSelectField<SeriesCollisionChoice>(
-            key: ValueKey(
-              'schedule-collision:${collision.movedTaskId}:${seriesChoices[collision.movedTaskId]}',
-            ),
-            initialValue: seriesChoices[collision.movedTaskId],
-            decoration: InputDecoration(
-              labelText: 'Recurring collision on ${collision.plannedDate}',
-              helperText:
-                  '${collision.existingTaskIds.length} occurrence(s) already planned. Combine is unavailable for distinct scheduled tasks.',
-            ),
-            items: [
-              const DropdownMenuItem(
-                value: SeriesCollisionChoice.keepBoth,
-                child: Text('Keep both occurrences'),
-              ),
-              DropdownMenuItem(
-                value: SeriesCollisionChoice.skipNew,
-                enabled: collision.canSkipMoved,
-                child: Text(
-                  collision.canSkipMoved
-                      ? 'Skip moved occurrence'
-                      : 'Skip unavailable: linked or started work',
-                ),
-              ),
-              const DropdownMenuItem(
-                value: SeriesCollisionChoice.combine,
-                enabled: false,
-                child: Text('Combine unavailable'),
-              ),
-            ],
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => seriesChoices[collision.movedTaskId] = value);
-              }
-            },
-          ),
-        for (final issue in preview!.issues)
-          ListTile(
-            dense: true,
-            leading: Icon(
-              issue.isHard ? Icons.error_outline : Icons.warning_amber_rounded,
-              color: issue.isHard
-                  ? Theme.of(context).colorScheme.error
-                  : Colors.amber.shade800,
-            ),
-            title: Text(issue.message),
-            subtitle: Text(issue.isHard ? 'Must be resolved' : 'Warning'),
-          ),
-        if (preview!.changes.isEmpty)
-          const ListTile(title: Text('No eligible scheduling changes.')),
-        for (final change in preview!.changes)
-          CheckboxListTile(
-            value: included.contains(change.targetId),
-            onChanged: (value) => setState(() {
-              value == true
-                  ? included.add(change.targetId)
-                  : included.remove(change.targetId);
-            }),
-            title: Text(_changeTitle(change, controller)),
-            subtitle: Text('${_before(change)}  →  ${_after(change)}'),
-          ),
-      ],
+      else
+        SchedulePreviewDetails(
+          preview: preview!,
+          tasks: controller.tasks,
+          parents: controller.taskParents,
+          collisions: seriesCollisions,
+          choices: seriesChoices,
+          sessionMode: sessionMode,
+          sessions: controller.sessions,
+          labels: {
+            for (final change in preview!.changes)
+              change.targetId: 'From ${_before(change)}\nTo ${_after(change)}',
+          },
+          titles: {
+            for (final change in preview!.changes)
+              change.targetId: _changeTitle(change, controller),
+          },
+          onKeep: (ids) => setState(() {
+            for (final id in ids) {
+              seriesChoices[id] = SeriesCollisionChoice.keepBoth;
+            }
+          }),
+          onLeave: (ids) => setState(() {
+            selected.removeAll(ids);
+            _invalidatePreview();
+          }),
+        ),
     ];
-    return Dialog(
-      insetPadding: const EdgeInsets.all(16),
-      child: SizedBox(
-        width: 880,
-        height: 720,
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: LayoutBuilder(
-            builder: (context, bounds) {
-              final compact =
-                  bounds.maxWidth < 680 ||
-                  MediaQuery.textScalerOf(context).scale(14) > 20;
-              final warningReview = CheckboxListTile(
-                value: allowWarnings,
-                contentPadding: EdgeInsets.zero,
-                title: const Text(
-                  'I reviewed the warnings and want to apply these changes.',
-                ),
-                onChanged: (value) =>
-                    setState(() => allowWarnings = value ?? false),
-              );
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: CustomScrollView(
-                      slivers: [
-                        SliverToBoxAdapter(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Row(
-                                children: [
-                                  if (!compact) ...[
-                                    const Icon(Icons.auto_fix_high),
-                                    const SizedBox(width: 10),
-                                  ],
-                                  Expanded(
-                                    child: Text(
-                                      'Smart Reschedule',
-                                      style: compact
-                                          ? Theme.of(context)
-                                                .textTheme
-                                                .titleLarge
-                                          : Theme.of(context)
-                                                .textTheme
-                                                .headlineSmall,
-                                    ),
-                                  ),
-                                  IconButton(
-                                    tooltip: 'Close',
-                                    onPressed: () => Navigator.pop(context),
-                                    icon: const Icon(Icons.close),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              Wrap(
-                                spacing: 12,
-                                runSpacing: 10,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                children: [
-                                  TextButton.icon(
-                                    onPressed: () => showDialog<void>(
-                                      context: context,
-                                      animationStyle: AppMotion.style(context),
-                                      builder: (_) =>
-                                          const AvailabilityDialog(),
-                                    ),
-                                    icon: const Icon(Icons.access_time),
-                                    label: const Text('Availability'),
-                                  ),
-
-                                  SizedBox(
-                                    width: 190,
-                                    child:
-                                        AnchoredSelectField<
-                                          ScheduleOperationType
-                                        >(
-                                          initialValue: operation,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Operation',
+    return PopScope(
+      canPop: !applying,
+      child: Dialog(
+        insetPadding: const EdgeInsets.all(16),
+        child: SizedBox(
+          width: 880,
+          height: 720,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: LayoutBuilder(
+              builder: (context, bounds) {
+                final compact =
+                    bounds.maxWidth < 680 ||
+                    MediaQuery.textScalerOf(context).scale(14) > 20;
+                final warningReview = CheckboxListTile(
+                  value: allowWarnings,
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text(
+                    'I reviewed the warnings and want to apply these changes.',
+                  ),
+                  onChanged: (value) =>
+                      setState(() => allowWarnings = value ?? false),
+                );
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: ExcludeFocus(
+                        excluding: applying || generating,
+                        child: AbsorbPointer(
+                          absorbing: applying || generating,
+                          child: CustomScrollView(
+                            key: const PageStorageKey(
+                              'smart-reschedule-scroll',
+                            ),
+                            slivers: [
+                              SliverToBoxAdapter(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        if (!compact) ...[
+                                          const Icon(Icons.auto_fix_high),
+                                          const SizedBox(width: 10),
+                                        ],
+                                        Expanded(
+                                          child: Text(
+                                            'Smart Reschedule',
+                                            style: compact
+                                                ? Theme.of(context)
+                                                      .textTheme
+                                                      .titleLarge
+                                                : Theme.of(context)
+                                                      .textTheme
+                                                      .headlineSmall,
                                           ),
-                                          items: operations
-                                              .map(
-                                                (value) => DropdownMenuItem(
-                                                  value: value,
-                                                  child: Text(
-                                                    _operationName(value),
-                                                  ),
-                                                ),
-                                              )
-                                              .toList(),
-                                          onChanged: (value) => setState(() {
-                                            operation = value!;
-                                            preview = null;
-                                            seriesCollisions = const [];
-                                            seriesChoices.clear();
-                                          }),
                                         ),
-                                  ),
-                                  if ({
-                                    ScheduleOperationType.move,
-                                    ScheduleOperationType.reorder,
-                                    ScheduleOperationType.repack,
-                                  }.contains(operation))
-                                    OutlinedButton.icon(
-                                      onPressed: () async {
-                                        final value = await showDatePicker(
-                                          context: context,
-                                          initialDate: targetDay,
-                                          firstDate: DateTime(2000),
-                                          lastDate: DateTime(2100),
-                                        );
-                                        if (value != null) {
-                                          setState(() => targetDay = value);
-                                        }
-                                      },
-                                      icon: const Icon(
-                                        Icons.calendar_today_outlined,
-                                      ),
-                                      label: Text(localDate(targetDay)),
-                                    ),
-                                  if (sessionMode &&
-                                      {
-                                        ScheduleOperationType.move,
-                                        ScheduleOperationType.reorder,
-                                        ScheduleOperationType.repack,
-                                      }.contains(operation))
-                                    OutlinedButton.icon(
-                                      onPressed: () async {
-                                        final value = await showTimePicker(
-                                          context: context,
-                                          initialTime: targetTime,
-                                        );
-                                        if (value != null) {
-                                          setState(() => targetTime = value);
-                                        }
-                                      },
-                                      icon: const Icon(Icons.schedule),
-                                      label: Text(targetTime.format(context)),
-                                    ),
-                                  if ({
-                                    ScheduleOperationType.shift,
-                                    ScheduleOperationType.push,
-                                    ScheduleOperationType.pull,
-                                  }.contains(operation))
-                                    SizedBox(
-                                      width: 150,
-                                      child: TextFormField(
-                                        initialValue: '$offsetDays',
-                                        keyboardType: TextInputType.number,
-                                        decoration: const InputDecoration(
-                                          labelText: 'Days',
+                                        IconButton(
+                                          tooltip: 'Close',
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                          icon: const Icon(Icons.close),
                                         ),
-                                        onChanged: (value) => offsetDays =
-                                            int.tryParse(value) ?? 0,
-                                      ),
+                                      ],
                                     ),
-                                  if (sessionMode &&
-                                      {
-                                        ScheduleOperationType.move,
-                                        ScheduleOperationType.reorder,
-                                        ScheduleOperationType.repack,
-                                        ScheduleOperationType.split,
-                                      }.contains(operation))
-                                    SizedBox(
-                                      width: 150,
-                                      child: TextFormField(
-                                        initialValue: '$bufferMinutes',
-                                        keyboardType: TextInputType.number,
-                                        decoration: const InputDecoration(
-                                          labelText: 'Buffer minutes',
+                                    const SizedBox(height: 10),
+                                    Wrap(
+                                      spacing: 12,
+                                      runSpacing: 10,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      children: [
+                                        TextButton.icon(
+                                          onPressed: () async {
+                                            await showDialog<void>(
+                                              context: context,
+                                              animationStyle: AppMotion.style(
+                                                context,
+                                              ),
+                                              builder: (_) =>
+                                                  const AvailabilityDialog(),
+                                            );
+                                            if (mounted) {
+                                              setState(_invalidatePreview);
+                                            }
+                                          },
+                                          icon: const Icon(Icons.access_time),
+                                          label: const Text('Availability'),
                                         ),
-                                        onChanged: (value) => bufferMinutes =
-                                            int.tryParse(value) ?? 0,
-                                      ),
-                                    ),
-                                  if (operation == ScheduleOperationType.split)
-                                    SizedBox(
-                                      width: 170,
-                                      child: TextFormField(
-                                        initialValue: '$splitMinutes',
-                                        keyboardType: TextInputType.number,
-                                        decoration: const InputDecoration(
-                                          labelText: 'First session minutes',
+
+                                        SizedBox(
+                                          width: 190,
+                                          child:
+                                              AnchoredSelectField<
+                                                ScheduleOperationType
+                                              >(
+                                                initialValue: operation,
+                                                decoration:
+                                                    const InputDecoration(
+                                                      labelText: 'Operation',
+                                                    ),
+                                                items: operations
+                                                    .map(
+                                                      (value) =>
+                                                          DropdownMenuItem(
+                                                            value: value,
+                                                            child: Text(
+                                                              _operationName(
+                                                                value,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                    )
+                                                    .toList(),
+                                                onChanged: (value) =>
+                                                    setState(() {
+                                                      operation = value!;
+                                                      _invalidatePreview();
+                                                    }),
+                                              ),
                                         ),
-                                        onChanged: (value) => splitMinutes =
-                                            int.tryParse(value) ?? 0,
-                                      ),
+                                        if ({
+                                          ScheduleOperationType.move,
+                                          ScheduleOperationType.reorder,
+                                          ScheduleOperationType.repack,
+                                        }.contains(operation))
+                                          OutlinedButton.icon(
+                                            onPressed: () async {
+                                              final value =
+                                                  await showDatePicker(
+                                                    context: context,
+                                                    initialDate: targetDay,
+                                                    firstDate: DateTime(2000),
+                                                    lastDate: DateTime(2100),
+                                                  );
+                                              if (value != null && mounted) {
+                                                setState(() {
+                                                  targetDay = value;
+                                                  _invalidatePreview();
+                                                });
+                                              }
+                                            },
+                                            icon: const Icon(
+                                              Icons.calendar_today_outlined,
+                                            ),
+                                            label: Text(localDate(targetDay)),
+                                          ),
+                                        if (sessionMode &&
+                                            {
+                                              ScheduleOperationType.move,
+                                              ScheduleOperationType.reorder,
+                                              ScheduleOperationType.repack,
+                                            }.contains(operation))
+                                          OutlinedButton.icon(
+                                            onPressed: () async {
+                                              final value =
+                                                  await showTimePicker(
+                                                    context: context,
+                                                    initialTime: targetTime,
+                                                  );
+                                              if (value != null && mounted) {
+                                                setState(() {
+                                                  targetTime = value;
+                                                  _invalidatePreview();
+                                                });
+                                              }
+                                            },
+                                            icon: const Icon(Icons.schedule),
+                                            label: Text(
+                                              targetTime.format(context),
+                                            ),
+                                          ),
+                                        if ({
+                                          ScheduleOperationType.shift,
+                                          ScheduleOperationType.push,
+                                          ScheduleOperationType.pull,
+                                        }.contains(operation))
+                                          SizedBox(
+                                            width: 150,
+                                            child: TextFormField(
+                                              initialValue: '$offsetDays',
+                                              keyboardType:
+                                                  TextInputType.number,
+                                              decoration: const InputDecoration(
+                                                labelText: 'Days',
+                                              ),
+                                              onChanged: (value) => setState(
+                                                () {
+                                                  offsetDays =
+                                                      int.tryParse(value) ?? 0;
+                                                  _invalidatePreview();
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                        if (sessionMode &&
+                                            {
+                                              ScheduleOperationType.move,
+                                              ScheduleOperationType.reorder,
+                                              ScheduleOperationType.repack,
+                                              ScheduleOperationType.split,
+                                            }.contains(operation))
+                                          SizedBox(
+                                            width: 150,
+                                            child: TextFormField(
+                                              initialValue: '$bufferMinutes',
+                                              keyboardType:
+                                                  TextInputType.number,
+                                              decoration: const InputDecoration(
+                                                labelText: 'Buffer minutes',
+                                              ),
+                                              onChanged: (value) => setState(
+                                                () {
+                                                  bufferMinutes =
+                                                      int.tryParse(value) ?? 0;
+                                                  _invalidatePreview();
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                        if (operation ==
+                                            ScheduleOperationType.split)
+                                          SizedBox(
+                                            width: 170,
+                                            child: TextFormField(
+                                              initialValue: '$splitMinutes',
+                                              keyboardType:
+                                                  TextInputType.number,
+                                              decoration: const InputDecoration(
+                                                labelText:
+                                                    'First session minutes',
+                                              ),
+                                              onChanged: (value) => setState(
+                                                () {
+                                                  splitMinutes =
+                                                      int.tryParse(value) ?? 0;
+                                                  _invalidatePreview();
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                        if (sessionMode &&
+                                            {
+                                              ScheduleOperationType.move,
+                                              ScheduleOperationType.shift,
+                                              ScheduleOperationType.push,
+                                              ScheduleOperationType.pull,
+                                              ScheduleOperationType.reorder,
+                                            }.contains(operation))
+                                          FilterChip(
+                                            selected: allowOverlap,
+                                            onSelected: (value) => setState(() {
+                                              allowOverlap = value;
+                                              _invalidatePreview();
+                                            }),
+                                            avatar: const Icon(
+                                              Icons.layers_outlined,
+                                              size: 18,
+                                            ),
+                                            label: const Text(
+                                              'Allow intentional overlap',
+                                            ),
+                                          ),
+                                        FilledButton.icon(
+                                          onPressed:
+                                              selected.isEmpty ||
+                                                  generating ||
+                                                  applying
+                                              ? null
+                                              : () => _generate(controller),
+                                          icon: const Icon(
+                                            Icons.preview_outlined,
+                                          ),
+                                          label: const Text('Generate preview'),
+                                        ),
+                                      ],
                                     ),
-                                  if (sessionMode &&
-                                      {
-                                        ScheduleOperationType.move,
-                                        ScheduleOperationType.shift,
-                                        ScheduleOperationType.push,
-                                        ScheduleOperationType.pull,
-                                        ScheduleOperationType.reorder,
-                                      }.contains(operation))
-                                    FilterChip(
-                                      selected: allowOverlap,
-                                      onSelected: (value) =>
-                                          setState(() => allowOverlap = value),
-                                      avatar: const Icon(
-                                        Icons.layers_outlined,
-                                        size: 18,
-                                      ),
-                                      label: const Text(
-                                        'Allow intentional overlap',
-                                      ),
-                                    ),
-                                  FilledButton.icon(
-                                    onPressed: selected.isEmpty
-                                        ? null
-                                        : () => _generate(controller),
-                                    icon: const Icon(Icons.preview_outlined),
-                                    label: const Text('Generate preview'),
-                                  ),
-                                ],
+                                    const SizedBox(height: 14),
+                                  ],
+                                ),
                               ),
-                              const SizedBox(height: 14),
+                              if (compact)
+                                SliverList.list(
+                                  children: [
+                                    ...sourceTiles,
+                                    const Divider(),
+                                    Text(
+                                      'Preview',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall,
+                                    ),
+                                    ...previewTiles,
+                                  ],
+                                )
+                              else
+                                SliverFillRemaining(
+                                  hasScrollBody: true,
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      SizedBox(
+                                        width: 280,
+                                        child: Card(
+                                          child: FadingListView(
+                                            key: const PageStorageKey(
+                                              'schedule-source-scroll',
+                                            ),
+                                            padding: const EdgeInsets.all(8),
+                                            children: sourceTiles,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Card(
+                                          child: FadingListView(
+                                            key: const PageStorageKey(
+                                              'schedule-preview-scroll',
+                                            ),
+                                            padding: const EdgeInsets.all(12),
+                                            children: previewTiles,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              SliverToBoxAdapter(
+                                child: Column(
+                                  children: [
+                                    if (hasWarnings && compact) warningReview,
+                                  ],
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                        if (compact)
-                          SliverList.list(
-                            children: [
-                              ...sourceTiles,
-                              const Divider(),
-                              Text(
-                                'Preview',
-                                style: Theme.of(context).textTheme.titleSmall,
-                              ),
-                              ...previewTiles,
-                            ],
-                          )
-                        else
-                          SliverFillRemaining(
-                            hasScrollBody: true,
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                SizedBox(
-                                  width: 280,
-                                  child: Card(
-                                    child: FadingListView(
-                                      padding: const EdgeInsets.all(8),
-                                      children: sourceTiles,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Card(
-                                    child: FadingListView(
-                                      padding: const EdgeInsets.all(12),
-                                      children: previewTiles,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        SliverToBoxAdapter(
-                          child: Column(
-                            children: [
-                              if (hasWarnings && compact) warningReview,
-                            ],
-                          ),
+                      ),
+                    ),
+                    if (hasWarnings && !compact)
+                      AbsorbPointer(
+                        absorbing: applying || generating,
+                        child: warningReview,
+                      ),
+                    Text(
+                      applyReason,
+                      key: const ValueKey('schedule-apply-reason'),
+                    ),
+                    const SizedBox(height: 8),
+                    DialogActionBar(
+                      children: [
+                        TextButton(
+                          onPressed: applying
+                              ? null
+                              : () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.icon(
+                          onPressed:
+                              applying ||
+                                  generating ||
+                                  unresolvedSeriesCollisions ||
+                                  reviewed == null ||
+                                  !reviewed.canApply ||
+                                  (hasWarnings && !allowWarnings)
+                              ? null
+                              : () => _apply(controller),
+                          icon: const Icon(Icons.check),
+                          label: Text(applying ? 'Applying…' : 'Apply'),
                         ),
                       ],
                     ),
-                  ),
-                  if (hasWarnings && !compact) warningReview,
-                  DialogActionBar(
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton.icon(
-                        onPressed:
-                            applying ||
-                                unresolvedSeriesCollisions ||
-                                reviewed == null ||
-                                !reviewed.canApply ||
-                                (hasWarnings && !allowWarnings)
-                            ? null
-                            : () => _apply(controller),
-                        icon: const Icon(Icons.check),
-                        label: Text(applying ? 'Applying…' : 'Apply'),
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            },
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),

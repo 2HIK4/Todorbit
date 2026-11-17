@@ -56,6 +56,8 @@ void main() {
             ),
           );
           await tester.pumpAndSettle();
+          await tester.ensureVisible(find.text('Generate preview'));
+          await tester.pumpAndSettle();
           await tester.tap(find.text('Generate preview'));
           await tester.pumpAndSettle();
           final apply = find.widgetWithText(FilledButton, 'Apply');
@@ -148,7 +150,7 @@ void main() {
       await tester.tap(find.text('Generate preview'));
       await tester.pumpAndSettle();
       expect(
-        find.textContaining('Recurring collision on 2026-10-20'),
+        find.textContaining('1 moving occurrence collides'),
         findsOneWidget,
       );
       expect(
@@ -157,11 +159,7 @@ void main() {
             .onPressed,
         isNull,
       );
-      await tester.tap(
-        find.textContaining('Recurring collision on 2026-10-20'),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Keep both occurrences').last);
+      await tester.tap(find.text('Keep all occurrences'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Apply'));
       await tester.pumpAndSettle();

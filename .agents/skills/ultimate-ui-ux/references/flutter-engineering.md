@@ -270,3 +270,19 @@ Every UI modification, new component, or bugfix must pass these 16 explicit qual
   one level; child details and resource dialogs must explain the limit.
 - Planned-session row deletion must use the guarded upcoming-session transaction
   and existing Trash restoration. Never expose it for completed/started sessions.
+
+## Scheduling review contracts (Prompt 4)
+
+- Group parents/children and recurring families for presentation, while retaining
+  independent task UUID selection. A context-only parent or series header must
+  never authorize writes to children, other generations or the complete series.
+- Invalidate a preview on every scheduling input change, including availability.
+  Keep blocking eligibility issues even when the affected item emits no change;
+  filtering issues to emitted change IDs can accidentally enable Apply.
+- Group recurring collisions by family with distinct occurrence counts and an
+  expandable date breakdown. Offer only supported resolutions. If skipping
+  cancels an occurrence outside scheduling undo, offer leaving it unchanged
+  instead; explain the restriction without a disabled Combine selector.
+- Nested expansion controls need their own stable PageStorageKey, distinct from
+  scroll containers. Otherwise an expansion boolean can read a stored scroll
+  offset and crash only when lazily remounted after scrolling.
