@@ -254,3 +254,35 @@ flutter test --no-pub --concurrency=1 test/repository_test.dart test/task_revisi
   - `test/advanced_search_widget_test.dart` -> 2/2 passed (6s).
   - Level 2 Critical Persistence: `test/repository_test.dart` + `test/task_revision_concurrency_test.dart` + `test/database_initialization_test.dart` -> 38/38 passed (1m 43s).
   - Total Level 1/2 tests executed: 92/92 passed with zero failures.
+
+---
+
+## 8. Parallel Worktree Configuration & Integration Plan (Prompts 2 & 3)
+
+### Worktree Allocation
+- **Shared Base Commit**: `5fbce95687f4c4aa179bcdd6137b3c76d580a23e` (`5fbce95`, Prompt 1 verified checkpoint)
+- **Worktree 1 (Gemini — Prompt 2: Navigation Integrity, Routes & Scroll Stability)**:
+  - **Path**: `D:/AI_Projects/life_manager_worktrees/feature-todorbit-task-ux`
+  - **Branch**: `feature/todorbit-task-ux`
+  - **Ownership Scope**: Task navigation deduplication, subtask parent retention, scroll preservation, and dynamic today date following (`ISS-B01`, `ISS-B06`, `ISS-B07`, `ISS-C02`, `ISS-C03`, `ISS-C09`, `ISS-C10`).
+- **Worktree 2 (Codex — Prompt 3: Timers, Monotonic Clocks & State Safety)**:
+  - **Path**: `D:/AI_Projects/life_manager_worktrees/feature-todorbit-calendar-events`
+  - **Branch**: `feature/todorbit-calendar-events`
+  - **Ownership Scope**: Focus Workspace timer idempotency, monotonic clocks, unsaved draft protection on exit, and window blur / hover cancellation (`ISS-C04`, `ISS-C07`, `ISS-C08`).
+
+### Isolation Rules & Independence
+1. **Strict Directory Isolation**: Each agent operates exclusively within its designated worktree root. Neither agent modifies the main repository (`D:/AI_Projects/life_manager`) nor the peer agent's worktree.
+2. **Schema & Data Invariance**: Both worktrees preserve SQLite Schema at **29**; zero migrations, zero table alters, zero cloud service additions, zero beta publishing.
+3. **Independent Verification**: Each agent runs its own focused Level 1/2 tests inside its worktree before proposing integration.
+
+### Shared Surface Warnings & Conflict Mitigation
+The following shared files are touched by both task and calendar workflows and carry high conflict risk during merge:
+- `lib/features/workspace/workspace.dart`: Desktop shell coordinating task selections, event editors, layout builders, and keyboard shortcuts.
+- `lib/features/mobile/mobile_workspace.dart`: Mobile shell coordinating routes, bottom navigation, and search headers.
+- `lib/app/app_controller.dart`: Central state controller for visible tasks, selection, active timers, and preferences.
+- `lib/features/calendar/calendar_view.dart`: Calendar host widget handling interactions, shortcuts, and editors.
+- `lib/features/calendar/calendar_interaction_controller.dart`: Calendar move and resize gestures.
+
+*Mitigation Strategy*:
+- Keep additions modular: implement new logic in dedicated helper classes or extension methods rather than appending broad changes to the middle of `workspace.dart` or `app_controller.dart`.
+- Merge order: Integrate `feature/todorbit-task-ux` (Prompt 2) first, followed by rebasing or merging `feature/todorbit-calendar-events` (Prompt 3), resolving any shell coordination diffs with focused regression tests.
