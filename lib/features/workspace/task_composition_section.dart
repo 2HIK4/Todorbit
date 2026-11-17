@@ -94,7 +94,7 @@ class _TaskCompositionSectionState
       children: [
         ChecklistGroupsSection(taskId: widget.task.id),
         Text(
-          'Checklist${items.isEmpty ? '' : ' · $done/${items.length}'}',
+          'Ungrouped items${items.isEmpty ? '' : ' · $done/${items.length}'}',
           style: Theme.of(context).textTheme.titleSmall,
         ),
         for (var index = 0; index < items.length; index++)
@@ -116,8 +116,14 @@ class _TaskCompositionSectionState
                 ? null
                 : () =>
                       _run(() => controller.moveChecklistItem(items[index], 1)),
-            onRemove: () =>
-                _run(() => controller.removeChecklistItem(items[index])),
+            onRemove: () async {
+              if (await confirmChecklistItemRemoval(
+                context,
+                items[index].title,
+              )) {
+                await _run(() => controller.removeChecklistItem(items[index]));
+              }
+            },
           ),
         ChecklistEntry(
           fieldKey: const ValueKey('saved-checklist-entry'),
@@ -143,6 +149,10 @@ class _TaskCompositionSectionState
               ),
           ],
         ),
+        if (controller.taskParents.containsKey(widget.task.id))
+          const Text(
+            'Subtasks support one level only. Add another step as a checklist item, or add a sibling from the parent task.',
+          ),
         for (var index = 0; index < children.length; index++)
           ListTile(
             dense: true,
@@ -156,10 +166,12 @@ class _TaskCompositionSectionState
                     : null,
                 size: 20,
               ),
-              onPressed: () => _run(() => controller.setComplete(
-                children[index],
-                children[index].status != TaskStatus.completed,
-              )),
+              onPressed: () => _run(
+                () => controller.setComplete(
+                  children[index],
+                  children[index].status != TaskStatus.completed,
+                ),
+              ),
             ),
             title: CompositionText(
               text: children[index].title,
@@ -177,14 +189,8 @@ class _TaskCompositionSectionState
                 }
               },
               itemBuilder: (_) => const [
-                PopupMenuItem(
-                  value: 'resources',
-                  child: Text('Resources'),
-                ),
-                PopupMenuItem(
-                  value: 'delete',
-                  child: Text('Delete subtask'),
-                ),
+                PopupMenuItem(value: 'resources', child: Text('Resources')),
+                PopupMenuItem(value: 'delete', child: Text('Delete subtask')),
               ],
             ),
             onTap: () => controller.select(children[index].id),
@@ -213,8 +219,9 @@ class _TaskCompositionSectionState
       );
       return;
     }
-    final assigned =
-        (await controller.repository.subtaskResourceIds(subtask.id)).toSet();
+    final assigned = (await controller.repository.subtaskResourceIds(
+      subtask.id,
+    )).toSet();
     if (!mounted) return;
 
     await showDialog<void>(
@@ -248,8 +255,9 @@ class _TaskCompositionSectionState
                         }
                         setDialogState(() {});
                         final currentSubtasks =
-                            (await controller.repository.resourceSubtasks(res.id))
-                                .toSet();
+                            (await controller.repository.resourceSubtasks(
+                              res.id,
+                            )).toSet();
                         if (val == true) {
                           currentSubtasks.add(subtask.id);
                         } else {

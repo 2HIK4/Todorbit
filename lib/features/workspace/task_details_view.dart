@@ -1,3 +1,4 @@
+import 'planned_session_delete.dart';
 import '../shared/app_motion.dart';
 import '../shared/scroll_edge_fade.dart';
 import '../shared/status_snackbar.dart';
@@ -227,12 +228,6 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
               icon: const Icon(Icons.edit_outlined),
               onPressed: widget.onEdit,
             ),
-          if (widget.onStartFocus != null && task.isOpen)
-            IconButton(
-              tooltip: 'Start Focus Session',
-              icon: const Icon(Icons.timer_outlined),
-              onPressed: widget.onStartFocus,
-            ),
           PopupMenuButton<String>(
             tooltip: 'More actions',
             onSelected: (action) {
@@ -311,24 +306,16 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
                 FilledButton.icon(
                   onPressed: widget.onStartFocus,
                   icon: const Icon(Icons.play_arrow, size: 18),
-                  label: const Text('Start Focus Session'),
+                  label: Text(
+                    run?.taskId == task.id
+                        ? 'Open timer'
+                        : 'Start Focus Session',
+                  ),
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF8B5CF6), // Purple accent
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
-                      vertical: 10,
-                    ),
-                  ),
-                ),
-              if (widget.onEdit != null)
-                OutlinedButton.icon(
-                  onPressed: widget.onEdit,
-                  icon: const Icon(Icons.edit_outlined, size: 16),
-                  label: const Text('Edit'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
                       vertical: 10,
                     ),
                   ),
@@ -504,7 +491,9 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
               padding: const EdgeInsets.all(16),
               child: TaskCompositionSection(
                 task: task,
-                onAddSubtask: () => _newSubtask(task, controller),
+                onAddSubtask: controller.taskParents.containsKey(task.id)
+                    ? null
+                    : () => _newSubtask(task, controller),
               ),
             ),
           ),
@@ -516,19 +505,40 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
             taskId: task.id,
             repository: controller.repository,
             subtasks: subtasks,
-            onAddSubtask: (title) async {
-              LifeTask? created;
-              await controller.addSubtask(
-                task,
-                TaskDraft(title: title),
-                onCommitted: (child) => created = child,
-              );
-              controller.select(task.id);
-              return created;
-            },
+            onAddSubtask: controller.taskParents.containsKey(task.id)
+                ? null
+                : (title) async {
+                    LifeTask? created;
+                    await controller.addSubtask(
+                      task,
+                      TaskDraft(title: title),
+                      onCommitted: (child) => created = child,
+                    );
+                    controller.select(task.id);
+                    return created;
+                  },
           ),
 
           const SizedBox(height: 20),
+
+          if (controller.sessions.any(
+            (session) => session.taskId == task.id,
+          )) ...[
+            Text('Planned work sessions', style: theme.textTheme.titleSmall),
+            for (final session in controller.sessions.where(
+              (session) => session.taskId == task.id,
+            ))
+              ListTile(
+                title: Text('${session.startsAt.toLocal()}'),
+                subtitle: Text(session.outcome.name),
+                trailing:
+                    session.outcome == SessionOutcome.upcoming &&
+                        session.actualStartedAt == null
+                    ? PlannedSessionDelete(session: session)
+                    : null,
+              ),
+            const SizedBox(height: 20),
+          ],
 
           // Collapsible Work History / Log (Collapsed by default per Requirement 16)
           Card(

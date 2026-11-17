@@ -379,6 +379,15 @@ class AppController extends ChangeNotifier {
     goalMilestones = result[13] as List<GoalMilestone>;
     timeEntries = result[14] as List<TimeEntry>;
     activeTimer = result[15] as TimerRun?;
+    for (final item in focusSessions.entries) {
+      if (item.value.recordsWork &&
+          (activeTimer?.taskId != item.key ||
+              activeTimer?.state != TimerState.running ||
+              !activeTimer!.canControl ||
+              activeTimer!.needsReview(DateTime.now()))) {
+        item.value.pause();
+      }
+    }
     if (!_timerLoaded) {
       _timerLoaded = true;
       if (activeTimer?.state == TimerState.running && activeTimer!.canControl) {
@@ -609,8 +618,8 @@ class AppController extends ChangeNotifier {
       detailPresentation: values['detailPresentation'] == 'fullPage'
           ? 'fullPage'
           : values['detailPresentation'] == 'sidePanel'
-              ? 'sidePanel'
-              : null,
+          ? 'sidePanel'
+          : null,
     );
     _invalidateTaskCaches();
     // SQL is the durable source after sync. Profile JSON remains a compatible
@@ -1325,6 +1334,63 @@ class AppController extends ChangeNotifier {
   Future<void> startTimer(String taskId) async {
     await repository.startTimer(taskId);
     await refresh();
+  }
+
+  final _timerEntries = <String, Future<void>>{};
+
+  Future<void> enterTaskTimer(String taskId) => _timerEntries.putIfAbsent(
+    taskId,
+    () => _enterTaskTimer(taskId).whenComplete(() {
+      _timerEntries.remove(taskId);
+    }),
+  );
+
+  Future<void> _enterTaskTimer(String taskId) async {
+    final run = await repository.activeTimerRun();
+    if (run != null) {
+      // Reopening a paused/recovered/remote session never resumes or adopts it.
+      if (run.taskId != taskId) throw StateError('Another timer is active');
+      await refresh();
+      return;
+    }
+    if (focusSessionFor(taskId).mode == FocusMode.stopwatch) {
+      await startTimer(taskId);
+    } else {
+      await toggleFocus(taskId);
+    }
+  }
+
+  Future<void> switchTaskTimer(TimerRun previous, String taskId) async {
+    final session = focusSessionFor(taskId);
+    await repository.switchTaskTimer(
+      previous,
+      taskId,
+      startWork: session.mode == FocusMode.stopwatch || session.recordsWork,
+    );
+    focusSessions[previous.taskId]?.pause();
+    await refresh();
+    if (session.mode != FocusMode.stopwatch && !session.running) {
+      // The new ledger interval is already running. Start the selected phase
+      // without toggling (and therefore pausing) that interval.
+      if (session.remaining == Duration.zero) session.reset();
+      if (session.recordsWork) {
+        session.workDeadline = timeEntries
+            .firstWhere(
+              (entry) =>
+                  entry.timerRunId == activeTimer?.id && entry.endsAt == null,
+            )
+            .startsAt
+            .add(session.remaining);
+        session.start();
+        _focusTicker ??= Timer.periodic(
+          const Duration(milliseconds: 250),
+          (_) => _tickFocus(),
+        );
+      } else {
+        await toggleFocus(taskId);
+      }
+    }
+    notifyListeners();
   }
 
   Future<void> startTask(LifeTask task) async {

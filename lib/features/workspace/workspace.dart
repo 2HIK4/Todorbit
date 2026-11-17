@@ -1,4 +1,6 @@
-import '../../domain/focus_session.dart';
+import '../time_tracking/compact_task_timer.dart';
+import '../../domain/time_tracking.dart';
+import '../time_tracking/task_timer_intent.dart';
 import '../../domain/alarm_plan.dart';
 import '../shared/alarm_indicator.dart';
 import '../shared/app_motion.dart';
@@ -27,7 +29,6 @@ import '../calendar/event_editor.dart';
 import '../calendar/session_editor.dart';
 import '../../domain/widget_configuration.dart';
 import '../../domain/recurrence.dart';
-import '../../domain/time_tracking.dart';
 import '../../domain/saved_views.dart';
 import '../../domain/hotkeys.dart';
 import '../branding/brand_mark.dart';
@@ -785,55 +786,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     }
   }
 
-  Future<void> _quickStart(LifeTask task) async {
-    final choice = await showDialog<String>(
-      context: context,
-      animationStyle: AppMotion.style(context),
-      builder: (context) => AlertDialog(
-        title: Text(
-          task.status == TaskStatus.inProgress
-              ? 'Work on ${task.title}'
-              : 'Start ${task.title}',
-        ),
-        content: const Text(
-          'Start Task changes its status only. '
-          'Focus Session starts the stopwatch and records actual work.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          if (task.status == TaskStatus.inProgress)
-            OutlinedButton(
-              onPressed: () => Navigator.pop(context, 'end'),
-              child: const Text('End work'),
-            )
-          else
-            OutlinedButton(
-              onPressed: () => Navigator.pop(context, 'start'),
-              child: const Text('Start Task'),
-            ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, 'focus'),
-            child: const Text('Start Focus Session'),
-          ),
-        ],
-      ),
-    );
-    if (!mounted || choice == null) return;
-    final controller = ref.read(appControllerProvider);
-    if (choice == 'start') {
-      await _run(() => controller.startTask(task));
-    } else if (choice == 'end') {
-      await _run(() => controller.endTaskWork(task));
-    } else {
-      await _run(() => controller.startFocusTask(task));
-      if (mounted && controller.activeTimer?.taskId == task.id) {
-        _showActiveTimer(task.id);
-      }
-    }
-  }
+  Future<void> _quickStart(LifeTask task) => openTaskTimer(
+    context,
+    ref.read(appControllerProvider),
+    task.id,
+    open: _openFocusWorkspace,
+  );
 
   String _scheduleScope(AppController controller) => switch (controller.view) {
     WorkspaceView.category => 'category:${controller.scopeId}',
@@ -1045,7 +1003,10 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                             ),
                       child: _selectedEvent != null
                           ? EventEditor(
-                              key: ValueKey((_selectedEvent!.id, editorRevision)),
+                              key: ValueKey((
+                                _selectedEvent!.id,
+                                editorRevision,
+                              )),
                               event: _selectedEvent!,
                               initialDay: _selectedEvent!.startsAt.toLocal(),
                               protectUnsavedEdits: true,
@@ -1059,7 +1020,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                               )),
                               navigationController: editorNavigation,
                               task: creating ? null : controller.selectedTask,
-                              initialScheduled: creating ? newTaskInitialDate : null,
+                              initialScheduled: creating
+                                  ? newTaskInitialDate
+                                  : null,
                               onSaved: _closeEditor,
                               onCancel: _closeEditor,
                             ),
@@ -1222,75 +1185,10 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (controller.activeTimer case final run?)
+          if (controller.activeTimer != null)
             Card(
               margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-              color: scheme.surfaceContainer,
-              child: ListTile(
-                dense: true,
-                leading: Icon(
-                  run.needsReview(DateTime.now())
-                      ? Icons.warning_amber_rounded
-                      : Icons.timer_outlined,
-                ),
-                title: Text(
-                  '${formatWorkClock(TimeEntry.distinctDuration(controller.timeEntries.where((entry) => entry.timerRunId == run.id), run.needsReview(DateTime.now()) ? run.lastSeenAt : DateTime.now()))} · ${run.needsReview(DateTime.now())
-                      ? 'Review'
-                      : run.state == TimerState.running
-                      ? 'Running'
-                      : 'Paused'}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                subtitle: Text(
-                  controller.tasks
-                          .where((task) => task.id == run.taskId)
-                          .map((task) => task.title)
-                          .firstOrNull ??
-                      'Deleted task',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                onTap: run.taskId == null
-                    ? null
-                    : () => _showActiveTimer(run.taskId!),
-                trailing: run.needsReview(DateTime.now())
-                    ? null
-                    : PopupMenuButton<String>(
-                        tooltip: 'Timer controls',
-                        onSelected: (value) => _run(
-                          () => value == 'stop'
-                              ? controller.stopTimer()
-                              : controller.focusSessions[run.taskId]?.mode !=
-                                        null &&
-                                    controller
-                                            .focusSessions[run.taskId]
-                                            ?.mode !=
-                                        FocusMode.stopwatch
-                              ? controller.toggleFocus(run.taskId!)
-                              : run.state == TimerState.running
-                              ? controller.pauseTimer()
-                              : controller.resumeTimer(),
-                        ),
-                        itemBuilder: (_) => [
-                          PopupMenuItem(
-                            value: 'toggle',
-                            child: Text(
-                              (controller.focusSessions[run.taskId]?.running ==
-                                          true ||
-                                      run.state == TimerState.running)
-                                  ? 'Pause'
-                                  : 'Resume',
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'stop',
-                            child: Text('Stop'),
-                          ),
-                        ],
-                      ),
-              ),
+              child: CompactTaskTimer(open: _showActiveTimer),
             ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 8, 10),
@@ -1963,7 +1861,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         task: controller.selectedTask!,
         onBack: _closeEditor,
         onEdit: () => _editTaskDialog(controller.selectedTask!),
-        onStartFocus: () => _openFocusWorkspace(controller.selectedTask!.id),
+        onStartFocus: () => _quickStart(controller.selectedTask!),
       );
     }
     if (_viewingEventDetails && _selectedEvent != null) {
@@ -2413,234 +2311,243 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Row(
-            children: [
-              Tooltip(
-                message: done ? 'Reopen task' : 'Complete task',
-                child: Checkbox(
-                  value: done,
-                  semanticLabel:
-                      '${done ? 'Reopen' : 'Complete'} ${task.title}',
-                  onChanged: (value) =>
-                      _run(() => controller.setComplete(task, value ?? false)),
-                ),
-              ),
-              Icon(
-                iconForKey(
-                  controller.iconForTask(task),
-                  Icons.task_alt_outlined,
-                ),
-                size: 19,
-                color: scheme.primary,
-              ),
-              if (task.isOpen &&
-                  taskAlarmRule(task, controller.alarmRules)?.config.enabled ==
-                      true)
-                const Padding(
-                  padding: EdgeInsets.only(left: 6),
-                  child: AlarmIndicator(),
-                ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      task.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        decoration: done ? TextDecoration.lineThrough : null,
-                        color: done
-                            ? scheme.onSurface.withValues(alpha: 0.55)
-                            : null,
-                      ),
+              children: [
+                Tooltip(
+                  message: done ? 'Reopen task' : 'Complete task',
+                  child: Checkbox(
+                    value: done,
+                    semanticLabel:
+                        '${done ? 'Reopen' : 'Complete'} ${task.title}',
+                    onChanged: (value) => _run(
+                      () => controller.setComplete(task, value ?? false),
                     ),
-                    if (task.scheduledDate != null ||
-                        task.deadlineDate != null ||
-                        task.status == TaskStatus.inProgress ||
-                        childCount > 0 ||
-                        controller.checklistItems.any(
-                          (item) => item.taskId == task.id,
-                        ) ||
-                        task.status == TaskStatus.waiting ||
-                        task.status == TaskStatus.onHold ||
-                        unmetPrerequisites.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Wrap(
-                          spacing: 12,
-                          runSpacing: 4,
-                          children: [
-                            if (childCount > 0)
-                              Text(
-                                'Subtasks ${controller.tasks.where((child) => controller.taskParents[child.id] == task.id && child.status == TaskStatus.completed).length}/$childCount',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: scheme.onSurfaceVariant,
-                                ),
-                              ),
-                            if (controller.checklistItems.any(
-                              (item) => item.taskId == task.id,
-                            ))
-                              Text(
-                                'Checklist ${controller.checklistItems.where((item) => item.taskId == task.id && item.done).length}/'
-                                '${controller.checklistItems.where((item) => item.taskId == task.id).length}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: scheme.onSurfaceVariant,
-                                ),
-                              ),
-                            if (focusActive ||
-                                task.status == TaskStatus.inProgress)
-                              Text(
-                                focusActive ? 'Focus running' : 'In progress',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: scheme.primary,
-                                ),
-                              ),
-                            if (task.scheduledDate != null)
-                              Text(
-                                'Plan ${task.scheduledDate}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: scheme.onSurfaceVariant,
-                                ),
-                              ),
-                            if (task.deadlineDate != null)
-                              Text(
-                                'Due ${task.deadlineDate}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: overdue
-                                      ? scheme.error
-                                      : scheme.onSurfaceVariant,
-                                ),
-                              ),
-                            if (task.status == TaskStatus.waiting ||
-                                task.status == TaskStatus.onHold)
-                              Text(
-                                task.status == TaskStatus.waiting
-                                    ? 'Waiting'
-                                    : 'On hold',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: scheme.onSurfaceVariant,
-                                ),
-                              ),
-                            if (unmetPrerequisites.isNotEmpty)
-                              Tooltip(
-                                message:
-                                    'Waiting for ${unmetPrerequisites.map((item) => item.title).join(', ')}',
-                                child: Text(
-                                  'Blocked by ${unmetPrerequisites.length}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: scheme.error,
-                                  ),
-                                ),
-                              ),
-                          ],
+                  ),
+                ),
+                Icon(
+                  iconForKey(
+                    controller.iconForTask(task),
+                    Icons.task_alt_outlined,
+                  ),
+                  size: 19,
+                  color: scheme.primary,
+                ),
+                if (task.isOpen &&
+                    taskAlarmRule(
+                          task,
+                          controller.alarmRules,
+                        )?.config.enabled ==
+                        true)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 6),
+                    child: AlarmIndicator(),
+                  ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        task.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          decoration: done ? TextDecoration.lineThrough : null,
+                          color: done
+                              ? scheme.onSurface.withValues(alpha: 0.55)
+                              : null,
                         ),
                       ),
+                      if (task.scheduledDate != null ||
+                          task.deadlineDate != null ||
+                          task.status == TaskStatus.inProgress ||
+                          childCount > 0 ||
+                          controller.checklistItems.any(
+                            (item) => item.taskId == task.id,
+                          ) ||
+                          task.status == TaskStatus.waiting ||
+                          task.status == TaskStatus.onHold ||
+                          unmetPrerequisites.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Wrap(
+                            spacing: 12,
+                            runSpacing: 4,
+                            children: [
+                              if (childCount > 0)
+                                Text(
+                                  'Subtasks ${controller.tasks.where((child) => controller.taskParents[child.id] == task.id && child.status == TaskStatus.completed).length}/$childCount',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              if (controller.checklistItems.any(
+                                (item) => item.taskId == task.id,
+                              ))
+                                Text(
+                                  'Checklist ${controller.checklistItems.where((item) => item.taskId == task.id && item.done).length}/'
+                                  '${controller.checklistItems.where((item) => item.taskId == task.id).length}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              if (focusActive ||
+                                  task.status == TaskStatus.inProgress)
+                                Text(
+                                  focusActive
+                                      ? (controller.activeTimer!.state ==
+                                                TimerState.paused
+                                            ? 'Timer paused'
+                                            : 'Timer running')
+                                      : 'In progress',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: scheme.primary,
+                                  ),
+                                ),
+                              if (task.scheduledDate != null)
+                                Text(
+                                  'Plan ${task.scheduledDate}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              if (task.deadlineDate != null)
+                                Text(
+                                  'Due ${task.deadlineDate}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: overdue
+                                        ? scheme.error
+                                        : scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              if (task.status == TaskStatus.waiting ||
+                                  task.status == TaskStatus.onHold)
+                                Text(
+                                  task.status == TaskStatus.waiting
+                                      ? 'Waiting'
+                                      : 'On hold',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              if (unmetPrerequisites.isNotEmpty)
+                                Tooltip(
+                                  message:
+                                      'Waiting for ${unmetPrerequisites.map((item) => item.title).join(', ')}',
+                                  child: Text(
+                                    'Blocked by ${unmetPrerequisites.length}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: scheme.error,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (task.priority >= 2)
+                  Icon(
+                    Icons.flag_outlined,
+                    size: 18,
+                    color: task.priority == 3 ? scheme.error : scheme.primary,
+                  ),
+                if (task.isOpen)
+                  IconButton(
+                    tooltip: task.status == TaskStatus.inProgress
+                        ? 'Open task timer'
+                        : 'Start Task',
+                    onPressed: () => _quickStart(task),
+                    icon: Icon(
+                      focusActive ? Icons.timer : Icons.play_circle_outline,
+                    ),
+                  ),
+                PopupMenuButton<String>(
+                  tooltip: 'Task actions',
+                  itemBuilder: (_) => [
+                    PopupMenuItem(value: 'edit', child: const Text('Edit')),
+                    PopupMenuItem(
+                      value: 'complete',
+                      child: Text(done ? 'Reopen' : 'Complete'),
+                    ),
+                    if (task.isOpen)
+                      const PopupMenuItem(
+                        value: 'reschedule',
+                        child: Text('Smart Reschedule'),
+                      ),
+                    PopupMenuItem(
+                      value: 'archive',
+                      child: Text(
+                        task.recurrenceSeriesId == null
+                            ? 'Archive'
+                            : 'Archive occurrence',
+                      ),
+                    ),
+                    if (task.recurrenceSeriesId != null)
+                      const PopupMenuItem(
+                        value: 'archiveSeries',
+                        child: Text('Archive entire series'),
+                      ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Text(
+                        task.recurrenceSeriesId == null
+                            ? 'Delete'
+                            : 'Move occurrence to Trash',
+                      ),
+                    ),
+                    if (task.recurrenceSeriesId != null)
+                      const PopupMenuItem(
+                        value: 'deleteSeries',
+                        child: Text('Move entire series to Trash'),
+                      ),
                   ],
-                ),
-              ),
-              if (task.priority >= 2)
-                Icon(
-                  Icons.flag_outlined,
-                  size: 18,
-                  color: task.priority == 3 ? scheme.error : scheme.primary,
-                ),
-              if (task.isOpen)
-                IconButton(
-                  tooltip: task.status == TaskStatus.inProgress
-                      ? 'Work or focus actions'
-                      : 'Start task or focus',
-                  onPressed: () => _quickStart(task),
-                  icon: Icon(
-                    focusActive ? Icons.timer : Icons.play_circle_outline,
-                  ),
-                ),
-              PopupMenuButton<String>(
-                tooltip: 'Task actions',
-                itemBuilder: (_) => [
-                  PopupMenuItem(value: 'edit', child: const Text('Edit')),
-                  PopupMenuItem(
-                    value: 'complete',
-                    child: Text(done ? 'Reopen' : 'Complete'),
-                  ),
-                  if (task.isOpen)
-                    const PopupMenuItem(
-                      value: 'reschedule',
-                      child: Text('Smart Reschedule'),
-                    ),
-                  PopupMenuItem(
-                    value: 'archive',
-                    child: Text(
-                      task.recurrenceSeriesId == null
-                          ? 'Archive'
-                          : 'Archive occurrence',
-                    ),
-                  ),
-                  if (task.recurrenceSeriesId != null)
-                    const PopupMenuItem(
-                      value: 'archiveSeries',
-                      child: Text('Archive entire series'),
-                    ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Text(
-                      task.recurrenceSeriesId == null
-                          ? 'Delete'
-                          : 'Move occurrence to Trash',
-                    ),
-                  ),
-                  if (task.recurrenceSeriesId != null)
-                    const PopupMenuItem(
-                      value: 'deleteSeries',
-                      child: Text('Move entire series to Trash'),
-                    ),
-                ],
-                onSelected: (action) async {
-                  if (action == 'edit') {
-                    await _openTask(task, wide);
-                  } else if (action == 'complete') {
-                    _run(() => controller.setComplete(task, !done));
-                  } else if (action == 'reschedule') {
-                    _showSmart(taskIds: [task.id], scope: 'task:${task.id}');
-                  } else if (action == 'archive') {
-                    _run(() => controller.archiveTask(task));
-                  } else if (action == 'archiveSeries') {
-                    if (await _confirm(
-                      'Archive entire series?',
-                      'Hide every occurrence in this series? History is retained and the series can be restored.',
-                      confirmLabel: 'Archive series',
+                  onSelected: (action) async {
+                    if (action == 'edit') {
+                      await _openTask(task, wide);
+                    } else if (action == 'complete') {
+                      _run(() => controller.setComplete(task, !done));
+                    } else if (action == 'reschedule') {
+                      _showSmart(taskIds: [task.id], scope: 'task:${task.id}');
+                    } else if (action == 'archive') {
+                      _run(() => controller.archiveTask(task));
+                    } else if (action == 'archiveSeries') {
+                      if (await _confirm(
+                        'Archive entire series?',
+                        'Hide every occurrence in this series? History is retained and the series can be restored.',
+                        confirmLabel: 'Archive series',
+                      )) {
+                        _run(() => controller.archiveSeries(task));
+                      }
+                    } else if (action == 'deleteSeries') {
+                      if (await _confirm(
+                        'Move entire series to Trash?',
+                        'Every occurrence will be hidden. Restoring the series preserves its history.',
+                      )) {
+                        _run(() => controller.deleteSeries(task));
+                      }
+                    } else if (await _confirm(
+                      'Delete task?',
+                      'Move “${task.title}” to Trash? It can be restored with its history.',
                     )) {
-                      _run(() => controller.archiveSeries(task));
+                      _run(() => controller.deleteTask(task.id));
                     }
-                  } else if (action == 'deleteSeries') {
-                    if (await _confirm(
-                      'Move entire series to Trash?',
-                      'Every occurrence will be hidden. Restoring the series preserves its history.',
-                    )) {
-                      _run(() => controller.deleteSeries(task));
-                    }
-                  } else if (await _confirm(
-                    'Delete task?',
-                    'Move “${task.title}” to Trash? It can be restored with its history.',
-                  )) {
-                    _run(() => controller.deleteTask(task.id));
-                  }
-                },
-              ),
-            ],
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

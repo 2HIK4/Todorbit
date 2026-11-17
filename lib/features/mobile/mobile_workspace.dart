@@ -1,3 +1,5 @@
+import '../time_tracking/compact_task_timer.dart';
+import '../time_tracking/task_timer_intent.dart';
 import '../../domain/alarm_plan.dart';
 import '../shared/alarm_indicator.dart';
 import '../shared/app_motion.dart';
@@ -444,15 +446,11 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
             ? Container(
                 height: 42,
                 decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .surfaceContainerHighest
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest
                       .withValues(alpha: 0.65),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primary
+                    color: Theme.of(context).colorScheme.primary
                         .withValues(alpha: 0.7),
                     width: 1.5,
                   ),
@@ -602,28 +600,10 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
         top: false,
         child: Column(
           children: [
-            if (c.activeTimer case final timer?)
+            if (c.activeTimer != null)
               Material(
                 color: Theme.of(context).colorScheme.secondaryContainer,
-                child: ListTile(
-                  leading: const Icon(Icons.timer_outlined),
-                  title: Text(
-                    c.tasks
-                            .where((t) => t.id == timer.taskId)
-                            .firstOrNull
-                            ?.title ??
-                        'Active timer',
-                  ),
-                  subtitle: Text(
-                    timer.needsReview(DateTime.now())
-                        ? 'Interrupted timer needs review'
-                        : 'Timer ${timer.state.name}',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: timer.taskId == null
-                      ? null
-                      : () => openFocus(timer.taskId!),
-                ),
+                child: CompactTaskTimer(open: openFocus),
               ),
             if (pendingLink != null)
               ListTile(
@@ -1073,16 +1053,28 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                 .tasks
                 .firstWhere((current) => current.id == t.id),
           ),
-          onStartFocus: () {
-            Navigator.pop(context);
-            openFocus(t.id);
-          },
+          onStartFocus: () => openTaskTimer(
+            context,
+            ref.read(appControllerProvider),
+            t.id,
+            open: (taskId) {
+              Navigator.pop(context);
+              _showFocus(taskId);
+            },
+          ),
         ),
       ),
     );
   }
 
-  void openFocus(String taskId) {
+  Future<void> openFocus(String taskId) => openTaskTimer(
+    context,
+    ref.read(appControllerProvider),
+    taskId,
+    open: _showFocus,
+  );
+
+  void _showFocus(String taskId) {
     Navigator.push(
       context,
       MaterialPageRoute(

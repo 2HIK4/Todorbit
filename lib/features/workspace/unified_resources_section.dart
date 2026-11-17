@@ -635,9 +635,13 @@ class _UnifiedResourcesSectionState extends State<UnifiedResourcesSection> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (availableSubtasks.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Text('No subtasks yet. Add one below to associate.'),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                      widget.onAddSubtask == null
+                          ? 'No subtasks available. Subtasks support one level only.'
+                          : 'No subtasks yet. Add one below to associate.',
+                    ),
                   )
                 else
                   Flexible(

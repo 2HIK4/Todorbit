@@ -5,9 +5,6 @@ extension FocusTaskRepository on LifeRepository {
     await db.transaction(() async {
       if (!task.isOpen) throw StateError('Closed tasks cannot be focused');
       await startTimer(task.id);
-      if (task.status != TaskStatus.inProgress) {
-        await setTaskWorking(task, true);
-      }
     });
   }
 }
@@ -60,7 +57,7 @@ extension TimeRepository on LifeRepository {
 
   Future<TimerRun> startTimer(String taskId) async {
     final id = _uuid.v4();
-    await db.transaction(() async {
+    return db.transaction(() async {
       final task = await db
           .customSelect(
             '''SELECT 1 FROM tasks t
@@ -76,7 +73,9 @@ extension TimeRepository on LifeRepository {
           )
           .getSingleOrNull();
       if (task == null) throw StateError('Task no longer exists');
-      if (await activeTimerRun() != null) {
+      final existing = await activeTimerRun();
+      if (existing?.taskId == taskId) return existing!;
+      if (existing != null) {
         throw StateError('Pause or stop the existing timer first');
       }
       final now = DateTime.now().toUtc().toIso8601String();
@@ -105,9 +104,21 @@ extension TimeRepository on LifeRepository {
           Variable.withString(now),
         ],
       );
+      return (await activeTimerRun())!;
     });
-    return (await activeTimerRun())!;
   }
+
+  /// Switch only the reviewed run. Closing its interval and opening the next
+  /// must succeed together; status, plans and previous work are left intact.
+  Future<TimerRun?> switchTaskTimer(
+    TimerRun previous,
+    String taskId, {
+    bool startWork = true,
+  }) => db.transaction(() async {
+    await _requireActiveTask(taskId);
+    await stopTimer(previous);
+    return startWork ? await startTimer(taskId) : null;
+  });
 
   Future<TimerRun> _currentRun(TimerRun previous, String expectedState) async {
     final row = await db

@@ -8,6 +8,29 @@ import '../../data/life_repository.dart';
 import '../../domain/task_composition.dart';
 import '../shared/text_prompt_dialog.dart';
 
+Future<bool> confirmChecklistItemRemoval(
+  BuildContext context,
+  String title,
+) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove item?'),
+        content: Text('Remove "$title" from this checklist?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    ) ??
+    false;
+
 Future<String?> _name(
   BuildContext context,
   String title, [
@@ -23,6 +46,68 @@ Future<String?> _name(
     },
   ),
 );
+
+class _ChecklistMenu extends StatelessWidget {
+  const _ChecklistMenu({
+    required this.title,
+    required this.count,
+    required this.rename,
+    required this.remove,
+    this.up,
+    this.down,
+  });
+  final String title;
+  final int count;
+  final Future<void> Function() rename, remove;
+  final Future<void> Function()? up, down;
+
+  @override
+  Widget build(BuildContext context) => PopupMenuButton<String>(
+    tooltip: 'Checklist actions: $title',
+    itemBuilder: (_) => [
+      const PopupMenuItem(value: 'rename', child: Text('Rename')),
+      PopupMenuItem(
+        value: 'up',
+        enabled: up != null,
+        child: const Text('Move up'),
+      ),
+      PopupMenuItem(
+        value: 'down',
+        enabled: down != null,
+        child: const Text('Move down'),
+      ),
+      const PopupMenuItem(value: 'remove', child: Text('Remove checklist')),
+    ],
+    onSelected: (action) async {
+      if (action == 'rename') await rename();
+      if (action == 'up') await up?.call();
+      if (action == 'down') await down?.call();
+      if (action == 'remove') {
+        if (!context.mounted) return;
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Remove checklist?'),
+            content: Text(
+              'Remove $title and its $count items? Subtasks are kept.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Remove'),
+              ),
+            ],
+          ),
+        );
+        if (confirmed == true) await remove();
+      }
+    },
+  );
+}
 
 class ChecklistGroupsSection extends ConsumerWidget {
   const ChecklistGroupsSection({super.key, required this.taskId});
@@ -49,7 +134,7 @@ class ChecklistGroupsSection extends ConsumerWidget {
       children: [
         TextButton.icon(
           icon: const Icon(Icons.add),
-          label: const Text('Add checklist'),
+          label: const Text('New checklist'),
           onPressed: () async {
             final title = await _name(context, 'New checklist');
             if (title != null) {
@@ -72,82 +157,36 @@ class ChecklistGroupsSection extends ConsumerWidget {
                 subtitle: Text(
                   '${items.where((item) => item.done).length}/${items.length} complete',
                 ),
-                children: [
-                  Wrap(
-                    children: [
-                      TextButton(
-                        onPressed: () async {
-                          final title = await _name(
-                            context,
-                            'Checklist name',
-                            group.title,
-                          );
-                          if (title != null) {
-                            await run(
-                              () => c.repository.renameChecklistGroup(
-                                group,
-                                title,
-                              ),
-                            );
-                          }
-                        },
-                        child: const Text('Rename'),
-                      ),
-                      IconButton(
-                        tooltip: 'Move checklist up',
-                        onPressed: i == 0
-                            ? null
-                            : () => run(
-                                () =>
-                                    c.repository.moveChecklistGroup(group, -1),
-                              ),
-                        icon: const Icon(Icons.arrow_upward),
-                      ),
-                      IconButton(
-                        tooltip: 'Move checklist down',
-                        onPressed: i == groups.length - 1
-                            ? null
-                            : () => run(
-                                () => c.repository.moveChecklistGroup(group, 1),
-                              ),
-                        icon: const Icon(Icons.arrow_downward),
-                      ),
-                      TextButton(
-                        onPressed: () async {
-                          final confirmed = await showDialog<bool>(
-                            context: context,
-                            animationStyle: AppMotion.style(context),
-                            builder: (context) => AlertDialog(
-                              title: const Text('Remove checklist?'),
-                              content: Text(
-                                'Remove ${group.title} and its ${items.length} items? Subtasks are kept.',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.pop(context, false),
-                                  child: const Text('Cancel'),
-                                ),
-                                FilledButton(
-                                  onPressed: () => Navigator.pop(context, true),
-                                  child: const Text('Remove'),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirmed == true) {
-                            await run(
-                              () => c.repository.removeChecklistGroup(
-                                group,
-                                items,
-                              ),
-                            );
-                          }
-                        },
-                        child: const Text('Remove checklist'),
-                      ),
-                    ],
+                trailing: _ChecklistMenu(
+                  title: group.title,
+                  count: items.length,
+                  rename: () async {
+                    final title = await _name(
+                      context,
+                      'Checklist name',
+                      group.title,
+                    );
+                    if (title != null) {
+                      await run(
+                        () => c.repository.renameChecklistGroup(group, title),
+                      );
+                    }
+                  },
+                  up: i == 0
+                      ? null
+                      : () => run(
+                          () => c.repository.moveChecklistGroup(group, -1),
+                        ),
+                  down: i == groups.length - 1
+                      ? null
+                      : () => run(
+                          () => c.repository.moveChecklistGroup(group, 1),
+                        ),
+                  remove: () => run(
+                    () => c.repository.removeChecklistGroup(group, items),
                   ),
+                ),
+                children: [
                   for (var n = 0; n < items.length; n++)
                     CheckboxListTile(
                       value: items[n].done,
@@ -176,7 +215,13 @@ class ChecklistGroupsSection extends ConsumerWidget {
                               );
                             }
                           }
-                          if (action == 'remove') {
+                          if (action == 'remove' &&
+                              context.mounted &&
+                              await confirmChecklistItemRemoval(
+                                context,
+                                items[n].title,
+                              )) {
+                            if (!context.mounted) return;
                             await run(
                               () => c.repository.removeChecklistItem(items[n]),
                             );
@@ -262,7 +307,7 @@ class DraftChecklistGroups extends StatelessWidget {
       children: [
         TextButton.icon(
           icon: const Icon(Icons.add),
-          label: const Text('Add checklist'),
+          label: const Text('New checklist'),
           onPressed: () async {
             final title = await _name(context, 'New checklist');
             if (title != null && context.mounted) {
@@ -276,53 +321,36 @@ class DraftChecklistGroups extends StatelessWidget {
             initiallyExpanded: true,
             title: Text(groups[i].title),
             subtitle: Text('${groups[i].items.length} items'),
-            children: [
-              Wrap(
-                children: [
-                  TextButton(
-                    onPressed: () async {
-                      final title = await _name(
-                        context,
-                        'Checklist name',
-                        groups[i].title,
-                      );
-                      if (title != null && context.mounted) {
-                        replace(i, DraftChecklistGroup(title, groups[i].items));
-                      }
-                    },
-                    child: const Text('Rename'),
-                  ),
-                  IconButton(
-                    tooltip: 'Move checklist up',
-                    onPressed: i == 0
-                        ? null
-                        : () {
-                            final next = List.of(groups);
-                            next.insert(i - 1, next.removeAt(i));
-                            onChanged(next);
-                          },
-                    icon: const Icon(Icons.arrow_upward),
-                  ),
-                  IconButton(
-                    tooltip: 'Move checklist down',
-                    onPressed: i == groups.length - 1
-                        ? null
-                        : () {
-                            final next = List.of(groups);
-                            next.insert(i + 1, next.removeAt(i));
-                            onChanged(next);
-                          },
-                    icon: const Icon(Icons.arrow_downward),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      final next = List.of(groups)..removeAt(i);
+            trailing: _ChecklistMenu(
+              title: groups[i].title,
+              count: groups[i].items.length,
+              rename: () async {
+                final title = await _name(
+                  context,
+                  'Checklist name',
+                  groups[i].title,
+                );
+                if (title != null && context.mounted) {
+                  replace(i, DraftChecklistGroup(title, groups[i].items));
+                }
+              },
+              up: i == 0
+                  ? null
+                  : () async {
+                      final next = List.of(groups);
+                      next.insert(i - 1, next.removeAt(i));
                       onChanged(next);
                     },
-                    child: const Text('Remove checklist'),
-                  ),
-                ],
-              ),
+              down: i == groups.length - 1
+                  ? null
+                  : () async {
+                      final next = List.of(groups);
+                      next.insert(i + 1, next.removeAt(i));
+                      onChanged(next);
+                    },
+              remove: () async => onChanged(List.of(groups)..removeAt(i)),
+            ),
+            children: [
               for (var n = 0; n < groups[i].items.length; n++)
                 ListTile(
                   title: Text(groups[i].items[n]),
@@ -356,7 +384,15 @@ class DraftChecklistGroups extends StatelessWidget {
                         child: Text('Remove'),
                       ),
                     ],
-                    onSelected: (action) {
+                    onSelected: (action) async {
+                      if (action == 'remove' &&
+                          !await confirmChecklistItemRemoval(
+                            context,
+                            groups[i].items[n],
+                          )) {
+                        return;
+                      }
+                      if (!context.mounted) return;
                       final items = List.of(groups[i].items);
                       final title = items.removeAt(n);
                       if (action != 'remove') {

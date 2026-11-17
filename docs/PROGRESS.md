@@ -1,5 +1,19 @@
 # Progress
 
+## Prompt 2 — task timers and composition (2026-11-17)
+
+Implemented the current authoritative task scope on `feature/todorbit-task-ux`,
+base `5803e52`. Direct/idempotent timer entry is shared across Windows/Android;
+explicit atomic switching keeps actual work and separates task status/plans.
+Compact controls, checklist group menus/removal protection, one-level subtask
+explanation and guarded planned-session Trash actions are in place. 44 distinct
+focused tests plus 6 adjacent/lifecycle checks pass; analysis/format/diff checks pass.
+[Receipt and limitations](PROMPT2_TASK_UX_2026_11_17.md); source hashes are attached.
+Live/device/packaging acceptance remains tracked separately. No schema/version,
+Stable, publication, merge/rebase or remote changes. Implementation awaits
+independent integration review; older Gemini queue entries remain unchanged.
+
+
 ## UI-REL-01 (Prompt 1 Authoritative) — Search UX, progressive advanced search, keyboard insets, and single-route task/event detail presentation (2026-11-17)
 
 Implemented Prompt 1 of the Todorbit UI and Reliability Improvement Program on `codex/fix-phantom-sync-conflict`.

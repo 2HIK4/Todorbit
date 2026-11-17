@@ -243,3 +243,19 @@ Every UI modification, new component, or bugfix must pass these 16 explicit qual
 16. **Targeted Widget & Integration Tests**:
     - Every UI change must be accompanied by focused widget tests exercising responsive constraints, text scaling (1.0× vs 1.5×/2.0×), and keyboard insets where applicable.
     - Prioritize fast behavioral widget tests over brittle full-screen golden tests.
+
+
+## Task timer and composition contracts (Prompt 2)
+
+- Route all task timer entry through `openTaskTimer` on Windows and Android.
+  Same-task running/paused/recovered sessions reopen by identity; reopening never
+  resumes, adopts ownership, changes task status, or creates a work interval.
+  Other-task switches require an explicit reviewed choice and atomic ledger switch.
+- Repository time entries own recorded work; task status and planned sessions are
+  independent. Process-local countdown/Pomodoro state is not a durable work ledger.
+  Compact controls must freeze remote/recovered totals at the confirmed checkpoint.
+- Keep `New checklist` (group) distinct from `Add item` (within that group) and
+  ungrouped inline items. Use header menus and confirm removals. Subtasks support
+  one level; child details and resource dialogs must explain the limit.
+- Planned-session row deletion must use the guarded upcoming-session transaction
+  and existing Trash restoration. Never expose it for completed/started sessions.

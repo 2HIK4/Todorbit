@@ -68,3 +68,15 @@ Incremental Synchronization and Snapshot Backups are independent systems with di
 - **Never overwrite local database on sync pull**: Sync applies discrete entity operations via `SyncApplyRepository`.
 - **Soft Deletes**: Deletions are journaled tombstones. Tombstones sync across clients so remote devices delete the record rather than resurrecting it.
 - **Immutable Operation Revisions**: Once an encrypted batch is published, its payload and causality proof are immutable.
+
+
+## Task timer entry and planned-session removal (Prompt 2)
+
+`startTimer(taskId)` is idempotent for the current task, returning the existing
+running or paused run without writes. Other-task switching closes and opens work
+intervals in one transaction using the reviewed timer revision and ownership checks;
+a failed destination start rolls back the stop. Never infer task status from a timer.
+Break phases start without creating work intervals. `deletePlannedSession` checks
+session revision, upcoming outcome and absent actual start inside the Trash
+transaction; actual work and task identity survive. Cover these contracts using
+`task-timers` in `tools/dev/features.json`. Schema remains 29; no migration applies.

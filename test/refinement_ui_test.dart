@@ -311,7 +311,7 @@ void main() {
         'Packing task',
       );
       await expandEditorSection(tester, 'Checklist and subtasks');
-      await tester.tap(find.text('Add checklist'));
+      await tester.tap(find.text('New checklist'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextFormField), 'Pack');
       await tester.tap(find.text('Continue'));
