@@ -1,5 +1,25 @@
 # Persistent test run ledger
 
+## UI-REL-03 (Prompt 3 Authoritative) — Calendar responsiveness, event metadata (categories & projects), color picker scrolling, and month navigation prefetch (2026-11-17, UTC+03:00)
+
+Exact branch `feature/todorbit-calendar-events`, worktree `life_manager_worktrees/feature-todorbit-calendar-events`:
+- `test/prompt3_calendar_events_test.dart`: 9/9 PASS (19s). Covers:
+  1. Month cells showing meaningful first items and clickable `+N` or `+N more` count affordance on narrow window widths (420px, 520px, 680px) without disappearing or overflowing.
+  2. Calendar content filter (Both / Events only / Tasks only) discoverability on narrow desktop widths without layout overflow.
+  3. Event category and project selector assignment, raw SQLite column persistence (`fixed_events.category_id`, `fixed_events.project_id`).
+  4. In-editor dynamic creation of new categories and projects (`+ New Category`, `+ New Project`) with immediate assignment.
+  5. Old events without category/project remain valid with null assignments and display 'None / Inbox' and 'None'.
+  6. Custom event color picker preserving steady scroll offset during user drag, palette switching (`ChoiceChip`), and hex editing without snapping back.
+  7. Color picker dialog (`ColorPickerDialog`) maintaining steady scroll offset under touch/mouse wheel drag and text editing.
+  8. Month navigation prefetch window (adjacent 3-month span `<= 93` days) showing events immediately with zero blank flicker.
+  9. Rapid back/forward month navigation clicks guarded against race conditions or stale months.
+- `test/event_editor_layout_test.dart`: 3/3 PASS (6s) verifying AnchoredSelectField category/project selectors and form layout.
+- `test/calendar_test.dart`: 3/3 PASS (13s) verifying calendar conflict indicators, content filters, and event/session creation.
+- `test/stage2_ui_regression_test.dart`: 18/18 PASS (35s) verifying mobile agenda, all-day boundaries, color dialogs, and IME layout.
+- `test/repository_test.dart`: 8/8 PASS (10s) Level 2 critical persistence verification (Schema 29, event and task lifecycle, v1 migration).
+- Static Analysis: `flutter analyze --no-pub` -> 0 issues found (12.7s).
+- Total checks: 41 focused tests executed, 41 passed (0 failures). No beta publication.
+
 ## Beta22 final publication acceptance (2026-11-15)
 
 [Publication receipt](UIUX03_BETA_22_PUBLICATION.md), exact tag/source1a5560a:

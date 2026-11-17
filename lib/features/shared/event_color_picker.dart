@@ -41,6 +41,7 @@ class _EventColorDialog extends StatefulWidget {
 class _EventColorDialogState extends State<_EventColorDialog> {
   late Color preview;
   late final TextEditingController hex;
+  final ScrollController _scrollController = ScrollController();
   var valid = true;
   var picker = ColorPickerType.primary;
 
@@ -56,6 +57,7 @@ class _EventColorDialogState extends State<_EventColorDialog> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     hex.dispose();
     super.dispose();
   }
@@ -63,78 +65,85 @@ class _EventColorDialogState extends State<_EventColorDialog> {
   @override
   Widget build(BuildContext context) => AlertDialog(
     title: const Text('Custom event color'),
-    scrollable: true,
+    scrollable: false,
     content: SizedBox(
       width: 350,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            height: 38,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: preview,
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+      child: Scrollbar(
+        controller: _scrollController,
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          key: const PageStorageKey('event_color_dialog_scroll'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              for (final option in const {
-                ColorPickerType.primary: 'Primary',
-                ColorPickerType.accent: 'Accent',
-                ColorPickerType.wheel: 'Wheel',
-              }.entries)
-                ChoiceChip(
-                  label: Text(option.value),
-                  selected: picker == option.key,
-                  onSelected: (_) => setState(() => picker = option.key),
+              Container(
+                height: 38,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: preview,
+                  borderRadius: BorderRadius.circular(8),
                 ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final option in const {
+                    ColorPickerType.primary: 'Primary',
+                    ColorPickerType.accent: 'Accent',
+                    ColorPickerType.wheel: 'Wheel',
+                  }.entries)
+                    ChoiceChip(
+                      label: Text(option.value),
+                      selected: picker == option.key,
+                      onSelected: (_) => setState(() => picker = option.key),
+                    ),
+                ],
+              ),
+              ColorPicker(
+                color: preview,
+                onColorChanged: (color) => setState(() {
+                  preview = color;
+                  valid = true;
+                  hex.text =
+                      '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
+                }),
+                pickersEnabled: {
+                  ColorPickerType.both: false,
+                  ColorPickerType.primary: picker == ColorPickerType.primary,
+                  ColorPickerType.accent: picker == ColorPickerType.accent,
+                  ColorPickerType.bw: false,
+                  ColorPickerType.custom: false,
+                  ColorPickerType.customSecondary: false,
+                  ColorPickerType.wheel: picker == ColorPickerType.wheel,
+                },
+                enableShadesSelection: false,
+                wheelDiameter: 190,
+                wheelWidth: 18,
+                showColorCode: false,
+              ),
+              TextField(
+                controller: hex,
+                maxLength: 7,
+                decoration: InputDecoration(
+                  labelText: 'HEX color',
+                  hintText: '#RRGGBB',
+                  errorText: valid ? null : 'Enter a six-digit HEX color',
+                ),
+                onChanged: (value) => setState(() {
+                  valid = RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(value);
+                  if (valid) {
+                    preview = Color(
+                      int.parse('FF${value.substring(1)}', radix: 16),
+                    );
+                  }
+                }),
+              ),
             ],
           ),
-          ColorPicker(
-            key: ValueKey(picker),
-            color: preview,
-            onColorChanged: (color) => setState(() {
-              preview = color;
-              valid = true;
-              hex.text =
-                  '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
-            }),
-            pickersEnabled: {
-              ColorPickerType.both: false,
-              ColorPickerType.primary: picker == ColorPickerType.primary,
-              ColorPickerType.accent: picker == ColorPickerType.accent,
-              ColorPickerType.bw: false,
-              ColorPickerType.custom: false,
-              ColorPickerType.customSecondary: false,
-              ColorPickerType.wheel: picker == ColorPickerType.wheel,
-            },
-            enableShadesSelection: false,
-            wheelDiameter: 190,
-            wheelWidth: 18,
-            showColorCode: false,
-          ),
-          TextField(
-            controller: hex,
-            maxLength: 7,
-            decoration: InputDecoration(
-              labelText: 'HEX color',
-              hintText: '#RRGGBB',
-              errorText: valid ? null : 'Enter a six-digit HEX color',
-            ),
-            onChanged: (value) => setState(() {
-              valid = RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(value);
-              if (valid) {
-                preview = Color(
-                  int.parse('FF${value.substring(1)}', radix: 16),
-                );
-              }
-            }),
-          ),
-        ],
+        ),
       ),
     ),
     actions: [

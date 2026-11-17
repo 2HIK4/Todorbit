@@ -126,6 +126,93 @@ class _EventEditorState extends ConsumerState<EventEditor> {
     editScope.name,
     details.map((d) => d.toJson()).toList(),
   ]);
+  int organizationPickerRevision = 0;
+
+  Future<String?> _newOrganizationName(String kind) async {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('New ${kind == 'category' ? 'Category' : 'Project'}'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(
+            labelText: '${kind == 'category' ? 'Category' : 'Project'} name',
+          ),
+          onSubmitted: (value) => Navigator.of(context).pop(value.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _createCategory() async {
+    final name = await _newOrganizationName('category');
+    if (name == null || name.isEmpty || !mounted) {
+      if (mounted) setState(() => organizationPickerRevision++);
+      return;
+    }
+    try {
+      final controller = ref.read(appControllerProvider);
+      await controller.addCategory(name);
+      if (mounted) {
+        setState(() {
+          categoryId = controller.categories
+              .where((item) => item.name == name)
+              .last
+              .id;
+          projectId = null;
+          organizationPickerRevision++;
+        });
+      }
+    } catch (error) {
+      if (mounted) setState(() => organizationPickerRevision++);
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$error')));
+      }
+    }
+  }
+
+  Future<void> _createProject() async {
+    final parentId = categoryId;
+    if (parentId == null) return;
+    final name = await _newOrganizationName('project');
+    if (name == null || name.isEmpty || !mounted) {
+      if (mounted) setState(() => organizationPickerRevision++);
+      return;
+    }
+    try {
+      final controller = ref.read(appControllerProvider);
+      await controller.addProject(parentId, name);
+      if (mounted) {
+        setState(() {
+          projectId = controller.projects
+              .where((item) => item.categoryId == parentId && item.name == name)
+              .last
+              .id;
+          organizationPickerRevision++;
+        });
+      }
+    } catch (error) {
+      if (mounted) setState(() => organizationPickerRevision++);
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$error')));
+      }
+    }
+  }
+
   void changed() {
     if (widget.protectUnsavedEdits && mounted) setState(() {});
   }
@@ -956,186 +1043,200 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                   title: 'Organization and appearance',
                   initiallyExpanded: categoryId != null || projectId != null,
                   children: [
-                    LayoutBuilder(
-                      builder: (context, bounds) => PopupMenuButton<String>(
-                        tooltip: 'Choose category',
-                        position: PopupMenuPosition.under,
-                        constraints: BoxConstraints(
-                          minWidth: bounds.maxWidth,
-                          maxWidth: bounds.maxWidth,
-                          maxHeight: 240,
-                        ),
-                        initialValue: categoryId,
-                        itemBuilder: (_) => [
-                          const PopupMenuItem(value: '', child: Text('None')),
-                          for (final category
-                              in ref.watch(appControllerProvider).categories)
-                            PopupMenuItem(
-                              value: category.id,
-                              child: Text(category.name),
+                    Builder(
+                      builder: (context) {
+                        final controller = ref.watch(appControllerProvider);
+                        final projectChoices = categoryId == null
+                            ? const <Project>[]
+                            : controller.projects
+                                .where((p) => p.categoryId == categoryId)
+                                .toList();
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Tooltip(
+                              message: 'Choose category',
+                              child: AnchoredSelectField<String?>(
+                                key: ValueKey(
+                                  'event-category:$categoryId:$organizationPickerRevision',
+                                ),
+                                initialValue: categoryId,
+                                isExpanded: true,
+                                decoration:
+                                    const InputDecoration(labelText: 'Category'),
+                                items: [
+                                  const DropdownMenuItem<String?>(
+                                    value: null,
+                                    child: Text('None / Inbox'),
+                                  ),
+                                  ...controller.categories.map(
+                                    (category) => DropdownMenuItem<String?>(
+                                      value: category.id,
+                                      child: Text(category.name),
+                                    ),
+                                  ),
+                                  const DropdownMenuItem<String?>(
+                                    value: '__new_category__',
+                                    child: Text('+ New Category'),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  if (value == '__new_category__') {
+                                    _createCategory();
+                                    return;
+                                  }
+                                  setState(() {
+                                    categoryId = value;
+                                    projectId = null;
+                                  });
+                                },
+                              ),
                             ),
-                        ],
-                        onSelected: (value) => setState(() {
-                          categoryId = value == '' ? null : value;
-                          projectId = null;
-                        }),
-                        child: InputDecorator(
-                          isEmpty: false,
-                          decoration: const InputDecoration(
-                            labelText: 'Category',
-                            suffixIcon: Icon(Icons.arrow_drop_down),
-                          ),
-                          child: Text(
-                            ref
-                                    .watch(appControllerProvider)
-                                    .categories
-                                    .where((item) => item.id == categoryId)
-                                    .map((item) => item.name)
-                                    .firstOrNull ??
-                                'None',
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    AnchoredSelectField<String>(
-                      key: ValueKey('event-project:$categoryId:$projectId'),
-                      initialValue: projectId ?? '',
-                      isExpanded: true,
-                      decoration: const InputDecoration(labelText: 'Project'),
-                      items: [
-                        const DropdownMenuItem(value: '', child: Text('None')),
-                        for (final project
-                            in ref
-                                .watch(appControllerProvider)
-                                .projects
-                                .where((p) => p.categoryId == categoryId))
-                          DropdownMenuItem(
-                            value: project.id,
-                            child: Text(project.name),
-                          ),
-                      ],
-                      onChanged: (value) => setState(
-                        () => projectId = value == '' ? null : value,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    LayoutBuilder(
-                      builder: (context, bounds) => PopupMenuButton<int>(
-                        tooltip: 'Choose event color',
-                        position: PopupMenuPosition.under,
-                        constraints: BoxConstraints(
-                          minWidth: bounds.maxWidth,
-                          maxWidth: bounds.maxWidth,
-                          maxHeight: 240,
-                        ),
-                        initialValue: colorValue ?? 0,
-                        itemBuilder: (_) => [
-                          PopupMenuItem(
-                            value: 0,
-                            child: Row(
-                              children: [
-                                Icon(Icons.circle, color: _inheritedColor()),
-                                const SizedBox(width: 10),
-                                const Expanded(
-                                  child: Text(
-                                    'Inherited default',
-                                    overflow: TextOverflow.ellipsis,
+                            const SizedBox(height: 12),
+                            AnchoredSelectField<String?>(
+                              key: ValueKey(
+                                'event-project:$projectId:$categoryId:$organizationPickerRevision',
+                              ),
+                              initialValue: projectId,
+                              isExpanded: true,
+                              decoration:
+                                  const InputDecoration(labelText: 'Project'),
+                              items: [
+                                const DropdownMenuItem<String?>(
+                                  value: null,
+                                  child: Text('None'),
+                                ),
+                                ...projectChoices.map(
+                                  (project) => DropdownMenuItem<String?>(
+                                    value: project.id,
+                                    child: Text(project.name),
+                                  ),
+                                ),
+                                if (categoryId != null)
+                                  const DropdownMenuItem<String?>(
+                                    value: '__new_project__',
+                                    child: Text('+ New Project'),
+                                  ),
+                              ],
+                              onChanged: categoryId == null
+                                  ? null
+                                  : (value) {
+                                      if (value == '__new_project__') {
+                                        _createProject();
+                                      } else {
+                                        setState(() => projectId = value);
+                                      }
+                                    },
+                            ),
+                            const SizedBox(height: 12),
+                            Tooltip(
+                              message: 'Choose event color',
+                              child: AnchoredSelectField<int?>(
+                                key: ValueKey('event-color:$colorValue'),
+                                initialValue: colorValue,
+                                isExpanded: true,
+                                decoration:
+                                    const InputDecoration(labelText: 'Color'),
+                                items: [
+                                DropdownMenuItem<int?>(
+                                  value: null,
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.circle,
+                                        color: _inheritedColor(),
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      const Expanded(
+                                        child: Text(
+                                          'Inherited default',
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                for (final color in eventColors)
+                                  DropdownMenuItem<int?>(
+                                    value: color.$2,
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.circle,
+                                          color: Color(color.$2),
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            color.$1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                if (colorValue != null &&
+                                    !eventColors.any(
+                                      (item) => item.$2 == colorValue,
+                                    ))
+                                  DropdownMenuItem<int?>(
+                                    value: colorValue,
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.circle,
+                                          color: Color(colorValue!),
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            eventColorLabel(colorValue),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                const DropdownMenuItem<int?>(
+                                  value: -1,
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.colorize_outlined,
+                                        size: 16,
+                                      ),
+                                      SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          'Custom Color…',
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
-                            ),
-                          ),
-                          for (final color in eventColors)
-                            PopupMenuItem(
-                              value: color.$2,
-                              child: Row(
-                                children: [
-                                  Icon(Icons.circle, color: Color(color.$2)),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      color.$1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          if (colorValue != null &&
-                              !eventColors.any((item) => item.$2 == colorValue))
-                            PopupMenuItem(
-                              value: colorValue!,
-                              child: Row(
-                                children: [
-                                  Icon(Icons.circle, color: Color(colorValue!)),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      eventColorLabel(colorValue),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          const PopupMenuItem(
-                            value: -1,
-                            child: Row(
-                              children: [
-                                Icon(Icons.colorize_outlined),
-                                SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    'Custom Color',
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
+                              onChanged: (value) async {
+                                if (value == -1) {
+                                  final chosen = await chooseEventColor(
+                                    context,
+                                    colorValue ?? 0xFF5365B5,
+                                  );
+                                  if (chosen != null && mounted) {
+                                    setState(() => colorValue = chosen);
+                                  }
+                                } else {
+                                  setState(() => colorValue = value);
+                                }
+                              },
                             ),
                           ),
                         ],
-                        onSelected: (value) async {
-                          if (value == -1) {
-                            final chosen = await chooseEventColor(
-                              context,
-                              colorValue ?? 0xFF5365B5,
-                            );
-                            if (chosen != null && mounted) {
-                              setState(() => colorValue = chosen);
-                            }
-                          } else {
-                            setState(
-                              () => colorValue = value == 0 ? null : value,
-                            );
-                          }
-                        },
-                        child: InputDecorator(
-                          isEmpty: false,
-                          decoration: const InputDecoration(
-                            labelText: 'Color',
-                            suffixIcon: Icon(Icons.arrow_drop_down),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.circle,
-                                size: 18,
-                                color: colorValue == null
-                                    ? _inheritedColor()
-                                    : Color(colorValue!),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  eventColorLabel(colorValue),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                      );
+                      },
                     ),
                   ],
                 ),

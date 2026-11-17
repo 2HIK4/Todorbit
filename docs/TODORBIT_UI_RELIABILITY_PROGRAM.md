@@ -257,6 +257,24 @@ flutter test --no-pub --concurrency=1 test/repository_test.dart test/task_revisi
 
 ---
 
+### 7.3 Prompt 3: Calendar Responsiveness, Event Metadata, Color Picker, and Month Navigation (UI-REL-03)
+- **Status**: Implemented and verified on `feature/todorbit-calendar-events`.
+- **Delivered Capabilities**:
+  - **Calendar Responsive Display (Screenshot 6)**: Dynamic cell capacity in `CalendarMonthView` and `_monthGrid` based on clamped height (>=90px) and width; guaranteed first item or non-overflowing clickable `+N` count affordance on narrow desktop windows (380px–680px); memoized month and week item maps avoiding O(days × items) recalculations during desktop window resize.
+  - **Event Metadata**: Added full category and project assignment in `EventEditor` via `AnchoredSelectField<String?>`, matching tasks; supported in-dialog `+ New Category` and `+ New Project` creation; persisted to `fixed_events.category_id` and `project_id` in SQLite Schema 29 while preserving legacy null events.
+  - **Color Picker Steady Scroll**: Managed `ScrollController` in State with `PageStorageKey` for `_EventColorDialog` and `ColorPickerDialog`; eliminated scroll reset / snap-back during user scroll, palette chip switching, and hex text editing.
+  - **Month Navigation Flicker Elimination**: Expanded `AppController.ensureRecurringMonth` prefetch window to 90 days (`[first - 30 days, first + 60 days]`, `<= 93` day invariant limit), preloading adjacent months in-memory for instant frame 1 display with zero blank flicker; guarded against rapid click race conditions with `_monthNavigationRevision`.
+- **Verification Receipts**:
+  - Static Analysis: `flutter analyze --no-pub` -> 0 issues found (12.7s).
+  - `test/prompt3_calendar_events_test.dart` -> 9/9 passed (19s).
+  - `test/event_editor_layout_test.dart` -> 3/3 passed (6s).
+  - `test/calendar_test.dart` -> 3/3 passed (13s).
+  - `test/stage2_ui_regression_test.dart` -> 18/18 passed (35s).
+  - `test/repository_test.dart` -> 8/8 passed (10s) Level 2 critical persistence verification.
+  - Total Level 1/2 tests executed: 41/41 passed with zero failures.
+
+---
+
 ## 8. Parallel Worktree Configuration & Integration Plan (Prompts 2 & 3)
 
 ### Worktree Allocation
