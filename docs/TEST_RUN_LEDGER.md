@@ -15,6 +15,25 @@ and sync6 separately, without adding them to new counts. Offscreen theme/font
 captures inspected; actual runtime/hot reload blocked by no DTD/symlink support.
 No release acceptance claimed.
 
+## UI-REL-05 (Prompt 5 Authoritative) — Android Shared Files Inbox & Task Resource Integration (2026-11-18, UTC+03:00)
+
+Exact branch `feature/todorbit-android-share-inbox`, worktree `life_manager_worktrees/feature-todorbit-android-share-inbox`, base `4d9292c`:
+- `test/shared_inbox_store_test.dart`: 10/10 PASS (1s).
+  Covers empty store, single PDF ingestion, image MIME inference, sequential mixed ingestion, SHA-256 duplicate content detection, filename sanitization, 32 MiB size rejection, single deletion, batch deletion, and orphan staging cleanup.
+- `test/shared_inbox_screen_test.dart`: 7/7 PASS (6s).
+  Covers empty state guidance, full list presentation with sizes/dates, search filtering by displayName, category filter chips (All, PDFs, Images, Docs, Other), preview/open via `WindowsResourceDialog` / `FileProvider`, single file deletion confirmation dialog (`ISS-C11`), and multi-select batch deletion.
+- `test/shared_inbox_task_integration_test.dart`: 5/5 PASS (8s).
+  Covers `From Shared Inbox` button in draft resources section, draft task creation with cancel vs save semantics (cancelling leaves zero DB rows and preserves inbox original), persisted task attachment creating durable BLOB copy in `task_resources`, independent copy semantics (deleting task attachment does not delete inbox original and vice versa), and picker dialog duplicate attachment prevention.
+- `test/shared_inbox_mobile_navigation_test.dart`: 1/1 PASS (2s).
+  Covers `MobileWorkspace` drawer containing `Shared Files` navigation tile and navigating directly to `SharedInboxScreen`.
+- `test/task_resources_test.dart` + `test/task_resources_widget_test.dart`: 10/10 PASS (27s).
+  Level 2 critical regression checks verifying managed copies, external references, subtask mapping, oversized file rejection, tamper rejection, and resource UI controls.
+- `test/repository_test.dart`: 8/8 PASS (12s).
+  Level 2 critical persistence verification (Schema 29, task lifecycle, concurrency tokens, fixed events, and v1 migration preservation).
+- Static Analysis: `flutter analyze --no-pub lib/ test/` -> 0 issues found (12.4s).
+- Total checks: 41 focused tests executed, 41 passed (0 failures).
+- Root-cause diagnosis & harness fix: Resolved earlier fake-async timeout in `shared_inbox_task_integration_test.dart` by wrapping asynchronous native file I/O operations (`LifeRepository.addDraftResources`, `LifeRepository.attachManagedFile`) in `tester.runAsync()`, switching `SharedInboxStore` manifest loading to synchronous `loadSync()` to avoid infinite `CircularProgressIndicator` animation deadlocks in widget test harness, and using `tester.scrollUntilVisible` for lazy drawer items.
+- Preserved SQLite Schema at 29; zero migrations, zero cloud sync bloat for unattached inbox files, zero beta publication.
 
 ## Prompts 2/3 integration (2026-11-17, UTC+03:00)
 

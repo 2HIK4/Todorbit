@@ -11,6 +11,49 @@ re-entry guards. [Receipt](PROMPT4_SMART_RESCHEDULE_2026_11_17.md) / [source man
 checks PASS. No self-approval or approval of unrelated entries; prior History
 unchanged. Physical/device/packaging remains in Deferred Verification.
 
+---
+
+## UI-REL-05 (Prompt 5) — Android Shared Files Inbox & Task Resource Integration (2026-11-18)
+
+- **Branch & Base**: `feature/todorbit-android-share-inbox` descending from `4d9292c`.
+- **Scope & Addressed Requirements**:
+  - **Android Intent Ingestion Subsystem (`ShareReceiverActivity`)**: Dedicated native lightweight activity (`android/app/src/main/kotlin/io/github/hik4/todorbit/ShareReceiverActivity.kt`) with `@style/TranslucentShareTheme`, `noHistory="true"`, and `excludeFromRecents="true"`. Ingests `ACTION_SEND` and `ACTION_SEND_MULTIPLE` intents safely and atomically via `ContentResolver` into app-private staging storage (`TodoPilot/shared_inbox/files/`) before temporary URI grants lapse. Displays minimal Toast confirmation ("File saved to Shared Inbox in Todorbit") and immediately finishes back to the sending app without forced task interface navigation. Cold-start safe: does not boot the Flutter engine. If Flutter engine is warm, notifies `MainActivity` via MethodChannel `sharedInboxUpdated`.
+  - **Durable Local-Only Inbox Storage (`SharedInboxStore`)**: Preserves SQLite Schema 29 without any database migration. Maintains `shared_inbox.json` manifest with stable UUIDs, original display names, MIME types, file sizes, SHA-256 digests, and UTC timestamps. Implements atomic temporary-file writes (`.tmp` -> rename), 32 MiB size limits, content-addressable SHA-256 duplicate detection, filename sanitization, and orphan staging cleanup. Unattached inbox files remain strictly local-only on the device (zero Google Drive sync bloat, zero cloud exposure).
+  - **Shared Files Screen (`SharedInboxScreen`)**: Accessible directly from the Android navigation drawer (`MobileWorkspace`). Features responsive list layout, category filter chips (All, PDFs, Images, Docs, Other), instant search, file metadata display, preview/open via `WindowsResourceDialog` and secure `FileProvider` (`attachment_paths.xml`), single file deletion with explicit confirmation dialog (`ISS-C11`), and multi-select batch deletion.
+  - **Task Resources Integration (`From Shared Inbox`)**: Added `From Shared Inbox` action button to `UnifiedResourcesSection` for both draft new tasks (`UnifiedResourcesSection.draft`) and persisted tasks (`UnifiedResourcesSection.persisted`). Opens `SharedInboxPickerDialog` allowing multi-file selection with badge indicators for already-attached files (SHA-256 comparison) and oversized files (>16 MiB). Attaching copies bytes into SQLite `task_resources` as independent managed attachments with original display labels. Independent copy semantics: deleting a task attachment never touches the inbox original; deleting an inbox entry never breaks an existing task resource. Cancelling draft task creation leaves zero database records and leaves inbox originals untouched.
+- **Source Paths Modified / Created**:
+  - `android/app/src/main/AndroidManifest.xml`
+  - `android/app/src/main/kotlin/io/github/hik4/todorbit/MainActivity.kt`
+  - `android/app/src/main/kotlin/io/github/hik4/todorbit/ShareReceiverActivity.kt`
+  - `android/app/src/main/res/values/styles.xml`
+  - `android/app/src/main/res/xml/attachment_paths.xml`
+  - `lib/data/shared_inbox_store.dart`
+  - `lib/domain/shared_inbox_entry.dart`
+  - `lib/features/mobile/mobile_workspace.dart`
+  - `lib/features/shared_inbox/shared_inbox_picker_dialog.dart`
+  - `lib/features/shared_inbox/shared_inbox_screen.dart`
+  - `lib/features/workspace/unified_resources_section.dart`
+  - `lib/platform/android/android_platform.dart`
+  - `.agents/skills/todorbit-engineering-quality/references/cross-platform-architecture.md`
+  - `docs/TODORBIT_UI_RELIABILITY_PROGRAM.md`
+  - `docs/AI_REVIEW_QUEUE.md`
+  - `docs/TEST_RUN_LEDGER.md`
+  - `test/shared_inbox_store_test.dart`
+  - `test/shared_inbox_screen_test.dart`
+  - `test/shared_inbox_task_integration_test.dart`
+  - `test/shared_inbox_mobile_navigation_test.dart`
+- **Verification Evidence**:
+  - Static Analysis: `flutter analyze --no-pub lib/ test/` -> 0 issues found (12.4s).
+  - `test/shared_inbox_store_test.dart` -> 10/10 passed (1s).
+  - `test/shared_inbox_screen_test.dart` -> 7/7 passed (6s).
+  - `test/shared_inbox_task_integration_test.dart` -> 5/5 passed (8s).
+  - `test/shared_inbox_mobile_navigation_test.dart` -> 1/1 passed (2s).
+  - `test/task_resources_test.dart` + `test/task_resources_widget_test.dart` -> 10/10 passed (27s).
+  - `test/repository_test.dart` -> 8/8 passed (12s).
+  - Total focused Level 1/2 tests executed: 41/41 passed with zero failures.
+- **Status**: Unreviewed implementation queued for Codex independent review. No beta release or deployment performed.
+
+---
 
 ## Prompts 2/3 integration checkpoint (2026-11-17)
 
