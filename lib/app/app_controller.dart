@@ -1264,12 +1264,11 @@ class AppController extends ChangeNotifier {
 
   Future<void> ensureRecurringMonth(DateTime date) async {
     final first = localDate(DateTime(date.year, date.month, 1));
-    _eventWindowFrom = RecurrenceRule.shiftDate(first, -7);
-    _eventWindowThrough = RecurrenceRule.shiftDate(first, 45);
-    await repository.ensureRecurringTasks(
-      RecurrenceRule.shiftDate(first, -7),
-      RecurrenceRule.shiftDate(first, 45),
-    );
+    final from = RecurrenceRule.shiftDate(first, -30);
+    final through = RecurrenceRule.shiftDate(first, 60);
+    _eventWindowFrom = from;
+    _eventWindowThrough = through;
+    await repository.ensureRecurringTasks(from, through);
     await refresh();
   }
 

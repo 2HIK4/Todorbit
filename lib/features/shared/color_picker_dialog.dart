@@ -23,6 +23,7 @@ class ColorPickerDialog extends StatefulWidget {
 class _ColorPickerDialogState extends State<ColorPickerDialog> {
   late Color preview = widget.initialColor;
   late final hex = TextEditingController(text: _hex(preview));
+  final ScrollController _scrollController = ScrollController();
   bool valid = true;
 
   static String _hex(Color color) =>
@@ -30,6 +31,7 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     hex.dispose();
     super.dispose();
   }
@@ -37,13 +39,19 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
   @override
   Widget build(BuildContext context) => AlertDialog(
     title: Text(widget.title),
-    scrollable: true,
+    scrollable: false,
     content: SizedBox(
       width: 340,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      child: Scrollbar(
+        controller: _scrollController,
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          key: const PageStorageKey('color_picker_dialog_scroll'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
           Semantics(
             label: 'Live color preview ${_hex(preview)}',
             child: Container(
@@ -105,7 +113,9 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
         ],
       ),
     ),
-    actions: [
+  ),
+),
+actions: [
       TextButton(
         onPressed: () => Navigator.pop(context),
         child: const Text('Cancel'),

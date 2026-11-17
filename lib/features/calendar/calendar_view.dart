@@ -96,6 +96,12 @@ class _CalendarViewState extends ConsumerState<CalendarView>
   );
   final FocusNode _calendarFocusNode = FocusNode();
   bool _useLegacy = false;
+  int _monthNavigationRevision = 0;
+  bool _isLoadingMonth = false;
+  Object? _cachedMonthKey;
+  Map<DateTime, List<CalendarItem>>? _cachedMonthMap;
+  Object? _cachedWeekKey;
+  Map<DateTime, List<CalendarItem>>? _cachedWeekMap;
 
   @visibleForTesting
   FocusNode get calendarFocusNode => _calendarFocusNode;
@@ -206,14 +212,38 @@ class _CalendarViewState extends ConsumerState<CalendarView>
     }
   }
 
+  bool _isDateInWindow(DateTime date, AppController controller) {
+    final firstDay = localDate(DateTime(date.year, date.month, 1));
+    final lastDay = localDate(
+      DateTime(
+        date.year,
+        date.month,
+        DateUtils.getDaysInMonth(date.year, date.month),
+      ),
+    );
+    return firstDay.compareTo(controller.eventWindowFrom) >= 0 &&
+        lastDay.compareTo(controller.eventWindowThrough) <= 0;
+  }
+
   Future<void> _loadSelectedMonth() async {
+    final revision = ++_monthNavigationRevision;
+    final controller = ref.read(appControllerProvider);
+    final inWindow = _isDateInWindow(selected, controller);
+    if (!inWindow && !_isLoadingMonth && mounted) {
+      setState(() => _isLoadingMonth = true);
+    }
     try {
-      await ref.read(appControllerProvider).ensureRecurringMonth(selected);
+      await controller.ensureRecurringMonth(selected);
+      if (!mounted || revision != _monthNavigationRevision) return;
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not load recurring tasks: $error')),
         );
+      }
+    } finally {
+      if (mounted && revision == _monthNavigationRevision && _isLoadingMonth) {
+        setState(() => _isLoadingMonth = false);
       }
     }
   }
@@ -785,17 +815,47 @@ class _CalendarViewState extends ConsumerState<CalendarView>
   Map<DateTime, List<CalendarItem>> _buildWeekItemsByDay(
     AppController controller,
   ) {
+    final key = (
+      weekStart.year,
+      weekStart.month,
+      weekStart.day,
+      controller.calendarContent,
+      controller.filteredEvents,
+      controller.filteredTasks,
+      controller.filteredSessions,
+      controller.firstWeekday,
+      controller.taskParents,
+      controller.progressiveAssignments,
+    );
+    if (_cachedWeekKey == key && _cachedWeekMap != null) {
+      return _cachedWeekMap!;
+    }
     final map = <DateTime, List<CalendarItem>>{};
     for (var i = 0; i < 7; i++) {
       final d = DateTime(weekStart.year, weekStart.month, weekStart.day + i);
       map[d] = _buildCalendarItems(controller, d);
     }
-    return map;
+    _cachedWeekKey = key;
+    return _cachedWeekMap = map;
   }
 
   Map<DateTime, List<CalendarItem>> _buildMonthItemsByDay(
     AppController controller,
   ) {
+    final key = (
+      day.year,
+      day.month,
+      controller.calendarContent,
+      controller.filteredEvents,
+      controller.filteredTasks,
+      controller.filteredSessions,
+      controller.firstWeekday,
+      controller.taskParents,
+      controller.progressiveAssignments,
+    );
+    if (_cachedMonthKey == key && _cachedMonthMap != null) {
+      return _cachedMonthMap!;
+    }
     final map = <DateTime, List<CalendarItem>>{};
     final first = DateTime(day.year, day.month);
     final offset =
@@ -807,7 +867,8 @@ class _CalendarViewState extends ConsumerState<CalendarView>
       final d = DateTime(first.year, first.month, first.day + i - offset);
       map[d] = _buildCalendarItems(controller, d);
     }
-    return map;
+    _cachedMonthKey = key;
+    return _cachedMonthMap = map;
   }
 
   DateTime _resolveAnchorDate(Offset localPosition, Size viewSize) {
@@ -1230,7 +1291,15 @@ class _CalendarViewState extends ConsumerState<CalendarView>
                               ? switch (mode) {
                                   CalendarMode.day => _dayList(controller, day),
                                   CalendarMode.week => _weekGrid(controller),
-                                  CalendarMode.month => _monthGrid(controller),
+                                  CalendarMode.month => Column(
+                                    children: [
+                                      if (_isLoadingMonth)
+                                        const LinearProgressIndicator(
+                                          minHeight: 2,
+                                        ),
+                                      Expanded(child: _monthGrid(controller)),
+                                    ],
+                                  ),
                                 }
                               : switch (mode) {
                                   CalendarMode.day => CalendarDayView(
@@ -1286,35 +1355,45 @@ class _CalendarViewState extends ConsumerState<CalendarView>
                                       );
                                     },
                                   ),
-                                  CalendarMode.month => CalendarMonthView(
-                                    selectedDate: day,
-                                    firstWeekday: ref
-                                        .read(appControllerProvider)
-                                        .firstWeekday,
-                                    itemsByDay: _buildMonthItemsByDay(
-                                      controller,
-                                    ),
-                                    config: _config,
-                                    onItemTap: _handleCalendarItemTap,
-                                    onDayTap: _showDayPreview,
-                                    onItemDroppedOnDate:
-                                        _handleMonthItemDropped,
-                                    onShowDay: (date) {
-                                      _setMode(CalendarMode.day);
-                                      setState(() {
-                                        selected = date;
-                                      });
-                                    },
-                                    onShowWeek: (date) {
-                                      _setMode(CalendarMode.week);
-                                      setState(() {
-                                        selected = date;
-                                      });
-                                    },
-                                    onAddEvent: (date) =>
-                                        _editEvent(null, date),
-                                    onAddTask: widget.onAddTask,
-                                    onAddSession: (date) => _editSession(),
+                                  CalendarMode.month => Column(
+                                    children: [
+                                      if (_isLoadingMonth)
+                                        const LinearProgressIndicator(
+                                          minHeight: 2,
+                                        ),
+                                      Expanded(
+                                        child: CalendarMonthView(
+                                          selectedDate: day,
+                                          firstWeekday: ref
+                                              .read(appControllerProvider)
+                                              .firstWeekday,
+                                          itemsByDay: _buildMonthItemsByDay(
+                                            controller,
+                                          ),
+                                          config: _config,
+                                          onItemTap: _handleCalendarItemTap,
+                                          onDayTap: _showDayPreview,
+                                          onItemDroppedOnDate:
+                                              _handleMonthItemDropped,
+                                          onShowDay: (date) {
+                                            _setMode(CalendarMode.day);
+                                            setState(() {
+                                              selected = date;
+                                            });
+                                          },
+                                          onShowWeek: (date) {
+                                            _setMode(CalendarMode.week);
+                                            setState(() {
+                                              selected = date;
+                                            });
+                                          },
+                                          onAddEvent: (date) =>
+                                              _editEvent(null, date),
+                                          onAddTask: widget.onAddTask,
+                                          onAddSession: (date) => _editSession(),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 },
                         ),
@@ -1484,7 +1563,9 @@ class _CalendarViewState extends ConsumerState<CalendarView>
     return LayoutBuilder(
       builder: (context, bounds) {
         final rows = cellCount ~/ 7;
-        final cellHeight = (bounds.maxHeight - 62) / rows;
+        final rawCellHeight = (bounds.maxHeight - 62) / rows;
+        final cellHeight = rawCellHeight.clamp(90.0, double.infinity);
+        final cellWidth = ((bounds.maxWidth - 24) / 7).clamp(30.0, double.infinity);
         final previewCount = monthEntryCapacity(
           cellHeight,
           MediaQuery.textScalerOf(context).scale(1),
@@ -1556,25 +1637,37 @@ class _CalendarViewState extends ConsumerState<CalendarView>
                               ),
                             ),
                             const SizedBox(height: 3),
-                            for (final entry in entries.take(
-                              entries.length > previewCount
-                                  ? (previewCount - 1).clamp(0, 30)
-                                  : previewCount,
-                            ))
-                              _monthEntry(entry),
-                            if (entries.length > previewCount)
-                              TextButton(
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  minimumSize: const Size(0, 22),
-                                  alignment: Alignment.centerLeft,
-                                ),
-                                onPressed: () => _showDayPreview(date),
-                                child: Text(
-                                  '+${entries.length - (previewCount - 1).clamp(0, 30)} more',
-                                  style: const TextStyle(fontSize: 11),
-                                ),
-                              ),
+                            ...() {
+                              final visibleLimit = previewCount.clamp(1, 30);
+                              final showOverflow = entries.length > visibleLimit;
+                              final visibleCount = showOverflow
+                                  ? (visibleLimit > 1 ? visibleLimit - 1 : 1)
+                                  : entries.length;
+                              final overflowCount = entries.length - visibleCount;
+
+                              return [
+                                for (final entry in entries.take(visibleCount))
+                                  _monthEntry(entry),
+                                if (showOverflow && overflowCount > 0)
+                                  InkWell(
+                                    onTap: () => _showDayPreview(date),
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                                      child: Text(
+                                        cellWidth < 75 ? '+$overflowCount' : '+$overflowCount more',
+                                        style: TextStyle(
+                                          fontSize: cellWidth < 75 ? 9.5 : 10.0,
+                                          fontWeight: FontWeight.w600,
+                                          color: scheme.primary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ),
+                              ];
+                            }(),
                           ],
                         ),
                       ),
