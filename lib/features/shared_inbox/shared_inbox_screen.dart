@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../data/shared_inbox_store.dart';
 import '../../domain/shared_inbox_entry.dart';
 import '../shared/app_motion.dart';
@@ -71,6 +72,10 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
     }
   }
 
+  Future<void> _handleRefresh() async {
+    _load();
+  }
+
   List<SharedInboxEntry> get filteredEntries {
     final query = searchController.text.trim().toLowerCase();
     return allEntries.where((entry) {
@@ -96,10 +101,12 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
               name.endsWith('.xls') ||
               name.endsWith('.xlsx');
         case SharedInboxCategory.other:
-          final isPdf = entry.mimeType == 'application/pdf' ||
+          final isPdf =
+              entry.mimeType == 'application/pdf' ||
               entry.displayName.toLowerCase().endsWith('.pdf');
           final isImg = entry.mimeType.startsWith('image/');
-          final isDoc = entry.mimeType.startsWith('text/') ||
+          final isDoc =
+              entry.mimeType.startsWith('text/') ||
               entry.displayName.toLowerCase().endsWith('.txt') ||
               entry.displayName.toLowerCase().endsWith('.md') ||
               entry.displayName.toLowerCase().endsWith('.doc') ||
@@ -342,8 +349,8 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
               ),
               tooltip:
                   selectedIds.length == displayed.length && displayed.isNotEmpty
-                      ? 'Deselect all'
-                      : 'Select all',
+                  ? 'Deselect all'
+                  : 'Select all',
               onPressed: displayed.isEmpty ? null : _toggleSelectAll,
             ),
             IconButton(
@@ -388,7 +395,8 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
                       : null,
                   isDense: true,
                   filled: true,
-                  fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  fillColor: theme.colorScheme.surfaceContainerHighest
+                      .withValues(alpha: 0.5),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 10,
@@ -409,7 +417,10 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               child: Row(
                 children: [
-                  _filterChip(SharedInboxCategory.all, 'All (${allEntries.length})'),
+                  _filterChip(
+                    SharedInboxCategory.all,
+                    'All (${allEntries.length})',
+                  ),
                   const SizedBox(width: 8),
                   _filterChip(SharedInboxCategory.pdfs, 'PDFs'),
                   const SizedBox(width: 8),
@@ -452,35 +463,50 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
             child: loading
                 ? const Center(child: CircularProgressIndicator())
                 : errorMessage != null
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.error_outline,
-                                size: 48,
-                                color: theme.colorScheme.error,
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                errorMessage!,
-                                textAlign: TextAlign.center,
-                                style: theme.textTheme.bodyMedium,
-                              ),
-                              const SizedBox(height: 16),
-                              FilledButton(
-                                onPressed: _load,
-                                child: const Text('Try Again'),
-                              ),
-                            ],
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 48,
+                            color: theme.colorScheme.error,
                           ),
-                        ),
-                      )
-                    : displayed.isEmpty
-                        ? _emptyView(context)
+                          const SizedBox(height: 12),
+                          Text(
+                            errorMessage!,
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton(
+                            onPressed: _load,
+                            child: const Text('Try Again'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _handleRefresh,
+                    child: displayed.isEmpty
+                        ? LayoutBuilder(
+                            builder: (context, constraints) =>
+                                SingleChildScrollView(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      minHeight: constraints.maxHeight,
+                                    ),
+                                    child: _emptyView(context),
+                                  ),
+                                ),
+                          )
                         : ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 12,
@@ -490,6 +516,7 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
                                 _inboxItemCard(context, entry),
                             ],
                           ),
+                  ),
           ),
         ],
       ),
@@ -536,8 +563,8 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
               isFiltered
                   ? 'Try adjusting your search query or category filter.'
                   : 'Files and PDFs shared to Todorbit from other Android apps '
-                      'will appear here so you can attach them to tasks later.\n\n'
-                      'Sharing files does not automatically create tasks.',
+                        'will appear here so you can attach them to tasks later.\n\n'
+                        'Sharing files does not automatically create tasks.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -691,7 +718,11 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                          Icon(
+                            Icons.delete_outline,
+                            size: 18,
+                            color: Colors.red,
+                          ),
                           SizedBox(width: 8),
                           Text('Delete', style: TextStyle(color: Colors.red)),
                         ],

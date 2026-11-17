@@ -1,5 +1,25 @@
 # Persistent test run ledger
 
+## Prompts 4 and 5 integration (2026-11-18, UTC+03:00)
+
+`integration/ui-reliability-p4-p5`, worktree `life_manager_worktrees/integration-ui-p4-p5`, inputs `5a0e836` (Prompt 4: Smart Reschedule) and `3b98678` (Prompt 5: Android Share Inbox), baseline `62326bd`:
+- [Receipt](INTEGRATION_P4_P5_2026_11_17.md) records independent review, async streaming enhancements, and full serial test passes across 8 critical areas:
+  1. Prompt 4 Smart Reschedule (`test/prompt4_smart_reschedule_test.dart`, `test/smart_reschedule_widget_test.dart`): **20/20 PASS** (47s).
+  2. Prompt 5 Shared Inbox (`test/shared_inbox_store_test.dart`, `test/shared_inbox_screen_test.dart`, `test/shared_inbox_task_integration_test.dart`, `test/shared_inbox_mobile_navigation_test.dart`): **23/23 PASS** (19s).
+  3. Task Resources Regression (`test/task_resources_test.dart`, `test/task_resources_widget_test.dart`): **10/10 PASS** (23s).
+  4. Task Composition, Subtasks & Scheduling (`test/task_composition_widget_test.dart`, `test/scheduling_repository_test.dart`, `test/calendar_event_move_recurrence_test.dart`): **24/24 PASS** (36s).
+  5. Calendar Responsiveness & Event Metadata (`test/prompt3_calendar_events_test.dart`, `test/calendar_test.dart`, `test/event_editor_layout_test.dart`): **15/15 PASS** (35s).
+  6. Timer State, Focus & Workspace Navigation (`test/uiux03_focus_widget_test.dart`, `test/uiux03_navigation_test.dart`, `test/workspace_test.dart`): **18/18 PASS** (39s).
+  7. Critical Persistence & Concurrency Tokens (`test/repository_test.dart`, `test/task_revision_concurrency_test.dart`, `test/database_initialization_test.dart`): **38/38 PASS** (1m 37s).
+  8. Sync & Backup Compatibility (`test/cloud/sync_engine_test.dart`, `test/sync_apply_repository_test.dart`, `test/backup_service_test.dart`): **55/55 PASS** (3m 16s).
+- **Consolidated Verification**: **203 distinct PASS / 0 FAIL / 0 SKIP**.
+- Full static analysis: `flutter analyze --no-pub lib/ test/` -> **0 issues found** (15.2s).
+- Changed file formatting: `dart format` -> clean.
+- Diff check: `git diff --check` -> clean.
+- Architecture Invariants: SQLite Schema preserved at 29; zero schema migrations; zero cloud sync bloat for unattached inbox files; zero beta publication.
+- Platform note: Java/Gradle host environment unconfigured (`flutter doctor` reports `Could not determine java version`); native compile deferred honestly to Level 4 device acceptance.
+
+
 ## Prompt 4 Smart Reschedule (2026-11-17, UTC+03:00)
 
 `feature/todorbit-smart-reschedule`, base `4d9292c`;

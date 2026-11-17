@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+
 import '../../data/shared_inbox_store.dart';
 import '../../domain/shared_inbox_entry.dart';
 
@@ -23,7 +26,7 @@ class _SharedInboxPickerDialogState extends State<SharedInboxPickerDialog> {
   late final SharedInboxStore store = widget.store ?? SharedInboxStore();
   final searchController = TextEditingController();
 
-  List<SharedInboxEntry> entries = const [];
+  late List<SharedInboxEntry> entries = store.loadSync();
   bool loading = false;
   String? error;
   final selectedIds = <String>{};
@@ -31,7 +34,7 @@ class _SharedInboxPickerDialogState extends State<SharedInboxPickerDialog> {
   @override
   void initState() {
     super.initState();
-    _load();
+    unawaited(_load());
   }
 
   @override
@@ -40,9 +43,9 @@ class _SharedInboxPickerDialogState extends State<SharedInboxPickerDialog> {
     super.dispose();
   }
 
-  void _load() {
+  Future<void> _load() async {
     try {
-      final loaded = store.loadSync();
+      final loaded = await store.load();
       if (!mounted) return;
       setState(() {
         entries = loaded;
@@ -93,9 +96,11 @@ class _SharedInboxPickerDialogState extends State<SharedInboxPickerDialog> {
   void _toggleSelectAll(List<SharedInboxEntry> selectable) {
     setState(() {
       final selectableIds = selectable
-          .where((e) =>
-              !widget.alreadyAttachedShas.contains(e.sha256) &&
-              e.byteSize <= SharedInboxStore.maxAttachmentBytes)
+          .where(
+            (e) =>
+                !widget.alreadyAttachedShas.contains(e.sha256) &&
+                e.byteSize <= SharedInboxStore.maxAttachmentBytes,
+          )
           .map((e) => e.id)
           .toSet();
 
@@ -112,9 +117,11 @@ class _SharedInboxPickerDialogState extends State<SharedInboxPickerDialog> {
     final theme = Theme.of(context);
     final displayed = filteredEntries;
     final attachableCount = displayed
-        .where((e) =>
-            !widget.alreadyAttachedShas.contains(e.sha256) &&
-            e.byteSize <= SharedInboxStore.maxAttachmentBytes)
+        .where(
+          (e) =>
+              !widget.alreadyAttachedShas.contains(e.sha256) &&
+              e.byteSize <= SharedInboxStore.maxAttachmentBytes,
+        )
         .length;
 
     final media = MediaQuery.of(context);
@@ -231,57 +238,57 @@ class _SharedInboxPickerDialogState extends State<SharedInboxPickerDialog> {
                 child: loading
                     ? const Center(child: CircularProgressIndicator())
                     : error != null
-                        ? Center(
-                            child: Text(
-                              error!,
-                              style: TextStyle(color: theme.colorScheme.error),
-                            ),
-                          )
-                        : entries.isEmpty
-                            ? Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.inbox_outlined,
-                                        size: 40,
-                                        color: theme.colorScheme.onSurfaceVariant,
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Text(
-                                        'Shared Inbox is empty',
-                                        style: theme.textTheme.bodyMedium?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Share files to Todorbit from external Android apps '
-                                        'to make them available here.',
-                                        textAlign: TextAlign.center,
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          color: theme.colorScheme.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                    ? Center(
+                        child: Text(
+                          error!,
+                          style: TextStyle(color: theme.colorScheme.error),
+                        ),
+                      )
+                    : entries.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.inbox_outlined,
+                                size: 40,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                'Shared Inbox is empty',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
                                 ),
-                              )
-                            : displayed.isEmpty
-                                ? Center(
-                                    child: Text(
-                                      'No matching files',
-                                      style: theme.textTheme.bodyMedium,
-                                    ),
-                                  )
-                                : ListView(
-                                    children: [
-                                      for (final entry in displayed)
-                                        _pickerTile(context, entry),
-                                    ],
-                                  ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Share files to Todorbit from external Android apps '
+                                'to make them available here.',
+                                textAlign: TextAlign.center,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : displayed.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No matching files',
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      )
+                    : ListView(
+                        children: [
+                          for (final entry in displayed)
+                            _pickerTile(context, entry),
+                        ],
+                      ),
               ),
 
               const SizedBox(height: 12),
@@ -322,8 +329,7 @@ class _SharedInboxPickerDialogState extends State<SharedInboxPickerDialog> {
   Widget _pickerTile(BuildContext context, SharedInboxEntry entry) {
     final theme = Theme.of(context);
     final alreadyAttached = widget.alreadyAttachedShas.contains(entry.sha256);
-    final exceedsLimit =
-        entry.byteSize > SharedInboxStore.maxAttachmentBytes;
+    final exceedsLimit = entry.byteSize > SharedInboxStore.maxAttachmentBytes;
     final disabled = alreadyAttached || exceedsLimit;
     final selected = selectedIds.contains(entry.id);
 
@@ -378,8 +384,9 @@ class _SharedInboxPickerDialogState extends State<SharedInboxPickerDialog> {
                       color: disabled
                           ? theme.colorScheme.onSurface.withValues(alpha: 0.5)
                           : theme.colorScheme.onSurface,
-                      fontWeight:
-                          selected ? FontWeight.w600 : FontWeight.normal,
+                      fontWeight: selected
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                     ),
                   ),
                   Row(

@@ -1,5 +1,21 @@
 # AI Review Queue
 
+## Prompts 4/5 integration checkpoint (2026-11-18)
+
+- **Branch**: `integration/ui-reliability-p4-p5`
+- **Worktree**: `D:\AI_Projects\life_manager_worktrees\integration-ui-p4-p5`
+- **Integrated Commits**:
+  - Prompt 4 (Smart Reschedule): `5a0e836437ce2c3831541d3221163843a8e47fae`
+  - Prompt 5 (Android Share Inbox): `3b9867867b931f7689c9f66680b52cee3657fcef`
+- **Scope & Independent Review Summary**:
+  - **Prompt 4 (Smart Reschedule)**: Verified parent/subtask connectivity (`aa` and `1`), recurrence grouping by family identity (`OS quiz 15`), complete-proposal eligibility enforcement, grouped collision decisions, unsupported Combine/skipNew restrictions, preview invalidation, and async/write re-entry guards.
+  - **Prompt 5 (Android Share Inbox)**: Audited synchronous I/O vs UI isolate performance. Enhanced `SharedInboxStore` to stream SHA-256 and copies for large files up to 32 MiB without holding full byte arrays in Dart heap. Provided non-blocking asynchronous APIs (`load()`, `save()`, `addFile()`, `addBytes()`) while preserving synchronous methods for zero-jank frame-1 hydration and deterministic test execution. Added `RefreshIndicator` to `SharedInboxScreen`.
+  - **Cross-Feature Regression**: Executed 203 sequential tests across Smart Reschedule (20), Shared Inbox (23), Task Resources (10), Composition/Subtasks (24), Calendar/Events (15), Focus/Navigation/Workspace (18), Persistence & Concurrency (38), and Sync/Backup (55). 203/203 passed with 0 failures.
+  - **Receipt**: [INTEGRATION_P4_P5_2026_11_17.md](INTEGRATION_P4_P5_2026_11_17.md).
+- **Status**: Integrated and independently reviewed development checkpoint established for Prompt 6. No beta publication, no release tag, Stable untouched.
+
+---
+
 ## Prompt 4 — Smart Reschedule (2026-11-17)
 
 **IMPLEMENTED — AWAITING INDEPENDENT INTEGRATION REVIEW.** Codex implementation /

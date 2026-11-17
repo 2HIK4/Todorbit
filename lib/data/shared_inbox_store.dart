@@ -14,7 +14,7 @@ import 'profile_paths.dart';
 /// manifest JSON index. They remain local-only until explicitly attached to a task.
 class SharedInboxStore {
   SharedInboxStore([Directory? rootDirectory])
-      : _customDirectory = rootDirectory;
+    : _customDirectory = rootDirectory;
 
   final Directory? _customDirectory;
   static const _uuid = Uuid();
@@ -139,7 +139,41 @@ class SharedInboxStore {
     }
   }
 
-  Future<List<SharedInboxEntry>> load() async => loadSync();
+  /// Loads all stored entries from the manifest asynchronously, verifying existence on disk.
+  Future<List<SharedInboxEntry>> load() async {
+    if (!await manifestFile.exists()) return [];
+
+    try {
+      final content = await manifestFile.readAsString();
+      final decoded = jsonDecode(content);
+      if (decoded is! Map || decoded['version'] != 1) {
+        return [];
+      }
+
+      final rawEntries = decoded['entries'];
+      if (rawEntries is! List) return [];
+
+      final validEntries = <SharedInboxEntry>[];
+      for (final raw in rawEntries) {
+        if (raw is Map<String, dynamic>) {
+          try {
+            final entry = SharedInboxEntry.fromJson(raw);
+            if (await entry.fileIn(directory).exists()) {
+              validEntries.add(entry);
+            }
+          } catch (_) {
+            // Skip corrupt entries
+          }
+        }
+      }
+
+      // Sort newest received first
+      validEntries.sort((a, b) => b.receivedAt.compareTo(a.receivedAt));
+      return validEntries;
+    } catch (_) {
+      return [];
+    }
+  }
 
   /// Atomically saves the entries manifest.
   void saveSync(List<SharedInboxEntry> entries) {
@@ -153,12 +187,23 @@ class SharedInboxStore {
     staging.renameSync(manifestFile.path);
   }
 
-  Future<void> save(List<SharedInboxEntry> entries) async => saveSync(entries);
+  /// Atomically saves the entries manifest asynchronously.
+  Future<void> save(List<SharedInboxEntry> entries) async {
+    await directory.create(recursive: true);
+    final staging = File('${manifestFile.path}.tmp');
+    final payload = {
+      'version': 1,
+      'entries': entries.map((e) => e.toJson()).toList(),
+    };
+    await staging.writeAsString(jsonEncode(payload), flush: true);
+    await staging.rename(manifestFile.path);
+  }
 
   /// Ingests a file safely into the Shared Inbox.
   ///
   /// Performs atomic copying, size limits validation, SHA-256 duplicate detection,
-  /// and filename sanitization.
+  /// and filename sanitization. Streams content for SHA-256 calculation to avoid
+  /// holding large byte arrays in the Dart heap.
   Future<SharedInboxEntry> addFile(
     File source, {
     String? displayName,
@@ -176,12 +221,49 @@ class SharedInboxStore {
       );
     }
 
-    final bytes = await source.readAsBytes();
-    return addBytes(
-      bytes,
-      displayName: displayName ?? path.basename(source.path),
-      mimeType: mimeType,
+    // Stream sha256 to avoid holding large byte arrays in memory for up to 32 MiB
+    final digest = (await sha256.bind(source.openRead()).first).toString();
+    final safeName = sanitizeFilename(
+      displayName ?? path.basename(source.path),
     );
+    final mime = mimeType?.trim().isNotEmpty == true
+        ? mimeType!.trim()
+        : inferMimeType(safeName);
+
+    // Duplicate detection: check if this content is already present in inbox
+    final currentEntries = await load();
+    for (final existing in currentEntries) {
+      if (existing.sha256 == digest &&
+          existing.byteSize == stat.size &&
+          await existing.fileIn(directory).exists()) {
+        return existing;
+      }
+    }
+
+    await filesDirectory.create(recursive: true);
+    await stagingDirectory.create(recursive: true);
+
+    final id = _uuid.v4();
+    final relativePath = 'files/${id}_$safeName';
+    final stagingFile = File(path.join(stagingDirectory.path, '$id.tmp'));
+    final targetFile = File(path.join(directory.path, relativePath));
+
+    await source.copy(stagingFile.path);
+    await stagingFile.rename(targetFile.path);
+
+    final entry = SharedInboxEntry(
+      id: id,
+      displayName: safeName,
+      relativePath: relativePath,
+      mimeType: mime,
+      byteSize: stat.size,
+      sha256: digest,
+      receivedAt: DateTime.now().toUtc(),
+    );
+
+    currentEntries.insert(0, entry);
+    await save(currentEntries);
+    return entry;
   }
 
   /// Ingests raw bytes safely into the Shared Inbox synchronously.
@@ -240,13 +322,59 @@ class SharedInboxStore {
     return entry;
   }
 
-  /// Ingests raw bytes safely into the Shared Inbox.
+  /// Ingests raw bytes safely into the Shared Inbox asynchronously.
   Future<SharedInboxEntry> addBytes(
     List<int> bytes, {
     required String displayName,
     String? mimeType,
-  }) async =>
-      addBytesSync(bytes, displayName: displayName, mimeType: mimeType);
+  }) async {
+    if (bytes.length > maxFileBytes) {
+      throw ArgumentError(
+        'Shared file exceeds maximum allowed size of 32 MiB (${(bytes.length / (1024 * 1024)).toStringAsFixed(1)} MiB)',
+      );
+    }
+
+    final safeName = sanitizeFilename(displayName);
+    final digest = sha256.convert(bytes).toString();
+    final mime = mimeType?.trim().isNotEmpty == true
+        ? mimeType!.trim()
+        : inferMimeType(safeName);
+
+    // Duplicate detection: check if this content is already present in inbox
+    final currentEntries = await load();
+    for (final existing in currentEntries) {
+      if (existing.sha256 == digest &&
+          existing.byteSize == bytes.length &&
+          await existing.fileIn(directory).exists()) {
+        return existing;
+      }
+    }
+
+    await filesDirectory.create(recursive: true);
+    await stagingDirectory.create(recursive: true);
+
+    final id = _uuid.v4();
+    final relativePath = 'files/${id}_$safeName';
+    final stagingFile = File(path.join(stagingDirectory.path, '$id.tmp'));
+    final targetFile = File(path.join(directory.path, relativePath));
+
+    await stagingFile.writeAsBytes(bytes, flush: true);
+    await stagingFile.rename(targetFile.path);
+
+    final entry = SharedInboxEntry(
+      id: id,
+      displayName: safeName,
+      relativePath: relativePath,
+      mimeType: mime,
+      byteSize: bytes.length,
+      sha256: digest,
+      receivedAt: DateTime.now().toUtc(),
+    );
+
+    currentEntries.insert(0, entry);
+    await save(currentEntries);
+    return entry;
+  }
 
   /// Deletes a single entry from the inbox and removes its file from disk.
   void deleteEntrySync(String id) {
@@ -325,8 +453,9 @@ class SharedInboxStore {
     }
 
     final entries = await load();
-    final referenced =
-        entries.map((e) => path.normalize(e.fileIn(directory).path)).toSet();
+    final referenced = entries
+        .map((e) => path.normalize(e.fileIn(directory).path))
+        .toSet();
 
     if (filesDirectory.existsSync()) {
       try {

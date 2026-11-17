@@ -92,3 +92,19 @@ transaction; actual work and task identity survive. Cover these contracts using
 - A post-commit refresh can fail after persistence succeeds. Report an unconfirmed
   result accurately, invalidate the proposal, and require a fresh read before
   retrying; never promise rollback solely because the UI await threw.
+
+## Local file staging and independent copy boundaries
+
+- Stream large file hashing and writes: Ingesting files approaching the maximum
+  size limit (e.g. 32 MiB) must stream bytes via `sha256.bind(source.openRead())`
+  and OS file copying rather than reading the entire byte array into the Dart
+  heap on the UI isolate.
+- Dual-path I/O architecture: Pair synchronous metadata hydration (`loadSync()`)
+  for zero-jank frame-1 UI mounting and deterministic test execution with genuine
+  asynchronous methods (`load()`, `save()`, `addFile()`, `addBytes()`) so bulk
+  disk operations do not block Flutter's main isolate.
+- Local filesystem durability boundaries: Local files stored on disk outside the
+  SQLite database (e.g. `TodoPilot/shared_inbox/`) are NOT captured by SQLite
+  snapshots (`BackupService`) or Google Drive sync journals. Once attached to a
+  task, copy the bytes into managed SQLite `task_resources` with independent copy
+  semantics so inbox deletion never breaks task attachments and vice versa.

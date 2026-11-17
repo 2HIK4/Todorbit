@@ -1,5 +1,22 @@
 # Progress
 
+## Prompts 4/5 integrated - verified development checkpoint (2026-11-18)
+
+Isolated branch `integration/ui-reliability-p4-p5`, worktree
+`life_manager_worktrees/integration-ui-p4-p5`, base `62326bd`. Merged Prompt 4
+`5a0e836` first, then Prompt 5 `3b98678`, retaining both histories. Conducted
+independent reviews of both features: verified Smart Reschedule hierarchy,
+recurrence grouping by identity, complete-proposal eligibility, and undo safety;
+verified Android Share Inbox native intent ingestion, temporary URI streaming,
+duplicate detection, and independent copy semantics. Enhanced SharedInboxStore
+with non-blocking asynchronous file streaming/hashing for up to 32 MiB and
+added pull-to-refresh to SharedInboxScreen. 203 distinct serial tests PASS / 0 FAIL /
+0 SKIP across 8 critical suites; full static analysis (0 issues), formatting,
+and git diff checks PASS. [Receipt](INTEGRATION_P4_P5_2026_11_17.md). Ready as the
+verified development checkpoint for Prompt 6. Schema 29 preserved; Stable untouched;
+no beta publication, tag, push, or release performed.
+
+
 ## Prompt 4 — Smart Reschedule implementation (2026-11-17)
 
 Assigned branch `feature/todorbit-smart-reschedule`, base `4d9292c`. Hierarchical

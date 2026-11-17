@@ -322,6 +322,20 @@ flutter test --no-pub --concurrency=1 test/repository_test.dart test/task_revisi
 
 ---
 
+### 7.4 Prompt 4: Smart Reschedule UX and Reliability
+- **Status**: Implemented and verified on `feature/todorbit-smart-reschedule`.
+- **Delivered Capabilities**:
+  - **Task Hierarchy & Recurrence Grouping**: Connected parent/child tasks with clear indentation and connector styling; grouped recurring task occurrences under their actual series family (`task.recurrenceFamilyId ?? task.recurrenceSeriesId`) with rule type and range metadata. Selection is strictly by task UUID; context-only parent rows do not authorize unselected parent edits.
+  - **Grouped Collision Review**: Grouped multiple recurring collisions by series family with single Keep/Leave choices, preventing fragmented and invalid proposals.
+  - **Safe Scheduling Invariants**: Input changes immediately invalidate stale previews; unsupported operations (Combine, skipNew without undo history) remain explicitly unavailable with explanatory guidance; preview generation is strictly read-only; re-entry guards prevent concurrent generation or apply calls.
+  - **Undo & Recovery**: Apply persists changes atomically with full scheduling history; `previewRestore` reliably undoes scheduling modifications.
+- **Verification Receipts**:
+  - `test/prompt4_smart_reschedule_test.dart` -> 16/16 passed (24s).
+  - `test/smart_reschedule_widget_test.dart` -> 4/4 passed (23s).
+  - Total focused Level 1/2 tests executed: 20/20 passed with zero failures.
+
+---
+
 ### 7.5 Prompt 5: Android Shared Files Inbox & Task Resource Integration (UI-REL-05)
 - **Status**: Implemented and verified on `feature/todorbit-android-share-inbox`.
 - **Delivered Capabilities**:
@@ -408,3 +422,31 @@ The following shared files carry potential conflict risk between Prompt 4 (Smart
 - Keep additions modular: Prompt 5 (Android Share Inbox) should isolate platform channel intent receivers in `lib/platform/android/` and invoke existing standard `LifeRepository.addTask` methods with `TaskDraft` rather than refactoring repository internals.
 - Prompt 4 (Smart Reschedule) should keep rescheduling algorithms and dialog logic encapsulated within `lib/features/scheduling/smart_reschedule.dart` and domain scheduling models.
 - Neither prompt should alter shared persistence schemas (Schema 29 invariant).
+
+---
+
+## 10. Verified Prompts 4 and 5 Integration Checkpoint (2026-11-18)
+
+### Integration Summary & Configuration
+- **Branch**: `integration/ui-reliability-p4-p5`
+- **Worktree**: `D:\AI_Projects\life_manager_worktrees\integration-ui-p4-p5`
+- **Merged Feature Commits**:
+  - Prompt 4 (Smart Reschedule): `5a0e836437ce2c3831541d3221163843a8e47fae`
+  - Prompt 5 (Android Share Inbox): `3b9867867b931f7689c9f66680b52cee3657fcef`
+- **Baseline Integration HEAD**: `62326bd` (descending from `4d9292c`)
+- **Key Enhancements Added During Integration**:
+  - **Non-blocking asynchronous file streaming & hashing**: Enhanced `SharedInboxStore.addFile` to stream SHA-256 calculation (`sha256.bind(source.openRead())`) and copy files without allocating 32 MiB byte arrays in the Dart heap.
+  - **Asynchronous Storage API**: Made `SharedInboxStore.load()`, `save()`, `addFile()`, and `addBytes()` genuinely asynchronous to protect the Flutter UI isolate while preserving synchronous companions (`loadSync()`, `saveSync()`, `addBytesSync()`, `deleteEntrySync()`) for zero-flicker frame-1 hydration and deterministic widget test execution.
+  - **Shared Files Pull-to-Refresh**: Added `RefreshIndicator` and responsive scrollable layout to `SharedInboxScreen`.
+- **Consolidated Verification Evidence (203/203 Passing)**:
+  - Prompt 4 Smart Reschedule (`prompt4_smart_reschedule_test.dart`, `smart_reschedule_widget_test.dart`): 20/20 PASS.
+  - Prompt 5 Shared Inbox (`shared_inbox_store_test.dart`, `shared_inbox_screen_test.dart`, `shared_inbox_task_integration_test.dart`, `shared_inbox_mobile_navigation_test.dart`): 23/23 PASS.
+  - Task Resources Regression (`task_resources_test.dart`, `task_resources_widget_test.dart`): 10/10 PASS.
+  - Task Composition, Subtasks & Scheduling (`task_composition_widget_test.dart`, `scheduling_repository_test.dart`, `calendar_event_move_recurrence_test.dart`): 24/24 PASS.
+  - Calendar Responsiveness & Event Metadata (`prompt3_calendar_events_test.dart`, `calendar_test.dart`, `event_editor_layout_test.dart`): 15/15 PASS.
+  - Timer State, Focus & Workspace Navigation (`uiux03_focus_widget_test.dart`, `uiux03_navigation_test.dart`, `workspace_test.dart`): 18/18 PASS.
+  - Critical Persistence & Concurrency Tokens (`repository_test.dart`, `task_revision_concurrency_test.dart`, `database_initialization_test.dart`): 38/38 PASS.
+  - Sync & Backup Compatibility (`sync_engine_test.dart`, `sync_apply_repository_test.dart`, `backup_service_test.dart`): 55/55 PASS.
+  - Static Analysis: `flutter analyze --no-pub lib/ test/` -> 0 issues found.
+  - Format & Diff: `dart format` clean; `git diff --check` clean.
+- **Ready for Prompt 6**: Local-First Data Flow & Sync Conflict Review. Stable remains untouched; no beta published.
