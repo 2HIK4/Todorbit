@@ -1,5 +1,26 @@
 # Deferred Verification Backlog
 
+## Integrated Prompts 2/3 acceptance - 2026-11-17
+
+Target: final checkpoint on `integration/ui-reliability-p2-p3`; [source identity and executed gates](INTEGRATION_P2_P3_2026_11_17.md).
+Owner: next integration/release reviewer. Level 1/2 selected integration gates PASS
+(122 tests, full analysis); no critical failure is being deferred here.
+
+- Level 3 PENDING: wider application combinations, full RTL/theme/assistive-tech
+  matrix and measured performance profiling. Current source has focused narrow,
+  light/dark/large-text/IME and cache-identity evidence, not full runtime coverage.
+- Live debug BLOCKED: no DTD/debug app; requested hot reload had no target.
+  `flutter pub get --offline` resolves pinned packages but native plugin setup
+  reports missing Windows symlink support. Use an authorized isolated profile
+  after tooling is available; do not use personal or implementation profiles.
+- Level 4 PENDING: physical Windows pointer/keyboard/resize/DPI/native focus;
+  Android device Back/TalkBack/IME/background/kill/restart and actual month-edge
+  navigation under sync. Verify timer identity/work accounting and route retention.
+- Level 4 PENDING before release: exact-candidate native/installer/Android packaging,
+  install/update, 16-KiB runtime, actual alarms and real OAuth/Drive journeys.
+  Schema29/Stable unchanged; no push/publication or Prompt4/5 work was performed.
+
+
 ## Prompt 2 task timer/composition acceptance — 2026-11-17
 
 Target: `feature/todorbit-task-ux`, base `5803e52` + [source manifest](PROMPT2_TASK_UX_2026_11_17_SOURCE.json).

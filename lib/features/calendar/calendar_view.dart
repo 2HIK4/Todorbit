@@ -236,7 +236,7 @@ class _CalendarViewState extends ConsumerState<CalendarView>
       await controller.ensureRecurringMonth(selected);
       if (!mounted || revision != _monthNavigationRevision) return;
     } catch (error) {
-      if (mounted) {
+      if (mounted && revision == _monthNavigationRevision) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not load recurring tasks: $error')),
         );
@@ -264,7 +264,8 @@ class _CalendarViewState extends ConsumerState<CalendarView>
       animationStyle: AppMotion.style(context),
       builder: (context) {
         final media = MediaQuery.of(context);
-        final availableHeight = media.size.height - media.viewInsets.bottom - 48;
+        final availableHeight =
+            media.size.height - media.viewInsets.bottom - 48;
         return Dialog(
           child: SizedBox(
             width: 500,
@@ -815,18 +816,7 @@ class _CalendarViewState extends ConsumerState<CalendarView>
   Map<DateTime, List<CalendarItem>> _buildWeekItemsByDay(
     AppController controller,
   ) {
-    final key = (
-      weekStart.year,
-      weekStart.month,
-      weekStart.day,
-      controller.calendarContent,
-      controller.filteredEvents,
-      controller.filteredTasks,
-      controller.filteredSessions,
-      controller.firstWeekday,
-      controller.taskParents,
-      controller.progressiveAssignments,
-    );
+    final key = (controller, controller.stateRevision, weekStart);
     if (_cachedWeekKey == key && _cachedWeekMap != null) {
       return _cachedWeekMap!;
     }
@@ -842,17 +832,7 @@ class _CalendarViewState extends ConsumerState<CalendarView>
   Map<DateTime, List<CalendarItem>> _buildMonthItemsByDay(
     AppController controller,
   ) {
-    final key = (
-      day.year,
-      day.month,
-      controller.calendarContent,
-      controller.filteredEvents,
-      controller.filteredTasks,
-      controller.filteredSessions,
-      controller.firstWeekday,
-      controller.taskParents,
-      controller.progressiveAssignments,
-    );
+    final key = (controller, controller.stateRevision, day.year, day.month);
     if (_cachedMonthKey == key && _cachedMonthMap != null) {
       return _cachedMonthMap!;
     }
@@ -1390,7 +1370,8 @@ class _CalendarViewState extends ConsumerState<CalendarView>
                                           onAddEvent: (date) =>
                                               _editEvent(null, date),
                                           onAddTask: widget.onAddTask,
-                                          onAddSession: (date) => _editSession(),
+                                          onAddSession: (date) =>
+                                              _editSession(),
                                         ),
                                       ),
                                     ],
@@ -1565,7 +1546,10 @@ class _CalendarViewState extends ConsumerState<CalendarView>
         final rows = cellCount ~/ 7;
         final rawCellHeight = (bounds.maxHeight - 62) / rows;
         final cellHeight = rawCellHeight.clamp(90.0, double.infinity);
-        final cellWidth = ((bounds.maxWidth - 24) / 7).clamp(30.0, double.infinity);
+        final cellWidth = ((bounds.maxWidth - 24) / 7).clamp(
+          30.0,
+          double.infinity,
+        );
         final previewCount = monthEntryCapacity(
           cellHeight,
           MediaQuery.textScalerOf(context).scale(1),
@@ -1639,11 +1623,13 @@ class _CalendarViewState extends ConsumerState<CalendarView>
                             const SizedBox(height: 3),
                             ...() {
                               final visibleLimit = previewCount.clamp(1, 30);
-                              final showOverflow = entries.length > visibleLimit;
+                              final showOverflow =
+                                  entries.length > visibleLimit;
                               final visibleCount = showOverflow
                                   ? (visibleLimit > 1 ? visibleLimit - 1 : 1)
                                   : entries.length;
-                              final overflowCount = entries.length - visibleCount;
+                              final overflowCount =
+                                  entries.length - visibleCount;
 
                               return [
                                 for (final entry in entries.take(visibleCount))
@@ -1653,9 +1639,14 @@ class _CalendarViewState extends ConsumerState<CalendarView>
                                     onTap: () => _showDayPreview(date),
                                     borderRadius: BorderRadius.circular(4),
                                     child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 2,
+                                        vertical: 1,
+                                      ),
                                       child: Text(
-                                        cellWidth < 75 ? '+$overflowCount' : '+$overflowCount more',
+                                        cellWidth < 75
+                                            ? '+$overflowCount'
+                                            : '+$overflowCount more',
                                         style: TextStyle(
                                           fontSize: cellWidth < 75 ? 9.5 : 10.0,
                                           fontWeight: FontWeight.w600,

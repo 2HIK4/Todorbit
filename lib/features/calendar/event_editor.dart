@@ -1,3 +1,4 @@
+import '../shared/text_prompt_dialog.dart';
 import '../../data/alarm_device_store.dart';
 import '../../domain/alarms.dart';
 import '../../domain/alarm_plan.dart';
@@ -129,31 +130,18 @@ class _EventEditorState extends ConsumerState<EventEditor> {
   int organizationPickerRevision = 0;
 
   Future<String?> _newOrganizationName(String kind) async {
-    final controller = TextEditingController();
-    return showDialog<String>(
+    final noun = kind == 'category' ? 'Category' : 'Project';
+    final value = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('New ${kind == 'category' ? 'Category' : 'Project'}'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: InputDecoration(
-            labelText: '${kind == 'category' ? 'Category' : 'Project'} name',
-          ),
-          onSubmitted: (value) => Navigator.of(context).pop(value.trim()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Create'),
-          ),
-        ],
+      animationStyle: AppMotion.style(context),
+      builder: (_) => TextPromptDialog(
+        title: 'New $noun',
+        label: '$noun name',
+        submitLabel: 'Create',
+        maxLength: null,
       ),
     );
+    return value?.trim();
   }
 
   Future<void> _createCategory() async {
@@ -611,7 +599,8 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                 initialAlarmRule != null
             ? initialAlarmRule!.updatedAt
             : 'new',
-        repeat: (widget.event?.nominalDate != null &&
+        repeat:
+            (widget.event?.nominalDate != null &&
                     editScope == _EventEditScope.occurrence) ||
                 repeatKind == null
             ? null
@@ -901,579 +890,593 @@ class _EventEditorState extends ConsumerState<EventEditor> {
       busy: busy,
       onClose: widget.onClose,
       child: Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  widget.event == null
-                      ? 'New calendar event'
-                      : 'Edit calendar event',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-              IconButton(
-                tooltip: 'Close',
-                onPressed: () => exitGuard.currentState?.close(),
-                icon: const Icon(Icons.close),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Expanded(
-            child: FadingListView(
-              key: const ValueKey('event-editor-form-list'),
-              padding: AppSpacing.editorScrollPadding(context),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
               children: [
-                if (widget.event?.nominalDate != null) ...[
-                  SegmentedButton<_EventEditScope>(
-                    direction: MediaQuery.sizeOf(context).width < 520
-                        ? Axis.vertical
-                        : Axis.horizontal,
-                    showSelectedIcon: false,
-                    segments: const [
-                      ButtonSegment(
-                        value: _EventEditScope.occurrence,
-                        label: Text('This date'),
+                Expanded(
+                  child: Text(
+                    widget.event == null
+                        ? 'New calendar event'
+                        : 'Edit calendar event',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Close',
+                  onPressed: () => exitGuard.currentState?.close(),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Expanded(
+              child: FadingListView(
+                key: const ValueKey('event-editor-form-list'),
+                padding: AppSpacing.editorScrollPadding(context),
+                children: [
+                  if (widget.event?.nominalDate != null) ...[
+                    SegmentedButton<_EventEditScope>(
+                      direction: MediaQuery.sizeOf(context).width < 520
+                          ? Axis.vertical
+                          : Axis.horizontal,
+                      showSelectedIcon: false,
+                      segments: const [
+                        ButtonSegment(
+                          value: _EventEditScope.occurrence,
+                          label: Text('This date'),
+                        ),
+                        ButtonSegment(
+                          value: _EventEditScope.future,
+                          label: Text('This + future'),
+                        ),
+                        ButtonSegment(
+                          value: _EventEditScope.series,
+                          label: Text('Remaining series'),
+                        ),
+                      ],
+                      selected: {editScope},
+                      onSelectionChanged: busy
+                          ? null
+                          : (value) => _chooseScope(value.first),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: title,
+                          autofocus: widget.event == null,
+                          decoration: const InputDecoration(
+                            labelText: 'Title *',
+                          ),
+                        ),
                       ),
-                      ButtonSegment(
-                        value: _EventEditScope.future,
-                        label: Text('This + future'),
-                      ),
-                      ButtonSegment(
-                        value: _EventEditScope.series,
-                        label: Text('Remaining series'),
+                      const SizedBox(width: 8),
+                      IconButton.outlined(
+                        tooltip: 'Choose event icon',
+                        icon: Icon(iconForKey(iconName, Icons.event_outlined)),
+                        onPressed: () async {
+                          final choice = await chooseBuiltInIcon(
+                            context,
+                            current: iconName,
+                          );
+                          if (choice.$1 && mounted) {
+                            setState(() => iconName = choice.$2);
+                          }
+                        },
                       ),
                     ],
-                    selected: {editScope},
-                    onSelectionChanged: busy
-                        ? null
-                        : (value) => _chooseScope(value.first),
                   ),
-                  const SizedBox(height: 14),
-                ],
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: title,
-                        autofocus: widget.event == null,
-                        decoration: const InputDecoration(labelText: 'Title *'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton.outlined(
-                      tooltip: 'Choose event icon',
-                      icon: Icon(iconForKey(iconName, Icons.event_outlined)),
-                      onPressed: () async {
-                        final choice = await chooseBuiltInIcon(
-                          context,
-                          current: iconName,
-                        );
-                        if (choice.$1 && mounted) {
-                          setState(() => iconName = choice.$2);
-                        }
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('All day'),
-                  value: allDay,
-                  onChanged: (value) => setState(() {
-                    allDay = value;
-                    endEdited = false;
-                    suggestedEnd = null;
-                    if (value) {
-                      start = DateTime(start.year, start.month, start.day);
-                      end = DateTime(start.year, start.month, start.day + 1);
-                    }
-                  }),
-                ),
-                const SizedBox(height: AppSpacing.content),
-                Text('Start', style: Theme.of(context).textTheme.titleSmall),
-                _dateTimeRow(start, true),
-                const SizedBox(height: 12),
-                Text('End', style: Theme.of(context).textTheme.titleSmall),
-                _dateTimeRow(end, false),
-                if (suggestedEnd != null)
-                  TextButton.icon(
-                    onPressed: () => setState(() {
-                      end = suggestedEnd!;
-                      suggestedEnd = null;
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('All day'),
+                    value: allDay,
+                    onChanged: (value) => setState(() {
+                      allDay = value;
                       endEdited = false;
+                      suggestedEnd = null;
+                      if (value) {
+                        start = DateTime(start.year, start.month, start.day);
+                        end = DateTime(start.year, start.month, start.day + 1);
+                      }
                     }),
-                    icon: const Icon(Icons.update),
-                    label: const Text('Move end with start'),
                   ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    'Duration: ${eventDurationLabel(start, end, allDay: allDay)}'
-                    '${suggestedEnd == null ? '' : '. Your edited end is unchanged.'}',
+                  const SizedBox(height: AppSpacing.content),
+                  Text('Start', style: Theme.of(context).textTheme.titleSmall),
+                  _dateTimeRow(start, true),
+                  const SizedBox(height: 12),
+                  Text('End', style: Theme.of(context).textTheme.titleSmall),
+                  _dateTimeRow(end, false),
+                  if (suggestedEnd != null)
+                    TextButton.icon(
+                      onPressed: () => setState(() {
+                        end = suggestedEnd!;
+                        suggestedEnd = null;
+                        endEdited = false;
+                      }),
+                      icon: const Icon(Icons.update),
+                      label: const Text('Move end with start'),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Duration: ${eventDurationLabel(start, end, allDay: allDay)}'
+                      '${suggestedEnd == null ? '' : '. Your edited end is unchanged.'}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                  Text(
+                    'Moving Start keeps the duration until you edit End.',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
-                ),
-                Text(
-                  'Moving Start keeps the duration until you edit End.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 14),
-                SettingsSection(
-                  title: 'Details',
-                  initiallyExpanded:
-                      notes.text.isNotEmpty || details.isNotEmpty,
-                  children: [
-                    TextField(
-                      controller: notes,
-                      maxLines: 3,
-                      decoration: const InputDecoration(labelText: 'Notes'),
-                    ),
-                    const SizedBox(height: 12),
-                    _detailsSection(),
-                    const SizedBox(height: 12),
-                  ],
-                ),
-                SettingsSection(
-                  title: 'Organization and appearance',
-                  initiallyExpanded: categoryId != null || projectId != null,
-                  children: [
-                    Builder(
-                      builder: (context) {
-                        final controller = ref.watch(appControllerProvider);
-                        final projectChoices = categoryId == null
-                            ? const <Project>[]
-                            : controller.projects
-                                .where((p) => p.categoryId == categoryId)
-                                .toList();
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Tooltip(
-                              message: 'Choose category',
-                              child: AnchoredSelectField<String?>(
-                                key: ValueKey(
-                                  'event-category:$categoryId:$organizationPickerRevision',
+                  const SizedBox(height: 14),
+                  SettingsSection(
+                    title: 'Details',
+                    initiallyExpanded:
+                        notes.text.isNotEmpty || details.isNotEmpty,
+                    children: [
+                      TextField(
+                        controller: notes,
+                        maxLines: 3,
+                        decoration: const InputDecoration(labelText: 'Notes'),
+                      ),
+                      const SizedBox(height: 12),
+                      _detailsSection(),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
+                  SettingsSection(
+                    title: 'Organization and appearance',
+                    initiallyExpanded: categoryId != null || projectId != null,
+                    children: [
+                      Builder(
+                        builder: (context) {
+                          final controller = ref.watch(appControllerProvider);
+                          final projectChoices = categoryId == null
+                              ? const <Project>[]
+                              : controller.projects
+                                    .where((p) => p.categoryId == categoryId)
+                                    .toList();
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Tooltip(
+                                message: 'Choose category',
+                                child: AnchoredSelectField<String?>(
+                                  key: ValueKey(
+                                    'event-category:$categoryId:$organizationPickerRevision',
+                                  ),
+                                  initialValue: categoryId,
+                                  isExpanded: true,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Category',
+                                  ),
+                                  items: [
+                                    const DropdownMenuItem<String?>(
+                                      value: null,
+                                      child: Text('None / Inbox'),
+                                    ),
+                                    ...controller.categories.map(
+                                      (category) => DropdownMenuItem<String?>(
+                                        value: category.id,
+                                        child: Text(category.name),
+                                      ),
+                                    ),
+                                    const DropdownMenuItem<String?>(
+                                      value: '__new_category__',
+                                      child: Text('+ New Category'),
+                                    ),
+                                  ],
+                                  onChanged: (value) {
+                                    if (value == '__new_category__') {
+                                      _createCategory();
+                                      return;
+                                    }
+                                    setState(() {
+                                      categoryId = value;
+                                      projectId = null;
+                                    });
+                                  },
                                 ),
-                                initialValue: categoryId,
+                              ),
+                              const SizedBox(height: 12),
+                              AnchoredSelectField<String?>(
+                                key: ValueKey(
+                                  'event-project:$projectId:$categoryId:$organizationPickerRevision',
+                                ),
+                                initialValue: projectId,
                                 isExpanded: true,
-                                decoration:
-                                    const InputDecoration(labelText: 'Category'),
+                                decoration: const InputDecoration(
+                                  labelText: 'Project',
+                                ),
                                 items: [
                                   const DropdownMenuItem<String?>(
                                     value: null,
-                                    child: Text('None / Inbox'),
+                                    child: Text('None'),
                                   ),
-                                  ...controller.categories.map(
-                                    (category) => DropdownMenuItem<String?>(
-                                      value: category.id,
-                                      child: Text(category.name),
+                                  ...projectChoices.map(
+                                    (project) => DropdownMenuItem<String?>(
+                                      value: project.id,
+                                      child: Text(project.name),
                                     ),
                                   ),
-                                  const DropdownMenuItem<String?>(
-                                    value: '__new_category__',
-                                    child: Text('+ New Category'),
-                                  ),
+                                  if (categoryId != null)
+                                    const DropdownMenuItem<String?>(
+                                      value: '__new_project__',
+                                      child: Text('+ New Project'),
+                                    ),
                                 ],
-                                onChanged: (value) {
-                                  if (value == '__new_category__') {
-                                    _createCategory();
-                                    return;
-                                  }
-                                  setState(() {
-                                    categoryId = value;
-                                    projectId = null;
-                                  });
-                                },
+                                onChanged: categoryId == null
+                                    ? null
+                                    : (value) {
+                                        if (value == '__new_project__') {
+                                          _createProject();
+                                        } else {
+                                          setState(() => projectId = value);
+                                        }
+                                      },
                               ),
-                            ),
-                            const SizedBox(height: 12),
-                            AnchoredSelectField<String?>(
-                              key: ValueKey(
-                                'event-project:$projectId:$categoryId:$organizationPickerRevision',
-                              ),
-                              initialValue: projectId,
-                              isExpanded: true,
-                              decoration:
-                                  const InputDecoration(labelText: 'Project'),
-                              items: [
-                                const DropdownMenuItem<String?>(
-                                  value: null,
-                                  child: Text('None'),
-                                ),
-                                ...projectChoices.map(
-                                  (project) => DropdownMenuItem<String?>(
-                                    value: project.id,
-                                    child: Text(project.name),
+                              const SizedBox(height: 12),
+                              Tooltip(
+                                message: 'Choose event color',
+                                child: AnchoredSelectField<int?>(
+                                  key: ValueKey('event-color:$colorValue'),
+                                  initialValue: colorValue,
+                                  isExpanded: true,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Color',
                                   ),
-                                ),
-                                if (categoryId != null)
-                                  const DropdownMenuItem<String?>(
-                                    value: '__new_project__',
-                                    child: Text('+ New Project'),
-                                  ),
-                              ],
-                              onChanged: categoryId == null
-                                  ? null
-                                  : (value) {
-                                      if (value == '__new_project__') {
-                                        _createProject();
-                                      } else {
-                                        setState(() => projectId = value);
+                                  items: [
+                                    DropdownMenuItem<int?>(
+                                      value: null,
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.circle,
+                                            color: _inheritedColor(),
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          const Expanded(
+                                            child: Text(
+                                              'Inherited default',
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    for (final color in eventColors)
+                                      DropdownMenuItem<int?>(
+                                        value: color.$2,
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.circle,
+                                              color: Color(color.$2),
+                                              size: 16,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Text(
+                                                color.$1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    if (colorValue != null &&
+                                        !eventColors.any(
+                                          (item) => item.$2 == colorValue,
+                                        ))
+                                      DropdownMenuItem<int?>(
+                                        value: colorValue,
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.circle,
+                                              color: Color(colorValue!),
+                                              size: 16,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Text(
+                                                eventColorLabel(colorValue),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    const DropdownMenuItem<int?>(
+                                      value: -1,
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.colorize_outlined,
+                                            size: 16,
+                                          ),
+                                          SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              'Custom Color…',
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                  onChanged: (value) async {
+                                    if (value == -1) {
+                                      final chosen = await chooseEventColor(
+                                        context,
+                                        colorValue ?? 0xFF5365B5,
+                                      );
+                                      if (chosen != null && mounted) {
+                                        setState(() => colorValue = chosen);
                                       }
-                                    },
-                            ),
-                            const SizedBox(height: 12),
-                            Tooltip(
-                              message: 'Choose event color',
-                              child: AnchoredSelectField<int?>(
-                                key: ValueKey('event-color:$colorValue'),
-                                initialValue: colorValue,
-                                isExpanded: true,
-                                decoration:
-                                    const InputDecoration(labelText: 'Color'),
-                                items: [
-                                DropdownMenuItem<int?>(
-                                  value: null,
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.circle,
-                                        color: _inheritedColor(),
-                                        size: 16,
-                                      ),
-                                      const SizedBox(width: 10),
-                                      const Expanded(
-                                        child: Text(
-                                          'Inherited default',
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    } else {
+                                      setState(() => colorValue = value);
+                                    }
+                                  },
                                 ),
-                                for (final color in eventColors)
-                                  DropdownMenuItem<int?>(
-                                    value: color.$2,
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.circle,
-                                          color: Color(color.$2),
-                                          size: 16,
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Text(
-                                            color.$1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                if (colorValue != null &&
-                                    !eventColors.any(
-                                      (item) => item.$2 == colorValue,
-                                    ))
-                                  DropdownMenuItem<int?>(
-                                    value: colorValue,
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.circle,
-                                          color: Color(colorValue!),
-                                          size: 16,
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Text(
-                                            eventColorLabel(colorValue),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                const DropdownMenuItem<int?>(
-                                  value: -1,
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.colorize_outlined,
-                                        size: 16,
-                                      ),
-                                      SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          'Custom Color…',
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                              onChanged: (value) async {
-                                if (value == -1) {
-                                  final chosen = await chooseEventColor(
-                                    context,
-                                    colorValue ?? 0xFF5365B5,
-                                  );
-                                  if (chosen != null && mounted) {
-                                    setState(() => colorValue = chosen);
-                                  }
-                                } else {
-                                  setState(() => colorValue = value);
-                                }
-                              },
-                            ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  SettingsSection(
+                    title: 'Recurrence and reminders',
+                    initiallyExpanded:
+                        repeatKind != null || reminderMinutes != null,
+                    children: [
+                      AlarmField(
+                        value: alarm,
+                        event: true,
+                        recurring:
+                            repeatKind != null &&
+                            widget.event?.nominalDate == null,
+                        onChanged: (value) => setState(() {
+                          alarm = value;
+                          if (value.enabled) reminderMinutes = null;
+                        }),
+                      ),
+                      if (reminderMinutes != null && !alarm.enabled)
+                        AnchoredSelectField<int?>(
+                          initialValue: reminderMinutes,
+                          decoration: InputDecoration(
+                            labelText: 'Reminder notifications',
+                            helperText: Platform.isAndroid
+                                ? 'Android reminders may be delayed by battery restrictions.'
+                                : Platform.isWindows &&
+                                      NativeWidgetService().isAvailable
+                                ? 'Delivered by the Todorbit tray companion while it runs.'
+                                : 'Requires the packaged Windows tray companion.',
                           ),
-                        ],
-                      );
-                      },
-                    ),
-                  ],
-                ),
-                SettingsSection(
-                  title: 'Recurrence and reminders',
-                  initiallyExpanded:
-                      repeatKind != null || reminderMinutes != null,
-                  children: [
-                    AlarmField(
-                      value: alarm,
-                      event: true,
-                      recurring:
-                          repeatKind != null &&
-                          widget.event?.nominalDate == null,
-                      onChanged: (value) => setState(() {
-                        alarm = value;
-                        if (value.enabled) reminderMinutes = null;
-                      }),
-                    ),
-                    if (reminderMinutes != null && !alarm.enabled)
-                      AnchoredSelectField<int?>(
-                        initialValue: reminderMinutes,
-                        decoration: InputDecoration(
-                          labelText: 'Reminder notifications',
-                          helperText: Platform.isAndroid
-                              ? 'Android reminders may be delayed by battery restrictions.'
-                              : Platform.isWindows &&
-                                    NativeWidgetService().isAvailable
-                              ? 'Delivered by the Todorbit tray companion while it runs.'
-                              : 'Requires the packaged Windows tray companion.',
+                          items: const [
+                            DropdownMenuItem(value: null, child: Text('None')),
+                            DropdownMenuItem(value: 0, child: Text('At start')),
+                            DropdownMenuItem(
+                              value: 5,
+                              child: Text('5 minutes before'),
+                            ),
+                            DropdownMenuItem(
+                              value: 15,
+                              child: Text('15 minutes before'),
+                            ),
+                            DropdownMenuItem(
+                              value: 30,
+                              child: Text('30 minutes before'),
+                            ),
+                            DropdownMenuItem(
+                              value: 60,
+                              child: Text('1 hour before'),
+                            ),
+                          ],
+                          onChanged:
+                              Platform.isAndroid ||
+                                  (Platform.isWindows &&
+                                      NativeWidgetService().isAvailable)
+                              ? (value) =>
+                                    setState(() => reminderMinutes = value)
+                              : null,
                         ),
+                      const SizedBox(height: 12),
+                      AnchoredSelectField<EventRepeatKind?>(
+                        initialValue: repeatKind,
+                        decoration: const InputDecoration(labelText: 'Repeat'),
                         items: const [
-                          DropdownMenuItem(value: null, child: Text('None')),
-                          DropdownMenuItem(value: 0, child: Text('At start')),
                           DropdownMenuItem(
-                            value: 5,
-                            child: Text('5 minutes before'),
+                            value: null,
+                            child: Text('Does not repeat'),
                           ),
                           DropdownMenuItem(
-                            value: 15,
-                            child: Text('15 minutes before'),
+                            value: EventRepeatKind.daily,
+                            child: Text('Daily'),
                           ),
                           DropdownMenuItem(
-                            value: 30,
-                            child: Text('30 minutes before'),
+                            value: EventRepeatKind.weekly,
+                            child: Text('Weekly'),
                           ),
                           DropdownMenuItem(
-                            value: 60,
-                            child: Text('1 hour before'),
+                            value: EventRepeatKind.weekdays,
+                            child: Text('Selected weekdays'),
+                          ),
+                          DropdownMenuItem(
+                            value: EventRepeatKind.monthly,
+                            child: Text('Monthly'),
+                          ),
+                          DropdownMenuItem(
+                            value: EventRepeatKind.yearly,
+                            child: Text('Yearly'),
                           ),
                         ],
                         onChanged:
-                            Platform.isAndroid ||
-                                (Platform.isWindows &&
-                                    NativeWidgetService().isAvailable)
-                            ? (value) => setState(() => reminderMinutes = value)
-                            : null,
-                      ),
-                    const SizedBox(height: 12),
-                    AnchoredSelectField<EventRepeatKind?>(
-                      initialValue: repeatKind,
-                      decoration: const InputDecoration(labelText: 'Repeat'),
-                      items: const [
-                        DropdownMenuItem(
-                          value: null,
-                          child: Text('Does not repeat'),
-                        ),
-                        DropdownMenuItem(
-                          value: EventRepeatKind.daily,
-                          child: Text('Daily'),
-                        ),
-                        DropdownMenuItem(
-                          value: EventRepeatKind.weekly,
-                          child: Text('Weekly'),
-                        ),
-                        DropdownMenuItem(
-                          value: EventRepeatKind.weekdays,
-                          child: Text('Selected weekdays'),
-                        ),
-                        DropdownMenuItem(
-                          value: EventRepeatKind.monthly,
-                          child: Text('Monthly'),
-                        ),
-                        DropdownMenuItem(
-                          value: EventRepeatKind.yearly,
-                          child: Text('Yearly'),
-                        ),
-                      ],
-                      onChanged:
-                          widget.event?.nominalDate != null &&
-                              editScope == _EventEditScope.occurrence
-                          ? null
-                          : (value) => setState(() {
-                              repeatKind = value;
-                              if (value == EventRepeatKind.weekdays &&
-                                  weekdays.isEmpty) {
-                                weekdays = {start.weekday};
-                              }
-                            }),
-                    ),
-                    if (repeatKind == EventRepeatKind.weekdays) ...[
-                      const SizedBox(height: 8),
-                      WeekdayPickerRow(
-                        firstWeekday: ref
-                            .watch(appControllerProvider)
-                            .firstWeekday,
-                        selected: weekdays,
-                        onSelected:
                             widget.event?.nominalDate != null &&
                                 editScope == _EventEditScope.occurrence
                             ? null
-                            : (day, selected) => setState(() {
-                                if (selected) {
-                                  weekdays.add(day);
-                                } else {
-                                  weekdays.remove(day);
+                            : (value) => setState(() {
+                                repeatKind = value;
+                                if (value == EventRepeatKind.weekdays &&
+                                    weekdays.isEmpty) {
+                                  weekdays = {start.weekday};
                                 }
                               }),
                       ),
-                    ],
-                    if (repeatKind != null) ...[
-                      const SizedBox(height: 8),
-                      AnchoredSelectField<bool>(
-                        key: ValueKey('recurrence-ends-${repeatUntil != null}'),
-                        initialValue: repeatUntil != null,
-                        decoration: const InputDecoration(
-                          labelText: 'Recurrence ends',
-                        ),
-                        items: const [
-                          DropdownMenuItem(value: false, child: Text('Never')),
-                          DropdownMenuItem(value: true, child: Text('On date')),
-                        ],
-                        onChanged:
-                            widget.event?.nominalDate != null &&
-                                editScope == _EventEditScope.occurrence
-                            ? null
-                            : (value) => setState(
-                                () => repeatUntil = value == true
-                                    ? (repeatUntil ?? start)
-                                    : null,
-                              ),
-                      ),
-                      if (repeatUntil != null)
-                        OutlinedButton(
-                          onPressed:
+                      if (repeatKind == EventRepeatKind.weekdays) ...[
+                        const SizedBox(height: 8),
+                        WeekdayPickerRow(
+                          firstWeekday: ref
+                              .watch(appControllerProvider)
+                              .firstWeekday,
+                          selected: weekdays,
+                          onSelected:
                               widget.event?.nominalDate != null &&
                                   editScope == _EventEditScope.occurrence
                               ? null
-                              : () async {
-                                  final chosen = await showDatePicker(
-                                    context: context,
-                                    initialDate: repeatUntil ?? start,
-                                    firstDate: start,
-                                    lastDate: DateTime(2100),
-                                  );
-                                  if (chosen != null) {
-                                    setState(() => repeatUntil = chosen);
+                              : (day, selected) => setState(() {
+                                  if (selected) {
+                                    weekdays.add(day);
+                                  } else {
+                                    weekdays.remove(day);
                                   }
-                                },
+                                }),
+                        ),
+                      ],
+                      if (repeatKind != null) ...[
+                        const SizedBox(height: 8),
+                        AnchoredSelectField<bool>(
+                          key: ValueKey(
+                            'recurrence-ends-${repeatUntil != null}',
+                          ),
+                          initialValue: repeatUntil != null,
+                          decoration: const InputDecoration(
+                            labelText: 'Recurrence ends',
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: false,
+                              child: Text('Never'),
+                            ),
+                            DropdownMenuItem(
+                              value: true,
+                              child: Text('On date'),
+                            ),
+                          ],
+                          onChanged:
+                              widget.event?.nominalDate != null &&
+                                  editScope == _EventEditScope.occurrence
+                              ? null
+                              : (value) => setState(
+                                  () => repeatUntil = value == true
+                                      ? (repeatUntil ?? start)
+                                      : null,
+                                ),
+                        ),
+                        if (repeatUntil != null)
+                          OutlinedButton(
+                            onPressed:
+                                widget.event?.nominalDate != null &&
+                                    editScope == _EventEditScope.occurrence
+                                ? null
+                                : () async {
+                                    final chosen = await showDatePicker(
+                                      context: context,
+                                      initialDate: repeatUntil ?? start,
+                                      firstDate: start,
+                                      lastDate: DateTime(2100),
+                                    );
+                                    if (chosen != null) {
+                                      setState(() => repeatUntil = chosen);
+                                    }
+                                  },
+                            child: Text(
+                              'Repeat through ${localDate(repeatUntil!)}',
+                            ),
+                          ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  if (widget.event?.cancelled == true)
+                    const Text('This occurrence is cancelled.'),
+                ],
+              ),
+            ),
+            DialogActionBar(
+              alignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (widget.event != null)
+                  PopupMenuButton<String>(
+                    tooltip: 'Event actions',
+                    enabled: !busy,
+                    onSelected: (action) {
+                      if (action == 'cancel') _toggleCancelled();
+                      if (action == 'end') _endSeries();
+                      if (action == 'duplicate') _duplicate();
+                      if (action == 'delete') _delete();
+                    },
+                    itemBuilder: (_) => [
+                      if (widget.event?.nominalDate != null)
+                        PopupMenuItem(
+                          value: 'cancel',
                           child: Text(
-                            'Repeat through ${localDate(repeatUntil!)}',
+                            widget.event!.cancelled
+                                ? 'Restore this occurrence'
+                                : 'Cancel this occurrence',
                           ),
                         ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 10),
-                if (widget.event?.cancelled == true)
-                  const Text('This occurrence is cancelled.'),
-              ],
-            ),
-          ),
-          DialogActionBar(
-            alignment: MainAxisAlignment.spaceBetween,
-            children: [
-              if (widget.event != null)
-                PopupMenuButton<String>(
-                  tooltip: 'Event actions',
-                  enabled: !busy,
-                  onSelected: (action) {
-                    if (action == 'cancel') _toggleCancelled();
-                    if (action == 'end') _endSeries();
-                    if (action == 'duplicate') _duplicate();
-                    if (action == 'delete') _delete();
-                  },
-                  itemBuilder: (_) => [
-                    if (widget.event?.nominalDate != null)
+                      if (widget.event?.nominalDate != null)
+                        const PopupMenuItem(
+                          value: 'end',
+                          child: Text('End series from this date'),
+                        ),
+                      const PopupMenuItem(
+                        value: 'duplicate',
+                        child: Text('Duplicate event'),
+                      ),
                       PopupMenuItem(
-                        value: 'cancel',
+                        value: 'delete',
                         child: Text(
-                          widget.event!.cancelled
-                              ? 'Restore this occurrence'
-                              : 'Cancel this occurrence',
+                          widget.event!.repeat == null
+                              ? 'Move event to Trash'
+                              : 'Move entire series to Trash',
                         ),
                       ),
-                    if (widget.event?.nominalDate != null)
-                      const PopupMenuItem(
-                        value: 'end',
-                        child: Text('End series from this date'),
+                    ],
+                    child: const Padding(
+                      padding: EdgeInsets.all(8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.more_horiz),
+                          SizedBox(width: 4),
+                          Text('Actions'),
+                        ],
                       ),
-                    const PopupMenuItem(
-                      value: 'duplicate',
-                      child: Text('Duplicate event'),
-                    ),
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: Text(
-                        widget.event!.repeat == null
-                            ? 'Move event to Trash'
-                            : 'Move entire series to Trash',
-                      ),
-                    ),
-                  ],
-                  child: const Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.more_horiz),
-                        SizedBox(width: 4),
-                        Text('Actions'),
-                      ],
                     ),
                   ),
+                FilledButton.icon(
+                  onPressed: busy ? null : _save,
+                  icon: const Icon(Icons.save_outlined),
+                  label: Text(busy ? 'Saving…' : 'Save event'),
                 ),
-              FilledButton.icon(
-                onPressed: busy ? null : _save,
-                icon: const Icon(Icons.save_outlined),
-                label: Text(busy ? 'Saving…' : 'Save event'),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     ),
-  ),
-);
+  );
 
   Widget _dateTimeRow(DateTime value, bool isStart) => Padding(
     padding: const EdgeInsets.only(top: 6),

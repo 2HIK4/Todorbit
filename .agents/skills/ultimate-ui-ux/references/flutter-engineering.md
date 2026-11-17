@@ -245,13 +245,15 @@ Every UI modification, new component, or bugfix must pass these 16 explicit qual
     - Prioritize fast behavioral widget tests over brittle full-screen golden tests.
 17. **Calendar Grid Responsive Capacity & Discoverability**:
     - Month grid cells on narrow desktop or mobile viewports must never hide scheduled events or render empty space when items exist. Compute cell item capacity using clamped cell height (>=90px) and width; always guarantee at least the first item or a clearly clickable `+N` or `+N more` count affordance (`InkWell`) that opens day details on tap without causing `RenderFlex` overflow.
-    - Memoize month and week item maps (`_cachedMonthKey`, `_cachedWeekKey`) keyed by active date, content filter, and task/event collections to prevent O(days × items) synchronous recalculation during continuous window resize frames.
+    - Memoize month/week projections by date, controller identity and its notification `stateRevision`. Filter getters may allocate new lists, so using their identity defeats cache reuse. Verify stable resize reuse and invalidation after edits, deletion, completion, filters, category colors and external refresh; no profiler claim follows from an identity test.
 18. **Color Picker Scroll Controller Lifecycle & Steady Offset**:
     - Dialogs with scrollable color selection palettes (`AlertDialog(scrollable: false)`) must manage a dedicated `ScrollController` in `State` with a stable `PageStorageKey` and dispose it cleanly.
     - Avoid thrashing widget keys (such as `ValueKey(pickerType)`) or relying on unmanaged `SingleChildScrollView` inside `AlertDialog(scrollable: true)`, which resets the scroll offset to 0 on color updates, chip taps, or hex typing.
 19. **Calendar Month Navigation Prefetching & Race Guards**:
-    - To eliminate blank tasks/events when navigating back/forward across months, expand recurrence prefetch window to cover adjacent months (`[month - 1, month, month + 1]`, 90 days total span <= 93 day repository limit). This keeps in-memory data available immediately on frame 1 without blank transition flicker.
-    - Use a sequential revision counter (`_monthNavigationRevision`) to guard asynchronous month queries against rapid back/forward clicks, preventing race conditions or stale months from overwriting current state.
+    - Prefetch exact previous/current/next civil months: `DateTime(year, month - 1, 1)` through `DateTime(year, month + 2, 0)`, inclusive. Fixed -30/+60 day offsets miss boundaries. Keep the repository span <=93 days and test leap/year transitions plus events on both edges.
+    - A widget navigation revision protects feedback only. Serialize/coalesce controller window loads to the latest request, skip unchanged same-month requests, and retain the confirmed window on failure. Test blocked overlapping requests and retry behavior.
+20. **One Detail Presentation Preference**:
+    - Explicit `TaskViewPreferences.detailPresentation` controls Side Panel (default) versus optional Full Page. Do not OR an independent theme flag into this choice: a stale theme value would prevent users from returning to Side Panel. Preserve theme metadata without making it a second route authority.
 
 
 ## Task timer and composition contracts (Prompt 2)

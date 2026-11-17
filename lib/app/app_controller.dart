@@ -242,8 +242,12 @@ class AppController extends ChangeNotifier {
     _cachedFilteredTasksDate = null;
   }
 
+  int _stateRevision = 0;
+  int get stateRevision => _stateRevision;
+
   @override
   void notifyListeners() {
+    _stateRevision++;
     _invalidateTaskCaches();
     super.notifyListeners();
   }
@@ -254,8 +258,7 @@ class AppController extends ChangeNotifier {
   ThemeModePreference theme = ThemeModePreference.system;
   ThemeCustomization customization = const ThemeCustomization();
   TaskViewPreferences taskViewPreferences = const TaskViewPreferences();
-  bool get isFullPageDetails =>
-      taskViewPreferences.isFullPageDetails || customization.isFullPageDetails;
+  bool get isFullPageDetails => taskViewPreferences.isFullPageDetails;
   HotkeyPreferences hotkeys = HotkeyPreferences();
   CalendarContent calendarContent = CalendarContent.both;
   int firstWeekday = 7;
@@ -1262,14 +1265,47 @@ class AppController extends ChangeNotifier {
     select(task.id);
   }
 
-  Future<void> ensureRecurringMonth(DateTime date) async {
-    final first = localDate(DateTime(date.year, date.month, 1));
-    final from = RecurrenceRule.shiftDate(first, -30);
-    final through = RecurrenceRule.shiftDate(first, 60);
-    _eventWindowFrom = from;
-    _eventWindowThrough = through;
-    await repository.ensureRecurringTasks(from, through);
-    await refresh();
+  DateTime? _requestedRecurringMonth;
+  Future<void>? _recurringMonthLoad;
+  int? _loadedCalendarStateRevision;
+
+  Future<void> ensureRecurringMonth(DateTime date) {
+    _requestedRecurringMonth = DateTime(date.year, date.month);
+    return _recurringMonthLoad ??= _loadRequestedRecurringMonths().whenComplete(
+      () {
+        _recurringMonthLoad = null;
+      },
+    );
+  }
+
+  Future<void> _loadRequestedRecurringMonths() async {
+    while (_requestedRecurringMonth != null) {
+      final date = _requestedRecurringMonth!;
+      _requestedRecurringMonth = null;
+      final from = localDate(DateTime(date.year, date.month - 1, 1));
+      final through = localDate(DateTime(date.year, date.month + 2, 0));
+      if (_eventWindowFrom == from &&
+          _eventWindowThrough == through &&
+          _loadedCalendarStateRevision == stateRevision) {
+        continue;
+      }
+      await repository.ensureRecurringTasks(from, through);
+      // Navigation may have advanced while recurrence was materializing. Only
+      // load the newest requested window, and never run overlapping refreshes.
+      if (_requestedRecurringMonth != null) continue;
+      final previousFrom = _eventWindowFrom;
+      final previousThrough = _eventWindowThrough;
+      _eventWindowFrom = from;
+      _eventWindowThrough = through;
+      try {
+        await refresh();
+        _loadedCalendarStateRevision = stateRevision;
+      } catch (_) {
+        _eventWindowFrom = previousFrom;
+        _eventWindowThrough = previousThrough;
+        rethrow;
+      }
+    }
   }
 
   Future<void> updateTask(
