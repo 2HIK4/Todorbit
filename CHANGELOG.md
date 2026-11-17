@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.19-beta.23+46 - phantom sync conflict resolution, Focus timer rebuild optimization, and TaskDetails lifecycle safety
+
+- Eliminate phantom sync conflict badges by unifying status conflict counts with causal projection in `_readSyncResolution` via `readSyncSnapshot` (no unwanted database mutations or file watcher loops).
+- Automatically reconcile multi-record mutation groups where descendant edits superseded earlier conflicts without requiring manual decisions or discarding data.
+- Contain sync history size/syntax exceptions (`StateError`, `FormatException`, `TypeError`) and present explicit review-needed dialogs instead of empty conflict modals or unhandled crashes.
+- Fix conflict tooltip and accessibility semantics grammar for singular vs plural conflicts (`1 conflict needs attention` vs `$n conflicts need attention`).
+- Optimize `FocusWorkspace` periodic ticker: guard 250ms interval from triggering `setState` while paused or idle, saving 240 rebuilds/minute.
+- Fix Riverpod lifecycle pattern in `TaskDetailsView.task` getter to use `ref.read` outside `build()`, preventing callback assertion errors.
+- Retain existing SQLite schema 29, tasks, events, and synchronization history with zero data loss. Experimental prerelease only; Android retains production signing; Windows packages remain unsigned.
+
 ## 1.0.19-beta.22+45 - reviewed navigation, resources, Task Details and Focus Workspace
 
 - Add Custom View multi-select filters, icons and category/project task visibility; synchronize saved visibility across devices.

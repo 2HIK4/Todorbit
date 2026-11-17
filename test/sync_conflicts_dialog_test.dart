@@ -63,6 +63,11 @@ class _Controller extends SyncController {
   @override
   SyncProblem? get problem => injectedProblem ?? super.problem;
   int applied = 0;
+  bool stubReview = false;
+  SyncConflictReview? nextReview;
+  @override
+  Future<SyncConflictReview?> reviewConflicts() async =>
+      stubReview ? nextReview : super.reviewConflicts();
   int requests = 0, privateRequests = 0;
   int cancelledReviews = 0;
   void refreshFixture() => notifyListeners();
@@ -226,6 +231,72 @@ void main() {
     );
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
+  }
+
+  for (final platform in [TargetPlatform.android, TargetPlatform.windows]) {
+    for (final scenario in ['empty', 'genuine', 'damaged', 'problem']) {
+      testWidgets('shared conflict entry $scenario on $platform', (
+        tester,
+      ) async {
+        controller.stubReview = true;
+        controller.message = 'No unresolved sync conflicts.';
+        controller.injectedProblem = scenario == 'problem'
+            ? SyncProblem.reviewUnavailable
+            : null;
+        controller.nextReview = scenario == 'genuine'
+            ? review
+            : scenario == 'problem'
+            ? null
+            : SyncConflictReview(
+                token: 'empty',
+                attentionToken: 'empty',
+                records: const [],
+                reason: scenario == 'damaged' ? 'unverifiedLocalState' : null,
+              );
+        await tester.binding.setSurfaceSize(
+          platform == TargetPlatform.android
+              ? const Size(390, 780)
+              : const Size(1200, 850),
+        );
+        try {
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: ThemeData(platform: platform),
+              home: Scaffold(
+                body: Builder(
+                  builder: (context) => TextButton(
+                    onPressed: () => showSyncConflicts(context, controller),
+                    child: const Text('Review'),
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.tap(find.text('Review'));
+          await tester.pumpAndSettle();
+          if (scenario == 'genuine') {
+            expect(find.byType(SyncConflictsDialog), findsOneWidget);
+            expect(find.text('1 conflict to review'), findsOneWidget);
+            expect(find.text('Keep this device for all (1)'), findsOneWidget);
+          } else {
+            expect(find.byType(SyncConflictsDialog), findsNothing);
+            expect(find.text('Keep this device for all (0)'), findsNothing);
+            expect(
+              find.text(
+                scenario == 'empty'
+                    ? 'No unresolved sync conflicts.'
+                    : 'Sync history needs attention',
+              ),
+              findsOneWidget,
+            );
+          }
+          expect(tester.takeException(), isNull);
+        } finally {
+          await tester.pumpWidget(const SizedBox.shrink());
+          await tester.binding.setSurfaceSize(null);
+        }
+      });
+    }
   }
 
   testWidgets('representative conflict comparison visual evidence', (
@@ -418,6 +489,37 @@ void main() {
       );
       expect(
         find.bySemanticsLabel(RegExp('3 conflicts need attention')),
+        findsOneWidget,
+      );
+      semantics.dispose();
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'sync status button shows singular conflict notice when exactly 1 conflict is present',
+    (tester) async {
+      providerOwnsController = true;
+      controller.engine.status = const SyncEngineStatus(
+        SyncPhase.syncing,
+        conflicts: 1,
+      );
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [syncControllerProvider.overrideWith((ref) => controller)],
+          child: const MaterialApp(home: Scaffold(body: SyncStatusButton())),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 3));
+      expect(find.byType(Badge), findsOneWidget);
+      expect(find.text('1'), findsOneWidget);
+      expect(
+        find.byTooltip('Sync · Syncing · 1 conflict needs attention'),
+        findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel(RegExp('1 conflict needs attention')),
         findsOneWidget,
       );
       semantics.dispose();

@@ -551,15 +551,59 @@ class SyncController extends ChangeNotifier {
 
   Future<SyncConflictReview?> reviewConflicts() async {
     if (!isUnlocked()) return null;
-    final binding = (await repository.syncExchangeStatus()).binding;
-    if (binding == null) return null;
+    final local = await repository.syncExchangeStatus();
+    final binding = local.binding;
+    if (binding == null) {
+      message = 'Connect sync before reviewing conflicts.';
+      notifyListeners();
+      return null;
+    }
+    if (local.quarantined || !local.enabled) {
+      message = 'Sync is paused for this profile. Its records and pending history are retained.';
+      notifyListeners();
+      return null;
+    }
     final lease = await repository.acquireSyncLease(binding);
-    if (lease == null) return null;
+    if (lease == null) {
+      message = 'Another sync job is active. Try again shortly.';
+      notifyListeners();
+      return null;
+    }
+    SyncConflictReview? review;
+    var applied = false;
     try {
-      return await repository.reviewSyncConflicts(binding, lease: lease);
+      final result = await repository.reconcileSyncConflicts(
+        binding,
+        lease: lease,
+      );
+      applied = result.state == SyncApplyState.applied;
+      review = await repository.reviewSyncConflicts(binding, lease: lease);
+      if (review != null &&
+          review.conflictCount == 0 &&
+          review.reason == null) {
+        message = 'Sync history needs another check. Retry sync. All versions are retained.';
+        _problem = SyncProblem.reviewUnavailable;
+        review = null;
+      } else {
+        message = review == null ? 'No unresolved sync conflicts.' : null;
+        _problem = null;
+      }
+    } on FormatException {
+      _problem = SyncProblem.reviewUnavailable;
+      message = _problem!.explanation;
+    } on TypeError {
+      _problem = SyncProblem.reviewUnavailable;
+      message = _problem!.explanation;
+    } on StateError {
+      message = 'Sync review could not finish safely. Retry sync; all versions are retained.';
     } finally {
       await repository.releaseSyncLease(lease);
+      if (applied) await onApplied();
+      snapshot = await repository.syncExchangeStatus();
+      await engine.refreshLocalStatus();
+      if (!_disposed) notifyListeners();
     }
+    return review;
   }
 
   Future<void> dismiss(SyncConflictReview review) async {

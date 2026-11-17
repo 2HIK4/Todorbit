@@ -17,6 +17,14 @@ import 'package:life_manager/domain/models.dart';
 import 'package:life_manager/domain/alarms.dart';
 import 'package:life_manager/domain/recurrence.dart';
 import 'package:life_manager/domain/task_resources.dart';
+import 'package:http/testing.dart';
+import 'package:life_manager/app/sync_controller.dart';
+import 'package:life_manager/data/cloud/sync_engine.dart';
+import 'package:life_manager/data/cloud/google_drive_auth.dart';
+import 'package:life_manager/data/cloud/sync_pairing_service.dart';
+
+import 'cloud/cloud_test_fakes.dart';
+import 'support/mock_sync_drive.dart';
 
 class _BeforeApplyDatabase extends AppDatabase {
   _BeforeApplyDatabase(super.executor);
@@ -30,6 +38,25 @@ class _BeforeApplyDatabase extends AppDatabase {
     beforeTransaction = null;
     if (checkpoint != null) await checkpoint();
     return super.transaction(action, requireNew: requireNew);
+  }
+}
+
+class _OfflineReviewPairing extends SyncPairingService {
+  _OfflineReviewPairing(MockSyncDrive drive, this.key)
+    : super(storage: drive, vault: MemoryTokenStore());
+  final SyncWorkspaceKey key;
+  @override
+  Future<SyncWorkspaceKey?> loadKey(SyncBinding binding) async => key;
+  @override
+  Future<void> verifyWorkspace(
+    SyncBinding binding,
+    SyncWorkspaceKey key, {
+    bool ignoreReset = false,
+  }) async {
+    throw const CloudFailure(
+      'Synthetic offline',
+      kind: CloudFailureKind.offline,
+    );
   }
 }
 
@@ -531,6 +558,251 @@ void main() {
     expect((await apply()).state, SyncApplyState.applied);
     expect((await receiver.timeEntries()).single.endsAt, isNotNull);
   });
+
+  test(
+    'superseded conflict in a multi-record group reconciles without a decision',
+    () async {
+      await seed();
+      await receiver.updateTask(
+        (await receiver.tasks()).single,
+        const TaskDraft(title: 'Agreed title'),
+      );
+      await left.transaction(() async {
+        await sender.updateTask(
+          (await sender.tasks()).single,
+          const TaskDraft(title: 'Earlier cloud title'),
+        );
+        await sender.addCategory('Preserve grouped category');
+      });
+      await exchange();
+      expect((await apply()).reason, 'recordConflict');
+      await sender.updateTask(
+        (await sender.tasks()).single,
+        const TaskDraft(title: 'Agreed title'),
+      );
+      await exchange();
+      final review = (await receiver.reviewSyncConflicts(
+        b,
+        lease: rightLease!,
+      ))!;
+      expect(review.structural, isFalse);
+      expect(review.reason, isNull);
+      expect(review.records.where((r) => r.review.needsDecision), isEmpty);
+      final retained = await right
+          .customSelect('SELECT * FROM sync_journal ORDER BY sequence')
+          .get();
+      final pending = (await receiver.syncExchangeStatus()).pending;
+      expect((await receiver.syncExchangeStatus()).conflicts, 0);
+      await receiver.releaseSyncLease(rightLease!);
+      await right.close();
+      right = AppDatabase(NativeDatabase(File('${root.path}/right.sqlite')));
+      receiver = LifeRepository(right);
+      rightLease = await receiver.acquireSyncLease(b);
+      expect((await apply()).state, SyncApplyState.applied);
+      expect((await receiver.syncExchangeStatus()).conflicts, 0);
+      expect((await receiver.tasks()).single.title, 'Agreed title');
+      expect((await receiver.syncExchangeStatus()).pending, pending);
+      expect(
+        (await right
+                .customSelect('SELECT * FROM sync_journal ORDER BY sequence')
+                .get())
+            .map((r) => r.data)
+            .toList(),
+        retained.map((r) => r.data).toList(),
+      );
+      expect(
+        (await receiver.categories()).single.name,
+        'Preserve grouped category',
+      );
+      expect(
+        await receiver.pendingSyncChanges(
+          workspaceId: b.workspace,
+          accountId: b.account,
+        ),
+        isNotEmpty,
+      );
+    },
+  );
+
+  test(
+    'conflict count and review count the same records within one group',
+    () async {
+      await seed();
+      await sender.addTask(const TaskDraft(title: 'Second record'));
+      await exchange();
+      expect((await apply()).state, SyncApplyState.applied);
+      await right.transaction(() async {
+        for (final task in await receiver.tasks()) {
+          await receiver.updateTask(
+            task,
+            TaskDraft(title: 'Local ${task.title}'),
+          );
+        }
+      });
+      await left.transaction(() async {
+        for (final task in await sender.tasks()) {
+          await sender.updateTask(
+            task,
+            TaskDraft(title: 'Remote ${task.title}'),
+          );
+        }
+      });
+      await exchange();
+      expect((await apply()).reason, 'recordConflict');
+      final review = (await receiver.reviewSyncConflicts(
+        b,
+        lease: rightLease!,
+      ))!;
+      expect(review.conflictCount, 2);
+      expect(
+        (await receiver.syncExchangeStatus()).conflicts,
+        review.conflictCount,
+      );
+      expect(
+        (await receiver.reconcileSyncConflicts(b, lease: rightLease!)).state,
+        SyncApplyState.needsReview,
+      );
+      final result = await receiver.resolveSyncConflicts(
+        b,
+        lease: rightLease!,
+        reviewedToken: review.token,
+        choices: {
+          for (final record in review.records.where(
+            (r) => r.review.needsDecision,
+          ))
+            record.id: const SyncResolutionChoice.local(),
+        },
+      );
+      expect(result.state, SyncApplyState.applied);
+      expect((await receiver.syncExchangeStatus()).conflicts, 0);
+      expect(await receiver.reviewSyncConflicts(b, lease: rightLease!), isNull);
+      expect(
+        (await receiver.tasks()).every((t) => t.title.startsWith('Local ')),
+        isTrue,
+      );
+    },
+  );
+
+  test('offline controller refreshes genuine conflict count and durable decisions across restart', () async {
+    await seed();
+    await receiver.updateTask(
+      (await receiver.tasks()).single,
+      const TaskDraft(title: 'Local decision'),
+    );
+    await sender.updateTask(
+      (await sender.tasks()).single,
+      const TaskDraft(title: 'Remote decision'),
+    );
+    await exchange();
+    expect((await apply()).reason, 'recordConflict');
+    await receiver.releaseSyncLease(rightLease!);
+    final drive = MockSyncDrive()
+      ..account = CloudAccount(b.account, 'Synthetic account');
+    final client = MockClient((_) async => throw StateError('No real network'));
+    var refreshed = 0;
+    SyncController create() => SyncController(
+      repository: receiver,
+      recovery: BackupService(File('${root.path}/right.sqlite')),
+      auth: GoogleDriveAuth(
+        client: client,
+        store: MemoryTokenStore(),
+        flow: TestGoogleFlow(),
+        clientId: 'fixture',
+        enabled: false,
+      ),
+      storage: drive,
+      pairing: _OfflineReviewPairing(drive, key),
+      isUnlocked: () => true,
+      onApplied: () async {
+        refreshed++;
+      },
+    );
+    var controller = create();
+    try {
+      controller.engine.status = const SyncEngineStatus(
+        SyncPhase.needsAttention,
+        conflicts: 99,
+      );
+      final review = (await controller.reviewConflicts())!;
+      expect(review.conflictCount, 1);
+      expect(controller.conflictCount, 1);
+      final choices = {
+        review.records.single.id: const SyncResolutionChoice.local(),
+      };
+      await controller.saveDecisionDraft(review, choices);
+      await controller.dismiss(review);
+      await controller.shutdown();
+      controller.dispose();
+      controller = create();
+      final reopened = (await controller.reviewConflicts())!;
+      expect(reopened.dismissed, isTrue);
+      final saved = await controller.loadDecisionDraft(reopened);
+      expect(saved.keys, choices.keys);
+      expect(
+        (await controller.resolve(reopened, saved))?.state,
+        SyncApplyState.applied,
+      );
+      expect(refreshed, 1);
+      expect(controller.conflictCount, 0);
+      expect(controller.status.phase, SyncPhase.offline);
+      expect(controller.message, contains('Decisions saved'));
+      expect((await receiver.syncExchangeStatus()).pending, greaterThan(0));
+      expect(await controller.reviewConflicts(), isNull);
+      expect(controller.conflictCount, 0);
+      expect((await receiver.tasks()).single.title, 'Local decision');
+    } finally {
+      await controller.shutdown();
+      controller.dispose();
+      client.close();
+    }
+  });
+
+  test('status reads do not write sync bookkeeping or create file watcher feedback', () async {
+    await seed();
+    final before =
+        (await right.customSelect('SELECT total_changes() AS n').getSingle())
+            .read<int>('n');
+    await receiver.syncExchangeStatus();
+    await receiver.syncExchangeStatus();
+    final after =
+        (await right.customSelect('SELECT total_changes() AS n').getSingle())
+            .read<int>('n');
+    expect(after, before);
+  });
+
+  test(
+    'damaged blocked metadata is an explicit review issue and never discarded',
+    () async {
+      await seed();
+      await sender.updateTask(
+        (await sender.tasks()).single,
+        const TaskDraft(title: 'Retained remote'),
+      );
+      await exchange();
+      await right.customStatement(
+        "UPDATE sync_mutation_groups SET blocked_reason='broken-json' WHERE materialized=0",
+      );
+      final before = await right
+          .customSelect('SELECT * FROM sync_journal ORDER BY sequence')
+          .get();
+      final status = await receiver.syncExchangeStatus();
+      expect(status.reviewIssue, 'invalidRetainedSyncHistory');
+      expect(status.waiting, greaterThan(0));
+      await expectLater(
+        receiver.reconcileSyncConflicts(b, lease: rightLease!),
+        throwsFormatException,
+      );
+      expect(
+        (await right
+                .customSelect('SELECT * FROM sync_journal ORDER BY sequence')
+                .get())
+            .map((r) => r.data)
+            .toList(),
+        before.map((r) => r.data).toList(),
+      );
+      expect((await receiver.tasks()).single.title, 'Original synthetic task');
+    },
+  );
 
   test('same-field conflict retains both branches while an independent group applies', () async {
     await seed();

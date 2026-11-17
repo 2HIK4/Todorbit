@@ -39,6 +39,9 @@ void main() {
       await tester.tap(find.byTooltip('Reset timer'));
       await tester.pumpAndSettle();
       expect(c.activeTimer?.state, TimerState.paused);
+      // Pumping time while paused should not throw and should remain stable
+      await tester.pump(const Duration(seconds: 1));
+      expect(c.activeTimer?.state, TimerState.paused);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
       await db.close();

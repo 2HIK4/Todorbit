@@ -21,6 +21,13 @@ enum SyncProblemAction {
 
 /// Safe presentation selected from causes, never from exception/server text.
 class SyncProblem {
+  static const reviewUnavailable = SyncProblem(
+    'Sync history needs attention',
+    'Retained sync history could not be reviewed safely. Your records, pending changes and competing versions are kept. Retry sync; no conflict decision was discarded.',
+    SyncProblemAction.retry,
+    'Retry sync',
+    'Sync review unavailable',
+  );
   const SyncProblem(
     this.title,
     this.explanation,

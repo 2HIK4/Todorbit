@@ -36,6 +36,9 @@ class SyncConflictReview {
   final bool structural;
   final List<SyncConflictRecord> records;
   final String? reason;
+  int get conflictCount => records
+      .where((r) => !r.consequence && (structural || r.review.needsDecision))
+      .length;
 }
 
 class SyncResolutionChoice {
@@ -66,11 +69,12 @@ class SyncExchangeStatus {
     this.lastSuccess,
     this.retryAt,
     this.errorCode,
+    this.reviewIssue,
   });
   final SyncBinding? binding;
   final bool enabled, automatic, quarantined;
   final int pending, conflicts, waiting;
-  final String? changeToken, errorCode;
+  final String? changeToken, errorCode, reviewIssue;
   final DateTime? lastSuccess, retryAt;
 }
 

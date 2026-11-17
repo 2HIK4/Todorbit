@@ -114,6 +114,11 @@ class AppDatabase extends GeneratedDatabase {
     );
   }
 
+  /// A consistent read without opening a captured mutation group or waking the
+  /// sync file watcher with writes to its own bookkeeping.
+  Future<T> readSyncSnapshot<T>(Future<T> Function() action) =>
+      super.transaction(action);
+
   /// Resolve the database within a selected per-user data root. This also lets
   /// disposable profile tests exercise the same path as a packaged build.
   static File fileInDataRoot(String basePath) {

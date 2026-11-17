@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/sync_controller.dart';
 import '../../data/sync_exchange_models.dart';
+import '../../data/cloud/sync_problem.dart';
 import '../shared/status_notice.dart';
 import '../shared/dialog_action_bar.dart';
 import '../shared/scroll_edge_fade.dart';
@@ -19,9 +20,36 @@ Future<void> showSyncConflicts(
   bool automatic = false,
 }) async {
   if (!controller.isUnlocked()) return;
-  final review = await controller.reviewConflicts();
+  SyncConflictReview? review;
+  try {
+    review = await controller.reviewConflicts();
+  } catch (_) {
+    if (context.mounted && controller.isUnlocked() && !automatic) {
+      await _showReviewUnavailable(context, controller);
+    }
+    return;
+  }
+  if (context.mounted &&
+      controller.isUnlocked() &&
+      ((review != null && review.conflictCount == 0 && review.reason != null) ||
+          (review == null &&
+              controller.problem == SyncProblem.reviewUnavailable))) {
+    if (!automatic) await _showReviewUnavailable(context, controller);
+    return;
+  }
+  if (context.mounted &&
+      (review == null || review.conflictCount == 0) &&
+      !automatic &&
+      controller.isUnlocked()) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(controller.message ?? 'No unresolved sync conflicts.'),
+      ),
+    );
+  }
   if (!context.mounted ||
       review == null ||
+      review.conflictCount == 0 ||
       !controller.isUnlocked() ||
       (automatic && review.dismissed)) {
     return;
@@ -30,9 +58,31 @@ Future<void> showSyncConflicts(
     context: context,
     animationStyle: AppMotion.style(context),
     barrierDismissible: false,
-    builder: (_) => SyncConflictsDialog(controller: controller, review: review),
+    builder: (_) =>
+        SyncConflictsDialog(controller: controller, review: review!),
   );
 }
+
+Future<void> _showReviewUnavailable(
+  BuildContext context,
+  SyncController controller,
+) => showDialog<void>(
+  context: context,
+  builder: (dialogContext) => AlertDialog(
+    title: const Text('Sync history needs attention'),
+    scrollable: true,
+    content: Text(
+      controller.problem?.explanation ??
+          SyncProblem.reviewUnavailable.explanation,
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(dialogContext),
+        child: const Text('Close'),
+      ),
+    ],
+  ),
+);
 
 class SyncConflictsDialog extends StatefulWidget {
   const SyncConflictsDialog({
@@ -528,6 +578,13 @@ class _SyncConflictsDialogState extends State<SyncConflictsDialog> {
   Widget _header(bool canBulkCloud) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
+      Text(
+        '${review.conflictCount} ${review.conflictCount == 1 ? 'conflict' : 'conflicts'} to review',
+      ),
+      if (review.records.any((r) => r.consequence))
+        const Text(
+          'Related records are included below so linked changes stay consistent.',
+        ),
       const Text(
         'Choose the values to keep. Both versions are retained until you apply. Compatible changes are preserved.',
       ),

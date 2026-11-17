@@ -125,6 +125,14 @@ class _SyncApplySchema {
     if (_rows.containsKey(scope)) return _rows[scope];
     final fields = await columns(table);
     final identity = (jsonDecode(key) as Map).cast<String, Object?>();
+    final primary = fields
+        .where((field) => (field['pk'] as int) > 0)
+        .map((field) => field['name'] as String)
+        .toSet();
+    if (identity.length != primary.length ||
+        !primary.containsAll(identity.keys)) {
+      throw const FormatException('Invalid retained portable record identity');
+    }
     final json =
         'json_object(${fields.map((c) {
           final name = c['name'] as String;
@@ -562,6 +570,11 @@ extension SyncApplyRepository on LifeRepository {
   }) async {
     final draft = await _prepareSyncGroup(binding, lease);
     if (draft == null) {
+      final reconciled = await reconcileSyncConflicts(binding, lease: lease);
+      if (reconciled.state == SyncApplyState.applied ||
+          reconciled.state == SyncApplyState.retry) {
+        return reconciled;
+      }
       final pending = await db
           .customSelect(
             'SELECT 1 FROM sync_mutation_groups WHERE workspace_id=? AND account_id=? AND materialized=0 LIMIT 1',

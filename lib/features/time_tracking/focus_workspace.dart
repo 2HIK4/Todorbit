@@ -48,7 +48,13 @@ class _FocusWorkspaceState extends ConsumerState<FocusWorkspace> {
     super.initState();
     _session = ref.read(appControllerProvider).focusSessionFor(widget.taskId);
     _ticker = Timer.periodic(const Duration(milliseconds: 250), (_) {
-      if (mounted) setState(() {});
+      if (!mounted) return;
+      final active = ref.read(appControllerProvider).activeTimer;
+      final isRunningTimer = active?.taskId == widget.taskId &&
+          active?.state == TimerState.running;
+      if (_session.running || isRunningTimer) {
+        setState(() {});
+      }
     });
   }
 

@@ -96,6 +96,45 @@ class SyncEngine {
     if (!_closed) _events.add(value);
   }
 
+  /// Refresh local attention after a review, without requiring network access.
+  Future<void> refreshLocalStatus() async {
+    final local = await repository.syncExchangeStatus();
+    var phase = status.phase;
+    var problem = status.problem;
+    var notice = status.notice;
+    if (local.reviewIssue != null) {
+      phase = SyncPhase.needsAttention;
+      problem = SyncProblem.reviewUnavailable;
+      notice = problem.explanation;
+    } else {
+      if (identical(problem, SyncProblem.reviewUnavailable)) {
+        problem = null;
+        notice = null;
+      }
+      if (phase == SyncPhase.needsAttention &&
+          problem == null &&
+          notice == null) {
+        phase = local.conflicts > 0
+            ? SyncPhase.needsAttention
+            : local.pending > 0 || local.waiting > 0
+            ? SyncPhase.pending
+            : local.lastSuccess != null
+            ? SyncPhase.upToDate
+            : SyncPhase.idle;
+      }
+    }
+    _emit(
+      SyncEngineStatus(
+        phase,
+        pending: local.pending,
+        conflicts: local.conflicts,
+        lastSuccess: local.lastSuccess,
+        problem: problem,
+        notice: notice,
+      ),
+    );
+  }
+
   void start() {
     if (_closed || _started) return;
     _started = true;
@@ -459,7 +498,7 @@ class SyncEngine {
       final after = await repository.syncExchangeStatus();
       _emit(
         SyncEngineStatus(
-          after.conflicts > 0
+          after.conflicts > 0 || after.reviewIssue != null
               ? SyncPhase.needsAttention
               : bounded || after.pending > 0 || after.waiting > 0
               ? SyncPhase.pending
@@ -467,6 +506,12 @@ class SyncEngine {
           pending: after.pending,
           conflicts: after.conflicts,
           lastSuccess: after.lastSuccess,
+          problem: after.reviewIssue == null
+              ? null
+              : SyncProblem.reviewUnavailable,
+          notice: after.reviewIssue == null
+              ? null
+              : SyncProblem.reviewUnavailable.explanation,
         ),
       );
     } catch (error) {
@@ -514,8 +559,14 @@ class SyncEngine {
           pending: local?.pending ?? status.pending,
           conflicts: local?.conflicts ?? status.conflicts,
           lastSuccess: local?.lastSuccess ?? status.lastSuccess,
-          problem: error is _SyncCycleYield ? null : SyncProblem.from(error),
-          notice: error is FormatException
+          problem: local?.reviewIssue != null
+              ? SyncProblem.reviewUnavailable
+              : error is _SyncCycleYield
+              ? null
+              : SyncProblem.from(error),
+          notice: local?.reviewIssue != null
+              ? SyncProblem.reviewUnavailable.explanation
+              : error is FormatException
               ? 'Cloud data could not be verified. Keep your recovery credentials and snapshots; pending work and competing history are retained.'
               : error is CloudFailure
               ? error.message

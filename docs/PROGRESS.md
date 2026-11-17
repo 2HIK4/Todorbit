@@ -1,5 +1,13 @@
 # Progress
 
+## UIUX-04 / SYNC-01 Beta 23 prepared and verified for publication (2026-11-17)
+
+Completed code review, verification, packaging, and release preparation for experimental `v1.0.19-beta.23+46` (schema 29). Independent code review passed across data safety, concurrency, UI, and performance checks. 91 unit/widget tests and 18 update discovery tests passed; 0 analyzer issues. Windows release, portable zip, and Inno Setup installer compiled with Google Drive configuration and CRT validated. Android universal release APK compiled with JDK 21, production signed, and verified with 16-KiB page alignment across all 8 native libraries. All 10 publication assets generated and checksummed in [Publication verification](UIUX04_BETA_23_PUBLICATION.md) and [Publication Assets](UIUX04_BETA_23_PUBLICATION_ASSETS.json).
+
+## SYNC-01 / UIUX-04 — Phantom sync conflict elimination, Focus timer rebuild optimization, and TaskDetails lifecycle safety (2026-11-17)
+
+Completed bounded quality improvement batch on `codex/fix-phantom-sync-conflict`. Unified sync conflict calculation in `syncExchangeStatus()` with causal projection in `_readSyncResolution(binding)` via `readSyncSnapshot` to eliminate phantom conflict badges and divergence from `reviewSyncConflicts()`. Added `reconcileSyncConflicts` to automatically materialize complete transaction groups where descendant mutations superseded earlier conflicting edits without discarding history. Added `StateError` handling for group limits and explicit `_showReviewUnavailable` dialog. Fixed `SyncStatusButton` pluralization. Guarded `FocusWorkspace` periodic ticker against 240 unnecessary rebuilds/minute when idle/paused. Corrected `TaskDetailsView.task` getter to `ref.read` outside `build()`. Verified with 91 focused tests (`sync_engine_test.dart`, `sync_apply_repository_test.dart`, `sync_conflicts_dialog_test.dart`, `uiux03_focus_widget_test.dart`, `task_composition_widget_test.dart`) and full `flutter analyze --no-pub lib/ test/` (0 issues). Unreviewed code queued in [AI Review Queue](AI_REVIEW_QUEUE.md); release/candidate deferred items preserved in [Deferred Verification](DEFERRED_VERIFICATION.md).
+
 ## UIUX-03 Beta22 published (2026-11-15)
 
 Published experimental `v1.0.19-beta.22`, version1.0.19-beta.22+45/schema29,

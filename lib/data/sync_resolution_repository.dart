@@ -11,12 +11,38 @@ class _SyncCloudPreview implements Exception {
   final Map<String, Map<String, Object?>?>? values;
 }
 
+Map<String, dynamic> _syncBlockedMetadata(String value) {
+  final decoded = jsonDecode(value);
+  if (decoded is! Map<String, dynamic> || decoded['reason'] is! String) {
+    throw const FormatException('Retained sync review metadata is invalid');
+  }
+  return decoded;
+}
+
+class _SyncResolutionState {
+  _SyncResolutionState(
+    this.context,
+    this.groups,
+    this.operations,
+    this.records,
+    this.visibleRecords,
+    this.structural,
+    this.reason,
+  );
+  final QueryRow context;
+  final List<QueryRow> groups;
+  final List<Map<String, Object?>> operations;
+  final List<_SyncRecordDraft> records;
+  final List<SyncConflictRecord> visibleRecords;
+  final bool structural;
+  final String? reason;
+  int get conflictCount =>
+      visibleRecords.where((r) => structural || r.review.needsDecision).length;
+}
+
 extension SyncResolutionRepository on LifeRepository {
-  Future<_SyncResolutionDraft?> _prepareSyncResolution(
-    SyncBinding binding,
-    SyncLease lease,
-  ) async {
-    await _requireSyncExchange(binding, lease);
+  // One read-only causal projection supplies status counts and the full review.
+  Future<_SyncResolutionState?> _readSyncResolution(SyncBinding binding) async {
     final context = await db
         .customSelect(
           'SELECT device_sequence,visible_json FROM sync_capture_context WHERE id=1',
@@ -43,12 +69,42 @@ extension SyncResolutionRepository on LifeRepository {
       );
     }
     final ids = groups.map((g) => g.read<String>('id')).toList();
+    final placeholders = List.filled(ids.length, '?').join(',');
+    final incomplete = await db
+        .customSelect(
+          '''
+      SELECT 1 FROM sync_mutation_groups g WHERE g.id IN ($placeholders) AND (
+        g.last_sequence-g.first_sequence+1 != (SELECT COUNT(*) FROM sync_journal j
+          WHERE j.mutation_group_id=g.id AND j.known=1)
+        OR EXISTS(SELECT 1 FROM sync_journal j,json_each(j.parent_ids_json) p
+          LEFT JOIN sync_journal parent ON parent.operation_id=p.value
+          LEFT JOIN sync_mutation_groups pg ON pg.id=parent.mutation_group_id
+          WHERE j.mutation_group_id=g.id AND (parent.operation_id IS NULL OR parent.known!=1
+            OR parent.workspace_id!=g.workspace_id OR parent.account_id!=g.account_id
+            OR (pg.materialized=0 AND pg.id NOT IN ($placeholders))))
+      ) LIMIT 1''',
+          variables: [
+            ...ids.map(Variable.withString),
+            ...ids.map(Variable.withString),
+          ],
+        )
+        .get();
+    if (incomplete.isNotEmpty) {
+      throw const FormatException(
+        'Retained sync group dependencies are incomplete',
+      );
+    }
     final operations = (await db.customSelect(
       '''SELECT $_syncReviewProjection
       FROM sync_journal j WHERE j.mutation_group_id IN (${List.filled(ids.length, '?').join(',')})
       ORDER BY j.sequence''',
       variables: ids.map(Variable.withString).toList(),
     ).get()).map((r) => Map<String, Object?>.from(r.data)).toList();
+    if (operations.isEmpty) {
+      throw const FormatException(
+        'Retained sync group has no operation history',
+      );
+    }
     final keys = {
       for (final op in operations)
         _syncScope(op['entity'] as String, op['record_key'] as String): op,
@@ -66,7 +122,9 @@ extension SyncResolutionRepository on LifeRepository {
         groups.any(
           (g) =>
               g.readNullable<String>('blocked_reason') != null &&
-              jsonDecode(g.read<String>('blocked_reason'))['reason'] !=
+              _syncBlockedMetadata(
+                    g.read<String>('blocked_reason'),
+                  )['reason'] !=
                   'recordConflict',
         );
     String? reason;
@@ -137,6 +195,35 @@ extension SyncResolutionRepository on LifeRepository {
         ),
       );
     }
+    return _SyncResolutionState(
+      context,
+      groups,
+      operations,
+      records,
+      visibleRecords,
+      structural,
+      reason,
+    );
+  }
+
+  Future<_SyncResolutionDraft?> _prepareSyncResolution(
+    SyncBinding binding,
+    SyncLease lease,
+  ) async {
+    await _requireSyncExchange(binding, lease);
+    final state = await _readSyncResolution(binding);
+    if (state == null) return null;
+    final context = state.context, groups = state.groups;
+    final operations = state.operations;
+    final keys = {
+      for (final op in operations)
+        _syncScope(op['entity'] as String, op['record_key'] as String): op,
+    };
+    final records = state.records, visibleRecords = state.visibleRecords;
+    final structural = state.structural;
+    var reason = state.reason;
+    final ids = groups.map((g) => g.read<String>('id')).toList();
+    final schema = _SyncApplySchema(this, {}, binding);
     if (structural && reason == null) {
       // Derive actual SQLite consequences in a savepoint and roll it back.
       // A parent choice must not silently cascade through an unseen local
@@ -362,7 +449,9 @@ extension SyncResolutionRepository on LifeRepository {
             dismissed.isNotEmpty &&
             dismissed.every(
               (g) =>
-                  jsonDecode(g.read<String>('blocked_reason'))['dismissed'] ==
+                  _syncBlockedMetadata(
+                    g.read<String>('blocked_reason'),
+                  )['dismissed'] ==
                   attentionToken,
             ),
         records: List.unmodifiable(visibleRecords),
@@ -375,6 +464,26 @@ extension SyncResolutionRepository on LifeRepository {
     SyncBinding binding, {
     required SyncLease lease,
   }) async => (await _prepareSyncResolution(binding, lease))?.review;
+
+  // A descendant can remove an earlier conflict without repeating every record
+  // in its transaction. Materialize the verified complete bundle, never invent
+  // a user decision or discard retained revisions to clear an attention flag.
+  Future<SyncApplyResult> reconcileSyncConflicts(
+    SyncBinding binding, {
+    required SyncLease lease,
+  }) => db.transaction(() async {
+    await db.customStatement(
+      'UPDATE sync_capture_context SET capture_enabled=capture_enabled WHERE id=1',
+    );
+    final prepared = await _prepareSyncResolution(binding, lease);
+    if (prepared == null) return const SyncApplyResult(SyncApplyState.idle);
+    if (prepared.review.reason != null ||
+        prepared.review.structural ||
+        prepared.review.records.any((r) => r.review.needsDecision)) {
+      return const SyncApplyResult(SyncApplyState.needsReview);
+    }
+    return _applyPreparedSyncGroup(binding, lease, prepared.draft);
+  });
 
   Future<void> dismissSyncConflicts(
     SyncBinding binding,

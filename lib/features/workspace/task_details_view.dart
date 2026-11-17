@@ -35,7 +35,7 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
 
   LifeTask get task =>
       ref
-          .watch(appControllerProvider)
+          .read(appControllerProvider)
           .tasks
           .where((t) => t.id == widget.task.id)
           .firstOrNull ??

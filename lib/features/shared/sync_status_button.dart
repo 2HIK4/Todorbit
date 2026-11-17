@@ -48,7 +48,7 @@ class _SyncStatusButtonState extends ConsumerState<SyncStatusButton> {
     final conflicts = controller?.conflictCount ?? 0;
     final description = controller == null
         ? 'Sync unavailable'
-        : 'Sync · ${controller.label}${conflicts > 0 ? ' · $conflicts conflicts need attention' : ''}';
+        : 'Sync · ${controller.label}${conflicts > 0 ? ' · $conflicts ${conflicts == 1 ? 'conflict needs' : 'conflicts need'} attention' : ''}';
     return Semantics(
       label: description,
       child: IconButton(

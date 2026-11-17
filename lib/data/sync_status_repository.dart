@@ -35,50 +35,68 @@ extension SyncStatusRepository on LifeRepository {
           }
         }
       });
-  Future<SyncExchangeStatus> syncExchangeStatus() async {
-    final c = await db
-        .customSelect('SELECT * FROM sync_capture_context WHERE id=1')
-        .getSingle();
-    final workspace = c.readNullable<String>('workspace_id');
-    final account = c.readNullable<String>('account_id');
-    final device = c.readNullable<String>('device_id');
-    final pending = await db
-        .customSelect(
-          '''SELECT COUNT(*) AS value FROM sync_journal
+  Future<SyncExchangeStatus> syncExchangeStatus() => db.readSyncSnapshot(
+    () async {
+      final c = await db
+          .customSelect('SELECT * FROM sync_capture_context WHERE id=1')
+          .getSingle();
+      final workspace = c.readNullable<String>('workspace_id');
+      final account = c.readNullable<String>('account_id');
+      final device = c.readNullable<String>('device_id');
+      final pending = await db
+          .customSelect(
+            '''SELECT COUNT(*) AS value FROM sync_journal
       WHERE workspace_id=? AND account_id=? AND uploaded=0''',
-          variables: [Variable<String>(workspace), Variable<String>(account)],
-        )
-        .getSingle();
-    final groups = await db
-        .customSelect(
-          '''SELECT COUNT(*) AS waiting,
-      coalesce(SUM(CASE WHEN blocked_reason IS NOT NULL THEN 1 ELSE 0 END),0) AS conflicts
+            variables: [Variable<String>(workspace), Variable<String>(account)],
+          )
+          .getSingle();
+      final groups = await db
+          .customSelect(
+            '''SELECT COUNT(*) AS waiting
       FROM sync_mutation_groups WHERE workspace_id=? AND account_id=? AND materialized=0''',
-          variables: [Variable<String>(workspace), Variable<String>(account)],
-        )
-        .getSingle();
-    return SyncExchangeStatus(
-      binding: workspace == null || account == null || device == null
+            variables: [Variable<String>(workspace), Variable<String>(account)],
+          )
+          .getSingle();
+      final binding = workspace == null || account == null || device == null
           ? null
-          : SyncBinding(workspace: workspace, account: account, device: device),
-      enabled: c.read<int>('capture_enabled') == 1,
-      automatic: c.read<int>('automatic_sync') == 1,
-      quarantined:
-          c.read<int>('restore_quarantined') == 1 ||
-          c.read<int>('suspended_for_restore') == 1,
-      pending: pending.read<int>('value'),
-      conflicts: groups.read<int>('conflicts'),
-      waiting: groups.read<int>('waiting'),
-      changeToken: c.readNullable<String>('change_token'),
-      lastSuccess: DateTime.tryParse(
-        c.readNullable<String>('last_success_utc') ?? '',
-      ),
-      retryAt: DateTime.tryParse(
-        c.readNullable<String>('next_attempt_utc') ?? '',
-      ),
-      errorCode: c.readNullable<String>('last_error_code'),
-    );
-  }
+          : SyncBinding(workspace: workspace, account: account, device: device);
+      var conflicts = 0;
+      String? reviewIssue;
+      if (binding != null) {
+        try {
+          final review = await _readSyncResolution(binding);
+          conflicts = review?.conflictCount ?? 0;
+          reviewIssue = review?.reason;
+        } on FormatException {
+          reviewIssue = 'invalidRetainedSyncHistory';
+        } on TypeError {
+          reviewIssue = 'invalidRetainedSyncHistory';
+        } on StateError {
+          reviewIssue = 'historyLimitExceeded';
+        }
+      }
+      return SyncExchangeStatus(
+        binding: binding,
+        enabled: c.read<int>('capture_enabled') == 1,
+        automatic: c.read<int>('automatic_sync') == 1,
+        quarantined:
+            c.read<int>('restore_quarantined') == 1 ||
+            c.read<int>('suspended_for_restore') == 1,
+        pending: pending.read<int>('value'),
+        conflicts: conflicts,
+        reviewIssue: reviewIssue,
+        waiting: groups.read<int>('waiting'),
+        changeToken: c.readNullable<String>('change_token'),
+        lastSuccess: DateTime.tryParse(
+          c.readNullable<String>('last_success_utc') ?? '',
+        ),
+        retryAt: DateTime.tryParse(
+          c.readNullable<String>('next_attempt_utc') ?? '',
+        ),
+        errorCode: c.readNullable<String>('last_error_code'),
+      );
+    },
+  );
 
   Future<void> setAutomaticSync(SyncBinding binding, bool value) =>
       db.transaction(() async {

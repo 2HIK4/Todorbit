@@ -183,6 +183,37 @@ void main() {
     },
   );
 
+  test('encrypted exchange retires a superseded multi-record conflict without a decision', () async {
+    await a.syncNow(manual: true);
+    await b.syncNow(manual: true);
+    await receiver.updateTask(
+      (await receiver.tasks()).single,
+      const TaskDraft(title: 'Agreed title'),
+    );
+    await left.transaction(() async {
+      await sender.updateTask(
+        (await sender.tasks()).single,
+        const TaskDraft(title: 'Earlier title'),
+      );
+      await sender.addCategory('Retain grouped work');
+    });
+    await a.syncNow(manual: true);
+    await b.syncNow(manual: true);
+    expect(b.status.conflicts, 1);
+    expect(b.status.phase, SyncPhase.needsAttention);
+    await sender.updateTask(
+      (await sender.tasks()).single,
+      const TaskDraft(title: 'Agreed title'),
+    );
+    await a.syncNow(manual: true);
+    await b.syncNow(manual: true);
+    expect(b.status.conflicts, 0);
+    expect(b.status.phase, SyncPhase.upToDate);
+    expect((await receiver.syncExchangeStatus()).waiting, 0);
+    expect((await receiver.categories()).single.name, 'Retain grouped work');
+    expect((await receiver.tasks()).single.title, 'Agreed title');
+  });
+
   test('metadata-only file notifications never exchange or restart a completed sync', () async {
     await sender.setAutomaticSync(first, true);
     await a.syncNow();
