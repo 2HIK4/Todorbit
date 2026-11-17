@@ -1,5 +1,21 @@
 # Persistent test run ledger
 
+## Prompt 4 Smart Reschedule (2026-11-17, UTC+03:00)
+
+`feature/todorbit-smart-reschedule`, base `4d9292c`;
+[final normalized source/assertion/config manifest](PROMPT4_SMART_RESCHEDULE_2026_11_17_SOURCE.json).
+[Receipt](PROMPT4_SMART_RESCHEDULE_2026_11_17.md) records exact commands, intentional
+pre-fix failures, interrupted capture, test-helper fixes and the real compact
+PageStorage repair. Final focused batch19 + delta2 (one repeated/one added) +
+strengthened hierarchy1 (repeated) + adjacent safety43 + secondary surface1 =
+**64 distinct PASS / 0 final FAIL / 0 SKIP**. Full analysis, changed-file format,
+docs and diff checks PASS. Serial Windows host/Flutter3.47.7/Dart3.13.5, disposable
+data. All65 integration-manifest fingerprints match; reuse unchanged critical41
+and sync6 separately, without adding them to new counts. Offscreen theme/font
+captures inspected; actual runtime/hot reload blocked by no DTD/symlink support.
+No release acceptance claimed.
+
+
 ## Prompts 2/3 integration (2026-11-17, UTC+03:00)
 
 `integration/ui-reliability-p2-p3`, base `5803e52`, inputs `9f7b3e3` / `b3ee745`;

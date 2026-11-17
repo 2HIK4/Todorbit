@@ -1,5 +1,17 @@
 # AI Review Queue
 
+## Prompt 4 — Smart Reschedule (2026-11-17)
+
+**IMPLEMENTED — AWAITING INDEPENDENT INTEGRATION REVIEW.** Codex implementation /
+self-review on `feature/todorbit-smart-reschedule`, base `4d9292c`. Review hierarchy
+and recurrence grouping by identity, complete-proposal eligibility, collision
+choices, unsupported skip/Combine restrictions, invalidation and async/write
+re-entry guards. [Receipt](PROMPT4_SMART_RESCHEDULE_2026_11_17.md) / [source manifest](PROMPT4_SMART_RESCHEDULE_2026_11_17_SOURCE.json):
+64 distinct host tests PASS / 0 final FAIL / 0 SKIP, full analysis/format/doc/diff
+checks PASS. No self-approval or approval of unrelated entries; prior History
+unchanged. Physical/device/packaging remains in Deferred Verification.
+
+
 ## Prompts 2/3 integration checkpoint (2026-11-17)
 
 Scoped review is complete; both submissions moved to [Review History](AI_REVIEW_HISTORY.md).

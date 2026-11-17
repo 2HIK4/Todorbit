@@ -6,7 +6,20 @@
 
 ---
 
-## Current checkpoint - Prompts 2/3 integrated (2026-11-17)
+## Current authoritative Prompt 4 — Smart Reschedule (2026-11-17)
+
+The current user assignment overrides older Prompt4 accessibility allocations
+below. Assigned `feature/todorbit-smart-reschedule`, base `4d9292c`: hierarchy and
+independent UUID selection, collapsed recurring families, grouped collision
+review, explicit Apply gating and non-mutating/re-entry-safe proposals delivered.
+64 distinct host tests PASS / 0 final FAIL / 0 SKIP; full analysis and focused
+format/doc/diff checks PASS. [Receipt](PROMPT4_SMART_RESCHEDULE_2026_11_17.md) /
+[fingerprints](PROMPT4_SMART_RESCHEDULE_2026_11_17_SOURCE.json). Engine, repository,
+schema and version unchanged. Awaiting independent integration review; live/device
+and release acceptance remain deferred. Ready as development input alongside
+Prompt5, which was not started. No merge/rebase/push/publication or Stable change.
+
+## Shared base checkpoint - Prompts 2/3 integrated (2026-11-17)
 
 **Shared development base:** `integration/ui-reliability-p2-p3` in
 `D:/AI_Projects/life_manager_worktrees/integration-ui-p2-p3`, from `5803e52`.
@@ -59,7 +72,7 @@ The old section 8 is historical planning, not authorization for integration.
    - **Prompt 1 (Authoritative Scope)**: Search UX token unification, progressive disclosure for advanced search, Android IME keyboard-inset form adaptation, and single-route task/event detail presentation (`sidePanel` default vs `fullPage` preference, with zero stale secondary editors).
    - **Prompt 2 (current authoritative assignment)**: Task timer entry/idempotency, task details, checklist groups/items, one-level subtasks and planned-session deletion. See the current assignment override above.
    - **Prompt 3 (authoritative delivered scope)**: Calendar responsiveness, event organization/color editing, exact month prefetch and navigation. Earlier issue-routing numbers below remain historical.
-   - **Prompt 4 (current authoritative assignment)**: Smart Reschedule (dialog, algorithm, schedule change persistence, calendar/workspace triggers).
+   - **Prompt 4 (current authoritative scope)**: Smart Reschedule hierarchy, recurrence grouping, preview clarity and scheduling reliability. Earlier accessibility allocations below are historical planning.
    - **Prompt 5 (current authoritative assignment)**: Android Share Inbox (intent filter ACTION_SEND, shared text/link handling, Inbox task ingestion).
    - **Prompt 6**: Local-First Data Flow & Sync conflict review presentation refinement.
    - **Prompt 7**: Performance profiling, load-time evidence, and memory benchmarking.

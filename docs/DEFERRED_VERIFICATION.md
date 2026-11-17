@@ -1,5 +1,23 @@
 # Deferred Verification Backlog
 
+## Prompt 4 Smart Reschedule acceptance (2026-11-17)
+
+**L3/L4 PENDING; scoped Level1/2 host checks PASS.**
+[Receipt](PROMPT4_SMART_RESCHEDULE_2026_11_17.md) and [source manifest](PROMPT4_SMART_RESCHEDULE_2026_11_17_SOURCE.json).
+Before release, use isolated profiles and verify Windows keyboard/focus/Escape,
+resize/scroll/expansion at actual DPI, Android production menu/per-task entry,
+Back/IME/touch/TalkBack, narrow landscape and lifecycle interruption. Observe
+actual alarms/reminder reprojection/delivery after occurrence/session Apply/undo
+and timezone/DST transitions. Broad host integration, packaging/update and device
+acceptance remain separate gates. Reuse unrelated valid packaging/cloud evidence
+only for matching artifacts; no new real OAuth requirement is introduced by this
+UI change. No failed critical test deferred: 64 scoped host checks pass.
+No live app/DTD exists; native launch prerequisite is blocked by Windows symlink
+support. Offscreen font/theme captures do not close physical acceptance. Trigger
+independent review/integration with Prompt5; do not treat this as publication or
+permission to modify Stable. No Prompt5/6 work started.
+
+
 ## Integrated Prompts 2/3 acceptance - 2026-11-17
 
 Target: final checkpoint on `integration/ui-reliability-p2-p3`; [source identity and executed gates](INTEGRATION_P2_P3_2026_11_17.md).
