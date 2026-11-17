@@ -129,3 +129,18 @@ Do not rerun a huge, unchanged suite without reason. Do rerun targeted and impac
 Say `Reviewed [specific screens/flows] on [specific matrix]. Fixed [issues], verified with [exact runs]. [count] items remain open and [count] scenarios are untested.`
 
 Never say '100% error-free', 'fully accessible', 'perfect on every screen', 'verified all devices' or 'pixel perfect' based on limited evidence. When no issue is found, explicitly mention the covered sample and limitations.
+
+## 8. Todorbit Reusable Visual Audit Matrix
+
+Use this matrix to sample representative environments for UI verification and audit reporting:
+
+| Dimension | Primary Scenarios | Verification Target & Edge Cases |
+|---|---|---|
+| **Windows Desktop Viewports** | - Normal: `1280×800` logical px<br>- Narrow: `800×600` logical px<br>- Full-Screen: `1920×1080` logical px | Validate sidebar folding/rail behavior, calendar columns, task details drawer/pane, window resize/restore without dropped drafts. |
+| **Android Mobile Viewports** | - Small: `360×800` (or `320×850` stress)<br>- Normal: `393×852` (or `412×915`) | Verify bottom navigation bar, single-column reflow, swipe actions, and touch target minimums (>=48dp). |
+| **Android Keyboard (IME)** | - Keyboard Closed (`viewInsets.bottom == 0`)<br>- Keyboard Open (`viewInsets.bottom >= 280dp`) | Modal dialogs and task editor sheets must wrap in scrollable containers and remain operable with zero `RenderFlex` bottom overflow. |
+| **Text Scaling** | - Standard: `1.0×`<br>- High: `1.25×` to `1.5×`<br>- Accessibility: `2.0×` | All headings, chips, metadata tags, and action buttons must wrap cleanly without text truncation or clipping. Card baseline heights must adjust gracefully. |
+| **Localization & BiDi** | - Standard LTR (English)<br>- Arabic Text Input (RTL / Bidirectional) | Input fields must handle mixed Arabic/English text, preserve cursor positioning, adjust alignment appropriately, and display numbers correctly. |
+| **Input Modalities** | - Mouse pointer + hover / exit<br>- Keyboard (<kbd>Tab</kbd>, <kbd>Shift</kbd>+<kbd>Tab</kbd>, <kbd>Enter</kbd>, <kbd>Esc</kbd>)<br>- Touch navigation | Hover highlights must dismiss on pointer exit or window blur; all controls must have visible keyboard focus rings; touch targets must be >=48dp on mobile. |
+| **Navigable Screens Covered** | - Desktop Workspace (`Workspace`)<br>- Android Mobile Workspace (`MobileWorkspace`)<br>- Desktop Calendar (`CalendarView`)<br>- Mobile Calendar (`MobileCalendar`)<br>- Task Details (`TaskDetailsView`)<br>- Focus Workspace (`FocusWorkspace`)<br>- Settings & Sync (`SettingsPage`) | Verify route preservation, scroll position retention across refresh/filters, and absence of duplicated push routes. |
+| **Dialogs & Overlays Covered** | - Quick Add Dialog<br>- Task Editor Dialog / Sheet<br>- Event Editor Dialog<br>- Time Tracking Dialog<br>- Sync Conflicts Dialog<br>- Category / Project Selector<br>- Security PIN / Password Dialog | Viewport bounds, auto-scroll to active input, destructive action clarity (red confirm / safe Esc default), and unmount cleanup. |

@@ -180,3 +180,55 @@ Keep date-only plans, deadlines, UTC sessions, actual work and fixed events
 separate. Respect Microsoft Fluent guidance, Android Back/touch conventions and
 native evidence gates. Never migrate/reset data or change cloud/product policy
 as a UI repair. These are project constraints, not requirements for other apps.
+
+## Explicit UI & Reliability Quality Gates
+
+Every UI modification, new component, or bugfix must pass these 16 explicit quality gates:
+
+1. **Keyboard-Inset & Viewport-Aware Dialogs**:
+   - Dialogs and modal sheets must be wrapped in `SingleChildScrollView` or a viewport-bounded scrollable container with bottom padding accounting for `MediaQuery.viewInsetsOf(context).bottom`.
+   - Never allow keyboard presentation to trigger `A RenderFlex overflowed by X pixels` on small screens or landscape viewports. Actions row must remain accessible without requiring dismiss of the IME.
+2. **Responsive Breakpoints & Text Scaling**:
+   - Layouts must be validated across 1.0× to 2.0× text scaling (`MediaQuery.textScalerOf(context)` or `.clamp(1.0, 2.0)`).
+   - Use flexible metadata rows (`Wrap` or flex with overflow handling); do not fix card heights to single-line bounds that clip wrapped text. Breakpoint transitions (600dp, 900dp, 1200dp) must not recreate controllers or drop in-progress user drafts.
+3. **Focus, Hover, and Window-Focus Cancellation**:
+   - Hover states, pointer highlights, and tooltips must cleanly dismiss when the pointer leaves or when the desktop window loses OS focus.
+   - Drag receivers (`DropTarget`) and gesture recognizers must cleanly unregister on widget disposal or window blur without leaking event loops.
+4. **Identical Card Geometry Across Item Variants**:
+   - Items in repeaters/lists/agendas (task cards, calendar entries, subtasks) must maintain identical baseline padding, horizontal margins, minimum heights, and leading checkbox alignments regardless of optional badges (subtask count, priority tag, recurrence indicator, due date).
+   - Changing task attributes must not cause vertical geometry jumps or stuttering during scrolling.
+5. **Parent-Child Continuity**:
+   - Navigating into child subtasks, attachments, or detail views from a parent must preserve the parent list's scroll position and selection state.
+   - Returning (via Back, Save, or breadcrumb) must cleanly restore focus and scroll offset to the exact parent record without jumping to the top of the collection.
+6. **Recurrence Grouping & Identity**:
+   - Recurrence series entries and individual occurrence overrides/exceptions must maintain unambiguous visual and domain identities.
+   - Editing or completing an individual occurrence must never mutate or detach the entire series without explicit user choice and clear confirmation.
+7. **No Duplicated Task Routes**:
+   - Navigation flows must guard against pushing duplicate routes or opening multiple concurrent editors for the same task/entity (e.g. rapid multi-taps or opening from both sidebar and list).
+   - Check existing navigator stack / active route state before pushing.
+8. **Idempotent Timers**:
+   - Focus, Pomodoro, Stopwatch, and auto-save timers must be strictly idempotent: calling `start()` multiple times must never spawn parallel ticking loops or double-decrement intervals.
+   - Monotonic elapsed time must always be calculated from authoritative UTC timestamps (`DateTime.now().toUtc()`), never by summing periodic timer ticks. All `Timer` references must be cancelled and nullified in `dispose()`.
+9. **Controlled Scroll Position**:
+   - Scrollable surfaces (task lists, calendar agendas, category boards) must maintain their scroll offsets across filter changes, task completions, and `AppController.refresh()` via stable `PageStorageKey` or persistent `ScrollController` offsets.
+10. **State-Preserving Asynchronous Navigation**:
+    - Asynchronous workflows (saving, sync, network/file I/O) must check `if (!mounted) return;` before calling `setState()` or `Navigator.pop()`.
+    - Never discard uncommitted user drafts if navigation or cancellation occurs before background I/O finishes.
+11. **Destructive-Action Clarity**:
+    - Destructive actions (Empty Trash, Delete Task, Delete Series, Discard Draft) must require explicit modal confirmation.
+    - Dialogs must use clear, unambiguous copy stating exact consequences, red/destructive styling on the confirm action, and safe non-destructive action on <kbd>Esc</kbd> / Cancel.
+12. **Animation Restraint & Reduced Motion**:
+    - Query `MediaQuery.disableAnimationsOf(context)` or system accessibility settings. If reduced motion is requested, immediately jump or use fast fading (<=100ms) instead of spatial slides or bounces.
+    - Keep normal animations subtle (150-250ms); avoid gratuitous spring physics that hinder task completion.
+13. **Android Content URI Permissions**:
+    - File attachments picked via Android `ACTION_OPEN_DOCUMENT` / `ACTION_GET_CONTENT` require `takePersistableUriPermission` across app restarts and reboots.
+    - If persistable permissions cannot be obtained, copy bytes into managed app storage (`LifeRepository` managed attachments). Never store transient `content://` URIs expecting long-term access.
+14. **Load-Time & Performance Evidence**:
+    - Performance or responsiveness optimizations must be backed by measured DevTools / timeline evidence (startup p50/p95, frame render times, query counts) before and after changes.
+    - Never claim "faster UI" or "reduced lag" without concrete profiler metrics.
+15. **Accessible Text, Contrast & Keyboard Navigation**:
+    - Enforce WCAG AA contrast ratios (>=4.5:1 for normal body text, >=3:1 for large text and key UI components).
+    - Provide `Semantics(label: ...)` for all icon-only buttons. Ensure full keyboard traversal (<kbd>Tab</kbd>, <kbd>Shift</kbd>+<kbd>Tab</kbd>, <kbd>Enter</kbd>, <kbd>Space</kbd>, <kbd>Esc</kbd>) across all navigable screens.
+16. **Targeted Widget & Integration Tests**:
+    - Every UI change must be accompanied by focused widget tests exercising responsive constraints, text scaling (1.0× vs 1.5×/2.0×), and keyboard insets where applicable.
+    - Prioritize fast behavioral widget tests over brittle full-screen golden tests.

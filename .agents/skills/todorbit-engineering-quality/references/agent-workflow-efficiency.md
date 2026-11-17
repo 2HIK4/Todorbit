@@ -53,3 +53,43 @@ Before running any test or build command, follow `docs/TESTING.md` and `docs/TES
      - Files modified or created.
      - Completed checks and results.
      - Next concrete, actionable task.
+
+---
+
+## 4. Minimal Implementation & The Ponytail Decision Ladder
+
+Adopt the "laziest senior developer" discipline to prevent over-engineering, speculative abstractions, and redundant code:
+
+### The Decision Ladder (Evaluate Before Writing Code):
+1. **YAGNI (You Aren't Gonna Need It)**: Skip speculative features, unrequested options, and premature flexibility. Deliver strictly the core solution.
+2. **Codebase Reuse**: Search for existing helpers, widgets, services, or domain models in Todorbit before writing new ones (`lib/features/shared/`, `lib/domain/`, etc.). Reuse existing patterns.
+3. **Platform & Stdlib Native First**: Prefer built-in Dart/Flutter standard APIs (`SingleChildScrollView`, `LayoutBuilder`, `MediaQuery`, `ScrollController`, `ValueNotifier`) over introducing custom wrapper widgets or utility classes.
+4. **Existing Installed Dependencies**: Use dependencies already registered in `pubspec.yaml`. Never add a new third-party dependency for a capability that takes a few lines of clean code.
+5. **Minimal Implementation Diff**: Write the smallest working change that touches only necessary files, preserves existing layers, and maintains architectural conventions. Deletion of redundant code beats addition of wrapper layers.
+6. **Explicit Boundaries & Limits**: Every task receipt must conclude with an explicit statement of what was skipped, what was not tested, and any known limitations or environmental constraints.
+
+---
+
+## 5. Targeted Dependency Mapping & Decoupling (Untangle-Informed, Safety-Bounded)
+
+When diagnosing architectural friction or multi-file bugs, use targeted structural inspection without performing broad or unverified codebase refactorings:
+
+### The Core Inquiry: "Should These Pieces Change Together?"
+- **Detect Hidden Links**:
+  - Duplicated logic or constants across desktop and mobile shells (e.g. recurrence calculations duplicated between Dart and Windows .NET companion).
+  - Implicit call order or convention assumptions between callers and repositories.
+  - Colocated logic scattered arbitrarily across unrelated folders.
+- **Detect Needless Links**:
+  - Callers depending directly on component internals or private fields.
+  - Stable domain models importing volatile presentation widgets.
+  - Pass-through wrappers that only change when the wrapped class changes.
+  - Caller-specific parameter bloat leaked into general domain functions.
+- **Detect Surplus**:
+  - Dead code, unused imports, speculative extension hooks, or configurations for invariants that never vary.
+- **Treat Special Cases as Design Signals**:
+  - One-off `if` branches for single callers, swallowed exceptions, or arbitrary sleep/retry delays are architectural warnings that an underlying lifecycle, transaction, or domain concept is missing. Diagnose and fix the root model rather than adding more one-off branches.
+
+### Strict Todorbit Safety Constraints:
+- **NO Repository-Wide Refactoring in One Pass**: Never execute untargeted repository-wide refactoring workflows. Refactor only the bounded subsystem under active authorized modification.
+- **NO Test Deletion**: Never delete existing tests, assertions, or fixtures under the guise of "cleanup". Tests are non-negotiable regression safety nets.
+- **Zero Data Loss & Safe Migrations**: Structural changes must never compromise SQLite forward migrations (Schema 29), monotonic CAS revision tokens, or user data preservation.

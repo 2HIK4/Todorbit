@@ -144,6 +144,29 @@ tooling/environment-blocked rows. See [integration and upgrade evidence](UI_SKIL
    100% error-free interface. Native painting/shell/input/DPI/menu changes still
    require Release/self-test and relevant manual checks. Report unverified cases.
 
+### Future UI change quality gates
+
+Before completing any UI or reliability change, verify the 16 quality gates from [Flutter Engineering](../.agents/skills/ultimate-ui-ux/references/flutter-engineering.md#explicit-ui--reliability-quality-gates) and sample the [Visual Audit Matrix](../.agents/skills/ultimate-ui-ux/references/test-matrix.md#8-todorbit-reusable-visual-audit-matrix):
+
+1. **Keyboard-inset & viewport awareness**: Dialogs/sheets must wrap in scrollable containers with `viewInsets.bottom` clearance to avoid `RenderFlex` overflow when Android IME opens.
+2. **Responsive breakpoints & text scaling**: Validated across 1.0× to 2.0× text scaling and narrow/wide breakpoints (320-1200dp) with wrapping metadata.
+3. **Focus/hover/window-focus cancellation**: Mouse hover and tooltips clear on pointer exit or OS window blur; unregister gesture receivers on unmount.
+4. **Identical card geometry across item variants**: Uniform margins, padding, minimum heights, and checkbox alignment regardless of optional tags or subtask counts.
+5. **Parent-child continuity**: Navigating into subtasks or detail views preserves parent list scroll position and active selection on return.
+6. **Recurrence grouping & identity**: Explicit visual and model separation of recurrence series vs individual occurrence overrides.
+7. **No duplicated task routes**: Prevent multiple concurrent routes or editors for the same task.
+8. **Idempotent timers**: Timers derived monotonically from UTC timestamps; multiple starts never spawn parallel ticking loops; clean cancellation in `dispose()`.
+9. **Controlled scroll position**: Preserve scroll offsets across filters and background refresh using stable `PageStorageKey` or persistent offsets.
+10. **State-preserving asynchronous navigation**: Check `mounted` before state/navigation calls; protect unsaved drafts if navigation occurs during async I/O.
+11. **Destructive-action clarity**: Explicit modal confirmation with consequence copy, red destructive accent, and safe <kbd>Esc</kbd>/Cancel default.
+12. **Animation restraint & reduced motion**: Respect `MediaQuery.disableAnimationsOf(context)`; keep transitions under 250ms with zero gratuitous bounce.
+13. **Android content URI permissions**: Obtain persistable URI permissions across reboot, or copy picked files into managed app storage.
+14. **Load-time evidence**: Ground any responsiveness claims in measured profiler/timeline evidence.
+15. **Accessible text, contrast & keyboard**: WCAG AA contrast (>=4.5:1 / >=3:1), semantics labels on icon-only buttons, and complete keyboard traversal.
+16. **Targeted widget & integration tests**: Focused widget tests covering layout under text scale and constraints; do not ship untested UI logic.
+
+Active multi-stage UI and reliability tasks are tracked in [Todorbit UI & Reliability Program](TODORBIT_UI_RELIABILITY_PROGRAM.md).
+
 Codex discovers the repo-local `SKILL.md` and matches its description; the root
 instruction makes reading it mandatory even for small UI tasks. Manual invocation
 is `$ultimate-ui-ux`. In a fresh session rooted in this repository, check the
