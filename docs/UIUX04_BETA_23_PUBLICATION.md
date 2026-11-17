@@ -4,7 +4,10 @@ Owner authorization on 2026-11-17 explicitly permits push and automatic experime
 publication after all mandatory gates pass. Stable must remain unchanged.
 Version: `1.0.19-beta.23+46`; intended tag: `v1.0.19-beta.23`.
 
-Status: **PREPARED FOR PUBLICATION** at `2026-11-17`.
+Status: **PUBLISHED** at `2026-11-17T08:27:03Z`.
+[Public experimental release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.23),
+tag/source `ec94f68be357eecfc0aa27c5bf7e0344b5a2bf2a`, Release ID `448327347`.
+Prerelease: true, draft: false, make_latest: false. All 10 public download/hash contracts pass.
 
 ## Summary of Changes
 

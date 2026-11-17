@@ -1,8 +1,8 @@
 # Progress
 
-## UIUX-04 / SYNC-01 Beta 23 prepared and verified for publication (2026-11-17)
+## UIUX-04 / SYNC-01 Beta 23 published (2026-11-17)
 
-Completed code review, verification, packaging, and release preparation for experimental `v1.0.19-beta.23+46` (schema 29). Independent code review passed across data safety, concurrency, UI, and performance checks. 91 unit/widget tests and 18 update discovery tests passed; 0 analyzer issues. Windows release, portable zip, and Inno Setup installer compiled with Google Drive configuration and CRT validated. Android universal release APK compiled with JDK 21, production signed, and verified with 16-KiB page alignment across all 8 native libraries. All 10 publication assets generated and checksummed in [Publication verification](UIUX04_BETA_23_PUBLICATION.md) and [Publication Assets](UIUX04_BETA_23_PUBLICATION_ASSETS.json).
+Published experimental `v1.0.19-beta.23+46` (schema 29, commit `ec94f68`, Release ID `448327347`). Independent code review passed across data safety, concurrency, UI, and performance checks. 91 unit/widget tests and 18 update discovery tests passed; 0 analyzer issues. Windows release, portable zip, and Inno Setup installer compiled with Google Drive configuration and CRT validated. Android universal release APK compiled with JDK 21, production signed, and verified with 16-KiB page alignment across all 8 native libraries. All 10 publication assets uploaded, verified, and accessible via GitHub CDN. Stable release unchanged. Recorded in [Publication verification](UIUX04_BETA_23_PUBLICATION.md) and [Publication Assets](UIUX04_BETA_23_PUBLICATION_ASSETS.json).
 
 ## SYNC-01 / UIUX-04 — Phantom sync conflict elimination, Focus timer rebuild optimization, and TaskDetails lifecycle safety (2026-11-17)
 
