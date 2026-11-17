@@ -42,6 +42,7 @@ import '../workspace/task_editor.dart';
 import '../workspace/trash_dialog.dart';
 import '../workspace/task_details_view.dart';
 import '../time_tracking/focus_workspace.dart';
+import '../shared_inbox/shared_inbox_screen.dart';
 import 'mobile_calendar.dart';
 import 'mobile_settings.dart';
 import 'mobile_ui.dart';
@@ -94,6 +95,8 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
         if (call.method == 'openLink') {
           pendingLink = call.arguments as String;
           await deliverLink();
+        } else if (call.method == 'sharedInboxUpdated') {
+          if (mounted) message('New file(s) received in Shared Inbox');
         }
       });
       WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -1317,6 +1320,19 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                 supportAvailable
                     ? const SupportDialog()
                     : const ProjectSupportDialog(),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.folder_shared_outlined),
+            title: const Text('Shared Files'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push<void>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SharedInboxScreen(),
+                ),
               );
             },
           ),

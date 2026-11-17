@@ -24,6 +24,19 @@ import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.api.ApiException
 
 class MainActivity : FlutterActivity() {
+    companion object {
+        var currentInstance: MainActivity? = null
+        fun notifySharedInboxUpdated() {
+            currentInstance?.let { activity ->
+                activity.runOnUiThread {
+                    try {
+                        activity.bridge.invokeMethod("sharedInboxUpdated", null)
+                    } catch (_: Exception) {}
+                }
+            }
+        }
+    }
+
     private lateinit var bridge: MethodChannel
     private var documentResult: MethodChannel.Result? = null
     private var exportPath: String? = null
@@ -37,6 +50,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        currentInstance = this
         intent.getStringExtra("alarmKey")?.let{AlarmDelivery.act(this,it,0);intent.removeExtra("alarmKey")}
         // Apply the persisted policy before Flutter's first frame, including
         // startup failures or a slow database migration/restore review.
@@ -278,5 +292,10 @@ class MainActivity : FlutterActivity() {
         }
         if(force && googleToken!=null) client.clearToken(ClearTokenRequest.builder().setToken(googleToken!!).build()).addOnCompleteListener {request()}
         else request()
+    }
+
+    override fun onDestroy() {
+        if (currentInstance === this) currentInstance = null
+        super.onDestroy()
     }
 }

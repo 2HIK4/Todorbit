@@ -4,7 +4,10 @@ import '../../domain/task_resources.dart';
 import '../../domain/models.dart';
 import '../../data/app_database.dart';
 import '../../data/life_repository.dart';
+import '../../data/shared_inbox_store.dart';
+import '../../domain/shared_inbox_entry.dart';
 import '../../platform/android/android_platform.dart';
+import '../shared_inbox/shared_inbox_picker_dialog.dart';
 import 'windows_resource_dialog.dart';
 
 import 'dart:io';
@@ -22,6 +25,7 @@ class UnifiedResourcesSection extends StatefulWidget {
     this.resourceSubtaskMap = const {},
     this.onResourceSubtasksChanged,
     this.onAddSubtask,
+    this.sharedInboxStore,
   }) : taskId = null,
        repository = null,
        draftResources = resources,
@@ -34,6 +38,7 @@ class UnifiedResourcesSection extends StatefulWidget {
     required this.repository,
     this.subtasks = const [],
     this.onAddSubtask,
+    this.sharedInboxStore,
   }) : draftResources = null,
        onDraftChanged = null,
        resourceSubtaskMap = null,
@@ -49,6 +54,7 @@ class UnifiedResourcesSection extends StatefulWidget {
   final Map<String, List<String>>? resourceSubtaskMap;
   final ValueChanged<Map<String, List<String>>>? onResourceSubtasksChanged;
   final Future<LifeTask?> Function(String title)? onAddSubtask;
+  final SharedInboxStore? sharedInboxStore;
 
   @override
   State<UnifiedResourcesSection> createState() =>
@@ -368,6 +374,64 @@ class _UnifiedResourcesSectionState extends State<UnifiedResourcesSection> {
       }
     } finally {
       if (mounted) setState(() => picking = false);
+    }
+  }
+
+  Future<void> _attachFromSharedInbox() async {
+    if (busy || picking) return;
+    final inboxStore = widget.sharedInboxStore ?? SharedInboxStore();
+
+    final existingShas = <String>{};
+    if (!widget.isDraft && persistedResources != null) {
+      for (final r in persistedResources!) {
+        if (r.sha256 != null) {
+          existingShas.add(r.sha256!);
+        }
+      }
+    }
+
+    final selected = await showDialog<List<SharedInboxEntry>>(
+      context: context,
+      animationStyle: AppMotion.style(context),
+      builder: (_) => SharedInboxPickerDialog(
+        store: inboxStore,
+        alreadyAttachedShas: existingShas,
+      ),
+    );
+
+    if (selected == null || selected.isEmpty || !mounted) return;
+
+    if (widget.isDraft) {
+      final next = List.of(widget.draftResources ?? <DraftTaskResource>[]);
+      for (final entry in selected) {
+        final file = entry.fileIn(inboxStore.directory);
+        next.add(
+          DraftTaskResource(
+            TaskResourceKind.managed,
+            file.path,
+            entry.displayName,
+          ),
+        );
+      }
+      widget.onDraftChanged?.call(next);
+    } else if (widget.taskId != null && widget.repository != null) {
+      await _run(() async {
+        for (final entry in selected) {
+          final file = entry.fileIn(inboxStore.directory);
+          if (file.existsSync()) {
+            final resource = await widget.repository!.attachManagedFile(
+              widget.taskId!,
+              file,
+            );
+            if (resource.label != entry.displayName) {
+              await widget.repository!.renameTaskResource(
+                resource,
+                entry.displayName,
+              );
+            }
+          }
+        }
+      });
     }
   }
 
@@ -818,6 +882,18 @@ class _UnifiedResourcesSectionState extends State<UnifiedResourcesSection> {
                     : () => _pickFileOrFolder(TaskResourceKind.managed),
                 icon: const Icon(Icons.attach_file, size: 16),
                 label: const Text('Attach copy'),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: busy || picking ? null : _attachFromSharedInbox,
+                icon: const Icon(Icons.folder_shared_outlined, size: 16),
+                label: const Text('From Shared Inbox'),
                 style: OutlinedButton.styleFrom(
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.symmetric(

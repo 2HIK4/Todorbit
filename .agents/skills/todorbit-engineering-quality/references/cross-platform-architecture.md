@@ -67,6 +67,13 @@ Android functionality resides under `lib/platform/android/` (Dart) and `android/
 3. **Google Drive OAuth & Storage Access Framework (SAF)**:
    - OAuth identity stored in Android EncryptedSharedPreferences / OS secure storage; short-lived access tokens kept in memory.
    - Database backup/restore uses SAF file picker URIs without requiring full storage permissions.
+4. **Android Shared Files Inbox & Intent Ingestion**:
+   - `ShareReceiverActivity.kt`: Dedicated lightweight activity with `Theme.Translucent.NoTitleBar`, `noHistory="true"`, and `excludeFromRecents="true"`.
+   - Handles `ACTION_SEND` and `ACTION_SEND_MULTIPLE` without booting the Flutter engine on cold start.
+   - Immediately streams `content://` URIs via `ContentResolver` to app-private staging storage (`TodoPilot/shared_inbox/files/`) before temporary URI grants lapse.
+   - Manifest `shared_inbox.json` maintains durable file metadata, SHA-256 duplicate detection, and size limits (32 MiB).
+   - Minimal interruption UX: posts a brief Toast confirmation and immediately calls `finish()`, returning the user to the sending app without forced task creation.
+   - If Flutter engine is warm, notifies `MainActivity` via MethodChannel `sharedInboxUpdated` to update UI immediately.
 
 ### Android Native Rules:
 - **16 KiB Page Size Compatibility**: Android native shared libraries (.so) in arm64-v8a and x86_64 must be 16 KiB page-aligned. Verify with `python tools/verify-android-artifact.py`.
@@ -93,3 +100,44 @@ Google Drive and Smart Sync require platform-specific OAuth authentication:
 - `tools/google-drive-release-config.ps1` resolves the configuration via `Resolve-GoogleDriveReleaseConfigPath` (checking `$env:TODORBIT_GOOGLE_DRIVE_CONFIG` and `D:\AI_Projects\Secrets\TodorbitPrivate-drive-enabled-20261106-ab9a4087\drive-build.json`).
 - `Assert-GoogleDriveReleaseBundle` verifies that `googleDriveEnabled: true` in the output `todorbit-build.json` metadata. Packaging scripts (`build-windows-release.ps1`, `installer/build-installer.ps1`, `tools/build-portable.ps1`) fail immediately if `googleDriveEnabled` is false, unless `-AllowDisabledDrive` is explicitly passed for test builds.
 - This gate prevents accidental deployment of disabled cloud integration builds where users see "Google Drive is unavailable in this build".
+
+---
+
+## 5. Flutter Test Harness Diagnostics: Fake Async, Native I/O & Drawer Scrolling
+
+When writing or executing widget integration tests in Todorbit (`testWidgets`), adhere to these invariants to prevent test hangs, false timeouts, and navigation failures:
+
+### 1. FakeAsync Zone & Native File System I/O:
+- `testWidgets` executes within a `FakeAsync` zone that virtualizes microtasks and timers (`pump`, `pumpAndSettle`).
+- Native asynchronous file system I/O from `dart:io` (`File.readAsBytes()`, `FileSystemEntity.type()`, `source.stat()`) runs on native OS thread pools outside Dart's virtual event loop.
+- If called directly in fake async without `tester.runAsync()`, the completion future will never resolve, causing the test isolate to hang until the harness hits its maximum timeout (e.g., 10 minutes).
+- **Rule**: Any operation that performs native file I/O or multi-step persistence (such as `LifeRepository.attachManagedFile` or `LifeRepository.addDraftResources`) MUST be wrapped in:
+  ```dart
+  await tester.runAsync(() async {
+    await repository.attachManagedFile(task.id, file);
+  });
+  ```
+
+### 2. Eliminating Infinite Animation Deadlocks:
+- An active `CircularProgressIndicator` uses an unconstrained spinning `AnimationController`.
+- Calling `await tester.pumpAndSettle()` while a spinner is animating will loop until timeout because frames never settle.
+- **Rule**: Implement synchronous initialization/hydration (`loadSync()`) where practical so the widget mounts in an already-loaded state on frame 1. For asynchronous paths, pump discrete frames (`await tester.pump(const Duration(milliseconds: 50))`) instead of unconstrained `pumpAndSettle()`.
+
+### 3. Navigation Drawer Lazy Layout:
+- `MobileWorkspace`'s side navigation drawer builds items in a lazily evaluated `ListView`. Items positioned below the viewport fold (e.g. `Shared Files`, `Archive and Trash`) are NOT constructed until scrolled into view.
+- Attempting to locate them directly via `find.text('Shared Files')` will fail with 0 matches.
+- **Rule**: Always use `tester.scrollUntilVisible` scoped to the `Drawer`'s `Scrollable`:
+  ```dart
+  final scaffoldState = tester.state<ScaffoldState>(find.byType(Scaffold).first);
+  scaffoldState.openDrawer();
+  await tester.pumpAndSettle();
+
+  final item = find.text('Shared Files');
+  await tester.scrollUntilVisible(
+    item,
+    200,
+    scrollable: find.descendant(of: find.byType(Drawer), matching: find.byType(Scrollable)).first,
+  );
+  await tester.tap(item);
+  await tester.pumpAndSettle();
+  ```

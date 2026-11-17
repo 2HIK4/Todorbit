@@ -28,6 +28,9 @@ class AndroidPlatform {
   static Future<void> releaseImportedDocument(File file) =>
       channel.invokeMethod<void>('releaseImportedDocument', file.path);
 
+  static Future<void> openPrivateFile(File file) =>
+      channel.invokeMethod<void>('openPrivateFile', file.path);
+
   static Future<bool> exportDocument(
     File source, {
     required String name,
