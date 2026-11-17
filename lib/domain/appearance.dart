@@ -110,6 +110,7 @@ class ThemeCustomization {
     this.calendarDefaultView = 'week',
     this.reducedMotion = false,
     this.widgetOpacity = 100,
+    this.detailPresentation = 'sidePanel',
   });
   final ThemePalette light;
   final ThemePalette dark;
@@ -123,6 +124,9 @@ class ThemeCustomization {
   final String calendarDefaultView;
   final bool reducedMotion;
   final int widgetOpacity;
+  final String detailPresentation;
+
+  bool get isFullPageDetails => detailPresentation == 'fullPage';
 
   ThemeCustomization copyWith({
     ThemePalette? light,
@@ -135,6 +139,7 @@ class ThemeCustomization {
     String? calendarDefaultView,
     bool? reducedMotion,
     int? widgetOpacity,
+    String? detailPresentation,
   }) => ThemeCustomization(
     light: light ?? this.light,
     dark: dark ?? this.dark,
@@ -148,6 +153,7 @@ class ThemeCustomization {
     calendarDefaultView: calendarDefaultView ?? this.calendarDefaultView,
     reducedMotion: reducedMotion ?? this.reducedMotion,
     widgetOpacity: widgetOpacity ?? this.widgetOpacity,
+    detailPresentation: detailPresentation ?? this.detailPresentation,
   );
 
   Map<String, Object> toJson() => {
@@ -166,6 +172,7 @@ class ThemeCustomization {
     'calendarDefaultView': calendarDefaultView,
     'reducedMotion': reducedMotion,
     'widgetOpacity': widgetOpacity,
+    'detailPresentation': detailPresentation,
   };
 
   factory ThemeCustomization.fromJson(Object? source) {
@@ -189,6 +196,7 @@ class ThemeCustomization {
       calendarDefaultView: value['calendarDefaultView'] as String,
       reducedMotion: value['reducedMotion'] as bool,
       widgetOpacity: value['widgetOpacity'] as int,
+      detailPresentation: (value['detailPresentation'] as String?) ?? 'sidePanel',
     );
   }
 }

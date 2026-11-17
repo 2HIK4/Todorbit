@@ -61,11 +61,15 @@ class CalendarView extends ConsumerStatefulWidget {
     required this.onTaskTap,
     required this.onSmartReschedule,
     required this.onAddTask,
+    this.onEventTap,
+    this.onEscape,
   });
   final DateTime? initialDate;
   final void Function(LifeTask task) onTaskTap;
   final VoidCallback onSmartReschedule;
   final void Function(DateTime date) onAddTask;
+  final void Function(FixedEvent event)? onEventTap;
+  final VoidCallback? onEscape;
 
   @override
   ConsumerState<CalendarView> createState() => _CalendarViewState();
@@ -221,6 +225,10 @@ class _CalendarViewState extends ConsumerState<CalendarView>
   }
 
   Future<void> _editEvent([FixedEvent? event, DateTime? initialDate]) async {
+    if (event != null && widget.onEventTap != null) {
+      widget.onEventTap!(event);
+      return;
+    }
     await showDialog<void>(
       context: context,
       animationStyle: AppMotion.style(context),
@@ -842,7 +850,13 @@ class _CalendarViewState extends ConsumerState<CalendarView>
           _loadSelectedMonth();
         },
         const SingleActivator(LogicalKeyboardKey.escape): () {
-          _interactionController.cancel();
+          if (_interactionController.gestureKind != CalendarGestureKind.none ||
+              _interactionController.isDragging ||
+              _interactionController.activeItem != null) {
+            _interactionController.cancel();
+          } else {
+            widget.onEscape?.call();
+          }
         },
         const SingleActivator(LogicalKeyboardKey.keyZ, control: true):
             _safeUndo,

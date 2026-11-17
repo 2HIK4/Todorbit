@@ -72,6 +72,8 @@ class SettingsTransfer {
         'spellCheckEnabled': controller.taskViewPreferences.spellCheckEnabled,
         'compositionTextDisplay':
             controller.taskViewPreferences.compositionTextDisplay.name,
+        'detailPresentation':
+            controller.taskViewPreferences.detailPresentation,
       },
     });
   }
@@ -332,6 +334,9 @@ class SettingsTransfer {
               compositionTextDisplay: CompositionTextDisplay.values.byName(
                 value['compositionTextDisplay'] as String,
               ),
+              detailPresentation: value['detailPresentation'] == 'fullPage'
+                  ? 'fullPage'
+                  : 'sidePanel',
             ),
           );
       }

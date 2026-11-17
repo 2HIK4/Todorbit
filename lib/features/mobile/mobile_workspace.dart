@@ -441,48 +441,111 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
     return Scaffold(
       appBar: AppBar(
         title: searching
-            ? TextField(
-                controller: search,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  hintText: 'Search tasks and events',
-                  border: InputBorder.none,
+            ? Container(
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainerHighest
+                      .withValues(alpha: 0.65),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.7),
+                    width: 1.5,
+                  ),
                 ),
-                onChanged: (_) => setState(() {}),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.search,
+                      size: 20,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: TextField(
+                        controller: search,
+                        autofocus: true,
+                        style: const TextStyle(fontSize: 14),
+                        decoration: const InputDecoration(
+                          hintText: 'Search tasks and events',
+                          hintStyle: TextStyle(fontSize: 14),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                    if (search.text.isNotEmpty)
+                      IconButton(
+                        iconSize: 18,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                        tooltip: 'Clear search text',
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          search.clear();
+                          setState(() {});
+                        },
+                      ),
+                    IconButton(
+                      iconSize: 20,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
+                      tooltip: 'Advanced search & filters',
+                      icon: const Icon(Icons.tune_outlined),
+                      onPressed: () => dialog(const AdvancedSearchDialog()),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                ),
               )
             : Text(title(c)),
         actions: [
-          SyncStatusButton(allowAutomatic: !searching),
-          PopupMenuButton<String>(
-            tooltip: 'Library',
-            icon: const Icon(Icons.collections_bookmark_outlined),
-            onSelected: (value) {
-              if (value == 'templates') dialog(const TemplatesDialog());
-              if (value == 'sequences') dialog(const SequenceDialog());
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(
-                value: 'templates',
-                child: Row(
-                  children: [
-                    Icon(Icons.copy_all_outlined, size: 20),
-                    SizedBox(width: 12),
-                    Text('Templates and routines'),
-                  ],
+          if (!searching) ...[
+            SyncStatusButton(allowAutomatic: true),
+            PopupMenuButton<String>(
+              tooltip: 'Library',
+              icon: const Icon(Icons.collections_bookmark_outlined),
+              onSelected: (value) {
+                if (value == 'templates') dialog(const TemplatesDialog());
+                if (value == 'sequences') dialog(const SequenceDialog());
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'templates',
+                  child: Row(
+                    children: [
+                      Icon(Icons.copy_all_outlined, size: 20),
+                      SizedBox(width: 12),
+                      Text('Templates and routines'),
+                    ],
+                  ),
                 ),
-              ),
-              PopupMenuItem(
-                value: 'sequences',
-                child: Row(
-                  children: [
-                    Icon(Icons.linear_scale, size: 20),
-                    SizedBox(width: 12),
-                    Text('Task sequences'),
-                  ],
+                PopupMenuItem(
+                  value: 'sequences',
+                  child: Row(
+                    children: [
+                      Icon(Icons.linear_scale, size: 20),
+                      SizedBox(width: 12),
+                      Text('Task sequences'),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
           IconButton(
             tooltip: searching ? 'Close search' : 'Search tasks and events',
             onPressed: () => setState(() {
@@ -495,42 +558,43 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
             }),
             icon: Icon(searching ? Icons.close : Icons.search),
           ),
-          PopupMenuButton<String>(
-            tooltip: 'Workspace actions',
-            onSelected: (value) {
-              if (value == 'filters') dialog(const AdvancedSearchDialog());
-              if (value == 'reschedule') {
-                dialog(
-                  SmartRescheduleDialog(
-                    scope: title(c),
-                    taskIds: c.visibleTasks
-                        .where((t) => t.isOpen)
-                        .map((t) => t.id)
-                        .toList(),
-                  ),
-                );
-              }
-              if (value.startsWith('sort:')) {
-                c.setSort(TaskSort.values.byName(value.substring(5)));
-              }
-            },
-            itemBuilder: (_) => [
-              const PopupMenuItem(
-                value: 'filters',
-                child: Text('Filters and saved views'),
-              ),
-              const PopupMenuItem(
-                value: 'reschedule',
-                child: Text('Smart Reschedule'),
-              ),
-              for (final sort in TaskSort.values)
-                CheckedPopupMenuItem(
-                  value: 'sort:${sort.name}',
-                  checked: sort == c.sort,
-                  child: Text('Sort by ${sort.name}'),
+          if (!searching)
+            PopupMenuButton<String>(
+              tooltip: 'Workspace actions',
+              onSelected: (value) {
+                if (value == 'filters') dialog(const AdvancedSearchDialog());
+                if (value == 'reschedule') {
+                  dialog(
+                    SmartRescheduleDialog(
+                      scope: title(c),
+                      taskIds: c.visibleTasks
+                          .where((t) => t.isOpen)
+                          .map((t) => t.id)
+                          .toList(),
+                    ),
+                  );
+                }
+                if (value.startsWith('sort:')) {
+                  c.setSort(TaskSort.values.byName(value.substring(5)));
+                }
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(
+                  value: 'filters',
+                  child: Text('Filters and saved views'),
                 ),
-            ],
-          ),
+                const PopupMenuItem(
+                  value: 'reschedule',
+                  child: Text('Smart Reschedule'),
+                ),
+                for (final sort in TaskSort.values)
+                  CheckedPopupMenuItem(
+                    value: 'sort:${sort.name}',
+                    checked: sort == c.sort,
+                    child: Text('Sort by ${sort.name}'),
+                  ),
+              ],
+            ),
         ],
       ),
       drawer: drawer(c),

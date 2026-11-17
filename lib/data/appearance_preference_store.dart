@@ -70,6 +70,9 @@ class AppearancePreferenceStore {
       compositionTextDisplay: data['compositionTextDisplay'] == 'full'
           ? CompositionTextDisplay.full
           : CompositionTextDisplay.compact,
+      detailPresentation: data['detailPresentation'] == 'fullPage'
+          ? 'fullPage'
+          : 'sidePanel',
       hiddenStandardCategories:
           (data['hiddenStandardCategories'] as List? ?? [])
               .cast<String>()
@@ -86,6 +89,7 @@ class AppearancePreferenceStore {
       'keepCompletedVisible': value.keepCompletedVisible,
       'spellCheckEnabled': value.spellCheckEnabled,
       'compositionTextDisplay': value.compositionTextDisplay.name,
+      'detailPresentation': value.detailPresentation,
       'hiddenStandardCategories': value.hiddenStandardCategories.toList(),
       'hiddenStandardProjects': value.hiddenStandardProjects.toList(),
     });

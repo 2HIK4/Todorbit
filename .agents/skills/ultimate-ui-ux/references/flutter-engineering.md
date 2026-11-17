@@ -61,6 +61,17 @@ framework or component package to fix a UI defect.
 - Respect Windows keyboard focus, Tab/Shift+Tab, Enter/Space, Escape, context menus,
   wheel, hover and shortcuts scoped away from active text editing. Keep compact
   Fluent conventions; do not impose touch density on every desktop control.
+- Shortcut Bubbling & Dismissal Hygiene: Subviews with `CallbackShortcuts` (such as
+  `Escape` in a calendar or canvas) must not unconditionally consume the key if idle
+  (e.g. no active gesture/drag); they must propagate to parent dismissal callbacks (`onEscape`)
+  or let the key bubble up so parent pane navigation or editor dismissal functions properly.
+- Detail Presentation & Route Singularity: When supporting both docked (side-panel)
+  and full-page detail presentations, enforce exactly ONE active presentation route/state
+  derived from configuration. Closing an editor must atomically clear selection and all
+  presentation flags so closing never reveals a secondary/stale editor underneath.
+- Non-Disruptive Save Feedback: Avoid popping Scaffold-level floating SnackBars for routine
+  nested sub-form or prerequisite saves; floating SnackBars can intercept pointer hit-testing
+  aimed at action buttons docked at the bottom of narrow or side-panel layouts.
 - Flutter widget tests do not establish native HWND focus, Explorer hosting,
   physical DPI, shell attachment, capture or WinForms/ToolStrip behavior. Select
   native self-tests and actual platform checks using project policy.

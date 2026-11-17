@@ -12,6 +12,7 @@ import 'dart:io';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
@@ -801,13 +802,18 @@ class _EventEditorState extends ConsumerState<EventEditor> {
   }
 
   @override
-  Widget build(BuildContext context) => UnsavedEditorGuard(
-    key: exitGuard,
-    enabled: widget.protectUnsavedEdits,
-    dirty: draftKey != initialDraft,
-    busy: busy,
-    onClose: widget.onClose,
-    child: Padding(
+  Widget build(BuildContext context) => CallbackShortcuts(
+    bindings: {
+      const SingleActivator(LogicalKeyboardKey.escape): () =>
+          exitGuard.currentState?.close(),
+    },
+    child: UnsavedEditorGuard(
+      key: exitGuard,
+      enabled: widget.protectUnsavedEdits,
+      dirty: draftKey != initialDraft,
+      busy: busy,
+      onClose: widget.onClose,
+      child: Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1365,7 +1371,8 @@ class _EventEditorState extends ConsumerState<EventEditor> {
         ],
       ),
     ),
-  );
+  ),
+);
 
   Widget _dateTimeRow(DateTime value, bool isStart) => Padding(
     padding: const EdgeInsets.only(top: 6),

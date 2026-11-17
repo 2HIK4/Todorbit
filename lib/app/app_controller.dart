@@ -254,6 +254,8 @@ class AppController extends ChangeNotifier {
   ThemeModePreference theme = ThemeModePreference.system;
   ThemeCustomization customization = const ThemeCustomization();
   TaskViewPreferences taskViewPreferences = const TaskViewPreferences();
+  bool get isFullPageDetails =>
+      taskViewPreferences.isFullPageDetails || customization.isFullPageDetails;
   HotkeyPreferences hotkeys = HotkeyPreferences();
   CalendarContent calendarContent = CalendarContent.both;
   int firstWeekday = 7;
@@ -561,6 +563,7 @@ class AppController extends ChangeNotifier {
         'newTaskPlannedDay': taskViewPreferences.newTaskPlannedDay.name,
         'compositionTextDisplay':
             taskViewPreferences.compositionTextDisplay.name,
+        'detailPresentation': taskViewPreferences.detailPresentation,
       });
     }
     final values = await repository.portablePreferences();
@@ -603,6 +606,11 @@ class AppController extends ChangeNotifier {
               values['compositionTextDisplay'] as String,
             )
           : null,
+      detailPresentation: values['detailPresentation'] == 'fullPage'
+          ? 'fullPage'
+          : values['detailPresentation'] == 'sidePanel'
+              ? 'sidePanel'
+              : null,
     );
     _invalidateTaskCaches();
     // SQL is the durable source after sync. Profile JSON remains a compatible
@@ -624,6 +632,7 @@ class AppController extends ChangeNotifier {
       'hiddenStandardProjects': value.hiddenStandardProjects.toList(),
       'newTaskPlannedDay': value.newTaskPlannedDay.name,
       'compositionTextDisplay': value.compositionTextDisplay.name,
+      'detailPresentation': value.detailPresentation,
     });
     await appearanceStore?.saveTaskViewPreferences(value);
     taskViewPreferences = value;

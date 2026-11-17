@@ -39,6 +39,7 @@ import '../shared/about_view_button.dart';
 import '../shared/sync_status_button.dart';
 import '../contributors/contributors_view.dart';
 import '../templates/templates_dialog.dart';
+import 'quick_search.dart';
 import '../search/advanced_search_dialog.dart';
 import '../settings/backup_dialog.dart';
 import '../support/support_button.dart';
@@ -260,11 +261,15 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   final editorNavigation = TaskEditorController();
   String? _focusWorkspaceTaskId;
   bool _viewingTaskDetails = false;
+  bool _viewingEventDetails = false;
+  FixedEvent? _selectedEvent;
 
   void _openFocusWorkspace(String taskId) {
     setState(() {
       _focusWorkspaceTaskId = taskId;
       _viewingTaskDetails = false;
+      _viewingEventDetails = false;
+      _selectedEvent = null;
       creating = false;
     });
   }
@@ -296,6 +301,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       setState(() {
         creating = false;
         _viewingTaskDetails = false;
+        _viewingEventDetails = false;
+        _selectedEvent = null;
         _focusWorkspaceTaskId = null;
         editorRevision++;
       });
@@ -314,11 +321,14 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   Future<void> _openTask(LifeTask task, bool wide) async {
     final controller = ref.read(appControllerProvider);
     if (!await _prepareEditorChange() || !mounted) return;
+    final useFullPage = controller.isFullPageDetails;
     controller.select(task.id);
     setState(() {
-      _viewingTaskDetails = true;
+      _selectedEvent = null;
+      _viewingEventDetails = false;
       _focusWorkspaceTaskId = null;
       creating = false;
+      _viewingTaskDetails = useFullPage;
     });
   }
 
@@ -565,7 +575,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   void _closeEditor() {
     ref.read(appControllerProvider).select(null);
-    setState(() => creating = false);
+    setState(() {
+      creating = false;
+      _viewingTaskDetails = false;
+      _viewingEventDetails = false;
+      _selectedEvent = null;
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(deliverNavigation());
     });
@@ -668,36 +683,22 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   Future<void> _openEventDetails(FixedEvent event) async {
     if (!await _prepareEditorChange() || !mounted) return;
-    await showDialog<void>(
-      context: context,
-      animationStyle: AppMotion.style(context),
-      builder: (dialogContext) {
-        final media = MediaQuery.of(dialogContext);
-        final availableHeight =
-            media.size.height - media.viewInsets.bottom - 64;
-        return Dialog(
-          child: SizedBox(
-            width: 600,
-            height: availableHeight.clamp(240.0, 750.0),
-            child: EventEditor(
-              event: event,
-              initialDay: event.startsAt.toLocal(),
-              protectUnsavedEdits: true,
-              onClose: () => Navigator.pop(dialogContext),
-            ),
-          ),
-        );
-      },
-    );
+    final controller = ref.read(appControllerProvider);
+    final useFullPage = controller.isFullPageDetails;
+    controller.select(null);
+    setState(() {
+      creating = false;
+      _focusWorkspaceTaskId = null;
+      _viewingTaskDetails = false;
+      _selectedEvent = event;
+      _viewingEventDetails = useFullPage;
+    });
   }
 
-  Future<void> _showSearch() async {
-    _sidebarSearchFocus.requestFocus();
-    _sidebarSearchQuery.selection = TextSelection(
-      baseOffset: 0,
-      extentOffset: _sidebarSearchQuery.text.length,
-    );
-  }
+  Future<void> _showSearch() => showDialog<void>(
+    context: context,
+    builder: (_) => QuickSearchDialog(onEventTap: _openEventDetails),
+  );
 
   Future<void> _showSequences() => showDialog<void>(
     context: context,
@@ -899,6 +900,14 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         for (final entry in controller.hotkeys.bindings.entries)
           entry.value.activator: () => _runHotkey(entry.key, controller),
         const SingleActivator(LogicalKeyboardKey.escape): () async {
+          if (_viewingTaskDetails || _viewingEventDetails) {
+            _closeEditor();
+            return;
+          }
+          if (_selectedEvent != null) {
+            _closeEditor();
+            return;
+          }
           if (controller.selectedTask != null || creating) {
             if (await editorNavigation.confirmLeave() && mounted) {
               _closeEditor();
@@ -938,13 +947,17 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           body: LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 1050;
+              final useFullPage = controller.isFullPageDetails;
+              final hasTaskSelected =
+                  (controller.selectedTask != null || creating) &&
+                  !_viewingTaskDetails;
+              final hasEventSelected =
+                  _selectedEvent != null && !_viewingEventDetails;
               final editor =
-                  creating ||
-                  (controller.selectedTask != null &&
-                      !_viewingTaskDetails &&
-                      _focusWorkspaceTaskId == null);
-              final inlineEditor =
-                  editor && (wide || editorNavigation.isAttached);
+                  !useFullPage &&
+                  (hasTaskSelected || hasEventSelected) &&
+                  _focusWorkspaceTaskId == null;
+              final inlineEditor = editor;
               final sidebarWidth = constraints.maxWidth < 760
                   ? 190.0
                   : controller.customization.sidebarWidth.toDouble();
@@ -1030,18 +1043,26 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                               0,
                               constraints.maxWidth - sidebarWidth - 2,
                             ),
-                      child: TaskEditor(
-                        protectUnsavedEdits: true,
-                        key: ValueKey((
-                          creating ? 'new' : controller.selectedTask!.id,
-                          editorRevision,
-                        )),
-                        navigationController: editorNavigation,
-                        task: creating ? null : controller.selectedTask,
-                        initialScheduled: creating ? newTaskInitialDate : null,
-                        onSaved: _closeEditor,
-                        onCancel: _closeEditor,
-                      ),
+                      child: _selectedEvent != null
+                          ? EventEditor(
+                              key: ValueKey((_selectedEvent!.id, editorRevision)),
+                              event: _selectedEvent!,
+                              initialDay: _selectedEvent!.startsAt.toLocal(),
+                              protectUnsavedEdits: true,
+                              onClose: _closeEditor,
+                            )
+                          : TaskEditor(
+                              protectUnsavedEdits: true,
+                              key: ValueKey((
+                                creating ? 'new' : controller.selectedTask!.id,
+                                editorRevision,
+                              )),
+                              navigationController: editorNavigation,
+                              task: creating ? null : controller.selectedTask,
+                              initialScheduled: creating ? newTaskInitialDate : null,
+                              onSaved: _closeEditor,
+                              onCancel: _closeEditor,
+                            ),
                     ),
                   ],
                 ],
@@ -1306,14 +1327,15 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
             child: Container(
-              height: 36,
+              height: 38,
               decoration: BoxDecoration(
                 color: scheme.surfaceContainer,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: _sidebarSearchFocus.hasFocus
                       ? scheme.primary
-                      : scheme.outlineVariant.withValues(alpha: 0.5),
+                      : scheme.outlineVariant.withValues(alpha: 0.6),
+                  width: _sidebarSearchFocus.hasFocus ? 1.5 : 1.0,
                 ),
               ),
               child: Row(
@@ -1323,8 +1345,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     iconSize: 18,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(
-                      minWidth: 26,
-                      minHeight: 26,
+                      minWidth: 30,
+                      minHeight: 30,
                     ),
                     tooltip: 'Quick Search (Ctrl+K)',
                     icon: Icon(
@@ -1339,17 +1361,18 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     child: TextField(
                       controller: _sidebarSearchQuery,
                       focusNode: _sidebarSearchFocus,
-                      style: const TextStyle(fontSize: 13),
+                      style: const TextStyle(fontSize: 13, height: 1.2),
                       decoration: InputDecoration(
                         isDense: true,
-                        hintText:
-                            'Search tasks, events, categories, and projects',
+                        hintText: controller.customization.sidebarWidth < 220
+                            ? 'Search...'
+                            : 'Search tasks & events...',
                         hintStyle: TextStyle(
                           fontSize: 13,
                           color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
                         ),
                         border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 9),
                       ),
                       onChanged: (_) => setState(() {}),
                     ),
@@ -1359,8 +1382,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                       iconSize: 16,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(
-                        minWidth: 26,
-                        minHeight: 26,
+                        minWidth: 28,
+                        minHeight: 28,
                       ),
                       tooltip: 'Clear search',
                       icon: const Icon(Icons.close),
@@ -1370,17 +1393,17 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                       },
                     ),
                   IconButton(
-                    iconSize: 17,
+                    iconSize: 18,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(
-                      minWidth: 26,
-                      minHeight: 26,
+                      minWidth: 30,
+                      minHeight: 30,
                     ),
-                    tooltip: 'Advanced search',
+                    tooltip: 'Advanced search & filters',
                     icon: const Icon(Icons.tune_outlined),
                     onPressed: () => _showAdvancedSearch(),
                   ),
-                  const SizedBox(width: 2),
+                  const SizedBox(width: 4),
                 ],
               ),
             ),
@@ -1938,9 +1961,17 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     if (_viewingTaskDetails && controller.selectedTask != null) {
       return TaskDetailsView(
         task: controller.selectedTask!,
-        onBack: () => setState(() => _viewingTaskDetails = false),
+        onBack: _closeEditor,
         onEdit: () => _editTaskDialog(controller.selectedTask!),
         onStartFocus: () => _openFocusWorkspace(controller.selectedTask!.id),
+      );
+    }
+    if (_viewingEventDetails && _selectedEvent != null) {
+      return EventEditor(
+        event: _selectedEvent!,
+        initialDay: _selectedEvent!.startsAt.toLocal(),
+        protectUnsavedEdits: true,
+        onClose: _closeEditor,
       );
     }
     if (controller.view == WorkspaceView.habits) {
@@ -1961,6 +1992,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         initialDate: navigationDay,
         onAddTask: _newTaskOn,
         onTaskTap: (task) => _openTask(task, wide),
+        onEventTap: (event) => _openEventDetails(event),
+        onEscape: _closeEditor,
         onSmartReschedule: () {
           final sessions = controller.sessions
               .where(

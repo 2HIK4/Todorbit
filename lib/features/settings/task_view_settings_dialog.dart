@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import '../shared/scroll_edge_fade.dart';
 
 import 'package:life_manager/features/shared/anchored_select_field.dart';
@@ -25,7 +27,8 @@ class _TaskViewSettingsDialogState
         a.newTaskPlannedDay == b.newTaskPlannedDay &&
         a.keepCompletedVisible == b.keepCompletedVisible &&
         a.spellCheckEnabled == b.spellCheckEnabled &&
-        a.compositionTextDisplay == b.compositionTextDisplay,
+        a.compositionTextDisplay == b.compositionTextDisplay &&
+        a.detailPresentation == b.detailPresentation,
   );
   bool busy = false;
   Future<void> save(TaskViewPreferences value, {bool record = true}) async {
@@ -153,6 +156,35 @@ class _TaskViewSettingsDialogState
                         }
                       },
                     ),
+                    if (!Platform.isAndroid) ...[
+                      const SizedBox(height: 16),
+                      AnchoredSelectField<String>(
+                        key: ValueKey(preferences.detailPresentation),
+                        initialValue: preferences.detailPresentation,
+                        decoration: const InputDecoration(
+                          labelText: 'Task & event presentation',
+                          helperText:
+                              'Choose side panel (default) or full window/page presentation',
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'sidePanel',
+                            child: Text('Side panel (default)'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'fullPage',
+                            child: Text('Full page / window'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            save(
+                              preferences.copyWith(detailPresentation: value),
+                            );
+                          }
+                        },
+                      ),
+                    ],
                   ],
                 ),
               ),

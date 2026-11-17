@@ -1,6 +1,48 @@
 # AI Review Queue
 
-## UI-REL-01 (Prompt 1) — Viewport constraints, IME keyboard insets, responsive text scaling, and standardized card geometry (2026-11-17)
+## UI-REL-01 (Prompt 1 Authoritative) — Search UX, progressive advanced search, keyboard insets, and single-route task/event detail presentation (2026-11-17)
+
+- **Scope & Addressed Requirements**:
+  - **Search UX Token & Interaction Unification**: Unified desktop sidebar and Android mobile header search bar layout and interactions (height 38–42px, focus ring with primary border, minimum 30dp icon touch targets, clear text affordance, responsive placeholder text, and preserving all existing search operators, saved views, and shortcuts).
+  - **Advanced Search Progressive Disclosure**: Redesigned `AdvancedSearchDialog` with compact header, quick Reset action, lightweight one-time explanation for combination logic ("Filters combine with AND; options within each filter combine with OR."), and collapsible filter groups with human-readable summary badges. Preserved multi-select semantics, task match counter, and Save as Custom View.
+  - **Android IME Keyboard Insets in Filters**: Fixed `AdvancedSearchDialog` height computation (`media.viewInsets.bottom` subtraction), smooth scrolling, stable scroll controller (chip taps do not jump to top or dismiss the keyboard), and auto-wrapping sticky footer via `DialogActionBar`.
+  - **Single-Route Detail Presentation**: Replaced competing detail navigation with ONE route/state decision derived from persisted user Preferences (`ThemeCustomization.detailPresentation`):
+    - `sidePanel` (default): Opens task/event editor in desktop side panel; main view remains visible.
+    - `fullPage` (alternative): Opens task in `TaskDetailsView` or event in `EventEditor` in the main view; side panel is hidden.
+    - Zero Stale Editors: Closing via Back, Cancel, or <kbd>Esc</kbd> atomically clears active selection, active event, and detail flags. Resolved shortcut bubbling in `CalendarView` and `EventEditor` so <kbd>Esc</kbd> reliably dismisses the active editor without revealing a dormant editor underneath.
+  - **Action Button Hit-Testing**: Removed disruptive Scaffold-level SnackBar from task editor prerequisite saving that was intercepting hit-tests on bottom-docked action buttons in narrow/side-panel layouts.
+- **Source Paths Modified**:
+  - `lib/domain/task_view_preferences.dart`
+  - `lib/domain/sync/portable_preferences.dart`
+  - `lib/data/appearance_preference_store.dart`
+  - `lib/app/app_controller.dart`
+  - `lib/features/settings/task_view_settings_dialog.dart`
+  - `lib/features/settings/settings_hub_dialog.dart`
+  - `lib/features/settings/settings_transfer.dart`
+  - `lib/domain/appearance.dart`
+  - `lib/domain/theme_json.dart`
+  - `lib/features/calendar/calendar_view.dart`
+  - `lib/features/calendar/event_editor.dart`
+  - `lib/features/workspace/workspace.dart`
+  - `lib/features/mobile/mobile_workspace.dart`
+  - `lib/features/search/advanced_search_dialog.dart`
+  - `lib/features/workspace/task_editor.dart`
+  - `.agents/skills/ultimate-ui-ux/references/flutter-engineering.md`
+  - `docs/TODORBIT_UI_RELIABILITY_PROGRAM.md`
+  - `test/prompt1_search_and_detail_presentation_test.dart`
+- **Verification Evidence**:
+  - Static Analysis: `flutter analyze --no-pub lib/ test/prompt1_search_and_detail_presentation_test.dart` -> 0 issues found (13.2s).
+  - `test/prompt1_search_and_detail_presentation_test.dart` -> 14/14 passed (27s).
+  - `test/workspace_test.dart` -> 15/15 passed (30s).
+  - `test/mobile_workspace_test.dart` -> 23/23 passed (41s).
+  - `test/advanced_search_widget_test.dart` -> 2/2 passed (6s).
+  - Level 2 Critical Persistence: `test/repository_test.dart` + `test/task_revision_concurrency_test.dart` + `test/database_initialization_test.dart` -> 38/38 passed (1m 43s).
+  - Total Level 1/2 tests executed: 92/92 passed with zero failures.
+- **Status**: Unreviewed implementation queued for Codex independent review. No beta release or deployment performed.
+
+---
+
+## UI-REL-00-PRE (Prompt 0.5 Foundation) — Viewport constraints, IME keyboard insets, responsive text scaling, and standardized card geometry (2026-11-17)
 
 - **Scope & Addressed Issues**:
   - `ISS-C01`: Dialog & Sheet keyboard inset (IME) overflow. Fixed in `lib/features/workspace/workspace.dart`, `lib/features/calendar/calendar_view.dart`, `lib/features/workspace/checklist_item_dialog.dart`, `lib/features/workspace/sequence_dialog.dart`, and `lib/features/time_tracking/time_tracking_dialog.dart`. Clamped heights against `media.size.height - media.viewInsets.bottom - margin` and ensured scrollable wrappers prevent `RenderFlex overflowed` when software keyboard appears.

@@ -21,7 +21,8 @@
    - **Strict Safety Constraint**: No sweeping repository-wide refactoring in a single pass; never delete tests.
 4. **Phased Multi-Stage Execution (Prompts 0–8)**:
    - **Prompt 0 (Completed)**: Agent skills, quality gates, and grounded issue inventory (documentation and skill updates only).
-   - **Prompt 1**: High-severity viewport constraints, keyboard-inset / IME-aware dialogs, responsive breakpoint wrapping, and card geometry alignment across variants.
+   - **Prompt 0.5 (Foundational Baseline)**: Viewport constraints, keyboard-inset / IME-aware dialogs, responsive breakpoint wrapping, and card geometry alignment across variants (committed in `a451000`).
+   - **Prompt 1 (Authoritative Scope)**: Search UX token unification, progressive disclosure for advanced search, Android IME keyboard-inset form adaptation, and single-route task/event detail presentation (`sidePanel` default vs `fullPage` preference, with zero stale secondary editors).
    - **Prompt 2**: Navigation integrity, route deduplication, scroll stability, and parent-child continuity.
    - **Prompt 3**: Timer idempotency, monotonic clocks, Focus Workspace lifecycle, and window-focus hover cancellation.
    - **Prompt 4**: Accessibility (WCAG AA contrast >=4.5:1), keyboard traversal (<kbd>Tab</kbd>), screen reader semantics, and reduced motion.
@@ -33,6 +34,13 @@
 ---
 
 ## 2. Individually Traceable Issue Inventory (Mapped to Prompts 1–8)
+
+*Inventory Verification & Coverage*: The inventory comprises **29 total traceable issues** across three primary architectural surfaces:
+- **Group 1: Surface A (Alarm Editor & Reminder Controls)**: 4 issues (`ISS-A01` through `ISS-A04`)
+- **Group 2: Surface B (Calendar, Agenda & Date Navigation)**: 7 issues (`ISS-B01` through `ISS-B07`)
+- **Group 3: Surface C (Task Details, Task Editor & Workspace Shell)**: 18 issues (`ISS-C01` through `ISS-C18`)
+
+*Historical Count Correction*: The previous report informally stated "18 issues" because Surface C ended at `ISS-C18`. The verified count across all three groups is **29 traceable issues** (4 + 7 + 18 = 29), ensuring 100% coverage of all documented defect surfaces.
 
 *Root Cause Protocol*: All suspected root causes are explicitly labelled **HYPOTHESIS** pending isolated test reproduction.
 
@@ -191,8 +199,8 @@ flutter test --no-pub --concurrency=1 test/repository_test.dart test/task_revisi
   - `docs/CODEX_WORKFLOW.md` (Quality gates and matrix cross-references)
   - `docs/TODORBIT_UI_RELIABILITY_PROGRAM.md` (Authoritative grounded tracking document)
 
-### Prompt 1: Viewport Constraints, Keyboard Insets & Card Geometry
-- **Status**: Completed & Verified.
+### Prompt 0.5: Foundational Viewport Constraints, Keyboard Insets & Card Geometry
+- **Status**: Completed & Committed (`a451000`).
 - **Scope**:
   - `ISS-C01`: Keyboard-inset-aware dialog height calculation (`media.size.height - media.viewInsets.bottom - margin`) across desktop/mobile task editors, event editors, sequence dialogs, checklist dialogs, and time tracking dialogs.
   - `ISS-C05`: Responsive wrapping of organization chips/badges at 1.0×–2.0× text scaling.
@@ -206,8 +214,43 @@ flutter test --no-pub --concurrency=1 test/repository_test.dart test/task_revisi
   - Static Analysis: `flutter analyze --no-pub lib/ test/` -> 0 issues found.
   - `test/workspace_test.dart` -> 15/15 passed (35s).
   - `test/task_editor_schedule_layout_test.dart` -> 1/1 passed (5s).
-  - `test/mobile_workspace_test.dart` -> 23/23 passed (49s, includes multi-resolution 320x640, 390x844, 840x500 at 1.0x-1.5x scale and dialog adaptation).
+  - `test/mobile_workspace_test.dart` -> 23/23 passed (49s).
   - `test/calendar_test.dart` -> 3/3 passed (15s).
   - `test/checklist_layout_test.dart` + `test/remaining_dialog_layout_test.dart` + `test/time_tracking_widget_test.dart` -> 7/7 passed (18s).
   - `test/alarm_field_test.dart` + `test/task_editor_ui_polish_test.dart` -> 5/5 passed (18s).
   - Total Level 1/2 tests executed: 54/54 passed with zero failures.
+
+### Prompt 1: Search UX, Advanced Filters, Task/Event Detail Presentation
+- **Status**: Completed & Verified.
+- **Scope & Root Causes**:
+  - **Search UX Token & Interaction Unification**: Unified desktop sidebar and Android mobile header search bar geometry, icon and text baselines, focus borders, clear affordances, responsive placeholders, and minimum 30dp hit targets. Retained all existing operators, saved views, shortcuts (<kbd>Ctrl</kbd>+<kbd>K</kbd>), and quick/advanced search dialog triggers.
+  - **Advanced Search Progressive Disclosure**: Redesigned `AdvancedSearchDialog` with compact header, quick Reset action, lightweight one-time explanation of combination rules ("Filters combine with AND; options within each filter combine with OR."), collapsible filter groups (Status, Categories, Projects, Priority, Dates & Deadlines, Properties, Sort) with human-readable selection summaries and badge counters. Preserved all multi-select semantics, task count preview, and Save as Custom View capability.
+  - **Android IME Keyboard Inset Adaptation**: Computed dialog bounds against `media.viewInsets.bottom` with flexible auto-wrapping action bar (`DialogActionBar`), ensuring filter editing remains practical with virtual keyboard open, chips do not dismiss the keyboard or jump scroll position, and buttons never overflow or obscure active inputs.
+  - **Single-Route Detail Presentation**: Replaced competing detail routes with ONE state decision governed by user Preferences (`ThemeCustomization.detailPresentation`):
+    - `sidePanel` (default): Opens task or event in desktop side panel while preserving the main view.
+    - `fullPage` (alternative): Opens task in `TaskDetailsView` or event in `EventEditor` in the main view; side panel is hidden.
+    - Zero Stale Editors: Dismissal via Back, Cancel, or <kbd>Esc</kbd> atomically clears active selection, active event, and detail flags. Resolved `CalendarView` and `EventEditor` shortcut bubbling so <kbd>Esc</kbd> cleanly dismisses without leaving dormant side editors.
+- **Source Paths Modified**:
+  - `lib/domain/task_view_preferences.dart`: Added `detailPresentation` (`'sidePanel'` default vs `'fullPage'`) and `isFullPageDetails` getter.
+  - `lib/domain/appearance.dart`: Preserved backward-compatible `detailPresentation` and `isFullPageDetails` getter.
+  - `lib/domain/theme_json.dart`: Added backward-compatible JSON normalization defaulting missing/invalid keys to `'sidePanel'`.
+  - `lib/domain/sync/portable_preferences.dart`: Added `detailPresentation` validation preventing sync rejections.
+  - `lib/data/appearance_preference_store.dart`: Persisted `detailPresentation` in profile JSON.
+  - `lib/app/app_controller.dart`: Exposed `isFullPageDetails`, synced `taskViewPreferences` across portable preferences, SQL metadata, and profile stores.
+  - `lib/features/settings/task_view_settings_dialog.dart` & `lib/features/settings/settings_hub_dialog.dart`: Added UI dropdown selector under Settings → Preferences (Task Preferences / Task display and defaults).
+  - `lib/features/settings/settings_transfer.dart`: Transferred `detailPresentation` through settings JSON export/import.
+  - `lib/features/calendar/calendar_view.dart`: Added `onEventTap` and `onEscape` callbacks; guarded <kbd>Esc</kbd> to dismiss or bubble up.
+  - `lib/features/calendar/event_editor.dart`: Added <kbd>Esc</kbd> shortcut routed to `UnsavedEditorGuard`.
+  - `lib/features/workspace/workspace.dart`: Unified sidebar search bar; implemented single-route `_openTask`, `_openEventDetails`, and `_closeEditor`; wired `CalendarView` callbacks.
+  - `lib/features/mobile/mobile_workspace.dart`: Unified styled search container with clear, tune, and close actions.
+  - `lib/features/search/advanced_search_dialog.dart`: Progressive disclosure with collapsible groups, summary chips, and keyboard-inset-aware layout.
+  - `lib/features/workspace/task_editor.dart`: Removed disruptive bottom SnackBar that intercepted pointer hit-tests on action buttons.
+  - `test/prompt1_search_and_detail_presentation_test.dart`: 14 targeted integration, widget, and persistence tests.
+- **Verification Receipts**:
+  - Static Analysis: `flutter analyze --no-pub lib/ test/prompt1_search_and_detail_presentation_test.dart` -> 0 issues found (13.2s).
+  - `test/prompt1_search_and_detail_presentation_test.dart` -> 14/14 passed (27s).
+  - `test/workspace_test.dart` -> 15/15 passed (30s).
+  - `test/mobile_workspace_test.dart` -> 23/23 passed (41s).
+  - `test/advanced_search_widget_test.dart` -> 2/2 passed (6s).
+  - Level 2 Critical Persistence: `test/repository_test.dart` + `test/task_revision_concurrency_test.dart` + `test/database_initialization_test.dart` -> 38/38 passed (1m 43s).
+  - Total Level 1/2 tests executed: 92/92 passed with zero failures.

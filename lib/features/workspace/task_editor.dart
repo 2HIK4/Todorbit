@@ -1278,11 +1278,6 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
       await controller.setPrerequisites(task, submittedIds);
       currentTask = controller.tasks.firstWhere((item) => item.id == task.id);
       initialPrerequisites = submittedKey;
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Prerequisites saved.')));
-      }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

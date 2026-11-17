@@ -64,6 +64,7 @@ Map<String, Object> normalizeThemeCustomizationJson(Object? source) {
   final calendarDefaultView = source['calendarDefaultView'] ?? 'week';
   final reducedMotion = source['reducedMotion'] ?? false;
   final widgetOpacity = source['widgetOpacity'] ?? 100;
+  final detailPresentation = source['detailPresentation'] ?? 'sidePanel';
   if (compact is! bool ||
       textScale is! num ||
       !textScale.isFinite ||
@@ -85,7 +86,9 @@ Map<String, Object> normalizeThemeCustomizationJson(Object? source) {
       reducedMotion is! bool ||
       widgetOpacity is! int ||
       widgetOpacity < 0 ||
-      widgetOpacity > 100) {
+      widgetOpacity > 100 ||
+      detailPresentation is! String ||
+      !const ['sidePanel', 'fullPage'].contains(detailPresentation)) {
     throw const FormatException('Invalid layout preference');
   }
   return {
@@ -102,5 +105,6 @@ Map<String, Object> normalizeThemeCustomizationJson(Object? source) {
     'calendarDefaultView': calendarDefaultView,
     'reducedMotion': reducedMotion,
     'widgetOpacity': widgetOpacity,
+    'detailPresentation': detailPresentation,
   };
 }

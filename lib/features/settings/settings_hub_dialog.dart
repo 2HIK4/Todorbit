@@ -242,11 +242,49 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
           Icons.keyboard_outlined,
           () => _open(const HotkeysDialog()),
         ),
-        _SettingsPage.tasks => _action(
-          'Task display and defaults',
-          'Default date, completed tasks, inline spelling, and checklist text',
-          Icons.task_alt_outlined,
-          () => _open(const TaskViewSettingsDialog()),
+        _SettingsPage.tasks => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _action(
+              'Task display and defaults',
+              'Default date, completed tasks, inline spelling, checklist text, and detail presentation',
+              Icons.task_alt_outlined,
+              () => _open(const TaskViewSettingsDialog()),
+            ),
+            if (!Platform.isAndroid) ...[
+              const SizedBox(height: 12),
+              AnchoredSelectField<String>(
+                key: ValueKey(
+                  controller.taskViewPreferences.detailPresentation,
+                ),
+                initialValue: controller.taskViewPreferences.detailPresentation,
+                decoration: const InputDecoration(
+                  labelText: 'Task & event presentation',
+                  helperText:
+                      'Choose side panel (default) or full window/page presentation',
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'sidePanel',
+                    child: Text('Side panel (default)'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'fullPage',
+                    child: Text('Full page / window'),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    controller.setTaskViewPreferences(
+                      controller.taskViewPreferences.copyWith(
+                        detailPresentation: value,
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
+          ],
         ),
         _SettingsPage.navigation => Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
