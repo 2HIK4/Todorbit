@@ -1,5 +1,36 @@
 # AI Review Queue
 
+## UI-REL-01 (Prompt 1) — Viewport constraints, IME keyboard insets, responsive text scaling, and standardized card geometry (2026-11-17)
+
+- **Scope & Addressed Issues**:
+  - `ISS-C01`: Dialog & Sheet keyboard inset (IME) overflow. Fixed in `lib/features/workspace/workspace.dart`, `lib/features/calendar/calendar_view.dart`, `lib/features/workspace/checklist_item_dialog.dart`, `lib/features/workspace/sequence_dialog.dart`, and `lib/features/time_tracking/time_tracking_dialog.dart`. Clamped heights against `media.size.height - media.viewInsets.bottom - margin` and ensured scrollable wrappers prevent `RenderFlex overflowed` when software keyboard appears.
+  - `ISS-C05` & `ISS-C06`: Standardized card geometry and responsive chips. Enforced `minHeight: 52` on desktop task rows and `minHeight: 56` with `maxLines: 2` on mobile task rows (`lib/features/mobile/mobile_workspace.dart`), ensuring optical checkbox alignment and eliminating list jumping when tasks gain or lose metadata.
+  - `ISS-B02`: Calendar header responsiveness under narrow viewports (320dp) and 2.0× text scaling.
+  - `ISS-B04`: Localized card clipping avoiding overlay clipping.
+  - `ISS-B05`: Calendar agenda card geometry alignment.
+  - `ISS-A01`: Alarm option label wrap constraints under high text scaling.
+  - `ISS-C14`: Arabic BiDi text input alignment in task and event editors.
+- **Source Paths Modified**:
+  - `lib/features/workspace/workspace.dart`
+  - `lib/features/calendar/calendar_view.dart`
+  - `lib/features/workspace/checklist_item_dialog.dart`
+  - `lib/features/workspace/sequence_dialog.dart`
+  - `lib/features/time_tracking/time_tracking_dialog.dart`
+  - `lib/features/mobile/mobile_workspace.dart`
+  - `docs/TODORBIT_UI_RELIABILITY_PROGRAM.md`
+- **Verification Evidence**:
+  - Static Analysis: `flutter analyze --no-pub lib/ test/` -> 0 issues found.
+  - `test/workspace_test.dart` -> 15/15 passed (35s).
+  - `test/task_editor_schedule_layout_test.dart` -> 1/1 passed (5s).
+  - `test/mobile_workspace_test.dart` -> 23/23 passed (49s).
+  - `test/calendar_test.dart` -> 3/3 passed (15s).
+  - `test/checklist_layout_test.dart` + `test/remaining_dialog_layout_test.dart` + `test/time_tracking_widget_test.dart` -> 7/7 passed (18s).
+  - `test/alarm_field_test.dart` + `test/task_editor_ui_polish_test.dart` -> 5/5 passed (18s).
+  - Total Level 1/2 tests executed: 54/54 passed (0 failures).
+- **Status**: Unreviewed implementation queued for Codex independent review. No beta release or deployment performed.
+
+---
+
 ## SYNC-01 / UIUX-04 — Phantom sync conflict elimination, Focus timer rebuild optimization, and TaskDetails lifecycle safety (2026-11-17)
 
 - **Scope & Problem**:

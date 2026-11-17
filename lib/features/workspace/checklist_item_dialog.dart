@@ -51,45 +51,56 @@ class _ChecklistItemEditorDialogState
 
   @override
   Widget build(BuildContext context) {
-    final viewport = MediaQuery.sizeOf(context);
+    final media = MediaQuery.of(context);
+    final maxHeight =
+        (media.size.height - media.viewInsets.bottom - 48).clamp(180.0, 480.0);
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: SizedBox(
-        key: const ValueKey('checklist-dialog-surface'),
-        width: math.min(440, viewport.width - 32),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(widget.title, style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 20),
-              TextField(
-                controller: field,
-                autofocus: true,
-                minLines: 2,
-                maxLines: 4,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => Navigator.pop(context, field.text.trim()),
-                decoration: const InputDecoration(labelText: 'Activity'),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(context, field.text.trim()),
-                    child: const Text('Save'),
-                  ),
-                ],
-              ),
-            ],
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: math.min(440, media.size.width - 32),
+          maxHeight: maxHeight,
+        ),
+        child: SingleChildScrollView(
+          child: Padding(
+            key: const ValueKey('checklist-dialog-surface'),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.title,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: field,
+                  autofocus: true,
+                  minLines: 2,
+                  maxLines: 4,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => Navigator.pop(context, field.text.trim()),
+                  decoration: const InputDecoration(labelText: 'Activity'),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: () =>
+                          Navigator.pop(context, field.text.trim()),
+                      child: const Text('Save'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

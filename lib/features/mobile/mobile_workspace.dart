@@ -937,54 +937,60 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
     if (project != null) addPart(TextSpan(text: project));
 
     return Card(
-      child: ListTile(
-        contentPadding: const EdgeInsetsDirectional.only(start: 4, end: 4),
-        leading: Checkbox(
-          value: t.status == TaskStatus.completed,
-          semanticLabel:
-              '${t.status == TaskStatus.completed ? 'Reopen' : 'Complete'} ${t.title}',
-          onChanged: (v) => run(() => c.setComplete(t, v == true)),
-        ),
-        title: Text(
-          t.title,
-          style: t.status == TaskStatus.completed
-              ? const TextStyle(decoration: TextDecoration.lineThrough)
-              : null,
-        ),
-        subtitle: subtitleParts.isEmpty
-            ? null
-            : Text.rich(
-                TextSpan(
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 56),
+        child: ListTile(
+          contentPadding: const EdgeInsetsDirectional.only(start: 6, end: 8),
+          leading: Checkbox(
+            value: t.status == TaskStatus.completed,
+            semanticLabel:
+                '${t.status == TaskStatus.completed ? 'Reopen' : 'Complete'} ${t.title}',
+            onChanged: (v) => run(() => c.setComplete(t, v == true)),
+          ),
+          title: Text(
+            t.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: t.status == TaskStatus.completed
+                ? const TextStyle(decoration: TextDecoration.lineThrough)
+                : null,
+          ),
+          subtitle: subtitleParts.isEmpty
+              ? null
+              : Text.rich(
+                  TextSpan(
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    children: subtitleParts,
                   ),
-                  children: subtitleParts,
                 ),
-              ),
-        onTap: () => openTaskDetails(t),
-        onLongPress: () => actions(t, c),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isOverdue)
-              Padding(
-                padding: const EdgeInsets.only(right: 4),
-                child: Icon(
-                  Icons.warning_amber_rounded,
-                  color: Theme.of(context).colorScheme.error,
-                  size: 20,
-                  semanticLabel: 'Overdue',
+          onTap: () => openTaskDetails(t),
+          onLongPress: () => actions(t, c),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isOverdue)
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Icon(
+                    Icons.warning_amber_rounded,
+                    color: Theme.of(context).colorScheme.error,
+                    size: 20,
+                    semanticLabel: 'Overdue',
+                  ),
                 ),
+              if (t.isOpen &&
+                  taskAlarmRule(t, c.alarmRules)?.config.enabled == true)
+                const AlarmIndicator(),
+              IconButton(
+                tooltip: 'Actions for ${t.title}',
+                icon: const Icon(Icons.more_vert),
+                onPressed: () => actions(t, c),
               ),
-            if (t.isOpen &&
-                taskAlarmRule(t, c.alarmRules)?.config.enabled == true)
-              const AlarmIndicator(),
-            IconButton(
-              tooltip: 'Actions for ${t.title}',
-              icon: const Icon(Icons.more_vert),
-              onPressed: () => actions(t, c),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

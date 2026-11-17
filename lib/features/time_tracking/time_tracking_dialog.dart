@@ -162,10 +162,12 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
             entries.where((item) => item.timerRunId == thisRun.id),
             confirmedEnd,
           );
+    final media = MediaQuery.of(context);
+    final availableHeight = media.size.height - media.viewInsets.bottom - 64;
     return Dialog(
       child: SizedBox(
-        width: math.min(550, MediaQuery.sizeOf(context).width - 48),
-        height: math.min(630, MediaQuery.sizeOf(context).height - 64),
+        width: math.min(550, media.size.width - 48),
+        height: math.min(630, math.max(280.0, availableHeight)),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: CustomScrollView(

@@ -28,6 +28,7 @@ class _SequenceDialogState extends ConsumerState<SequenceDialog> {
         animationStyle: AppMotion.style(context),
         builder: (context) => AlertDialog(
           title: Text(title),
+          scrollable: true,
           content: TextField(
             controller: field,
             autofocus: true,

@@ -508,17 +508,22 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       showDialog<void>(
         context: context,
         animationStyle: AppMotion.style(context),
-        builder: (dialogContext) => Dialog(
-          child: SizedBox(
-            width: math.min(520, MediaQuery.sizeOf(dialogContext).width - 48),
-            height: math.min(620, MediaQuery.sizeOf(dialogContext).height - 64),
-            child: TaskEditor(
-              protectUnsavedEdits: true,
-              onSaved: () => Navigator.pop(dialogContext),
-              onCancel: () => Navigator.pop(dialogContext),
+        builder: (dialogContext) {
+          final media = MediaQuery.of(dialogContext);
+          final availableHeight =
+              media.size.height - media.viewInsets.bottom - 64;
+          return Dialog(
+            child: SizedBox(
+              width: math.min(520, media.size.width - 48),
+              height: math.min(620, math.max(280.0, availableHeight)),
+              child: TaskEditor(
+                protectUnsavedEdits: true,
+                onSaved: () => Navigator.pop(dialogContext),
+                onCancel: () => Navigator.pop(dialogContext),
+              ),
             ),
-          ),
-        ),
+          );
+        },
       );
       return;
     }
@@ -532,18 +537,23 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       showDialog<void>(
         context: context,
         animationStyle: AppMotion.style(context),
-        builder: (dialogContext) => Dialog(
-          child: SizedBox(
-            width: math.min(520, MediaQuery.sizeOf(dialogContext).width - 48),
-            height: math.min(620, MediaQuery.sizeOf(dialogContext).height - 64),
-            child: TaskEditor(
-              protectUnsavedEdits: true,
-              initialScheduled: date,
-              onSaved: () => Navigator.pop(dialogContext),
-              onCancel: () => Navigator.pop(dialogContext),
+        builder: (dialogContext) {
+          final media = MediaQuery.of(dialogContext);
+          final availableHeight =
+              media.size.height - media.viewInsets.bottom - 64;
+          return Dialog(
+            child: SizedBox(
+              width: math.min(520, media.size.width - 48),
+              height: math.min(620, math.max(280.0, availableHeight)),
+              child: TaskEditor(
+                protectUnsavedEdits: true,
+                initialScheduled: date,
+                onSaved: () => Navigator.pop(dialogContext),
+                onCancel: () => Navigator.pop(dialogContext),
+              ),
             ),
-          ),
-        ),
+          );
+        },
       );
       return;
     }
@@ -661,18 +671,23 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     await showDialog<void>(
       context: context,
       animationStyle: AppMotion.style(context),
-      builder: (dialogContext) => Dialog(
-        child: SizedBox(
-          width: 600,
-          height: (MediaQuery.sizeOf(context).height - 64).clamp(240, 750),
-          child: EventEditor(
-            event: event,
-            initialDay: event.startsAt.toLocal(),
-            protectUnsavedEdits: true,
-            onClose: () => Navigator.pop(dialogContext),
+      builder: (dialogContext) {
+        final media = MediaQuery.of(dialogContext);
+        final availableHeight =
+            media.size.height - media.viewInsets.bottom - 64;
+        return Dialog(
+          child: SizedBox(
+            width: 600,
+            height: availableHeight.clamp(240.0, 750.0),
+            child: EventEditor(
+              event: event,
+              initialDay: event.startsAt.toLocal(),
+              protectUnsavedEdits: true,
+              onClose: () => Navigator.pop(dialogContext),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -2360,9 +2375,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () => _openTask(task, wide),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: Row(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 52),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Row(
             children: [
               Tooltip(
                 message: done ? 'Reopen task' : 'Complete task',
@@ -2590,6 +2607,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

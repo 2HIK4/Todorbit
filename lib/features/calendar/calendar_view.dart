@@ -224,18 +224,22 @@ class _CalendarViewState extends ConsumerState<CalendarView>
     await showDialog<void>(
       context: context,
       animationStyle: AppMotion.style(context),
-      builder: (context) => Dialog(
-        child: SizedBox(
-          width: 500,
-          height: (MediaQuery.sizeOf(context).height - 48).clamp(0.0, 650.0),
-          child: EventEditor(
-            protectUnsavedEdits: true,
-            event: event,
-            initialDay: initialDate ?? day,
-            onClose: () => Navigator.pop(context),
+      builder: (context) {
+        final media = MediaQuery.of(context);
+        final availableHeight = media.size.height - media.viewInsets.bottom - 48;
+        return Dialog(
+          child: SizedBox(
+            width: 500,
+            height: availableHeight.clamp(240.0, 650.0),
+            child: EventEditor(
+              protectUnsavedEdits: true,
+              event: event,
+              initialDay: initialDate ?? day,
+              onClose: () => Navigator.pop(context),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
     if (mounted) await _loadSelectedMonth();
   }
