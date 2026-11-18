@@ -1,14 +1,8 @@
 # Progress
 
-## Beta 24 release-blocker patch (2026-11-18)
+## Beta 24 release-blocker integration and verification (2026-11-18)
 
-Codex took over the four remaining P1s from `253bc54` in
-`fix/todorbit-beta24-release-blockers`. Sync keeps historical revisions and
-staged envelopes. Android uses one native Shared Inbox worker. Desktop editor
-navigation waits for Save, Discard or Keep editing. Smart Reschedule revalidates
-recurring event occurrences inside Apply. Local writes signal Sync and a mounted
-Calendar loads delivered dates after active gestures. See the [Codex Beta 24 implementation receipt](BETA24_CODEX_RELEASE_BLOCKER_FIXES_2026_11_18.md) for
-verification, integration and outstanding acceptance.
+Integrated Codex's four P1 release blocker fixes and related improvements from `fix/todorbit-beta24-release-blockers` (`cfde5b3b85d2cbc460be8fcf06075707c7481283`) into `feature/todorbit-release-p8` at commit `12d7e4624b455c17fae44ebae566110f0f4a8616` (0 merge conflicts). Verified causal history preservation on SQLite startup, Android Shared Inbox native single-worker serialization and task attachment survival, Workspace editor navigation guards across Side Panel and Full Page modes, and Smart Reschedule recurring occurrence collision checks. 105 focused regression tests PASS (100%), static analysis clean (0 issues), native companion .NET 10 Release build and self-test PASS, and Android release APK compiled, signed, and verified with 16-KiB alignment. GitHub Actions Android validation passed ([Run 44390832263](https://github.com/2HIK4/Todorbit/actions/runs/44390832263)). Publication is BLOCKED by failed Windows CI ([Run 44390804115](https://github.com/2HIK4/Todorbit/actions/runs/44390804115)) and missing Windows installer/portable artifacts. Stable remains untouched. [Receipt](UIUX05_BETA_24_PUBLICATION.md).
 
 ## Prompt 8 — Verification Hardening, Codex Findings Resolution & Candidate Release (2026-11-18)
 

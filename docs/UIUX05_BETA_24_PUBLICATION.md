@@ -1,78 +1,108 @@
-# UIUX-05 / Prompt 8 Release Verification & Publication Report
+# UIUX-05 / Beta 24 Integration & Publication Verification Report
 
-Historical candidate report for `1.0.19-beta.24+47`. The [Codex Beta 24 implementation receipt](BETA24_CODEX_RELEASE_BLOCKER_FIXES_2026_11_18.md)
-records subsequent release-blocker corrections and remaining acceptance.
-Publication is outside this patch.
+Owner authorization conditionally permitted one experimental pre-release for Todorbit Beta 24 (`1.0.19-beta.24+47`), subject to mandatory CI, packaging, signing, and sync safety gates passing.
 
-Status of the earlier candidate assessment: **SUPERSEDED**
+Status: **BLOCKED (Release Candidate Verified; Publication Blocked by Windows CI Gate)**
 Branch: `feature/todorbit-release-p8`
-Base commit: `03abc27a44c875f5a1a6a070452a70a98c5e6efa` (Prompt 7 baseline)
+Merged Commit: `12d7e4624b455c17fae44ebae566110f0f4a8616`
+Codex Base Commit: `253bc54eb74300505793cf0a6e5328a3858f23da`
+Codex Fix Commit: `cfde5b3b85d2cbc460be8fcf06075707c7481283`
+Version: `1.0.19-beta.24+47`; intended tag: `v1.0.19-beta.24`
 
 ---
 
-## 1. Independent Codex Review Findings Matrix
+## 1. Executive Summary & Publication Decision
 
-Codex performed a read-only source inspection of Prompts 1–7 and identified 5 P1 and 7 P2 findings (0 P0 findings). All 12 findings were independently investigated, reproduced, repaired on `feature/todorbit-release-p8`, and validated with regression tests.
+Codex completed the implementation of the four remaining release blockers on `fix/todorbit-beta24-release-blockers`. Gemini integrated the fixes into `feature/todorbit-release-p8` at commit `12d7e4624b455c17fae44ebae566110f0f4a8616` via a clean merge (0 conflicts).
 
-| ID | Severity | Area | Reported Defect | Root Cause & Resolution | Verification |
-|---|---|---|---|---|---|
-| **P1-01** | P1 | Sync / Rollback | Mixed-version Google Drive sync and rollback incompatibility. Older versions (Beta 23) using Schema 29 reject unknown `detailPresentation` portable preference key. | `detailPresentation` was included in portable preferences and cloud sync. **Fix**: Classified as a device-local preference in `deviceLocalThemeFields`, stripped in `validatePortablePreference('customization', ...)`, pruned legacy rows from `portable_preferences` SQLite table on open, and omitted from `AppController.setTaskViewPreferences`. Retained in local profile JSON and `SettingsTransfer`. | `prompt8_codex_fixes_test.dart` (P1-01 suite); `sync_apply_repository_test.dart` (32 tests PASS). |
-| **P1-02** | P1 | Android Share | Ingesting multiple shared files can lose all but the final file due to repeated snapshot overwrite. | `ShareReceiverActivity.kt` loaded existing entries once outside the loop and prepended to that original list on each iteration. **Fix**: Accumulate batch entries, synchronize updates, verify `renameTo` with fallback, and combine `EXTRA_STREAM` with `clipData`. | `prompt8_codex_fixes_test.dart` (P1-02 suite); `shared_inbox_store_test.dart` (10 tests PASS). |
-| **P1-03** | P1 | Event Editor | Switching Full Page event editors can preserve stale fields from previous event while saving with new event's ID. | Flutter reused `_EventEditorState` because `EventEditor` lacked an identity-based key and `didUpdateWidget`. **Fix**: Added composite key `ValueKey((event.id, nominalDate, editorRevision))`, implemented `didUpdateWidget` and `_initFromEvent()`. | `prompt8_codex_fixes_test.dart` (P1-03 suite); `prompt1_search_and_detail_presentation_test.dart` (14 tests PASS). |
-| **P1-04** | P1 | Desktop Workspace | New Task fails in Full Page mode on wide desktop windows (width >= 1050px) because inline editor was suppressed and no main panel editor was rendered. | `inlineEditor` checked `!useFullPage`, while `_mainPanel` only checked `selectedTask != null`. **Fix**: Added `if (controller.isFullPageDetails && creating)` in `_mainPanel` to render `TaskEditor` full page. | `prompt8_codex_fixes_test.dart` (P1-04 suite); `workspace_test.dart` (15 tests PASS). |
-| **P1-05** | P1 | Navigation / Search | Navigation paths and search result selection bypass unsaved-edit guards, risking lost edits. | `EventEditor` did not attach its guard to `editorNavigation`, and search dialogs lacked navigation hooks. **Fix**: Exposed `attach()`/`detach()` on `TaskEditorController`, implemented `confirmLeave()` in `EventEditor`, and passed `beforeNavigate: _prepareEditorChange` to `QuickSearchDialog` and `AdvancedSearchDialog`. | `prompt8_codex_fixes_test.dart` (P1-05 suite); `workspace_test.dart` (15 tests PASS). |
-| **P2-01** | P2 | Android Security | Shared inbox Android receiver allows directory traversal / non-content schemes. | Unrestricted URI schemes and unvalidated authorities could allow unintended file access. **Fix**: Validated scheme == "content", forbade own package / file-provider authorities, and sanitized display names. | `ShareReceiverActivity.kt` hardening; `shared_inbox_store_test.dart`. |
-| **P2-02** | P2 | Reschedule | Smart Reschedule split session can overlap fixed events or existing sessions. | `splitSession` lacked interval collision detection for the second segment. **Fix**: Added `_Interval.overlaps()` check against `fixedEvents` (`ScheduleIssueKind.fixedEventCollision`) and `otherSessions` (`ScheduleIssueKind.sessionCollision`). | `prompt8_codex_fixes_test.dart` (P2-02 suite); `prompt4_smart_reschedule_test.dart` (16 tests PASS). |
-| **P2-03** | P2 | Recurrence | Calendar recurring task materialization can leave task counts / report cache stale. | `_loadRequestedRecurringMonths()` refreshed the calendar window without updating `reportTasks`. **Fix**: Included `repository.reportTasks()` in `refreshCalendarWindow()`. | `prompt7_cache_correctness_test.dart` (14 tests PASS); `workspace_test.dart`. |
-| **P2-04** | P2 | Calendar | Closing event details resets the user's selected calendar date to today. | `CalendarView` did not notify parent when selected date changed, causing fallback to initial date. **Fix**: Added `onDateSelected` callback and tracked `_lastCalendarDate` in `Workspace`. | `prompt8_codex_fixes_test.dart` (P2-04 suite); `calendar_view.dart`. |
-| **P2-05** | P2 | Subtasks | Parent subtask expander pill overlaps the task timer button. | `end: 52` padding on expander pill intersected with right-aligned action buttons. **Fix**: Increased end margin to `96dp` and displayed active timer badges for child tasks. | `prompt8_codex_fixes_test.dart` (P2-05 suite); `task_list_group.dart`. |
-| **P2-06** | P2 | UI / Pointer | Pointer cancellation clears hover with touch device kind instead of mouse kind. | `PointerCancellationScope` did not track device kind, view ID, or position when dispatching `PointerRemovedEvent`. **Fix**: Recorded `_DeviceState` and dispatched `PointerExitEvent` followed by `PointerRemovedEvent` with original device kind and viewId. | `prompt8_codex_fixes_test.dart` (P2-06 suite); `pointer_cancellation_scope_test.dart` (1 test PASS). |
-| **P2-07** | P2 | Task Details | Work Log total duration does not tick while timer is actively running in Full Page view. | `TaskDetailsView` computed duration at build time without a ticking timer. **Fix**: Added localized 1-second periodic timer in `_TaskDetailsViewState` active only while timer is running on viewed task. | `prompt8_codex_fixes_test.dart` (P2-07 suite); `task_details_view.dart`. |
+All four P1 release blocker areas, two related fixes, and critical persistence/sync invariants were independently verified:
+- **P1-01 (Sync Causal History)**: Verified. SQLite startup makes no destructive writes. Committed causal history, origin sequence, mutation groups, entity heads, and exact retry bytes are preserved.
+- **P1-02 (Android Shared Inbox Native Integration)**: Verified. Unified `SharedInboxStorage` native worker serializes all mutations across activities and Flutter channels with checked `Os.fsync` and directory sync. Independent task attachments survive inbox deletion.
+- **P1-03 (Unsaved Editor Navigation)**: Verified. Dialog guards await Save, Discard, or Keep editing before routing, search, timer navigation, or Escape in both Side Panel and Full Page modes.
+- **P1-04 (Smart Reschedule Occurrences Projection)**: Verified. Apply validates recurring event occurrences, moved-in/moved-out exceptions, and existing sessions within the write transaction with atomic rollback.
+- **Related Fixes**: Immediate Sync notification on local task/event commits and Calendar date loading mid-drag deferral were verified.
 
----
-
-## 2. Regression Test Results (133 / 133 PASS)
-
-All tests were executed sequentially with `--concurrency=1` in the isolated release worktree:
-
-1. **`test/prompt8_codex_fixes_test.dart`**: 14/14 PASS (P1-01 through P2-07 comprehensive regression).
-2. **`test/prompt1_search_and_detail_presentation_test.dart`**: 14/14 PASS (detail presentation, search sizing, keyboard insets).
-3. **`test/prompt4_smart_reschedule_test.dart`**: 16/16 PASS (hierarchy, recurrence grouping, collision review, Apply/undo).
-4. **`test/prompt7_cache_correctness_test.dart`**: 14/14 PASS (preference store caching, backup memoization, timer behavior).
-5. **`test/shared_inbox_store_test.dart`**: 10/10 PASS (multi-file ingestion, duplicate SHA-256 detection, atomic publishing).
-6. **`test/pointer_cancellation_scope_test.dart`**: 1/1 PASS (pointer exit & hover cleanup on lifecycle change).
-7. **`test/sync_apply_repository_test.dart`**: 32/32 PASS (mutation groups, causal projection, conflict reconciliation).
-8. **`test/workspace_test.dart`**: 15/15 PASS (navigation, quick search, task creation, memoization).
-9. **`test/software_update_service_test.dart` & `test/android_update_service_test.dart`**: 17/17 PASS (updater discovery and channel selection).
-
-**Total Focused Tests**: 133 passed, 0 failed, 0 skipped.
-**Static Analysis**: `flutter analyze --no-pub lib/ test/`: **0 errors, 0 warnings** (clean).
-**Formatting & Diff**: `git diff --check`: clean (0 whitespace/formatting issues).
+### Publication Decision: BLOCKED
+Publication is **BLOCKED** due to failure of mandatory release gates 2, 3, and 8:
+1. **GitHub Actions Windows CI Failure**: Run [44390804115](https://github.com/2HIK4/Todorbit/actions/runs/44390804115) (`windows-ci.yml`) failed at `Run Flutter tests` due to 12 broad legacy suite test failures in the unconstrained global test run.
+2. **Missing Windows Release Artifacts**: Because the CI test step failed, Windows release packaging (`tools/build-windows-release.ps1`), portable bundle packaging (`tools/build-portable.ps1`), installer compilation (`installer/build-installer.ps1`), and checksum generation did not execute on CI. Local Windows compilation is unavailable due to the host's non-elevated Developer Mode NTFS symlink restriction.
+3. **Packaging Integrity Gate**: Repository policy strictly forbids publishing incomplete or unverified release artifacts. Release assets must not be published without verified Windows setup and portable packages.
+4. **Stable Branch**: Untouched.
 
 ---
 
-## 3. Platform & Packaging Gates
+## 2. Codex Findings & Integration Review
 
+| Finding | Area | Root Cause & Merged Resolution | Independent Verification |
+|---|---|---|---|
+| **P1-01** | Sync / Causal History | SQLite startup previously pruned legacy rows and deleted sync journal rows, causing causal sequence advancement and lost retry bytes. **Resolution**: `AppDatabase.open` makes zero compatibility writes. `detailPresentation` is excluded from initial sync enrollment and outgoing batches. Incompatible legacy payloads halt exchange with `SyncPreferenceCompatibilityException` while retaining exact bytes and links for reconciliation. | `test/sync_exchange_repository_test.dart` (11/11 PASS); `test/database_initialization_test.dart` (22/22 PASS); `test/sync_journal_test.dart` (9/9 PASS). |
+| **P1-02** | Android Shared Inbox | Dual-owner manifest rewrites in Kotlin and Dart caused race conditions, file loss, and orphaned staging. **Resolution**: `SharedInboxWorker` single-thread executor serializes all operations. Native storage flushes file descriptors and directories (`Os.fsync`), publishes manifest before unlinking files, and safe recovery purges orphans using durable manifest. | `android/app/src/main/kotlin/io/github/hik4/todorbit/SharedInboxStorage.kt`; `test/shared_inbox_store_test.dart` (10/10 PASS); `test/shared_inbox_task_integration_test.dart` (5/5 PASS). |
+| **P1-03** | Unsaved Editor Navigation | Sidebar search, Escape, and timer navigation bypassed unsaved editor guards in certain modes. **Resolution**: Shared `askUnsavedEditorDecision` (Save, Discard, Keep editing). `Workspace._withEditorNavigation` awaits the mounted editor decision. Save commits to SQLite before routing; failed saves preserve drafts. | `test/workspace_draft_safety_test.dart` (26/26 PASS across Side Panel & Full Page modes). |
+| **P1-04** | Smart Reschedule | Apply checked event template timestamps rather than projected recurring occurrences, allowing collisions. **Resolution**: `LifeRepository.applyReschedule` projects recurring occurrences via `eventOccurrences`, respects cancelled/moved exceptions, checks work session intervals, and aborts atomically if stale collisions are detected. | `test/prompt4_smart_reschedule_test.dart` (20/20 PASS). |
+| **Related** | Immediate Sync Signaling | Controller mutations previously only signaled sync during read refresh if recurring tasks were materialized. **Resolution**: All local controller mutations call `refreshAfterLocalChange()`, triggering immediate `onLocalChange?.call()` to notify Sync. | `test/beta24_calendar_sync_test.dart` (2/2 PASS). |
+| **Related** | Calendar Interaction Mid-Drag | External date updates disrupted active drag/resize gestures. **Resolution**: `CalendarView` defers external date updates while `_handlingInteraction` or `isDragging` is true, resolving and loading recurrence window only upon interaction end. | `test/beta24_calendar_sync_test.dart` (2/2 PASS). |
+
+---
+
+## 3. Sync Compatibility Boundary & Decision
+
+A thorough evaluation of the mixed-version sync boundary between Beta 23 and Beta 24 was conducted:
+
+1. **Incompatible States in Public Beta 23 Profiles**:
+   - **None.** `detailPresentation` was introduced only in Prompt 1 (`5fbce95`) during the Beta 24 development cycle. It never existed in tagged release `v1.0.19-beta.23` or earlier releases.
+2. **States Produced by Experimental Pre-Release Builds**:
+   - Profiles created or opened by unpublished Prompt 1–7 / early Prompt 8 development builds may contain `detailPresentation` rows in `portable_preferences` and journal entries.
+3. **Standard Production Upgrade Safety (Beta 23 to Beta 24)**:
+   - Upgrading an enrolled Beta 23 database to Beta 24 succeeds cleanly. Beta 24 makes no startup deletions. `detailPresentation` is maintained purely in local profile JSON and never queued for sync. Outgoing batches contain only standard portable preferences that Beta 23 accepts.
+4. **Mixed-Version Sync (Beta 23 <-> Beta 24)**:
+   - Devices on Beta 23 and Beta 24 sharing a cloud workspace exchange changes safely. Beta 24 strips `detailPresentation` from customization payloads, and Beta 23 validation accepts all Beta 24 preference operations without `FormatException`.
+5. **Rollback Compatibility**:
+   - Rollback from Beta 24 to Beta 23 is fully supported for standard upgrades because schema version remains at 29 and no unknown keys are written to `portable_preferences`.
+   - Rollback for experimental dev profiles with previously queued incompatible envelopes is limited and requires restoring from the automatic Before-Upgrade / Before-Restore backup snapshot.
+6. **Recovery Path for Blocked Historical Operations**:
+   - If an experimental user has an incompatible staged envelope from an earlier dev build, `SyncPreferenceCompatibilityException` halts exchange safely, preserves all local SQLite records and causal history, and displays a user-facing recovery dialog.
+
+---
+
+## 4. Verification Matrix & Evidence
+
+### Local Focused Verification
+- **`test/sync_exchange_repository_test.dart`**: 11/11 PASS (reopen durability, retry byte matching, peer application, local presentation isolation).
+- **`test/beta24_calendar_sync_test.dart`**: 2/2 PASS (calendar date mid-drag deferral, immediate sync signaling).
+- **`test/prompt4_smart_reschedule_test.dart`**: 20/20 PASS (Smart Reschedule recurring event collision validation, Apply/Undo).
+- **`test/workspace_draft_safety_test.dart`**: 26/26 PASS (unsaved editor guards, Save/Discard/Keep editing, SQLite save failure fallback).
+- **`test/shared_inbox_store_test.dart`**: 10/10 PASS (Shared Inbox file ingestion, duplicate detection, atomic persistence).
+- **`test/shared_inbox_task_integration_test.dart`**: 5/5 PASS (independent task copy semantics, surviving inbox deletion).
+- **`test/database_initialization_test.dart`**: 22/22 PASS (Schema 29 forward compatibility, WAL mode, synchronous=FULL).
+- **`test/sync_journal_test.dart`**: 9/9 PASS (causal record ancestry, transaction rollback, tombstone tracking).
+- **Static Analysis**: `flutter analyze --no-pub` -> **0 issues found** (85.2s).
+- **Whitespace / Diff Check**: `git diff --check` -> **Clean** (0 issues).
 - **Native Companion (.NET 10)**:
   - `dotnet build experiments/widget-shell-probe/widget-shell-probe.csproj -c Release`: Built with 0 warnings, 0 errors.
-  - `dotnet run --project experiments/widget-shell-probe -- --self-test`: **PASS** (task revision safety, clock monotonicity, persistence, and alarm projection verified).
-- **Android Release Candidate**:
-  - Compiled via `tools/build-android.ps1` with JDK 21 (`C:\Program Files\Android\openjdk\jdk-21.0.8`) and API 36 (`C:\Users\User\AppData\Local\Android\Sdk`).
-  - Production signed with `android/key.properties` (gitignored).
-  - Artifact generated: `build/app/outputs/flutter-apk/app-github-release.apk` (52.0 MB).
-  - 16-KiB native alignment: Verified across all 8 native `.so` libraries (`lib/arm64-v8a/*`, `lib/x86_64/*`).
-- **Windows Release Bundle**:
-  - Local compilation halted due to non-elevated Developer Mode NTFS symlink restriction on host.
-  - Fully pre-configured for GitHub Actions (`.github/workflows/windows-ci.yml`) where symlinks and Inno Setup 7 are available.
+  - `dotnet run --project experiments/widget-shell-probe -c Release -- --self-test`: **PASS** (task revision safety, monotonic clocks, alarm projections, widget persistence).
+
+### Android Release Build Verification
+- **Compilation**: Compiled via `tools/build-android.ps1 -Mode Release` with JDK 21 and Android API 36.
+- **Production Signing**: Signed with `android/key.properties` (versionCode 47, versionName `1.0.19-beta.24`).
+- **Artifact**: `build/app/outputs/flutter-apk/app-github-release.apk` (52.1 MB).
+- **SHA-256**: `107BDBD497455AE80444D17C5DB33CF9DCE05287D2BE6A91C654BA5DD373DAE7`.
+- **16-KiB Native Alignment**: Verified with `tools/verify-android-artifact.py` across all 8 native `.so` libraries (`lib/arm64-v8a/*`, `lib/x86_64/*`).
+
+### GitHub Actions CI Verification
+- **Android Validation**: [Run 44390832263](https://github.com/2HIK4/Todorbit/actions/runs/44390832263) -> **SUCCESS** (6m44s workflow, 8m29s job; all tests, static analysis, and APK packaging passed).
+- **Windows Checks**: [Run 44390804115](https://github.com/2HIK4/Todorbit/actions/runs/44390804115) -> **FAILED** (failed at `Run Flutter tests` with exit code 1; 12 legacy/broad tests failed in the unconstrained global test run).
 
 ---
 
-## 4. Release Checklist & Recommendations
+## 5. Outstanding Physical Acceptance Backlog
 
-- [x] Baseline Prompt 7 verified commit: `03abc27a44c875f5a1a6a070452a70a98c5e6efa`.
-- [x] Isolated release worktree: `D:\AI_Projects\life_manager_worktrees\feature-todorbit-release-p8`.
-- [x] All 5 P1 and 7 P2 findings from Codex review investigated, fixed, and verified.
-- [x] Version incremented to `1.0.19-beta.24+47` in `pubspec.yaml` and `widget-shell-probe.csproj`.
-- [x] Release notes added to `CHANGELOG.md`.
-- [x] Zero data-loss guarantees, Schema 29 forward compatibility, and WAL `PRAGMA synchronous = FULL` strictly maintained.
-- [x] Stable branch untouched.
+The following physical acceptance scenarios remain open and must be performed on physical hardware prior to a production/stable release:
+1. **Android Share Sheet**: Share a PDF and multiple images simultaneously from external apps (e.g. Files by Google, Photos).
+2. **Cold-Start Share Delivery**: Receive shared intents while Todorbit is terminated.
+3. **Content URI Grants**: Verify permission persistence across process restarts.
+4. **App Restart & Interrupted Import Recovery**: Force-kill during multi-file import and verify manifest recovery.
+5. **Task Attachment Independence**: Verify attachments copied to tasks survive clearing the Shared Inbox.
+6. **Physical Windows Focus & Keyboard**: Verify Escape, tab navigation, and focus transitions on physical Windows 11 hardware.
+7. **Windows Screenshot & Hover**: Verify <kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> clears hover state without stuck tooltips.
+8. **Calendar Drag & Smart Reschedule**: Test touch/pointer event drag, resize, and Smart Reschedule review on live hardware.
+9. **Cross-Device Sync**: Execute end-to-end sync between physical Windows 11 and physical Android devices using real Google Drive OAuth.

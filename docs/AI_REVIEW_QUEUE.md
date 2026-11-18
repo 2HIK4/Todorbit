@@ -2,11 +2,24 @@
 
 ## Beta 24 release-blocker integration review (2026-11-18)
 
-**PENDING INTEGRATION REVIEW.** Base `253bc54eb74300505793cf0a6e5328a3858f23da`
-on `fix/todorbit-beta24-release-blockers`. Review the [Codex Beta 24 implementation receipt](BETA24_CODEX_RELEASE_BLOCKER_FIXES_2026_11_18.md), in particular
-the Sync compatibility stop for retained incompatible operations and the Android
-device acceptance still required before publishing. Prompt 8's earlier
-publication assessment below is historical.
+**INTEGRATION VERIFIED; PUBLICATION BLOCKED BY WINDOWS CI GATE.**
+- **Merged Commit**: `12d7e4624b455c17fae44ebae566110f0f4a8616` on `feature/todorbit-release-p8`.
+- **Merged Branch**: `fix/todorbit-beta24-release-blockers` (commit `cfde5b3b85d2cbc460be8fcf06075707c7481283`, base `253bc54eb74300505793cf0a6e5328a3858f23da`).
+- **Codex Findings Verified**:
+  - P1-01: Sync causal history preserved. Zero SQLite startup deletions. Exact retry byte preservation and peer envelope application verified.
+  - P1-02: Android Shared Inbox native worker synchronization, checked `Os.fsync`, atomic manifest publication before unlinking. Task attachments survive inbox clear.
+  - P1-03: Workspace unsaved editor guard awaits Save/Discard/Keep editing across Side Panel and Full Page modes. Failed saves preserve drafts.
+  - P1-04: Smart Reschedule validates recurring occurrences, moved/cancelled exceptions, and existing sessions in the transaction.
+  - Related: Immediate Sync signaling on commits and Calendar external date mid-drag deferral verified.
+- **Verification Summary**:
+  - 107 focused host tests PASS (100% pass across critical suites).
+  - Static analysis: `flutter analyze --no-pub` -> 0 issues (clean).
+  - Diff check: `git diff --check` -> clean.
+  - Native Companion: .NET 10 Release build and `--self-test` PASS.
+  - Android Release APK: Compiled via `tools/build-android.ps1`, production signed, 16-KiB native alignment verified (SHA-256 `107BDBD497455AE80444D17C5DB33CF9DCE05287D2BE6A91C654BA5DD373DAE7`).
+  - GitHub Actions Android CI ([Run 44390832263](https://github.com/2HIK4/Todorbit/actions/runs/44390832263)): SUCCESS (8m29s).
+  - GitHub Actions Windows CI ([Run 44390804115](https://github.com/2HIK4/Todorbit/actions/runs/44390804115)): FAILED at `Run Flutter tests` due to 12 legacy suite fixture failures; Windows release installer/portable packages could not be produced.
+- **Status**: Publication BLOCKED per mandatory release gates 2, 3, and 8. See [Beta 24 Verification & Publication Report](UIUX05_BETA_24_PUBLICATION.md).
 
 ## Historical Prompt 8 — Final Release Verification (2026-11-18)
 

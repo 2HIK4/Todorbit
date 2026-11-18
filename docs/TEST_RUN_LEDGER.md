@@ -1,11 +1,32 @@
 # Persistent test run ledger
 
-## Beta 24 release-blocker verification (2026-11-18, UTC+03:00)
+## Beta 24 release-blocker integration verification (2026-11-18, UTC+03:00)
 
-`fix/todorbit-beta24-release-blockers`, base `253bc54`. See the [Codex Beta 24 implementation receipt](BETA24_CODEX_RELEASE_BLOCKER_FIXES_2026_11_18.md)
-for source identity, scoped counts, Android instrumented checks, and the
-physical acceptance still pending. The earlier Prompt 8 candidate receipts
-apply to their recorded source and artifacts.
+`feature/todorbit-release-p8`, commit `12d7e4624b455c17fae44ebae566110f0f4a8616`, integrating `fix/todorbit-beta24-release-blockers` (`cfde5b3b85d2cbc460be8fcf06075707c7481283`, base `253bc54eb74300505793cf0a6e5328a3858f23da`). [Report](UIUX05_BETA_24_PUBLICATION.md) and [Codex receipt](BETA24_CODEX_RELEASE_BLOCKER_FIXES_2026_11_18.md):
+- **Focused Host Regression Matrix**:
+  1. `test/sync_exchange_repository_test.dart`: **11/11 PASS** (reopen durability, retry byte matching, peer application, local presentation isolation).
+  2. `test/beta24_calendar_sync_test.dart`: **2/2 PASS** (calendar date mid-drag deferral, immediate sync signaling).
+  3. `test/prompt4_smart_reschedule_test.dart`: **20/20 PASS** (Smart Reschedule recurring event collision validation, Apply/Undo).
+  4. `test/workspace_draft_safety_test.dart`: **26/26 PASS** (unsaved editor guards, Save/Discard/Keep editing, SQLite save failure fallback).
+  5. `test/shared_inbox_store_test.dart`: **10/10 PASS** (Shared Inbox file ingestion, duplicate detection, atomic persistence).
+  6. `test/shared_inbox_task_integration_test.dart`: **5/5 PASS** (independent task copy semantics, surviving inbox deletion).
+  7. `test/database_initialization_test.dart`: **22/22 PASS** (Schema 29 forward compatibility, WAL mode, synchronous=FULL).
+  8. `test/sync_journal_test.dart`: **9/9 PASS** (causal record ancestry, transaction rollback, tombstone tracking).
+  - Total focused host test suite: **105 PASS, 0 FAIL, 0 SKIP**.
+- **Static Analysis**: `flutter analyze --no-pub` -> **0 issues found** (85.2s).
+- **Whitespace / Diff Check**: `git diff --check` -> **Clean** (0 whitespace/formatting issues).
+- **Native Companion (.NET 10)**:
+  - Release build: `dotnet build experiments/widget-shell-probe/widget-shell-probe.csproj -c Release` -> 0 warnings, 0 errors.
+  - Self-test: `dotnet run --project experiments/widget-shell-probe -c Release -- --self-test` -> **PASS** (task revision safety, monotonic clocks, alarm projections, widget persistence).
+- **Android Release Candidate**:
+  - `tools/build-android.ps1 -Mode Release`: Universal release APK generated at `build/app/outputs/flutter-apk/app-github-release.apk` (52.1 MB).
+  - Production signed with `android/key.properties` (versionCode 47, versionName `1.0.19-beta.24`).
+  - SHA-256: `107BDBD497455AE80444D17C5DB33CF9DCE05287D2BE6A91C654BA5DD373DAE7`.
+  - 16-KiB native alignment verified across all 8 native `.so` libraries (`tools/verify-android-artifact.py`).
+- **GitHub Actions CI**:
+  - Android validation: [Run 44390832263](https://github.com/2HIK4/Todorbit/actions/runs/44390832263) -> **SUCCESS** (8m29s).
+  - Windows checks: [Run 44390804115](https://github.com/2HIK4/Todorbit/actions/runs/44390804115) -> **FAILED** (exit code 1 at `Run Flutter tests` due to 12 legacy/broad test fixture failures; Windows packaging aborted).
+- **Publication Status**: **BLOCKED** due to missing Windows release artifacts and failed Windows CI gate.
 
 ## Prompt 7 Performance Optimization & Safety Review (2026-11-18, UTC+03:00)
 
