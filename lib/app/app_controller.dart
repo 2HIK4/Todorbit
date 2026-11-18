@@ -247,6 +247,7 @@ class AppController extends ChangeNotifier {
 
   @override
   void notifyListeners() {
+    if (_disposed) return;
     _stateRevision++;
     _invalidateTaskCaches();
     super.notifyListeners();
@@ -416,6 +417,7 @@ class AppController extends ChangeNotifier {
     _scheduleMidnightTimer();
     if (selectedTaskId != null && selectedTask == null) selectedTaskId = null;
     loading = false;
+    _loadedCalendarStateRevision = _stateRevision;
     notifyListeners();
     onLocalChange?.call();
   }
@@ -517,8 +519,10 @@ class AppController extends ChangeNotifier {
   }
 
   void select(String? taskId) {
+    if (selectedTaskId == taskId || _disposed) return;
     selectedTaskId = taskId;
-    notifyListeners();
+    _stateRevision++;
+    super.notifyListeners();
   }
 
   void setSort(TaskSort value) {
@@ -782,6 +786,7 @@ class AppController extends ChangeNotifier {
   Future<void> reloadTheme() async {
     final store = appearanceStore;
     if (store == null) return;
+    store.invalidateCache();
     final value = await store.load();
     final palette = await store.loadCustomization();
     await repository.savePortablePreferences({
@@ -1278,6 +1283,31 @@ class AppController extends ChangeNotifier {
     );
   }
 
+  Future<void> refreshCalendarWindow() async {
+    final today = localDate(DateTime.now());
+    final windowEvents = repository.eventOccurrences(
+      eventWindowFrom,
+      eventWindowThrough,
+    );
+    final todayEventsLoad =
+        today.compareTo(eventWindowFrom) >= 0 &&
+            today.compareTo(eventWindowThrough) <= 0
+        ? windowEvents
+        : repository.eventOccurrences(today, today);
+    final results = await Future.wait([
+      windowEvents,
+      todayEventsLoad,
+      repository.tasks(),
+      repository.taskParents(),
+    ]);
+    if (_disposed) return;
+    events = results[0] as List<FixedEvent>;
+    todayEvents = results[1] as List<FixedEvent>;
+    tasks = results[2] as List<LifeTask>;
+    taskParents = results[3] as Map<String, String>;
+    notifyListeners();
+  }
+
   Future<void> _loadRequestedRecurringMonths() async {
     while (_requestedRecurringMonth != null) {
       final date = _requestedRecurringMonth!;
@@ -1298,7 +1328,7 @@ class AppController extends ChangeNotifier {
       _eventWindowFrom = from;
       _eventWindowThrough = through;
       try {
-        await refresh();
+        await refreshCalendarWindow();
         _loadedCalendarStateRevision = stateRevision;
       } catch (_) {
         _eventWindowFrom = previousFrom;

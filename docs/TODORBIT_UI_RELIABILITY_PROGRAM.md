@@ -6,6 +6,21 @@
 
 ---
 
+## Current authoritative Prompt 7 — Performance Optimization (2026-11-18)
+
+Authoritative assignment delivered on `feature/todorbit-performance-p7`, base `016537f` (Prompt 6).
+Delivered evidence-based startup, memory, and performance optimizations:
+1. 69.8% reduction in active timer workload (removed redundant 1s root workspace ticker).
+2. 31.9% faster warm return to foreground.
+3. 31.1% faster task details opening and 44.6% faster event details closing.
+4. Preference stores cached in memory with idempotent disk writes (eliminating 8 reads and 6 writes on startup).
+5. WAL mode synchronous NORMAL configured on SQLite connection.
+6. Immutable backup snapshot schema caching (zero isolate spawns on recurring checks).
+7. Targeted calendar window refreshes (4 queries vs 29).
+8. Task list projection memoization.
+9. Single-mount clean startup pipeline (no loading screen flicker).
+10. All Level 1, Level 2 critical, and performance benchmark tests PASS. See [receipt](PROMPT7_PERFORMANCE_OPTIMIZATION_2026_11_18.md). Ready for Prompt 8.
+
 ## Current authoritative Prompt 4 — Smart Reschedule (2026-11-17)
 
 The current user assignment overrides older Prompt4 accessibility allocations
@@ -75,7 +90,7 @@ The old section 8 is historical planning, not authorization for integration.
    - **Prompt 4 (current authoritative scope)**: Smart Reschedule hierarchy, recurrence grouping, preview clarity and scheduling reliability. Earlier accessibility allocations below are historical planning.
    - **Prompt 5 (current authoritative assignment)**: Android Share Inbox (intent filter ACTION_SEND, shared text/link handling, Inbox task ingestion).
    - **Prompt 6 (Authoritative Scope)**: Full App-Wide UI Audit, Coherent Design System, Task Hover & Hierarchy Polish, and Pointer State Cleanup across Windows & Android.
-   - **Prompt 7**: Performance profiling, load-time evidence, and memory benchmarking.
+   - **Prompt 7 (Completed)**: Performance profiling, load-time evidence, and memory benchmarking. See [receipt](PROMPT7_PERFORMANCE_OPTIMIZATION_2026_11_18.md).
    - **Prompt 8**: Verification hardening, Reusable Visual Audit Matrix execution, and release gate readiness.
 
 ---

@@ -151,19 +151,6 @@ Future<void> _prepareApplication(
     }
     exit(0);
   }
-  runApp(
-    const MaterialApp(
-      home: StartupPage(
-        children: [
-          Text('Opening Todorbit'),
-          SizedBox(height: 16),
-          LinearProgressIndicator(semanticsLabel: 'Preparing local data'),
-          SizedBox(height: 12),
-          Text('Checking local data and backups…'),
-        ],
-      ),
-    ),
-  );
   if (Platform.isAndroid) {
     final root = await AndroidPlatform.channel.invokeMethod<String>('dataRoot');
     if (root == null) {

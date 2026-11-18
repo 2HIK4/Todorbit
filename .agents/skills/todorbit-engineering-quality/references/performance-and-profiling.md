@@ -60,3 +60,20 @@ The development machine has 16 GB of RAM. Exceeding available memory causes aggr
    - Never loop individual `customInsert` queries without an enclosing transaction.
 3. **Indexed Queries**:
    - Ensure foreign keys and filter columns (`task_id`, `event_id`, `scheduled_date`, `updated_at`, `status`) are backed by covering indices.
+
+---
+
+## 6. Startup & Idle Efficiency Patterns
+
+1. **Single-Mount Startup Pipeline**:
+   - Never call `runApp()` with an intermediate loading screen only to tear down the entire widget tree when initialization completes. Mount `LifeManagerApp` once; keep native splash active until the first meaningful frame renders.
+2. **Preference Store Idempotency & In-Memory Caching**:
+   - Cache decoded JSON in memory validated against `stat.modified`.
+   - Skip disk serialization (`_write`) if new content is byte-identical to existing content to prevent disk I/O thrashing and spurious file-watcher reload loops.
+3. **Immutable Snapshot Schema Memoization**:
+   - Standalone SQLite snapshots (backups/archives) are immutable. Check filename timestamps (`auto-YYYYMMDD...`) and file stats before spawning isolates.
+   - Memoize verified schema versions by `(path, modified, size)` so recurring backup checks incur zero isolate overhead.
+4. **Scoped Tickers vs Root Rebuilds**:
+   - Never attach high-frequency or 1-second `Timer.periodic` triggers to top-level scaffold/workspace states to update descendant timer badges. Descendant widgets (`CompactTaskTimer`) must own their own localized ticker and `setState()`.
+5. **Targeted Viewport Refreshes**:
+   - When navigating calendar months or moving time windows, update only affected window collections (`events`, `todayEvents`) rather than firing full-database queries for unrelated modules (habits, goals, templates, trash).

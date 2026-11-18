@@ -335,7 +335,6 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   DateTime? newTaskInitialDate;
   final nativeWidget = NativeWidgetService();
-  Timer? _clock;
 
   @override
   void initState() {
@@ -431,11 +430,6 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         }
       });
     }
-    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && ref.read(appControllerProvider).activeTimer != null) {
-        setState(() {});
-      }
-    });
   }
 
   Future<void> _openWidgetSettings(DesktopWidgetKind kind) async {
@@ -480,7 +474,6 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     categoryDisclosure.dispose();
     _widgetSettingsController.dispose();
     HardwareKeyboard.instance.removeHandler(_handleHotkey);
-    _clock?.cancel();
     if (Platform.isWindows) _activationChannel.setMethodCallHandler(null);
     super.dispose();
   }

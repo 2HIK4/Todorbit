@@ -12,6 +12,13 @@ class AppearancePreferenceStore {
   AppearancePreferenceStore(this.file);
 
   final File file;
+  Map<String, dynamic>? _cachedData;
+  DateTime? _cachedModified;
+
+  void invalidateCache() {
+    _cachedData = null;
+    _cachedModified = null;
+  }
 
   static Future<AppearancePreferenceStore> openDefault() async {
     final directory = ProfilePaths.activeDirectory();
@@ -77,8 +84,9 @@ class AppearancePreferenceStore {
           (data['hiddenStandardCategories'] as List? ?? [])
               .cast<String>()
               .toSet(),
-      hiddenStandardProjects:
-          (data['hiddenStandardProjects'] as List? ?? []).cast<String>().toSet(),
+      hiddenStandardProjects: (data['hiddenStandardProjects'] as List? ?? [])
+          .cast<String>()
+          .toSet(),
     );
   }
 
@@ -158,22 +166,40 @@ class AppearancePreferenceStore {
       _write({...await _read(), 'navigationState': value});
 
   Future<Map<String, dynamic>> _read() async {
-    if (!await file.exists()) return {};
+    if (!await file.exists()) {
+      _cachedData = {};
+      _cachedModified = null;
+      return _cachedData!;
+    }
+    final stat = await file.stat();
+    if (_cachedData != null && _cachedModified == stat.modified) {
+      return _cachedData!;
+    }
     final value = jsonDecode(await file.readAsString());
-    if (value is Map<String, dynamic>) return value;
+    if (value is Map<String, dynamic>) {
+      _cachedData = value;
+      _cachedModified = stat.modified;
+      return _cachedData!;
+    }
     throw FormatException(
       'Appearance settings must be a JSON object. Repair or restore ${file.path} before retrying.',
     );
   }
 
   Future<void> _write(Map<String, dynamic> value) async {
+    final existing = await _read();
+    final encodedNew = const JsonEncoder.withIndent('  ').convert(value);
+    final encodedExisting = const JsonEncoder.withIndent('  ')
+        .convert(existing);
+    if (encodedNew == encodedExisting && await file.exists()) {
+      return;
+    }
     await file.parent.create(recursive: true);
     final temporary = File('${file.path}.dart.tmp');
-    await temporary.writeAsString(
-      const JsonEncoder.withIndent('  ').convert(value),
-      flush: true,
-    );
+    await temporary.writeAsString(encodedNew, flush: true);
     await temporary.copy(file.path);
     await temporary.delete();
+    _cachedData = Map<String, dynamic>.from(value);
+    _cachedModified = (await file.stat()).modified;
   }
 }

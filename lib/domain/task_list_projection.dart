@@ -7,6 +7,12 @@ class TaskListGroup {
   final bool recurring;
 }
 
+List<LifeTask>? _lastTasks;
+Map<String, String>? _lastParents;
+bool? _lastGroupRecurrence;
+List<LifeTask>? _lastRelated;
+List<TaskListGroup>? _lastResult;
+
 // Presentation only: never changes identity, dates, or occurrence state. Input
 // is already filtered; a matching child stays discoverable without its parent.
 List<TaskListGroup> projectTaskList(
@@ -15,6 +21,13 @@ List<TaskListGroup> projectTaskList(
   required bool groupRecurrence,
   List<LifeTask> relatedOccurrences = const [],
 }) {
+  if (identical(tasks, _lastTasks) &&
+      identical(parents, _lastParents) &&
+      groupRecurrence == _lastGroupRecurrence &&
+      identical(relatedOccurrences, _lastRelated) &&
+      _lastResult != null) {
+    return _lastResult!;
+  }
   final ids = tasks.map((task) => task.id).toSet();
   final groups = <String, List<LifeTask>>{};
   final recurringKeys = <String>{};
@@ -36,7 +49,7 @@ List<TaskListGroup> projectTaskList(
       groups[key]!.add(task);
     }
   }
-  return [
+  final result = [
     for (final entry in groups.entries)
       TaskListGroup(
         entry.key,
@@ -44,4 +57,10 @@ List<TaskListGroup> projectTaskList(
         recurring: recurringKeys.contains(entry.key),
       ),
   ];
+  _lastTasks = tasks;
+  _lastParents = parents;
+  _lastGroupRecurrence = groupRecurrence;
+  _lastRelated = relatedOccurrences;
+  _lastResult = result;
+  return result;
 }
