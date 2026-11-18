@@ -199,11 +199,14 @@ void main() {
   testWidgets('shared icon picker remains usable above IME at large text', (
     tester,
   ) async {
+    (bool, String?)? selection;
     await pump(
       tester,
       Builder(
         builder: (context) => TextButton(
-          onPressed: () => chooseBuiltInIcon(context, current: null),
+          onPressed: () async {
+            selection = await chooseBuiltInIcon(context, current: 'task');
+          },
           child: const Text('Choose icon'),
         ),
       ),
@@ -216,6 +219,16 @@ void main() {
     tester.view.viewInsets = const FakeViewPadding(bottom: 240);
     addTearDown(tester.view.resetViewInsets);
     await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.enterText(find.byType(TextField), 'science');
+    await tester.pumpAndSettle();
+    final science = find.widgetWithIcon(IconButton, Icons.science_outlined);
+    await tester.ensureVisible(science);
+    await tester.pumpAndSettle();
+    await tester.tap(science);
+    await tester.pumpAndSettle();
+    expect(selection, (true, 'science'));
+    expect(find.byType(AlertDialog), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });

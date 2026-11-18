@@ -48,12 +48,13 @@ void main() {
           expect(info, findsOneWidget);
           await tester.tap(info);
           await tester.pumpAndSettle();
-          expect(
-            find.textContaining('Tasks planned for today'),
-            findsOneWidget,
+          final description = find.textContaining(
+            'Tasks planned for today. Deadlines',
           );
+          expect(description, findsOneWidget);
           await tester.sendKeyEvent(LogicalKeyboardKey.escape);
           await tester.pumpAndSettle();
+          expect(description, findsNothing);
 
           final button = tester.widget<IconButton>(buttonFinder);
           expect(button.onPressed, isNotNull);

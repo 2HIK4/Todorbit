@@ -1,5 +1,10 @@
 # Deferred Verification Backlog
 
+## Beta 24 Windows CI correction acceptance (2026-11-19)
+
+- **Level 3 pending.** Run the complete Windows CI workflow once Gemini integrates `fix/todorbit-beta24-windows-ci`.
+- **Level 4 pending.** Verify the integrated Windows installer and portable artifacts through the existing package and update gates. Exercise the view-help menu with a physical Windows keyboard and the shared icon picker with the Android keyboard at large text. [Scoped host evidence](BETA24_WINDOWS_CI_FAILURE_FIXES.md).
+
 ## Beta 24 release-blocker patch acceptance (2026-11-18)
 
 Before release, exercise real Android sharing with two external providers,

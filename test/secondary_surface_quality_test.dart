@@ -334,13 +334,14 @@ void main() {
           ),
           reason: 'The clock must remain one readable time value.',
         );
+        final start = find.text('Start task timer');
         await tester.scrollUntilVisible(
-          find.text('Start focus stopwatch'),
+          start,
           160,
           scrollable: find.byType(Scrollable).first,
         );
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Start focus stopwatch'));
+        await tester.tap(start);
         await tester.pumpAndSettle();
         expect(
           (await controller.repository.activeTimerRun())?.state.name,

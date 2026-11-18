@@ -1,8 +1,17 @@
 # Persistent test run ledger
 
+## Beta 24 Windows CI corrections (2026-11-19, UTC+03:00)
+
+See the [Windows CI failure receipt](BETA24_WINDOWS_CI_FAILURE_FIXES.md) for the
+exact assertions, candidates, Windows host results and source fingerprints on
+`fix/todorbit-beta24-windows-ci`. All twelve original failures passed after
+correction. The evidence covers 203 distinct passing tests, including the
+four real process-death checks. Full Windows CI and package acceptance are
+tracked in [Deferred verification](DEFERRED_VERIFICATION.md).
+
 ## Beta 24 release-blocker integration verification (2026-11-18, UTC+03:00)
 
-`feature/todorbit-release-p8`, commit `12d7e4624b455c17fae44ebae566110f0f4a8616`, integrating `fix/todorbit-beta24-release-blockers` (`cfde5b3b85d2cbc460be8fcf06075707c7481283`, base `253bc54eb74300505793cf0a6e5328a3858f23da`). [Report](UIUX05_BETA_24_PUBLICATION.md) and [Codex receipt](BETA24_CODEX_RELEASE_BLOCKER_FIXES_2026_11_18.md):
+`feature/todorbit-release-p8`, commit `12d7e46fe47d4da761b13b1be995b8c7420e157c`, integrating `fix/todorbit-beta24-release-blockers` (`cfde5b3b85d2cbc460be8fcf06075707c7481283`, base `253bc54eb74300505793cf0a6e5328a3858f23da`). [Report](UIUX05_BETA_24_PUBLICATION.md) and [Codex receipt](BETA24_CODEX_RELEASE_BLOCKER_FIXES_2026_11_18.md):
 - **Focused Host Regression Matrix**:
   1. `test/sync_exchange_repository_test.dart`: **11/11 PASS** (reopen durability, retry byte matching, peer application, local presentation isolation).
   2. `test/beta24_calendar_sync_test.dart`: **2/2 PASS** (calendar date mid-drag deferral, immediate sync signaling).
@@ -25,7 +34,7 @@
   - 16-KiB native alignment verified across all 8 native `.so` libraries (`tools/verify-android-artifact.py`).
 - **GitHub Actions CI**:
   - Android validation: [Run 44390832263](https://github.com/2HIK4/Todorbit/actions/runs/44390832263) -> **SUCCESS** (8m29s).
-  - Windows checks: [Run 44390804115](https://github.com/2HIK4/Todorbit/actions/runs/44390804115) -> **FAILED** (exit code 1 at `Run Flutter tests` due to 12 legacy/broad test fixture failures; Windows packaging aborted).
+  - Windows checks failed at `Run Flutter tests` with 1,166 passed, 12 failed and 9 skipped. Windows packaging was blocked. [Run 44390804115](https://github.com/2HIK4/Todorbit/actions/runs/44390804115), [failure classification](BETA24_WINDOWS_CI_FAILURE_FIXES.md).
 - **Publication Status**: **BLOCKED** due to missing Windows release artifacts and failed Windows CI gate.
 
 ## Prompt 7 Performance Optimization & Safety Review (2026-11-18, UTC+03:00)
