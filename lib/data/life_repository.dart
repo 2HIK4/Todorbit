@@ -979,11 +979,12 @@ class LifeRepository {
 
   /// Materializes only the requested civil-date window. Existing occurrence
   /// rows, including skipped/deleted tombstones, are never regenerated.
-  Future<void> ensureRecurringTasks(String fromDate, String throughDate) async {
+  Future<int> ensureRecurringTasks(String fromDate, String throughDate) async {
     final span = RecurrenceRule.daysBetween(fromDate, throughDate);
     if (span < 0 || span > 93) {
       throw ArgumentError('Request a recurrence window of at most 94 days');
     }
+    var materializedCount = 0;
     await db.transaction(() async {
       final seriesRows = await db
           .customSelect(
@@ -1017,10 +1018,13 @@ class LifeRepository {
             ? activeThrough
             : throughDate;
         for (final slot in rule.between(lower, upper)) {
-          await _insertOccurrence(series, slot);
+          if (await _insertOccurrence(series, slot)) {
+            materializedCount++;
+          }
         }
       }
     });
+    return materializedCount;
   }
 
   RecurrenceRule _ruleFromSeries(QueryRow row) => RecurrenceRule(
@@ -1034,7 +1038,7 @@ class LifeRepository {
     maxOccurrences: row.read<int?>('max_occurrences'),
   );
 
-  Future<void> _insertOccurrence(QueryRow series, RecurrenceSlot slot) async {
+  Future<bool> _insertOccurrence(QueryRow series, RecurrenceSlot slot) async {
     final seriesId = series.read<String>('id');
     final existing = await db
         .customSelect(
@@ -1045,7 +1049,7 @@ class LifeRepository {
           ],
         )
         .getSingleOrNull();
-    if (existing != null) return;
+    if (existing != null) return false;
     final taskId = _uuid.v4();
     final occurrenceId = _uuid.v4();
     final now = DateTime.now().toUtc();
@@ -1085,6 +1089,7 @@ class LifeRepository {
       ],
     );
     await _syncProgressiveAssignment(occurrenceId, forceFuture: false);
+    return true;
   }
 
   Future<void> updateTask(
@@ -1696,6 +1701,52 @@ class LifeRepository {
                 change.expectedUpdatedAt ||
             !_scheduleMatches(row, change)) {
           stale.add(change.targetId);
+        }
+      }
+
+      // Revalidate interval conflicts at Apply against fixed events and other
+      // sessions to catch changes added by Sync or background writers after preview.
+      final changedSessionIds = preview.changes
+          .where((c) => c.targetKind == ScheduleTargetKind.session)
+          .map((c) => c.targetId)
+          .toSet();
+      for (final change in preview.changes) {
+        if (change.afterStartsAt != null && change.afterEndsAt != null) {
+          final startsAtIso = change.afterStartsAt!.toUtc().toIso8601String();
+          final endsAtIso = change.afterEndsAt!.toUtc().toIso8601String();
+
+          final conflictingEvents = await db.customSelect(
+            'SELECT id FROM fixed_events WHERE deleted_at IS NULL AND starts_at < ? AND ends_at > ? LIMIT 1',
+            variables: [
+              Variable.withString(endsAtIso),
+              Variable.withString(startsAtIso),
+            ],
+          ).get();
+          if (conflictingEvents.isNotEmpty) {
+            stale.add(change.targetId);
+            continue;
+          }
+
+          final sessionQuery = changedSessionIds.isEmpty
+              ? 'SELECT id FROM work_sessions WHERE deleted_at IS NULL AND starts_at < ? AND ends_at > ? LIMIT 1'
+              : 'SELECT id FROM work_sessions WHERE deleted_at IS NULL AND id NOT IN (${changedSessionIds.map((_) => '?').join(',')}) AND starts_at < ? AND ends_at > ? LIMIT 1';
+          final sessionVars = changedSessionIds.isEmpty
+              ? [
+                  Variable.withString(endsAtIso),
+                  Variable.withString(startsAtIso),
+                ]
+              : [
+                  ...changedSessionIds.map(Variable.withString),
+                  Variable.withString(endsAtIso),
+                  Variable.withString(startsAtIso),
+                ];
+          final conflictingSessions = await db.customSelect(
+            sessionQuery,
+            variables: sessionVars,
+          ).get();
+          if (conflictingSessions.isNotEmpty) {
+            stale.add(change.targetId);
+          }
         }
       }
       if (stale.isNotEmpty) throw StaleSchedulePreviewException(stale);

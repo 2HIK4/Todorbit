@@ -82,8 +82,11 @@ class _PointerCancellationScopeState extends State<PointerCancellationScope>
   }
 
   void _clearHoverStates() {
-    final devicesToClear = {..._activeDevices, ..._deviceDetails.keys};
-    if (devicesToClear.isEmpty) return;
+    final devicesToClear = {
+      ..._activeDevices,
+      ..._deviceDetails.keys,
+      if (_activeDevices.isEmpty && _deviceDetails.isEmpty) 0,
+    };
     for (final device in devicesToClear) {
       final details = _deviceDetails[device];
       final kind = details?.kind ?? PointerDeviceKind.mouse;
@@ -166,7 +169,30 @@ class _PointerCancellationScopeState extends State<PointerCancellationScope>
       onPointerUp: _onPointerUp,
       onPointerCancel: _onPointerCancel,
       onPointerHover: _onPointerHover,
-      child: widget.child,
+      child: MouseRegion(
+        opaque: false,
+        onEnter: (event) {
+          _activeDevices.add(event.device);
+          _deviceDetails[event.device] = _DeviceState(
+            kind: event.kind,
+            viewId: event.viewId,
+            position: event.position,
+          );
+        },
+        onHover: (event) {
+          _activeDevices.add(event.device);
+          _deviceDetails[event.device] = _DeviceState(
+            kind: event.kind,
+            viewId: event.viewId,
+            position: event.position,
+          );
+        },
+        onExit: (event) {
+          _activeDevices.remove(event.device);
+          _deviceDetails.remove(event.device);
+        },
+        child: widget.child,
+      ),
     );
   }
 }

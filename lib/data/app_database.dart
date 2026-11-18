@@ -12,6 +12,7 @@ import 'sync_schema.dart';
 import 'sync_exchange_schema.dart';
 import 'sync_visibility_schema.dart';
 import 'sync_device_schema.dart';
+import '../domain/sync/portable_preferences.dart';
 
 class AppDatabase extends GeneratedDatabase {
   AppDatabase(super.executor);
@@ -141,6 +142,68 @@ class AppDatabase extends GeneratedDatabase {
 
   static Future<AppDatabase> openDefault() async {
     final file = await defaultFile();
+    return open(file);
+  }
+
+  static Future<void> sanitizePortablePreferencesAndJournal(
+    GeneratedDatabase db,
+  ) async {
+    try {
+      // 1. Delete standalone non-portable preference row from portable_preferences.
+      await db.customStatement(
+        "DELETE FROM portable_preferences WHERE key = 'detailPresentation'",
+      );
+
+      // 2. Sanitize customization row in portable_preferences if it contains device-local fields.
+      final customRows = await db.customSelect(
+        "SELECT key, value_json FROM portable_preferences WHERE key = 'customization'",
+      ).get();
+      for (final row in customRows) {
+        try {
+          final raw = jsonDecode(row.read<String>('value_json'));
+          if (raw is Map) {
+            var changed = false;
+            final sanitized = Map<String, dynamic>.from(raw);
+            for (final field in deviceLocalThemeFields) {
+              if (sanitized.containsKey(field)) {
+                sanitized.remove(field);
+                changed = true;
+              }
+            }
+            if (changed) {
+              await db.customStatement(
+                "UPDATE portable_preferences SET value_json = ? WHERE key = 'customization'",
+                [jsonEncode(sanitized)],
+              );
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 3. Clean up sync_journal for non-portable preferences to prevent invalid sync batches.
+      try {
+        await db.customStatement(
+          "DELETE FROM sync_journal WHERE entity = 'portable_preferences' AND record_key LIKE '%detailPresentation%' AND uploaded = 0",
+        );
+        await db.customStatement(
+          "DELETE FROM sync_entity_heads WHERE entity = 'portable_preferences' AND record_key LIKE '%detailPresentation%'",
+        );
+
+        // Invalidate any unuploaded outgoing sync batches that might contain old serialized operations,
+        // so they are regenerated with sanitized journal entries.
+        await db.customStatement(
+          "UPDATE sync_batches SET superseded = 1 WHERE direction = 'outgoing' AND uploaded = 0 AND superseded = 0",
+        );
+        await db.customStatement(
+          "UPDATE sync_journal SET batch_id = NULL WHERE uploaded = 0 AND batch_id IN (SELECT id FROM sync_batches WHERE superseded = 1)",
+        );
+      } catch (_) {
+        // Sync tables may not exist yet in fresh/non-sync databases.
+      }
+    } catch (_) {}
+  }
+
+  static Future<AppDatabase> open(File file) async {
     final database = AppDatabase(
       NativeDatabase.createInBackground(
         file,
@@ -156,11 +219,7 @@ class AppDatabase extends GeneratedDatabase {
       // Open eagerly so startup can present a recoverable failure before the
       // controller or native companion starts using a partial database.
       await database.customSelect('SELECT 1').get();
-      try {
-        await database.customStatement(
-          "DELETE FROM portable_preferences WHERE key = 'detailPresentation'",
-        );
-      } catch (_) {}
+      await sanitizePortablePreferencesAndJournal(database);
       return database;
     } catch (_) {
       await database.close();
@@ -180,6 +239,7 @@ class AppDatabase extends GeneratedDatabase {
       await customStatement('PRAGMA foreign_keys = ON');
       await customStatement('PRAGMA busy_timeout = 5000');
       _syncGroupingReady = true;
+      await sanitizePortablePreferencesAndJournal(this);
     }),
     onCreate: (migrator) => _duringSyncOpening(
       () => transaction(() async {

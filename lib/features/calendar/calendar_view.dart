@@ -122,6 +122,21 @@ class _CalendarViewState extends ConsumerState<CalendarView>
   Future<void> handleInteractionFinished() => _handleInteractionFinished();
 
   @override
+  void didUpdateWidget(CalendarView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialDate != null &&
+        widget.initialDate != oldWidget.initialDate) {
+      final newSelected = widget.initialDate!;
+      if (DateUtils.dateOnly(selected) != DateUtils.dateOnly(newSelected)) {
+        setState(() {
+          selected = newSelected;
+        });
+        widget.onDateSelected?.call(selected);
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _timeZoom.dispose();
     _calendarFocusNode.dispose();

@@ -24,7 +24,7 @@ class RecordingRepository extends LifeRepository {
   bool failNextWindow = false;
 
   @override
-  Future<void> ensureRecurringTasks(String fromDate, String throughDate) async {
+  Future<int> ensureRecurringTasks(String fromDate, String throughDate) async {
     if (RecurrenceRule.daysBetween(fromDate, throughDate) >= 80) {
       wideWindows.add((fromDate, throughDate));
       if (failNextWindow) {
@@ -36,7 +36,7 @@ class RecordingRepository extends LifeRepository {
         await release.future;
       }
     }
-    await super.ensureRecurringTasks(fromDate, throughDate);
+    return super.ensureRecurringTasks(fromDate, throughDate);
   }
 }
 

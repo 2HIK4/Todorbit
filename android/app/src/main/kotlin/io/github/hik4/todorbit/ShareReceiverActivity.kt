@@ -2,8 +2,10 @@ package io.github.hik4.todorbit
 
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Process
 import android.provider.OpenableColumns
 import android.view.WindowManager
 import android.webkit.MimeTypeMap
@@ -11,6 +13,9 @@ import android.widget.Toast
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.RandomAccessFile
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -94,6 +99,7 @@ class ShareReceiverActivity : Activity() {
         if (!filesDir.exists()) filesDir.mkdirs()
         if (!stagingDir.exists()) stagingDir.mkdirs()
 
+        val lockFile = File(sharedInboxDir, "shared_inbox.lock")
         val manifestFile = File(sharedInboxDir, "shared_inbox.json")
         var savedCount = 0
         var duplicateCount = 0
@@ -103,135 +109,158 @@ class ShareReceiverActivity : Activity() {
         dateFormat.timeZone = TimeZone.getTimeZone("UTC")
 
         try {
-            synchronized(manifestLock) {
-                val existingEntries = loadExistingManifest(manifestFile)
-                val entriesList = mutableListOf<JSONObject>()
-                for (i in 0 until existingEntries.length()) {
-                    entriesList.add(existingEntries.getJSONObject(i))
-                }
-
-                for (uri in uris) {
-                    // Security boundary (P2-01): only allow external content URIs.
-                    // Reject non-content schemes and self-owned provider authorities to prevent
-                    // confused deputy access to Todorbit's private data.
-                    if (uri.scheme != "content") {
-                        continue
-                    }
-                    val authority = uri.authority?.lowercase(Locale.US) ?: ""
-                    val myPkg = packageName.lowercase(Locale.US)
-                    if (authority.isEmpty() || authority == myPkg || authority.startsWith("$myPkg.") || authority == "$myPkg.files") {
-                        continue
+            RandomAccessFile(lockFile, "rw").use { raf ->
+                val fileLock = raf.channel.lock()
+                try {
+                    val existingEntries = loadExistingManifest(manifestFile)
+                    val entriesList = mutableListOf<JSONObject>()
+                    for (i in 0 until existingEntries.length()) {
+                        entriesList.add(existingEntries.getJSONObject(i))
                     }
 
-                    var displayName = "shared_file"
-                    try {
-                        contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-                            if (cursor.moveToFirst()) {
-                                val name = cursor.getString(0)
-                                if (!name.isNullOrBlank()) displayName = name
-                            }
+                    for (uri in uris) {
+                        // Security boundary (P2-01): only allow external content URIs.
+                        // Reject non-content schemes and self-owned provider authorities to prevent
+                        // confused deputy access to Todorbit's private data.
+                        if (uri.scheme != "content") {
+                            continue
                         }
-                    } catch (_: Exception) {
-                        val lastSegment = uri.lastPathSegment
-                        if (!lastSegment.isNullOrBlank()) displayName = lastSegment
-                    }
-
-                    // Sanitize display name
-                    displayName = displayName.replace(Regex("[^a-zA-Z0-9._ -]"), "_").takeLast(120)
-                    if (displayName.isBlank() || displayName == "." || displayName == "..") {
-                        displayName = "shared_file"
-                    }
-
-                    var mimeType = contentResolver.getType(uri) ?: intent.type
-                    if (mimeType.isNullOrBlank() || mimeType == "*/*" || mimeType == "application/octet-stream") {
-                        val ext = File(displayName).extension.lowercase()
-                        mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "application/octet-stream"
-                    }
-
-                    val id = UUID.randomUUID().toString()
-                    val stagingFile = File(stagingDir, "$id.tmp")
-                    val digest = MessageDigest.getInstance("SHA-256")
-                    var totalBytes = 0L
-
-                    try {
-                        val inputStream = contentResolver.openInputStream(uri)
-                            ?: throw IllegalStateException("Cannot open input stream for $uri")
-
-                        inputStream.use { input ->
-                            stagingFile.outputStream().use { output ->
-                                val buffer = ByteArray(65536)
-                                while (true) {
-                                    val read = input.read(buffer)
-                                    if (read < 0) break
-                                    totalBytes += read
-                                    if (totalBytes > maxFileBytes) {
-                                        throw IllegalArgumentException("File exceeds 32 MiB limit")
-                                    }
-                                    digest.update(buffer, 0, read)
-                                    output.write(buffer, 0, read)
-                                }
-                            }
-                        }
-
-                        val sha256Hex = digest.digest().joinToString("") { "%02x".format(it) }
-
-                        // Duplicate detection: check if content with identical sha256 and byteSize already exists
-                        // in previous entries or earlier items within this batch.
-                        var isDuplicate = false
-                        for (entry in entriesList) {
-                            if (entry.optString("sha256") == sha256Hex && entry.optLong("byteSize") == totalBytes) {
-                                val existingRelative = entry.optString("relativePath")
-                                if (File(sharedInboxDir, existingRelative).exists()) {
-                                    isDuplicate = true
-                                    break
-                                }
-                            }
-                        }
-
-                        if (isDuplicate) {
-                            stagingFile.delete()
-                            duplicateCount++
+                        val authority = uri.authority?.lowercase(Locale.US) ?: ""
+                        val myPkg = packageName.lowercase(Locale.US)
+                        if (authority.isEmpty() || authority == myPkg || authority.startsWith("$myPkg.") || authority == "$myPkg.files") {
                             continue
                         }
 
-                        val relativePath = "files/${id}_$displayName"
-                        val targetFile = File(sharedInboxDir, relativePath)
-                        if (!stagingFile.renameTo(targetFile)) {
-                            if (targetFile.exists()) targetFile.delete()
-                            if (!stagingFile.renameTo(targetFile)) {
-                                stagingFile.copyTo(targetFile, overwrite = true)
-                                stagingFile.delete()
+                        // Explicit read permission verification via Android framework
+                        val hasPerm = checkUriPermission(
+                            uri,
+                            Process.myPid(),
+                            Process.myUid(),
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        )
+                        if (hasPerm != PackageManager.PERMISSION_GRANTED) {
+                            continue
+                        }
+
+                        var displayName = "shared_file"
+                        try {
+                            contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                                if (cursor.moveToFirst()) {
+                                    val name = cursor.getString(0)
+                                    if (!name.isNullOrBlank()) displayName = name
+                                }
                             }
-                        }
-                        if (!targetFile.exists()) {
-                            throw IllegalStateException("Failed to move staging file to target")
-                        }
-
-                        val newEntry = JSONObject().apply {
-                            put("id", id)
-                            put("displayName", displayName)
-                            put("relativePath", relativePath)
-                            put("mimeType", mimeType)
-                            put("byteSize", totalBytes)
-                            put("sha256", sha256Hex)
-                            put("receivedAt", dateFormat.format(Date()))
+                        } catch (_: Exception) {
+                            val lastSegment = uri.lastPathSegment
+                            if (!lastSegment.isNullOrBlank()) displayName = lastSegment
                         }
 
-                        // Prepend new entry so newest items appear first
-                        entriesList.add(0, newEntry)
-                        savedCount++
-                    } catch (e: Exception) {
-                        if (stagingFile.exists()) stagingFile.delete()
-                        throw e
+                        // Sanitize display name
+                        displayName = displayName.replace(Regex("[^a-zA-Z0-9._ -]"), "_").takeLast(120)
+                        if (displayName.isBlank() || displayName == "." || displayName == "..") {
+                            displayName = "shared_file"
+                        }
+
+                        var mimeType = contentResolver.getType(uri) ?: intent.type
+                        if (mimeType.isNullOrBlank() || mimeType == "*/*" || mimeType == "application/octet-stream") {
+                            val ext = File(displayName).extension.lowercase()
+                            mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "application/octet-stream"
+                        }
+
+                        val id = UUID.randomUUID().toString()
+                        val stagingFile = File(stagingDir, "$id.tmp")
+                        val digest = MessageDigest.getInstance("SHA-256")
+                        var totalBytes = 0L
+
+                        try {
+                            val inputStream = contentResolver.openInputStream(uri)
+                                ?: throw IllegalStateException("Cannot open input stream for $uri")
+
+                            inputStream.use { input ->
+                                stagingFile.outputStream().use { output ->
+                                    val buffer = ByteArray(65536)
+                                    while (true) {
+                                        val read = input.read(buffer)
+                                        if (read < 0) break
+                                        totalBytes += read
+                                        if (totalBytes > maxFileBytes) {
+                                            throw IllegalArgumentException("File exceeds 32 MiB limit")
+                                        }
+                                        digest.update(buffer, 0, read)
+                                        output.write(buffer, 0, read)
+                                    }
+                                }
+                            }
+
+                            val sha256Hex = digest.digest().joinToString("") { "%02x".format(it) }
+
+                            // Duplicate detection: check if content with identical sha256 and byteSize already exists
+                            var isDuplicate = false
+                            for (entry in entriesList) {
+                                if (entry.optString("sha256") == sha256Hex && entry.optLong("byteSize") == totalBytes) {
+                                    val existingRelative = entry.optString("relativePath")
+                                    if (File(sharedInboxDir, existingRelative).exists()) {
+                                        isDuplicate = true
+                                        break
+                                    }
+                                }
+                            }
+
+                            if (isDuplicate) {
+                                stagingFile.delete()
+                                duplicateCount++
+                                continue
+                            }
+
+                            val relativePath = "files/${id}_$displayName"
+                            val targetFile = File(sharedInboxDir, relativePath)
+                            try {
+                                Files.move(
+                                    stagingFile.toPath(),
+                                    targetFile.toPath(),
+                                    StandardCopyOption.ATOMIC_MOVE,
+                                    StandardCopyOption.REPLACE_EXISTING
+                                )
+                            } catch (_: Exception) {
+                                if (!stagingFile.renameTo(targetFile)) {
+                                    stagingFile.copyTo(targetFile, overwrite = true)
+                                    stagingFile.delete()
+                                }
+                            }
+                            if (!targetFile.exists()) {
+                                throw IllegalStateException("Failed to move staging file to target")
+                            }
+
+                            val newEntry = JSONObject().apply {
+                                put("id", id)
+                                put("displayName", displayName)
+                                put("relativePath", relativePath)
+                                put("mimeType", mimeType)
+                                put("byteSize", totalBytes)
+                                put("sha256", sha256Hex)
+                                put("receivedAt", dateFormat.format(Date()))
+                            }
+
+                            // Prepend new entry so newest items appear first
+                            entriesList.add(0, newEntry)
+                            savedCount++
+                        } catch (e: Exception) {
+                            if (stagingFile.exists()) stagingFile.delete()
+                            throw e
+                        }
                     }
-                }
 
-                if (savedCount > 0) {
-                    val updatedEntries = JSONArray()
-                    for (entry in entriesList) {
-                        updatedEntries.put(entry)
+                    if (savedCount > 0) {
+                        val updatedEntries = JSONArray()
+                        for (entry in entriesList) {
+                            updatedEntries.put(entry)
+                        }
+                        saveManifest(manifestFile, updatedEntries)
                     }
-                    saveManifest(manifestFile, updatedEntries)
+                } finally {
+                    try {
+                        fileLock.release()
+                    } catch (_: Exception) {}
                 }
             }
 
@@ -278,10 +307,17 @@ class ShareReceiverActivity : Activity() {
             put("version", 1)
             put("entries", entries)
         }
-        val staging = File(manifestFile.parentFile, "${manifestFile.name}.tmp")
+        val uniqueStagingName = "${manifestFile.name}.${UUID.randomUUID()}.tmp"
+        val staging = File(manifestFile.parentFile, uniqueStagingName)
         staging.writeText(root.toString())
-        if (!staging.renameTo(manifestFile)) {
-            if (manifestFile.exists()) manifestFile.delete()
+        try {
+            Files.move(
+                staging.toPath(),
+                manifestFile.toPath(),
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING
+            )
+        } catch (_: Exception) {
             if (!staging.renameTo(manifestFile)) {
                 staging.copyTo(manifestFile, overwrite = true)
                 staging.delete()

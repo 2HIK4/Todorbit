@@ -975,12 +975,21 @@ extension SyncApplyRepository on LifeRepository {
       (r) => r.entity == 'portable_preferences' && r.review.merged != null,
     )) {
       final value = record.review.merged!;
+      final key = value['key'] as String;
+      if (key == 'detailPresentation') {
+        // Discard legacy standalone preference key from older/prototype sync nodes
+        continue;
+      }
       final raw = jsonDecode(value['value_json'] as String);
+      final sanitizedRaw = key == 'customization' && raw is Map
+          ? (Map<String, dynamic>.from(raw)
+            ..removeWhere((k, _) => deviceLocalThemeFields.contains(k)))
+          : raw;
       final normalized = validatePortablePreference(
-        value['key'] as String,
-        raw,
+        key,
+        sanitizedRaw,
       );
-      if (!_syncSame(raw, normalized)) {
+      if (!_syncSame(sanitizedRaw, normalized)) {
         throw const _SyncDomainBlock('invalidPortablePreference');
       }
     }

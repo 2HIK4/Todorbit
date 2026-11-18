@@ -213,28 +213,35 @@ class _EventEditorState extends ConsumerState<EventEditor> {
   }
 
   bool get isDirty => draftKey != initialDraft;
+  bool confirmingClose = false;
 
   Future<bool> confirmLeave() async {
     if (!widget.protectUnsavedEdits || !isDirty) return true;
-    final discard = await showDialog<bool>(
-      context: context,
-      animationStyle: AppMotion.style(context),
-      builder: (context) => AlertDialog(
-        title: const Text('Discard unsaved changes?'),
-        content: const Text('Your changes have not been saved.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Keep editing'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Discard changes'),
-          ),
-        ],
-      ),
-    );
-    return discard == true;
+    if (confirmingClose) return false;
+    confirmingClose = true;
+    try {
+      final discard = await showDialog<bool>(
+        context: context,
+        animationStyle: AppMotion.style(context),
+        builder: (context) => AlertDialog(
+          title: const Text('Discard unsaved changes?'),
+          content: const Text('Your changes have not been saved.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Keep editing'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Discard changes'),
+            ),
+          ],
+        ),
+      );
+      return discard == true;
+    } finally {
+      confirmingClose = false;
+    }
   }
 
   void _initFromEvent() {

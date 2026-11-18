@@ -325,9 +325,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     LifeTask task,
     bool wide, {
     bool navigate = false,
+    bool skipConfirm = false,
   }) async {
     final controller = ref.read(appControllerProvider);
-    if (!await _prepareEditorChange() || !mounted) return;
+    if (!skipConfirm) {
+      if (!await _prepareEditorChange() || !mounted) return;
+    }
     if (navigate) {
       controller.navigate(
         task.isOpen ? WorkspaceView.all : WorkspaceView.completed,
@@ -694,8 +697,13 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     builder: (_) => const ScheduleHistoryDialog(),
   );
 
-  Future<void> _openEventDetails(FixedEvent event) async {
-    if (!await _prepareEditorChange() || !mounted) return;
+  Future<void> _openEventDetails(
+    FixedEvent event, {
+    bool skipConfirm = false,
+  }) async {
+    if (!skipConfirm) {
+      if (!await _prepareEditorChange() || !mounted) return;
+    }
     _lastCalendarDate = event.startsAt.toLocal();
     final controller = ref.read(appControllerProvider);
     final useFullPage = controller.isFullPageDetails;
@@ -713,8 +721,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     context: context,
     builder: (_) => QuickSearchDialog(
       beforeNavigate: _prepareEditorChange,
-      onEventTap: _openEventDetails,
-      onTaskTap: (task) => _openTask(task, wide, navigate: true),
+      onEventTap: (event) => _openEventDetails(event, skipConfirm: true),
+      onTaskTap: (task) =>
+          _openTask(task, wide, navigate: true, skipConfirm: true),
     ),
   );
 
@@ -777,7 +786,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         builder: (_) => AdvancedSearchDialog(
           savedView: savedView,
           beforeNavigate: _prepareEditorChange,
-          onTaskTap: (task) => _openTask(task, wide, navigate: true),
+          onTaskTap: (task) =>
+              _openTask(task, wide, navigate: true, skipConfirm: true),
         ),
       );
 
@@ -877,15 +887,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         for (final entry in controller.hotkeys.bindings.entries)
           entry.value.activator: () => _runHotkey(entry.key, controller),
         const SingleActivator(LogicalKeyboardKey.escape): () async {
-          if (_viewingTaskDetails || _viewingEventDetails) {
-            _closeEditor();
-            return;
-          }
-          if (_selectedEvent != null) {
-            _closeEditor();
-            return;
-          }
-          if (controller.selectedTask != null || creating) {
+          if (_viewingTaskDetails ||
+              _viewingEventDetails ||
+              _selectedEvent != null ||
+              controller.selectedTask != null ||
+              creating) {
             if (await editorNavigation.confirmLeave() && mounted) {
               _closeEditor();
             }
@@ -1923,9 +1929,17 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       return const ContributorsView();
     }
     if (controller.view == WorkspaceView.calendar) {
+      final currentNavDay = navigationDay;
+      if (currentNavDay != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && navigationDay == currentNavDay) {
+            setState(() => navigationDay = null);
+          }
+        });
+      }
       return CalendarView(
-        key: ValueKey(navigationDay ?? _lastCalendarDate),
-        initialDate: navigationDay ?? _lastCalendarDate,
+        key: const ValueKey('workspace-calendar-view'),
+        initialDate: currentNavDay ?? _lastCalendarDate,
         onDateSelected: (date) => _lastCalendarDate = date,
         onAddTask: _newTaskOn,
         onTaskTap: (task) => _openTask(task, wide),

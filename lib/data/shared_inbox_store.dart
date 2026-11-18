@@ -30,9 +30,40 @@ class SharedInboxStore {
       Directory(path.join(ProfilePaths.activeDirectory().path, 'shared_inbox'));
 
   File get manifestFile => File(path.join(directory.path, 'shared_inbox.json'));
+  File get lockFile => File(path.join(directory.path, 'shared_inbox.lock'));
   Directory get filesDirectory => Directory(path.join(directory.path, 'files'));
   Directory get stagingDirectory =>
       Directory(path.join(directory.path, 'staging'));
+
+  T _withLockSync<T>(T Function() action) {
+    directory.createSync(recursive: true);
+    final raf = lockFile.openSync(mode: FileMode.write);
+    try {
+      raf.lockSync(FileLock.blockingExclusive);
+      try {
+        return action();
+      } finally {
+        raf.unlockSync();
+      }
+    } finally {
+      raf.closeSync();
+    }
+  }
+
+  Future<T> _withLock<T>(Future<T> Function() action) async {
+    await directory.create(recursive: true);
+    final raf = await lockFile.open(mode: FileMode.write);
+    try {
+      await raf.lock(FileLock.blockingExclusive);
+      try {
+        return await action();
+      } finally {
+        await raf.unlock();
+      }
+    } finally {
+      await raf.close();
+    }
+  }
 
   /// Sanitizes an incoming filename, stripping illegal characters and directory traversal.
   static String sanitizeFilename(String rawName) {
@@ -175,10 +206,11 @@ class SharedInboxStore {
     }
   }
 
-  /// Atomically saves the entries manifest.
-  void saveSync(List<SharedInboxEntry> entries) {
+  void _saveUnderLockSync(List<SharedInboxEntry> entries) {
     directory.createSync(recursive: true);
-    final staging = File('${manifestFile.path}.tmp');
+    final staging = File(
+      path.join(directory.path, 'shared_inbox.json.${_uuid.v4()}.tmp'),
+    );
     final payload = {
       'version': 1,
       'entries': entries.map((e) => e.toJson()).toList(),
@@ -187,17 +219,22 @@ class SharedInboxStore {
     try {
       staging.renameSync(manifestFile.path);
     } catch (_) {
-      if (manifestFile.existsSync()) {
-        manifestFile.deleteSync();
-      }
-      staging.renameSync(manifestFile.path);
+      staging.copySync(manifestFile.path);
+      try {
+        staging.deleteSync();
+      } catch (_) {}
     }
   }
 
-  /// Atomically saves the entries manifest asynchronously.
-  Future<void> save(List<SharedInboxEntry> entries) async {
+  /// Atomically saves the entries manifest.
+  void saveSync(List<SharedInboxEntry> entries) =>
+      _withLockSync(() => _saveUnderLockSync(entries));
+
+  Future<void> _saveUnderLock(List<SharedInboxEntry> entries) async {
     await directory.create(recursive: true);
-    final staging = File('${manifestFile.path}.tmp');
+    final staging = File(
+      path.join(directory.path, 'shared_inbox.json.${_uuid.v4()}.tmp'),
+    );
     final payload = {
       'version': 1,
       'entries': entries.map((e) => e.toJson()).toList(),
@@ -206,12 +243,16 @@ class SharedInboxStore {
     try {
       await staging.rename(manifestFile.path);
     } catch (_) {
-      if (await manifestFile.exists()) {
-        await manifestFile.delete();
-      }
-      await staging.rename(manifestFile.path);
+      await staging.copy(manifestFile.path);
+      try {
+        await staging.delete();
+      } catch (_) {}
     }
   }
+
+  /// Atomically saves the entries manifest asynchronously.
+  Future<void> save(List<SharedInboxEntry> entries) =>
+      _withLock(() => _saveUnderLock(entries));
 
   /// Ingests a file safely into the Shared Inbox.
   ///
@@ -244,16 +285,6 @@ class SharedInboxStore {
         ? mimeType!.trim()
         : inferMimeType(safeName);
 
-    // Duplicate detection: check if this content is already present in inbox
-    final currentEntries = await load();
-    for (final existing in currentEntries) {
-      if (existing.sha256 == digest &&
-          existing.byteSize == stat.size &&
-          await existing.fileIn(directory).exists()) {
-        return existing;
-      }
-    }
-
     await filesDirectory.create(recursive: true);
     await stagingDirectory.create(recursive: true);
 
@@ -263,7 +294,6 @@ class SharedInboxStore {
     final targetFile = File(path.join(directory.path, relativePath));
 
     await source.copy(stagingFile.path);
-    await stagingFile.rename(targetFile.path);
 
     final entry = SharedInboxEntry(
       id: id,
@@ -275,9 +305,24 @@ class SharedInboxStore {
       receivedAt: DateTime.now().toUtc(),
     );
 
-    currentEntries.insert(0, entry);
-    await save(currentEntries);
-    return entry;
+    return await _withLock(() async {
+      final currentEntries = await load();
+      for (final existing in currentEntries) {
+        if (existing.sha256 == digest &&
+            existing.byteSize == stat.size &&
+            await existing.fileIn(directory).exists()) {
+          try {
+            await stagingFile.delete();
+          } catch (_) {}
+          return existing;
+        }
+      }
+
+      await stagingFile.rename(targetFile.path);
+      currentEntries.insert(0, entry);
+      await _saveUnderLock(currentEntries);
+      return entry;
+    });
   }
 
   /// Ingests raw bytes safely into the Shared Inbox synchronously.
@@ -298,42 +343,41 @@ class SharedInboxStore {
         ? mimeType!.trim()
         : inferMimeType(safeName);
 
-    // Duplicate detection: check if this content is already present in inbox
-    final currentEntries = loadSync();
-    for (final existing in currentEntries) {
-      if (existing.sha256 == digest &&
-          existing.byteSize == bytes.length &&
-          existing.fileIn(directory).existsSync()) {
-        // Return existing entry without storing redundant copy
-        return existing;
+    return _withLockSync(() {
+      final currentEntries = loadSync();
+      for (final existing in currentEntries) {
+        if (existing.sha256 == digest &&
+            existing.byteSize == bytes.length &&
+            existing.fileIn(directory).existsSync()) {
+          return existing;
+        }
       }
-    }
 
-    filesDirectory.createSync(recursive: true);
-    stagingDirectory.createSync(recursive: true);
+      filesDirectory.createSync(recursive: true);
+      stagingDirectory.createSync(recursive: true);
 
-    final id = _uuid.v4();
-    final relativePath = 'files/${id}_$safeName';
-    final stagingFile = File(path.join(stagingDirectory.path, '$id.tmp'));
-    final targetFile = File(path.join(directory.path, relativePath));
+      final id = _uuid.v4();
+      final relativePath = 'files/${id}_$safeName';
+      final stagingFile = File(path.join(stagingDirectory.path, '$id.tmp'));
+      final targetFile = File(path.join(directory.path, relativePath));
 
-    // Atomically write bytes to staging, then rename to target
-    stagingFile.writeAsBytesSync(bytes, flush: true);
-    stagingFile.renameSync(targetFile.path);
+      stagingFile.writeAsBytesSync(bytes, flush: true);
+      stagingFile.renameSync(targetFile.path);
 
-    final entry = SharedInboxEntry(
-      id: id,
-      displayName: safeName,
-      relativePath: relativePath,
-      mimeType: mime,
-      byteSize: bytes.length,
-      sha256: digest,
-      receivedAt: DateTime.now().toUtc(),
-    );
+      final entry = SharedInboxEntry(
+        id: id,
+        displayName: safeName,
+        relativePath: relativePath,
+        mimeType: mime,
+        byteSize: bytes.length,
+        sha256: digest,
+        receivedAt: DateTime.now().toUtc(),
+      );
 
-    currentEntries.insert(0, entry);
-    saveSync(currentEntries);
-    return entry;
+      currentEntries.insert(0, entry);
+      _saveUnderLockSync(currentEntries);
+      return entry;
+    });
   }
 
   /// Ingests raw bytes safely into the Shared Inbox asynchronously.
@@ -354,59 +398,60 @@ class SharedInboxStore {
         ? mimeType!.trim()
         : inferMimeType(safeName);
 
-    // Duplicate detection: check if this content is already present in inbox
-    final currentEntries = await load();
-    for (final existing in currentEntries) {
-      if (existing.sha256 == digest &&
-          existing.byteSize == bytes.length &&
-          await existing.fileIn(directory).exists()) {
-        return existing;
+    return await _withLock(() async {
+      final currentEntries = await load();
+      for (final existing in currentEntries) {
+        if (existing.sha256 == digest &&
+            existing.byteSize == bytes.length &&
+            await existing.fileIn(directory).exists()) {
+          return existing;
+        }
       }
-    }
 
-    await filesDirectory.create(recursive: true);
-    await stagingDirectory.create(recursive: true);
+      await filesDirectory.create(recursive: true);
+      await stagingDirectory.create(recursive: true);
 
-    final id = _uuid.v4();
-    final relativePath = 'files/${id}_$safeName';
-    final stagingFile = File(path.join(stagingDirectory.path, '$id.tmp'));
-    final targetFile = File(path.join(directory.path, relativePath));
+      final id = _uuid.v4();
+      final relativePath = 'files/${id}_$safeName';
+      final stagingFile = File(path.join(stagingDirectory.path, '$id.tmp'));
+      final targetFile = File(path.join(directory.path, relativePath));
 
-    await stagingFile.writeAsBytes(bytes, flush: true);
-    await stagingFile.rename(targetFile.path);
+      await stagingFile.writeAsBytes(bytes, flush: true);
+      await stagingFile.rename(targetFile.path);
 
-    final entry = SharedInboxEntry(
-      id: id,
-      displayName: safeName,
-      relativePath: relativePath,
-      mimeType: mime,
-      byteSize: bytes.length,
-      sha256: digest,
-      receivedAt: DateTime.now().toUtc(),
-    );
+      final entry = SharedInboxEntry(
+        id: id,
+        displayName: safeName,
+        relativePath: relativePath,
+        mimeType: mime,
+        byteSize: bytes.length,
+        sha256: digest,
+        receivedAt: DateTime.now().toUtc(),
+      );
 
-    currentEntries.insert(0, entry);
-    await save(currentEntries);
-    return entry;
+      currentEntries.insert(0, entry);
+      await _saveUnderLock(currentEntries);
+      return entry;
+    });
   }
 
   /// Deletes a single entry from the inbox and removes its file from disk.
   void deleteEntrySync(String id) {
-    final currentEntries = loadSync();
-    final index = currentEntries.indexWhere((e) => e.id == id);
-    if (index == -1) return;
+    _withLockSync(() {
+      final currentEntries = loadSync();
+      final index = currentEntries.indexWhere((e) => e.id == id);
+      if (index == -1) return;
 
-    final entry = currentEntries.removeAt(index);
-    final file = entry.fileIn(directory);
-    if (file.existsSync()) {
-      try {
-        file.deleteSync();
-      } catch (_) {
-        // Continue even if disk delete had an OS lock
+      final entry = currentEntries.removeAt(index);
+      final file = entry.fileIn(directory);
+      if (file.existsSync()) {
+        try {
+          file.deleteSync();
+        } catch (_) {}
       }
-    }
 
-    saveSync(currentEntries);
+      _saveUnderLockSync(currentEntries);
+    });
   }
 
   Future<void> deleteEntry(String id) async => deleteEntrySync(id);
@@ -414,44 +459,48 @@ class SharedInboxStore {
   /// Deletes multiple entries in batch.
   void deleteEntriesSync(List<String> ids) {
     if (ids.isEmpty) return;
-    final idSet = ids.toSet();
-    final currentEntries = loadSync();
-    final remaining = <SharedInboxEntry>[];
+    _withLockSync(() {
+      final idSet = ids.toSet();
+      final currentEntries = loadSync();
+      final remaining = <SharedInboxEntry>[];
 
-    for (final entry in currentEntries) {
-      if (idSet.contains(entry.id)) {
-        final file = entry.fileIn(directory);
-        if (file.existsSync()) {
-          try {
-            file.deleteSync();
-          } catch (_) {}
+      for (final entry in currentEntries) {
+        if (idSet.contains(entry.id)) {
+          final file = entry.fileIn(directory);
+          if (file.existsSync()) {
+            try {
+              file.deleteSync();
+            } catch (_) {}
+          }
+        } else {
+          remaining.add(entry);
         }
-      } else {
-        remaining.add(entry);
       }
-    }
 
-    saveSync(remaining);
+      _saveUnderLockSync(remaining);
+    });
   }
 
   Future<void> deleteEntries(List<String> ids) async => deleteEntriesSync(ids);
 
   /// Clears all files and manifest from the inbox.
   Future<void> clear() async {
-    final entries = await load();
-    for (final entry in entries) {
-      final file = entry.fileIn(directory);
-      if (file.existsSync()) {
+    await _withLock(() async {
+      final entries = await load();
+      for (final entry in entries) {
+        final file = entry.fileIn(directory);
+        if (file.existsSync()) {
+          try {
+            file.deleteSync();
+          } catch (_) {}
+        }
+      }
+      if (manifestFile.existsSync()) {
         try {
-          file.deleteSync();
+          manifestFile.deleteSync();
         } catch (_) {}
       }
-    }
-    if (manifestFile.existsSync()) {
-      try {
-        manifestFile.deleteSync();
-      } catch (_) {}
-    }
+    });
   }
 
   /// Cleans up interrupted staging files and unindexed orphaned files.

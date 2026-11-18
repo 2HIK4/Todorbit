@@ -45,67 +45,73 @@ class _TaskListGroupViewState extends State<TaskListGroupView> {
       final expanded = _isExpanded(task.id);
       final scheme = Theme.of(context).colorScheme;
 
+      final expanderPill = Tooltip(
+        message: expanded
+            ? 'Collapse ${children.length} subtask${children.length == 1 ? '' : 's'}'
+            : 'Expand ${children.length} subtask${children.length == 1 ? '' : 's'}',
+        child: Material(
+          color: scheme.surfaceContainerHighest.withValues(
+            alpha: 0.6,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () {
+              setState(() {
+                _expandedSubtasks[task.id] = !expanded;
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 6,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.subdirectory_arrow_right_rounded,
+                    size: 14,
+                    color: scheme.primary,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${children.length}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: scheme.primary,
+                    ),
+                  ),
+                  Icon(
+                    expanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    size: 16,
+                    color: scheme.primary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Stack(
-            alignment: AlignmentDirectional.centerEnd,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              widget.row(task),
-              PositionedDirectional(
-                end: 96,
-                child: Tooltip(
-                  message: expanded
-                      ? 'Collapse ${children.length} subtask${children.length == 1 ? '' : 's'}'
-                      : 'Expand ${children.length} subtask${children.length == 1 ? '' : 's'}',
-                  child: Material(
-                    color: scheme.surfaceContainerHighest.withValues(
-                      alpha: 0.6,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () {
-                        setState(() {
-                          _expandedSubtasks[task.id] = !expanded;
-                        });
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.subdirectory_arrow_right_rounded,
-                              size: 14,
-                              color: scheme.primary,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${children.length}',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: scheme.primary,
-                              ),
-                            ),
-                            Icon(
-                              expanded
-                                  ? Icons.keyboard_arrow_up_rounded
-                                  : Icons.keyboard_arrow_down_rounded,
-                              size: 16,
-                              color: scheme.primary,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+              Expanded(child: widget.row(task)),
+              Padding(
+                padding: const EdgeInsetsDirectional.only(
+                  start: 6,
+                  end: 4,
+                  bottom: 8,
                 ),
+                child: expanderPill,
               ),
             ],
           ),

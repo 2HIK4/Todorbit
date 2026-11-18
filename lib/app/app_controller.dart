@@ -320,10 +320,13 @@ class AppController extends ChangeNotifier {
 
   Future<void> refresh() async {
     final today = localDate(DateTime.now());
-    await repository.ensureRecurringTasks(
+    final materialized = await repository.ensureRecurringTasks(
       RecurrenceRule.shiftDate(today, -14),
       RecurrenceRule.shiftDate(today, 30),
     );
+    if (materialized > 0) {
+      onLocalChange?.call();
+    }
     final windowEvents = repository.eventOccurrences(
       eventWindowFrom,
       eventWindowThrough,
@@ -419,7 +422,6 @@ class AppController extends ChangeNotifier {
     loading = false;
     _loadedCalendarStateRevision = _stateRevision;
     notifyListeners();
-    onLocalChange?.call();
   }
 
   @visibleForTesting
@@ -1319,7 +1321,10 @@ class AppController extends ChangeNotifier {
           _loadedCalendarStateRevision == stateRevision) {
         continue;
       }
-      await repository.ensureRecurringTasks(from, through);
+      final materialized = await repository.ensureRecurringTasks(from, through);
+      if (materialized > 0) {
+        onLocalChange?.call();
+      }
       // Navigation may have advanced while recurrence was materializing. Only
       // load the newest requested window, and never run overlapping refreshes.
       if (_requestedRecurringMonth != null) continue;

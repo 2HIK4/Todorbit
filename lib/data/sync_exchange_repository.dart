@@ -29,23 +29,40 @@ Map<String, Object?>? _syncPortableValue(String? source) {
   });
 }
 
-SyncRevision _syncRevisionFromJournal(Map<String, Object?> row) => SyncRevision(
-  id: row['operation_id'] as String,
-  device: row['device_id'] as String,
-  sequence: row['origin_sequence'] as int,
-  parents: (jsonDecode(row['parent_ids_json'] as String) as List)
-      .cast<String>(),
-  observed: (jsonDecode(row['observed_json'] as String) as Map)
-      .cast<String, int>(),
-  visible: row['visible_json'] == null
-      ? null
-      : SyncVisibility.fromJson(
-          (jsonDecode(row['visible_json'] as String) as Map)
-              .cast<String, dynamic>(),
-        ),
-  value: _syncPortableValue(row['after_json'] as String?),
-  intent: row['intent'] as String? ?? 'edit',
-);
+SyncRevision _syncRevisionFromJournal(Map<String, Object?> row) {
+  var value = _syncPortableValue(row['after_json'] as String?);
+  if (row['entity'] == 'portable_preferences' && value != null) {
+    final key = value['key'] as String?;
+    if (key == 'customization' && value['value_json'] is String) {
+      try {
+        final raw = jsonDecode(value['value_json'] as String);
+        if (raw is Map) {
+          final cleaned = Map<String, dynamic>.from(raw)
+            ..removeWhere((k, _) => deviceLocalThemeFields.contains(k));
+          value = Map<String, Object?>.from(value)
+            ..['value_json'] = jsonEncode(cleaned);
+        }
+      } catch (_) {}
+    }
+  }
+  return SyncRevision(
+    id: row['operation_id'] as String,
+    device: row['device_id'] as String,
+    sequence: row['origin_sequence'] as int,
+    parents: (jsonDecode(row['parent_ids_json'] as String) as List)
+        .cast<String>(),
+    observed: (jsonDecode(row['observed_json'] as String) as Map)
+        .cast<String, int>(),
+    visible: row['visible_json'] == null
+        ? null
+        : SyncVisibility.fromJson(
+            (jsonDecode(row['visible_json'] as String) as Map)
+                .cast<String, dynamic>(),
+          ),
+    value: value,
+    intent: row['intent'] as String? ?? 'edit',
+  );
+}
 
 SyncBatch _buildOutgoingSyncBatch(
   List<Map<String, Object?>> rows,
@@ -58,6 +75,11 @@ SyncBatch _buildOutgoingSyncBatch(
     final entity = row['entity'] as String;
     if (!portableSyncTables.contains(entity)) {
       throw const FormatException('Unknown portable journal entity');
+    }
+    if (entity == 'portable_preferences' &&
+        (row['record_key'] as String).contains('detailPresentation')) {
+      // Exclude legacy non-portable preference row from outgoing batch
+      continue;
     }
     final operation = SyncRecordOperation(
       entity: entity,
