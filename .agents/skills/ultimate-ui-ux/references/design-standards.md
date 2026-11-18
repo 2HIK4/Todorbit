@@ -84,6 +84,14 @@ responsive controls, or keyboard operability.
   4. Tests using an Android target platform inside a desktop calendar widget do NOT prove that the production Android UI exposes that widget.
   5. When adding a shared feature, identify both platform entry points and record parity or intentional exclusions.
 
+### 4. Coherent visual states, pointer lifecycle & hierarchy conventions
+- **Restrained Hover vs Keyboard Focus**: Hover overlays must be subtle (alpha ~0.04) and never make an interactive row dramatically brighter than surrounding background surfaces. Keyboard focus must be distinct, visible, and high-contrast (accent/primary outline or alpha ~0.14 overlay).
+- **Pointer Cancellation & Window Deactivation Lifecycle**: Windows screenshot capture (<kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>), <kbd>Alt</kbd>+<kbd>Tab</kbd>, or OS mouse capture transfer cause focus loss without pointer-up or pointer-exit events. Applications must route through pointer cancellation (`PointerCancellationScope`) on `AppLifecycleState.inactive` to cancel active pointers and clear hovered devices, preventing stuck highlight and blinding hover rectangles upon resumption.
+- **Consistent List and Row Geometry**: Recurring task groups, parent tasks, and ordinary task cards must share identical outer margins (`EdgeInsets.only(bottom: 8)` desktop, `EdgeInsets.symmetric(horizontal: 16, vertical: 4)` mobile) and corner radii (`BorderRadius.circular(12)`). Recurring task headers must not be narrower or wider than sibling task rows.
+- **Parent/Subtask Visual Hierarchy (No Detached Subtasks)**: Never wrap individual subtasks in heavy standalone cards. Subtasks must be indented cleanly (24dp), visually connected via a subtle start border/line, and provide an integrated expand/collapse toggle badge on the parent item. Subtasks retain full independent action capabilities (completion checkbox, timer, edit/delete actions) while clearly communicating child status.
+- **Destructive Confirmation Semantics**: Modals confirming destructive or irreversible changes (Permanent Deletion, Moving to Trash, Purging Resources) must explicitly use error color on the confirmation action (`FilledButton.styleFrom(backgroundColor: error, foregroundColor: onError)`), explain actual data consequences clearly, and default to safe Cancel/<kbd>Esc</kbd>.
+- **Shared Files & Local-Only Retention Clarity**: When files or resources are staged locally without cloud synchronization or SQLite snapshot backup, the UI must explicitly indicate on-device locality and avoid misleading claims of cross-device availability until attached to persisted records.
+
 ## Platform and accessibility acceptance
 
 - Windows: compact mouse/keyboard layout, visible focus, scoped shortcuts,

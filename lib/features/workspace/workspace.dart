@@ -631,6 +631,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     String title,
     String message, {
     String confirmLabel = 'Delete',
+    bool isDestructive = true,
   }) async {
     return await showDialog<bool>(
           context: context,
@@ -644,6 +645,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 child: const Text('Cancel'),
               ),
               FilledButton(
+                style: isDestructive
+                    ? FilledButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.error,
+                        foregroundColor: Theme.of(context).colorScheme.onError,
+                      )
+                    : null,
                 onPressed: () => Navigator.pop(context, true),
                 child: Text(confirmLabel),
               ),
@@ -2275,6 +2282,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     items: items,
                     parents: controller.taskParents,
                     row: (task) => _taskRow(controller, task, wide),
+                    subtaskRow: (task) => _subtaskRow(controller, task, wide),
                   );
                 },
               ),
@@ -2298,6 +2306,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         task.deadlineDate!.compareTo(localDate(DateTime.now())) < 0;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
+      clipBehavior: Clip.antiAlias,
       color: focusActive
           ? scheme.primaryContainer.withValues(alpha: 0.7)
           : controller.selectedTaskId == task.id
@@ -2540,6 +2549,167 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                       'Move “${task.title}” to Trash? It can be restored with its history.',
                     )) {
                       _run(() => controller.deleteTask(task.id));
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _subtaskRow(AppController controller, LifeTask task, bool wide) {
+    final scheme = Theme.of(context).colorScheme;
+    final done = task.status == TaskStatus.completed;
+    final focusActive = controller.activeTimer?.taskId == task.id;
+    final overdue =
+        task.isOpen &&
+        task.deadlineDate != null &&
+        task.deadlineDate!.compareTo(localDate(DateTime.now())) < 0;
+    final isSelected = controller.selectedTaskId == task.id;
+
+    return Material(
+      color: focusActive
+          ? scheme.primaryContainer.withValues(alpha: 0.5)
+          : isSelected
+          ? scheme.secondaryContainer.withValues(alpha: 0.45)
+          : Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => _openTask(task, wide),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            child: Row(
+              children: [
+                Tooltip(
+                  message: done ? 'Reopen subtask' : 'Complete subtask',
+                  child: Checkbox(
+                    value: done,
+                    semanticLabel:
+                        '${done ? 'Reopen' : 'Complete'} ${task.title}',
+                    onChanged: (value) => _run(
+                      () => controller.setComplete(task, value ?? false),
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.subdirectory_arrow_right_rounded,
+                  size: 16,
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        task.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          decoration: done ? TextDecoration.lineThrough : null,
+                          color: done
+                              ? scheme.onSurface.withValues(alpha: 0.55)
+                              : null,
+                        ),
+                      ),
+                      if (task.scheduledDate != null ||
+                          task.deadlineDate != null ||
+                          focusActive ||
+                          task.status == TaskStatus.inProgress)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Wrap(
+                            spacing: 10,
+                            runSpacing: 2,
+                            children: [
+                              if (focusActive ||
+                                  task.status == TaskStatus.inProgress)
+                                Text(
+                                  focusActive ? 'Running' : 'In progress',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: scheme.primary,
+                                  ),
+                                ),
+                              if (task.scheduledDate != null)
+                                Text(
+                                  'Plan ${task.scheduledDate}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              if (task.deadlineDate != null)
+                                Text(
+                                  'Due ${task.deadlineDate}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: overdue
+                                        ? scheme.error
+                                        : scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (task.priority >= 2)
+                  Icon(
+                    Icons.flag_outlined,
+                    size: 16,
+                    color: task.priority == 3 ? scheme.error : scheme.primary,
+                  ),
+                if (task.isOpen)
+                  IconButton(
+                    iconSize: 18,
+                    visualDensity: VisualDensity.compact,
+                    tooltip: task.status == TaskStatus.inProgress
+                        ? 'Open task timer'
+                        : 'Start Subtask',
+                    onPressed: () => _quickStart(task),
+                    icon: Icon(
+                      focusActive ? Icons.timer : Icons.play_arrow_outlined,
+                      color: focusActive ? scheme.primary : null,
+                    ),
+                  ),
+                PopupMenuButton<String>(
+                  tooltip: 'Subtask actions',
+                  iconSize: 18,
+                  itemBuilder: (_) => [
+                    PopupMenuItem(value: 'edit', child: const Text('Edit')),
+                    PopupMenuItem(
+                      value: 'complete',
+                      child: Text(done ? 'Reopen' : 'Complete'),
+                    ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: const Text('Move to Trash'),
+                    ),
+                  ],
+                  onSelected: (action) async {
+                    if (action == 'edit') {
+                      await _openTask(task, wide);
+                    } else if (action == 'complete') {
+                      _run(() => controller.setComplete(task, !done));
+                    } else if (action == 'delete') {
+                      if (await _confirm(
+                        'Delete subtask?',
+                        'Move “${task.title}” to Trash? It can be restored with its history.',
+                      )) {
+                        _run(() => controller.deleteTask(task.id));
+                      }
                     }
                   },
                 ),

@@ -1,5 +1,11 @@
 # Progress
 
+## Prompt 6 — Full App-Wide UI Audit, Design System & Interaction Polish (2026-11-18)
+
+Isolated branch `feature/todorbit-full-ui-audit`, worktree `life_manager_worktrees/feature-todorbit-full-ui-audit`, base `b95474f`. Systematically reviewed all navigable surfaces on Windows and Android shells and resolved remaining screenshot 17-20 issues. Established subtle, coherent hover and focus tokens in `app_theme.dart` (`hoverColor = onSurface.withValues(alpha: 0.04)`, `focusColor = primary.withValues(alpha: 0.14)`, `listTileTheme` 10px rounded corners, `cardTheme.clipBehavior = Clip.antiAlias`). Implemented `PointerCancellationScope` to cancel active pointers and flush hovered devices upon `AppLifecycleState.inactive`, eliminating stuck hover/highlight after Windows screenshot capture (<kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>). Normalized recurring task group container margins to eliminate the 8px width discrepancy. Redesigned `TaskListGroupView`, `_subtaskRow`, and `mobileSubtaskRow` to render subtasks as clean interactive rows with a 2px vertical connector line, 24dp indentation, and integrated parent expansion toggle pill, removing the disconnected standalone card anti-pattern. Standardized destructive error styling on confirm dialogs and clarified local-only retention in Shared Files. Added comprehensive test coverage in `prompt6_ui_audit_test.dart` and `pointer_cancellation_scope_test.dart`; all regression suites PASS; static analysis (0 issues) and formatting PASS. [Receipt](PROMPT6_FULL_UI_AUDIT_2026_11_18.md). Ready for Prompt 7. Stable untouched; no beta publication.
+
+---
+
 ## Prompts 4/5 integrated - verified development checkpoint (2026-11-18)
 
 Isolated branch `integration/ui-reliability-p4-p5`, worktree

@@ -104,21 +104,29 @@ ThemeData buildAppTheme(
         ? VisualDensity.compact
         : VisualDensity.standard,
     colorScheme: scheme,
+    hoverColor: scheme.onSurface.withValues(alpha: 0.04),
+    focusColor: scheme.primary.withValues(alpha: 0.14),
+    highlightColor: scheme.onSurface.withValues(alpha: 0.06),
+    splashColor: scheme.primary.withValues(alpha: 0.08),
     materialTapTargetSize: android ? MaterialTapTargetSize.padded : null,
-    iconButtonTheme: android
-        ? IconButtonThemeData(
-            style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
-          )
-        : null,
-    textButtonTheme: android
-        ? TextButtonThemeData(
-            style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
-          )
-        : null,
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(
+        minimumSize: Size(android ? 48 : 36, android ? 48 : 36),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        minimumSize: Size(0, android ? 48 : 36),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    ),
     tooltipTheme: desktopTooltipTheme(scheme),
     scaffoldBackgroundColor: palette['background'],
     textTheme: typography,
     listTileTheme: ListTileThemeData(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       titleTextStyle: typography.titleSmall?.copyWith(
         fontWeight: FontWeight.w500,
       ),
@@ -152,6 +160,8 @@ ThemeData buildAppTheme(
     ),
     cardTheme: CardThemeData(
       elevation: 0,
+      clipBehavior: Clip.antiAlias,
+      margin: const EdgeInsets.only(bottom: 8),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: scheme.outlineVariant),

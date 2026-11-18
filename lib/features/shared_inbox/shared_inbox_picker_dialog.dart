@@ -160,7 +160,7 @@ class _SharedInboxPickerDialogState extends State<SharedInboxPickerDialog> {
                           ),
                         ),
                         Text(
-                          'Originals remain in Shared Inbox',
+                          'Copies files into task resources (originals stay on this device)',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),

@@ -74,7 +74,7 @@ The old section 8 is historical planning, not authorization for integration.
    - **Prompt 3 (authoritative delivered scope)**: Calendar responsiveness, event organization/color editing, exact month prefetch and navigation. Earlier issue-routing numbers below remain historical.
    - **Prompt 4 (current authoritative scope)**: Smart Reschedule hierarchy, recurrence grouping, preview clarity and scheduling reliability. Earlier accessibility allocations below are historical planning.
    - **Prompt 5 (current authoritative assignment)**: Android Share Inbox (intent filter ACTION_SEND, shared text/link handling, Inbox task ingestion).
-   - **Prompt 6**: Local-First Data Flow & Sync conflict review presentation refinement.
+   - **Prompt 6 (Authoritative Scope)**: Full App-Wide UI Audit, Coherent Design System, Task Hover & Hierarchy Polish, and Pointer State Cleanup across Windows & Android.
    - **Prompt 7**: Performance profiling, load-time evidence, and memory benchmarking.
    - **Prompt 8**: Verification hardening, Reusable Visual Audit Matrix execution, and release gate readiness.
 
@@ -147,7 +147,7 @@ flowchart TD
     P3["Prompt 3: Timer Idempotency, Monotonic Clocks & Focus Lifecycle"]
     P4["Prompt 4: Accessibility, WCAG AA Contrast, Keyboard & Reduced Motion"]
     P5["Prompt 5: Platform Integration, Android URIs & Destructive Clarity"]
-    P6["Prompt 6: Local-First Data Flow & Sync Conflict Refinement"]
+    P6["Prompt 6: Full App-Wide UI Audit, Design System & Interaction Polish"]
     P7["Prompt 7: Performance Profiling, Load-Time Evidence & Benchmarking"]
     P8["Prompt 8: Visual Audit Matrix Execution & Release Readiness"]
     
@@ -179,8 +179,12 @@ flowchart TD
 - **Prompt 5: Platform Integration & Destructive Clarity** (Issues: `ISS-C11`, `ISS-C13`)
   - Acquire persistable Android content URI permissions or copy picked files to managed app storage.
   - Enhance destructive action modals (Empty Trash, Delete Task) with consequence warnings, red styling, and safe <kbd>Esc</kbd> defaults.
-- **Prompt 6: Local-First Data Flow & Sync Review**
-  - Refine sync conflict review dialog presentation with field-level diffs and clean grammar without phantom badges.
+- **Prompt 6: Full App-Wide UI Audit, Coherent Design System & Interaction Polish**
+  - Systematic review and repair of visual consistency across Windows and Android surfaces.
+  - Establish coherent, restrained hover/focus visual states; resolve stuck hover after Windows screenshot capture (<kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>) via pointer cancellation lifecycle.
+  - Normalize task row and recurring task geometry and margins.
+  - Eliminate detached subtask appearance through clean connector hierarchy, stable indentation, and integrated expansion controls.
+  - Destructive confirmation dialog clarity and Shared Inbox retention clarity.
 - **Prompt 7: Performance Profiling & Load-Time Evidence** (Issue: `ISS-C17`)
   - Measure cold/warm startup p50/p95, frame render times, and verify task memoization on 2,000+ item databases.
 - **Prompt 8: Reusable Visual Audit Matrix & Release Hardening** (Issue: `ISS-C18`)
@@ -449,4 +453,4 @@ The following shared files carry potential conflict risk between Prompt 4 (Smart
   - Sync & Backup Compatibility (`sync_engine_test.dart`, `sync_apply_repository_test.dart`, `backup_service_test.dart`): 55/55 PASS.
   - Static Analysis: `flutter analyze --no-pub lib/ test/` -> 0 issues found.
   - Format & Diff: `dart format` clean; `git diff --check` clean.
-- **Ready for Prompt 6**: Local-First Data Flow & Sync Conflict Review. Stable remains untouched; no beta published.
+- **Ready for Prompt 6**: Full App-Wide UI Audit, Coherent Design System and Interaction Polish. Stable remains untouched; no beta published.

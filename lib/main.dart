@@ -1,6 +1,7 @@
 import 'data/alarm_device_store.dart';
 import 'features/shared/app_restart_scope.dart';
 import 'features/shared/app_motion.dart';
+import 'features/shared/pointer_cancellation_scope.dart';
 
 import 'dart:async';
 import 'dart:convert';
@@ -873,7 +874,11 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
                           .reducedMotion ||
                       existing.disableAnimations,
                 ),
-                child: AppMotionTheme(child: child ?? const SizedBox.shrink()),
+                child: AppMotionTheme(
+                  child: PointerCancellationScope(
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                ),
               ),
             ),
           );
@@ -886,23 +891,25 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
                 existing.disableAnimations,
           ),
           child: AppMotionTheme(
-            child: Platform.isAndroid
-                ? Stack(
-                    children: [
-                      ExcludeSemantics(
-                        excluding: privacy.locked,
-                        child: AbsorbPointer(
-                          absorbing: privacy.locked,
-                          child: child ?? const SizedBox.shrink(),
+            child: PointerCancellationScope(
+              child: Platform.isAndroid
+                  ? Stack(
+                      children: [
+                        ExcludeSemantics(
+                          excluding: privacy.locked,
+                          child: AbsorbPointer(
+                            absorbing: privacy.locked,
+                            child: child ?? const SizedBox.shrink(),
+                          ),
                         ),
-                      ),
-                      if (privacy.locked)
-                        const Positioned.fill(
-                          child: PopScope(canPop: false, child: LockScreen()),
-                        ),
-                    ],
-                  )
-                : child ?? const SizedBox.shrink(),
+                        if (privacy.locked)
+                          const Positioned.fill(
+                            child: PopScope(canPop: false, child: LockScreen()),
+                          ),
+                      ],
+                    )
+                  : child ?? const SizedBox.shrink(),
+            ),
           ),
         );
       },

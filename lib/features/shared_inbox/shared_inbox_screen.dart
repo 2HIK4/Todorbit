@@ -446,10 +446,26 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
                     ),
                   ),
                   const Spacer(),
-                  Text(
-                    'Local storage only',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.outline,
+                  Tooltip(
+                    message:
+                        'Files in the Shared Inbox are stored locally on this device. '
+                        'They are not included in cloud sync or database backups until attached to a task.',
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.cloud_off_outlined,
+                          size: 13,
+                          color: theme.colorScheme.outline,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'On-device only · Not synced',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.outline,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -564,7 +580,9 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
                   ? 'Try adjusting your search query or category filter.'
                   : 'Files and PDFs shared to Todorbit from other Android apps '
                         'will appear here so you can attach them to tasks later.\n\n'
-                        'Sharing files does not automatically create tasks.',
+                        'Sharing files does not automatically create tasks.\n\n'
+                        'Files remain local to this device and are excluded from '
+                        'cloud sync and backups until attached to a task.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,

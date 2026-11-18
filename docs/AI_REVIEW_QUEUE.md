@@ -1,5 +1,23 @@
 # AI Review Queue
 
+## Prompt 6 — Full App-Wide UI Audit, Coherent Design System & Interaction Polish (2026-11-18)
+
+- **Branch**: `feature/todorbit-full-ui-audit`
+- **Worktree**: `D:\AI_Projects\life_manager_worktrees\feature-todorbit-full-ui-audit`
+- **Base Commit**: `b95474f11bba577f59d48cb6f6375419f24fdcb8`
+- **Scope & Implementation Summary**:
+  - **Task Hover & Focus Coherence**: Resolved bright rectangular hover boxes by configuring subtle hover tokens (`hoverColor = onSurface.withValues(alpha: 0.04)`), distinct high-contrast keyboard focus indicators (`focusColor = primary.withValues(alpha: 0.14)`), `cardTheme.clipBehavior = Clip.antiAlias`, and `listTileTheme.shape = RoundedRectangleBorder(borderRadius: 10)` in `app_theme.dart`.
+  - **Pointer Cancellation & Window Blur Cleanup**: Implemented `PointerCancellationScope` (`lib/features/shared/pointer_cancellation_scope.dart`) listening to `AppLifecycleState.inactive`, cancelling in-flight pointers and flushing hovered mouse annotations to eliminate stuck hover/pressed highlights after Windows screenshot capture (<kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>).
+  - **Task Row Width Normalization**: Normalized outer margins (`only(bottom: 8)` desktop, `symmetric(h: 16, v: 4)` mobile) and corner radii on recurring task group containers, eliminating the 8px width discrepancy between recurring and ordinary task rows.
+  - **Subtask Hierarchy Redesign**: Removed heavy standalone decorative cards from subtasks. Redesigned `TaskListGroupView` to render clean interactive child rows with 24dp indentation, a 2px vertical connector line, and an integrated parent expand/collapse toggle pill.
+  - **Destructive Confirmation Clarity**: Standardized error styling (`FilledButton.styleFrom(backgroundColor: error, foregroundColor: onError)`) and safe Cancel/<kbd>Esc</kbd> defaults across `_confirm`, `_confirmPurge`, `PlannedSessionDelete`, `_remove`, and `_removeResource`.
+  - **Shared Files Retention Clarity**: Added clear on-device storage tooltips and empty-state messaging in `SharedInboxScreen` and `SharedInboxPickerDialog` explaining that unattached files remain local and are excluded from cloud sync until attached to a task.
+  - **Skills Updated**: Strengthened `.agents/skills/ultimate-ui-ux/references/design-standards.md` with Section 4 covering coherent visual states, pointer lifecycle, geometry, and hierarchy.
+  - **Receipt**: [PROMPT6_FULL_UI_AUDIT_2026_11_18.md](PROMPT6_FULL_UI_AUDIT_2026_11_18.md).
+- **Status**: IMPLEMENTED — AWAITING INDEPENDENT INTEGRATION REVIEW. No beta publication, no release tag, Stable untouched.
+
+---
+
 ## Prompts 4/5 integration checkpoint (2026-11-18)
 
 - **Branch**: `integration/ui-reliability-p4-p5`

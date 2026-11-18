@@ -922,6 +922,8 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
             items: tasks,
             parents: c.taskParents,
             row: (t) => mobileTaskRow(t, c),
+            subtaskRow: (t) => mobileSubtaskRow(t, c),
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           );
         },
       ),
@@ -985,9 +987,13 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      clipBehavior: Clip.antiAlias,
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 56),
         child: ListTile(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           contentPadding: const EdgeInsetsDirectional.only(start: 6, end: 8),
           leading: Checkbox(
             value: t.status == TaskStatus.completed,
@@ -1032,6 +1038,61 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                   taskAlarmRule(t, c.alarmRules)?.config.enabled == true)
                 const AlarmIndicator(),
               IconButton(
+                tooltip: 'Actions for ${t.title}',
+                icon: const Icon(Icons.more_vert),
+                onPressed: () => actions(t, c),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget mobileSubtaskRow(LifeTask t, AppController c) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final done = t.status == TaskStatus.completed;
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => openTaskDetails(t),
+        onLongPress: () => actions(t, c),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: Row(
+            children: [
+              Checkbox(
+                value: done,
+                semanticLabel: '${done ? 'Reopen' : 'Complete'} ${t.title}',
+                onChanged: (v) => run(() => c.setComplete(t, v == true)),
+              ),
+              Icon(
+                Icons.subdirectory_arrow_right_rounded,
+                size: 16,
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  t.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: done
+                      ? const TextStyle(
+                          fontSize: 14,
+                          decoration: TextDecoration.lineThrough,
+                        )
+                      : const TextStyle(fontSize: 14),
+                ),
+              ),
+              IconButton(
+                iconSize: 20,
+                visualDensity: VisualDensity.compact,
                 tooltip: 'Actions for ${t.title}',
                 icon: const Icon(Icons.more_vert),
                 onPressed: () => actions(t, c),
@@ -1330,9 +1391,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
               Navigator.pop(context);
               Navigator.push<void>(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const SharedInboxScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const SharedInboxScreen()),
               );
             },
           ),

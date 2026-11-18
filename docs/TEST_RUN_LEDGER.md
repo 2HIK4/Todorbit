@@ -1,5 +1,25 @@
 # Persistent test run ledger
 
+## Prompt 6 Full App-Wide UI Audit & Interaction Polish (2026-11-18, UTC+03:00)
+
+`feature/todorbit-full-ui-audit`, worktree `life_manager_worktrees/feature-todorbit-full-ui-audit`, base `b95474f`:
+- [Receipt](PROMPT6_FULL_UI_AUDIT_2026_11_18.md) records systematic audit across desktop `Workspace` and mobile `MobileWorkspace` shells, repairs for screenshots 17-20 issues, and verified tests:
+  1. Prompt 6 UI Audit Suite (`test/prompt6_ui_audit_test.dart`): **6/6 PASS** (hover/focus tokens, row width equality, subtask hierarchy, viewports 800x600 to 1920x1080 and 320x640 to 393x852, retention notice).
+  2. Pointer Cancellation Suite (`test/pointer_cancellation_scope_test.dart`): **1/1 PASS** (`AppLifecycleState.inactive` pointer cancellation and hover flush).
+  3. Workspace & Task UX Regression (`test/workspace_test.dart`): **14/14 PASS**.
+  4. Shared Inbox Screen & Retention (`test/shared_inbox_screen_test.dart`): **7/7 PASS**.
+  5. Shared Inbox Task Integration (`test/shared_inbox_task_integration_test.dart`): **4/4 PASS**.
+  6. Smart Reschedule Regression (`test/prompt4_smart_reschedule_test.dart`): **15/15 PASS**.
+  7. Task Composition & Subtasks (`test/task_composition_widget_test.dart`): **2/2 PASS**.
+  8. Task Resources Regression (`test/task_resources_widget_test.dart`): **2/2 PASS**.
+  9. Anchored Select Field Focus (`test/anchored_select_field_test.dart`): **6/6 PASS**.
+- Full static analysis: `flutter analyze --no-pub lib/ test/` -> **0 issues found** (28.0s).
+- Changed file formatting: `dart format` -> clean (100%).
+- Diff check: `git diff --check` -> clean.
+- Invariants: Zero schema migration, zero data loss, zero beta publication.
+
+---
+
 ## Prompts 4 and 5 integration (2026-11-18, UTC+03:00)
 
 `integration/ui-reliability-p4-p5`, worktree `life_manager_worktrees/integration-ui-p4-p5`, inputs `5a0e836` (Prompt 4: Smart Reschedule) and `3b98678` (Prompt 5: Android Share Inbox), baseline `62326bd`:
