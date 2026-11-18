@@ -4,19 +4,19 @@
 
 - **Branch**: `feature/todorbit-performance-p7`
 - **Worktree**: `D:\AI_Projects\life_manager_worktrees\feature-todorbit-performance-p7`
-- **Base Commit**: `016537ff32715b200a14be1e0a01595cf71b6cd3` (Prompt 6)
+- **Base Commit**: `016537ff32715b200a14be1e0a01595cf71b6cd3` (Prompt 6 verified base)
 - **Scope & Implementation Summary**:
-  - **Eliminated Active Timer Full-Page Rebuilds**: Removed the redundant 1-second `_clock` timer in `Workspace`, which was triggering full-page `setState(() {})` every second during active timers. Reduced 3-second active timer workload by 69.8% (1839.41 ms -> 554.73 ms).
-  - **Preference Stores Caching & Write Idempotency**: Added in-memory map caching in `AppearancePreferenceStore` and `CalendarPreferenceStore` with `stat.modified` validation. Skipped `_write` when serialized content matches disk, eliminating 8 redundant reads and 6 redundant disk writes on app startup.
-  - **SQLite WAL Mode Normal Synchronous**: Configured `PRAGMA synchronous = NORMAL;` on `AppDatabase.openDefault()`, reducing write transaction disk fsync stalls in full compliance with `todorbit-engineering-quality`.
-  - **Snapshot Schema Memoization & Zero-Isolate Backup Checks**: Added `_hasRecentAutomaticBackup` in `BackupService` using filename timestamps and file stats. Memoized verified snapshot schemas in `_schemaCache`, eliminating up to 14 sequential isolate spawns per check.
+  - **Eliminated Active Timer Full-Page Rebuilds**: Removed the redundant 1-second `_clock` timer in `Workspace`, which was triggering full-page `setState(() {})` every second during active timers. Reduced 3-second active timer test workload by 59.3% (1839.41 ms -> 749.44 ms). Verified in `test/prompt7_cache_correctness_test.dart` that `CompactTaskTimer` ticks independently and task rows reflect status transitions ('Timer running', 'Timer paused') via controller state notifications without any UI drift.
+  - **SQLite Durability Preserved at FULL**: Enforced explicit `PRAGMA synchronous = FULL;` in WAL mode on `AppDatabase.openDefault()`, strictly maintaining zero-data-loss guarantees across power cuts and OS crashes without compromising data safety for benchmarks.
+  - **Preference Stores Caching & Write Idempotency**: Added in-memory map caching in `AppearancePreferenceStore` and `CalendarPreferenceStore` with dual `(stat.modified, stat.size)` freshness validation. Skipped `_write` when serialized content matches disk, eliminating redundant disk writes on startup.
+  - **Snapshot Schema Memoization & Mandatory Validation on Restore**: Added `_hasRecentAutomaticBackup` in `BackupService` using filename timestamps and file stats. Memoized verified snapshot schemas in `_schemaCache` for listing in UI; strictly preserved isolated `PRAGMA quick_check` and complete schema validation for all restore and import flows.
   - **Targeted Calendar Window Refreshes**: Replaced monolithic 29-table `refresh()` during month navigation with targeted `refreshCalendarWindow()` querying only 4 collections (`events`, `todayEvents`, `tasks`, `taskParents`).
   - **Task List Projection Memoization**: Memoized `projectTaskList` in `task_list_projection.dart` for identical input lists and parent maps across both desktop and mobile shells.
   - **Single-Mount Startup Pipeline**: Removed intermediate `StartupPage` pre-mount in `main.dart`, eliminating double widget tree construction and the ~100ms loading flicker.
   - **Disposal Safety Guards**: Added `if (_disposed) return;` at the top of `notifyListeners()` and `select()` in `AppController` to prevent assertions when async operations finish after teardown.
-  - **Comprehensive 15-Scenario Benchmark**: Created `test/performance_benchmark_test.dart` measuring all 15 required user scenarios against an isolated 120-task / 50-event dataset.
+  - **Comprehensive Benchmark & Correctness Suites**: Created `test/performance_benchmark_test.dart` (15 scenarios) and `test/prompt7_cache_correctness_test.dart` (14 cache & timer tests). Disclosed test runner variance and synthetic execution boundaries.
   - **Receipt**: [PROMPT7_PERFORMANCE_OPTIMIZATION_2026_11_18.md](PROMPT7_PERFORMANCE_OPTIMIZATION_2026_11_18.md).
-- **Status**: IMPLEMENTED — AWAITING INDEPENDENT INTEGRATION REVIEW. No beta publication, no release tag, Stable untouched.
+- **Status**: IMPLEMENTED & SAFETY-AUDITED — AWAITING INDEPENDENT INTEGRATION REVIEW. No beta publication, no release tag, Stable untouched.
 
 ---
 

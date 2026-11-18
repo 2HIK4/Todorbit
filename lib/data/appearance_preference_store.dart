@@ -14,10 +14,12 @@ class AppearancePreferenceStore {
   final File file;
   Map<String, dynamic>? _cachedData;
   DateTime? _cachedModified;
+  int? _cachedSize;
 
   void invalidateCache() {
     _cachedData = null;
     _cachedModified = null;
+    _cachedSize = null;
   }
 
   static Future<AppearancePreferenceStore> openDefault() async {
@@ -169,16 +171,20 @@ class AppearancePreferenceStore {
     if (!await file.exists()) {
       _cachedData = {};
       _cachedModified = null;
+      _cachedSize = null;
       return _cachedData!;
     }
     final stat = await file.stat();
-    if (_cachedData != null && _cachedModified == stat.modified) {
+    if (_cachedData != null &&
+        _cachedModified == stat.modified &&
+        _cachedSize == stat.size) {
       return _cachedData!;
     }
     final value = jsonDecode(await file.readAsString());
     if (value is Map<String, dynamic>) {
       _cachedData = value;
       _cachedModified = stat.modified;
+      _cachedSize = stat.size;
       return _cachedData!;
     }
     throw FormatException(
@@ -200,6 +206,8 @@ class AppearancePreferenceStore {
     await temporary.copy(file.path);
     await temporary.delete();
     _cachedData = Map<String, dynamic>.from(value);
-    _cachedModified = (await file.stat()).modified;
+    final stat = await file.stat();
+    _cachedModified = stat.modified;
+    _cachedSize = stat.size;
   }
 }

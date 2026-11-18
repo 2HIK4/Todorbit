@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:crypto/crypto.dart';
@@ -60,6 +61,12 @@ class BackupService {
 
   static final Map<String, (int mtimeMs, int size, int schema)> _schemaCache =
       {};
+
+  @visibleForTesting
+  static void clearSchemaCacheForTesting() => _schemaCache.clear();
+
+  @visibleForTesting
+  static int get schemaCacheCountForTesting => _schemaCache.length;
 
   Future<int> _cachedOrInspectSnapshot(String filename, FileStat stat) async {
     final cached = _schemaCache[filename];

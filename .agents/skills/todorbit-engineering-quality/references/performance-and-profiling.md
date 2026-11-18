@@ -54,7 +54,7 @@ The development machine has 16 GB of RAM. Exceeding available memory causes aggr
 
 ## 5. SQLite & Disk I/O Efficiency
 
-1. **WAL Mode**: SQLite runs in Write-Ahead Logging mode (`PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;`). Readers never block writers, and writers do not block readers.
+1. **WAL Mode & Zero-Data-Loss Durability**: SQLite runs in Write-Ahead Logging mode (`PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL;`). Readers never block writers, and writers do not block readers. Explicit full durability (`synchronous = FULL`) is strictly maintained to guarantee zero data loss and prevent committed transaction loss during sudden power failure or OS crashes, prioritizing user data safety over synthetic write micro-benchmarks.
 2. **Batching Insertions & Updates**:
    - When importing, syncing, or restoring, use batch statements or chunked multi-row inserts (`insertAll`) inside a single transaction.
    - Never loop individual `customInsert` queries without an enclosing transaction.
@@ -68,11 +68,12 @@ The development machine has 16 GB of RAM. Exceeding available memory causes aggr
 1. **Single-Mount Startup Pipeline**:
    - Never call `runApp()` with an intermediate loading screen only to tear down the entire widget tree when initialization completes. Mount `LifeManagerApp` once; keep native splash active until the first meaningful frame renders.
 2. **Preference Store Idempotency & In-Memory Caching**:
-   - Cache decoded JSON in memory validated against `stat.modified`.
+   - Cache decoded JSON in memory validated against `(stat.modified, stat.size)`.
    - Skip disk serialization (`_write`) if new content is byte-identical to existing content to prevent disk I/O thrashing and spurious file-watcher reload loops.
-3. **Immutable Snapshot Schema Memoization**:
-   - Standalone SQLite snapshots (backups/archives) are immutable. Check filename timestamps (`auto-YYYYMMDD...`) and file stats before spawning isolates.
-   - Memoize verified schema versions by `(path, modified, size)` so recurring backup checks incur zero isolate overhead.
+3. **Immutable Snapshot Schema Memoization & Mandatory Validation on Restore**:
+   - Standalone SQLite snapshots (backups/archives) in `backups/` are immutable. Check filename timestamps (`auto-YYYYMMDD...`) and file stats before spawning isolates.
+   - Memoize verified schema versions by `(path, modified, size)` so recurring backup listing checks incur zero isolate overhead.
+   - **Crucial Rule**: Cached schema metadata must NEVER substitute for required backup integrity validation. Restore and import procedures (`scheduleRestore`, `applyPendingRestore`, `importSnapshot`) must always execute full `PRAGMA quick_check` and complete table schema validation in a dedicated isolate before replacing any live data.
 4. **Scoped Tickers vs Root Rebuilds**:
    - Never attach high-frequency or 1-second `Timer.periodic` triggers to top-level scaffold/workspace states to update descendant timer badges. Descendant widgets (`CompactTaskTimer`) must own their own localized ticker and `setState()`.
 5. **Targeted Viewport Refreshes**:

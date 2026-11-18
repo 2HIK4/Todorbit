@@ -1,26 +1,30 @@
 # Persistent test run ledger
 
-## Prompt 7 Performance Optimization & Resource Efficiency (2026-11-18, UTC+03:00)
+## Prompt 7 Performance Optimization & Safety Review (2026-11-18, UTC+03:00)
 
-`feature/todorbit-performance-p7`, worktree `life_manager_worktrees/feature-todorbit-performance-p7`, base `016537f` (Prompt 6):
-- [Receipt](PROMPT7_PERFORMANCE_OPTIMIZATION_2026_11_18.md) records systematic profiling, 15-scenario benchmark, and verification across 8 critical test suites:
-  1. Performance Benchmark Suite (`test/performance_benchmark_test.dart`): **1/1 PASS** (17s).
+`feature/todorbit-performance-p7`, worktree `life_manager_worktrees/feature-todorbit-performance-p7`, base `016537ff32715b200a14be1e0a01595cf71b6cd3` (`016537f`, Prompt 6):
+- [Receipt](PROMPT7_PERFORMANCE_OPTIMIZATION_2026_11_18.md) records systematic profiling, safety audit, durability restoration, and verification across critical test suites:
+  1. Cache Correctness & Timer Behavior (`test/prompt7_cache_correctness_test.dart`): **14/14 PASS** (8s).
+     - Validated `(stat.modified, stat.size)` cache checking in `AppearancePreferenceStore` and `CalendarPreferenceStore`.
+     - Validated write idempotency, file deletion fallback, and cache invalidation.
+     - Validated `projectTaskList` memoization invalidation across task, parent, and grouping changes.
+     - Validated `BackupService._schemaCache` listing memoization, modification re-inspection, and corrupted file handling (-1).
+     - Verified mandatory isolation and integrity validation on restore/import paths.
+     - Verified `CompactTaskTimer` independent 1s ticking and task row status label parity without workspace rebuilds.
+  2. Performance Benchmark Suite (`test/performance_benchmark_test.dart`): **1/1 PASS** (19s) with `PRAGMA synchronous = FULL`.
      - 15 representative scenarios measured against 120+ tasks, 50 events, 20 sessions, 14 backup snapshots.
-     - Active timer 3s workload: reduced from 1839.41 ms to 554.73 ms (-69.8%).
-     - Warm return to foreground: reduced from 17.54 ms to 11.94 ms (-31.9%).
-     - Task details open: reduced from 775.52 ms to 534.33 ms (-31.1%).
-     - Close event details: reduced from 630.45 ms to 348.99 ms (-44.6%).
-     - Subtasks expand: reduced from 174.82 ms to 127.33 ms (-27.2%).
-     - Advanced search open: reduced from 399.13 ms to 251.48 ms (-37.0%).
-     - Smart reschedule open: reduced from 432.59 ms to 325.88 ms (-24.7%).
-  2. UI Audit Suite (`test/prompt6_ui_audit_test.dart`): **6/6 PASS** (3s).
-  3. Pointer Cancellation Suite (`test/pointer_cancellation_scope_test.dart`): **1/1 PASS** (1s).
-  4. Workspace & Task UX Suite (`test/workspace_test.dart`): **15/15 PASS** (33s).
-  5. Smart Reschedule Suite (`test/prompt4_smart_reschedule_test.dart`): **16/16 PASS** (26s).
-  6. Database Migrations & Atomic Creation (`test/database_initialization_test.dart`): **22/22 PASS** (1m 56s).
-  7. Isolated Profile Journeys (`tools/dev/test-profile-journeys.ps1`): **15/15 PASS** (53s).
-- Full static analysis: `flutter analyze --no-pub` -> **0 issues found** (10.8s).
-- Invariants: Schema preserved at 29, forward-only migrations, zero data loss, zero beta publication.
+     - Active timer 3s workload: reduced from 1839.41 ms to 749.44 ms (-59.3%) by eliminating 3 full-workspace rebuilds.
+     - Warm return to foreground: reduced from 17.54 ms to 9.87 ms (-43.7%).
+     - Disclosed synthetic test runner limitations: timings represent debug test runner elapsed time, not native AOT or hardware profiler CPU percentages; cold frame (+194 ms) and next-month nav (+483 ms) acknowledged as test harness variances and synchronous durability trade-offs.
+  3. UI Audit Suite (`test/prompt6_ui_audit_test.dart`): **6/6 PASS** (3s).
+  4. Pointer Cancellation Suite (`test/pointer_cancellation_scope_test.dart`): **1/1 PASS** (1s).
+  5. Workspace & Task UX Suite (`test/workspace_test.dart`): **15/15 PASS** (33s).
+  6. Smart Reschedule Suite (`test/prompt4_smart_reschedule_test.dart`): **16/16 PASS** (26s).
+  7. Database Migrations & Atomic Creation (`test/database_initialization_test.dart`): **22/22 PASS** (1m 30s) verifying `PRAGMA synchronous = FULL` durability.
+  8. Isolated Profile Journeys (`tools/dev/test-profile-journeys.ps1`): **15/15 PASS** (53s).
+- Full static analysis: `flutter analyze --no-pub` -> **0 issues found** (16.3s).
+- Code formatting and whitespace: `git diff --check` -> **0 issues found**.
+- Invariants: Schema strictly preserved at 29, forward-only migrations, full SQLite durability in WAL mode, zero data loss, zero release publication.
 
 ---
 

@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'models.dart';
 
 class TaskListGroup {
@@ -12,6 +14,15 @@ Map<String, String>? _lastParents;
 bool? _lastGroupRecurrence;
 List<LifeTask>? _lastRelated;
 List<TaskListGroup>? _lastResult;
+
+@visibleForTesting
+void resetTaskListProjectionCacheForTesting() {
+  _lastTasks = null;
+  _lastParents = null;
+  _lastGroupRecurrence = null;
+  _lastRelated = null;
+  _lastResult = null;
+}
 
 // Presentation only: never changes identity, dates, or occurrence state. Input
 // is already filtered; a matching child stays discoverable without its parent.

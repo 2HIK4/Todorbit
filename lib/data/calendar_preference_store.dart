@@ -10,10 +10,12 @@ class CalendarPreferenceStore {
 
   CalendarContent? _cached;
   DateTime? _cachedModified;
+  int? _cachedSize;
 
   void invalidateCache() {
     _cached = null;
     _cachedModified = null;
+    _cachedSize = null;
   }
 
   static Future<CalendarPreferenceStore> openDefault() async {
@@ -29,10 +31,13 @@ class CalendarPreferenceStore {
     if (!await file.exists()) {
       _cached = CalendarContent.both;
       _cachedModified = null;
+      _cachedSize = null;
       return _cached!;
     }
     final stat = await file.stat();
-    if (_cached != null && _cachedModified == stat.modified) {
+    if (_cached != null &&
+        _cachedModified == stat.modified &&
+        _cachedSize == stat.size) {
       return _cached!;
     }
     final value = jsonDecode(await file.readAsString());
@@ -46,6 +51,7 @@ class CalendarPreferenceStore {
       orElse: () => CalendarContent.both,
     );
     _cachedModified = stat.modified;
+    _cachedSize = stat.size;
     return _cached!;
   }
 
@@ -62,6 +68,8 @@ class CalendarPreferenceStore {
     await temporary.copy(file.path);
     await temporary.delete();
     _cached = value;
-    _cachedModified = (await file.stat()).modified;
+    final stat = await file.stat();
+    _cachedModified = stat.modified;
+    _cachedSize = stat.size;
   }
 }

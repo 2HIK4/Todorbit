@@ -148,7 +148,7 @@ class AppDatabase extends GeneratedDatabase {
           database.execute('PRAGMA busy_timeout = 5000');
           database.execute('PRAGMA foreign_keys = ON');
           database.execute('PRAGMA journal_mode = WAL');
-          database.execute('PRAGMA synchronous = NORMAL');
+          database.execute('PRAGMA synchronous = FULL');
         },
       ),
     );
