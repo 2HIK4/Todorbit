@@ -153,12 +153,14 @@ void main() {
         'Organization and appearance',
         editor: EventEditor,
       );
-      await tester.ensureVisible(find.byType(PopupMenuButton<int>));
+      final color = find.byTooltip('Choose event color');
+      await tester.ensureVisible(color);
       await tester.pumpAndSettle();
-      await tester.tap(find.byType(PopupMenuButton<int>));
+      await tester.tap(color);
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Ocean').last);
-      await tester.tap(find.text('Ocean').last);
+      final ocean = find.widgetWithText(MenuItemButton, 'Ocean');
+      await tester.ensureVisible(ocean);
+      await tester.tap(ocean);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Save event'));
       await tester.pumpAndSettle();

@@ -288,6 +288,9 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Shared title'), findsNWidgets(5));
+      expect(find.text('Child independently searchable'), findsOneWidget);
+      await tester.tap(find.byTooltip('Collapse 1 subtask'));
+      await tester.pumpAndSettle();
       expect(find.text('Child independently searchable'), findsNothing);
       controller.setFilter(const TaskFilter(text: 'Child independently'));
       await tester.pumpAndSettle();

@@ -1,9 +1,15 @@
 # AI Review Queue
 
+## Beta 24 Windows CI corrections awaiting integration (2026-11-19)
+
+- Review `fix/todorbit-beta24-windows-ci` against release tip `60b85413ec82eda4295c4542865f068f5d671db1`.
+- Production changes cover standalone Dart worker imports, keyboard dismissal for the view-help menu and the shared icon picker above the keyboard. The remaining widget changes update test journeys and targeting.
+- [Failure and verification receipt](BETA24_WINDOWS_CI_FAILURE_FIXES.md).
+
 ## Beta 24 release-blocker integration review (2026-11-18)
 
 **INTEGRATION VERIFIED; PUBLICATION BLOCKED BY WINDOWS CI GATE.**
-- **Merged Commit**: `12d7e4624b455c17fae44ebae566110f0f4a8616` on `feature/todorbit-release-p8`.
+- **Merged commit** `12d7e46fe47d4da761b13b1be995b8c7420e157c` on `feature/todorbit-release-p8`.
 - **Merged Branch**: `fix/todorbit-beta24-release-blockers` (commit `cfde5b3b85d2cbc460be8fcf06075707c7481283`, base `253bc54eb74300505793cf0a6e5328a3858f23da`).
 - **Codex Findings Verified**:
   - P1-01: Sync causal history preserved. Zero SQLite startup deletions. Exact retry byte preservation and peer envelope application verified.
@@ -18,7 +24,7 @@
   - Native Companion: .NET 10 Release build and `--self-test` PASS.
   - Android Release APK: Compiled via `tools/build-android.ps1`, production signed, 16-KiB native alignment verified (SHA-256 `107BDBD497455AE80444D17C5DB33CF9DCE05287D2BE6A91C654BA5DD373DAE7`).
   - GitHub Actions Android CI ([Run 44390832263](https://github.com/2HIK4/Todorbit/actions/runs/44390832263)): SUCCESS (8m29s).
-  - GitHub Actions Windows CI ([Run 44390804115](https://github.com/2HIK4/Todorbit/actions/runs/44390804115)): FAILED at `Run Flutter tests` due to 12 legacy suite fixture failures; Windows release installer/portable packages could not be produced.
+  - Windows CI failed at `Run Flutter tests` before installer and portable packaging. The twelve failures include two application regressions, five outdated tests and five test-infrastructure failures. [Run 44390804115](https://github.com/2HIK4/Todorbit/actions/runs/44390804115), [failure receipt](BETA24_WINDOWS_CI_FAILURE_FIXES.md).
 - **Status**: Publication BLOCKED per mandatory release gates 2, 3, and 8. See [Beta 24 Verification & Publication Report](UIUX05_BETA_24_PUBLICATION.md).
 
 ## Historical Prompt 8 — Final Release Verification (2026-11-18)

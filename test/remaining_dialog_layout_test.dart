@@ -130,12 +130,20 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      final high = find.widgetWithText(FilterChip, 'High');
-      await tester.scrollUntilVisible(
-        high,
-        120,
-        scrollable: find.byType(Scrollable).first,
+      final formScroll = find.descendant(
+        of: find.byKey(const ValueKey('advanced-search-form-list')),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is Scrollable &&
+              widget.axisDirection == AxisDirection.down,
+        ),
       );
+      final priority = find.text('Priority');
+      await tester.scrollUntilVisible(priority, 120, scrollable: formScroll);
+      await tester.tap(priority);
+      await tester.pumpAndSettle();
+      final high = find.widgetWithText(FilterChip, 'High');
+      await tester.scrollUntilVisible(high, 120, scrollable: formScroll);
       await tester.pumpAndSettle();
       expect(tester.getSize(high).height, greaterThanOrEqualTo(40));
       await tester.tap(high);
@@ -143,15 +151,15 @@ void main() {
       expect(tester.widget<FilterChip>(high).selected, isTrue);
       await tester.binding.setSurfaceSize(const Size(430, 620));
       await tester.pumpAndSettle();
+      expect(tester.widget<FilterChip>(high).selected, isTrue);
+      final sort = find.text('Sort Results');
+      await tester.scrollUntilVisible(sort, 120, scrollable: formScroll);
+      await tester.tap(sort);
+      await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
         find.text('Sort results by'),
         120,
-        scrollable: find
-            .descendant(
-              of: find.byKey(const ValueKey('advanced-search-form-list')),
-              matching: find.byType(Scrollable),
-            )
-            .first,
+        scrollable: formScroll,
       );
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);

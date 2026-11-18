@@ -1,5 +1,11 @@
 # Progress
 
+## Beta 24 Windows CI corrections (2026-11-19)
+
+The twelve Windows CI failures were reproduced locally. The corrections are on
+`fix/todorbit-beta24-windows-ci` for Gemini to integrate and verify with the full
+Windows workflow. [Failure and verification receipt](BETA24_WINDOWS_CI_FAILURE_FIXES.md).
+
 ## Beta 24 release-blocker integration and verification (2026-11-18)
 
 Integrated Codex's four P1 release blocker fixes and related improvements from `fix/todorbit-beta24-release-blockers` (`cfde5b3b85d2cbc460be8fcf06075707c7481283`) into `feature/todorbit-release-p8` at commit `12d7e4624b455c17fae44ebae566110f0f4a8616` (0 merge conflicts). Verified causal history preservation on SQLite startup, Android Shared Inbox native single-worker serialization and task attachment survival, Workspace editor navigation guards across Side Panel and Full Page modes, and Smart Reschedule recurring occurrence collision checks. 105 focused regression tests PASS (100%), static analysis clean (0 issues), native companion .NET 10 Release build and self-test PASS, and Android release APK compiled, signed, and verified with 16-KiB alignment. GitHub Actions Android validation passed ([Run 44390832263](https://github.com/2HIK4/Todorbit/actions/runs/44390832263)). Publication is BLOCKED by failed Windows CI ([Run 44390804115](https://github.com/2HIK4/Todorbit/actions/runs/44390804115)) and missing Windows installer/portable artifacts. Stable remains untouched. [Receipt](UIUX05_BETA_24_PUBLICATION.md).

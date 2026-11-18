@@ -38,6 +38,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   drift: ^2.35.2
   flutter_riverpod: ^3.4.3
+  meta: ^1.19.0
   path: ^1.9.1
   uuid: ^4.6.0
   sqlite3: ^3.7.1
