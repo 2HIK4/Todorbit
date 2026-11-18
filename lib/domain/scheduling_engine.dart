@@ -286,6 +286,8 @@ class SchedulingEngine {
     required String newSessionId,
     required String scope,
     Duration gap = Duration.zero,
+    List<FixedEvent> fixedEvents = const [],
+    List<WorkSession> otherSessions = const [],
   }) {
     final issues = <ScheduleIssue>[];
     if (!_sessionEligibility(session, task, issues)) {
@@ -306,6 +308,32 @@ class SchedulingEngine {
     final firstEnd = originalStart.add(Duration(minutes: firstMinutes));
     final secondStart = firstEnd.add(gap);
     final secondEnd = secondStart.add(Duration(minutes: secondMinutes));
+    final secondInterval = _Interval(secondStart.toUtc(), secondEnd.toUtc());
+    final hasEventCollision = fixedEvents.any(
+      (event) =>
+          _Interval(event.startsAt, event.endsAt).overlaps(secondInterval),
+    );
+    if (hasEventCollision) {
+      issues.add(
+        const ScheduleIssue(
+          kind: ScheduleIssueKind.fixedEventCollision,
+          message: 'Split session extends into a fixed event.',
+        ),
+      );
+      return _preview(ScheduleOperationType.split, scope, const [], issues);
+    }
+    final hasSessionCollision = otherSessions
+        .where((s) => s.id != session.id)
+        .any((s) => _Interval(s.startsAt, s.endsAt).overlaps(secondInterval));
+    if (hasSessionCollision) {
+      issues.add(
+        const ScheduleIssue(
+          kind: ScheduleIssueKind.sessionCollision,
+          message: 'Split session extends into an existing scheduled session.',
+        ),
+      );
+      return _preview(ScheduleOperationType.split, scope, const [], issues);
+    }
     return _preview(ScheduleOperationType.split, scope, [
       _sessionChange(session, originalStart, firstEnd),
       ScheduleChange(
@@ -586,4 +614,7 @@ class _Interval {
   const _Interval(this.start, this.end);
   final DateTime start;
   final DateTime end;
+
+  bool overlaps(_Interval other) =>
+      start.isBefore(other.end) && end.isAfter(other.start);
 }

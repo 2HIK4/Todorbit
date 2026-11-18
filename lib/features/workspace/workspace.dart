@@ -145,6 +145,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   final _widgetSettingsController = WidgetSettingsController();
   NavigationRequest? pendingNavigation;
   DateTime? navigationDay;
+  DateTime? _lastCalendarDate;
   bool navigating = false;
   void receiveNavigation(String payload) {
     try {
@@ -213,6 +214,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           }
           if (!mounted) return;
           editor = EventEditor(
+            key: ValueKey((event.id, event.nominalDate ?? '', editorRevision)),
             protectUnsavedEdits: true,
             event: event,
             initialDay: day,
@@ -319,9 +321,18 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     }
   }
 
-  Future<void> _openTask(LifeTask task, bool wide) async {
+  Future<void> _openTask(
+    LifeTask task,
+    bool wide, {
+    bool navigate = false,
+  }) async {
     final controller = ref.read(appControllerProvider);
     if (!await _prepareEditorChange() || !mounted) return;
+    if (navigate) {
+      controller.navigate(
+        task.isOpen ? WorkspaceView.all : WorkspaceView.completed,
+      );
+    }
     final useFullPage = controller.isFullPageDetails;
     controller.select(task.id);
     setState(() {
@@ -571,6 +582,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     ref.read(appControllerProvider).select(null);
     setState(() {
       creating = false;
+      newTaskInitialDate = null;
       _viewingTaskDetails = false;
       _viewingEventDetails = false;
       _selectedEvent = null;
@@ -684,6 +696,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   Future<void> _openEventDetails(FixedEvent event) async {
     if (!await _prepareEditorChange() || !mounted) return;
+    _lastCalendarDate = event.startsAt.toLocal();
     final controller = ref.read(appControllerProvider);
     final useFullPage = controller.isFullPageDetails;
     controller.select(null);
@@ -696,9 +709,13 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     });
   }
 
-  Future<void> _showSearch() => showDialog<void>(
+  Future<void> _showSearch([bool wide = true]) => showDialog<void>(
     context: context,
-    builder: (_) => QuickSearchDialog(onEventTap: _openEventDetails),
+    builder: (_) => QuickSearchDialog(
+      beforeNavigate: _prepareEditorChange,
+      onEventTap: _openEventDetails,
+      onTaskTap: (task) => _openTask(task, wide, navigate: true),
+    ),
   );
 
   Future<void> _showSequences() => showDialog<void>(
@@ -753,14 +770,16 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     builder: (_) => const ArchiveTrashDialog(),
   );
 
-  Future<void> _showAdvancedSearch([SavedView? savedView]) => showDialog<void>(
-    context: context,
-    animationStyle: AppMotion.style(context),
-    builder: (_) => AdvancedSearchDialog(
-      savedView: savedView,
-      beforeNavigate: _prepareEditorChange,
-    ),
-  );
+  Future<void> _showAdvancedSearch([SavedView? savedView, bool wide = true]) =>
+      showDialog<void>(
+        context: context,
+        animationStyle: AppMotion.style(context),
+        builder: (_) => AdvancedSearchDialog(
+          savedView: savedView,
+          beforeNavigate: _prepareEditorChange,
+          onTaskTap: (task) => _openTask(task, wide, navigate: true),
+        ),
+      );
 
   Future<void> _deleteSavedView(SavedView savedView) async {
     if (await _confirm(
@@ -1005,11 +1024,13 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                           ? EventEditor(
                               key: ValueKey((
                                 _selectedEvent!.id,
+                                _selectedEvent!.nominalDate ?? '',
                                 editorRevision,
                               )),
                               event: _selectedEvent!,
                               initialDay: _selectedEvent!.startsAt.toLocal(),
                               protectUnsavedEdits: true,
+                              navigationController: editorNavigation,
                               onClose: _closeEditor,
                             )
                           : TaskEditor(
@@ -1866,10 +1887,27 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     }
     if (_viewingEventDetails && _selectedEvent != null) {
       return EventEditor(
+        key: ValueKey((
+          _selectedEvent!.id,
+          _selectedEvent!.nominalDate ?? '',
+          editorRevision,
+        )),
         event: _selectedEvent!,
         initialDay: _selectedEvent!.startsAt.toLocal(),
         protectUnsavedEdits: true,
+        navigationController: editorNavigation,
         onClose: _closeEditor,
+      );
+    }
+    if (controller.isFullPageDetails && creating) {
+      return TaskEditor(
+        protectUnsavedEdits: true,
+        key: ValueKey(('new', editorRevision)),
+        navigationController: editorNavigation,
+        task: null,
+        initialScheduled: newTaskInitialDate,
+        onSaved: _closeEditor,
+        onCancel: _closeEditor,
       );
     }
     if (controller.view == WorkspaceView.habits) {
@@ -1886,8 +1924,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     }
     if (controller.view == WorkspaceView.calendar) {
       return CalendarView(
-        key: ValueKey(navigationDay),
-        initialDate: navigationDay,
+        key: ValueKey(navigationDay ?? _lastCalendarDate),
+        initialDate: navigationDay ?? _lastCalendarDate,
+        onDateSelected: (date) => _lastCalendarDate = date,
         onAddTask: _newTaskOn,
         onTaskTap: (task) => _openTask(task, wide),
         onEventTap: (event) => _openEventDetails(event),
@@ -2627,7 +2666,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                               if (focusActive ||
                                   task.status == TaskStatus.inProgress)
                                 Text(
-                                  focusActive ? 'Running' : 'In progress',
+                                  focusActive
+                                      ? (controller.activeTimer!.state ==
+                                                TimerState.paused
+                                            ? 'Timer paused'
+                                            : 'Timer running')
+                                      : 'In progress',
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,

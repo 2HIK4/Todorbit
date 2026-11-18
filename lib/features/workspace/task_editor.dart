@@ -55,6 +55,16 @@ class TaskEditorController {
   Future<bool> Function()? _confirmLeave;
   bool get isAttached => _confirmLeave != null;
 
+  void attach(Future<bool> Function() handler) {
+    _confirmLeave = handler;
+  }
+
+  void detach(Future<bool> Function() handler) {
+    if (_confirmLeave == handler) {
+      _confirmLeave = null;
+    }
+  }
+
   Future<bool> confirmLeave() async => await _confirmLeave?.call() ?? true;
 }
 
@@ -341,7 +351,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         : DateTime.parse(task!.deadlineDate!);
     initialDraft = draftKey;
     initialPrerequisites = prerequisiteKey;
-    widget.navigationController?._confirmLeave = confirmLeave;
+    widget.navigationController?.attach(confirmLeave);
     for (final field in [
       title,
       notes,
@@ -360,10 +370,8 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   void didUpdateWidget(covariant TaskEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.navigationController != widget.navigationController) {
-      if (oldWidget.navigationController?._confirmLeave == confirmLeave) {
-        oldWidget.navigationController?._confirmLeave = null;
-      }
-      widget.navigationController?._confirmLeave = confirmLeave;
+      oldWidget.navigationController?.detach(confirmLeave);
+      widget.navigationController?.attach(confirmLeave);
     }
   }
 
@@ -379,9 +387,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         );
       }
     }
-    if (widget.navigationController?._confirmLeave == confirmLeave) {
-      widget.navigationController?._confirmLeave = null;
-    }
+    widget.navigationController?.detach(confirmLeave);
     title.dispose();
     notes.dispose();
     plannedDuration.dispose();

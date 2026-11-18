@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.19-beta.24+47 - UI & Reliability Improvement Program: Search, Reschedule, Shared Inbox, and Detail Polish
+
+- Mixed-Version Sync & Rollback Compatibility: Treat `detailPresentation` as a device-local preference in `deviceLocalThemeFields`, prune legacy rows from `portable_preferences` SQLite table on open, and exclude it from cloud synchronization so older nodes (Beta 23) maintain complete interoperability.
+- Android Shared Inbox Multi-File & Security Hardening: Synchronize manifest updates during multi-file share receiver ingestion, accumulate batch entries to prevent overwriting earlier files, provide atomic publish fallback on rename failure, and enforce strict content scheme validation rejecting non-content schemes and self-package URI paths.
+- Event Editor State Reuse & Navigation Protection: Key `EventEditor` instances by event ID, nominal date, and revision; implement `didUpdateWidget` and `confirmLeave()` unsaved edit protection when switching between events or navigating away.
+- Full Page Task Details: Present `TaskEditor` full page on wide desktop windows when creating new tasks, and guarantee search result selection properly loads task details without modal interference.
+- Smart Reschedule Collision Detection: Prevent split sessions from colliding with fixed events (`fixedEventCollision`) or existing scheduled sessions (`sessionCollision`).
+- Calendar Navigation & Date Preservation: Preserve user-selected calendar dates across event edit and close transitions via `onDateSelected`.
+- Responsive Spacing & Geometry: Increase parent subtask expander pill trailing margin to prevent overlapping the task timer button, and add active timer status badges for child tasks.
+- Pointer & Lifecycle Safety: Enhance `PointerCancellationScope` to record mouse device kinds and dispatch proper `PointerExitEvent` and `PointerRemovedEvent` on window deactivation.
+- Task Details Active Duration: Run a lightweight 1-second ticker in `TaskDetailsView` to update the recorded Work Log session duration while a timer is active.
+- Schema 29 forward compatibility, WAL `PRAGMA synchronous = FULL`, and zero data loss preserved across Windows and Android platforms.
+
 ## 1.0.19-beta.23+46 - phantom sync conflict resolution, Focus timer rebuild optimization, and TaskDetails lifecycle safety
 
 - Eliminate phantom sync conflict badges by unifying status conflict counts with causal projection in `_readSyncResolution` via `readSyncSnapshot` (no unwanted database mutations or file watcher loops).

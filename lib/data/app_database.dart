@@ -156,6 +156,11 @@ class AppDatabase extends GeneratedDatabase {
       // Open eagerly so startup can present a recoverable failure before the
       // controller or native companion starts using a partial database.
       await database.customSelect('SELECT 1').get();
+      try {
+        await database.customStatement(
+          "DELETE FROM portable_preferences WHERE key = 'detailPresentation'",
+        );
+      } catch (_) {}
       return database;
     } catch (_) {
       await database.close();

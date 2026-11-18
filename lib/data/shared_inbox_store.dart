@@ -184,7 +184,14 @@ class SharedInboxStore {
       'entries': entries.map((e) => e.toJson()).toList(),
     };
     staging.writeAsStringSync(jsonEncode(payload), flush: true);
-    staging.renameSync(manifestFile.path);
+    try {
+      staging.renameSync(manifestFile.path);
+    } catch (_) {
+      if (manifestFile.existsSync()) {
+        manifestFile.deleteSync();
+      }
+      staging.renameSync(manifestFile.path);
+    }
   }
 
   /// Atomically saves the entries manifest asynchronously.
@@ -196,7 +203,14 @@ class SharedInboxStore {
       'entries': entries.map((e) => e.toJson()).toList(),
     };
     await staging.writeAsString(jsonEncode(payload), flush: true);
-    await staging.rename(manifestFile.path);
+    try {
+      await staging.rename(manifestFile.path);
+    } catch (_) {
+      if (await manifestFile.exists()) {
+        await manifestFile.delete();
+      }
+      await staging.rename(manifestFile.path);
+    }
   }
 
   /// Ingests a file safely into the Shared Inbox.

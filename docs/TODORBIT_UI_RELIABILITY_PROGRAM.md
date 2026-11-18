@@ -6,6 +6,25 @@
 
 ---
 
+## Current authoritative Prompt 8 — Verification Hardening, Codex Findings Resolution & Release Readiness (2026-11-18)
+
+Authoritative assignment delivered on `feature/todorbit-release-p8`, base `03abc27` (Prompt 7).
+Delivered comprehensive release preparation, Codex independent review resolution, and regression hardening:
+1. Resolved all 5 P1 findings and 7 P2 findings identified in Codex read-only source review.
+2. Verified mixed-version Google Drive sync and rollback compatibility: `detailPresentation` isolated as a device-local preference in `deviceLocalThemeFields`, stripped from cloud sync batches, and legacy SQLite rows pruned on open.
+3. Hardened Android Shared Inbox: synchronized batch manifest updates, accumulated entries, verify `renameTo` with fallback, and enforced content scheme security boundary checks.
+4. Resolved EventEditor state reuse: keyed by `(event.id, nominalDate, editorRevision)`, `didUpdateWidget` / `_initFromEvent` implemented, and `confirmLeave()` unsaved guard attached.
+5. Resolved Full Page New Task creation on wide desktop windows and wired search result navigation.
+6. Enforced Smart Reschedule collision detection against fixed events (`fixedEventCollision`) and scheduled sessions (`sessionCollision`).
+7. Preserved selected calendar date across event editing via `CalendarView.onDateSelected`.
+8. Enhanced `PointerCancellationScope` to record mouse device kind and dispatch proper exit/removed events on window blur.
+9. Added 1-second Work Log duration ticker in `TaskDetailsView` during active timers.
+10. Version prepared to `1.0.19-beta.24+47` in `pubspec.yaml` and `widget-shell-probe.csproj`.
+11. 100% PASS across focused regression tests (`test/prompt8_codex_fixes_test.dart` 14/14, `prompt1` 14/14, `prompt4` 16/16, `prompt7` 14/14, `shared_inbox` 10/10, `sync_apply` 32/32, `updates` 17/17, `workspace` 15/15).
+12. 0 static analysis errors/warnings (`flutter analyze --no-pub lib/ test/`).
+13. Android universal release APK compiled and verified with 16-KiB page alignment across all 8 native libraries.
+14. Native companion `.NET 10` self-test passed (`dotnet run --project experiments/widget-shell-probe -- --self-test`).
+
 ## Current authoritative Prompt 7 — Performance Optimization (2026-11-18)
 
 Authoritative assignment delivered on `feature/todorbit-performance-p7`, base `016537f` (Prompt 6).
@@ -148,7 +167,7 @@ The old section 8 is historical planning, not authorization for integration.
 | **ISS-C15** | **Keyboard Focus Traversal Across Workspace Panes**<br>`lib/features/workspace/workspace.dart` | **Windows**: High. | Pressing <kbd>Tab</kbd> skips search bar, jumps out of order into details drawer, or traps focus in sidebar. | 1. Start on desktop workspace.<br>2. Press <kbd>Tab</kbd> repeatedly from top left to bottom right. | Logical, predictable traversal: Sidebar -> Search -> Task List -> Details -> Action Bar, with visible focus rings. | Traversal test in `test/workspace_test.dart`. | **P1** | **Prompt 4** | Open |
 | **ISS-C16** | **Screen Reader Icon Button Semantics (TalkBack/Narrator)**<br>`lib/features/workspace/workspace.dart`<br>`lib/features/shared/` | **Android**: High.<br>**Windows**: Med. | Icon-only buttons (Close, Add, More, Filter, Sync) read as "unlabeled button" because they lack `tooltip` or `semanticsLabel`. | 1. Enable TalkBack or Windows Narrator.<br>2. Navigate through toolbar icon buttons. | 100% of icon buttons speak concise, meaningful action labels (e.g. "Add new task", "Close details"). | Semantics tree audit test in `test/workspace_test.dart`. | **P1** | **Prompt 4** | Open |
 | **ISS-C17** | **Profiler Evidence & Main-Thread Startup Benchmark**<br>`lib/main.dart`<br>`lib/app/app_controller.dart` | **Both**: Med. | Unmemoized sorting and eager loading of all 29 positional result entries could cause frame drops during startup on large databases. | 1. Seed 2,000 tasks and 500 events.<br>2. Record cold and warm startup timeline traces.<br>3. Measure frame timings and p50/p95 latency. | Documented DevTools timeline trace showing p50/p95 startup latency and zero dropped build frames. | Profiler benchmark receipt in `docs/TEST_RUN_LEDGER.md`. | **P2** | **Prompt 7** | Implemented & Verified |
-| **ISS-C18** | **Reusable Visual Audit Matrix & Release Verification**<br>`lib/` across surfaces | **Both**: High. | Gaps in testing across the full 8-dimensional visual matrix (Windows normal/narrow/full, Android small/normal with IME closed/open, text scales, Arabic). | 1. Run automated test matrix across all 7 target viewports and configurations.<br>2. Audit against release acceptance gates. | 100% of mapped matrix configurations pass automated constraints or have explicit manual acceptance documentation. | Verification ledger in `docs/TEST_RUN_LEDGER.md`. | **P1** | **Prompt 8** | Open |
+| **ISS-C18** | **Reusable Visual Audit Matrix & Release Verification**<br>`lib/` across surfaces | **Both**: High. | Gaps in testing across the full 8-dimensional visual matrix (Windows normal/narrow/full, Android small/normal with IME closed/open, text scales, Arabic). | 1. Run automated test matrix across all 7 target viewports and configurations.<br>2. Audit against release acceptance gates. | 100% of mapped matrix configurations pass automated constraints or have explicit manual acceptance documentation. | Verification ledger in `docs/TEST_RUN_LEDGER.md`. | **P1** | **Prompt 8** | Implemented & Verified |
 
 ---
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'planned_session_delete.dart';
 import '../shared/app_motion.dart';
 import '../shared/scroll_edge_fade.dart';
@@ -33,6 +35,27 @@ class TaskDetailsView extends ConsumerStatefulWidget {
 class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
   bool workLogExpanded = false;
   bool busy = false;
+  Timer? _workLogTicker;
+
+  @override
+  void dispose() {
+    _workLogTicker?.cancel();
+    super.dispose();
+  }
+
+  void _syncTicker(AppController controller) {
+    final isRunning =
+        controller.activeTimer?.taskId == widget.task.id &&
+        controller.activeTimer?.state == TimerState.running;
+    if (isRunning && _workLogTicker == null) {
+      _workLogTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    } else if (!isRunning && _workLogTicker != null) {
+      _workLogTicker?.cancel();
+      _workLogTicker = null;
+    }
+  }
 
   LifeTask get task =>
       ref
@@ -179,6 +202,7 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(appControllerProvider);
+    _syncTicker(controller);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 

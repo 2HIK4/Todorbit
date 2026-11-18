@@ -579,7 +579,6 @@ class AppController extends ChangeNotifier {
         'newTaskPlannedDay': taskViewPreferences.newTaskPlannedDay.name,
         'compositionTextDisplay':
             taskViewPreferences.compositionTextDisplay.name,
-        'detailPresentation': taskViewPreferences.detailPresentation,
       });
     }
     final values = await repository.portablePreferences();
@@ -648,7 +647,6 @@ class AppController extends ChangeNotifier {
       'hiddenStandardProjects': value.hiddenStandardProjects.toList(),
       'newTaskPlannedDay': value.newTaskPlannedDay.name,
       'compositionTextDisplay': value.compositionTextDisplay.name,
-      'detailPresentation': value.detailPresentation,
     });
     await appearanceStore?.saveTaskViewPreferences(value);
     taskViewPreferences = value;
@@ -1299,12 +1297,14 @@ class AppController extends ChangeNotifier {
       todayEventsLoad,
       repository.tasks(),
       repository.taskParents(),
+      repository.reportTasks(),
     ]);
     if (_disposed) return;
     events = results[0] as List<FixedEvent>;
     todayEvents = results[1] as List<FixedEvent>;
     tasks = results[2] as List<LifeTask>;
     taskParents = results[3] as Map<String, String>;
+    reportTasks = results[4] as List<LifeTask>;
     notifyListeners();
   }
 

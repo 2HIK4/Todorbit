@@ -54,7 +54,7 @@ class _TaskListGroupViewState extends State<TaskListGroupView> {
             children: [
               widget.row(task),
               PositionedDirectional(
-                end: 52,
+                end: 96,
                 child: Tooltip(
                   message: expanded
                       ? 'Collapse ${children.length} subtask${children.length == 1 ? '' : 's'}'

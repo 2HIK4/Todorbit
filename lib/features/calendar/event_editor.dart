@@ -6,6 +6,7 @@ import '../shared/alarm_field.dart';
 import '../shared/app_motion.dart';
 import '../shared/settings_section.dart';
 import '../shared/scroll_edge_fade.dart';
+import '../workspace/task_editor.dart';
 
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 
@@ -59,11 +60,13 @@ class EventEditor extends ConsumerStatefulWidget {
     required this.initialDay,
     required this.onClose,
     this.protectUnsavedEdits = false,
+    this.navigationController,
   });
   final FixedEvent? event;
   final DateTime initialDay;
   final VoidCallback onClose;
   final bool protectUnsavedEdits;
+  final TaskEditorController? navigationController;
 
   @override
   ConsumerState<EventEditor> createState() => _EventEditorState();
@@ -209,13 +212,35 @@ class _EventEditorState extends ConsumerState<EventEditor> {
     exitGuard.currentState?.close(saved: true);
   }
 
-  @override
-  void initState() {
-    super.initState();
-    title = TextEditingController(text: widget.event?.title ?? '');
-    notes = TextEditingController(text: widget.event?.notes ?? '');
+  bool get isDirty => draftKey != initialDraft;
+
+  Future<bool> confirmLeave() async {
+    if (!widget.protectUnsavedEdits || !isDirty) return true;
+    final discard = await showDialog<bool>(
+      context: context,
+      animationStyle: AppMotion.style(context),
+      builder: (context) => AlertDialog(
+        title: const Text('Discard unsaved changes?'),
+        content: const Text('Your changes have not been saved.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep editing'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Discard changes'),
+          ),
+        ],
+      ),
+    );
+    return discard == true;
+  }
+
+  void _initFromEvent() {
+    title.text = widget.event?.title ?? '';
+    notes.text = widget.event?.notes ?? '';
     details = List.of(widget.event?.details ?? const []);
-    _loadDetailTypes();
     allDay = widget.event?.allDay ?? false;
     repeatKind = widget.event?.repeat?.kind;
     weekdays = {...?widget.event?.repeat?.weekdays};
@@ -240,6 +265,8 @@ class _EventEditorState extends ConsumerState<EventEditor> {
         widget.event!,
         ref.read(appControllerProvider).alarmRules,
       );
+    } else {
+      initialAlarmRule = null;
     }
     start =
         widget.event?.startsAt.toLocal() ??
@@ -252,12 +279,36 @@ class _EventEditorState extends ConsumerState<EventEditor> {
         );
     end = widget.event?.endsAt.toLocal() ?? start.add(const Duration(hours: 1));
     initialDraft = draftKey;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    title = TextEditingController();
+    notes = TextEditingController();
+    _initFromEvent();
+    _loadDetailTypes();
     title.addListener(changed);
     notes.addListener(changed);
+    widget.navigationController?.attach(confirmLeave);
+  }
+
+  @override
+  void didUpdateWidget(EventEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.navigationController != widget.navigationController) {
+      oldWidget.navigationController?.detach(confirmLeave);
+      widget.navigationController?.attach(confirmLeave);
+    }
+    if (oldWidget.event?.id != widget.event?.id ||
+        oldWidget.event?.nominalDate != widget.event?.nominalDate) {
+      _initFromEvent();
+    }
   }
 
   @override
   void dispose() {
+    widget.navigationController?.detach(confirmLeave);
     title.dispose();
     notes.dispose();
     super.dispose();

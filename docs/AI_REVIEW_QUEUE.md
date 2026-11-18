@@ -1,5 +1,38 @@
 # AI Review Queue
 
+## Prompt 8 — Final Release Verification, Codex Findings Resolution & Candidate Publication (2026-11-18)
+
+- **Branch**: `feature/todorbit-release-p8`
+- **Worktree**: `D:\AI_Projects\life_manager_worktrees\feature-todorbit-release-p8`
+- **Base Commit**: `03abc27a44c875f5a1a6a070452a70a98c5e6efa` (Prompt 7 verified baseline)
+- **Codex Findings Evaluated & Repaired (5 P1s, 7 P2s)**:
+  - **P1-01 (Mixed-version Sync & Rollback Compatibility)**: Fixed in `lib/domain/sync/portable_preferences.dart`, `lib/app/app_controller.dart`, and `lib/data/app_database.dart`. Added `detailPresentation` to `deviceLocalThemeFields`, removed from `validatePortablePreference` and `AppController.setTaskViewPreferences`, pruned legacy rows from SQLite `portable_preferences` table on open. Retained in local profile JSON and settings transfer.
+  - **P1-02 & P2-01 (Android Shared Inbox Multi-File & Security Hardening)**: Fixed in `android/app/src/main/kotlin/io/github/hik4/todorbit/ShareReceiverActivity.kt` and `lib/data/shared_inbox_store.dart`. Synchronized batch manifest updates, accumulated entries to prevent overwriting earlier files in multi-stream intents, verified `renameTo` with fallback, combined `EXTRA_STREAM` and `clipData`, rejected non-content schemes and self-package URI paths.
+  - **P1-03 & P1-05 (EventEditor State Reuse & Unsaved Navigation Guards)**: Fixed in `lib/features/calendar/event_editor.dart`, `lib/features/workspace/task_editor.dart`, `lib/features/workspace/workspace.dart`, `lib/features/workspace/quick_search.dart`, and `lib/features/search/advanced_search_dialog.dart`. Attached `key: ValueKey((event.id, nominalDate, editorRevision))`, implemented `didUpdateWidget` and `_initFromEvent()`, exposed `attach()`/`detach()` on `TaskEditorController`, attached `confirmLeave()` unsaved guard, and wired `beforeNavigate: _prepareEditorChange` before search navigation.
+  - **P1-04 (New Task in Full Page on Wide Windows)**: Fixed in `lib/features/workspace/workspace.dart`. Rendered full-page `TaskEditor` in `_mainPanel` when `controller.isFullPageDetails && creating`. Reset `newTaskInitialDate = null` on close.
+  - **P2-02 (Smart Reschedule Split Session Collision Detection)**: Fixed in `lib/domain/scheduling_engine.dart` and `lib/features/scheduling/smart_reschedule.dart`. Added fixed event and session overlap detection via `overlaps()`, flagging `ScheduleIssueKind.fixedEventCollision` and `ScheduleIssueKind.sessionCollision`.
+  - **P2-03 (Calendar Recurring Materialization Stale Stats/Sync)**: Fixed in `lib/app/app_controller.dart`. Included `repository.reportTasks()` in `refreshCalendarWindow()`.
+  - **P2-04 (Closing Event Details Resetting Calendar Date)**: Fixed in `lib/features/calendar/calendar_view.dart` and `lib/features/workspace/workspace.dart`. Added `onDateSelected` callback and tracked `_lastCalendarDate`.
+  - **P2-05 (Parent Expander Pill Overlapping Timer Button)**: Fixed in `lib/features/shared/task_list_group.dart` and `lib/features/workspace/workspace.dart`. Increased trailing end margin to 96dp and added active timer state badges for child tasks.
+  - **P2-06 (Pointer Cancellation Clearing Hover with Mouse Kind)**: Fixed in `lib/features/shared/pointer_cancellation_scope.dart`. Tracked mouse device kind, view ID, and position; dispatched both `PointerExitEvent` and `PointerRemovedEvent`.
+  - **P2-07 (Work Log Duration Ticker in TaskDetailsView)**: Fixed in `lib/features/workspace/task_details_view.dart`. Ran a localized 1-second periodic ticker while the timer is actively running on the viewed task.
+- **Verification Evidence**:
+  - `test/prompt8_codex_fixes_test.dart`: 14/14 PASS.
+  - `test/prompt1_search_and_detail_presentation_test.dart`: 14/14 PASS.
+  - `test/prompt4_smart_reschedule_test.dart`: 16/16 PASS.
+  - `test/prompt7_cache_correctness_test.dart`: 14/14 PASS.
+  - `test/shared_inbox_store_test.dart`: 10/10 PASS.
+  - `test/pointer_cancellation_scope_test.dart`: 1/1 PASS.
+  - `test/sync_apply_repository_test.dart`: 32/32 PASS.
+  - `test/workspace_test.dart`: 15/15 PASS.
+  - `test/software_update_service_test.dart` & `test/android_update_service_test.dart`: 17/17 PASS.
+  - Total focused regression tests: 133/133 PASS.
+  - Static analysis: `flutter analyze --no-pub lib/ test/`: 0 errors, 0 warnings.
+  - Native companion self-test: `dotnet run --project experiments/widget-shell-probe -- --self-test`: PASS.
+  - Android universal release APK: compiled via `tools/build-android.ps1` with JDK 21 and API 36; production signed; all 8 native libraries verified with 16-KiB page alignment.
+  - Git diff check: `git diff --check` clean.
+- **Status**: ALL CODEX FINDINGS RESOLVED & REVALIDATED. RELEASE CHECKPOINT READY FOR PUBLICATION ACCEPTANCE.
+
 ## Prompt 7 — Evidence-Based Startup, Memory & Performance Optimization (2026-11-18)
 
 - **Branch**: `feature/todorbit-performance-p7`

@@ -175,6 +175,8 @@ class _SmartRescheduleDialogState extends ConsumerState<SmartRescheduleDialog> {
               newSessionId: const Uuid().v4(),
               scope: widget.scope,
               gap: Duration(minutes: bufferMinutes),
+              fixedEvents: controller.events,
+              otherSessions: others,
             ),
           ScheduleOperationType.reorder => _asOperation(
             engine.moveSessions(
