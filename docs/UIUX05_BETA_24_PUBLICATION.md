@@ -1,9 +1,10 @@
 # UIUX-05 / Prompt 8 Release Verification & Publication Report
 
-Owner authorization permits release preparation, Codex findings resolution, and conditional publication of an experimental pre-release for Todorbit's UI & Reliability Improvement Program. Stable remains untouched.
-Version: `1.0.19-beta.24+47`; intended tag: `v1.0.19-beta.24`.
+Historical candidate report for `1.0.19-beta.24+47`. The [Codex Beta 24 implementation receipt](BETA24_CODEX_RELEASE_BLOCKER_FIXES_2026_11_18.md)
+records subsequent release-blocker corrections and remaining acceptance.
+Publication is outside this patch.
 
-Status: **READY FOR REVIEW / RELEASE CANDIDATE VERIFIED**
+Status of the earlier candidate assessment: **SUPERSEDED**
 Branch: `feature/todorbit-release-p8`
 Base commit: `03abc27a44c875f5a1a6a070452a70a98c5e6efa` (Prompt 7 baseline)
 

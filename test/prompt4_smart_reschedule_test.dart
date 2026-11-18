@@ -736,6 +736,116 @@ void main() {
     },
   );
 
+  for (final exception in ['none', 'cancelled', 'moved out', 'moved in']) {
+    test(
+      'Apply projects recurring event collisions with exception $exception',
+      () async {
+        final day = DateTime(2026, 11, 18);
+        final origin = DateTime(day.year, day.month, day.day, 8);
+        final proposed = DateTime(day.year, day.month, day.day, 14);
+        final task = await repo.addTask(
+          const TaskDraft(title: 'Keep session identity'),
+        );
+        final session = await repo.addSession(
+          SessionDraft(
+            taskId: task.id,
+            startsAt: origin,
+            endsAt: origin.add(const Duration(hours: 1)),
+          ),
+        );
+        final preview = SchedulingPreview(
+          operation: ScheduleOperationType.move,
+          scope: 'recurring collision',
+          changes: [
+            ScheduleChange(
+              targetKind: ScheduleTargetKind.session,
+              targetId: session.id,
+              expectedUpdatedAt: session.updatedAt,
+              beforeStartsAt: session.startsAt,
+              beforeEndsAt: session.endsAt,
+              afterStartsAt: proposed,
+              afterEndsAt: proposed.add(const Duration(hours: 1)),
+            ),
+          ],
+          issues: const [],
+          createdAt: DateTime.now(),
+        );
+
+        // A current event series appears after Preview, with a master well
+        // outside the proposed interval.
+        final templateStart = proposed.subtract(const Duration(days: 14));
+        await repo.addEvent(
+          EventDraft(
+            title: 'Recurring meeting',
+            startsAt: templateStart,
+            endsAt: templateStart.add(const Duration(hours: 1)),
+            repeat: const EventRepeat(kind: EventRepeatKind.daily),
+          ),
+        );
+        final nominalDay = exception == 'moved in'
+            ? localDate(templateStart)
+            : localDate(day);
+        final occurrence = (await repo.eventOccurrences(
+          nominalDay,
+          nominalDay,
+        )).single;
+        if (exception == 'cancelled' || exception == 'moved in') {
+          final sameDay = (await repo.eventOccurrences(
+            localDate(day),
+            localDate(day),
+          )).single;
+          await repo.setEventOccurrenceCancelled(sameDay, true);
+        }
+        if (exception.startsWith('moved')) {
+          final moved = exception == 'moved in'
+              ? proposed
+              : proposed.add(const Duration(hours: 1));
+          await repo.updateEventOccurrence(
+            occurrence,
+            EventDraft(
+              title: occurrence.title,
+              startsAt: moved,
+              endsAt: moved.add(const Duration(hours: 1)),
+            ),
+          );
+        }
+
+        final before = await snapshot();
+        final eventRows = await repo.db
+            .customSelect(
+              'SELECT * FROM event_occurrence_changes ORDER BY nominal_date',
+            )
+            .get();
+        if (exception == 'none' || exception == 'moved in') {
+          await expectLater(
+            repo.applySchedulingPreview(preview),
+            throwsA(isA<StaleSchedulePreviewException>()),
+          );
+          expect(await snapshot(), before);
+        } else {
+          final operation = await repo.applySchedulingPreview(preview);
+          expect((await repo.sessions()).single.startsAt, proposed.toUtc());
+          final undo = await repo.previewRestore(operation, undo: true);
+          await repo.applySchedulingPreview(undo);
+          final restored = (await repo.sessions()).single;
+          expect(restored.id, session.id);
+          expect(restored.taskId, task.id);
+          expect(restored.startsAt, session.startsAt);
+          expect(restored.endsAt, session.endsAt);
+        }
+        expect(
+          (await repo.db
+                  .customSelect(
+                    'SELECT * FROM event_occurrence_changes ORDER BY nominal_date',
+                  )
+                  .get())
+              .map((row) => row.data),
+          eventRows.map((row) => row.data),
+        );
+      },
+    );
+  }
+
   for (final brightness in Brightness.values) {
     testWidgets('narrow 320dp 2x $brightness review has no overflow', (
       tester,

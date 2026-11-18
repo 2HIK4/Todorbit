@@ -1,5 +1,12 @@
 # Persistent test run ledger
 
+## Beta 24 release-blocker verification (2026-11-18, UTC+03:00)
+
+`fix/todorbit-beta24-release-blockers`, base `253bc54`. See the [Codex Beta 24 implementation receipt](BETA24_CODEX_RELEASE_BLOCKER_FIXES_2026_11_18.md)
+for source identity, scoped counts, Android instrumented checks, and the
+physical acceptance still pending. The earlier Prompt 8 candidate receipts
+apply to their recorded source and artifacts.
+
 ## Prompt 7 Performance Optimization & Safety Review (2026-11-18, UTC+03:00)
 
 `feature/todorbit-performance-p7`, worktree `life_manager_worktrees/feature-todorbit-performance-p7`, base `016537ff32715b200a14be1e0a01595cf71b6cd3` (`016537f`, Prompt 6):

@@ -212,37 +212,12 @@ class _EventEditorState extends ConsumerState<EventEditor> {
     exitGuard.currentState?.close(saved: true);
   }
 
-  bool get isDirty => draftKey != initialDraft;
-  bool confirmingClose = false;
-
-  Future<bool> confirmLeave() async {
-    if (!widget.protectUnsavedEdits || !isDirty) return true;
-    if (confirmingClose) return false;
-    confirmingClose = true;
-    try {
-      final discard = await showDialog<bool>(
-        context: context,
-        animationStyle: AppMotion.style(context),
-        builder: (context) => AlertDialog(
-          title: const Text('Discard unsaved changes?'),
-          content: const Text('Your changes have not been saved.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Keep editing'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Discard changes'),
-            ),
-          ],
-        ),
-      );
-      return discard == true;
-    } finally {
-      confirmingClose = false;
-    }
-  }
+  Future<bool> confirmLeave() async =>
+      !busy &&
+      (await exitGuard.currentState?.confirmLeave(
+            dirty: draftKey != initialDraft,
+          ) ??
+          !widget.protectUnsavedEdits);
 
   void _initFromEvent() {
     title.text = widget.event?.title ?? '';
@@ -603,7 +578,8 @@ class _EventEditorState extends ConsumerState<EventEditor> {
     }
   }
 
-  Future<void> _save() async {
+  Future<bool> _save({bool close = true}) async {
+    if (busy) return false;
     for (final detail in details.where(
       (item) => item.typeId == 'meeting-link' && item.value.trim().isNotEmpty,
     )) {
@@ -616,7 +592,7 @@ class _EventEditorState extends ConsumerState<EventEditor> {
             content: Text('Enter a valid HTTP or HTTPS meeting link.'),
           ),
         );
-        return;
+        return false;
       }
     }
     if (title.text.trim().isEmpty || !end.isAfter(start)) {
@@ -625,7 +601,7 @@ class _EventEditorState extends ConsumerState<EventEditor> {
           content: Text('Enter a title and an end after the start.'),
         ),
       );
-      return;
+      return false;
     }
     setState(() => busy = true);
     try {
@@ -723,13 +699,18 @@ class _EventEditorState extends ConsumerState<EventEditor> {
       } else {
         await controller.updateEvent(widget.event!, draft);
       }
-      if (mounted) finish();
+      if (mounted) {
+        initialDraft = draftKey;
+        if (close) finish();
+      }
+      return mounted;
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Could not save event: $error')));
       }
+      return false;
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -947,6 +928,7 @@ class _EventEditorState extends ConsumerState<EventEditor> {
       dirty: draftKey != initialDraft,
       busy: busy,
       onClose: widget.onClose,
+      onSave: () => _save(close: false),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(

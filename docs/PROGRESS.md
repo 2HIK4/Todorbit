@@ -1,5 +1,15 @@
 # Progress
 
+## Beta 24 release-blocker patch (2026-11-18)
+
+Codex took over the four remaining P1s from `253bc54` in
+`fix/todorbit-beta24-release-blockers`. Sync keeps historical revisions and
+staged envelopes. Android uses one native Shared Inbox worker. Desktop editor
+navigation waits for Save, Discard or Keep editing. Smart Reschedule revalidates
+recurring event occurrences inside Apply. Local writes signal Sync and a mounted
+Calendar loads delivered dates after active gestures. See the [Codex Beta 24 implementation receipt](BETA24_CODEX_RELEASE_BLOCKER_FIXES_2026_11_18.md) for
+verification, integration and outstanding acceptance.
+
 ## Prompt 8 — Verification Hardening, Codex Findings Resolution & Candidate Release (2026-11-18)
 
 Isolated branch `feature/todorbit-release-p8`, worktree `life_manager_worktrees/feature-todorbit-release-p8`, base `03abc27` (Prompt 7). Evaluated and resolved all 5 P1 and 7 P2 findings from Codex's independent read-only source review. Ensured mixed-version Google Drive sync and rollback compatibility by isolating `detailPresentation` in `deviceLocalThemeFields`, pruning legacy SQLite rows, and excluding it from cloud sync batches. Hardened Android Shared Inbox multi-file batch accumulation, native rename fallback, and content scheme security boundaries. Fixed EventEditor state reuse through composite keys, didUpdateWidget, and confirmLeave guards. Supported Full Page TaskEditor on wide desktop windows and preserved calendar selected dates across event edit/close transitions. Prevented Smart Reschedule split session collisions with fixed events and existing scheduled sessions. Increased parent expander trailing padding to 96dp to prevent timer button overlap. Upgraded `PointerCancellationScope` to record mouse device kinds and dispatch proper exit/removed events on blur. Added 1s Work Log duration ticker in `TaskDetailsView`. Version bumped to `1.0.19-beta.24+47`. 133 focused Level 1/2 regression tests PASS (100%), static analysis reports 0 errors/warnings, native .NET 10 self-test passes, and Android universal release APK successfully compiled and verified with 16-KiB page alignment across all 8 native libraries. Stable untouched. Release checkpoint preserved for review.

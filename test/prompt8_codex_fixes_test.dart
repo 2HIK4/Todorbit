@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/drift.dart' hide isNotNull, isNull;
@@ -19,7 +18,6 @@ import 'package:life_manager/domain/recurrence.dart';
 import 'package:life_manager/domain/scheduling_models.dart';
 import 'package:life_manager/domain/sync/portable_preferences.dart';
 import 'package:life_manager/domain/task_list_projection.dart';
-import 'package:life_manager/features/calendar/calendar_view.dart';
 import 'package:life_manager/features/calendar/event_editor.dart';
 import 'package:life_manager/features/shared/pointer_cancellation_scope.dart';
 import 'package:life_manager/features/shared/task_list_group.dart';
@@ -48,81 +46,6 @@ void main() {
       expect(map.containsKey('detailPresentation'), isFalse);
     });
 
-    test('AppDatabase open sanitizes legacy Prompt 7 data, sync journals, and outgoing batches', () async {
-      final db = AppDatabase(NativeDatabase.memory());
-
-      // 1. Seed legacy data matching Prompt 7 / early Beta 24
-      await db.customInsert(
-        "INSERT OR REPLACE INTO portable_preferences(key, value_json, updated_at) VALUES('detailPresentation', '\"fullPage\"', '2026-11-18T00:00:00.000Z')",
-      );
-      final customizationJson = jsonEncode({
-        'version': 1,
-        'themeMode': 'dark',
-        'detailPresentation': 'fullPage',
-        'colorSchemeSeed': '#1976D2',
-        'presets': <String, dynamic>{},
-      });
-      await db.customInsert(
-        "INSERT OR REPLACE INTO portable_preferences(key, value_json, updated_at) VALUES('customization', '$customizationJson', '2026-11-18T00:00:00.000Z')",
-      );
-      await db.customInsert(
-        "INSERT OR REPLACE INTO sync_entity_heads(workspace_id, entity, record_key, visible_revision) VALUES('ws-1', 'portable_preferences', 'detailPresentation', 'rev-1')",
-      );
-      await db.customInsert(
-        "INSERT OR REPLACE INTO sync_journal(operation_id, workspace_id, account_id, device_id, entity, record_key, before_json, after_json, uploaded) VALUES('op-legacy-1', 'ws-1', 'acc-1', 'dev-1', 'portable_preferences', 'detailPresentation', NULL, '\"fullPage\"', 0)",
-      );
-      final batchPayload = jsonEncode({
-        'operations': [
-          {'table': 'portable_preferences', 'key': 'detailPresentation'}
-        ]
-      });
-      await db.customInsert(
-        "INSERT OR REPLACE INTO sync_batches(id, workspace_id, account_id, device_id, direction, payload, sha256, created_at, uploaded, superseded) VALUES('batch-legacy', 'ws-1', 'acc-1', 'dev-1', 'outgoing', '$batchPayload', 'sha', '2026-11-18T00:00:00.000Z', 0, 0)",
-      );
-
-      // Verify legacy rows exist before sanitization
-      final legacyPref = await db.customSelect("SELECT key FROM portable_preferences WHERE key = 'detailPresentation'").get();
-      expect(legacyPref, isNotEmpty);
-      final legacyJournal = await db.customSelect("SELECT operation_id FROM sync_journal WHERE record_key = 'detailPresentation'").get();
-      expect(legacyJournal, isNotEmpty);
-
-      // 2. Run sanitization
-      await AppDatabase.sanitizePortablePreferencesAndJournal(db);
-
-      // 3. Verify standalone preference row is removed
-      final prefAfter = await db.customSelect("SELECT key FROM portable_preferences WHERE key = 'detailPresentation'").get();
-      expect(prefAfter, isEmpty);
-
-      // 4. Verify customization row has detailPresentation stripped while retaining other theme settings
-      final customAfter = await db.customSelect("SELECT value_json FROM portable_preferences WHERE key = 'customization'").getSingle();
-      final parsedCustom = jsonDecode(customAfter.data['value_json'] as String) as Map<String, dynamic>;
-      expect(parsedCustom.containsKey('detailPresentation'), isFalse);
-      expect(parsedCustom['themeMode'], equals('dark'));
-      expect(parsedCustom['colorSchemeSeed'], equals('#1976D2'));
-
-      // 5. Verify unuploaded journal entry is removed
-      final journalAfter = await db.customSelect("SELECT operation_id FROM sync_journal WHERE record_key = 'detailPresentation'").get();
-      expect(journalAfter, isEmpty);
-
-      // 6. Verify sync_entity_heads entry is removed
-      final headsAfter = await db.customSelect("SELECT record_key FROM sync_entity_heads WHERE record_key = 'detailPresentation'").get();
-      expect(headsAfter, isEmpty);
-
-      // 7. Verify legacy pending batch is marked superseded
-      final batchAfter = await db.customSelect("SELECT superseded FROM sync_batches WHERE id = 'batch-legacy'").getSingle();
-      expect(batchAfter.data['superseded'], equals(1));
-
-      await db.close();
-    });
-
-    test('simulated Beta 23 node can parse and apply sanitized preferences without errors', () async {
-      // In Beta 23, validatePortablePreference only allows schema 29 standard preferences.
-      final themeJson = ThemeCustomization().toJson();
-      final validated = validatePortablePreference('customization', themeJson);
-      expect(validated, isNotNull);
-      final map = validated as Map<String, dynamic>;
-      expect(map.containsKey('detailPresentation'), isFalse);
-    });
   });
 
   group('P1-02 & P2-01: Shared Inbox Multi-File Import, Atomic Locking, and URI Boundaries', () {
@@ -263,6 +186,10 @@ void main() {
         // 8. Verify Task Beta is now opened, with NO second confirmation prompt
         expect(find.text('Discard unsaved changes?'), findsNothing);
         expect(controller.selectedTaskId, equals(taskB.id));
+        expect(controller.view, WorkspaceView.all);
+        expect(find.byType(QuickSearchDialog), findsNothing);
+        expect((await repo.tasks()).map((task) => task.title),
+            unorderedEquals(['Task Alpha', 'Task Beta']));
       } finally {
         await tester.pumpWidget(const SizedBox.shrink());
         await db.close();
@@ -379,6 +306,9 @@ void main() {
         await tester.tap(find.text('Keep editing'));
         await tester.pumpAndSettle();
         expect(find.byType(EventEditor), findsOneWidget);
+        expect(tester.widget<TextField>(titleField).controller!.text, 'Meeting Alpha Dirty');
+        expect(controller.view, WorkspaceView.calendar);
+        expect((await repo.events()).single.title, 'Meeting Alpha');
 
         // Press Escape again -> confirm Discard
         await tester.sendKeyEvent(LogicalKeyboardKey.escape);
@@ -555,72 +485,6 @@ void main() {
         throwsA(isA<StaleSchedulePreviewException>()),
       );
 
-      await db.close();
-    });
-  });
-
-  group('P2-03: Calendar Date and Widget Lifecycle', () {
-    testWidgets('CalendarView has stable key and didUpdateWidget updates selection smoothly', (tester) async {
-      DateTime? selected;
-      final day1 = DateTime(2026, 11, 18);
-      final day2 = DateTime(2026, 11, 19);
-
-      final db = AppDatabase(NativeDatabase.memory());
-      final repo = LifeRepository(db);
-      final controller = AppController(repo);
-      await controller.refresh();
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            appControllerProvider.overrideWith((ref) => controller),
-            privacyOverride,
-          ],
-          child: MaterialApp(
-            home: Scaffold(
-              body: CalendarView(
-                key: const ValueKey('workspace-calendar-view'),
-                initialDate: day1,
-                onTaskTap: (_) {},
-                onSmartReschedule: () {},
-                onAddTask: (_) {},
-                onDateSelected: (d) => selected = d,
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // Check key
-      expect(find.byKey(const ValueKey('workspace-calendar-view')), findsOneWidget);
-
-      // Update to day2 via didUpdateWidget
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            appControllerProvider.overrideWith((ref) => controller),
-            privacyOverride,
-          ],
-          child: MaterialApp(
-            home: Scaffold(
-              body: CalendarView(
-                key: const ValueKey('workspace-calendar-view'),
-                initialDate: day2,
-                onTaskTap: (_) {},
-                onSmartReschedule: () {},
-                onAddTask: (_) {},
-                onDateSelected: (d) => selected = d,
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // State is preserved smoothly with same key
-      expect(find.byKey(const ValueKey('workspace-calendar-view')), findsOneWidget);
-      expect(selected, isNotNull);
       await db.close();
     });
   });

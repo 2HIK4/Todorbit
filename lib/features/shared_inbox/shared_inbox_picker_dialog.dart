@@ -26,8 +26,10 @@ class _SharedInboxPickerDialogState extends State<SharedInboxPickerDialog> {
   late final SharedInboxStore store = widget.store ?? SharedInboxStore();
   final searchController = TextEditingController();
 
-  late List<SharedInboxEntry> entries = store.loadSync();
-  bool loading = false;
+  late List<SharedInboxEntry> entries = store.usesAndroidStorage
+      ? []
+      : store.loadSync();
+  late bool loading = store.usesAndroidStorage;
   String? error;
   final selectedIds = <String>{};
 

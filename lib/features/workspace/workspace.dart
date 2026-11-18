@@ -162,6 +162,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   bool get canOpenNavigation =>
       !creating &&
+      !changingEditor &&
+      _selectedEvent == null &&
       ref.read(appControllerProvider).selectedTask == null &&
       ModalRoute.of(context)?.isCurrent == true;
   bool deferIfEditing(NavigationRequest request) {
@@ -173,11 +175,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   Future<void> deliverNavigation() async {
     final request = pendingNavigation;
     final controller = ref.read(appControllerProvider);
-    if (request == null ||
-        navigating ||
-        creating ||
-        controller.selectedTask != null ||
-        ModalRoute.of(context)?.isCurrent != true) {
+    if (request == null || navigating || !canOpenNavigation) {
       return;
     }
     navigating = true;
@@ -193,8 +191,6 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         controller.select(request.id);
       } else {
         final day = DateTime.parse(request.day ?? localDate(DateTime.now()));
-        setState(() => navigationDay = day);
-        controller.navigate(WorkspaceView.calendar);
         Widget editor;
         if (request.kind == 'event') {
           final events = await controller.repository.eventOccurrences(
@@ -235,6 +231,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           );
         }
         if (!mounted || deferIfEditing(request)) return;
+        setState(() {
+          navigationDay = DateUtils.isSameDay(day, _lastCalendarDate)
+              ? null
+              : day;
+        });
+        controller.navigate(WorkspaceView.calendar);
         await showDialog<void>(
           context: context,
           animationStyle: AppMotion.style(context),
@@ -268,6 +270,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   FixedEvent? _selectedEvent;
 
   void _openFocusWorkspace(String taskId) {
+    ref.read(appControllerProvider).select(null);
     setState(() {
       _focusWorkspaceTaskId = taskId;
       _viewingTaskDetails = false;
@@ -296,23 +299,31 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     );
   }
 
-  Future<bool> _prepareEditorChange() async {
+  Future<bool> _withEditorNavigation(FutureOr<void> Function() navigate) async {
     if (changingEditor) return false;
     changingEditor = true;
     try {
       if (!await editorNavigation.confirmLeave() || !mounted) return false;
-      setState(() {
-        creating = false;
-        _viewingTaskDetails = false;
-        _viewingEventDetails = false;
-        _selectedEvent = null;
-        _focusWorkspaceTaskId = null;
-        editorRevision++;
-      });
-      return true;
+      await navigate();
+      return mounted;
     } finally {
       changingEditor = false;
     }
+  }
+
+  Future<bool> _prepareEditorChange() => _withEditorNavigation(() {
+    setState(() {
+      creating = false;
+      _viewingTaskDetails = false;
+      _viewingEventDetails = false;
+      _selectedEvent = null;
+      _focusWorkspaceTaskId = null;
+      editorRevision++;
+    });
+  });
+
+  Future<void> _requestCloseEditor() async {
+    await _withEditorNavigation(_closeEditor);
   }
 
   Future<void> _navigate(WorkspaceView view, {String? id}) async {
@@ -717,15 +728,18 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     });
   }
 
-  Future<void> _showSearch([bool wide = true]) => showDialog<void>(
-    context: context,
-    builder: (_) => QuickSearchDialog(
-      beforeNavigate: _prepareEditorChange,
-      onEventTap: (event) => _openEventDetails(event, skipConfirm: true),
-      onTaskTap: (task) =>
-          _openTask(task, wide, navigate: true, skipConfirm: true),
-    ),
-  );
+  Future<void> _showSearch([bool wide = true]) async {
+    if (changingEditor) return;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => QuickSearchDialog(
+        beforeNavigate: _prepareEditorChange,
+        onEventTap: (event) => _openEventDetails(event, skipConfirm: true),
+        onTaskTap: (task) =>
+            _openTask(task, wide, navigate: true, skipConfirm: true),
+      ),
+    );
+  }
 
   Future<void> _showSequences() => showDialog<void>(
     context: context,
@@ -779,17 +793,22 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     builder: (_) => const ArchiveTrashDialog(),
   );
 
-  Future<void> _showAdvancedSearch([SavedView? savedView, bool wide = true]) =>
-      showDialog<void>(
-        context: context,
-        animationStyle: AppMotion.style(context),
-        builder: (_) => AdvancedSearchDialog(
-          savedView: savedView,
-          beforeNavigate: _prepareEditorChange,
-          onTaskTap: (task) =>
-              _openTask(task, wide, navigate: true, skipConfirm: true),
-        ),
-      );
+  Future<void> _showAdvancedSearch([
+    SavedView? savedView,
+    bool wide = true,
+  ]) async {
+    if (changingEditor) return;
+    await showDialog<void>(
+      context: context,
+      animationStyle: AppMotion.style(context),
+      builder: (_) => AdvancedSearchDialog(
+        savedView: savedView,
+        beforeNavigate: _prepareEditorChange,
+        onTaskTap: (task) =>
+            _openTask(task, wide, navigate: true, skipConfirm: true),
+      ),
+    );
+  }
 
   Future<void> _deleteSavedView(SavedView savedView) async {
     if (await _confirm(
@@ -803,7 +822,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   }
 
   Future<void> _showActiveTimer(String taskId) async {
-    _openFocusWorkspace(taskId);
+    await _withEditorNavigation(() => _openFocusWorkspace(taskId));
   }
 
   Future<void> _changeIcon(String kind, String id) async {
@@ -815,12 +834,16 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     }
   }
 
-  Future<void> _quickStart(LifeTask task) => openTaskTimer(
-    context,
-    ref.read(appControllerProvider),
-    task.id,
-    open: _openFocusWorkspace,
-  );
+  Future<void> _quickStart(LifeTask task) async {
+    await _withEditorNavigation(
+      () => openTaskTimer(
+        context,
+        ref.read(appControllerProvider),
+        task.id,
+        open: _openFocusWorkspace,
+      ),
+    );
+  }
 
   String _scheduleScope(AppController controller) => switch (controller.view) {
     WorkspaceView.category => 'category:${controller.scopeId}',
@@ -892,9 +915,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
               _selectedEvent != null ||
               controller.selectedTask != null ||
               creating) {
-            if (await editorNavigation.confirmLeave() && mounted) {
-              _closeEditor();
-            }
+            await _requestCloseEditor();
           }
         },
       },
@@ -1194,10 +1215,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     : (task.isOpen ? 'Active' : 'Completed'),
                 style: const TextStyle(fontSize: 11),
               ),
-              onTap: () {
-                controller.navigate(WorkspaceView.all);
-                _openTask(task, wide);
-              },
+              onTap: () => _openTask(task, wide, navigate: true),
             ),
         ],
       ],
@@ -1929,22 +1947,17 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       return const ContributorsView();
     }
     if (controller.view == WorkspaceView.calendar) {
-      final currentNavDay = navigationDay;
-      if (currentNavDay != null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && navigationDay == currentNavDay) {
-            setState(() => navigationDay = null);
-          }
-        });
-      }
       return CalendarView(
         key: const ValueKey('workspace-calendar-view'),
-        initialDate: currentNavDay ?? _lastCalendarDate,
-        onDateSelected: (date) => _lastCalendarDate = date,
+        initialDate: navigationDay ?? _lastCalendarDate,
+        onDateSelected: (date) {
+          _lastCalendarDate = date;
+          if (DateUtils.isSameDay(date, navigationDay)) navigationDay = null;
+        },
         onAddTask: _newTaskOn,
         onTaskTap: (task) => _openTask(task, wide),
         onEventTap: (event) => _openEventDetails(event),
-        onEscape: _closeEditor,
+        onEscape: _requestCloseEditor,
         onSmartReschedule: () {
           final sessions = controller.sessions
               .where(

@@ -1,5 +1,14 @@
 # Decisions
 
+## 2026-11-18 legacy Sync settings and Android Shared Inbox
+
+Preserve captured revisions and staged Sync envelopes when retiring a portable
+setting. Stop exchange at incompatible retained content and keep the stage and
+causal links for reconciliation when its transmission status is uncertain.
+Use one Android worker for intent and Flutter inbox storage. Commit file bytes
+before manifest publication and commit the manifest before deleting indexed
+files. See the [Codex Beta 24 implementation receipt](BETA24_CODEX_RELEASE_BLOCKER_FIXES_2026_11_18.md).
+
 ## 2026-11-05: additive relationships and presentation-only grouping
 
 Schema 27 adds optional event projects and named task checklists. Schema-26

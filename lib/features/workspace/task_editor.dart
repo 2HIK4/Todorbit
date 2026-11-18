@@ -223,26 +223,21 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     if (saving || savingPrerequisites || confirmingClose) return false;
     if (!canLeave) {
       confirmingClose = true;
-      final discard = await showDialog<bool>(
-        context: context,
-        animationStyle: AppMotion.style(context),
-        builder: (context) => AlertDialog(
-          title: const Text('Discard unsaved changes?'),
-          content: const Text('Your changes to this task have not been saved.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Keep editing'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Discard changes'),
-            ),
-          ],
-        ),
-      );
-      confirmingClose = false;
-      if (discard != true || !mounted) return false;
+      try {
+        final decision = await askUnsavedEditorDecision(
+          context,
+          canSave: true,
+          message: 'Your changes to this task have not been saved.',
+        );
+        if (!mounted) return false;
+        return switch (decision) {
+          UnsavedEditorDecision.discard => true,
+          UnsavedEditorDecision.save => await _save(close: false),
+          null => false,
+        };
+      } finally {
+        confirmingClose = false;
+      }
     }
     return mounted;
   }
@@ -1019,12 +1014,12 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     }
   }
 
-  Future<void> _save() async {
-    if (saving) return;
+  Future<bool> _save({bool close = true}) async {
+    if (saving) return false;
     if (title.text.trim().isEmpty) {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Enter a task title.')));
-      return;
+      return false;
     }
     setState(() => saving = true);
     try {
@@ -1060,9 +1055,9 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
           allTasks: controller.tasks,
         );
         if (conflicts.isNotEmpty) {
-          if (!mounted) return;
+          if (!mounted) return false;
           final proceed = await _confirmPrerequisiteConflicts(conflicts);
-          if (!proceed) return;
+          if (!proceed) return false;
           reviewedPrerequisiteIds.addAll(conflicts.map((task) => task.id));
         }
       }
@@ -1077,13 +1072,15 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         controller,
         notificationChanged: notificationChanged,
       );
-      if (mounted) finish();
+      if (mounted && close) finish();
+      return mounted;
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Could not save task: $error')));
       }
+      return false;
     } finally {
       if (mounted) setState(() => saving = false);
     }

@@ -1710,19 +1710,25 @@ class LifeRepository {
           .where((c) => c.targetKind == ScheduleTargetKind.session)
           .map((c) => c.targetId)
           .toSet();
+      final projectedEvents = <(String, String), List<FixedEvent>>{};
       for (final change in preview.changes) {
         if (change.afterStartsAt != null && change.afterEndsAt != null) {
           final startsAtIso = change.afterStartsAt!.toUtc().toIso8601String();
           final endsAtIso = change.afterEndsAt!.toUtc().toIso8601String();
 
-          final conflictingEvents = await db.customSelect(
-            'SELECT id FROM fixed_events WHERE deleted_at IS NULL AND starts_at < ? AND ends_at > ? LIMIT 1',
-            variables: [
-              Variable.withString(endsAtIso),
-              Variable.withString(startsAtIso),
-            ],
-          ).get();
-          if (conflictingEvents.isNotEmpty) {
+          final start = change.afterStartsAt!;
+          final end = change.afterEndsAt!;
+          final window = (localDate(start.toLocal()), localDate(end.toLocal()));
+          final occurrences = projectedEvents[window] ??=
+              await eventOccurrences(
+                window.$1,
+                window.$2,
+                showCancelled: false,
+              );
+          if (occurrences.any(
+            (event) =>
+                event.startsAt.isBefore(end) && event.endsAt.isAfter(start),
+          )) {
             stale.add(change.targetId);
             continue;
           }
@@ -1740,10 +1746,9 @@ class LifeRepository {
                   Variable.withString(endsAtIso),
                   Variable.withString(startsAtIso),
                 ];
-          final conflictingSessions = await db.customSelect(
-            sessionQuery,
-            variables: sessionVars,
-          ).get();
+          final conflictingSessions = await db
+              .customSelect(sessionQuery, variables: sessionVars)
+              .get();
           if (conflictingSessions.isNotEmpty) {
             stale.add(change.targetId);
           }
