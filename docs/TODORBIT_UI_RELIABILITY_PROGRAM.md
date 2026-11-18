@@ -6,7 +6,13 @@
 
 ---
 
-## Current authoritative Prompt 8 — Verification Hardening, Codex Findings Resolution & Release Readiness (2026-11-18)
+## Beta 24 release-blocker patch (2026-11-18)
+
+The [Codex Beta 24 implementation receipt](BETA24_CODEX_RELEASE_BLOCKER_FIXES_2026_11_18.md) supersedes the historical Prompt 8 assessments below for Sync
+compatibility, Android inbox writes, desktop navigation, Smart Reschedule Apply,
+and mounted Calendar date delivery. Release acceptance remains open.
+
+## Historical Prompt 8 — Verification Hardening, Codex Findings Resolution & Release Readiness (2026-11-18)
 
 Authoritative assignment delivered on `feature/todorbit-release-p8`, base `03abc27` (Prompt 7).
 Delivered comprehensive release preparation, Codex independent review resolution, and regression hardening:

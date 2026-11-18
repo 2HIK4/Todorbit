@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../domain/alarm_plan.dart';
 import '../shared/alarm_indicator.dart';
 import '../shared/scroll_edge_fade.dart';
@@ -124,16 +126,39 @@ class _CalendarViewState extends ConsumerState<CalendarView>
   @override
   void didUpdateWidget(CalendarView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.initialDate != null &&
-        widget.initialDate != oldWidget.initialDate) {
-      final newSelected = widget.initialDate!;
-      if (DateUtils.dateOnly(selected) != DateUtils.dateOnly(newSelected)) {
-        setState(() {
-          selected = newSelected;
-        });
-        widget.onDateSelected?.call(selected);
-      }
+    if (widget.initialDate case final date?
+        when date != oldWidget.initialDate) {
+      _pendingExternalDate = DateUtils.isSameDay(selected, date) ? null : date;
+      _scheduleExternalDate();
     }
+  }
+
+  DateTime? _pendingExternalDate;
+  bool _externalDateScheduled = false;
+
+  void _scheduleExternalDate() {
+    if (_pendingExternalDate == null || _externalDateScheduled) return;
+    if (_handlingInteraction ||
+        _interactionController.gestureKind != CalendarGestureKind.none ||
+        _interactionController.activeItem != null) {
+      return;
+    }
+    _externalDateScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _externalDateScheduled = false;
+      if (!mounted ||
+          _handlingInteraction ||
+          _interactionController.gestureKind != CalendarGestureKind.none ||
+          _interactionController.activeItem != null) {
+        return;
+      }
+      final date = _pendingExternalDate;
+      _pendingExternalDate = null;
+      if (date == null || DateUtils.isSameDay(selected, date)) return;
+      setState(() => _setSelected(date));
+      unawaited(_loadSelectedMonth());
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   @override
@@ -163,7 +188,10 @@ class _CalendarViewState extends ConsumerState<CalendarView>
   }
 
   void _onInteractionChanged() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+      _scheduleExternalDate();
+    }
   }
 
   @override
@@ -178,8 +206,10 @@ class _CalendarViewState extends ConsumerState<CalendarView>
           controller.customization.calendarDefaultView,
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && !_calendarFocusNode.hasFocus) {
-        _calendarFocusNode.requestFocus();
+      if (!mounted) return;
+      if (!_calendarFocusNode.hasFocus) _calendarFocusNode.requestFocus();
+      if (!_isDateInWindow(selected, controller)) {
+        unawaited(_loadSelectedMonth());
       }
     });
   }
@@ -578,6 +608,7 @@ class _CalendarViewState extends ConsumerState<CalendarView>
     } finally {
       _interactionController.resolvingChoice = false;
       _handlingInteraction = false;
+      if (mounted) _scheduleExternalDate();
     }
   }
 

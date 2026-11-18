@@ -82,6 +82,47 @@ class MainActivity : FlutterActivity() {
         bridge.setMethodCallHandler { call, result ->
             if (updater.handle(call, result)) return@setMethodCallHandler
             when (call.method) {
+                "sharedInboxList", "sharedInboxDelete", "sharedInboxClear",
+                "sharedInboxRecover", "sharedInboxImportFile", "sharedInboxImportBytes" -> {
+                    SharedInboxWorker.enqueue {
+                        try {
+                            val storage = SharedInboxStorage(File(filesDir, "TodoPilot/shared_inbox"))
+                            val response = when (call.method) {
+                                "sharedInboxList" -> storage.list()
+                                "sharedInboxDelete" -> {
+                                    storage.delete((call.arguments as List<*>).map { it as String }.toSet())
+                                    null
+                                }
+                                "sharedInboxClear" -> {
+                                    storage.delete(null)
+                                    null
+                                }
+                                "sharedInboxRecover" -> {
+                                    storage.recover()
+                                    null
+                                }
+                                else -> {
+                                    val name = checkNotNull(call.argument<String>("name"))
+                                    val mime = checkNotNull(call.argument<String>("mime"))
+                                    storage.importFile(name, mime) {
+                                        if (call.method == "sharedInboxImportBytes") {
+                                            checkNotNull(call.argument<ByteArray>("bytes")).inputStream()
+                                        } else {
+                                            val source = File(checkNotNull(call.argument<String>("path")))
+                                            require(java.nio.file.Files.isRegularFile(
+                                                source.toPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS
+                                            ))
+                                            source.inputStream()
+                                        }
+                                    }.entry.toString()
+                                }
+                            }
+                            result.success(response)
+                        } catch (_: Exception) {
+                            result.error("sharedInbox", "Shared Inbox storage could not complete the action.", null)
+                        }
+                    }
+                }
                 "dataRoot" -> result.success(filesDir.absolutePath)
                 "scheduleSync" -> {
                     val args=call.arguments as? Map<*,*>

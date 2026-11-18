@@ -1,6 +1,14 @@
 # AI Review Queue
 
-## Prompt 8 — Final Release Verification, Codex Findings Resolution & Candidate Publication (2026-11-18)
+## Beta 24 release-blocker integration review (2026-11-18)
+
+**PENDING INTEGRATION REVIEW.** Base `253bc54eb74300505793cf0a6e5328a3858f23da`
+on `fix/todorbit-beta24-release-blockers`. Review the [Codex Beta 24 implementation receipt](BETA24_CODEX_RELEASE_BLOCKER_FIXES_2026_11_18.md), in particular
+the Sync compatibility stop for retained incompatible operations and the Android
+device acceptance still required before publishing. Prompt 8's earlier
+publication assessment below is historical.
+
+## Historical Prompt 8 — Final Release Verification (2026-11-18)
 
 - **Branch**: `feature/todorbit-release-p8`
 - **Worktree**: `D:\AI_Projects\life_manager_worktrees\feature-todorbit-release-p8`
@@ -31,7 +39,7 @@
   - Native companion self-test: `dotnet run --project experiments/widget-shell-probe -- --self-test`: PASS.
   - Android universal release APK: compiled via `tools/build-android.ps1` with JDK 21 and API 36; production signed; all 8 native libraries verified with 16-KiB page alignment.
   - Git diff check: `git diff --check` clean.
-- **Status**: ALL CODEX FINDINGS RESOLVED & REVALIDATED. RELEASE CHECKPOINT READY FOR PUBLICATION ACCEPTANCE.
+- **Status**: Superseded by the Beta 24 release-blocker integration review above.
 
 ## Prompt 7 — Evidence-Based Startup, Memory & Performance Optimization (2026-11-18)
 

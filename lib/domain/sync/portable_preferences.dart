@@ -13,6 +13,10 @@ const deviceLocalThemeFields = {
   'detailPresentation',
 };
 
+class SyncPreferenceCompatibilityException implements Exception {
+  const SyncPreferenceCompatibilityException();
+}
+
 Object? validatePortablePreference(String key, Object? value) {
   final valid = switch (key) {
     'theme' =>

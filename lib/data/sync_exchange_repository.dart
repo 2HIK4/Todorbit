@@ -30,21 +30,6 @@ Map<String, Object?>? _syncPortableValue(String? source) {
 }
 
 SyncRevision _syncRevisionFromJournal(Map<String, Object?> row) {
-  var value = _syncPortableValue(row['after_json'] as String?);
-  if (row['entity'] == 'portable_preferences' && value != null) {
-    final key = value['key'] as String?;
-    if (key == 'customization' && value['value_json'] is String) {
-      try {
-        final raw = jsonDecode(value['value_json'] as String);
-        if (raw is Map) {
-          final cleaned = Map<String, dynamic>.from(raw)
-            ..removeWhere((k, _) => deviceLocalThemeFields.contains(k));
-          value = Map<String, Object?>.from(value)
-            ..['value_json'] = jsonEncode(cleaned);
-        }
-      } catch (_) {}
-    }
-  }
   return SyncRevision(
     id: row['operation_id'] as String,
     device: row['device_id'] as String,
@@ -59,9 +44,21 @@ SyncRevision _syncRevisionFromJournal(Map<String, Object?> row) {
             (jsonDecode(row['visible_json'] as String) as Map)
                 .cast<String, dynamic>(),
           ),
-    value: value,
+    value: _syncPortableValue(row['after_json'] as String?),
     intent: row['intent'] as String? ?? 'edit',
   );
+}
+
+bool _syncPreferenceCanUpload(SyncRecordOperation operation) {
+  final value = operation.revision.value;
+  if (operation.entity != 'portable_preferences' || value == null) return true;
+  final key = value['key'] as String;
+  final raw = jsonDecode(value['value_json'] as String);
+  try {
+    return _syncSame(raw, validatePortablePreference(key, raw));
+  } on FormatException {
+    return false;
+  }
 }
 
 SyncBatch _buildOutgoingSyncBatch(
@@ -75,11 +72,6 @@ SyncBatch _buildOutgoingSyncBatch(
     final entity = row['entity'] as String;
     if (!portableSyncTables.contains(entity)) {
       throw const FormatException('Unknown portable journal entity');
-    }
-    if (entity == 'portable_preferences' &&
-        (row['record_key'] as String).contains('detailPresentation')) {
-      // Exclude legacy non-portable preference row from outgoing batch
-      continue;
     }
     final operation = SyncRecordOperation(
       entity: entity,
@@ -99,6 +91,12 @@ SyncBatch _buildOutgoingSyncBatch(
         );
       }
       break;
+    }
+    if (!_syncPreferenceCanUpload(operation)) {
+      // Send any compatible prefix first. Later sequences still depend on the
+      // retained operation, so it must never be skipped or rewritten.
+      if (operations.isNotEmpty) break;
+      throw const SyncPreferenceCompatibilityException();
     }
     operations.add(operation);
     bytes += length;
@@ -174,6 +172,18 @@ extension SyncExchangeRepository on LifeRepository {
         .get();
     if (existing.isNotEmpty) {
       final pending = await _pendingSyncBatch(existing.single.data, binding);
+      final staged = await (codec ?? SyncBatchCodec()).decrypt(
+        pending.bytes,
+        key,
+        workspace: binding.workspace,
+        account: binding.account,
+        expectedSchema: AppDatabase.currentSchemaVersion,
+      );
+      if (!staged.operations.every(_syncPreferenceCanUpload)) {
+        // The network may already have received this identity. Keep the exact
+        // envelope and its journal links for explicit reconciliation.
+        throw const SyncPreferenceCompatibilityException();
+      }
       await _requireSyncExchange(binding, lease);
       return pending;
     }

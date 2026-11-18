@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:uuid/uuid.dart';
 
@@ -18,6 +19,17 @@ class SharedInboxStore {
 
   final Directory? _customDirectory;
   static const _uuid = Uuid();
+  static const _android = MethodChannel('todorbit/android');
+
+  bool get usesAndroidStorage => Platform.isAndroid && _customDirectory == null;
+
+  void _requireDirectAccess() {
+    if (usesAndroidStorage) {
+      throw UnsupportedError(
+        'Android Shared Inbox requires asynchronous storage',
+      );
+    }
+  }
 
   /// Maximum file size accepted into the Shared Inbox (32 MiB).
   static const maxFileBytes = 32 * 1024 * 1024;
@@ -36,6 +48,7 @@ class SharedInboxStore {
       Directory(path.join(directory.path, 'staging'));
 
   T _withLockSync<T>(T Function() action) {
+    _requireDirectAccess();
     directory.createSync(recursive: true);
     final raf = lockFile.openSync(mode: FileMode.write);
     try {
@@ -51,6 +64,7 @@ class SharedInboxStore {
   }
 
   Future<T> _withLock<T>(Future<T> Function() action) async {
+    _requireDirectAccess();
     await directory.create(recursive: true);
     final raf = await lockFile.open(mode: FileMode.write);
     try {
@@ -136,6 +150,7 @@ class SharedInboxStore {
 
   /// Loads all stored entries from the manifest, verifying existence on disk.
   List<SharedInboxEntry> loadSync() {
+    _requireDirectAccess();
     if (!manifestFile.existsSync()) return [];
 
     try {
@@ -172,6 +187,17 @@ class SharedInboxStore {
 
   /// Loads all stored entries from the manifest asynchronously, verifying existence on disk.
   Future<List<SharedInboxEntry>> load() async {
+    if (usesAndroidStorage) {
+      final response = (await _android.invokeMethod<String>(
+        'sharedInboxList',
+      ))!;
+      return (jsonDecode(response) as List)
+          .map(
+            (entry) => SharedInboxEntry.fromJson(entry as Map<String, dynamic>),
+          )
+          .toList()
+        ..sort((a, b) => b.receivedAt.compareTo(a.receivedAt));
+    }
     if (!await manifestFile.exists()) return [];
 
     try {
@@ -276,8 +302,6 @@ class SharedInboxStore {
       );
     }
 
-    // Stream sha256 to avoid holding large byte arrays in memory for up to 32 MiB
-    final digest = (await sha256.bind(source.openRead()).first).toString();
     final safeName = sanitizeFilename(
       displayName ?? path.basename(source.path),
     );
@@ -285,6 +309,14 @@ class SharedInboxStore {
         ? mimeType!.trim()
         : inferMimeType(safeName);
 
+    if (usesAndroidStorage) {
+      return _importOnAndroid('sharedInboxImportFile', {
+        'path': source.absolute.path,
+        'name': safeName,
+        'mime': mime,
+      });
+    }
+    final digest = (await sha256.bind(source.openRead()).first).toString();
     await filesDirectory.create(recursive: true);
     await stagingDirectory.create(recursive: true);
 
@@ -323,6 +355,16 @@ class SharedInboxStore {
       await _saveUnderLock(currentEntries);
       return entry;
     });
+  }
+
+  Future<SharedInboxEntry> _importOnAndroid(
+    String method,
+    Map<String, Object> arguments,
+  ) async {
+    final response = (await _android.invokeMethod<String>(method, arguments))!;
+    return SharedInboxEntry.fromJson(
+      jsonDecode(response) as Map<String, dynamic>,
+    );
   }
 
   /// Ingests raw bytes safely into the Shared Inbox synchronously.
@@ -393,6 +435,16 @@ class SharedInboxStore {
     }
 
     final safeName = sanitizeFilename(displayName);
+    if (usesAndroidStorage) {
+      final name = sanitizeFilename(displayName);
+      return _importOnAndroid('sharedInboxImportBytes', {
+        'bytes': bytes is Uint8List ? bytes : Uint8List.fromList(bytes),
+        'name': name,
+        'mime': mimeType?.trim().isNotEmpty == true
+            ? mimeType!.trim()
+            : inferMimeType(name),
+      });
+    }
     final digest = sha256.convert(bytes).toString();
     final mime = mimeType?.trim().isNotEmpty == true
         ? mimeType!.trim()
@@ -454,7 +506,13 @@ class SharedInboxStore {
     });
   }
 
-  Future<void> deleteEntry(String id) async => deleteEntrySync(id);
+  Future<void> deleteEntry(String id) async {
+    if (usesAndroidStorage) {
+      await deleteEntries([id]);
+    } else {
+      deleteEntrySync(id);
+    }
+  }
 
   /// Deletes multiple entries in batch.
   void deleteEntriesSync(List<String> ids) {
@@ -481,10 +539,21 @@ class SharedInboxStore {
     });
   }
 
-  Future<void> deleteEntries(List<String> ids) async => deleteEntriesSync(ids);
+  Future<void> deleteEntries(List<String> ids) async {
+    if (ids.isEmpty) return;
+    if (usesAndroidStorage) {
+      await _android.invokeMethod<void>('sharedInboxDelete', ids);
+      return;
+    }
+    deleteEntriesSync(ids);
+  }
 
   /// Clears all files and manifest from the inbox.
   Future<void> clear() async {
+    if (usesAndroidStorage) {
+      await _android.invokeMethod<void>('sharedInboxClear');
+      return;
+    }
     await _withLock(() async {
       final entries = await load();
       for (final entry in entries) {
@@ -505,6 +574,10 @@ class SharedInboxStore {
 
   /// Cleans up interrupted staging files and unindexed orphaned files.
   Future<void> cleanOrphans() async {
+    if (usesAndroidStorage) {
+      await _android.invokeMethod<void>('sharedInboxRecover');
+      return;
+    }
     if (stagingDirectory.existsSync()) {
       try {
         for (final entity in stagingDirectory.listSync()) {

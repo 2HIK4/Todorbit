@@ -1,5 +1,13 @@
 # Independent AI review history
 
+## Beta 24 candidate `253bc54` follow-up (2026-11-18)
+
+Codex confirmed that startup cleanup could alter causal Sync history, independent
+inbox writers could overwrite the manifest, sidebar and timer navigation could
+bypass dirty editors, and Apply could miss generated fixed-event occurrences.
+Details and corrective evidence are in the [Codex Beta 24 implementation receipt](BETA24_CODEX_RELEASE_BLOCKER_FIXES_2026_11_18.md). Integration review of
+the Codex patch is tracked in the queue.
+
 Completed entries are archived here before removal from
 [the pending queue](AI_REVIEW_QUEUE.md). Preserve significant defects and fixes.
 

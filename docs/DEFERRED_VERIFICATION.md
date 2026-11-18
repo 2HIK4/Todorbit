@@ -1,5 +1,14 @@
 # Deferred Verification Backlog
 
+## Beta 24 release-blocker patch acceptance (2026-11-18)
+
+Before release, exercise real Android sharing with two external providers,
+multiple-file grants, Flutter inbox deletion during import, a process kill and
+restart, and the continued availability of managed task attachments. Use an
+isolated Android profile. Verify desktop keyboard/focus on physical Windows
+and run exact-candidate package/update, real Drive and 16 KiB runtime gates.
+See the [Codex Beta 24 implementation receipt](BETA24_CODEX_RELEASE_BLOCKER_FIXES_2026_11_18.md) for executed checks and the legacy Sync limitation.
+
 ## Prompt 4 Smart Reschedule acceptance (2026-11-17)
 
 **L3/L4 PENDING; scoped Level1/2 host checks PASS.**

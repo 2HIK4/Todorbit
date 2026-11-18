@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../data/shared_inbox_store.dart';
@@ -30,8 +32,10 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
   late final SharedInboxStore store = widget.store ?? SharedInboxStore();
   final searchController = TextEditingController();
 
-  late List<SharedInboxEntry> allEntries = store.loadSync();
-  bool loading = false;
+  late List<SharedInboxEntry> allEntries = store.usesAndroidStorage
+      ? []
+      : store.loadSync();
+  late bool loading = store.usesAndroidStorage;
   String? errorMessage;
 
   bool selectionMode = false;
@@ -41,6 +45,7 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
   @override
   void initState() {
     super.initState();
+    if (store.usesAndroidStorage) unawaited(_load());
   }
 
   @override
@@ -49,9 +54,11 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
     super.dispose();
   }
 
-  void _load() {
+  Future<void> _load() async {
     try {
-      final loaded = store.loadSync();
+      final loaded = store.usesAndroidStorage
+          ? await store.load()
+          : store.loadSync();
       if (!mounted) return;
       setState(() {
         allEntries = loaded;
@@ -72,9 +79,7 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
     }
   }
 
-  Future<void> _handleRefresh() async {
-    _load();
-  }
+  Future<void> _handleRefresh() => _load();
 
   List<SharedInboxEntry> get filteredEntries {
     final query = searchController.text.trim().toLowerCase();
@@ -240,8 +245,15 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
     );
 
     if (confirmed == true && mounted) {
-      await store.deleteEntry(entry.id);
-      _load();
+      try {
+        await store.deleteEntry(entry.id);
+      } catch (_) {
+        if (mounted) {
+          showTransientStatus(context, 'Could not remove shared file');
+        }
+        return;
+      }
+      await _load();
       if (mounted) {
         showTransientStatus(context, 'Removed from Shared Inbox');
       }
@@ -279,10 +291,18 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
     );
 
     if (confirmed == true && mounted) {
-      await store.deleteEntries(selectedIds.toList());
+      try {
+        await store.deleteEntries(selectedIds.toList());
+      } catch (_) {
+        if (mounted) {
+          showTransientStatus(context, 'Could not remove shared files');
+        }
+        return;
+      }
+      if (!mounted) return;
       selectedIds.clear();
       selectionMode = false;
-      _load();
+      await _load();
       if (mounted) {
         showTransientStatus(
           context,
