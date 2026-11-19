@@ -6,7 +6,6 @@ import '../shared/alarm_field.dart';
 import '../shared/app_motion.dart';
 import '../shared/settings_section.dart';
 import '../shared/scroll_edge_fade.dart';
-import '../workspace/task_editor.dart';
 
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 
@@ -66,7 +65,7 @@ class EventEditor extends ConsumerStatefulWidget {
   final DateTime initialDay;
   final VoidCallback onClose;
   final bool protectUnsavedEdits;
-  final TaskEditorController? navigationController;
+  final EditorNavigationController? navigationController;
 
   @override
   ConsumerState<EventEditor> createState() => _EventEditorState();

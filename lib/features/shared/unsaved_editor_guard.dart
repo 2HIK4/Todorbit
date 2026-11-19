@@ -40,6 +40,24 @@ Future<UnsavedEditorDecision?> askUnsavedEditorDecision(
   ),
 );
 
+/// Lightweight coordination controller for editor navigation and unsaved leave confirmation.
+class EditorNavigationController {
+  Future<bool> Function()? _confirmLeave;
+  bool get isAttached => _confirmLeave != null;
+
+  void attach(Future<bool> Function() handler) {
+    _confirmLeave = handler;
+  }
+
+  void detach(Future<bool> Function() handler) {
+    if (_confirmLeave == handler) {
+      _confirmLeave = null;
+    }
+  }
+
+  Future<bool> confirmLeave() async => await _confirmLeave?.call() ?? true;
+}
+
 /// Keeps platform Back and the visible close action on the same draft boundary.
 class UnsavedEditorGuard extends StatefulWidget {
   const UnsavedEditorGuard({

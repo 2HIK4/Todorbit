@@ -318,6 +318,38 @@ class BoundaryCheckerFixtureTests(unittest.TestCase):
             self.assertEqual(len(violations), 1)
             self.assertIn("Forbidden import of lib/features/settings/sync_settings_page.dart", violations[0])
 
+    def test_fixture_detects_forbidden_calendar_to_workspace_import(self):
+        with tempfile.TemporaryDirectory(prefix='todorbit-cal-ws-boundary-') as temporary:
+            root = Path(temporary)
+            feat = root / 'lib/features/calendar/test_widget.dart'
+            feat.parent.mkdir(parents=True)
+            feat.write_text("import '../workspace/task_editor.dart';", encoding='utf-8')
+            violations = check_calendar_does_not_import_workspace(root)
+            self.assertEqual(len(violations), 1)
+            self.assertIn("Forbidden import of lib/features/workspace/task_editor.dart", violations[0])
+
+    def test_fixture_detects_forbidden_workspace_leaf_to_calendar_import(self):
+        with tempfile.TemporaryDirectory(prefix='todorbit-ws-leaf-boundary-') as temporary:
+            root = Path(temporary)
+            leaf = root / 'lib/features/workspace/task_editor.dart'
+            leaf.parent.mkdir(parents=True)
+            leaf.write_text("import '../calendar/session_editor.dart';", encoding='utf-8')
+            comp = root / 'lib/features/workspace/workspace.dart'
+            comp.write_text("import '../calendar/calendar_view.dart';", encoding='utf-8')
+            violations = check_workspace_leaf_does_not_import_calendar(root)
+            self.assertEqual(len(violations), 1)
+            self.assertIn("Forbidden import of lib/features/calendar/session_editor.dart", violations[0])
+
+    def test_fixture_detects_forbidden_event_editor_to_task_editor_import(self):
+        with tempfile.TemporaryDirectory(prefix='todorbit-ev-task-boundary-') as temporary:
+            root = Path(temporary)
+            event_ed = root / 'lib/features/calendar/event_editor.dart'
+            event_ed.parent.mkdir(parents=True)
+            event_ed.write_text("import '../workspace/task_editor.dart';", encoding='utf-8')
+            violations = check_event_editor_does_not_import_task_editor(root)
+            self.assertEqual(len(violations), 1)
+            self.assertIn("Forbidden import of lib/features/workspace/task_editor.dart", violations[0])
+
     def test_fixture_detects_contract_impurities(self):
         source = (
             "import 'package:flutter/material.dart';\n"
@@ -458,6 +490,77 @@ class RealSharedSettingsBoundaryTests(unittest.TestCase):
 
     def test_shared_does_not_import_settings(self):
         violations = check_shared_does_not_import_settings(ROOT)
+        self.assertEqual(violations, [], "\n".join(violations))
+
+
+def check_calendar_does_not_import_workspace(repo_root: Path = ROOT) -> list[str]:
+    """Enforce ARCH-04: calendar components must not import workspace components."""
+    violations = []
+    calendar_dir = repo_root / 'lib/features/calendar'
+    if not calendar_dir.exists():
+        return violations
+    for path in calendar_dir.rglob('*.dart'):
+        directives = extract_directives(path.read_text(encoding='utf-8'))
+        for d in directives:
+            resolved = resolve_import_uri(path, d.uri, repo_root)
+            if resolved.startswith('lib/features/workspace/'):
+                violations.append(
+                    f"{path.relative_to(repo_root).as_posix()}:{d.line}: Forbidden import of "
+                    f"{resolved}: {d}. Calendar components must not depend on features/workspace."
+                )
+    return violations
+
+
+def check_workspace_leaf_does_not_import_calendar(repo_root: Path = ROOT) -> list[str]:
+    """Enforce ARCH-04: workspace leaf components must not import calendar components (excluding composition root)."""
+    violations = []
+    workspace_dir = repo_root / 'lib/features/workspace'
+    if not workspace_dir.exists():
+        return violations
+    for path in workspace_dir.rglob('*.dart'):
+        if path.name == 'workspace.dart':
+            continue
+        directives = extract_directives(path.read_text(encoding='utf-8'))
+        for d in directives:
+            resolved = resolve_import_uri(path, d.uri, repo_root)
+            if resolved.startswith('lib/features/calendar/'):
+                violations.append(
+                    f"{path.relative_to(repo_root).as_posix()}:{d.line}: Forbidden import of "
+                    f"{resolved}: {d}. Workspace leaf components must not depend on features/calendar."
+                )
+    return violations
+
+
+def check_event_editor_does_not_import_task_editor(repo_root: Path = ROOT) -> list[str]:
+    """Enforce ARCH-04: event_editor.dart must never import task_editor.dart."""
+    violations = []
+    target_path = repo_root / 'lib/features/calendar/event_editor.dart'
+    if not target_path.exists():
+        return violations
+    directives = extract_directives(target_path.read_text(encoding='utf-8'))
+    for d in directives:
+        resolved = resolve_import_uri(target_path, d.uri, repo_root)
+        if resolved == 'lib/features/workspace/task_editor.dart':
+            violations.append(
+                f"{target_path.relative_to(repo_root).as_posix()}:{d.line}: Forbidden import of "
+                f"{resolved}: {d}. event_editor.dart must not depend on task_editor.dart."
+            )
+    return violations
+
+
+class RealCalendarWorkspaceBoundaryTests(unittest.TestCase):
+    """Enforce ARCH-04 architectural constraints: calendar/workspace decoupling."""
+
+    def test_calendar_does_not_import_workspace(self):
+        violations = check_calendar_does_not_import_workspace(ROOT)
+        self.assertEqual(violations, [], "\n".join(violations))
+
+    def test_workspace_leaf_does_not_import_calendar(self):
+        violations = check_workspace_leaf_does_not_import_calendar(ROOT)
+        self.assertEqual(violations, [], "\n".join(violations))
+
+    def test_event_editor_does_not_import_task_editor(self):
+        violations = check_event_editor_does_not_import_task_editor(ROOT)
         self.assertEqual(violations, [], "\n".join(violations))
 
 

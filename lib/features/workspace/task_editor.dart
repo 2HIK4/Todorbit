@@ -33,7 +33,7 @@ import '../shared/icon_picker.dart';
 import '../shared/checklist_entry.dart';
 import '../shared/inline_spelling_controller.dart';
 import '../../domain/recurrence.dart';
-import '../calendar/session_editor.dart';
+import '../scheduling/session_editor.dart';
 import '../shared/app_spacing.dart';
 import '../shared/unsaved_editor_guard.dart';
 import '../time_tracking/time_tracking_dialog.dart';
@@ -51,22 +51,7 @@ class _DraftSubtask {
   DateTime? deadline;
 }
 
-class TaskEditorController {
-  Future<bool> Function()? _confirmLeave;
-  bool get isAttached => _confirmLeave != null;
-
-  void attach(Future<bool> Function() handler) {
-    _confirmLeave = handler;
-  }
-
-  void detach(Future<bool> Function() handler) {
-    if (_confirmLeave == handler) {
-      _confirmLeave = null;
-    }
-  }
-
-  Future<bool> confirmLeave() async => await _confirmLeave?.call() ?? true;
-}
+typedef TaskEditorController = EditorNavigationController;
 
 class TaskEditor extends ConsumerStatefulWidget {
   const TaskEditor({
