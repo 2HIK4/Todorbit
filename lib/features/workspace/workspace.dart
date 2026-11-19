@@ -47,6 +47,8 @@ import '../support/support_button.dart';
 import '../settings/theme_dialog.dart';
 import '../settings/settings_hub_dialog.dart';
 import '../settings/widget_settings_page.dart';
+import '../settings/sync_conflicts_dialog.dart';
+import '../settings/sync_settings_page.dart';
 import '../scheduling/smart_reschedule.dart';
 import '../shared/icon_picker.dart';
 import '../shared/event_color_picker.dart';
@@ -1024,7 +1026,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                                   ],
                                 ),
                                 const SizedBox(width: 4),
-                                SyncStatusButton(allowAutomatic: !editor),
+                                SyncStatusButton(
+                                  allowAutomatic: !editor,
+                                  onOpenSettings: showSyncSettings,
+                                  onOpenConflicts: showSyncConflicts,
+                                ),
                               ],
                             ),
                           ),

@@ -308,6 +308,16 @@ class BoundaryCheckerFixtureTests(unittest.TestCase):
             self.assertEqual(len(violations), 1)
             self.assertIn("Forbidden import of workspace/windows_resource_dialog.dart", violations[0])
 
+    def test_fixture_detects_forbidden_shared_to_settings_import(self):
+        with tempfile.TemporaryDirectory(prefix='todorbit-shared-boundary-') as temporary:
+            root = Path(temporary)
+            feat = root / 'lib/features/shared/test_widget.dart'
+            feat.parent.mkdir(parents=True)
+            feat.write_text("import '../settings/sync_settings_page.dart';", encoding='utf-8')
+            violations = check_shared_does_not_import_settings(root)
+            self.assertEqual(len(violations), 1)
+            self.assertIn("Forbidden import of lib/features/settings/sync_settings_page.dart", violations[0])
+
     def test_fixture_detects_contract_impurities(self):
         source = (
             "import 'package:flutter/material.dart';\n"
@@ -422,6 +432,32 @@ class RealPlatformResourceDialogBoundaryTests(unittest.TestCase):
 
     def test_shared_inbox_does_not_import_workspace_resource_dialog(self):
         violations = check_no_workspace_resource_dialog_imports('shared_inbox', ROOT)
+        self.assertEqual(violations, [], "\n".join(violations))
+
+
+def check_shared_does_not_import_settings(repo_root: Path = ROOT) -> list[str]:
+    """Enforce ARCH-03: shared components must not import settings dialogs or pages."""
+    violations = []
+    shared_dir = repo_root / 'lib/features/shared'
+    if not shared_dir.exists():
+        return violations
+    for path in shared_dir.rglob('*.dart'):
+        directives = extract_directives(path.read_text(encoding='utf-8'))
+        for d in directives:
+            resolved = resolve_import_uri(path, d.uri, repo_root)
+            if resolved.startswith('lib/features/settings/'):
+                violations.append(
+                    f"{path.relative_to(repo_root).as_posix()}:{d.line}: Forbidden import of "
+                    f"{resolved}: {d}. Shared components must not depend on features/settings."
+                )
+    return violations
+
+
+class RealSharedSettingsBoundaryTests(unittest.TestCase):
+    """Enforce ARCH-03 architectural constraints: shared components must not import settings."""
+
+    def test_shared_does_not_import_settings(self):
+        violations = check_shared_does_not_import_settings(ROOT)
         self.assertEqual(violations, [], "\n".join(violations))
 
 

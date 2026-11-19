@@ -6,6 +6,8 @@ import '../shared/app_motion.dart';
 import '../support/support_button.dart';
 import '../shared/item_filters.dart';
 import '../settings/sidebar_order_dialog.dart';
+import '../settings/sync_conflicts_dialog.dart';
+import '../settings/sync_settings_page.dart';
 import '../../domain/task_list_projection.dart';
 import '../shared/task_list_group.dart';
 import '../shared/scroll_edge_fade.dart';
@@ -515,7 +517,11 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
             : Text(title(c)),
         actions: [
           if (!searching) ...[
-            SyncStatusButton(allowAutomatic: true),
+            SyncStatusButton(
+              allowAutomatic: true,
+              onOpenSettings: showSyncSettings,
+              onOpenConflicts: showSyncConflicts,
+            ),
             PopupMenuButton<String>(
               tooltip: 'Library',
               icon: const Icon(Icons.collections_bookmark_outlined),
