@@ -1,3 +1,4 @@
+import 'app_refresh_snapshot.dart';
 import '../domain/focus_session.dart';
 import '../domain/task_resources.dart';
 
@@ -31,6 +32,8 @@ import '../domain/hotkeys.dart';
 import '../domain/scheduling_models.dart';
 import '../domain/trash.dart';
 import '../domain/reports.dart';
+
+export 'app_refresh_snapshot.dart';
 
 final appControllerProvider = ChangeNotifierProvider<AppController>((ref) {
   throw StateError('AppController must be provided by the application');
@@ -332,65 +335,43 @@ class AppController extends ChangeNotifier {
     if (materialized > 0) {
       onLocalChange?.call();
     }
-    final windowEvents = repository.eventOccurrences(
-      eventWindowFrom,
-      eventWindowThrough,
+    final snapshot = await AppRefreshSnapshot.load(
+      repository,
+      eventWindowFrom: eventWindowFrom,
+      eventWindowThrough: eventWindowThrough,
+      today: today,
     );
-    final todayEventsLoad =
-        today.compareTo(eventWindowFrom) >= 0 &&
-            today.compareTo(eventWindowThrough) <= 0
-        ? windowEvents
-        : repository.eventOccurrences(today, today);
-    final result = await Future.wait<Object?>([
-      repository.categories(),
-      repository.projects(),
-      repository.tasks(),
-      windowEvents,
-      repository.sessions(),
-      repository.availability(),
-      repository.schedulingHistory(),
-      repository.dependencies(),
-      repository.sequences(),
-      repository.habits(includeArchived: true),
-      repository.habitEntries(),
-      repository.habitRestDays(),
-      repository.goals(),
-      repository.goalMilestones(),
-      repository.timeEntries(),
-      repository.activeTimerRun(),
-      repository.templates(),
-      repository.savedViews(),
-      repository.trash(),
-      repository.archivedTasks(),
-      repository.archivedSeries(),
-      repository.reportTasks(),
-      repository.entityIcons(),
-      repository.taskParents(),
-      repository.checklistItems(),
-      repository.progressiveAssignments(),
-      repository.checklistGroups(),
-      todayEventsLoad,
-      repository.alarmRules(),
-    ]);
+    _applyRefreshSnapshot(snapshot, today);
+  }
+
+  @visibleForTesting
+  void applyRefreshSnapshotForTesting(
+    AppRefreshSnapshot snapshot,
+    String today,
+  ) {
+    _applyRefreshSnapshot(snapshot, today);
+  }
+
+  void _applyRefreshSnapshot(AppRefreshSnapshot snapshot, String today) {
     if (_disposed) return;
-    categories = result[0] as List<Category>;
-    projects = result[1] as List<Project>;
-    tasks = result[2] as List<LifeTask>;
-    events = result[3] as List<FixedEvent>;
-    todayEvents = result[27] as List<FixedEvent>;
-    alarmRules = result[28] as List<AlarmRule>;
-    sessions = result[4] as List<WorkSession>;
-    availability = result[5] as AvailabilityPlan;
-    schedulingHistory = result[6] as List<SchedulingOperation>;
-    dependencies = result[7] as List<TaskDependency>;
-    sequences = result[8] as List<TaskSequence>;
-    habits = result[9] as List<Habit>;
-    habitEntries = result[10] as List<HabitEntry>;
-    habitRestDays = result[11] as List<HabitRestDay>;
-    goals = result[12] as List<Goal>;
-    goalMilestones = result[13] as List<GoalMilestone>;
-    timeEntries = result[14] as List<TimeEntry>;
-    activeTimer = result[15] as TimerRun?;
+    categories = snapshot.categories;
+    projects = snapshot.projects;
+    tasks = snapshot.tasks;
+    events = snapshot.events;
+    todayEvents = snapshot.todayEvents;
+    alarmRules = snapshot.alarmRules;
+    sessions = snapshot.sessions;
+    availability = snapshot.availability;
+    schedulingHistory = snapshot.schedulingHistory;
+    dependencies = snapshot.dependencies;
+    sequences = snapshot.sequences;
+    habits = snapshot.habits;
+    habitEntries = snapshot.habitEntries;
+    habitRestDays = snapshot.habitRestDays;
+    goals = snapshot.goals;
+    goalMilestones = snapshot.goalMilestones;
+    timeEntries = snapshot.timeEntries;
+    activeTimer = snapshot.activeTimer;
     for (final item in focusSessions.entries) {
       if (item.value.recordsWork &&
           (activeTimer?.taskId != item.key ||
@@ -409,17 +390,17 @@ class AppController extends ChangeNotifier {
     if (activeTimer?.id == _interruptedTimerId && activeTimer != null) {
       activeTimer = activeTimer!.forRecovery();
     }
-    templates = result[16] as List<LifeTemplate>;
-    savedViews = result[17] as List<SavedView>;
-    trashItems = result[18] as List<TrashItem>;
-    archivedTasks = result[19] as List<LifeTask>;
-    archivedSeries = result[20] as List<ArchivedSeries>;
-    reportTasks = result[21] as List<LifeTask>;
-    iconKeys = result[22] as Map<String, String>;
-    taskParents = result[23] as Map<String, String>;
-    checklistItems = result[24] as List<TaskChecklistItem>;
-    checklistGroups = result[26] as List<TaskChecklistGroup>;
-    progressiveAssignments = result[25] as Map<String, ProgressiveAssignment>;
+    templates = snapshot.templates;
+    savedViews = snapshot.savedViews;
+    trashItems = snapshot.trashItems;
+    archivedTasks = snapshot.archivedTasks;
+    archivedSeries = snapshot.archivedSeries;
+    reportTasks = snapshot.reportTasks;
+    iconKeys = snapshot.iconKeys;
+    taskParents = snapshot.taskParents;
+    checklistItems = snapshot.checklistItems;
+    checklistGroups = snapshot.checklistGroups;
+    progressiveAssignments = snapshot.progressiveAssignments;
     _syncTimerHeartbeat();
     _lastKnownDate = today;
     _scheduleMidnightTimer();
