@@ -64,13 +64,21 @@ class _CompactTaskTimerState extends ConsumerState<CompactTaskTimer> {
 
   @override
   Widget build(BuildContext context) {
-    final c = ref.watch(appControllerProvider);
-    final run = c.activeTimer;
+    final run = ref.watch(appControllerProvider.select((c) => c.activeTimer));
     if (run == null) return const SizedBox.shrink();
+    final timeEntries = ref.watch(
+      appControllerProvider.select((c) => c.timeEntries),
+    );
+    final taskTitle = ref.watch(
+      appControllerProvider.select(
+        (c) =>
+            c.tasks.where((task) => task.id == run.taskId).firstOrNull?.title,
+      ),
+    );
     final review = !run.canControl || run.needsReview(DateTime.now());
     final running = run.state == TimerState.running;
     final elapsed = TimeEntry.distinctDuration(
-      c.timeEntries.where((entry) => entry.timerRunId == run.id),
+      timeEntries.where((entry) => entry.timerRunId == run.id),
       review ? run.lastSeenAt : DateTime.now(),
     );
     return ListTile(
@@ -85,8 +93,7 @@ class _CompactTaskTimerState extends ConsumerState<CompactTaskTimer> {
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
-        c.tasks.where((task) => task.id == run.taskId).firstOrNull?.title ??
-            'Unavailable task',
+        taskTitle ?? 'Unavailable task',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),

@@ -1236,11 +1236,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (controller.activeTimer != null)
-            Card(
-              margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-              child: CompactTaskTimer(open: _showActiveTimer),
-            ),
+          WorkspaceActiveTimerBadge(open: _showActiveTimer),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 8, 10),
             child: Row(
@@ -2788,6 +2784,24 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class WorkspaceActiveTimerBadge extends ConsumerWidget {
+  const WorkspaceActiveTimerBadge({super.key, required this.open});
+
+  final ValueChanged<String> open;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasActiveTimer = ref.watch(
+      appControllerProvider.select((c) => c.activeTimer != null),
+    );
+    if (!hasActiveTimer) return const SizedBox.shrink();
+    return Card(
+      margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+      child: CompactTaskTimer(open: open),
     );
   }
 }

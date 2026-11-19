@@ -3,6 +3,7 @@ import '../domain/focus_session.dart';
 import '../domain/task_resources.dart';
 
 import 'dart:async';
+import 'dart:collection';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart' hide Category;
@@ -76,23 +77,55 @@ class AppController extends ChangeNotifier {
   String? backupError;
   VoidCallback? onLocalChange;
 
-  List<AlarmRule> alarmRules = [];
-  List<Category> categories = [];
-  List<Project> projects = [];
+  List<AlarmRule> _alarmRules = [];
+  UnmodifiableListView<AlarmRule> get alarmRules =>
+      UnmodifiableListView(_alarmRules);
+
+  List<Category> _categories = [];
+  UnmodifiableListView<Category> get categories =>
+      UnmodifiableListView(_categories);
+
+  List<Project> _projects = [];
+  UnmodifiableListView<Project> get projects => UnmodifiableListView(_projects);
+
   List<LifeTask> _tasks = [];
-  List<LifeTask> get tasks => _tasks;
+  UnmodifiableListView<LifeTask> get tasks => UnmodifiableListView(_tasks);
   set tasks(List<LifeTask> value) {
-    _tasks = value;
+    _tasks = List.of(value);
     _invalidateTaskCaches();
   }
 
-  List<FixedEvent> events = [];
-  List<FixedEvent> todayEvents = [];
-  Map<String, String> iconKeys = {};
-  Map<String, String> taskParents = {};
-  List<TaskChecklistItem> checklistItems = [];
-  List<TaskChecklistGroup> checklistGroups = [];
-  Map<String, ProgressiveAssignment> progressiveAssignments = {};
+  List<FixedEvent> _events = [];
+  UnmodifiableListView<FixedEvent> get events => UnmodifiableListView(_events);
+
+  List<FixedEvent> _todayEvents = [];
+  UnmodifiableListView<FixedEvent> get todayEvents =>
+      UnmodifiableListView(_todayEvents);
+  @visibleForTesting
+  set todayEvents(List<FixedEvent> value) {
+    _todayEvents = List.of(value);
+  }
+
+  Map<String, String> _iconKeys = {};
+  UnmodifiableMapView<String, String> get iconKeys =>
+      UnmodifiableMapView(_iconKeys);
+
+  Map<String, String> _taskParents = {};
+  UnmodifiableMapView<String, String> get taskParents =>
+      UnmodifiableMapView(_taskParents);
+
+  List<TaskChecklistItem> _checklistItems = [];
+  UnmodifiableListView<TaskChecklistItem> get checklistItems =>
+      UnmodifiableListView(_checklistItems);
+
+  List<TaskChecklistGroup> _checklistGroups = [];
+  UnmodifiableListView<TaskChecklistGroup> get checklistGroups =>
+      UnmodifiableListView(_checklistGroups);
+
+  Map<String, ProgressiveAssignment> _progressiveAssignments = {};
+  UnmodifiableMapView<String, ProgressiveAssignment>
+  get progressiveAssignments => UnmodifiableMapView(_progressiveAssignments);
+
   String? _eventWindowFrom;
   String? _eventWindowThrough;
   String get eventWindowFrom =>
@@ -102,21 +135,64 @@ class AppController extends ChangeNotifier {
       _eventWindowThrough ??
       RecurrenceRule.shiftDate(localDate(DateTime.now()), 90);
   String get eventWindowLabel => '$eventWindowFrom to $eventWindowThrough';
-  List<WorkSession> sessions = [];
-  List<TaskDependency> dependencies = [];
-  List<TaskSequence> sequences = [];
-  List<Habit> habits = [];
-  List<HabitEntry> habitEntries = [];
-  List<HabitRestDay> habitRestDays = [];
-  List<Goal> goals = [];
-  List<GoalMilestone> goalMilestones = [];
-  List<TimeEntry> timeEntries = [];
-  List<LifeTemplate> templates = [];
-  List<SavedView> savedViews = [];
-  List<TrashItem> trashItems = [];
-  List<LifeTask> archivedTasks = [];
-  List<ArchivedSeries> archivedSeries = [];
-  List<LifeTask> reportTasks = [];
+
+  List<WorkSession> _sessions = [];
+  UnmodifiableListView<WorkSession> get sessions =>
+      UnmodifiableListView(_sessions);
+
+  List<TaskDependency> _dependencies = [];
+  UnmodifiableListView<TaskDependency> get dependencies =>
+      UnmodifiableListView(_dependencies);
+
+  List<TaskSequence> _sequences = [];
+  UnmodifiableListView<TaskSequence> get sequences =>
+      UnmodifiableListView(_sequences);
+
+  List<Habit> _habits = [];
+  UnmodifiableListView<Habit> get habits => UnmodifiableListView(_habits);
+
+  List<HabitEntry> _habitEntries = [];
+  UnmodifiableListView<HabitEntry> get habitEntries =>
+      UnmodifiableListView(_habitEntries);
+
+  List<HabitRestDay> _habitRestDays = [];
+  UnmodifiableListView<HabitRestDay> get habitRestDays =>
+      UnmodifiableListView(_habitRestDays);
+
+  List<Goal> _goals = [];
+  UnmodifiableListView<Goal> get goals => UnmodifiableListView(_goals);
+
+  List<GoalMilestone> _goalMilestones = [];
+  UnmodifiableListView<GoalMilestone> get goalMilestones =>
+      UnmodifiableListView(_goalMilestones);
+
+  List<TimeEntry> _timeEntries = [];
+  UnmodifiableListView<TimeEntry> get timeEntries =>
+      UnmodifiableListView(_timeEntries);
+
+  List<LifeTemplate> _templates = [];
+  UnmodifiableListView<LifeTemplate> get templates =>
+      UnmodifiableListView(_templates);
+
+  List<SavedView> _savedViews = [];
+  UnmodifiableListView<SavedView> get savedViews =>
+      UnmodifiableListView(_savedViews);
+
+  List<TrashItem> _trashItems = [];
+  UnmodifiableListView<TrashItem> get trashItems =>
+      UnmodifiableListView(_trashItems);
+
+  List<LifeTask> _archivedTasks = [];
+  UnmodifiableListView<LifeTask> get archivedTasks =>
+      UnmodifiableListView(_archivedTasks);
+
+  List<ArchivedSeries> _archivedSeries = [];
+  UnmodifiableListView<ArchivedSeries> get archivedSeries =>
+      UnmodifiableListView(_archivedSeries);
+
+  List<LifeTask> _reportTasks = [];
+  UnmodifiableListView<LifeTask> get reportTasks =>
+      UnmodifiableListView(_reportTasks);
   final focusSessions = <String, FocusSession>{};
   Timer? _focusTicker;
   bool _focusBusy = false;
@@ -230,7 +306,9 @@ class AppController extends ChangeNotifier {
   @visibleForTesting
   set lastKnownDate(String? value) => _lastKnownDate = value;
   AvailabilityPlan availability = const AvailabilityPlan(weekly: {});
-  List<SchedulingOperation> schedulingHistory = [];
+  List<SchedulingOperation> _schedulingHistory = [];
+  UnmodifiableListView<SchedulingOperation> get schedulingHistory =>
+      UnmodifiableListView(_schedulingHistory);
   WorkspaceView view = WorkspaceView.today;
 
   List<LifeTask>? _cachedVisibleTasks;
@@ -354,23 +432,23 @@ class AppController extends ChangeNotifier {
 
   void _applyRefreshSnapshot(AppRefreshSnapshot snapshot, String today) {
     if (_disposed) return;
-    categories = snapshot.categories;
-    projects = snapshot.projects;
-    tasks = snapshot.tasks;
-    events = snapshot.events;
-    todayEvents = snapshot.todayEvents;
-    alarmRules = snapshot.alarmRules;
-    sessions = snapshot.sessions;
+    _categories = snapshot.categories;
+    _projects = snapshot.projects;
+    _tasks = snapshot.tasks;
+    _events = snapshot.events;
+    _todayEvents = snapshot.todayEvents;
+    _alarmRules = snapshot.alarmRules;
+    _sessions = snapshot.sessions;
     availability = snapshot.availability;
-    schedulingHistory = snapshot.schedulingHistory;
-    dependencies = snapshot.dependencies;
-    sequences = snapshot.sequences;
-    habits = snapshot.habits;
-    habitEntries = snapshot.habitEntries;
-    habitRestDays = snapshot.habitRestDays;
-    goals = snapshot.goals;
-    goalMilestones = snapshot.goalMilestones;
-    timeEntries = snapshot.timeEntries;
+    _schedulingHistory = snapshot.schedulingHistory;
+    _dependencies = snapshot.dependencies;
+    _sequences = snapshot.sequences;
+    _habits = snapshot.habits;
+    _habitEntries = snapshot.habitEntries;
+    _habitRestDays = snapshot.habitRestDays;
+    _goals = snapshot.goals;
+    _goalMilestones = snapshot.goalMilestones;
+    _timeEntries = snapshot.timeEntries;
     activeTimer = snapshot.activeTimer;
     for (final item in focusSessions.entries) {
       if (item.value.recordsWork &&
@@ -390,17 +468,17 @@ class AppController extends ChangeNotifier {
     if (activeTimer?.id == _interruptedTimerId && activeTimer != null) {
       activeTimer = activeTimer!.forRecovery();
     }
-    templates = snapshot.templates;
-    savedViews = snapshot.savedViews;
-    trashItems = snapshot.trashItems;
-    archivedTasks = snapshot.archivedTasks;
-    archivedSeries = snapshot.archivedSeries;
-    reportTasks = snapshot.reportTasks;
-    iconKeys = snapshot.iconKeys;
-    taskParents = snapshot.taskParents;
-    checklistItems = snapshot.checklistItems;
-    checklistGroups = snapshot.checklistGroups;
-    progressiveAssignments = snapshot.progressiveAssignments;
+    _templates = snapshot.templates;
+    _savedViews = snapshot.savedViews;
+    _trashItems = snapshot.trashItems;
+    _archivedTasks = snapshot.archivedTasks;
+    _archivedSeries = snapshot.archivedSeries;
+    _reportTasks = snapshot.reportTasks;
+    _iconKeys = snapshot.iconKeys;
+    _taskParents = snapshot.taskParents;
+    _checklistItems = snapshot.checklistItems;
+    _checklistGroups = snapshot.checklistGroups;
+    _progressiveAssignments = snapshot.progressiveAssignments;
     _syncTimerHeartbeat();
     _lastKnownDate = today;
     _scheduleMidnightTimer();
@@ -965,7 +1043,7 @@ class AppController extends ChangeNotifier {
   ]) async {
     final name = newName ?? '${original.name} (copy)';
     final created = await repository.duplicateSavedView(original, name);
-    savedViews = await repository.savedViews();
+    _savedViews = await repository.savedViews();
     _invalidateTaskCaches();
     notifyListeners();
     return created;
@@ -973,7 +1051,7 @@ class AppController extends ChangeNotifier {
 
   Future<void> renameSavedView(SavedView previous, String newName) async {
     await repository.renameSavedView(previous, newName);
-    savedViews = await repository.savedViews();
+    _savedViews = await repository.savedViews();
     _invalidateTaskCaches();
     notifyListeners();
   }
@@ -1283,11 +1361,11 @@ class AppController extends ChangeNotifier {
       repository.reportTasks(),
     ]);
     if (_disposed) return;
-    events = results[0] as List<FixedEvent>;
-    todayEvents = results[1] as List<FixedEvent>;
+    _events = results[0] as List<FixedEvent>;
+    _todayEvents = results[1] as List<FixedEvent>;
     tasks = results[2] as List<LifeTask>;
-    taskParents = results[3] as Map<String, String>;
-    reportTasks = results[4] as List<LifeTask>;
+    _taskParents = results[3] as Map<String, String>;
+    _reportTasks = results[4] as List<LifeTask>;
     notifyListeners();
   }
 
