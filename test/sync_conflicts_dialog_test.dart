@@ -556,7 +556,12 @@ void main() {
           child: const MaterialApp(
             home: MediaQuery(
               data: MediaQueryData(accessibleNavigation: true),
-              child: Scaffold(body: SyncStatusButton()),
+              child: Scaffold(
+                body: SyncStatusButton(
+                  onOpenSettings: showSyncSettings,
+                  onOpenConflicts: showSyncConflicts,
+                ),
+              ),
             ),
           ),
         ),
@@ -1353,7 +1358,14 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [syncControllerProvider.overrideWith((ref) => controller)],
-          child: MaterialApp(home: Scaffold(body: const SyncStatusButton())),
+          child: MaterialApp(
+            home: Scaffold(
+              body: const SyncStatusButton(
+                onOpenSettings: showSyncSettings,
+                onOpenConflicts: showSyncConflicts,
+              ),
+            ),
+          ),
         ),
       );
       await tester.tap(find.byKey(const ValueKey('sync-status-button')));
