@@ -186,4 +186,84 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'SyncStatusButton shows settings unavailable notice when problem exists and callback is null',
+    (tester) async {
+      controller.injectedProblem = SyncProblem.from(
+        const CloudFailure('Network timeout', kind: CloudFailureKind.offline),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [syncControllerProvider.overrideWith((ref) => controller)],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: SyncStatusButton(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const ValueKey('sync-status-button')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('sync-settings-unavailable-notice')),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Sync settings are unavailable from this view.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'SyncStatusButton shows conflict review unavailable notice when conflicts exist and callback is null',
+    (tester) async {
+      controller.auth.account =
+          const CloudAccount('synthetic', 'Synthetic account');
+      controller.snapshot = const SyncExchangeStatus(
+        binding: SyncBinding(
+          workspace: 'fixture',
+          account: 'synthetic',
+          device: 'fixture',
+        ),
+        enabled: true,
+        automatic: true,
+        quarantined: false,
+        pending: 0,
+        conflicts: 2,
+        waiting: 0,
+      );
+      controller.engine.status = const SyncEngineStatus(
+        SyncPhase.upToDate,
+        conflicts: 2,
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [syncControllerProvider.overrideWith((ref) => controller)],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: SyncStatusButton(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const ValueKey('sync-status-button')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('sync-conflicts-unavailable-notice')),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Sync conflict review is unavailable from this view.'),
+        findsOneWidget,
+      );
+    },
+  );
 }

@@ -62,10 +62,6 @@ class _SyncStatusButtonState extends ConsumerState<SyncStatusButton> {
       await callback(context);
       return;
     }
-    assert(
-      false,
-      'SyncStatusButton: onOpenSettings callback is required to display sync settings.',
-    );
     final messenger = ScaffoldMessenger.maybeOf(context);
     messenger?.showSnackBar(
       transientStatusSnackBar(
@@ -86,10 +82,6 @@ class _SyncStatusButtonState extends ConsumerState<SyncStatusButton> {
       await callback(context, controller);
       return;
     }
-    assert(
-      false,
-      'SyncStatusButton: onOpenConflicts callback is required to display sync conflicts.',
-    );
     final messenger = ScaffoldMessenger.maybeOf(context);
     messenger?.showSnackBar(
       transientStatusSnackBar(
