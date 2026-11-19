@@ -1,0 +1,57 @@
+import 'dart:io';
+
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import 'android/android_platform.dart';
+
+/// Cross-platform utility for file selection, folder selection, and opening external or private resources.
+class PlatformResourceDialog {
+  const PlatformResourceDialog();
+  static const _channel = MethodChannel('life_manager/file_dialog');
+
+  Future<File?> chooseFile() async {
+    if (Platform.isAndroid) return AndroidPlatform.importDocument();
+    if (!Platform.isWindows) throw UnsupportedError('Windows file picker only');
+    final selected = await _channel.invokeMethod<String>('openFile');
+    return selected == null ? null : File(selected);
+  }
+
+  Future<Directory?> chooseFolder() async {
+    if (!Platform.isWindows) {
+      throw UnsupportedError('Windows folder picker only');
+    }
+    final selected = await _channel.invokeMethod<String>('openFolder');
+    return selected == null ? null : Directory(selected);
+  }
+
+  Future<void> open(String target) async {
+    if (Platform.isAndroid) {
+      if (File(target).isAbsolute && await File(target).exists()) {
+        await AndroidPlatform.channel.invokeMethod<void>(
+          'openPrivateFile',
+          target,
+        );
+        return;
+      }
+      final uri = Uri.tryParse(target);
+      if (uri == null ||
+          !['https', 'http', 'mailto', 'tel', 'content'].contains(uri.scheme)) {
+        throw UnsupportedError(
+          'Attach a new copy or add a supported web link on this device.',
+        );
+      }
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        throw StateError('No application can open this resource.');
+      }
+      return;
+    }
+    if (!Platform.isWindows) {
+      throw UnsupportedError('Windows resource opening only');
+    }
+    await _channel.invokeMethod<void>('openResource', target);
+  }
+}
+
+/// Backward compatibility alias for existing callers, subclasses, and tests.
+typedef WindowsResourceDialog = PlatformResourceDialog;

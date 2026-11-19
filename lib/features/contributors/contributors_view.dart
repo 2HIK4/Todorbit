@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../domain/contributors.dart';
-import '../workspace/windows_resource_dialog.dart';
+import '../../platform/platform_resource_dialog.dart';
 
 class ContributorsView extends StatelessWidget {
   const ContributorsView({super.key});

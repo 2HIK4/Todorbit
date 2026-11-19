@@ -8,7 +8,7 @@ import '../../data/shared_inbox_store.dart';
 import '../../domain/shared_inbox_entry.dart';
 import '../../platform/android/android_platform.dart';
 import '../shared_inbox/shared_inbox_picker_dialog.dart';
-import 'windows_resource_dialog.dart';
+import '../../platform/platform_resource_dialog.dart';
 
 import 'dart:io';
 
