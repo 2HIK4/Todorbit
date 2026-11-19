@@ -4,7 +4,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../workspace/windows_resource_dialog.dart';
+import '../../platform/platform_resource_dialog.dart';
 
 // Official maintainer destination. Preferences, themes and imports cannot set it.
 const officialSupportUrl = 'https://paypal.me/2hussam4';

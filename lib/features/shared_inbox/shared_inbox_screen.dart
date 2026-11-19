@@ -6,7 +6,7 @@ import '../../data/shared_inbox_store.dart';
 import '../../domain/shared_inbox_entry.dart';
 import '../shared/app_motion.dart';
 import '../shared/status_snackbar.dart';
-import '../workspace/windows_resource_dialog.dart';
+import '../../platform/platform_resource_dialog.dart';
 
 enum SharedInboxCategory { all, pdfs, images, docs, other }
 

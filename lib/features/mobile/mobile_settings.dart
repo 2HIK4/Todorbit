@@ -24,7 +24,7 @@ import '../shared/sidebar_items.dart';
 import '../shared/anchored_select_field.dart';
 import '../shared/weekdays.dart';
 import '../contributors/contributors_view.dart';
-import '../workspace/windows_resource_dialog.dart';
+import '../../platform/platform_resource_dialog.dart';
 
 class MobileSettings extends ConsumerStatefulWidget {
   const MobileSettings({

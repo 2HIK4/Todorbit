@@ -298,6 +298,16 @@ class BoundaryCheckerFixtureTests(unittest.TestCase):
         violations = self.check_fixture(source)
         self.assertEqual(len(violations), 1)
 
+    def test_fixture_detects_forbidden_workspace_resource_dialog_import(self):
+        with tempfile.TemporaryDirectory(prefix='todorbit-res-boundary-') as temporary:
+            root = Path(temporary)
+            feat = root / 'lib/features/contributors/test_file.dart'
+            feat.parent.mkdir(parents=True)
+            feat.write_text("import '../workspace/windows_resource_dialog.dart';", encoding='utf-8')
+            violations = check_no_workspace_resource_dialog_imports('contributors', root)
+            self.assertEqual(len(violations), 1)
+            self.assertIn("Forbidden import of workspace/windows_resource_dialog.dart", violations[0])
+
     def test_fixture_detects_contract_impurities(self):
         source = (
             "import 'package:flutter/material.dart';\n"
@@ -356,6 +366,63 @@ class RealCalendarArchitectureBoundaryTests(unittest.TestCase):
         exported = [d.uri for d in directives if d.kind == 'export']
         self.assertIn('calendar_contracts.dart', exported,
                       "calendar_view.dart must re-export calendar_contracts.dart for caller compatibility")
+
+
+def check_workspace_resource_dialog_reexport(repo_root: Path = ROOT) -> list[str]:
+    reexport_path = repo_root / 'lib/features/workspace/windows_resource_dialog.dart'
+    if not reexport_path.exists():
+        return [f"Missing compatibility re-export {reexport_path}"]
+    directives = extract_directives(reexport_path.read_text(encoding='utf-8'))
+    exported = [d.uri for d in directives if d.kind == 'export']
+    if not any('platform_resource_dialog.dart' in u for u in exported):
+        return [f"{reexport_path}: Must re-export platform_resource_dialog.dart for backward compatibility"]
+    return []
+
+
+def check_no_workspace_resource_dialog_imports(feature_dir_name: str, repo_root: Path = ROOT) -> list[str]:
+    violations = []
+    target_dir = repo_root / 'lib/features' / feature_dir_name
+    if not target_dir.exists():
+        return violations
+    for path in target_dir.rglob('*.dart'):
+        directives = extract_directives(path.read_text(encoding='utf-8'))
+        for d in directives:
+            resolved = resolve_import_uri(path, d.uri, repo_root)
+            if resolved == 'lib/features/workspace/windows_resource_dialog.dart':
+                violations.append(
+                    f"{path.relative_to(repo_root).as_posix()}:{d.line}: Forbidden import of "
+                    f"workspace/windows_resource_dialog.dart: {d}. "
+                    "Must import package:life_manager/platform/platform_resource_dialog.dart instead."
+                )
+    return violations
+
+
+class RealPlatformResourceDialogBoundaryTests(unittest.TestCase):
+    """Enforce ARCH-02 architectural constraints for platform resource dialog separation."""
+
+    def test_platform_resource_dialog_exists(self):
+        target = ROOT / 'lib/platform/platform_resource_dialog.dart'
+        self.assertTrue(target.exists(), f"Missing {target}")
+
+    def test_workspace_resource_dialog_reexports_platform_utility(self):
+        violations = check_workspace_resource_dialog_reexport(ROOT)
+        self.assertEqual(violations, [], "\n".join(violations))
+
+    def test_contributors_does_not_import_workspace_resource_dialog(self):
+        violations = check_no_workspace_resource_dialog_imports('contributors', ROOT)
+        self.assertEqual(violations, [], "\n".join(violations))
+
+    def test_settings_does_not_import_workspace_resource_dialog(self):
+        violations = check_no_workspace_resource_dialog_imports('settings', ROOT)
+        self.assertEqual(violations, [], "\n".join(violations))
+
+    def test_support_does_not_import_workspace_resource_dialog(self):
+        violations = check_no_workspace_resource_dialog_imports('support', ROOT)
+        self.assertEqual(violations, [], "\n".join(violations))
+
+    def test_shared_inbox_does_not_import_workspace_resource_dialog(self):
+        violations = check_no_workspace_resource_dialog_imports('shared_inbox', ROOT)
+        self.assertEqual(violations, [], "\n".join(violations))
 
 
 if __name__ == '__main__':

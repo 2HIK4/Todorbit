@@ -10,7 +10,7 @@ import '../../data/app_database.dart';
 import '../../data/life_repository.dart';
 import '../../domain/task_resources.dart';
 import '../shared/text_prompt_dialog.dart';
-import 'windows_resource_dialog.dart';
+import '../../platform/platform_resource_dialog.dart';
 
 class TaskResourcesSection extends StatefulWidget {
   const TaskResourcesSection({
