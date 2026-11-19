@@ -266,4 +266,147 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'tapping persistent SnackBar action after SyncStatusButton is unmounted does not throw',
+    (tester) async {
+      controller.auth.account =
+          const CloudAccount('synthetic', 'Synthetic account');
+      controller.snapshot = const SyncExchangeStatus(
+        binding: SyncBinding(
+          workspace: 'fixture',
+          account: 'synthetic',
+          device: 'fixture',
+        ),
+        enabled: true,
+        automatic: true,
+        quarantined: false,
+        pending: 0,
+        conflicts: 0,
+        waiting: 0,
+      );
+      controller.standardIntroduction = true;
+
+      bool showButton = true;
+      late StateSetter setStateCallback;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [syncControllerProvider.overrideWith((ref) => controller)],
+          child: MaterialApp(
+            home: Scaffold(
+              body: StatefulBuilder(
+                builder: (context, setState) {
+                  setStateCallback = setState;
+                  return Column(
+                    children: [
+                      if (showButton) const SyncStatusButton(),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Trigger standardIntroduction SnackBar
+      await tester.tap(find.byKey(const ValueKey('sync-status-button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // SnackBar is shown with action
+      expect(find.text('Encryption options'), findsOneWidget);
+
+      // Unmount SyncStatusButton from widget tree
+      setStateCallback(() {
+        showButton = false;
+      });
+      await tester.pump();
+
+      // Verify SyncStatusButton is removed from tree while SnackBar remains
+      expect(find.byType(SyncStatusButton), findsNothing);
+      expect(find.text('Encryption options'), findsOneWidget);
+
+      // Tap persistent SnackBar action while originating widget is unmounted
+      await tester.tap(find.text('Encryption options'));
+      await tester.pump();
+
+      // Verify no exception was thrown
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'tapping error notice SnackBar action after SyncStatusButton is unmounted does not throw',
+    (tester) async {
+      controller.auth.account =
+          const CloudAccount('synthetic', 'Synthetic account');
+      controller.snapshot = const SyncExchangeStatus(
+        binding: SyncBinding(
+          workspace: 'fixture',
+          account: 'synthetic',
+          device: 'fixture',
+        ),
+        enabled: true,
+        automatic: true,
+        quarantined: false,
+        pending: 0,
+        conflicts: 0,
+        waiting: 0,
+      );
+      controller.engine.status = const SyncEngineStatus(
+        SyncPhase.error,
+        notice: 'Sync connection failed',
+      );
+
+      bool showButton = true;
+      late StateSetter setStateCallback;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [syncControllerProvider.overrideWith((ref) => controller)],
+          child: MaterialApp(
+            home: Scaffold(
+              body: StatefulBuilder(
+                builder: (context, setState) {
+                  setStateCallback = setState;
+                  return Column(
+                    children: [
+                      if (showButton) const SyncStatusButton(),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Trigger error notice SnackBar
+      await tester.tap(find.byKey(const ValueKey('sync-status-button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // SnackBar is shown with 'Sync settings' action
+      expect(find.text('Sync settings'), findsOneWidget);
+
+      // Unmount SyncStatusButton from widget tree
+      setStateCallback(() {
+        showButton = false;
+      });
+      await tester.pump();
+
+      // Verify SyncStatusButton is removed from tree while SnackBar remains
+      expect(find.byType(SyncStatusButton), findsNothing);
+      expect(find.text('Sync settings'), findsOneWidget);
+
+      // Tap persistent SnackBar action while originating widget is unmounted
+      await tester.tap(find.text('Sync settings'));
+      await tester.pump();
+
+      // Verify no exception was thrown
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

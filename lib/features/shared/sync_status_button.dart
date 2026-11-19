@@ -57,6 +57,7 @@ class _SyncStatusButtonState extends ConsumerState<SyncStatusButton> {
   }
 
   Future<void> _handleOpenSettings(BuildContext context) async {
+    if (!context.mounted) return;
     final callback = widget.onOpenSettings;
     if (callback != null) {
       await callback(context);
@@ -77,6 +78,7 @@ class _SyncStatusButtonState extends ConsumerState<SyncStatusButton> {
     BuildContext context,
     SyncController controller,
   ) async {
+    if (!context.mounted) return;
     final callback = widget.onOpenConflicts;
     if (callback != null) {
       await callback(context, controller);
