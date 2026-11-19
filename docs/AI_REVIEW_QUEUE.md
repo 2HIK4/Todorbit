@@ -1,10 +1,12 @@
 # AI Review Queue
 
-## Beta 24 Windows CI corrections awaiting integration (2026-11-19)
+## Beta 24 Windows CI corrections integrated & published (2026-11-19)
 
-- Review `fix/todorbit-beta24-windows-ci` against release tip `60b85413ec82eda4295c4542865f068f5d671db1`.
-- Production changes cover standalone Dart worker imports, keyboard dismissal for the view-help menu and the shared icon picker above the keyboard. The remaining widget changes update test journeys and targeting.
-- [Failure and verification receipt](BETA24_WINDOWS_CI_FAILURE_FIXES.md).
+- **Merged branch**: `fix/todorbit-beta24-windows-ci` (commit `f568820e894ef6772cc39399bccfdbe8517132ae`) into `feature/todorbit-release-p8` at merge commit `16de251cc0208ade5d54bbdebf26c60a278ac86f` (0 conflicts).
+- **Windows CI**: [Run 44411095342](https://github.com/2HIK4/Todorbit/actions/runs/44411095342) passed in 33m55s (**1,178 passed, 0 failed, 9 skipped**). All 12 previously failing tests resolved.
+- **Android CI**: [Run 44411102129](https://github.com/2HIK4/Todorbit/actions/runs/44411102129) passed.
+- **Published**: GitHub pre-release `1.0.19-beta.24+47` (tag `v1.0.19-beta.24`) live at https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.24. All 10 Windows and Android release assets verified.
+- [Failure and verification receipt](BETA24_WINDOWS_CI_FAILURE_FIXES.md); [Publication report](UIUX05_BETA_24_PUBLICATION.md).
 
 ## Beta 24 release-blocker integration review (2026-11-18)
 

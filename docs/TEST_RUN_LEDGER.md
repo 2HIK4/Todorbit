@@ -1,13 +1,28 @@
 # Persistent test run ledger
 
-## Beta 24 Windows CI corrections (2026-11-19, UTC+03:00)
+## Beta 24 Windows CI verification & publication (2026-11-19, UTC+03:00)
 
-See the [Windows CI failure receipt](BETA24_WINDOWS_CI_FAILURE_FIXES.md) for the
-exact assertions, candidates, Windows host results and source fingerprints on
-`fix/todorbit-beta24-windows-ci`. All twelve original failures passed after
-correction. The evidence covers 203 distinct passing tests, including the
-four real process-death checks. Full Windows CI and package acceptance are
-tracked in [Deferred verification](DEFERRED_VERIFICATION.md).
+`feature/todorbit-release-p8`, integrated commit `16de251cc0208ade5d54bbdebf26c60a278ac86f`, tag `v1.0.19-beta.24`.
+- **Windows CI**: [Run 44411095342](https://github.com/2HIK4/Todorbit/actions/runs/44411095342) in 33m55s (**1,178 passed, 0 failed, 9 skipped**). All 12 previously failing tests resolved.
+  - Full suite: 1,178 passed (including the 12 repaired widget, search, settings, and process-death cases).
+  - Developer routes & background sync schema: PASS.
+  - Desktop Google Drive release configuration: verified.
+  - Windows Release compilation (`tools/build-windows-release.ps1`): PASS.
+  - CRT bundle validation (`tools/test-windows-crt.ps1`): PASS.
+  - Portable package creation (`tools/build-portable.ps1`): PASS.
+  - Native sync writer with disposable profile (`test_driver/native_sync_writer_test.dart`): 1/1 PASS.
+  - Background sync barriers (`tools/test-background-sync.py`): PASS.
+  - Native widget self-test in disposable profile (`TodorbitWidget.exe --self-test`): PASS.
+  - Inno Setup installer compilation (`installer/build-installer.ps1`): PASS.
+  - Windows release checksums (`tools/write-release-checksums.ps1`): PASS.
+- **Android CI**: [Run 44411102129](https://github.com/2HIK4/Todorbit/actions/runs/44411102129) (**SUCCESS**).
+  - Static analysis, unit tests, and emulator update workflow tests PASS.
+- **Android Release Candidate**:
+  - `tools/build-android.ps1 -Mode Release`: Universal release APK generated (52.1 MB).
+  - Production signed (`CN=Hussam Alkhatib`, versionCode 47, versionName `1.0.19-beta.24`).
+  - 16-KiB native alignment verified across all 8 native `.so` libraries.
+  - Assets prepared with `tools/prepare-android-release.py --apk-only`.
+- **Publication**: Published pre-release `1.0.19-beta.24+47` at https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.24. All 10 release assets verified. [Publication receipt](UIUX05_BETA_24_PUBLICATION.md).
 
 ## Beta 24 release-blocker integration verification (2026-11-18, UTC+03:00)
 

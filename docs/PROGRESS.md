@@ -1,10 +1,8 @@
 # Progress
 
-## Beta 24 Windows CI corrections (2026-11-19)
+## Beta 24 Publication & Release (2026-11-19)
 
-The twelve Windows CI failures were reproduced locally. The corrections are on
-`fix/todorbit-beta24-windows-ci` for Gemini to integrate and verify with the full
-Windows workflow. [Failure and verification receipt](BETA24_WINDOWS_CI_FAILURE_FIXES.md).
+Integrated Codex's Windows CI fixes (`fix/todorbit-beta24-windows-ci`, commit `f568820e894ef6772cc39399bccfdbe8517132ae`) into `feature/todorbit-release-p8` at merge commit `16de251cc0208ade5d54bbdebf26c60a278ac86f` (0 conflicts). Static analysis passed (0 issues). Smoke tests passed (23/23 PASS). Pushed to `origin` and triggered GitHub Actions CI workflows. Windows CI passed completely on [Run 44411095342](https://github.com/2HIK4/Todorbit/actions/runs/44411095342) with 1,178 tests passed, 0 failed, 9 skipped; Windows Release compiled, CRT verified, native companion self-test passed, portable package created, and Inno Setup installer compiled. Android CI validation passed on [Run 44411102129](https://github.com/2HIK4/Todorbit/actions/runs/44411102129). Android release APK compiled, signed with production key, and 16-KiB page alignment verified. Prepared Android release assets with `tools/prepare-android-release.py`. Tagged `v1.0.19-beta.24` and published GitHub pre-release `1.0.19-beta.24+47` at https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.24 with all 10 assets. Updaters verified; Stable untouched. [Receipt](UIUX05_BETA_24_PUBLICATION.md).
 
 ## Beta 24 release-blocker integration and verification (2026-11-18)
 

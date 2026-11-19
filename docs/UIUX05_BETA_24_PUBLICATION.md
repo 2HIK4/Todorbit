@@ -2,12 +2,12 @@
 
 Owner authorization conditionally permitted one experimental pre-release for Todorbit Beta 24 (`1.0.19-beta.24+47`), subject to mandatory CI, packaging, signing, and sync safety gates passing.
 
-Status: **BLOCKED (Release Candidate Verified; Publication Blocked by Windows CI Gate)**
+Status: **PUBLISHED (Experimental Pre-Release Live on GitHub)**
 Branch: `feature/todorbit-release-p8`
-Merged Commit: `12d7e4624b455c17fae44ebae566110f0f4a8616`
-Codex Base Commit: `253bc54eb74300505793cf0a6e5328a3858f23da`
-Codex Fix Commit: `cfde5b3b85d2cbc460be8fcf06075707c7481283`
-Version: `1.0.19-beta.24+47`; intended tag: `v1.0.19-beta.24`
+Integrated Release Commit: `16de251cc0208ade5d54bbdebf26c60a278ac86f`
+Release Tag: `v1.0.19-beta.24`
+Release URL: https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.24
+Target Version: `1.0.19-beta.24+47` (versionName `1.0.19-beta.24`, versionCode `47`)
 
 ---
 
@@ -22,12 +22,14 @@ All four P1 release blocker areas, two related fixes, and critical persistence/s
 - **P1-04 (Smart Reschedule Occurrences Projection)**: Verified. Apply validates recurring event occurrences, moved-in/moved-out exceptions, and existing sessions within the write transaction with atomic rollback.
 - **Related Fixes**: Immediate Sync notification on local task/event commits and Calendar date loading mid-drag deferral were verified.
 
-### Publication Decision: BLOCKED
-Publication is **BLOCKED** due to failure of mandatory release gates 2, 3, and 8:
-1. **GitHub Actions Windows CI Failure**: Run [44390804115](https://github.com/2HIK4/Todorbit/actions/runs/44390804115) (`windows-ci.yml`) failed at `Run Flutter tests` due to 12 broad legacy suite test failures in the unconstrained global test run.
-2. **Missing Windows Release Artifacts**: Because the CI test step failed, Windows release packaging (`tools/build-windows-release.ps1`), portable bundle packaging (`tools/build-portable.ps1`), installer compilation (`installer/build-installer.ps1`), and checksum generation did not execute on CI. Local Windows compilation is unavailable due to the host's non-elevated Developer Mode NTFS symlink restriction.
-3. **Packaging Integrity Gate**: Repository policy strictly forbids publishing incomplete or unverified release artifacts. Release assets must not be published without verified Windows setup and portable packages.
-4. **Stable Branch**: Untouched.
+### Publication Decision: PUBLISHED
+All mandatory release gates passed:
+1. **GitHub Actions Windows CI Passed**: Run [44411095342](https://github.com/2HIK4/Todorbit/actions/runs/44411095342) (`windows-ci.yml`) passed in 33m55s (**1,178 passed, 0 failed, 9 skipped**). All 12 previously failing tests resolved.
+2. **Windows Release Artifacts Generated**: Windows Release binary compiled, CRT verified, native sync writer and background sync verified, native companion self-test passed, portable package generated, and Inno Setup installer compiled with release checksums.
+3. **Android Release Verification**: Production signed APK compiled locally with `tools/build-android.ps1 -Mode Release` (versionCode 47, 16-KiB page alignment verified), verified via `tools/prepare-android-release.py`, and verified on GitHub Actions [Run 44411102129](https://github.com/2HIK4/Todorbit/actions/runs/44411102129) (`android-ci.yml`, SUCCESS).
+4. **Public GitHub Pre-Release Published**: Tag `v1.0.19-beta.24` pushed and pre-release published at https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.24 with all 10 Windows and Android assets.
+5. **Updaters Verified**: Both Windows (`SoftwareUpdateService`) and Android (`AndroidUpdateService`) discovery contracts and file naming conventions verified.
+6. **Stable Branch**: Untouched.
 
 ---
 
@@ -83,14 +85,23 @@ A thorough evaluation of the mixed-version sync boundary between Beta 23 and Bet
 
 ### Android Release Build Verification
 - **Compilation**: Compiled via `tools/build-android.ps1 -Mode Release` with JDK 21 and Android API 36.
-- **Production Signing**: Signed with `android/key.properties` (versionCode 47, versionName `1.0.19-beta.24`).
-- **Artifact**: `build/app/outputs/flutter-apk/app-github-release.apk` (52.1 MB).
-- **SHA-256**: `107BDBD497455AE80444D17C5DB33CF9DCE05287D2BE6A91C654BA5DD373DAE7`.
+- **Production Signing**: Signed with `android/key.properties` (versionCode 47, versionName `1.0.19-beta.24`, CN=Hussam Alkhatib, SHA-256 `00226dad75ac907ac51c86df2c5011f0b6e2ce8291994103975f11a8eb574a99`).
+- **Artifact**: `Todorbit-1.0.19-beta.24-android-universal.apk` (52.1 MB / 54,581,171 bytes).
+- **SHA-256**: `659c816c43dedcf4cec327ee6bdf3db2e575c60fd69d0ef1842f52b2467ee488`.
 - **16-KiB Native Alignment**: Verified with `tools/verify-android-artifact.py` across all 8 native `.so` libraries (`lib/arm64-v8a/*`, `lib/x86_64/*`).
+- **Candidate Packaging**: Processed via `tools/prepare-android-release.py --apk-only` generating manifest `Todorbit-1.0.19-beta.24-android-update.json` and checksum records.
+
+### Windows Release Build Verification
+- **Compilation & Packaging**: Built on GitHub Actions runner via `windows-ci.yml`.
+- **Installer Artifact**: `Todorbit-1.0.19-beta.24-win-x64-setup.exe` (48,039,839 bytes).
+  - SHA-256: `0242e51f5302c93a047d500d369e8ea661ba05bdefe645b129b59adde502f693`.
+- **Portable Artifact**: `Todorbit-1.0.19-beta.24-win-x64-portable.zip` (65,450,037 bytes).
+  - SHA-256: `0dd8395a2d850861127453a0f1c91ada519541c81f4c2bac30cac0630a9d8db4`.
+- **Checksums**: Verified against `Todorbit-1.0.19-beta.24-SHA256SUMS.txt`.
 
 ### GitHub Actions CI Verification
-- **Android Validation**: [Run 44390832263](https://github.com/2HIK4/Todorbit/actions/runs/44390832263) -> **SUCCESS** (6m44s workflow, 8m29s job; all tests, static analysis, and APK packaging passed).
-- **Windows Checks**: [Run 44390804115](https://github.com/2HIK4/Todorbit/actions/runs/44390804115) -> **FAILED** (failed at `Run Flutter tests` with exit code 1; 12 legacy/broad tests failed in the unconstrained global test run).
+- **Android Validation**: [Run 44411102129](https://github.com/2HIK4/Todorbit/actions/runs/44411102129) -> **SUCCESS** (all unit, architecture, and emulator tests passed).
+- **Windows Checks**: [Run 44411095342](https://github.com/2HIK4/Todorbit/actions/runs/44411095342) -> **SUCCESS** in 33m55s (**1,178 passed, 0 failed, 9 skipped**). All 12 previously failing tests resolved. Release compilation, CRT verification, native sync writer, background sync, widget self-test, installer compilation, and checksums all passed.
 
 ---
 
