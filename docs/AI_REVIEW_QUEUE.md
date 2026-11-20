@@ -1,12 +1,13 @@
 # AI Review Queue
 
-## UI-REDESIGN-FOUNDATION — UI/UX Redesign Foundation, Design System Architecture, Visual Concepts, and AI Rules (2026-11-20)
+## UI-REDESIGN-FOUNDATION — UI/UX Redesign Foundation, Design System Architecture, Visual Concepts (Iteration 2 Refinement), and AI Rules (2026-11-20)
 
 - **Scope & Addressed Requirements**:
   - Reconciled repository baseline on `design-foundation-docs` (branched from `codex/fix-phantom-sync-conflict`). Corrected unsupported claims regarding token refactoring and test plan generation.
   - Formulated comprehensive **Design System Architecture** (`docs/UI_DESIGN_SYSTEM.md`) covering tokens, Progressive Disclosure, component reuse, accessibility, responsive breakpoints, developer customization via `TodorbitThemeTokens`, and regression-prevention rules.
-  - Produced two complete, viewable, interactive HTML visual design concepts (`docs/design-concepts/concept-a-refined-minimalist.html` and `docs/design-concepts/concept-b-modern-workspace.html`) featuring Todorbit sidebar, search, task matrix, recurrence, subtasks, dark mode toggle, and resizable task-details panel.
-  - Evaluated both directions against product requirements (`docs/UI_DESIGN_CONCEPTS_EVALUATION.md`) and recommended Concept A (Refined Minimalist) for Codex/product owner review.
+  - Produced initial Concepts A & B (`concept-a-refined-minimalist.html`, `concept-b-modern-workspace.html`), followed by **Concept C (Adaptive Productivity Workspace)**. Preserved v1 as `concept-c-adaptive-workspace.v1.html` and finalized UX refinement in `docs/design-concepts/concept-c-adaptive-workspace.html`.
+  - Concept C Refinements: Fixed task title truncation via 2-line flexible wrapping; removed card nesting in details editor; added realistic academic/errand/appointment sample data; integrated Today's fixed events timeline and active focus session banner; added multi-viewport simulation (1440, 1100, 820, 390), text scaling (100%, 125%, 150%), and empty state preview.
+  - Preserved Todorbit's actual domain model: Priorities (0=None, 1=Low, 2=Med, 3=High), TaskStatuses, and dual schedule roles (Planned Date vs Deadline).
   - Specified the first safe implementation pilot (`docs/UI_IMPLEMENTATION_STRATEGY.md`) covering `AppTaskRow` and `AppTaskDetailPanel`, identifying ARCH-02/03/04/07 on `feature/todorbit-release-p8` as prerequisites.
   - Established permanent AI coding quality standards in `docs/AI_UI_DEVELOPMENT_RULES.md`.
 - **Source Paths Modified / Created**:
@@ -17,11 +18,13 @@
   - `docs/AI_UI_DEVELOPMENT_RULES.md`
   - `docs/design-concepts/concept-a-refined-minimalist.html`
   - `docs/design-concepts/concept-b-modern-workspace.html`
+  - `docs/design-concepts/concept-c-adaptive-workspace.v1.html`
+  - `docs/design-concepts/concept-c-adaptive-workspace.html`
   - (Zero production Dart/Flutter files modified).
 - **Verification Evidence**:
   - Static Analysis: `flutter analyze --no-pub` -> "No issues found!" (exit code 0, 335.2s, run on current codebase at commit `5803e52`).
   - Git diff check: `git diff --check --staged` -> 0 issues found (clean formatting).
-  - Both HTML design concepts rendered and tested locally with interactive light/dark toggles.
+  - Prototype Verification: All 5 preview states (Desktop Wide, Desktop Medium, Narrow, Mobile, Empty State, Text Scaling, Accordion Disclosures, Drag-to-Resize) tested offline in browser environment.
 - **Status**: Documentation and visual concepts completed on branch `design-foundation-docs`. Queued for Codex independent review and product owner design selection. No production code altered.
 
 ---
