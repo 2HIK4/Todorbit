@@ -110,6 +110,15 @@ class ResumableUpdateDownload {
         return target;
       }
       var offset = await saved(target, key);
+      // A crash can leave a full partial before promotion. A damaged one
+      // cannot be resumed at EOF, so start a fresh, verified transfer.
+      final fullPartial = offset > 0 && offset == size;
+      final canPromotePartial = fullPartial && await valid(partial);
+      if (fullPartial && !canPromotePartial) {
+        offset = 0;
+        notice = 'Saved download failed verification, restarting from zero.';
+        state?.call(notice!);
+      }
       Map<String, dynamic> stored = {...key};
       if (offset > 0) {
         stored = Map<String, dynamic>.from(
@@ -121,8 +130,7 @@ class ResumableUpdateDownload {
         await persist(stored);
       }
       progress(offset, size);
-      // A crash may have occurred after the last byte but before promotion.
-      if (offset == size && await valid(partial)) {
+      if (canPromotePartial) {
         verifying = true;
         progress(size, size);
         state?.call('Verifying download…');

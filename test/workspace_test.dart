@@ -11,11 +11,77 @@ import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/domain/models.dart';
 import 'package:life_manager/domain/recurrence.dart';
 import 'package:life_manager/domain/saved_views.dart';
+import 'package:life_manager/features/calendar/event_editor.dart';
 import 'package:life_manager/features/workspace/series_editor.dart';
 import 'package:life_manager/features/workspace/task_editor.dart';
 import 'package:life_manager/main.dart';
 
 void main() {
+  testWidgets('sidebar search opens events and protects the current draft', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    final database = AppDatabase(NativeDatabase.memory());
+    final repository = LifeRepository(database);
+    final controller = AppController(repository);
+    final start = DateUtils.dateOnly(DateTime.now())
+        .add(const Duration(days: 2, hours: 10));
+    try {
+      for (final title in ['Review agenda', 'Discuss proposals']) {
+        await repository.addEvent(
+          EventDraft(
+            title: title,
+            notes: 'Planning briefing',
+            startsAt: start,
+            endsAt: start.add(const Duration(hours: 1)),
+          ),
+        );
+      }
+      await controller.refresh();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appControllerProvider.overrideWith((ref) => controller),
+            privacyOverride,
+          ],
+          child: const LifeManagerApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Search tasks & events...'),
+        '  BRIEFING  ',
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Review agenda'));
+      await tester.pumpAndSettle();
+      final editor = find.byType(EventEditor);
+      expect(tester.widget<EventEditor>(editor).event!.title, 'Review agenda');
+      final field = find.descendant(
+        of: editor,
+        matching: find.widgetWithText(TextField, 'Title *'),
+      );
+      await tester.enterText(field, 'Unsubmitted agenda');
+
+      await tester.tap(find.text('Discuss proposals'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Keep editing'));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.widget<TextField>(field).controller!.text,
+        'Unsubmitted agenda',
+      );
+      expect(tester.widget<EventEditor>(editor).event!.title, 'Review agenda');
+      expect(tester.takeException(), isNull);
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await database.close();
+      await tester.binding.setSurfaceSize(null);
+    }
+  });
+
   testWidgets('view information opens and closes from its icon', (
     tester,
   ) async {

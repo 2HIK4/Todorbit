@@ -1118,10 +1118,25 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           proj.contains(needle) ||
           notes.contains(needle);
     }).toList();
+    final eventFilter = TaskFilter(text: query);
+    final matchingEvents = controller.events
+        .where(
+          (event) =>
+              !event.cancelled &&
+              eventFilter.matchesEvent(
+                event,
+                categories: categories,
+                projects: projects,
+              ),
+        )
+        .take(30)
+        .toList();
+    final eventScope = 'Events: ${controller.eventWindowLabel}';
 
     if (matchingCategories.isEmpty &&
         matchingProjects.isEmpty &&
-        matchingTasks.isEmpty) {
+        matchingTasks.isEmpty &&
+        matchingEvents.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -1130,6 +1145,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
             children: [
               Text(
                 'No results for "$query"',
+                style: Theme.of(context).textTheme.bodySmall,
+                textAlign: TextAlign.center,
+              ),
+              Text(
+                eventScope,
                 style: Theme.of(context).textTheme.bodySmall,
                 textAlign: TextAlign.center,
               ),
@@ -1222,6 +1242,30 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 style: const TextStyle(fontSize: 11),
               ),
               onTap: () => _openTask(task, wide, navigate: true),
+            ),
+        ],
+        if (matchingEvents.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: Text(
+              eventScope,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+          for (final event in matchingEvents)
+            ListTile(
+              dense: true,
+              leading: const Icon(Icons.event_outlined, size: 18),
+              title: Text(
+                event.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                MaterialLocalizations.of(context)
+                    .formatMediumDate(event.startsAt.toLocal()),
+              ),
+              onTap: () => _openEventDetails(event),
             ),
         ],
       ],

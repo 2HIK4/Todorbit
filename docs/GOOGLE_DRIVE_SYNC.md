@@ -1,42 +1,34 @@
 # Google Drive sync
 
-Current local schema-27 OAuth/real-service status and owner setup actions are in
-[the 2026-11-06 real Drive audit](REAL_DRIVE_ACCEPTANCE_2026_11_06.md).
-All real cross-device scenarios remain blocked before approved test-account
-authorization; deterministic passes do not establish live Google behavior.
+Todorbit's experimental Windows and Android downloads can exchange planner
+changes through a compatible Google account. Core planning works offline.
+Sync runs independently of [encrypted snapshot backup](GOOGLE_DRIVE_BACKUP.md).
 
-Beta 11 adds **Start New Sync** in Sync settings (under **Recovery** in the current
-UI). Routine sync and Automatic sync precede encryption/advanced recovery options;
-pending replacement reviews expand Recovery automatically. A verified independent local
-snapshot and explicit cloud-loss acknowledgment precede a fresh workspace. It
-keeps current local portable records and retained histories, uploads and reads
-back the complete new seed, activates an immutable generation head, then removes
-only the selected retired workspace content. Cleanup failures have a separate
-retry action. Non-content heads remain to reject recreated legacy namespaces;
-old clients must update and explicitly reconnect. Concurrent heads stop exchange
-and cleanup until an explicitly reviewed replacement supersedes them. Interrupted
-setup resumes on its original device. Unknown/future ownership and foreign
-uncommitted staging block deletion. See [protocol, safety evidence and manual
-checks](SYNC_START_NEW.md). Physical devices and live Drive remain owner acceptance.
+Use the same current experimental version on both devices and keep an
+independent verified snapshot. New workspaces default to Standard Sync.
+Choose Private Encrypted Sync before creating a workspace if you want
+Todorbit to encrypt changes before upload. Save the workspace's recovery
+credentials separately from your backup passphrase.
 
+The [platform support matrix](PLATFORM_SUPPORT.md) records the published
+baseline. Scoped real Windows/Android Standard Sync evidence is available in
+the [cross-platform acceptance record](CROSS_PLATFORM_STANDARD_SYNC_2026_11_06.md).
+[Private Sync evidence](FINAL_STABILIZATION_2026_11_07.md) records the
+scenarios exercised and the remaining live acceptance. Google account
+eligibility and physical-device behavior still require individual verification.
 
-Latest recorded publication: **1.0.19-beta.11+34**, schema 26; see the exact source,
-artifacts and remaining acceptance in [the beta11 receipt](SYNC_START_NEW.md).
-The current UI refinements are local and are not included in that release.
-Historical beta9 baseline: 1.0.19-beta.9+32, schema 26, sync protocol 1. Beta 9 includes
-the interrupted-upload and offline-decision fixes from
-[comprehensive verification](SMART_SYNC_VERIFICATION.md). See the
-[publication receipt](SMART_SYNC_BETA_9_PUBLICATION.md) for exact artifact checks
-and limits. Real Google Drive end-to-end acceptance remains incomplete.
+**Start New Sync** is an advanced recovery action. It requires a verified
+independent local snapshot and a review of the cloud history affected.
+It creates and verifies a fresh workspace from the local records before
+cleaning up the selected retired workspace. See the
+[replacement and recovery protocol](SYNC_START_NEW.md) before using it.
 
 ## Connect two devices
 
-The current development source defaults new workspaces to **Standard Sync**:
-connect Google Drive and sync without another password. A second updated device
-automatically detects Standard data and merges its existing local records.
-Existing encrypted workspaces still require their original recovery credential
-once; they are never replaced with Standard data. Published beta-9 behavior above
-is historical; beta10/11 implement Standard/private setup as recorded in their receipts.
+With **Standard Sync**, connect Google Drive and sync without another password.
+A second updated device detects the Standard workspace and merges its existing
+local records. To join an existing encrypted workspace, use its original
+recovery credential.
 
 For a **new empty** workspace, Settings > Sync > Encryption options offers Private
 Encrypted Sync. Choose a memorable passphrase, save the random recovery code and
@@ -167,16 +159,17 @@ automated cloud evidence uses mocks. Do not test against personal data.
 Physical devices, OEM behavior, real authorization and final live UI acceptance
 remain distinct from mocked exchange, host fixtures and widget-test rendering.
 
-## Schema 27 refinement compatibility (unpublished source)
+## Mixed-version compatibility
 
-Current refinement adds optional event-project assignment and named checklists.
-Upgrade all participating installations before using these relationships.
-Schema-27 clients accept unchanged schema-26 batches; older clients retain but
-refuse newer batches. Existing Standard/Private workspace proof formats and
-recovery requirements are unchanged. Immutable journals and queued ciphertext
-are never rewritten to add fields. Equivalent concurrent deletions with no
-other value differences no longer require a decision, but all tombstones and
-causal heads stay retained. Delete/edit conflicts remain explicit.
+Upgrade all participating installations together before relying on new record
+fields. The schema 27 refinement introduced event-project assignment and named
+checklists. Older peers retain batches they cannot apply and require a compatible
+update. A newer client can apply supported older batches. Existing Standard
+and Private proof formats and recovery requirements remain in effect. Immutable
+journals and queued ciphertext keep their original fields. Equivalent
+concurrent deletions with no other value differences need no decision. The
+journal retains tombstones and causal heads. Delete/edit conflicts remain
+explicit.
 
 The compact decision interface reveals full values on demand and remembers
 selections only for the exact review fingerprint. Restored databases still

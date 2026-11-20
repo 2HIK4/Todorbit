@@ -1,12 +1,13 @@
 # Development
 
-Todorbit is a Windows-first Flutter app. Flutter UI lives in `lib/features/`, domain types in `lib/domain/`, and SQLite access in `lib/data/`. The native .NET widget is in `experiments/widget-shell-probe/`; despite the historical directory name, it is the packaged widget companion. `windows/runner/` holds the Flutter Windows runner and file-opening channels. Internal identifiers still use `life_manager` where renaming would add migration risk.
+Todorbit is a Flutter app for Windows and Android. See [Android setup](ANDROID_SETUP.md) for the emulator and device toolchain. Flutter UI lives in `lib/features/`, domain types in `lib/domain/`, and SQLite access in `lib/data/`. The native .NET widget is in `experiments/widget-shell-probe/`; despite the historical directory name, it is the packaged widget companion. `windows/runner/` holds the Flutter Windows runner and file-opening channels. Internal identifiers still use `life_manager` where renaming would add migration risk.
 
-Install Flutter, Visual Studio Windows C++ desktop tools, and .NET 10 SDK. Run `flutter pub get` first. Use [Testing](TESTING.md) to select checks for the changed boundary; a small edit does not require all build/test commands. Distribution builds use `./tools/build-windows-release.ps1` after dependencies are resolved.
+Install Flutter 3.47.7 (Dart 3.13.5), Visual Studio with Desktop development with C++, and the .NET 10 SDK. Run `flutter doctor -v` and `flutter pub get --enforce-lockfile` from the checkout. Use [Testing](TESTING.md) to select checks for the changed boundary; a small edit does not require all build/test commands. Distribution builds use `./tools/build-windows-release.ps1` after dependencies are resolved.
 
-Use [storage maintenance](STORAGE_MAINTENANCE.md) for artifact retention and safe
-manual cleanup. Ignored build/log directories can contain profiles and release
-evidence; inspect their contents before removing generated outputs.
+Ignored build and log directories can contain test profiles and release
+evidence. Inspect their contents before removing generated outputs.
+
+## Windows plugin links
 
 If this machine cannot create Flutter plugin symlinks, the optional local
 `./tools/dev/prepare-windows-plugins.ps1` creates missing directory junctions in
@@ -17,9 +18,45 @@ inspection. This avoids rebuilding an isolated checkout merely to work around
 local symlink permissions. Normal Developer Mode/symlink-enabled CI needs none
 of this workaround.
 
+## Windows CI
+
 The [Windows CI workflow](../.github/workflows/windows-ci.yml) runs analysis, serial Flutter tests, a Release build, and the packaged widget self-test on `windows-2022` with Flutter 3.47.7 and .NET 10. It also validates public OAuth configuration, packages the portable ZIP and installer, writes checksums, and retains an unpublished candidate artifact. It does not publish a GitHub release or replace manual Windows acceptance. Keep the widget version synchronized with `pubspec.yaml`; both package scripts reject a mismatched widget executable.
 
-For manual runs, set child-process `APPDATA` and `LOCALAPPDATA` to isolated temporary directories before launching. Verify those environment variables and the resulting SQLite path before interacting. Do not point development builds at a personal profile. Fresh installer profiles use `%APPDATA%\TodoPilot`; ZIP copies carry a `PORTABLE-MODE` marker and select a profile keyed by the extracted directory. The installer creates a `legacy-profile.json` marker only when upgrading a registered previous TodoPilot installation that used `%APPDATA%\Life Manager`; both executables honor it. Source schema v23 adds inactive sync journaling; published beta 2 uses v22; old schemas require the reviewed Before upgrade backup gate.
+## Run with a disposable Windows profile
+
+After dependency resolution, run this from the checkout in PowerShell. The
+app inherits the temporary directories. Environment restoration happens
+when Flutter exits.
+
+```powershell
+$todorbitProfile = Join-Path ([IO.Path]::GetTempPath()) ('todorbit-dev-' + [guid]::NewGuid().ToString('N'))
+$todorbitOriginalRoaming = $env:APPDATA
+$todorbitOriginalLocal = $env:LOCALAPPDATA
+try {
+    $env:APPDATA = Join-Path $todorbitProfile 'Roaming'
+    $env:LOCALAPPDATA = Join-Path $todorbitProfile 'Local'
+    New-Item -ItemType Directory -Path $env:APPDATA,$env:LOCALAPPDATA | Out-Null
+    Write-Host "Expected database: $env:APPDATA\TodoPilot\life_manager.sqlite"
+    flutter run --no-pub -d windows
+} finally {
+    $env:APPDATA = $todorbitOriginalRoaming
+    $env:LOCALAPPDATA = $todorbitOriginalLocal
+}
+```
+
+Before creating test records, open **Settings → Data profile and location**
+and confirm the directory matches the printed temporary path. Use synthetic
+records and leave cloud accounts disconnected for ordinary development.
+Use a disposable Windows user or VM for clean installer, sign-in, and OAuth
+acceptance.
+
+Fresh installed profiles use `%APPDATA%\TodoPilot`. ZIP copies carry a
+`PORTABLE-MODE` marker and select a profile keyed by the extracted directory.
+Registered upgrades from the older `Life Manager` data directory can carry a
+`legacy-profile.json` marker. Preserve these profile identities and SQLite's
+[reviewed migration gate](ARCHITECTURE.md).
+
+## Native and packaged verification
 
 For a native self-test, this PowerShell example passes isolated environment
 variables only to the child (requires a native Release build):
@@ -56,7 +93,7 @@ hidden-worker gates sequentially with other Flutter tests:
 ```powershell
 $env:TODORBIT_NATIVE_SYNC_EXECUTABLE = (Resolve-Path 'build/windows/x64/runner/Release/TodorbitWidget.exe').Path
 flutter test --no-pub --concurrency=1 test_driver/native_sync_writer_test.dart
-python tools/test-background-sync.py --executable build/windows/x64/runner/Release/Todorbit.exe --schema 26
+python tools/test-background-sync.py --executable build/windows/x64/runner/Release/Todorbit.exe
 ```
 
 Both create disposable profiles and override child APPDATA/LOCALAPPDATA. They do
@@ -86,17 +123,15 @@ or a downloaded Desktop credentials JSON in Git or packages. APPDATA redirection
 does not create a fresh Windows Credential Manager identity; strict clean-install
 acceptance needs a disposable Windows user/VM. See [format and recovery](GOOGLE_DRIVE_BACKUP.md).
 
-The earlier [private acceptance](GOOGLE_DRIVE_PRIVATE_ACCEPTANCE.md) is a
-historical checkpoint. For the published enabled package and remaining limits,
-see the [v1.0.16 publication receipt](TODORBIT_1_0_16_PUBLICATION.md); it grants no
-authorization to enable or publish a future build.
+See [Platform support](PLATFORM_SUPPORT.md) for the current experimental
+release and [Drive Sync](GOOGLE_DRIVE_SYNC.md) for account and recovery limits.
 
 Database creation and upgrades commit schema DDL and `user_version` in one
 transaction. Startup recognizes version 0 as unfinished initialization, but
 automatically completes it only when every user table is empty and the final
 schema exactly matches a fresh current database. Populated/incompatible files
-are preserved and rejected; no reset/delete fallback exists. Schema v22 adds opt-in task reminders; the approved upgrade/Before upgrade
-gates remain unchanged. Regression includes
+are preserved and rejected; no reset/delete fallback exists. The architecture document records the current schema and the Before Upgrade
+backup gate. Regression includes
 real child-process termination before commit; see
 [engineering acceptance](GOOGLE_DRIVE_ENGINEERING_ACCEPTANCE.md).
 

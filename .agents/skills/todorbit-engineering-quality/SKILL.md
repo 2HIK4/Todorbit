@@ -40,7 +40,7 @@ Do not load all documentation into context. Activate only the reference matching
 
 | Focus Area | Reference Document | Key Invariants Covered |
 |---|---|---|
-| **SQLite, Sync, Backup, Alarms** | [Data Safety & Persistence](references/data-safety-and-persistence.md) | Drift schema 28, migrations, CAS tokens, AES-GCM sync batches, Before Restore backups |
+| **SQLite, Sync, Backup, Alarms** | [Data Safety & Persistence](references/data-safety-and-persistence.md) | Drift migrations, CAS tokens, sync modes, Before Upgrade and Before Restore backups |
 | **Windows & Android Native Integration** | [Cross-Platform Architecture](references/cross-platform-architecture.md) | Windows runner & .NET 10 companion (`WidgetDateNavigation`), Android shell (`MobileWorkspace` vs `Workspace`), lifecycle, Doze, alarms, calendar parity |
 | **Profiling, Memory & 16GB RAM Limits** | [Performance & Profiling](references/performance-and-profiling.md) | Memory leak avoidance, 16GB RAM resource budgeting, build thrashing prevention, rendering efficiency |
 | **Agent Efficiency, Search & Ledgers** | [Agent Workflow Efficiency](references/agent-workflow-efficiency.md) | Bounded search, test ledger policy, minimal context consumption, atomic Git checkpoints |

@@ -3,6 +3,7 @@ import '../time_tracking/task_timer_intent.dart';
 import '../../domain/alarm_plan.dart';
 import '../shared/alarm_indicator.dart';
 import '../shared/app_motion.dart';
+import '../shared/app_spacing.dart';
 import '../support/support_button.dart';
 import '../shared/item_filters.dart';
 import '../settings/sidebar_order_dialog.dart';
@@ -15,6 +16,7 @@ import '../shared/status_snackbar.dart';
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -409,6 +411,8 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
     final c = ref.watch(appControllerProvider);
     final selected = preferences.destinations.indexOf(c.view);
     final tablet = MediaQuery.sizeOf(context).width >= 720;
+    final theme = Theme.of(context);
+    final searchStyle = theme.textTheme.bodyMedium!;
     Widget content = switch (c.view) {
       WorkspaceView.calendar => MobileCalendar(
         key: ValueKey(calendarDay),
@@ -447,39 +451,46 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
     }
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: !searching,
+        toolbarHeight: searching
+            ? math.max(
+                kToolbarHeight,
+                MediaQuery.textScalerOf(context).scale(searchStyle.fontSize!) *
+                        (searchStyle.height ?? 1.5) +
+                    4 * AppSpacing.small,
+              )
+            : null,
         title: searching
             ? Container(
-                height: 42,
+                constraints: const BoxConstraints(
+                  minHeight: kMinInteractiveDimension,
+                ),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest
-                      .withValues(alpha: 0.65),
+                  color: theme.colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.65,
+                  ),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: Theme.of(context).colorScheme.primary
-                        .withValues(alpha: 0.7),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.7),
                     width: 1.5,
                   ),
                 ),
                 child: Row(
                   children: [
-                    const SizedBox(width: 8),
-                    Icon(
-                      Icons.search,
-                      size: 20,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: AppSpacing.related),
                     Expanded(
                       child: TextField(
                         controller: search,
                         autofocus: true,
-                        style: const TextStyle(fontSize: 14),
+                        style: searchStyle,
                         decoration: const InputDecoration(
                           hintText: 'Search tasks and events',
-                          hintStyle: TextStyle(fontSize: 14),
-                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
                           isDense: true,
-                          contentPadding: EdgeInsets.symmetric(vertical: 10),
+                          contentPadding: EdgeInsets.symmetric(
+                            vertical: AppSpacing.small,
+                          ),
                         ),
                         onChanged: (_) => setState(() {}),
                       ),
@@ -487,11 +498,6 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                     if (search.text.isNotEmpty)
                       IconButton(
                         iconSize: 18,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 32,
-                          minHeight: 32,
-                        ),
                         tooltip: 'Clear search text',
                         icon: const Icon(Icons.clear),
                         onPressed: () {
@@ -501,16 +507,10 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                       ),
                     IconButton(
                       iconSize: 20,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 32,
-                        minHeight: 32,
-                      ),
                       tooltip: 'Advanced search & filters',
                       icon: const Icon(Icons.tune_outlined),
                       onPressed: () => dialog(const AdvancedSearchDialog()),
                     ),
-                    const SizedBox(width: 4),
                   ],
                 ),
               )

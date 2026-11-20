@@ -1,79 +1,90 @@
 # Todorbit
 
-[Official website](https://2hik4.github.io/Todorbit/) · [Privacy Policy](https://2hik4.github.io/Todorbit/privacy.html) · [Terms of Service](https://2hik4.github.io/Todorbit/terms.html)
+**A free, local-first planner for Windows and Android.**
 
-![Todorbit icon](assets/app_icon.png)
+[Download Todorbit](https://github.com/2HIK4/Todorbit/releases) · [Installation guide](docs/INSTALLATION.md) · [Project website](https://2hik4.github.io/Todorbit/) · [Contributing](CONTRIBUTING.md)
 
-![Todorbit Today view](docs/screenshots/todorbit-today.png)
+Todorbit brings tasks, projects, calendar events, habits, goals, and focus
+sessions into one place. It helps you plan for a deadline, set aside time for
+the work, and record what you actually did. It is built with Flutter and
+SQLite and works offline without a Todorbit account or subscription.
 
-Todorbit is an offline Windows productivity app with an Android beta for tasks, calendar events, habits, goals, and focus sessions. It is built with Flutter and SQLite. Creator: [Hussam Alkhatib](https://2hik4.github.io/).
+![Todorbit's Windows Today view, with workspace navigation and an empty daily task list](docs/screenshots/todorbit-today.png)
 
-## What it does
+*Windows Today view from Todorbit v1.0.12.*
 
-- Plan tasks and deadlines separately; track actual work with focus timers and sessions.
-- Organize categories, projects, subtasks, recurring tasks, and saved views.
-- View fixed events and tasks on the calendar; preview Smart Reschedule before applying it.
-- Track habits and goals, and review reports.
-- Use a native Windows desktop widget for Quick Add, task editing, and completion.
-- Keep data local, with managed backups, reviewed restore, and SQLite import/export.
-- Customize light and dark color palettes with a color wheel and share validated JSON themes through Settings → Appearance → Customize Theme.
+## What you can do
 
-## Android beta installation
+- Organize work with projects, categories, subtasks, recurring tasks, search,
+  and saved views.
+- See fixed events alongside planned tasks and sessions. Preview a Smart
+  Reschedule proposal and choose whether to apply it.
+- Track habits and goals, run focus timers, log actual work, and review reports.
+- Keep tasks or your calendar visible through Windows desktop widgets or
+  Android home-screen widgets.
+- Personalize light and dark palettes and share validated theme JSON.
+  Windows includes additional desktop widget customization.
 
-The production-signed [Android 1.0.19-beta.12 pre-release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.12) supports Android 8.0+ with a universal ARM64/x86-64 APK, resumable updates, Tasks/Calendar widgets and incremental Sync with Standard or optional private encryption. Download the APK and verify its published SHA-256. Real Drive cross-device acceptance remains unverified. Back up existing data and start with disposable profiles. Before replacing a debug-signed app, verify an external backup and recovery first. See [phone signing and backup testing](docs/ANDROID_BETA_2_PHONE_TESTING.md), [sync setup](docs/GOOGLE_DRIVE_SYNC.md) and [publication evidence and test skips](docs/UI_QUALITY_BETA_12_PUBLICATION.md).
+See the [platform support matrix](docs/PLATFORM_SUPPORT.md) for platform differences
+and features that are still experimental.
 
-## Windows installation
+## Install
 
-Todorbit v1.0.19-beta.12 is a free, MIT-licensed Windows x64 pre-release. Windows 11 is the main development and test platform; Windows 10 acceptance is limited. Download the unsigned installer or portable ZIP from [GitHub Releases](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.12) and compare it with the published SHA-256 checksum. Run the installer or extract the portable ZIP and run `Todorbit.exe`. Keep the full extracted folder together, including `TodorbitWidget.exe`, DLLs, and the `data` folder. Neither package requires Flutter or Visual Studio on the user's computer.
+Downloads are available as **experimental pre-releases** on
+[GitHub Releases](https://github.com/2HIK4/Todorbit/releases). Review the
+release notes, verify the published SHA-256 for your file, and keep an
+independent backup before upgrading.
 
-The portable ZIP does **not** store data beside the executable. Each extracted portable location uses its own `%APPDATA%\TodoPilot\portable-<location-id>` profile; copying or moving the extracted folder selects a new empty profile. An installer fresh profile uses `%APPDATA%\TodoPilot\life_manager.sqlite`. This legacy path remains stable through the rename. An older `%APPDATA%\Life Manager` database is never selected just because it exists; on first launch Todorbit offers a reviewed, explicit import. Upgrading an installed TodoPilot retains its existing profile and settings. Export/import data through Settings > Backups & Cloud before moving a portable folder, and do not delete either profile folder.
+| Platform | Package |
+| --- | --- |
+| Windows x64 | Unsigned installer or portable ZIP. Windows 11 is the primary test platform. Windows 10 acceptance is limited. |
+| Android 8.0+ | Production-signed GitHub APK for ARM64 and x86-64 devices. |
 
-The [Windows + Android sync beta 4](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.4)
-adds encrypted incremental exchange, pairing, conflict review and bounded background
-opportunities. See the [sync guide](docs/GOOGLE_DRIVE_SYNC.md) and
-[publication checks, hashes and limits](docs/DRIVE_SYNC_BETA_4_PUBLICATION.md).
-Current real Drive sync acceptance uses mocks; back up existing data and follow
-the pairing/recovery guide before testing with real records.
+The [installation guide](docs/INSTALLATION.md) covers checksums, Android
+signing, and how to move a portable Windows copy while keeping access to your
+data.
 
-Google Drive encrypted backup/restore is **enabled and experimental since v1.0.13**, with real full/settings recovery verification. The published packages bundle the tested Desktop application configuration; users do not need Google Cloud setup or a credentials JSON. Google branding verification and full public OAuth policy compliance remain unresolved; no Google approval or compatibility with every account is claimed. Snapshot backups remain independent from the separately enabled sync feature; linked external file contents are excluded. Local backups and settings JSON transfer remain available offline. Source builds keep a disabled/empty default configuration. See [backup contents and recovery](docs/GOOGLE_DRIVE_BACKUP.md), [publication evidence and limitations](docs/TODORBIT_1_0_17_PUBLICATION.md), and the [privacy disclosure](docs/PRIVACY.md).
+## Your data
 
-The native widget can be shown from the app sidebar. By default, it launches at Windows sign-in after Todorbit's first launch; Settings > Widget can turn this off. Right-click it for Refresh, appearance, layout lock, and Close Widget. The widget can run while the main window is closed. The optional PIN locks the UI; it does not encrypt the SQLite database. See [installation and portable upgrade instructions](docs/INSTALLATION.md).
+Todorbit keeps your planner in a local SQLite profile. You can create and
+restore local snapshots, export a database, and transfer supported settings
+separately. The optional app PIN hides the interface. Local databases and
+local recovery copies remain unencrypted by Todorbit.
 
-## Source build
+Google Drive features are optional and experimental.
 
-Install Flutter with Windows desktop support, Visual Studio C++ desktop tools, and .NET 10 SDK. Then run:
+- **Sync** exchanges portable edits across devices and lets you review
+  conflicts. Standard Sync stores readable planner JSON in your account's
+  hidden app-data folder. Private Encrypted Sync encrypts data before upload.
+  Save the passphrase and recovery code when setting up a new private workspace.
+  [Sync setup and recovery](docs/GOOGLE_DRIVE_SYNC.md)
+- **Backups** create encrypted point-in-time snapshots on request. The backup
+  passphrase is required to decrypt each snapshot. A full restore replaces the
+  local database after review. [Backup contents and recovery](docs/GOOGLE_DRIVE_BACKUP.md)
 
-```powershell
-flutter pub get
-flutter analyze
-flutter test
-./tools/build-windows-release.ps1
-```
+Managed attachments are included in snapshots and can sync. The contents of
+linked external files stay on the original device. See the
+[privacy disclosure](docs/PRIVACY.md) for account permissions, device-local
+credentials, and deletion.
 
-The Release bundle is `build\windows\x64\runner\Release`. See [Development](docs/DEVELOPMENT.md) for toolchain/profile setup, [Architecture](docs/ARCHITECTURE.md) for subsystem locations, and [Testing](docs/TESTING.md) for focused checks during development. The commands above are a full source-build baseline.
+## Build, customize, and contribute
 
-If a moved portable copy looks empty, check Settings > Data profile and reopen the original extracted path or import its verified backup. Keep the full application bundle together. See [installation troubleshooting](docs/INSTALLATION.md) for recovery steps.
+Start with the [contributor guide](CONTRIBUTING.md) and
+[development setup](docs/DEVELOPMENT.md) for Windows or Android. The
+[architecture map](docs/ARCHITECTURE_MAP.md) points to the source and tests for
+each feature. Use an isolated profile when running source builds.
 
-## Customization and contributions
+- [Theming](docs/THEMING.md) and [customization extension points](docs/CUSTOMIZATION.md)
+- [Roadmap](docs/ROADMAP.md) and [release notes](https://github.com/2HIK4/Todorbit/releases)
+- [Bug reports and feature requests](https://github.com/2HIK4/Todorbit/issues) and
+  [private security reporting](SECURITY.md)
 
-See [theming](docs/THEMING.md), [customization extension points](docs/CUSTOMIZATION.md), and [contribution guidance](CONTRIBUTING.md). Official community entries come from `assets/contributors.json` through reviewed pull requests; imported themes do not add someone to that list.
+Created by **Hussam Alkhatib**, Creator & Project Founder.
+[Email](mailto:hussamalkhatib24@gmail.com) · [Portfolio](https://2hik4.github.io/) ·
+[LinkedIn](https://www.linkedin.com/in/hussam-alkhatib-dev)
 
-Creator: **Hussam Alkhatib**, Creator & Project Founder. Original concept, product direction, and development of Todorbit. [Email](mailto:hussamalkhatib24@gmail.com) · [Portfolio](https://2hik4.github.io/) · [LinkedIn](https://www.linkedin.com/in/hussam-alkhatib-dev).
+**License:** [MIT](LICENSE). See [third-party notices](THIRD_PARTY_NOTICES.md)
+and the [official contributor registry](assets/contributors.json).
 
-## Current release status
-
-The coordinated v1.0.19-beta.12 pre-release includes six UI reliability batches:
-draft protection, compact/large-text layouts, resource/template failure recovery,
-safe startup preference handling and theme transfer. Android versionCode is 35;
-schema 26, Sync protocol 1, backups, recovery requirements and production signing
-identity remain compatible. Further tests and CI were skipped at the owner's
-explicit request; previous scoped evidence remains limited to its recorded cases.
-Build, signing, package and checksum integrity are recorded separately. Native
-Windows/Android and real Google Drive cross-device acceptance remain incomplete.
-Preserve a verified backup and the credentials required by your Sync mode.
-Windows is unsigned. See [release notes](docs/UI_QUALITY_BETA_12_RELEASE_NOTES.md),
-[publication evidence/checksums](docs/UI_QUALITY_BETA_12_PUBLICATION.md) and the
-[preliminary naming review](docs/NAMING_REVIEW.md); formal trademark clearance
-remains open.
-
-**License:** [MIT](LICENSE), approved by the creator for this project. Third-party terms remain separate in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the distributed Flutter and native notices.
+You can support independent development with an optional
+[PayPal donation](https://paypal.me/2hussam4). All features remain free.

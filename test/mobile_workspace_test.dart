@@ -84,6 +84,67 @@ void main() {
   }
 
   testWidgets(
+    'mobile search fits large text and keeps an event reachable above the IME',
+    (tester) async {
+      final start = DateTime.now().add(const Duration(days: 1));
+      await controller.repository.addEvent(
+        EventDraft(
+          title: 'Planning briefing',
+          startsAt: start,
+          endsAt: start.add(const Duration(hours: 1)),
+        ),
+      );
+      await controller.refresh();
+      const size = Size(320, 640);
+      const keyboardHeight = 260.0;
+      addTearDown(tester.view.resetViewInsets);
+      try {
+        await open(tester, size: size, scale: 2, dark: true);
+        await tester.tap(find.byTooltip('Search tasks and events'));
+        await tester.pumpAndSettle();
+        tester.view.viewInsets = const FakeViewPadding(bottom: keyboardHeight);
+        await tester.enterText(find.byType(TextField), 'briefing');
+        await tester.pumpAndSettle();
+
+        final editable = tester
+            .state<EditableTextState>(find.byType(EditableText))
+            .renderEditable;
+        expect(
+          editable.size.height,
+          greaterThanOrEqualTo(editable.preferredLineHeight),
+        );
+        for (final label in [
+          'Clear search text',
+          'Advanced search & filters',
+          'Close search',
+        ]) {
+          final control = tester.getSize(find.byTooltip(label));
+          expect(control.width, greaterThanOrEqualTo(kMinInteractiveDimension));
+          expect(
+            control.height,
+            greaterThanOrEqualTo(kMinInteractiveDimension),
+          );
+        }
+        final result = find.text('Planning briefing');
+        await tester.ensureVisible(result);
+        await tester.pumpAndSettle();
+        expect(
+          tester.getRect(result).bottom,
+          lessThan(size.height - keyboardHeight),
+        );
+        await tester.tap(result);
+        tester.view.resetViewInsets();
+        await tester.pumpAndSettle();
+        expect(find.byType(EventEditor), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.binding.setSurfaceSize(null);
+      }
+    },
+  );
+
+  testWidgets(
     'project event edit keeps the project destination and assignment',
     (tester) async {
       final category = await controller.repository.addCategory('University');

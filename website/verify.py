@@ -5,6 +5,7 @@ from urllib.parse import unquote, urlsplit
 import re
 
 ROOT = Path(__file__).resolve().parent / "dist"
+CANONICAL = "https://2hik4.github.io/Todorbit/"
 
 
 class Page(HTMLParser):
@@ -15,6 +16,7 @@ class Page(HTMLParser):
         self.links = []
         self.h1s = 0
         self.main = 0
+        self.canonical = []
         self.feed(source.read_text(encoding="utf-8"))
 
     def handle_starttag(self, tag, attrs):
@@ -24,17 +26,23 @@ class Page(HTMLParser):
             self.ids.add(attrs["id"])
         self.h1s += tag == "h1"
         self.main += tag == "main"
+        if tag == "main":
+            assert attrs.get("tabindex") == "-1", "Skip link target must receive focus"
         assert tag not in {"script", "iframe", "form"}, "Unreviewed active content"
         if tag == "img":
             assert all(key in attrs for key in ("alt", "width", "height")), "Image accessibility/layout metadata missing"
         for key in ("href", "src"):
             if key in attrs:
+                if tag == "link" and key == "href" and attrs.get("rel") == "canonical":
+                    self.canonical.append(attrs[key])
+                    continue
                 self.links.append((tag, attrs[key]))
 
 
 pages = {p.resolve(): Page(p) for p in ROOT.glob("*.html")}
 for source, page in pages.items():
     assert page.h1s == page.main == 1, f"Heading/main structure: {source.name}"
+    assert page.canonical == ([CANONICAL] if source.name == "index.html" else [])
     html = source.read_text(encoding="utf-8")
     assert '<html lang="en">' in html and 'name="viewport"' in html
     assert "Content-Security-Policy" in html and "#main" in html

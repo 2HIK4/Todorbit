@@ -1,82 +1,69 @@
 # Contributing to Todorbit
 
-Open an issue to discuss larger behavior changes, then make a focused pull request. Keep Windows desktop behavior, Android parity, and existing data compatibility intact. Preserve the optional Drive snapshot integration and incremental sync; new cloud services, synchronization, accounts, telemetry and executable theme plugins require an explicit product decision. Never use production data in tests.
+Start with the [contributor task list](docs/CONTRIBUTOR_TASKS.md) or report a
+reproducible problem through [GitHub Issues](https://github.com/2HIK4/Todorbit/issues/new/choose).
+For a feature or breaking behavior change, discuss the scope in an issue before
+opening a PR. Follow the [code of conduct](CODE_OF_CONDUCT.md) and send security
+reports privately using [SECURITY.md](SECURITY.md).
 
-Start with [Development](docs/DEVELOPMENT.md) for toolchain and isolated-profile setup, [Architecture](docs/ARCHITECTURE.md) for subsystem realities, and [Testing](docs/TESTING.md) for verification matched to the changed boundary. Run focused checks while editing; broaden at integration/release checkpoints. Markdown-only edits need link/path review and `git diff --check`, not application builds. Report GUI behavior you have not physically verified as pending. [Codex workflow](docs/CODEX_WORKFLOW.md) covers branches, safe handling of uncommitted work, and handoffs; [Release](docs/RELEASE.md) owns publishing gates. Publishing requires an explicit request.
+## Build and run locally
 
----
-
-## Architectural Layer Boundaries & Code Layout
-
-Todorbit enforces a clean 4-tier layer structure to keep the codebase modular, testable, and maintainable:
-
-```text
-[ Presentation: lib/features/ ]
-        │
-        ▼
-[ Presentation Orchestration: lib/app/ ]
-        │
-        ├──────────────────────────────┐
-        ▼                              ▼
-[ Pure Domain: lib/domain/ ]   [ Persistence / Data: lib/data/ ]
+```powershell
+git clone https://github.com/2HIK4/Todorbit.git
+Set-Location Todorbit
+git fetch --tags
 ```
 
-### Directory Placement Rules
-1. **`lib/features/<feature>/` (Presentation UI)**:
-   - Houses screens, dialogs, sheets, and modular widgets (e.g. `workspace`, `calendar`, `scheduling`, `habits`, `goals`, `time_tracking`, `settings`, `shared`).
-   - **Isolation Invariant**: Leaf feature components in one feature must **never** directly import leaf components from a sibling feature (e.g., `calendar` must not import `workspace`, and `shared` must not import `settings`).
-   - Shared cross-cutting presentation contracts and guards belong in `lib/features/shared/` (e.g. `unsaved_editor_guard.dart`).
-2. **`lib/app/` (Presentation Orchestration)**:
-   - Houses `AppController` and presentation state management. Coordinates user actions, in-memory collection views, and refresh pipelines.
-   - UI widgets observe `AppController` via scoped Riverpod selectors (`ref.watch(appControllerProvider.select((c) => c.property))`) rather than coarse watches to avoid unnecessary rebuild cascades.
-3. **`lib/domain/` (Pure Business Logic & Models)**:
-   - Contains pure entity models, recurrence math, scheduling algorithms, and projection calculators.
-   - **Purity Invariant**: Domain logic must remain pure Dart without dependencies on `package:flutter/`, `lib/app/`, or `lib/data/` (with narrowly scoped UI adaptors `appearance.dart` and `hotkeys.dart` as the sole allowable exceptions).
-4. **`lib/data/` (Persistence & Infrastructure)**:
-   - Houses SQLite access via Drift, `LifeRepository` and its domain-specific part files, migration gates, backup services, and cloud sync codecs.
-   - **Encapsulation Invariant**: Raw database handles (`.db.transaction`, `.db.close()`) must **never** be invoked from presentation (`lib/features/`) or orchestration (`lib/app/`). All multi-record mutations must go through dedicated composite methods on `LifeRepository`.
+The public default branch can lag the experimental release line. For a reported
+bug, identify the installed version first, find its source tag on
+[GitHub Releases](https://github.com/2HIK4/Todorbit/releases), and use the base
+branch named in the issue or agreed with the maintainer for your PR.
 
----
+1. Install the toolchain in [Development](docs/DEVELOPMENT.md) for Windows or
+   [Android setup](docs/ANDROID_SETUP.md) for Android. Run `flutter doctor -v` and
+   resolve the issues for your target platform.
+2. Run `flutter pub get --enforce-lockfile` from the repository root. The
+   [Windows plugin workaround](docs/DEVELOPMENT.md#windows-plugin-links) covers
+   machines where Flutter cannot create plugin symlinks.
+3. Use the [disposable Windows profile](docs/DEVELOPMENT.md#run-with-a-disposable-windows-profile)
+   or an [isolated Android emulator](docs/ANDROID_SETUP.md#run-on-a-disposable-emulator).
+   Debug builds can run offline with test records and without production signing
+   material or Google credentials.
 
-## Data Safety & Concurrency Invariants
+## Make a change
 
-- **Zero Data Loss**: Never wipe, drop, reset, or silently overwrite SQLite tables, profile JSON files, user backups, or widget settings as an error recovery fallback.
-- **Forward-Only Migrations**: All SQLite schema modifications must be forward-migrated through explicit Drift migrations and verified in `MigrationGate` (Current source: Schema 29).
-- **CAS Concurrency Tokens**: Every task update must advance `updated_at` beyond the predecessor timestamp and check revision concurrency tokens via SQL compare-and-swap (CAS).
-- **Atomic Multi-Record Mutations**: Operations touching multiple records or tables must execute inside an explicit SQLite transaction encapsulated within `LifeRepository`.
+- Use the [feature map](docs/ARCHITECTURE_MAP.md) to find the owner and tests.
+  Presentation lives in `lib/features/`, orchestration in `lib/app/`, data
+  access in `lib/data/`, and platform adapters in `lib/platform/`. Keep domain
+  calculations independent of these layers and follow the
+  [architecture contracts](docs/ARCHITECTURE.md).
+- Preserve task and event revisions, existing profiles, sync history and
+  backups. Multi-record SQLite writes belong in a repository transaction.
+  Follow the migration and recovery gates in [Testing](docs/TESTING.md) for
+  persistence, synchronization, encryption, or backup changes.
+- Reuse [theme tokens and validated theme JSON](docs/THEMING.md). Include an
+  isolated screenshot and check text contrast for appearance changes. The
+  reviewed contributor registry lives in `assets/contributors.json`.
+  Imported theme author metadata stays separate from official attribution.
 
----
+## Verify and submit
 
-## Verification & Testing Standards
+Use [Testing](docs/TESTING.md) to choose the checks for your changed boundary.
+For example, preview the task feature checks with PowerShell:
 
-Before submitting changes, contributors must execute verification matched to the risk boundary of the modification (see `docs/TESTING.md`):
+```powershell
+./tools/dev/verify.ps1 -Mode Feature -Feature tasks -Plan
+```
 
-1. **Level 1 (Fast Verification)**:
-   - Formatting check: `dart format --output=none --set-exit-if-changed <paths>`
-   - Static analysis: `flutter analyze --no-pub <paths>`
-   - Architecture boundary enforcement: `python tools/test_architecture_boundaries.py`
-   - Focused unit/widget tests: `flutter test --no-pub <test_file>`
-2. **Level 2 (Critical Data-Safety & Persistence Verification)**:
-   - Required for any change touching `lib/data/`, SQLite queries, migrations, CAS tokens, sync schemas, or backups.
-   - Must run immediately; never deferred:
-     - `flutter test --no-pub test/repository_test.dart`
-     - `flutter test --no-pub test/migration_gate_test.dart`
-     - `flutter test --no-pub test/database_initialization_test.dart`
-     - `flutter test --no-pub test/backup_service_test.dart`
-     - `flutter test --no-pub test/task_revision_concurrency_test.dart`
-3. **Feature Test Catalog**:
-   - Preview feature test suites defined in `tools/dev/features.json` using:
-     ```powershell
-     powershell -ExecutionPolicy Bypass -File tools/dev/verify.ps1 -Mode Feature -Feature <feature_name> -Plan
-     ```
-   - Available features: `tasks`, `calendar`, `task-timers`, `time-tracking`, `habits`, `goals`, `alarms`, `reports`, `templates`, `scheduling`, `trash`, `notifications`, `drive`, `sync`, `widgets`, `settings`, `mobile`, `database`, `android-updates`, `windows-updates`.
+Run the smallest relevant tests and analysis, include critical data checks
+immediately when the change affects their invariants, and run `git diff --check`.
+For an architecture change, also run `python tools/test_architecture_boundaries.py`.
+For documentation, check links with `python tools/dev/check-docs.py`. Pass the
+changed Markdown paths explicitly when they are outside its default set.
 
----
-
-## Theming & Contributor Registry
-
-Themes use the validated version 1 JSON format in [docs/THEMING.md](docs/THEMING.md). Include a preview from an isolated profile and check text contrast. Theme author metadata is distinct from official creator and contributor attribution.
-
-To add a reviewed community contributor, edit `assets/contributors.json`. Records require `name`, `title`, `type`, and `description`; optional `profile` must use HTTPS and `related` can name the theme or feature. Types: `themes`, `iconSets`, `features`, `bugFixes`, `uiImprovements`, `accessibility`, `documentation`, `translations`. Do not add unreviewed theme imports to the registry. The Creator section remains fixed.
-
-Do not submit personal databases, backups, logs, private screenshots, local settings, credentials, or signing files. See [SECURITY.md](SECURITY.md) for private vulnerability reports.
+Open a focused PR against the agreed project branch. Describe the user-visible
+change, list the checks that ran, and call out manual Windows or Android
+verification still pending. Include the platform, Todorbit version, and
+reproduction for fixes. Use synthetic records and share only evidence reviewed
+for personal information. Keep databases, backups, credentials, signing files,
+and local settings out of issues, attachments, and commits.

@@ -400,13 +400,22 @@ class BoundaryCheckerFixtureTests(unittest.TestCase):
             dom_file.write_text(
                 "import 'package:flutter/widgets.dart';\n"
                 "import '../app/app_controller.dart';\n"
-                "import '../data/life_repository.dart';\n",
+                "import '../data/life_repository.dart';\n"
+                "export '../features/shared/unsaved_editor_guard.dart';\n"
+                "import 'helper.dart' if (dart.library.io) "
+                "'package:life_manager/platform/android/android_platform.dart';\n",
                 encoding='utf-8'
             )
             adaptor = root / 'lib/domain/appearance.dart'
             adaptor.write_text("import 'package:flutter/material.dart';\n", encoding='utf-8')
+            shadow = root / 'lib/domain/sync/appearance.dart'
+            shadow.parent.mkdir()
+            shadow.write_text("import 'dart:ui';\n", encoding='utf-8')
             violations = check_domain_layer_purity(root)
-            self.assertEqual(len(violations), 3)
+            self.assertEqual(len(violations), 6, violations)
+            self.assertTrue(any('presentation' in item for item in violations))
+            self.assertTrue(any('platform adapter' in item for item in violations))
+            self.assertTrue(any('lib/domain/sync/appearance.dart' in item for item in violations))
 
     def test_fixture_allows_meta_in_domain(self):
         with tempfile.TemporaryDirectory(prefix='todorbit-dom-meta-') as temporary:
@@ -628,40 +637,38 @@ def check_raw_database_handle_encapsulation(repo_root: Path = ROOT) -> list[str]
     return violations
 
 
-DOMAIN_ALLOWED_FLUTTER_ADAPTORS = {'appearance.dart', 'hotkeys.dart'}
+DOMAIN_ALLOWED_FLUTTER_ADAPTORS = {
+    'lib/domain/appearance.dart',
+    'lib/domain/hotkeys.dart',
+}
+
+DOMAIN_FORBIDDEN_LAYERS = {
+    'lib/app/': 'app layer',
+    'lib/data/': 'data/persistence layer',
+    'lib/features/': 'feature presentation layer',
+    'lib/platform/': 'platform adapter layer',
+}
 
 
 def check_domain_layer_purity(repo_root: Path = ROOT) -> list[str]:
-    """Enforce ARCH-09 / Domain purity: lib/domain/ must not import Flutter, lib/app/, or lib/data/."""
+    """Keep domain dependencies pointing away from infrastructure and presentation."""
     violations = []
     domain_dir = repo_root / 'lib/domain'
-    if not domain_dir.exists():
-        return violations
     for path in domain_dir.rglob('*.dart'):
-        directives = extract_directives(path.read_text(encoding='utf-8'))
         rel_file = path.relative_to(repo_root).as_posix()
-        for d in directives:
-            uri = d.uri
-            resolved = resolve_import_uri(path, uri, repo_root)
-
-            # Check Flutter / dart:ui import unless allowlisted
-            if path.name not in DOMAIN_ALLOWED_FLUTTER_ADAPTORS:
-                if resolved.startswith('package:flutter/') or resolved == 'dart:ui':
+        for directive in extract_directives(path.read_text(encoding='utf-8')):
+            resolved = resolve_import_uri(path, directive.uri, repo_root)
+            if rel_file not in DOMAIN_ALLOWED_FLUTTER_ADAPTORS and (
+                resolved.startswith('package:flutter/') or resolved == 'dart:ui'
+            ):
+                violations.append(
+                    f"{rel_file}:{directive.line}: Domain model must not import Flutter: {directive}"
+                )
+            for prefix, layer in DOMAIN_FORBIDDEN_LAYERS.items():
+                if resolved.startswith(prefix):
                     violations.append(
-                        f"{rel_file}:{d.line}: Domain purity violation: Domain model must not import Flutter: {d.kind} '{uri}'"
+                        f"{rel_file}:{directive.line}: Domain model must not depend on {layer}: {directive}"
                     )
-
-            # Check lib/app/ dependency
-            if resolved.startswith('lib/app/'):
-                violations.append(
-                    f"{rel_file}:{d.line}: Domain purity violation: Domain model must not depend on app layer: {d.kind} '{uri}'"
-                )
-
-            # Check lib/data/ dependency
-            if resolved.startswith('lib/data/'):
-                violations.append(
-                    f"{rel_file}:{d.line}: Domain purity violation: Domain model must not depend on data/persistence layer: {d.kind} '{uri}'"
-                )
     return violations
 
 
@@ -677,8 +684,8 @@ class RealRepositoryAndDomainBoundaryTests(unittest.TestCase):
         self.assertEqual(violations, [], "\n".join(violations))
 
     def test_domain_allowed_exceptions(self):
-        for name in DOMAIN_ALLOWED_FLUTTER_ADAPTORS:
-            target = ROOT / 'lib/domain' / name
+        for path in DOMAIN_ALLOWED_FLUTTER_ADAPTORS:
+            target = ROOT / path
             self.assertTrue(target.exists(), f"Allowed adaptor {target} must exist")
 
 

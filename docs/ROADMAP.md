@@ -1,9 +1,43 @@
 # Roadmap
 
-1. **Usable foundation:** SQLite migration, category/project/task CRUD, Today and core lists, details editor, sorting/filtering, themes, tests, Windows build. Complete only when persistence across restart is checked.
-2. **Widget feasibility:** integrate a minimal native Windows companion, investigate desktop attachment and `Win + D`, document observed behavior and risks.
-3. **Scheduling:** day/week/month calendar, events and sessions, recurrence, dependencies/sequences, deterministic Smart Reschedule, preview/history/restore and edge-case tests.
-4. **Advanced productivity:** habits, goals, timer, templates, search/saved views, statistics, attachments and bulk actions.
-5. **Reliability and integration:** tray/widget completion where feasible, reminders, backups, Trash, privacy, import/export, accessibility, packaging, performance tests.
+Todorbit is in experimental release development on Windows and Android. See
+[platform support](PLATFORM_SUPPORT.md) for current distribution, caveats and
+tested configurations.
 
-Each stage preserves a working main app. Do not present later-stage navigation as functional until its storage and interactions exist.
+## Available now
+
+- Local task and project planning, recurring tasks and events, calendar views,
+  habits, goals, focus timers, and time tracking.
+- Smart Reschedule previews with user review before applying changes.
+- Theme customization, local snapshots and recovery copies, and
+  platform-specific widgets.
+- Optional experimental Google Drive synchronization and encrypted snapshot
+  backups. Each has its own [recovery requirements](GOOGLE_DRIVE_SYNC.md).
+
+## Stabilization priorities
+
+- Verify install and upgrade paths on supported Windows and Android devices
+  using disposable data and the release checklist.
+- Expand manual keyboard, focus, scaling, TalkBack, and widget acceptance.
+- Exercise interrupted restore, offline reconnect, mixed-version sync,
+  attachment transfer, and recovery with approved test accounts.
+- Measure responsiveness with representative large profiles before changing
+  cache or startup behavior.
+
+See [deferred verification](DEFERRED_VERIFICATION.md) for evidence gaps and
+[contributor tasks](CONTRIBUTOR_TASKS.md) for bounded ways to help.
+
+## Planned improvements
+
+- Improve accessible navigation and feedback for planning, sync, and recovery.
+- Keep install guidance, screenshots, and platform limitations current as
+  experimental releases advance.
+- Improve developer entry points and automated checks for shared features.
+- Develop a repeatable process for theme examples and community documentation.
+
+## Longer-term research
+
+Evaluate small reusable modules with stable contracts and tests. See the
+[reuse assessment](REUSABLE_COMPONENTS.md). Plugin APIs, additional platform
+releases and alternative sync providers need separate design and maintenance
+decisions. The roadmap makes no delivery-date commitments.

@@ -7,7 +7,7 @@ Paths are repository relative. `tools/dev/features.json` owns runnable host-test
 | Feature | Presentation / entry | Logic and persistence | Start with these tests / group |
 | --- | --- | --- | --- |
 | Task editing | `lib/features/workspace/task_editor.dart` | `lib/app/app_controller.dart`, `lib/data/life_repository.dart`, `lib/domain/models.dart` | `test/repository_test.dart`, `test/task_editor_schedule_layout_test.dart`; `tasks` |
-| Calendar | `lib/features/calendar/calendar_view.dart`, `event_editor.dart`, `session_editor.dart` in that directory | `lib/data/event_repository.dart`, `lib/domain/recurrence.dart`; scheduling in `lib/domain/scheduling_engine.dart` | `test/calendar_improvements_test.dart`, `test/event_recurrence_test.dart`; `calendar`; [desktop/mobile recommendation](CALENDAR_PLATFORM_ARCHITECTURE_RECOMMENDATION.md) |
+| Calendar | `lib/features/calendar/calendar_view.dart`, `event_editor.dart`; shared session editor in `lib/features/scheduling/session_editor.dart` | `lib/data/event_repository.dart`, `lib/domain/recurrence.dart`; scheduling in `lib/domain/scheduling_engine.dart` | `test/calendar_improvements_test.dart`, `test/event_recurrence_test.dart`; `calendar`; [desktop/mobile recommendation](CALENDAR_PLATFORM_ARCHITECTURE_RECOMMENDATION.md) |
 | Android shell | `lib/features/mobile/mobile_workspace.dart`, `mobile_settings.dart` in that directory | Shared controller/repository; `lib/platform/android/android_platform.dart` | `test/mobile_workspace_test.dart`, `test/mobile_editors_test.dart`; `mobile` |
 | Alarms | `lib/features/shared/alarm_field.dart`, `lib/features/settings/alarm_settings_dialog.dart` | `lib/domain/alarms.dart`, `alarm_plan.dart`; `lib/data/alarm_repository.dart`, `alarm_device_store.dart`; native `AlarmDelivery.kt` and `Alarms.cs` | `test/alarm_test.dart`, `test/alarm_field_test.dart`, `test/alarm_migration_test.dart`, `test/alarm_sync_codec_test.dart`; [checkpoint](ALARM_BETA_2026_11_08.md) |
 | Android reminders | `lib/platform/android/android_surfaces.dart` | `lib/data/notification_repository.dart`; `AndroidSurfaces.kt`, `ReminderRefreshJob.kt` under `android/app/src/main/kotlin/io/github/hik4/todorbit/` | `test/android_platform_test.dart`, `test/notification_repository_test.dart`; `notifications` |
@@ -25,8 +25,9 @@ Paths are repository relative. `tools/dev/features.json` owns runnable host-test
 
 Presentation calls the shared `AppController`, repository and existing services.
 `LifeRepository` and its `part` files own Flutter SQLite writes; pure domain code
-does not import UI or native adapters. Profile JSON stores own device/preferences
-data. Keep native platform calls in adapters and the method-channel boundary.
+does not import app orchestration, data, feature UI, or platform adapters.
+The boundary checker permits Flutter imports in the two named domain adapters
+described in [Architecture](ARCHITECTURE.md). Profile JSON stores device and preference data. Keep native platform calls in adapters and the method-channel boundary.
 Do not move shared scheduling, recurrence, snapshot encryption or version parsing
 into separate Android/Windows implementations. The Windows companion's narrowly
 scoped writer never migrates schemas. Android native surfaces never write SQLite.

@@ -140,7 +140,8 @@ class BackupService {
     for (final file in files) {
       final name = path.basename(file.path);
       final createdAt = _timeFromFilename(name);
-      if (current.difference(createdAt) < const Duration(hours: 24)) {
+      final age = current.difference(createdAt);
+      if (!age.isNegative && age < const Duration(hours: 24)) {
         final stat = await file.stat();
         if (stat.size > 0) {
           final schema = await _cachedOrInspectSnapshot(file.path, stat);
@@ -201,7 +202,7 @@ class BackupService {
       );
       await Isolate.run(() => _validateLifeManagerSnapshot(temporaryPath));
       await temporary.rename(destination.path);
-      if (kind == BackupKind.automatic) await _pruneAutomatic();
+      if (kind == BackupKind.automatic) await _pruneAutomatic(instant);
       final stat = await destination.stat();
       return BackupRecord(
         file: destination,
@@ -292,11 +293,20 @@ class BackupService {
     }
   }
 
-  Future<void> _pruneAutomatic() async {
-    final records = (await list())
-        .where((item) => item.kind == BackupKind.automatic)
-        .toList();
-    for (final stale in records.skip(automaticRetention)) {
+  Future<void> _pruneAutomatic(DateTime current) async {
+    final currentHistory = <BackupRecord>[];
+    final futureDated = <BackupRecord>[];
+    for (final item in await list()) {
+      if (item.kind != BackupKind.automatic) continue;
+      final history = item.createdAt.isAfter(current)
+          ? futureDated
+          : currentHistory;
+      history.add(item);
+    }
+    // list() returns newest first. A corrected clock must leave room for new
+    // daily snapshots even when the previous clock filled the retention limit.
+    final ordered = [...currentHistory, ...futureDated];
+    for (final stale in ordered.skip(automaticRetention)) {
       await stale.file.delete();
     }
   }

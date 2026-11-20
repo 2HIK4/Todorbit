@@ -20,7 +20,22 @@ try {
   New-Item -ItemType Directory -Force -Path $env:APPDATA,$env:LOCALAPPDATA | Out-Null
   $log = Join-Path $receiptRoot 'test.log'
   $source = (git rev-parse HEAD).Trim()
-  $paths = @('lib/main.dart','lib/data/app_database.dart','lib/data/migration_gate.dart','lib/data/backup_service.dart','lib/data/appearance_preference_store.dart','lib/data/calendar_preference_store.dart','lib/features/workspace/task_resources_section.dart','lib/features/workspace/windows_resource_dialog.dart','test/startup_recovery_journeys_test.dart','test/resource_journeys_test.dart','test/support/profile_journey_environment.dart','test/database_initialization_test.dart','pubspec.lock')
+  $paths = @(
+    'lib/main.dart'
+    'lib/data/app_database.dart'
+    'lib/data/migration_gate.dart'
+    'lib/data/backup_service.dart'
+    'lib/data/appearance_preference_store.dart'
+    'lib/data/calendar_preference_store.dart'
+    'lib/features/workspace/task_resources_section.dart'
+    'lib/features/workspace/windows_resource_dialog.dart'
+    'lib/platform/platform_resource_dialog.dart'
+    'test/startup_recovery_journeys_test.dart'
+    'test/resource_journeys_test.dart'
+    'test/support/profile_journey_environment.dart'
+    'test/database_initialization_test.dart'
+    'pubspec.lock'
+  )
   $hashes = @{}
   foreach ($file in $paths) { $hashes[$file] = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash }
   Write-Output "Isolated profile: $profileRoot"

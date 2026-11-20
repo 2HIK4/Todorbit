@@ -1,26 +1,16 @@
 # Android development
 
-The production-signed [Android beta 2 is public](ANDROID_BETA_2_PUBLICATION.md):
-`1.0.19-beta.2` (25), Android 8.0+ on ARM64/x86-64. See
-[phone installation and Windows backup testing](ANDROID_PHONE_BETA_TESTING.md).
-Windows/Android cloud restoration remains unverified under the owner's scoped
-first-beta deferral; this is not a Stable or Play release.
+Todorbit distributes an experimental, production-signed Android APK on GitHub.
+See [installation](INSTALLATION.md) and [platform support](PLATFORM_SUPPORT.md)
+for the current package. Android shares Windows' schema 29, repository,
+recurrence and scheduling rules, controller, backup codec, and theme palettes.
 
-Android work lives on `feature/android-mobile`. It shares schema 28, the
-repository, recurrence/scheduling rules, controller, backup codec and theme
-palettes with Windows. Android screens live under `lib/features/mobile/`;
-Android adapters under `lib/platform/android/`. Windows IPC, updater and native
-widget source remain independent. Android now has separate GitHub and Play
-update providers; see [Android updates](ANDROID_UPDATES.md), [Drive/OAuth](ANDROID_GOOGLE_DRIVE.md)
-and [signing/release preparation](ANDROID_RELEASE.md).
-
-The previous Android scaffold used the unpublished example identifier
-`com.example.life_manager`. The development application identity is
-`io.github.hik4.todorbit`; retain it and a durable signing identity before any
-public Android distribution. Android minimum API is 26 (Android 8), target and
-compile API 36 (Android 16). The installed Flutter 3.47.7/Dart 3.13.5 toolchain
-is retained; no Windows toolchain upgrade is needed. Build, signing, OAuth,
-installation and manual acceptance instructions are in [Android setup](ANDROID_SETUP.md).
+Android UI lives under `lib/features/mobile/` and Android adapters under
+`lib/platform/android/`. Windows keeps its own shell and widget companion.
+The Android application ID is `io.github.hik4.todorbit`. Minimum API is 26.
+The GitHub APK supports ARM64 and x86-64 and has a separate update provider
+from the Play build configuration. See [Android setup](ANDROID_SETUP.md),
+[Android updates](ANDROID_UPDATES.md), and [signing](ANDROID_RELEASE.md).
 
 ## Feature inventory and acceptance matrix
 
@@ -28,8 +18,9 @@ Complete means the feature is implemented with the checks listed below; it does
 not claim every phone/OEM behavior has been observed. Partial identifies an
 outstanding implementation or acceptance gate; Blocked needs an external owner
 dependency; Not Applicable is a justified Windows-only exclusion. No supported
-feature in this inventory is Not Started. Exact current artifact/device evidence
-and remaining acceptance are in [the continuation report](ANDROID_ACCEPTANCE.md).
+feature in this inventory is Not Started. Historical device observations are in the [Android acceptance report](ANDROID_ACCEPTANCE.md).
+See [deferred verification](DEFERRED_VERIFICATION.md) for pending physical and
+account acceptance of the current candidate.
 
 | Windows feature/source | Shared dependencies | Android surface/integration | Status / checks required |
 | --- | --- | --- | --- |
@@ -51,7 +42,7 @@ and remaining acceptance are in [the continuation report](ANDROID_ACCEPTANCE.md)
 | Tasks and Calendar desktop widgets | Shared task/event data and tokens | Separate RemoteViews AppWidgetProviders | Partial acceptance; both placed/configured with real data, task/event links, locked privacy, package update and reboot persistence observed on API 35; resize/OEM breadth tracked in acceptance |
 | App lock and privacy | PrivacyManager/PIN verifier | Android lifecycle, secure window, biometrics | Complete for scoped API 35 acceptance; PIN/cold restart, cancellation/success with Android credential, secure capture and locking over an editor observed; physical fingerprint/face remains manual |
 | Local snapshot backup, restore, recovery, import/export | BackupService, MigrationGate | Android Storage Access Framework | Complete; actual SAF Android export opens on Windows; Windows import/confirmation/Recent-apps restart retains IDs and a verified Before Restore copy; shared migrations/bidirectional tests pass |
-| Encrypted Google Drive snapshots | CloudBackupService/codec/provider | Android Google authorization enabled by default | Code complete; real acceptance awaits OAuth package/certificate registration and authorized cross-client discovery |
+| Encrypted Google Drive snapshots | CloudBackupService/codec/provider | Android Google authorization enabled by default | Experimental; see current account limits and evidence in [Drive/OAuth](ANDROID_GOOGLE_DRIVE.md) |
 | Settings import/export, contributor credits | SettingsTransfer, official registry | Mobile settings/About | Complete shared behavior; host portability/credits tests pass; document picker workflows remain manual |
 | Software Updates | Shared channel/version/preferences; independent Android release metadata and native verification | GitHub APK installer or official Play flow, selected at build time | Implemented; exact automated/device evidence in acceptance record |
 | Tray, Explorer attachment, registry startup, Windows Hello, EXE updater | Windows runner/.NET | Android package manager owns updates; no Windows helper on Android | Not Applicable for Windows-only mechanisms |
@@ -62,11 +53,11 @@ and remaining acceptance are in [the continuation report](ANDROID_ACCEPTANCE.md)
 | Android package/toolchain/API 36 setup | Complete | APK/AAB builds; minimum API 26, arm64/x86-64 development artifacts |
 | SQLite persistence, migrations and safe restore | Complete | Shared migration/backup suite and real Android reopen/staged-restore workflow |
 | Development packaging | Complete | Debug-signed APK/AAB and native alignment checks; exact evidence in acceptance report |
-| Production signing | Blocked | Owner's durable keystore required; release gate fails closed |
+| Production signing | Verified for beta 25 | Public APK uses the existing durable signing identity; candidate builds require maintainer-provided signing config |
 | Deep links and lifecycle breadth | Partial acceptance | Cold task URI/notification, widget task/event links, queued event notification preserving an editor draft and locking over an editor observed; broader locked/recurring/API/low-memory coverage remains manual |
 | Performance and battery | Partial acceptance | Bounded native projections/jobs, no permanent service; physical startup/large database/Doze profiling unobserved |
 | Accessibility and locale coverage | Partial acceptance | Host RTL/dark/large-text/narrow/tablet checks pass; physical TalkBack/cutout/OEM coverage unobserved |
-| CI | Partial acceptance | Android jobs configured and local commands pass; remote Windows/Linux workflow has not been pushed or run |
+| CI | Automated beta 25 acceptance | [Android validation](https://github.com/2HIK4/Todorbit/actions/runs/44694185735) and [16 KiB emulator runtime](https://github.com/2HIK4/Todorbit/actions/runs/44699666409) passed on the release commit |
 | Windows regression protection | Complete | Full shared suite, isolated Windows Release and packaged companion self-test pass; no Windows native behavior changed |
 | Documentation | Complete | Architecture/parity, setup/signing/OAuth, acceptance, future sync design and testing guide |
 
@@ -103,7 +94,7 @@ for selection, signing diagnostics and the next-beta acceptance limits.
 Build/test/device results and exact outstanding acceptance must be recorded here
 before claiming the Android definition of done.
 
-## Current refinement (unpublished schema 27)
+## Shared refinements and launcher widgets
 
 The shared task/event filters, event projects, named checklists, draft resource
 creation and recurrence/subtask grouping also serve Android. Today uses a

@@ -1,10 +1,15 @@
 ## Change
 
-Describe the behavior and affected data or UI.
+Describe the user-visible behavior or maintenance improvement and link the
+related issue, if any. Note which platforms and data boundaries are affected.
 
 ## Verification
 
-- [ ] Relevant checks from [Testing](../docs/TESTING.md) recorded (commands/results or reason not applicable)
-- [ ] Windows Release build and native self-test if relevant
-- [ ] Manual Windows behavior marked passed or pending
-- [ ] Used disposable data; no personal files or secrets added
+List commands and results. Include relevant error, offline, upgrade, or recovery
+scenarios. Mark checks that still need an actual device or packaged build.
+
+- [ ] Selected checks using [Testing](https://github.com/2HIK4/Todorbit/blob/HEAD/docs/TESTING.md).
+- [ ] Used disposable data and reviewed the diff and attachments for personal information and secrets.
+
+For UI changes, include a synthetic before/after screenshot or the dimensions,
+theme, and input method tested, when practical.
