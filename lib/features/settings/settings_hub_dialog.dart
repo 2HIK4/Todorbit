@@ -104,12 +104,16 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(appControllerProvider);
-    final size = MediaQuery.sizeOf(context);
+    final media = MediaQuery.of(context);
+    final size = media.size;
+    final insets = media.viewInsets;
     final narrow = size.width < 650;
+    final availableHeight = size.height - insets.bottom - 48;
     return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: SizedBox(
         width: math.min(920, size.width - 48),
-        height: math.min(720, size.height - 48),
+        height: math.max(320, math.min(720, availableHeight)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -139,6 +143,7 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
                         Padding(
                           padding: const EdgeInsets.all(12),
                           child: AnchoredSelectField<_SettingsPage>(
+                            key: const ValueKey('settings-section-picker'),
                             initialValue: page,
                             decoration: const InputDecoration(
                               labelText: 'Settings section',

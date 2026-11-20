@@ -461,6 +461,7 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
           if (_status == UpdateStatus.downloading || _received > 0)
             LinearProgressIndicator(
               value: total <= 0 ? null : (_received / total).clamp(0.0, 1.0),
+              semanticsLabel: 'Update download progress',
             ),
           if (_status == UpdateStatus.downloading || _received > 0)
             Text(

@@ -1,5 +1,16 @@
 # Progress
 
+## UI-SETTINGS-UPDATE-SYNC-03 — Settings Hub, Software Updates, and Sync Progressive Disclosure (2026-11-20)
+
+Refined existing Settings Hub, Software Updates, and Sync Settings interfaces on `design-foundation-docs` to improve consistency, clarity, progressive disclosure, and responsive keyboard adaptability:
+- **Settings Hub Dialog Viewport & Keyboard Adaptability**: Bounded dialog height in `lib/features/settings/settings_hub_dialog.dart` with `availableHeight = size.height - insets.bottom - 48` and `math.max(320, math.min(720, availableHeight))`, ensuring compliance with Gate 1 (Keyboard-Inset & Viewport-Aware Dialogs) on short landscape viewports or when virtual keyboards appear. Disambiguated section picker with `ValueKey('settings-section-picker')`.
+- **Sync Settings Progressive Disclosure & Card Harmonization**: Replaced unstyled, raw `ExpansionTile` widgets in `lib/features/settings/sync_settings_page.dart` with structured `SettingsSection` cards for `Safe diagnostic details`, `Encryption options`, `Advanced`, and `Recovery`. Added `expansionKey` support to `SettingsSection` (`lib/features/shared/settings_section.dart`) to allow dynamic programmatic expansion resets without collision with stale `PageStorageKey` entries. Preserved all sync protocols, Standard vs Private encryption options, CAS concurrency tokens, reset state flows, and recovery code actions.
+- **Software Updates Clarity & Accessibility**: Added accessible `semanticsLabel: 'Update download progress'` to `LinearProgressIndicator` in `lib/features/settings/software_updates_page.dart`. Preserved strict vertical presentation ordering (`Installed version` -> `Update status` -> `Available update` -> `Last checked` -> `Automatically check for updates` -> `Update channel` -> `Check for Updates` -> `Download update` -> `Details`).
+- **Skill Strengthening**: Updated `.agents/skills/ultimate-ui-ux/references/flutter-engineering.md` documenting `SettingsSection` usage and dynamic `expansionKey` support for progressive disclosure.
+- **Verification Evidence**:
+  - Static analysis: `flutter analyze --no-pub lib/features/settings lib/features/shared test/settings_hub_test.dart` -> "No issues found!" (exit 0).
+  - Executed test suites: `test/settings_hub_test.dart` (2/2 passed), `test/software_updates_page_test.dart` (2/2 passed), `test/sync_conflicts_dialog_test.dart` (44/44 passed), `test/settings_ui_quality_test.dart` (10/10 passed), `test/android_software_updates_page_test.dart` (4/4 passed), `test/app_task_row_test.dart` (7/7 passed), `test/task_editor_ui_consistency_test.dart` (4/4 passed), `test/workspace_draft_safety_test.dart` (14/14 passed). Total: 87 passing tests.
+
 ## UI-FOUNDATION-TASK-ROW-02 — Shared AppTaskRow Component & Task Editor Polish (2026-11-20)
 
 Implemented reusable production `AppTaskRow` component on `design-foundation-docs`, eliminating duplicated task presentation logic between desktop and Android surfaces:

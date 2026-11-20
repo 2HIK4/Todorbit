@@ -488,9 +488,8 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
               child: Text(problem.actionLabel),
             ),
           ],
-          ExpansionTile(
-            tilePadding: EdgeInsets.zero,
-            title: const Text('Safe diagnostic details'),
+          SettingsSection(
+            title: 'Safe diagnostic details',
             children: [
               SelectableText(
                 'Status: ${problem.label}\nPhase: ${controller.resetState?['phase'] ?? controller.status.phase.name}\nLocal pending changes: ${controller.snapshot?.pending ?? controller.status.pending}\nNo private records or credentials are included.',
@@ -550,18 +549,16 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
           ),
         ],
         const SizedBox(height: 12),
-        ExpansionTile(
+        SettingsSection(
           key: ValueKey(encryptionExpanded),
+          expansionKey: ValueKey(encryptionExpanded),
           initiallyExpanded: encryptionExpanded,
-          tilePadding: EdgeInsets.zero,
-          title: const Text('Encryption options'),
-          subtitle: Text(
-            controller.standardSync == null
-                ? 'Standard Sync is the default'
-                : controller.standardSync!
-                ? 'Standard Sync'
-                : 'Private Encrypted Sync',
-          ),
+          title: 'Encryption options',
+          description: controller.standardSync == null
+              ? 'Standard Sync is the default'
+              : controller.standardSync!
+              ? 'Standard Sync'
+              : 'Private Encrypted Sync',
           children: [
             const SettingsHelperText(
               'Standard Sync uses Google Drive protection without an extra Todorbit password. Private Encrypted Sync encrypts data on your device before upload.',
@@ -596,9 +593,8 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
               label: const Text('Save your recovery code'),
             ),
           const SizedBox(height: 8),
-          ExpansionTile(
-            tilePadding: EdgeInsets.zero,
-            title: const Text('Advanced'),
+          SettingsSection(
+            title: 'Advanced',
             children: [
               Align(
                 alignment: AlignmentDirectional.centerStart,
@@ -643,15 +639,12 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
         ],
         if (controller.reset != null && connected) ...[
           const SizedBox(height: 12),
-          ExpansionTile(
+          SettingsSection(
             // Reopen when replacement becomes pending after manual collapse.
             key: ValueKey(('sync-recovery', controller.resetPending)),
-            tilePadding: EdgeInsets.zero,
-            expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
-            title: const Text('Recovery'),
-            subtitle: const SettingsHelperText(
-              'Replace cloud sync using this device',
-            ),
+            expansionKey: ValueKey(('sync-recovery', controller.resetPending)),
+            title: 'Recovery',
+            description: 'Replace cloud sync using this device',
             initiallyExpanded: controller.resetPending,
             children: [
               const SettingsHelperText(

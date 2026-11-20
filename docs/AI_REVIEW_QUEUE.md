@@ -1,5 +1,45 @@
 # AI Review Queue
 
+## UI-SETTINGS-UPDATE-SYNC-03 — Settings Hub, Software Updates, and Sync Progressive Disclosure (2026-11-20)
+
+- **Scope & Addressed Requirements**:
+  - Refined existing Settings Hub, Software Updates, and Sync Settings interfaces to enforce consistency, clarity, progressive disclosure, and responsive keyboard adaptability without touching underlying SQLite schemas, sync protocols, or cloud/encryption architecture.
+  - **Settings Hub Dialog Viewport & Keyboard Adaptability**:
+    - Accounted for `MediaQuery.viewInsetsOf(context).bottom` in `SettingsHubDialog` (`availableHeight = size.height - insets.bottom - 48`) and bounded height with `math.max(320, math.min(720, availableHeight))`, ensuring complete compliance with UI Quality Gate 1 (Keyboard-Inset & Viewport-Aware Dialogs) on short landscape viewports or when virtual keyboards appear.
+    - Assigned explicit `ValueKey('settings-section-picker')` to `AnchoredSelectField<_SettingsPage>` to disambiguate the section picker from internal section-level select fields in automated tests and accessibility trees.
+  - **Sync Settings Progressive Disclosure & Card Harmonization**:
+    - Replaced raw, unstyled `ExpansionTile` widgets in `SyncSettingsPage` with canonical `SettingsSection` cards for `Safe diagnostic details`, `Encryption options`, `Advanced`, and `Recovery` (replace cloud sync).
+    - Added `expansionKey` support to `SettingsSection` to permit dynamic programmatic expansion/collapse resets across controller updates (e.g. `resetPending`, `encryptionExpanded`) without getting trapped by stale `PageStorageKey` entries.
+    - Preserved exact section ordering, titles, Standard Sync vs Private Encrypted Sync domain options, CAS concurrency tokens, reset flows, and recovery code entry.
+  - **Software Updates Clarity & Accessibility**:
+    - Added explicit `semanticsLabel: 'Update download progress'` to `LinearProgressIndicator` in `SoftwareUpdatesPage` for screen reader accessibility.
+    - Preserved the strict vertical presentation ordering required by desktop and Android update workflows: `'Installed version'`, `'Update status'`, `'Available update'`, `'Last checked'`, `'Automatically check for updates'`, `'Update channel'`, `'Check for Updates'`, `'Download update'`, and collapsible `'Details'`.
+  - **Skill Strengthening**:
+    - Updated `.agents/skills/ultimate-ui-ux/references/flutter-engineering.md` documenting `SettingsSection` card harmonization and `expansionKey` pattern for progressive disclosure.
+- **Source Paths Modified / Created**:
+  - `lib/features/shared/settings_section.dart`
+  - `lib/features/settings/settings_hub_dialog.dart`
+  - `lib/features/settings/sync_settings_page.dart`
+  - `lib/features/settings/software_updates_page.dart`
+  - `test/settings_hub_test.dart`
+  - `.agents/skills/ultimate-ui-ux/references/flutter-engineering.md`
+  - `docs/AI_REVIEW_QUEUE.md`
+  - `docs/PROGRESS.md`
+- **Verification Evidence**:
+  - Static Analysis: `flutter analyze --no-pub lib/features/settings lib/features/shared test/settings_hub_test.dart` -> "No issues found!" (exit 0).
+  - Focused Settings, Update & Sync Suites:
+    - `test/settings_hub_test.dart` -> 2/2 passed.
+    - `test/software_updates_page_test.dart` -> 2/2 passed.
+    - `test/sync_conflicts_dialog_test.dart` -> 44/44 passed.
+    - `test/settings_ui_quality_test.dart` -> 10/10 passed.
+    - `test/android_software_updates_page_test.dart` -> 4/4 passed.
+  - Regression Suites (Foundation & Task Rows):
+    - `test/app_task_row_test.dart` -> 7/7 passed.
+    - `test/task_editor_ui_consistency_test.dart` -> 4/4 passed.
+    - `test/workspace_draft_safety_test.dart` -> 14/14 passed.
+    - Total Passing Tests: 87 tests.
+- **Status**: Production Flutter code implemented and verified. Queued for Codex independent review.
+
 ## UI-FOUNDATION-TASK-ROW-02 — Shared AppTaskRow Component & Task Editor Polish (2026-11-20)
 
 - **Scope & Addressed Requirements**:

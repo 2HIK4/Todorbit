@@ -209,7 +209,7 @@ as a UI repair. These are project constraints, not requirements for other apps.
   - `AppModalShell` / `showAppModal`: Standard dialog container enforcing `AppLayout` responsive constraints (`dialogDefaultWidth = 520`, max height 680) and keyboard avoidance.
   - `AppLayout` & `AppSpacing`: Centralized breakpoints (`breakpointCompact = 600`, `breakpointMedium = 1050`, `breakpointWide = 1200`), panel widths (`panelDefaultWidth = 370`), dialog widths, and tap target minimums (`minTapTarget = 48`).
   - `TodorbitThemeTokens`: Semantic priority colors (`priorityLow`, `priorityMedium`, `priorityHigh`) and status colors with helper `colorForPriority(priority)`.
-  - `SettingsSection`: Grouped card container with collapsible headers and optional descriptions. Avoid showing redundant helper microcopy on existing persisted records.
+  - `SettingsSection`: Grouped card container with collapsible headers and optional descriptions. Supports `expansionKey` for programmatic expansion state resets across controller updates. Replaces unstyled/unbordered raw `ExpansionTile` widgets to maintain consistent card styling, outline borders, and rounded corners across settings, updates, and sync interfaces. Avoid showing redundant helper microcopy on existing persisted records.
 - Preserve separation of concerns:
   - Presentation widgets (`AppTaskRow`, `AppModalShell`, etc.) must remain purely presentational or state-binding without embedding database transactions, SQLite queries, or direct navigation side-effects.
   - Callers pass down domain models (`LifeTask`), pre-resolved progress/prerequisite counts, and callback handlers (`onToggleComplete`, `onTap`, `trailingActions`).

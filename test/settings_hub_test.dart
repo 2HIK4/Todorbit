@@ -1,6 +1,5 @@
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
-import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_manager/app/app_controller.dart';
@@ -77,8 +76,8 @@ void main() {
       await tester.tap(find.text('Open settings'));
       await tester.pumpAndSettle();
       expect(find.byType(SettingsHubDialog), findsOneWidget);
-      final sectionPicker = find.byWidgetPredicate(
-        (widget) => widget is AnchoredSelectField,
+      final sectionPicker = find.byKey(
+        const ValueKey('settings-section-picker'),
       );
       expect(sectionPicker, findsOneWidget);
       await tester.tap(sectionPicker);

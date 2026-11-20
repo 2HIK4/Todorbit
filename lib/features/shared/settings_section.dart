@@ -10,6 +10,7 @@ class SettingsSection extends StatefulWidget {
     this.description,
     this.initiallyExpanded = false,
     this.contentPadding = const EdgeInsets.fromLTRB(16, 0, 16, 16),
+    this.expansionKey,
     required this.children,
   });
 
@@ -18,6 +19,7 @@ class SettingsSection extends StatefulWidget {
   final bool initiallyExpanded;
   final List<Widget> children;
   final EdgeInsetsGeometry contentPadding;
+  final Key? expansionKey;
 
   @override
   State<SettingsSection> createState() => _SettingsSectionState();
@@ -42,7 +44,7 @@ class _SettingsSectionState extends State<SettingsSection> {
         shape: shape,
         clipBehavior: Clip.antiAlias,
         child: ExpansionTile(
-          key: PageStorageKey(widget.title),
+          key: widget.expansionKey ?? PageStorageKey(widget.title),
           initiallyExpanded: widget.initiallyExpanded,
           maintainState: true,
           tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
