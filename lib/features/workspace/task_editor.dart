@@ -143,6 +143,13 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   late String initialPrerequisites;
   bool leaving = false;
   bool confirmingClose = false;
+  String? titleError;
+
+  void _onTitleChanged() {
+    if (titleError != null && title.text.trim().isNotEmpty) {
+      setState(() => titleError = null);
+    }
+  }
 
   String get draftKey => jsonEncode([
     title.text,
@@ -289,6 +296,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
       text: task?.title ?? '',
       enabled: workspace.taskViewPreferences.spellCheckEnabled,
     );
+    title.addListener(_onTitleChanged);
     notes = InlineSpellingController(
       text: task?.notes ?? '',
       enabled: workspace.taskViewPreferences.spellCheckEnabled,
@@ -381,6 +389,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     if (widget.navigationController?._confirmLeave == confirmLeave) {
       widget.navigationController?._confirmLeave = null;
     }
+    title.removeListener(_onTitleChanged);
     title.dispose();
     notes.dispose();
     plannedDuration.dispose();
@@ -1015,6 +1024,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   Future<void> _save() async {
     if (saving) return;
     if (title.text.trim().isEmpty) {
+      setState(() => titleError = 'Enter a task title.');
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Enter a task title.')));
       return;
@@ -1320,7 +1330,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
             if (!didPop) cancel();
           },
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            padding: AppLayout.pageInsets,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -1334,12 +1344,16 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                     ),
                     IconButton(
                       tooltip: 'Close details',
+                      constraints: const BoxConstraints(
+                        minWidth: AppLayout.minTapTarget,
+                        minHeight: AppLayout.minTapTarget,
+                      ),
                       onPressed: cancel,
                       icon: const Icon(Icons.close),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.related),
                 Expanded(
                   child: Scrollbar(
                     controller: editorScroll,
@@ -1358,7 +1372,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                           Text(
                             'Subtask of ${ref.watch(appControllerProvider).tasks.where((item) => item.id == widget.parentTaskId).map((item) => item.title).firstOrNull ?? 'task'}',
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: AppSpacing.gap),
                         ],
                         Row(
                           children: [
@@ -1367,14 +1381,19 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                                 key: const ValueKey('task-title-field'),
                                 controller: title,
                                 autofocus: widget.task == null,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'Title *',
+                                  errorText: titleError,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AppSpacing.gap),
                             IconButton.outlined(
                               tooltip: 'Choose task icon',
+                              constraints: const BoxConstraints(
+                                minWidth: AppLayout.minTapTarget,
+                                minHeight: AppLayout.minTapTarget,
+                              ),
                               icon: Icon(
                                 iconForKey(
                                   iconKey ??
@@ -1397,7 +1416,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpacing.related),
                         SettingsSection(
                           title: 'Notes',
                           initiallyExpanded: notes.text.isNotEmpty,
@@ -1984,12 +2003,11 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                             ],
                           ),
                         ),
-                        ExpansionTile(
-                          tilePadding: const EdgeInsets.symmetric(vertical: 4),
+                        SettingsSection(
                           initiallyExpanded:
                               status != TaskStatus.notStarted || priority != 0,
-                          title: const Text('Status and priority'),
-                          subtitle: const Text('Optional for a new task'),
+                          title: 'Status and priority',
+                          description: 'Optional for a new task',
                           children: [
                             AnchoredSelectField<TaskStatus>(
                               key: ValueKey('status:$status:$recurrenceKind'),
@@ -2010,7 +2028,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                                   ? null
                                   : (value) => setState(() => status = value!),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: AppSpacing.related),
                             AnchoredSelectField<int>(
                               initialValue: priority,
                               decoration: const InputDecoration(
@@ -2030,17 +2048,13 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        ExpansionTile(
-                          tilePadding: const EdgeInsets.symmetric(vertical: 4),
+                        SettingsSection(
                           initiallyExpanded:
                               plannedDuration.text.isNotEmpty ||
                               remainingWork.text.isNotEmpty ||
                               schedulingLocked,
-                          title: const Text(
-                            'Estimates and schedule protection',
-                          ),
-                          subtitle: const Text('Optional planning details'),
+                          title: 'Estimates and schedule protection',
+                          description: 'Optional planning details',
                           children: [
                             Row(
                               children: [
@@ -2053,7 +2067,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 10),
+                                const SizedBox(width: AppSpacing.gap),
                                 Expanded(
                                   child: TextField(
                                     controller: remainingWork,
@@ -2106,18 +2120,15 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                             label: const Text('Actual work and timer'),
                           ),
                           const SizedBox(height: 8),
-                          ExpansionTile(
-                            tilePadding: const EdgeInsets.symmetric(
-                              vertical: 4,
-                            ),
-                            title: const Text('Prerequisites'),
-                            subtitle: Text(
-                              controller
-                                      .unmetPrerequisites(widget.task!.id)
-                                      .isEmpty
-                                  ? 'No unmet prerequisites'
-                                  : 'Blocked by ${controller.unmetPrerequisites(widget.task!.id).length} task(s)',
-                            ),
+                          SettingsSection(
+                            title: 'Prerequisites',
+                            description: controller
+                                    .unmetPrerequisites(widget.task!.id)
+                                    .isEmpty
+                                ? 'No unmet prerequisites'
+                                : 'Blocked by ${controller.unmetPrerequisites(widget.task!.id).length} task(s)',
+                            contentPadding:
+                                const EdgeInsets.fromLTRB(8, 0, 8, 16),
                             children: [
                               const Text(
                                 'A task can appear in any project. Sequence order is separate.',
@@ -2253,6 +2264,10 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
             if (date != null)
               IconButton(
                 tooltip: 'Clear $label',
+                constraints: const BoxConstraints(
+                  minWidth: AppLayout.minTapTarget,
+                  minHeight: AppLayout.minTapTarget,
+                ),
                 onPressed: clear,
                 icon: const Icon(Icons.close, size: 18),
               ),

@@ -23,6 +23,9 @@ and viewport auto-scrolling are primary quality criteria alongside visual aesthe
 > Android (`MobileWorkspace` -> `MobileCalendar`) have distinct application shells.
 > Enhancements to desktop canvas widgets do NOT automatically propagate to mobile.
 > Always identify both platform entry points when designing or evaluating shared features.
+>
+> **Shared Component & Token Reuse Mandate**: Always inspect `lib/features/shared/` before creating UI elements or dialogs.
+> Reuse `AppLayout` (breakpoints & sizing), `AppSpacing` (rhythm), `AppModalShell` / `showAppModal` (responsive dialogs), `SettingsSection` (card grouping), and `TodorbitThemeTokens` (semantic status/priority tokens). Never introduce parallel implementations or hard-coded dimensions when shared components exist.
 
 ## Start and choose scope
 

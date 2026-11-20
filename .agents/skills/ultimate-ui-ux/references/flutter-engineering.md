@@ -25,8 +25,18 @@ framework or component package to fix a UI defect.
   use existing spacing tokens for ordinary separation. Verify the last control
   remains reachable at narrow sizes and larger text, without arbitrary 48-64dp rules.
 - Give short/narrow dialogs bounded width/height and an intentional scroll region;
-  keep actions reachable and reserve footer clearance. Avoid intrinsic layout on
-  large lazy lists or wrapping all content in shrink-wrapped nested lists.
+  use `AppModalShell` / `showAppModal` to enforce `AppLayout` dialog bounds and automatic
+  keyboard avoidance (`media.viewInsets.bottom`). Keep actions reachable and reserve
+  footer clearance. Avoid intrinsic layout on large lazy lists or wrapping all content
+  in shrink-wrapped nested lists.
+- Form inputs and in-place validation: show errors directly on the control via
+  `InputDecoration(errorText: ...)` and clear upon typing. Do not rely exclusively
+  on `ScaffoldMessenger.showSnackBar`, which appears off-screen on desktop side panels
+  or below modal dialog overlays.
+- Accessible hit targets: ensure all interactive icon buttons, clear actions, and
+  tappable surfaces enforce minimum touch targets (`AppLayout.minTapTarget = 48` dp)
+  using `BoxConstraints(minWidth: AppLayout.minTapTarget, minHeight: AppLayout.minTapTarget)`
+  and explicit `Semantics(button: true, label: ...)`.
 - Check the supported minimum window and either side of each affected breakpoint,
   short landscape, text scale and custom fonts. Fix constraint errors instead of
   suppressing Flutter overflow diagnostics or shrinking essential text to fit.

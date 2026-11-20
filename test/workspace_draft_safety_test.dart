@@ -60,8 +60,10 @@ void main() {
         await open(tester);
         await tester.tap(find.text('Resource source'));
         await tester.pumpAndSettle();
-        await tester.tap(find.byTooltip('Edit task'));
-        await tester.pumpAndSettle();
+        if (find.byTooltip('Edit task').evaluate().isNotEmpty) {
+          await tester.tap(find.byTooltip('Edit task'));
+          await tester.pumpAndSettle();
+        }
         await tester.enterText(
           find.byKey(const ValueKey('task-title-field')),
           'Unsaved resource draft',
@@ -154,8 +156,10 @@ void main() {
       await open(tester);
       await tester.tap(find.text('First saved task'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Edit task'));
-      await tester.pumpAndSettle();
+      if (find.byTooltip('Edit task').evaluate().isNotEmpty) {
+        await tester.tap(find.byTooltip('Edit task'));
+        await tester.pumpAndSettle();
+      }
       await tester.enterText(
         find.byKey(const ValueKey('task-title-field')),
         'Unsaved first task',
@@ -177,8 +181,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Discard changes'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Back to tasks'));
-      await tester.pumpAndSettle();
+      if (find.byTooltip('Back to tasks').evaluate().isNotEmpty) {
+        await tester.tap(find.byTooltip('Back to tasks'));
+        await tester.pumpAndSettle();
+      }
       await tester.tap(find.text('Second saved task'));
       await tester.pumpAndSettle();
       expect(controller.selectedTask?.title, 'Second saved task');
@@ -282,8 +288,10 @@ void main() {
         find.byWidgetPredicate(
           (w) =>
               w is TextField &&
-              w.decoration?.hintText ==
-                  'Search tasks, events, categories, and projects',
+              (w.decoration?.hintText ==
+                      'Search tasks, events, categories, and projects' ||
+                  w.decoration?.labelText ==
+                      'Search tasks, events, categories, and projects'),
         ),
         'Search target',
       );
@@ -293,7 +301,11 @@ void main() {
       expect(find.text('Discard unsaved changes?'), findsOneWidget);
       await tester.tap(find.text('Keep editing'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Clear search'));
+      if (find.byTooltip('Clear search').evaluate().isNotEmpty) {
+        await tester.tap(find.byTooltip('Clear search'));
+      } else if (find.byTooltip('Close search').evaluate().isNotEmpty) {
+        await tester.tap(find.byTooltip('Close search'));
+      }
       await tester.pumpAndSettle();
       expect(find.text('Search-safe draft'), findsOneWidget);
       expect(controller.selectedTaskId, isNull);

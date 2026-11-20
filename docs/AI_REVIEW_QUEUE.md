@@ -1,5 +1,45 @@
 # AI Review Queue
 
+## UI-FOUNDATION-PILOT-01 — Flutter UI Foundation & Task Create/Edit Consistency Pilot (2026-11-20)
+
+- **Scope & Addressed Requirements**:
+  - Implemented production Flutter UI foundation and Task Create/Edit consistency pilot on `design-foundation-docs`.
+  - **Token & Layout Centralization**: Extended `lib/features/shared/app_spacing.dart` with `AppLayout` providing centralized responsive breakpoints (`breakpointCompact=600`, `breakpointMedium=1050`, `breakpointWide=1200`), side-panel sizing (`panelDefaultWidth=370`, `panelWideWidth=440`), modal dialog bounds (`dialogDefaultWidth=520`, `dialogWideWidth=600`, `dialogDefaultHeight=620`, `dialogMaxHeight=680`), minimum accessible tap target (`minTapTarget=48`), and standard page insets. Replaced magic numbers in `workspace.dart` and `task_editor.dart`.
+  - **ThemeExtension Design Tokens**: Created `TodorbitThemeTokens` in `lib/features/shared/app_theme_tokens.dart` implementing semantic priority colors (none, low, medium, high) and status colors (notStarted, inProgress, waiting, onHold, completed, cancelled) with dark and light theme factories and lerp/copyWith support; integrated into `buildAppTheme` (`app_theme.dart`).
+  - **Responsive Modal Abstraction**: Created `AppModalShell` and `showAppModal` in `lib/features/shared/app_modal_shell.dart`, unifying dialog sizing constraints, keyboard avoidance (`media.viewInsets.bottom`), and animation style across desktop and tablet modal dialogs. Replaced ad-hoc dialog builders in `workspace.dart` and `task_details_view.dart`.
+  - **Task Create/Edit Consistency & In-Place Validation**: Refactored `TaskEditor` in `lib/features/workspace/task_editor.dart`:
+    - Added in-place field error feedback on `title` TextField (`errorText: titleError`) that appears immediately upon save attempts with an empty title and clears upon typing.
+    - Replaced raw unstyled `ExpansionTile` with structured `SettingsSection` cards for Status and priority, Estimates and schedule protection, and Prerequisites, delivering visual rhythm, borders, and progressive disclosure consistency across sections.
+    - Enforced minimum accessible hit targets (48dp) on icon buttons and date clear actions.
+    - Preserved draft safety, dirty state tracking, unsaved-edit guards, recurrence rules, alarms, subtasks, dependencies, and Riverpod controller contracts.
+  - **Search Navigation Draft Safety**: Wired `beforeNavigate: _prepareEditorChange` in `QuickSearchDialog` to protect active drafts during search result navigation.
+  - **AI Skill Strengthening**: Updated `AGENTS.md`, `.agents/skills/ultimate-ui-ux/SKILL.md`, `design-standards.md`, and `flutter-engineering.md` with explicit mandates for shared component/token inspection and reuse, in-place error presentation, and responsive modal dialog bounding.
+- **Source Paths Modified / Created**:
+  - `lib/features/shared/app_spacing.dart`
+  - `lib/features/shared/app_theme_tokens.dart` (new)
+  - `lib/features/shared/app_modal_shell.dart` (new)
+  - `lib/features/shared/app_theme.dart`
+  - `lib/features/workspace/task_editor.dart`
+  - `lib/features/workspace/workspace.dart`
+  - `lib/features/workspace/task_details_view.dart`
+  - `test/task_editor_ui_consistency_test.dart` (new)
+  - `test/workspace_draft_safety_test.dart`
+  - `AGENTS.md`
+  - `.agents/skills/ultimate-ui-ux/SKILL.md`
+  - `.agents/skills/ultimate-ui-ux/references/design-standards.md`
+  - `.agents/skills/ultimate-ui-ux/references/flutter-engineering.md`
+  - `docs/PROGRESS.md`
+  - `docs/AI_REVIEW_QUEUE.md`
+- **Verification Evidence**:
+  - Static Analysis: `flutter analyze --no-pub` across the entire repo -> "No issues found!" (exit 0, 159.3s).
+  - Component & Layout Tests: `test/task_editor_ui_consistency_test.dart` -> 4/4 passed (Theme tokens, in-place error validation, AppModalShell constraints, SettingsSection grouping).
+  - Polish & Schedule Tests: `test/task_editor_ui_polish_test.dart` -> 3/3 passed.
+  - Schedule Layout Tests: `test/task_editor_schedule_layout_test.dart` -> 1/1 passed.
+  - Draft Safety Tests: `test/workspace_draft_safety_test.dart` -> 14/14 passed (desktop draft survival, escape handling, dialogs, resize, discard).
+  - Workspace Integration Tests: `test/workspace_test.dart` -> 15/15 passed (recurrence, creation, duration, shortcuts, memoization).
+  - Total Passing Pilot Tests: 37 tests.
+- **Status**: Production Flutter code implemented and verified. Queued for Codex independent review.
+
 ## UI-REDESIGN-FOUNDATION — UI/UX Redesign Foundation, Design System Architecture, Visual Concepts (Iteration 2 Refinement), and AI Rules (2026-11-20)
 
 - **Scope & Addressed Requirements**:

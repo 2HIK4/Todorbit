@@ -1,3 +1,4 @@
+import '../shared/app_modal_shell.dart';
 import '../shared/app_motion.dart';
 import '../shared/scroll_edge_fade.dart';
 import '../shared/status_snackbar.dart';
@@ -156,20 +157,13 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
   }
 
   Future<void> _newSubtask(LifeTask parent, AppController controller) async {
-    await showDialog<void>(
+    await showAppModal<void>(
       context: context,
-      animationStyle: AppMotion.style(context),
-      builder: (dialogContext) => Dialog(
-        child: SizedBox(
-          width: 520,
-          height: 600,
-          child: TaskEditor(
-            parentTaskId: parent.id,
-            protectUnsavedEdits: true,
-            onSaved: () => Navigator.pop(dialogContext),
-            onCancel: () => Navigator.pop(dialogContext),
-          ),
-        ),
+      builder: (dialogContext) => TaskEditor(
+        parentTaskId: parent.id,
+        protectUnsavedEdits: true,
+        onSaved: () => Navigator.pop(dialogContext),
+        onCancel: () => Navigator.pop(dialogContext),
       ),
     );
     if (mounted) controller.select(parent.id);

@@ -1,5 +1,22 @@
 # Progress
 
+## UI-FOUNDATION-PILOT-01 — Flutter UI Foundation & Task Create/Edit Consistency Pilot (2026-11-20)
+
+Implemented production Flutter UI foundation and Task Create/Edit consistency pilot on `design-foundation-docs`:
+- **Centralized Layout & Spacing Tokens**: Added `AppLayout` to `lib/features/shared/app_spacing.dart` (breakpoints: compact=600, medium=1050, wide=1200; panel sizes: default=370, wide=440; dialog sizes: default=520, wide=600; min tap target=48dp; standard page insets). Replaced hard-coded magic numbers in `workspace.dart` and `task_editor.dart`.
+- **ThemeExtension Design Tokens**: Implemented `TodorbitThemeTokens` in `lib/features/shared/app_theme_tokens.dart` defining semantic status and priority tokens with light/dark factories and lerp/copyWith support; registered in `buildAppTheme` (`app_theme.dart`).
+- **Responsive Modal Abstraction**: Implemented `AppModalShell` and `showAppModal` in `lib/features/shared/app_modal_shell.dart`, unifying dialog constraints, animation styles, and automatic keyboard avoidance (`media.viewInsets.bottom`). Replaced ad-hoc dialog wrappers across `workspace.dart` (`_newTask`, `_newTaskOn`, `_editTaskDialog`) and `task_details_view.dart` (`_newSubtask`).
+- **Task Create/Edit Consistency & In-Place Validation**: Refactored `TaskEditor` in `lib/features/workspace/task_editor.dart`:
+  - Added in-place field validation with `errorText` on `title` TextField that appears immediately upon save attempts with an empty title and clears upon typing.
+  - Replaced raw unstyled `ExpansionTile` with structured `SettingsSection` cards for Status and priority, Estimates and schedule protection, and Prerequisites, delivering visual rhythm, borders, and progressive disclosure consistency across sections.
+  - Enforced minimum accessible hit targets (`AppLayout.minTapTarget = 48` dp) on icon buttons and date clear actions.
+  - Preserved draft safety, dirty state tracking, unsaved-edit guards, recurrence rules, alarms, subtasks, dependencies, and Riverpod controller contracts.
+- **Search Navigation Draft Safety**: Wired `beforeNavigate: _prepareEditorChange` in `QuickSearchDialog` to protect active drafts during search result navigation.
+- **AI Skill Strengthening**: Updated `AGENTS.md`, `.agents/skills/ultimate-ui-ux/SKILL.md`, `design-standards.md`, and `flutter-engineering.md` with explicit mandates for shared component/token inspection and reuse, in-place error presentation, and responsive modal dialog bounding.
+- **Verification Evidence**:
+  - Full repo static analysis: `flutter analyze --no-pub` -> "No issues found!" (exit 0, 159.3s).
+  - Executed test suites: `test/task_editor_ui_consistency_test.dart` (4/4 passed), `test/task_editor_ui_polish_test.dart` (3/3 passed), `test/task_editor_schedule_layout_test.dart` (1/1 passed), `test/workspace_draft_safety_test.dart` (14/14 passed), `test/workspace_test.dart` (15/15 passed). Total: 37 passing unit/widget tests.
+
 ## UI-REL-01 (Prompt 1 Authoritative) — Search UX, progressive advanced search, keyboard insets, and single-route task/event detail presentation (2026-11-17)
 
 Implemented Prompt 1 of the Todorbit UI and Reliability Improvement Program on `codex/fix-phantom-sync-conflict`.

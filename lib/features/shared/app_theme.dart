@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/appearance.dart';
+import 'app_theme_tokens.dart';
 import 'desktop_tooltip_theme.dart';
 
 ThemeData buildAppTheme(
@@ -179,5 +180,10 @@ ThemeData buildAppTheme(
       ),
     ),
     dividerTheme: DividerThemeData(color: scheme.outlineVariant, thickness: 1),
+    extensions: [
+      brightness == Brightness.dark
+          ? TodorbitThemeTokens.dark()
+          : TodorbitThemeTokens.light(),
+    ],
   );
 }

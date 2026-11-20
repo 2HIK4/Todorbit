@@ -36,6 +36,8 @@ import '../habits/habits_view.dart';
 import '../goals/goals_view.dart';
 import '../reports/reports_view.dart';
 import '../shared/about_view_button.dart';
+import '../shared/app_modal_shell.dart';
+import '../shared/app_spacing.dart';
 import '../shared/sync_status_button.dart';
 import '../contributors/contributors_view.dart';
 import '../templates/templates_dialog.dart';
@@ -275,20 +277,15 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   }
 
   Future<void> _editTaskDialog(LifeTask task) async {
-    await showDialog<void>(
+    await showAppModal<void>(
       context: context,
-      animationStyle: AppMotion.style(context),
-      builder: (dialogContext) => Dialog(
-        child: SizedBox(
-          width: math.min(600, MediaQuery.sizeOf(dialogContext).width - 48),
-          height: math.min(680, MediaQuery.sizeOf(dialogContext).height - 64),
-          child: TaskEditor(
-            protectUnsavedEdits: true,
-            task: task,
-            onSaved: () => Navigator.pop(dialogContext),
-            onCancel: () => Navigator.pop(dialogContext),
-          ),
-        ),
+      maxWidth: AppLayout.dialogWideWidth,
+      maxHeight: AppLayout.dialogMaxHeight,
+      builder: (dialogContext) => TaskEditor(
+        protectUnsavedEdits: true,
+        task: task,
+        onSaved: () => Navigator.pop(dialogContext),
+        onCancel: () => Navigator.pop(dialogContext),
       ),
     );
   }
@@ -514,26 +511,14 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     if (!await _prepareEditorChange() || !mounted) return;
     ref.read(appControllerProvider).select(null);
     newTaskInitialDate = null;
-    if (MediaQuery.sizeOf(context).width < 1050) {
-      showDialog<void>(
+    if (MediaQuery.sizeOf(context).width < AppLayout.breakpointMedium) {
+      showAppModal<void>(
         context: context,
-        animationStyle: AppMotion.style(context),
-        builder: (dialogContext) {
-          final media = MediaQuery.of(dialogContext);
-          final availableHeight =
-              media.size.height - media.viewInsets.bottom - 64;
-          return Dialog(
-            child: SizedBox(
-              width: math.min(520, media.size.width - 48),
-              height: math.min(620, math.max(280.0, availableHeight)),
-              child: TaskEditor(
-                protectUnsavedEdits: true,
-                onSaved: () => Navigator.pop(dialogContext),
-                onCancel: () => Navigator.pop(dialogContext),
-              ),
-            ),
-          );
-        },
+        builder: (dialogContext) => TaskEditor(
+          protectUnsavedEdits: true,
+          onSaved: () => Navigator.pop(dialogContext),
+          onCancel: () => Navigator.pop(dialogContext),
+        ),
       );
       return;
     }
@@ -543,27 +528,15 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   Future<void> _newTaskOn(DateTime date) async {
     if (!await _prepareEditorChange() || !mounted) return;
     ref.read(appControllerProvider).select(null);
-    if (MediaQuery.sizeOf(context).width < 1050) {
-      showDialog<void>(
+    if (MediaQuery.sizeOf(context).width < AppLayout.breakpointMedium) {
+      showAppModal<void>(
         context: context,
-        animationStyle: AppMotion.style(context),
-        builder: (dialogContext) {
-          final media = MediaQuery.of(dialogContext);
-          final availableHeight =
-              media.size.height - media.viewInsets.bottom - 64;
-          return Dialog(
-            child: SizedBox(
-              width: math.min(520, media.size.width - 48),
-              height: math.min(620, math.max(280.0, availableHeight)),
-              child: TaskEditor(
-                protectUnsavedEdits: true,
-                initialScheduled: date,
-                onSaved: () => Navigator.pop(dialogContext),
-                onCancel: () => Navigator.pop(dialogContext),
-              ),
-            ),
-          );
-        },
+        builder: (dialogContext) => TaskEditor(
+          protectUnsavedEdits: true,
+          initialScheduled: date,
+          onSaved: () => Navigator.pop(dialogContext),
+          onCancel: () => Navigator.pop(dialogContext),
+        ),
       );
       return;
     }
@@ -697,7 +670,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   Future<void> _showSearch() => showDialog<void>(
     context: context,
-    builder: (_) => QuickSearchDialog(onEventTap: _openEventDetails),
+    animationStyle: AppMotion.style(context),
+    builder: (_) => QuickSearchDialog(
+      beforeNavigate: _prepareEditorChange,
+      onEventTap: _openEventDetails,
+    ),
   );
 
   Future<void> _showSequences() => showDialog<void>(
@@ -1036,9 +1013,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     SizedBox(
                       key: const ValueKey('desktop-task-editor-panel'),
                       width: wide
-                          ? constraints.maxWidth >= 1200
-                                ? 440
-                                : 370
+                          ? constraints.maxWidth >= AppLayout.breakpointWide
+                                ? AppLayout.panelWideWidth
+                                : AppLayout.panelDefaultWidth
                           : math.max(
                               0,
                               constraints.maxWidth - sidebarWidth - 2,

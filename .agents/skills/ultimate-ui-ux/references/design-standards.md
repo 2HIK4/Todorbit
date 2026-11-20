@@ -49,10 +49,15 @@ Avoid redundant nested cards, arbitrary offsets and decorative abstractions.
 Compare normal, hovered, focused, selected, pressed, disabled and pending states.
 
 Todorbit: `app_theme.dart` owns semantic text and palette-derived surfaces;
-`AppSpacing`, `SettingsSection`, `SettingsHelperText`, `StatusNotice`, anchored
-selectors and dialog action bars already exist. Do not replace the lavender
-identity or overwrite saved custom palettes. Native widget mappings are separate
-consumers of the same palette, not proof that Flutter styling propagates there.
+`AppSpacing` and `AppLayout` define logical rhythm, breakpoints, and container sizes;
+`AppModalShell` / `showAppModal` provide bounded responsive dialogs;
+`TodorbitThemeTokens` extends `ThemeData` with semantic status/priority tokens;
+`SettingsSection`, `SettingsHelperText`, `StatusNotice`, anchored selectors and dialog
+action bars already exist. In forms and editors, provide in-place field validation
+via `errorText` on the input control rather than relying exclusively on disconnected
+SnackBars. Do not replace the lavender identity or overwrite saved custom palettes.
+Native widget mappings are separate consumers of the same palette, not proof that
+Flutter styling propagates there.
 
 ## Interaction integrity over cosmetics
 
