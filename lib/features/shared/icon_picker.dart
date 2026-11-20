@@ -1,4 +1,5 @@
 import 'app_motion.dart';
+import 'dialog_action_bar.dart';
 
 import 'package:flutter/material.dart';
 
@@ -51,6 +52,21 @@ Future<(bool, String?)> chooseBuiltInIcon(
         final matches = builtInIcons.entries
             .where((entry) => entry.key.contains(query.toLowerCase().trim()))
             .toList();
+        // AlertDialog only scrolls its title and body. With the IME open,
+        // let the footer scroll too so it cannot crowd the search and results.
+        final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
+        final actions = [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: current == null
+                ? null
+                : () => Navigator.pop(context, '__reset__'),
+            child: const Text('Reset to default'),
+          ),
+        ];
         return AlertDialog(
           title: const Text('Choose icon'),
           scrollable: true,
@@ -105,21 +121,14 @@ Future<(bool, String?)> chooseBuiltInIcon(
                       ),
                   ],
                 ),
+                if (keyboardVisible) ...[
+                  const SizedBox(height: 12),
+                  DialogActionBar(children: actions),
+                ],
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: current == null
-                  ? null
-                  : () => Navigator.pop(context, '__reset__'),
-              child: const Text('Reset to default'),
-            ),
-          ],
+          actions: keyboardVisible ? null : actions,
         );
       },
     ),

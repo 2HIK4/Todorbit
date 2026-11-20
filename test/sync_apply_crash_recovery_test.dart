@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart' as crypto;
@@ -11,6 +10,8 @@ import 'package:life_manager/data/cloud/sync_batch_codec.dart';
 import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/data/sync_exchange_models.dart';
 import 'package:life_manager/domain/models.dart';
+
+import 'support/sync_crash_barrier.dart';
 
 void main() {
   const a = SyncBinding(
@@ -92,34 +93,7 @@ void main() {
               'LOCALAPPDATA': '${root.path}/local',
             },
           );
-          final output = child.stdout.transform(utf8.decoder).join();
-          final errors = child.stderr.transform(utf8.decoder).join();
-          try {
-            final deadline = DateTime.now().add(const Duration(seconds: 60));
-            while (!marker.existsSync() && DateTime.now().isBefore(deadline)) {
-              await Future<void>.delayed(const Duration(milliseconds: 50));
-            }
-            expect(
-              marker.existsSync(),
-              isTrue,
-              reason:
-                  'Synthetic apply worker did not reach its durable barrier',
-            );
-          } finally {
-            if (Platform.isWindows) {
-              await Process.run('taskkill', [
-                '/PID',
-                '${child.pid}',
-                '/T',
-                '/F',
-              ]);
-            } else {
-              child.kill(ProcessSignal.sigkill);
-            }
-            await child.exitCode;
-            await output;
-            await errors;
-          }
+          await terminateSyncWorkerAtBarrier(child, marker);
           db = AppDatabase(NativeDatabase(target));
           receiver = LifeRepository(db);
           expect(await receiver.tasks(), isEmpty);

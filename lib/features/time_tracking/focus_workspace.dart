@@ -1,5 +1,6 @@
 import '../../domain/focus_session.dart';
 import 'time_tracking_dialog.dart';
+import 'task_timer_intent.dart';
 import '../shared/app_motion.dart';
 import '../shared/scroll_edge_fade.dart';
 import '../shared/status_snackbar.dart';
@@ -50,7 +51,8 @@ class _FocusWorkspaceState extends ConsumerState<FocusWorkspace> {
     _ticker = Timer.periodic(const Duration(milliseconds: 250), (_) {
       if (!mounted) return;
       final active = ref.read(appControllerProvider).activeTimer;
-      final isRunningTimer = active?.taskId == widget.taskId &&
+      final isRunningTimer =
+          active?.taskId == widget.taskId &&
           active?.state == TimerState.running;
       if (_session.running || isRunningTimer) {
         setState(() {});
@@ -681,7 +683,29 @@ class _FocusWorkspaceState extends ConsumerState<FocusWorkspace> {
   Future<void> _togglePlayPause(
     AppController controller,
     TimerRun? activeRun,
-  ) => _runAction(() => controller.toggleFocus(widget.taskId));
+  ) => _runAction(() async {
+    if (activeRun != null && activeRun.taskId != widget.taskId) {
+      await openTaskTimer(
+        context,
+        controller,
+        widget.taskId,
+        open: (taskId) {
+          if (taskId != widget.taskId) {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (context) => FocusWorkspace(
+                  taskId: taskId,
+                  onBack: () => Navigator.pop(context),
+                ),
+              ),
+            );
+          }
+        },
+      );
+    } else {
+      await controller.toggleFocus(widget.taskId);
+    }
+  });
 
   Widget _modeButton(String label, FocusMode mode, Color accent) {
     final selected = _mode == mode;

@@ -19,10 +19,12 @@ class AdvancedSearchDialog extends ConsumerStatefulWidget {
     this.savedView,
     this.creatingSavedView = false,
     this.beforeNavigate,
+    this.onTaskTap,
   });
   final SavedView? savedView;
   final bool creatingSavedView;
   final Future<bool> Function()? beforeNavigate;
+  final ValueChanged<LifeTask>? onTaskTap;
 
   @override
   ConsumerState<AdvancedSearchDialog> createState() =>
@@ -228,12 +230,11 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                     child: Text(
                       widget.savedView == null
                           ? widget.creatingSavedView
-                              ? 'Create Custom View'
-                              : 'Advanced Search'
+                                ? 'Create Custom View'
+                                : 'Advanced Search'
                           : 'Edit ${widget.savedView!.name}',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: Theme.of(context).textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -245,13 +246,19 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                       ),
                       onPressed: _resetFilters,
-                      child: const Text('Reset', style: TextStyle(fontSize: 12)),
+                      child: const Text(
+                        'Reset',
+                        style: TextStyle(fontSize: 12),
+                      ),
                     ),
                   IconButton(
                     iconSize: 20,
                     tooltip: 'Close',
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close),
                   ),
@@ -274,12 +281,18 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                      color: scheme.surfaceContainerHighest.withValues(
+                        alpha: 0.6,
+                      ),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.info_outline, size: 15, color: scheme.primary),
+                        Icon(
+                          Icons.info_outline,
+                          size: 15,
+                          color: scheme.primary,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -293,8 +306,7 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                       ],
                     ),
                   ),
-                  if (widget.creatingSavedView ||
-                      widget.savedView != null) ...[
+                  if (widget.creatingSavedView || widget.savedView != null) ...[
                     Row(
                       children: [
                         IconButton.outlined(
@@ -396,8 +408,8 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                       summary: categoryIds.isEmpty
                           ? 'All categories'
                           : categoryIds.length == 1
-                              ? (categoriesMap[categoryIds.first] ?? '1 selected')
-                              : '${categoryIds.length} selected',
+                          ? (categoriesMap[categoryIds.first] ?? '1 selected')
+                          : '${categoryIds.length} selected',
                       onClear: categoryIds.isNotEmpty
                           ? () => setState(() => categoryIds.clear())
                           : null,
@@ -433,8 +445,8 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                       summary: projectIds.isEmpty
                           ? 'All projects'
                           : projectIds.length == 1
-                              ? (projectsMap[projectIds.first] ?? '1 selected')
-                              : '${projectIds.length} selected',
+                          ? (projectsMap[projectIds.first] ?? '1 selected')
+                          : '${projectIds.length} selected',
                       onClear: projectIds.isNotEmpty
                           ? () => setState(() => projectIds.clear())
                           : null,
@@ -503,18 +515,21 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                   _CollapsibleFilterGroup(
                     title: 'Dates & Deadlines',
                     icon: Icons.calendar_today_outlined,
-                    initiallyExpanded: scheduled != ScheduledFilter.any ||
+                    initiallyExpanded:
+                        scheduled != ScheduledFilter.any ||
                         deadline != DeadlineFilter.any,
-                    badgeCount: (scheduled != ScheduledFilter.any ? 1 : 0) +
+                    badgeCount:
+                        (scheduled != ScheduledFilter.any ? 1 : 0) +
                         (deadline != DeadlineFilter.any ? 1 : 0),
                     summary:
                         '${_plannedLabel(scheduled)} · ${_deadlineLabel(deadline)}',
-                    onClear: (scheduled != ScheduledFilter.any ||
+                    onClear:
+                        (scheduled != ScheduledFilter.any ||
                             deadline != DeadlineFilter.any)
                         ? () => setState(() {
-                              scheduled = ScheduledFilter.any;
-                              deadline = DeadlineFilter.any;
-                            })
+                            scheduled = ScheduledFilter.any;
+                            deadline = DeadlineFilter.any;
+                          })
                         : null,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -567,15 +582,15 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                     summary: recurringOnly && blockedOnly
                         ? 'Recurring & Blocked'
                         : recurringOnly
-                            ? 'Recurring only'
-                            : blockedOnly
-                                ? 'Blocked only'
-                                : 'All tasks',
+                        ? 'Recurring only'
+                        : blockedOnly
+                        ? 'Blocked only'
+                        : 'All tasks',
                     onClear: (recurringOnly || blockedOnly)
                         ? () => setState(() {
-                              recurringOnly = false;
-                              blockedOnly = false;
-                            })
+                            recurringOnly = false;
+                            blockedOnly = false;
+                          })
                         : null,
                     child: Column(
                       children: [
@@ -590,7 +605,9 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                         SwitchListTile(
                           contentPadding: EdgeInsets.zero,
                           dense: true,
-                          title: const Text('Blocked by unfinished prerequisites'),
+                          title: const Text(
+                            'Blocked by unfinished prerequisites',
+                          ),
                           value: blockedOnly,
                           onChanged: (value) =>
                               setState(() => blockedOnly = value),
@@ -721,12 +738,16 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                                     return;
                                   }
                                   if (!context.mounted) return;
-                                  controller.navigate(
-                                    task.isOpen
-                                        ? WorkspaceView.all
-                                        : WorkspaceView.completed,
-                                  );
-                                  controller.select(task.id);
+                                  if (widget.onTaskTap != null) {
+                                    widget.onTaskTap!(task);
+                                  } else {
+                                    controller.navigate(
+                                      task.isOpen
+                                          ? WorkspaceView.all
+                                          : WorkspaceView.completed,
+                                    );
+                                    controller.select(task.id);
+                                  }
                                   Navigator.pop(context);
                                 },
                               ),
@@ -771,9 +792,8 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                 children: [
                   Text(
                     '${matches.length} matching tasks',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: Theme.of(context).textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 6),
                   DialogActionBar(
@@ -795,8 +815,8 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                           widget.creatingSavedView
                               ? 'Create Custom View'
                               : widget.savedView == null
-                                  ? 'Save as Custom View'
-                                  : 'Update Custom View',
+                              ? 'Save as Custom View'
+                              : 'Update Custom View',
                         ),
                       ),
                     ],

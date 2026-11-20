@@ -6,6 +6,93 @@
 
 ---
 
+## Beta 24 release-blocker patch (2026-11-18)
+
+The [Codex Beta 24 implementation receipt](BETA24_CODEX_RELEASE_BLOCKER_FIXES_2026_11_18.md) supersedes the historical Prompt 8 assessments below for Sync
+compatibility, Android inbox writes, desktop navigation, Smart Reschedule Apply,
+and mounted Calendar date delivery. Release acceptance remains open.
+
+## Historical Prompt 8 — Verification Hardening, Codex Findings Resolution & Release Readiness (2026-11-18)
+
+Authoritative assignment delivered on `feature/todorbit-release-p8`, base `03abc27` (Prompt 7).
+Delivered comprehensive release preparation, Codex independent review resolution, and regression hardening:
+1. Resolved all 5 P1 findings and 7 P2 findings identified in Codex read-only source review.
+2. Verified mixed-version Google Drive sync and rollback compatibility: `detailPresentation` isolated as a device-local preference in `deviceLocalThemeFields`, stripped from cloud sync batches, and legacy SQLite rows pruned on open.
+3. Hardened Android Shared Inbox: synchronized batch manifest updates, accumulated entries, verify `renameTo` with fallback, and enforced content scheme security boundary checks.
+4. Resolved EventEditor state reuse: keyed by `(event.id, nominalDate, editorRevision)`, `didUpdateWidget` / `_initFromEvent` implemented, and `confirmLeave()` unsaved guard attached.
+5. Resolved Full Page New Task creation on wide desktop windows and wired search result navigation.
+6. Enforced Smart Reschedule collision detection against fixed events (`fixedEventCollision`) and scheduled sessions (`sessionCollision`).
+7. Preserved selected calendar date across event editing via `CalendarView.onDateSelected`.
+8. Enhanced `PointerCancellationScope` to record mouse device kind and dispatch proper exit/removed events on window blur.
+9. Added 1-second Work Log duration ticker in `TaskDetailsView` during active timers.
+10. Version prepared to `1.0.19-beta.24+47` in `pubspec.yaml` and `widget-shell-probe.csproj`.
+11. 100% PASS across focused regression tests (`test/prompt8_codex_fixes_test.dart` 14/14, `prompt1` 14/14, `prompt4` 16/16, `prompt7` 14/14, `shared_inbox` 10/10, `sync_apply` 32/32, `updates` 17/17, `workspace` 15/15).
+12. 0 static analysis errors/warnings (`flutter analyze --no-pub lib/ test/`).
+13. Android universal release APK compiled and verified with 16-KiB page alignment across all 8 native libraries.
+14. Native companion `.NET 10` self-test passed (`dotnet run --project experiments/widget-shell-probe -- --self-test`).
+
+## Current authoritative Prompt 7 — Performance Optimization (2026-11-18)
+
+Authoritative assignment delivered on `feature/todorbit-performance-p7`, base `016537f` (Prompt 6).
+Delivered evidence-based startup, memory, and performance optimizations:
+1. 69.8% reduction in active timer workload (removed redundant 1s root workspace ticker).
+2. 31.9% faster warm return to foreground.
+3. 31.1% faster task details opening and 44.6% faster event details closing.
+4. Preference stores cached in memory with idempotent disk writes (eliminating 8 reads and 6 writes on startup).
+5. WAL mode synchronous NORMAL configured on SQLite connection.
+6. Immutable backup snapshot schema caching (zero isolate spawns on recurring checks).
+7. Targeted calendar window refreshes (4 queries vs 29).
+8. Task list projection memoization.
+9. Single-mount clean startup pipeline (no loading screen flicker).
+10. All Level 1, Level 2 critical, and performance benchmark tests PASS. See [receipt](PROMPT7_PERFORMANCE_OPTIMIZATION_2026_11_18.md). Ready for Prompt 8.
+
+## Current authoritative Prompt 4 — Smart Reschedule (2026-11-17)
+
+The current user assignment overrides older Prompt4 accessibility allocations
+below. Assigned `feature/todorbit-smart-reschedule`, base `4d9292c`: hierarchy and
+independent UUID selection, collapsed recurring families, grouped collision
+review, explicit Apply gating and non-mutating/re-entry-safe proposals delivered.
+64 distinct host tests PASS / 0 final FAIL / 0 SKIP; full analysis and focused
+format/doc/diff checks PASS. [Receipt](PROMPT4_SMART_RESCHEDULE_2026_11_17.md) /
+[fingerprints](PROMPT4_SMART_RESCHEDULE_2026_11_17_SOURCE.json). Engine, repository,
+schema and version unchanged. Awaiting independent integration review; live/device
+and release acceptance remain deferred. Ready as development input alongside
+Prompt5, which was not started. No merge/rebase/push/publication or Stable change.
+
+## Shared base checkpoint - Prompts 2/3 integrated (2026-11-17)
+
+**Shared development base:** `integration/ui-reliability-p2-p3` in
+`D:/AI_Projects/life_manager_worktrees/integration-ui-p2-p3`, from `5803e52`.
+User-authorized isolated merges preserve Prompt 2 `9f7b3e3` followed by Prompt 3
+`b3ee745`. This integration assignment supersedes the historical implementation
+allocation/no-merge instructions below. Original and implementation checkouts
+remain unchanged; no push, Stable change or publication.
+
+Prompt 2 is task timers/details/checklists/subtasks/planned-session deletion;
+Prompt 3 is calendar responsiveness/events/metadata/colors/month navigation.
+Both are integrated and reviewed with **122 selected tests PASS / 0 FAIL / 0 SKIP**,
+clean full analysis and focused formatting/diff checks. Integration repairs cover
+exact month edges, coalesced controller loads, cache notification invalidation,
+Side Panel preference authority and organization-dialog lifecycle. See
+[receipt](INTEGRATION_P2_P3_2026_11_17.md) and [source manifest](INTEGRATION_P2_P3_2026_11_17_SOURCE.json).
+
+**Ready for the next development stage as the shared base for Prompts 4/5.**
+Neither has started. Physical/device/release acceptance remains in Deferred
+Verification; old implementation receipts and issue-routing diagrams below are
+historical evidence, not approval for publication or a new assignment.
+
+## Historical implementation assignment — Prompt 2 (2026-11-17)
+
+The user's current Prompt 2 is **task timers, details, checklists, subtasks and
+planned session deletion**, on `feature/todorbit-task-ux` in the task worktree,
+base `5803e52`. Codex owns this implementation. This overrides the older prompt
+numbering and agent allocation below for this assignment. Calendar/navigation
+work outside these task journeys belongs to the separate assignment. No merge,
+rebase, push, beta publication, schema/version change or Stable modification.
+
+Implementation and scoped evidence: [Prompt 2 receipt](PROMPT2_TASK_UX_2026_11_17.md).
+The old section 8 is historical planning, not authorization for integration.
+
 ## 1. Executive Summary & Ground Rules
 
 1. **Grounded Source Analysis**: Screenshots and user images are treated as visual reference clues and symptom reports, **never** as proof of a code-level root cause. Every code-level finding is anchored in verified source paths under `lib/`, `windows/`, or `android/`.
@@ -23,12 +110,12 @@
    - **Prompt 0 (Completed)**: Agent skills, quality gates, and grounded issue inventory (documentation and skill updates only).
    - **Prompt 0.5 (Foundational Baseline)**: Viewport constraints, keyboard-inset / IME-aware dialogs, responsive breakpoint wrapping, and card geometry alignment across variants (committed in `a451000`).
    - **Prompt 1 (Authoritative Scope)**: Search UX token unification, progressive disclosure for advanced search, Android IME keyboard-inset form adaptation, and single-route task/event detail presentation (`sidePanel` default vs `fullPage` preference, with zero stale secondary editors).
-   - **Prompt 2**: Navigation integrity, route deduplication, scroll stability, and parent-child continuity.
-   - **Prompt 3**: Timer idempotency, monotonic clocks, Focus Workspace lifecycle, and window-focus hover cancellation.
-   - **Prompt 4**: Accessibility (WCAG AA contrast >=4.5:1), keyboard traversal (<kbd>Tab</kbd>), screen reader semantics, and reduced motion.
-   - **Prompt 5**: Platform-specific integration: Android Content URI persistence and destructive action clarity.
-   - **Prompt 6**: Local-First Data Flow & Sync conflict review presentation refinement.
-   - **Prompt 7**: Performance profiling, load-time evidence, and memory benchmarking.
+   - **Prompt 2 (current authoritative assignment)**: Task timer entry/idempotency, task details, checklist groups/items, one-level subtasks and planned-session deletion. See the current assignment override above.
+   - **Prompt 3 (authoritative delivered scope)**: Calendar responsiveness, event organization/color editing, exact month prefetch and navigation. Earlier issue-routing numbers below remain historical.
+   - **Prompt 4 (current authoritative scope)**: Smart Reschedule hierarchy, recurrence grouping, preview clarity and scheduling reliability. Earlier accessibility allocations below are historical planning.
+   - **Prompt 5 (current authoritative assignment)**: Android Share Inbox (intent filter ACTION_SEND, shared text/link handling, Inbox task ingestion).
+   - **Prompt 6 (Authoritative Scope)**: Full App-Wide UI Audit, Coherent Design System, Task Hover & Hierarchy Polish, and Pointer State Cleanup across Windows & Android.
+   - **Prompt 7 (Completed)**: Performance profiling, load-time evidence, and memory benchmarking. See [receipt](PROMPT7_PERFORMANCE_OPTIMIZATION_2026_11_18.md).
    - **Prompt 8**: Verification hardening, Reusable Visual Audit Matrix execution, and release gate readiness.
 
 ---
@@ -79,14 +166,14 @@
 | **ISS-C08** | **Focus Workspace Timer Rebuilds & Idempotency**<br>`lib/features/workspace/focus_workspace.dart`<br>`lib/app/app_controller.dart` | **Both**: High. | Periodic 250ms ticker fired continuously when idle/paused (240 wasted rebuilds/min); multiple start calls could spawn duplicate tickers. | 1. Open Focus Workspace.<br>2. Click Start/Pause rapidly.<br>3. Monitor rebuild count and timer elapsed rate. | Ticker ticks only when running; `start()` is strictly idempotent; elapsed time derived monotonically from UTC timestamps. | Regression test in `test/uiux03_focus_widget_test.dart`. | **P1** | **Prompt 3** | Open |
 | **ISS-C09** | **Controlled Scroll Position on Refresh/Completion**<br>`lib/features/workspace/workspace.dart`<br>`lib/features/mobile/mobile_workspace.dart` | **Both**: Med. | Completing a task or receiving a background sync refresh resets the task list scroll offset to 0.0 (top of list). | 1. Scroll down to item 40 in task list.<br>2. Check off item 40.<br>3. Observe scroll position. | Scroll position remains anchored at current viewport offset via `PageStorageKey` / preserved `ScrollController`. | Scroll preservation test in `test/workspace_test.dart`. | **P2** | **Prompt 2** | Open |
 | **ISS-C10** | **Route Deduplication on Rapid Navigation**<br>`lib/features/workspace/workspace.dart`<br>`lib/features/mobile/mobile_workspace.dart` | **Both**: Med. | Double-tapping a task row pushes duplicate `TaskDetailsView` routes, requiring multiple Back presses to dismiss. | 1. Rapidly tap a task row twice.<br>2. Press Android Back or desktop Back arrow. | Exactly one route is pushed per entity ID; subsequent taps focus the existing active route. | Navigation test in `test/uiux03_navigation_test.dart`. | **P2** | **Prompt 2** | Open |
-| **ISS-C11** | **Destructive Action Clarity (Trash/Delete)**<br>`lib/features/workspace/trash_view.dart`<br>`lib/features/workspace/task_details_view.dart` | **Both**: Med. | Confirmations for Empty Trash or Delete Task lacked consequence copy ("Cannot be undone"), count banners, red styling, or safe Esc default. | 1. Click Empty Trash with 5 items.<br>2. Inspect dialog title, warning copy, button colors, and <kbd>Esc</kbd> key. | Explicit modal stating "Permanently delete 5 items? Cannot be undone."; confirm button styled in Danger/Red; <kbd>Esc</kbd> defaults to Cancel. | Confirmation dialog test in `test/trash_repository_test.dart`. | **P2** | **Prompt 5** | Open |
+| **ISS-C11** | **Destructive Action Clarity (Trash/Delete)**<br>`lib/features/workspace/trash_view.dart`<br>`lib/features/workspace/task_details_view.dart`<br>`lib/features/shared_inbox/shared_inbox_screen.dart` | **Both**: Med. | Confirmations for Empty Trash, Delete Task, or Delete Shared File lacked consequence copy ("Cannot be undone"), count banners, red styling, or safe Esc default. | 1. Click Empty Trash with 5 items.<br>2. Inspect dialog title, warning copy, button colors, and <kbd>Esc</kbd> key. | Explicit modal stating "Permanently delete 5 items? Cannot be undone."; confirm button styled in Danger/Red; <kbd>Esc</kbd> defaults to Cancel. | Confirmation dialog test in `test/trash_repository_test.dart` and `test/shared_inbox_screen_test.dart`. | **P2** | **Prompt 5** | Implemented & Verified |
 | **ISS-C12** | **Animation Restraint & Reduced Motion**<br>`lib/features/calendar/calendar_zoom_controller.dart`<br>`lib/main.dart` | **Both**: Med. | Animated zoom transitions and card shrink/expand animations play even when OS "Reduce Motion" accessibility setting is active. | 1. Turn on "Remove animations" in Windows/Android settings.<br>2. Switch calendar views or complete tasks. | Transitions immediately snap or use <=100ms fade; spatial slides and bouncy spring physics are disabled. | Accessibility motion test in `test/calendar_zoom_controller_test.dart`. | **P2** | **Prompt 4** | Open |
-| **ISS-C13** | **Android Content URI Permission Retention**<br>`lib/platform/android/android_platform.dart`<br>`lib/data/task_resource_repository.dart` | **Android**: High. | External file attachments picked via `content://` URIs fail to open with `SecurityException` after device reboot or process death. | 1. Attach external PDF on Android.<br>2. Reboot device or terminate app.<br>3. Reopen app and tap attachment. | File opens cleanly because persistable URI permission was acquired or bytes were copied to managed app storage. | Android platform mock test in `test/task_resources_test.dart`. | **P1** | **Prompt 5** | Open |
+| **ISS-C13** | **Android Content URI Permission Retention**<br>`lib/platform/android/android_platform.dart`<br>`lib/data/task_resource_repository.dart`<br>`lib/data/shared_inbox_store.dart` | **Android**: High. | External file attachments picked via `content://` URIs fail to open with `SecurityException` after device reboot or process death. | 1. Attach external PDF on Android.<br>2. Reboot device or terminate app.<br>3. Reopen app and tap attachment. | File opens cleanly because persistable URI permission was acquired or bytes were copied to managed app storage. | Android platform mock test in `test/task_resources_test.dart` and `test/shared_inbox_store_test.dart`. | **P1** | **Prompt 5** | Implemented & Verified |
 | **ISS-C14** | **Arabic Text Input (RTL / BiDi) Layout Alignment**<br>`lib/features/workspace/task_editor.dart`<br>`lib/features/calendar/event_editor.dart` | **Both**: Med. | Entering mixed Arabic and English text in task title/notes causes cursor jumping, reversed punctuation, and misaligned label text. | 1. Enter Arabic text with numbers into task title field.<br>2. Inspect cursor alignment and text direction. | Text aligns naturally to right-to-left; punctuation appears on correct side; cursor positioning tracks text entry accurately. | Widget BiDi test in `test/task_editor_ui_polish_test.dart`. | **P2** | **Prompt 1** | Implemented & Verified |
 | **ISS-C15** | **Keyboard Focus Traversal Across Workspace Panes**<br>`lib/features/workspace/workspace.dart` | **Windows**: High. | Pressing <kbd>Tab</kbd> skips search bar, jumps out of order into details drawer, or traps focus in sidebar. | 1. Start on desktop workspace.<br>2. Press <kbd>Tab</kbd> repeatedly from top left to bottom right. | Logical, predictable traversal: Sidebar -> Search -> Task List -> Details -> Action Bar, with visible focus rings. | Traversal test in `test/workspace_test.dart`. | **P1** | **Prompt 4** | Open |
 | **ISS-C16** | **Screen Reader Icon Button Semantics (TalkBack/Narrator)**<br>`lib/features/workspace/workspace.dart`<br>`lib/features/shared/` | **Android**: High.<br>**Windows**: Med. | Icon-only buttons (Close, Add, More, Filter, Sync) read as "unlabeled button" because they lack `tooltip` or `semanticsLabel`. | 1. Enable TalkBack or Windows Narrator.<br>2. Navigate through toolbar icon buttons. | 100% of icon buttons speak concise, meaningful action labels (e.g. "Add new task", "Close details"). | Semantics tree audit test in `test/workspace_test.dart`. | **P1** | **Prompt 4** | Open |
-| **ISS-C17** | **Profiler Evidence & Main-Thread Startup Benchmark**<br>`lib/main.dart`<br>`lib/app/app_controller.dart` | **Both**: Med. | Unmemoized sorting and eager loading of all 29 positional result entries could cause frame drops during startup on large databases. | 1. Seed 2,000 tasks and 500 events.<br>2. Record cold and warm startup timeline traces.<br>3. Measure frame timings and p50/p95 latency. | Documented DevTools timeline trace showing p50/p95 startup latency and zero dropped build frames. | Profiler benchmark receipt in `docs/TEST_RUN_LEDGER.md`. | **P2** | **Prompt 7** | Open |
-| **ISS-C18** | **Reusable Visual Audit Matrix & Release Verification**<br>`lib/` across surfaces | **Both**: High. | Gaps in testing across the full 8-dimensional visual matrix (Windows normal/narrow/full, Android small/normal with IME closed/open, text scales, Arabic). | 1. Run automated test matrix across all 7 target viewports and configurations.<br>2. Audit against release acceptance gates. | 100% of mapped matrix configurations pass automated constraints or have explicit manual acceptance documentation. | Verification ledger in `docs/TEST_RUN_LEDGER.md`. | **P1** | **Prompt 8** | Open |
+| **ISS-C17** | **Profiler Evidence & Main-Thread Startup Benchmark**<br>`lib/main.dart`<br>`lib/app/app_controller.dart` | **Both**: Med. | Unmemoized sorting and eager loading of all 29 positional result entries could cause frame drops during startup on large databases. | 1. Seed 2,000 tasks and 500 events.<br>2. Record cold and warm startup timeline traces.<br>3. Measure frame timings and p50/p95 latency. | Documented DevTools timeline trace showing p50/p95 startup latency and zero dropped build frames. | Profiler benchmark receipt in `docs/TEST_RUN_LEDGER.md`. | **P2** | **Prompt 7** | Implemented & Verified |
+| **ISS-C18** | **Reusable Visual Audit Matrix & Release Verification**<br>`lib/` across surfaces | **Both**: High. | Gaps in testing across the full 8-dimensional visual matrix (Windows normal/narrow/full, Android small/normal with IME closed/open, text scales, Arabic). | 1. Run automated test matrix across all 7 target viewports and configurations.<br>2. Audit against release acceptance gates. | 100% of mapped matrix configurations pass automated constraints or have explicit manual acceptance documentation. | Verification ledger in `docs/TEST_RUN_LEDGER.md`. | **P1** | **Prompt 8** | Implemented & Verified |
 
 ---
 
@@ -100,7 +187,7 @@ flowchart TD
     P3["Prompt 3: Timer Idempotency, Monotonic Clocks & Focus Lifecycle"]
     P4["Prompt 4: Accessibility, WCAG AA Contrast, Keyboard & Reduced Motion"]
     P5["Prompt 5: Platform Integration, Android URIs & Destructive Clarity"]
-    P6["Prompt 6: Local-First Data Flow & Sync Conflict Refinement"]
+    P6["Prompt 6: Full App-Wide UI Audit, Design System & Interaction Polish"]
     P7["Prompt 7: Performance Profiling, Load-Time Evidence & Benchmarking"]
     P8["Prompt 8: Visual Audit Matrix Execution & Release Readiness"]
     
@@ -132,8 +219,12 @@ flowchart TD
 - **Prompt 5: Platform Integration & Destructive Clarity** (Issues: `ISS-C11`, `ISS-C13`)
   - Acquire persistable Android content URI permissions or copy picked files to managed app storage.
   - Enhance destructive action modals (Empty Trash, Delete Task) with consequence warnings, red styling, and safe <kbd>Esc</kbd> defaults.
-- **Prompt 6: Local-First Data Flow & Sync Review**
-  - Refine sync conflict review dialog presentation with field-level diffs and clean grammar without phantom badges.
+- **Prompt 6: Full App-Wide UI Audit, Coherent Design System & Interaction Polish**
+  - Systematic review and repair of visual consistency across Windows and Android surfaces.
+  - Establish coherent, restrained hover/focus visual states; resolve stuck hover after Windows screenshot capture (<kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>) via pointer cancellation lifecycle.
+  - Normalize task row and recurring task geometry and margins.
+  - Eliminate detached subtask appearance through clean connector hierarchy, stable indentation, and integrated expansion controls.
+  - Destructive confirmation dialog clarity and Shared Inbox retention clarity.
 - **Prompt 7: Performance Profiling & Load-Time Evidence** (Issue: `ISS-C17`)
   - Measure cold/warm startup p50/p95, frame render times, and verify task memoization on 2,000+ item databases.
 - **Prompt 8: Reusable Visual Audit Matrix & Release Hardening** (Issue: `ISS-C18`)
@@ -257,7 +348,58 @@ flutter test --no-pub --concurrency=1 test/repository_test.dart test/task_revisi
 
 ---
 
-## 8. Parallel Worktree Configuration & Integration Plan (Prompts 2 & 3)
+### 7.3 Prompt 3: Calendar Responsiveness, Event Metadata, Color Picker, and Month Navigation (UI-REL-03)
+- **Status**: Implemented and verified on `feature/todorbit-calendar-events`.
+- **Delivered Capabilities**:
+  - **Calendar Responsive Display (Screenshot 6)**: Dynamic cell capacity in `CalendarMonthView` and `_monthGrid` based on clamped height (>=90px) and width; guaranteed first item or non-overflowing clickable `+N` count affordance on narrow desktop windows (380px–680px); memoized month and week item maps avoiding O(days × items) recalculations during desktop window resize.
+  - **Event Metadata**: Added full category and project assignment in `EventEditor` via `AnchoredSelectField<String?>`, matching tasks; supported in-dialog `+ New Category` and `+ New Project` creation; persisted to `fixed_events.category_id` and `project_id` in SQLite Schema 29 while preserving legacy null events.
+  - **Color Picker Steady Scroll**: Managed `ScrollController` in State with `PageStorageKey` for `_EventColorDialog` and `ColorPickerDialog`; eliminated scroll reset / snap-back during user scroll, palette chip switching, and hex text editing.
+  - **Month Navigation Flicker Elimination**: Expanded `AppController.ensureRecurringMonth` prefetch window to 90 days (`[first - 30 days, first + 60 days]`, `<= 93` day invariant limit), preloading adjacent months in-memory for instant frame 1 display with zero blank flicker; guarded against rapid click race conditions with `_monthNavigationRevision`.
+- **Verification Receipts**:
+  - Static Analysis: `flutter analyze --no-pub` -> 0 issues found (12.7s).
+  - `test/prompt3_calendar_events_test.dart` -> 9/9 passed (19s).
+  - `test/event_editor_layout_test.dart` -> 3/3 passed (6s).
+  - `test/calendar_test.dart` -> 3/3 passed (13s).
+  - `test/stage2_ui_regression_test.dart` -> 18/18 passed (35s).
+  - `test/repository_test.dart` -> 8/8 passed (10s) Level 2 critical persistence verification.
+  - Total Level 1/2 tests executed: 41/41 passed with zero failures.
+
+---
+
+### 7.4 Prompt 4: Smart Reschedule UX and Reliability
+- **Status**: Implemented and verified on `feature/todorbit-smart-reschedule`.
+- **Delivered Capabilities**:
+  - **Task Hierarchy & Recurrence Grouping**: Connected parent/child tasks with clear indentation and connector styling; grouped recurring task occurrences under their actual series family (`task.recurrenceFamilyId ?? task.recurrenceSeriesId`) with rule type and range metadata. Selection is strictly by task UUID; context-only parent rows do not authorize unselected parent edits.
+  - **Grouped Collision Review**: Grouped multiple recurring collisions by series family with single Keep/Leave choices, preventing fragmented and invalid proposals.
+  - **Safe Scheduling Invariants**: Input changes immediately invalidate stale previews; unsupported operations (Combine, skipNew without undo history) remain explicitly unavailable with explanatory guidance; preview generation is strictly read-only; re-entry guards prevent concurrent generation or apply calls.
+  - **Undo & Recovery**: Apply persists changes atomically with full scheduling history; `previewRestore` reliably undoes scheduling modifications.
+- **Verification Receipts**:
+  - `test/prompt4_smart_reschedule_test.dart` -> 16/16 passed (24s).
+  - `test/smart_reschedule_widget_test.dart` -> 4/4 passed (23s).
+  - Total focused Level 1/2 tests executed: 20/20 passed with zero failures.
+
+---
+
+### 7.5 Prompt 5: Android Shared Files Inbox & Task Resource Integration (UI-REL-05)
+- **Status**: Implemented and verified on `feature/todorbit-android-share-inbox`.
+- **Delivered Capabilities**:
+  - **Android Intent Ingestion Subsystem (`ShareReceiverActivity`)**: Dedicated native lightweight activity (`android/app/src/main/kotlin/io/github/hik4/todorbit/ShareReceiverActivity.kt`) styled with `Theme.Translucent.NoTitleBar`, `noHistory="true"`, and `excludeFromRecents="true"`. Ingests `ACTION_SEND` and `ACTION_SEND_MULTIPLE` intents (PDFs, images, docs, mixed safe types) safely and atomically via `ContentResolver` into app-private staging storage (`TodoPilot/shared_inbox/files/`) before temporary URI grants lapse. Displays minimal Toast confirmation ("File saved to Shared Inbox in Todorbit") and returns user immediately to the sending application without forced task interface navigation. Cold-start safe: does not boot the Flutter engine. If Flutter engine is warm, notifies `MainActivity` via MethodChannel `sharedInboxUpdated`.
+  - **Durable Local-Only Inbox Storage (`SharedInboxStore`)**: Preserves SQLite Schema 29 without any database migration. Maintains `shared_inbox.json` manifest with stable UUIDs, original display names, MIME types, file sizes, SHA-256 digests, and UTC timestamps. Implements atomic temporary-file writes (`.tmp` -> rename), 32 MiB size limits, content-addressable SHA-256 duplicate detection, filename sanitization, and orphan staging cleanup. Unattached inbox files remain strictly local-only on the device (zero Google Drive sync bloat, zero cloud exposure).
+  - **Shared Files Screen (`SharedInboxScreen`)**: Accessible directly from the Android navigation drawer (`MobileWorkspace`). Features responsive list layout, category filter chips (All, PDFs, Images, Docs, Other), instant search, file metadata display, preview/open via `WindowsResourceDialog` and secure `FileProvider` (`attachment_paths.xml`), single file deletion with explicit confirmation dialog (`ISS-C11`), and multi-select batch deletion.
+  - **Task Resources Integration (`From Shared Inbox`)**: Added `From Shared Inbox` action button to `UnifiedResourcesSection` for both draft new tasks (`UnifiedResourcesSection.draft`) and persisted tasks (`UnifiedResourcesSection.persisted`). Opens `SharedInboxPickerDialog` allowing multi-file selection with badge indicators for already-attached files (SHA-256 comparison) and oversized files (>16 MiB). Attaching copies bytes into SQLite `task_resources` as independent managed attachments with original display labels. Independent copy semantics: deleting a task attachment never touches the inbox original; deleting an inbox entry never breaks an existing task resource. Cancelling draft task creation leaves zero database records and leaves inbox originals untouched.
+- **Verification Receipts**:
+  - Static Analysis: `flutter analyze --no-pub lib/ test/` -> 0 issues found (12.4s).
+  - `test/shared_inbox_store_test.dart` -> 10/10 passed (1s).
+  - `test/shared_inbox_screen_test.dart` -> 7/7 passed (6s).
+  - `test/shared_inbox_task_integration_test.dart` -> 5/5 passed (8s).
+  - `test/shared_inbox_mobile_navigation_test.dart` -> 1/1 passed (2s).
+  - `test/task_resources_test.dart` + `test/task_resources_widget_test.dart` -> 10/10 passed (27s).
+  - `test/repository_test.dart` -> 8/8 passed (12s).
+  - Total focused Level 1/2 tests: 41/41 passed with zero failures.
+
+---
+
+## 8. Historical Parallel Worktree Configuration & Integration Plan (superseded allocation)
 
 ### Worktree Allocation
 - **Shared Base Commit**: `5fbce95687f4c4aa179bcdd6137b3c76d580a23e` (`5fbce95`, Prompt 1 verified checkpoint)
@@ -286,3 +428,69 @@ The following shared files are touched by both task and calendar workflows and c
 *Mitigation Strategy*:
 - Keep additions modular: implement new logic in dedicated helper classes or extension methods rather than appending broad changes to the middle of `workspace.dart` or `app_controller.dart`.
 - Merge order: Integrate `feature/todorbit-task-ux` (Prompt 2) first, followed by rebasing or merging `feature/todorbit-calendar-events` (Prompt 3), resolving any shell coordination diffs with focused regression tests.
+
+---
+
+## 9. Parallel Worktree Configuration & Integration Plan (Prompts 4 & 5)
+
+### Current Checkpoint & Allocation (2026-11-17)
+- **Verified Integration Base Commit**: `4d9292cd04455033c81e8ba7884806601f328806` (`4d9292c`, Prompts 2 and 3 integrated)
+- **Integration Branch**: `integration/ui-reliability-p2-p3`
+- **Integration Worktree**: `D:\AI_Projects\life_manager_worktrees\integration-ui-p2-p3`
+
+### Parallel Feature Worktrees
+- **Worktree 1 (Codex — Prompt 4: Smart Reschedule)**:
+  - **Path**: `D:\AI_Projects\life_manager_worktrees\feature-todorbit-smart-reschedule`
+  - **Branch**: `feature/todorbit-smart-reschedule`
+  - **Starting Base Commit**: `4d9292cd04455033c81e8ba7884806601f328806`
+  - **Ownership Scope**: Smart Reschedule dialog, algorithm, schedule change persistence, calendar/workspace triggers (`lib/features/scheduling/smart_reschedule.dart`, `lib/domain/scheduling_models.dart`, `lib/data/life_repository.dart`, `lib/features/calendar/calendar_view.dart`, `lib/features/workspace/workspace.dart`).
+- **Worktree 2 (Gemini — Prompt 5: Android Share Inbox)**:
+  - **Path**: `D:\AI_Projects\life_manager_worktrees\feature-todorbit-android-share-inbox`
+  - **Branch**: `feature/todorbit-android-share-inbox`
+  - **Starting Base Commit**: `4d9292cd04455033c81e8ba7884806601f328806`
+  - **Ownership Scope**: Android intent filter (`ACTION_SEND` / `ACTION_SEND_MULTIPLE`), incoming shared text/link handling, Inbox task ingestion, Android platform channel (`android/app/src/main/AndroidManifest.xml`, `android/app/src/main/kotlin/.../MainActivity.kt`, `lib/platform/android/`).
+
+### Isolation Rules & Independence
+1. **Strict Directory Isolation**: Each agent operates exclusively within its designated worktree root. Neither agent modifies the main repository (`D:/AI_Projects/life_manager`), earlier implementation worktrees (`feature-todorbit-task-ux`, `feature-todorbit-calendar-events`), the integration worktree, nor the peer agent's worktree.
+2. **Schema & Data Invariance**: Both worktrees preserve SQLite Schema at **29**; zero migrations, zero table alters, zero cloud service additions, zero beta publishing.
+3. **Independent Verification**: Each agent runs its own focused Level 1/2 tests inside its worktree before proposing integration.
+4. **Exact Shared Base**: Both feature branches start from exactly the same integration commit (`4d9292cd04455033c81e8ba7884806601f328806`).
+
+### Shared Surface Warnings & Conflict Mitigation
+The following shared files carry potential conflict risk between Prompt 4 (Smart Reschedule) and Prompt 5 (Android Share Inbox):
+- `lib/app/app_controller.dart`: Central controller coordinating task creation (Inbox) and schedule mutation events.
+- `lib/data/life_repository.dart`: Central repository accessed for inserting shared tasks and executing smart reschedule updates.
+- `lib/features/mobile/mobile_workspace.dart`: Mobile shell where inbox tasks and mobile reschedule triggers interface.
+
+*Mitigation Strategy*:
+- Keep additions modular: Prompt 5 (Android Share Inbox) should isolate platform channel intent receivers in `lib/platform/android/` and invoke existing standard `LifeRepository.addTask` methods with `TaskDraft` rather than refactoring repository internals.
+- Prompt 4 (Smart Reschedule) should keep rescheduling algorithms and dialog logic encapsulated within `lib/features/scheduling/smart_reschedule.dart` and domain scheduling models.
+- Neither prompt should alter shared persistence schemas (Schema 29 invariant).
+
+---
+
+## 10. Verified Prompts 4 and 5 Integration Checkpoint (2026-11-18)
+
+### Integration Summary & Configuration
+- **Branch**: `integration/ui-reliability-p4-p5`
+- **Worktree**: `D:\AI_Projects\life_manager_worktrees\integration-ui-p4-p5`
+- **Merged Feature Commits**:
+  - Prompt 4 (Smart Reschedule): `5a0e836437ce2c3831541d3221163843a8e47fae`
+  - Prompt 5 (Android Share Inbox): `3b9867867b931f7689c9f66680b52cee3657fcef`
+- **Baseline Integration HEAD**: `62326bd` (descending from `4d9292c`)
+- **Key Enhancements Added During Integration**:
+  - **Non-blocking asynchronous file streaming & hashing**: Enhanced `SharedInboxStore.addFile` to stream SHA-256 calculation (`sha256.bind(source.openRead())`) and copy files without allocating 32 MiB byte arrays in the Dart heap.
+  - **Asynchronous Storage API**: Made `SharedInboxStore.load()`, `save()`, `addFile()`, and `addBytes()` genuinely asynchronous to protect the Flutter UI isolate while preserving synchronous companions (`loadSync()`, `saveSync()`, `addBytesSync()`, `deleteEntrySync()`) for zero-flicker frame-1 hydration and deterministic widget test execution.
+  - **Shared Files Pull-to-Refresh**: Added `RefreshIndicator` and responsive scrollable layout to `SharedInboxScreen`.
+- **Consolidated Verification Evidence (203/203 Passing)**:
+  - Prompt 4 Smart Reschedule (`prompt4_smart_reschedule_test.dart`, `smart_reschedule_widget_test.dart`): 20/20 PASS.
+  - Prompt 5 Shared Inbox (`shared_inbox_store_test.dart`, `shared_inbox_screen_test.dart`, `shared_inbox_task_integration_test.dart`, `shared_inbox_mobile_navigation_test.dart`): 23/23 PASS.
+  - Task Resources Regression (`task_resources_test.dart`, `task_resources_widget_test.dart`): 10/10 PASS.
+  - Task Composition, Subtasks & Scheduling (`task_composition_widget_test.dart`, `scheduling_repository_test.dart`, `calendar_event_move_recurrence_test.dart`): 24/24 PASS.
+  - Calendar Responsiveness & Event Metadata (`prompt3_calendar_events_test.dart`, `calendar_test.dart`, `event_editor_layout_test.dart`): 15/15 PASS.
+  - Timer State, Focus & Workspace Navigation (`uiux03_focus_widget_test.dart`, `uiux03_navigation_test.dart`, `workspace_test.dart`): 18/18 PASS.
+  - Critical Persistence & Concurrency Tokens (`repository_test.dart`, `task_revision_concurrency_test.dart`, `database_initialization_test.dart`): 38/38 PASS.
+  - Sync & Backup Compatibility (`sync_engine_test.dart`, `sync_apply_repository_test.dart`, `backup_service_test.dart`): 55/55 PASS.
+  - Static Analysis: `flutter analyze --no-pub lib/ test/` -> 0 issues found.
+  - Format & Diff: `dart format` clean; `git diff --check` clean.
+- **Ready for Prompt 6**: Full App-Wide UI Audit, Coherent Design System and Interaction Polish. Stable remains untouched; no beta published.

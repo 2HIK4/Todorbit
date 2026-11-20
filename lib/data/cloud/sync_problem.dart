@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import '../../domain/sync/portable_preferences.dart';
 import 'cloud_storage_provider.dart';
 
 enum SyncProblemAction {
@@ -39,6 +40,18 @@ class SyncProblem {
   final SyncProblemAction action;
 
   static SyncProblem from(Object error) {
+    if (error is SyncPreferenceCompatibilityException) {
+      return const SyncProblem(
+        'A saved Sync change needs recovery',
+        'An earlier Todorbit build queued a device setting that older devices '
+            'cannot apply. Your local records and Sync history are preserved. '
+            'Review recovery options before changing the cloud workspace.',
+        SyncProblemAction.recovery,
+        'View recovery options',
+        'Sync compatibility issue',
+      );
+    }
+
     final kind = error is CloudFailure
         ? error.kind
         : error is SocketException || error is http.ClientException

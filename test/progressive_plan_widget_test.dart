@@ -31,6 +31,9 @@ void main() {
       );
       final controller = AppController(repo);
       await controller.refresh();
+      await controller.setTaskViewPreferences(
+        controller.taskViewPreferences.copyWith(detailPresentation: 'fullPage'),
+      );
       try {
         await tester.pumpWidget(
           ProviderScope(
@@ -52,6 +55,7 @@ void main() {
         await tester.tap(find.textContaining('Current step: Watch lessons'));
         await tester.pumpAndSettle();
         expect(find.text('Task Details'), findsOneWidget);
+        expect(controller.selectedTaskId, task.id);
         await tester.tap(find.byTooltip('Edit task'));
         await tester.pumpAndSettle();
         final editorScroll = find

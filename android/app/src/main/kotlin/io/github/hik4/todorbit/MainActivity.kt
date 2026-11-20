@@ -24,6 +24,19 @@ import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.api.ApiException
 
 class MainActivity : FlutterActivity() {
+    companion object {
+        var currentInstance: MainActivity? = null
+        fun notifySharedInboxUpdated() {
+            currentInstance?.let { activity ->
+                activity.runOnUiThread {
+                    try {
+                        activity.bridge.invokeMethod("sharedInboxUpdated", null)
+                    } catch (_: Exception) {}
+                }
+            }
+        }
+    }
+
     private lateinit var bridge: MethodChannel
     private var documentResult: MethodChannel.Result? = null
     private var exportPath: String? = null
@@ -37,6 +50,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        currentInstance = this
         intent.getStringExtra("alarmKey")?.let{AlarmDelivery.act(this,it,0);intent.removeExtra("alarmKey")}
         // Apply the persisted policy before Flutter's first frame, including
         // startup failures or a slow database migration/restore review.
@@ -68,6 +82,47 @@ class MainActivity : FlutterActivity() {
         bridge.setMethodCallHandler { call, result ->
             if (updater.handle(call, result)) return@setMethodCallHandler
             when (call.method) {
+                "sharedInboxList", "sharedInboxDelete", "sharedInboxClear",
+                "sharedInboxRecover", "sharedInboxImportFile", "sharedInboxImportBytes" -> {
+                    SharedInboxWorker.enqueue {
+                        try {
+                            val storage = SharedInboxStorage(File(filesDir, "TodoPilot/shared_inbox"))
+                            val response = when (call.method) {
+                                "sharedInboxList" -> storage.list()
+                                "sharedInboxDelete" -> {
+                                    storage.delete((call.arguments as List<*>).map { it as String }.toSet())
+                                    null
+                                }
+                                "sharedInboxClear" -> {
+                                    storage.delete(null)
+                                    null
+                                }
+                                "sharedInboxRecover" -> {
+                                    storage.recover()
+                                    null
+                                }
+                                else -> {
+                                    val name = checkNotNull(call.argument<String>("name"))
+                                    val mime = checkNotNull(call.argument<String>("mime"))
+                                    storage.importFile(name, mime) {
+                                        if (call.method == "sharedInboxImportBytes") {
+                                            checkNotNull(call.argument<ByteArray>("bytes")).inputStream()
+                                        } else {
+                                            val source = File(checkNotNull(call.argument<String>("path")))
+                                            require(java.nio.file.Files.isRegularFile(
+                                                source.toPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS
+                                            ))
+                                            source.inputStream()
+                                        }
+                                    }.entry.toString()
+                                }
+                            }
+                            result.success(response)
+                        } catch (_: Exception) {
+                            result.error("sharedInbox", "Shared Inbox storage could not complete the action.", null)
+                        }
+                    }
+                }
                 "dataRoot" -> result.success(filesDir.absolutePath)
                 "scheduleSync" -> {
                     val args=call.arguments as? Map<*,*>
@@ -278,5 +333,10 @@ class MainActivity : FlutterActivity() {
         }
         if(force && googleToken!=null) client.clearToken(ClearTokenRequest.builder().setToken(googleToken!!).build()).addOnCompleteListener {request()}
         else request()
+    }
+
+    override fun onDestroy() {
+        if (currentInstance === this) currentInstance = null
+        super.onDestroy()
     }
 }

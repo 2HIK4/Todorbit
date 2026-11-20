@@ -8,6 +8,7 @@ import 'package:life_manager/app/app_controller.dart';
 import 'package:life_manager/data/app_database.dart';
 import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/features/calendar/event_editor.dart';
+import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:life_manager/features/shared/event_color_picker.dart';
 import 'package:life_manager/features/shared/weekdays.dart';
 
@@ -61,18 +62,17 @@ void main() {
           'Organization and appearance',
           editor: EventEditor,
         );
-        final trigger = find.byTooltip('Choose category');
+        final trigger = find.widgetWithText(AnchoredSelectField<String?>, 'Category');
         await tester.ensureVisible(trigger);
         await tester.pumpAndSettle();
         await tester.tap(trigger);
         await tester.pumpAndSettle();
+        final item = find.text('Class').last;
         expect(
-          tester
-              .getTopLeft(find.widgetWithText(PopupMenuItem<String>, 'Class'))
-              .dy,
+          tester.getTopLeft(item).dy,
           greaterThan(tester.getTopLeft(trigger).dy),
         );
-        await tester.tap(find.widgetWithText(PopupMenuItem<String>, 'Class'));
+        await tester.tap(item);
         await tester.pumpAndSettle();
         expect(find.text('Class'), findsOneWidget);
         await expandEditorSection(tester, 'Details', editor: EventEditor);

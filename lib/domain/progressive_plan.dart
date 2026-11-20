@@ -10,6 +10,9 @@ class ProgressivePlan {
   final bool repeatAtEnd;
 }
 
+typedef RepeatPlanAtEnd = bool;
+
+
 class ProgressiveAssignment {
   const ProgressiveAssignment({
     required this.taskId,

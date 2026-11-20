@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:meta/meta.dart';
 import 'package:drift/drift.dart';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as path;
@@ -63,9 +64,16 @@ part 'sync_restore_repository.dart';
 class LifeRepository {
   LifeRepository(this.db, {DateTime Function()? taskClock})
     : _taskClock = taskClock ?? DateTime.now;
+
+  @visibleForTesting
   final AppDatabase db;
   final DateTime Function() _taskClock;
   final _uuid = const Uuid();
+
+  Future<void> close() async {
+    await db.close();
+  }
+
 
   // updated_at is also the persisted task concurrency token. A frozen/coarse
   // clock or rollback must never reuse it. Writers with an expected snapshot use
@@ -593,6 +601,24 @@ class LifeRepository {
     await moveToTrash(TrashKind.session, id);
   }
 
+  Future<void> deletePlannedSession(WorkSession previous) => db.transaction(
+    () async {
+      final row = await db
+          .customSelect(
+            "SELECT 1 FROM work_sessions WHERE id=? AND updated_at=? AND outcome='upcoming' AND actual_started_at IS NULL AND deleted_at IS NULL",
+            variables: [
+              Variable.withString(previous.id),
+              Variable.withString(previous.updatedAt.toUtc().toIso8601String()),
+            ],
+          )
+          .getSingleOrNull();
+      if (row == null) {
+        throw StateError('This session changed. Reopen it before deleting.');
+      }
+      await deleteSession(previous.id);
+    },
+  );
+
   void _validateSession(SessionDraft draft) {
     if (!draft.endsAt.isAfter(draft.startsAt)) {
       throw ArgumentError('Session end must be after its start');
@@ -959,13 +985,57 @@ class LifeRepository {
     );
   }
 
+  Future<LifeTask> addRecurringTaskWithComposition(
+    TaskDraft draft,
+    RecurrenceRule rule, {
+    dynamic progressiveSteps = const <String>[],
+    dynamic repeatPlanAtEnd = false,
+    List<DraftChecklistGroup> groups = const [],
+    List<String> checklist = const [],
+    List<TaskDraft> subtasks = const [],
+    List<DraftTaskResource> resources = const [],
+  }) async {
+    final steps = progressiveSteps is List<String>
+        ? progressiveSteps
+        : progressiveSteps is List
+            ? progressiveSteps.map((s) => s.toString()).toList()
+            : progressiveSteps is int
+                ? List.generate(progressiveSteps, (i) => 'Step ${i + 1}')
+                : const <String>[];
+    final bool repeatEnd = repeatPlanAtEnd == true;
+    return await db.transaction(() async {
+      final task = await addRecurringTask(
+        draft,
+        rule,
+        progressiveSteps: steps,
+        repeatPlanAtEnd: repeatEnd,
+      );
+      for (final group in groups) {
+        final saved = await addChecklistGroup(task.id, group.title);
+        for (final title in group.items) {
+          await addChecklistItem(task.id, title, groupId: saved.id);
+        }
+      }
+      for (final title in checklist) {
+        await addChecklistItem(task.id, title);
+      }
+      for (final child in subtasks) {
+        await addSubtask(task, child);
+      }
+      await addDraftResources(task.id, resources);
+      return task;
+    });
+  }
+
+
   /// Materializes only the requested civil-date window. Existing occurrence
   /// rows, including skipped/deleted tombstones, are never regenerated.
-  Future<void> ensureRecurringTasks(String fromDate, String throughDate) async {
+  Future<int> ensureRecurringTasks(String fromDate, String throughDate) async {
     final span = RecurrenceRule.daysBetween(fromDate, throughDate);
     if (span < 0 || span > 93) {
       throw ArgumentError('Request a recurrence window of at most 94 days');
     }
+    var materializedCount = 0;
     await db.transaction(() async {
       final seriesRows = await db
           .customSelect(
@@ -999,10 +1069,13 @@ class LifeRepository {
             ? activeThrough
             : throughDate;
         for (final slot in rule.between(lower, upper)) {
-          await _insertOccurrence(series, slot);
+          if (await _insertOccurrence(series, slot)) {
+            materializedCount++;
+          }
         }
       }
     });
+    return materializedCount;
   }
 
   RecurrenceRule _ruleFromSeries(QueryRow row) => RecurrenceRule(
@@ -1016,7 +1089,7 @@ class LifeRepository {
     maxOccurrences: row.read<int?>('max_occurrences'),
   );
 
-  Future<void> _insertOccurrence(QueryRow series, RecurrenceSlot slot) async {
+  Future<bool> _insertOccurrence(QueryRow series, RecurrenceSlot slot) async {
     final seriesId = series.read<String>('id');
     final existing = await db
         .customSelect(
@@ -1027,7 +1100,7 @@ class LifeRepository {
           ],
         )
         .getSingleOrNull();
-    if (existing != null) return;
+    if (existing != null) return false;
     final taskId = _uuid.v4();
     final occurrenceId = _uuid.v4();
     final now = DateTime.now().toUtc();
@@ -1067,6 +1140,7 @@ class LifeRepository {
       ],
     );
     await _syncProgressiveAssignment(occurrenceId, forceFuture: false);
+    return true;
   }
 
   Future<void> updateTask(
@@ -1678,6 +1752,57 @@ class LifeRepository {
                 change.expectedUpdatedAt ||
             !_scheduleMatches(row, change)) {
           stale.add(change.targetId);
+        }
+      }
+
+      // Revalidate interval conflicts at Apply against fixed events and other
+      // sessions to catch changes added by Sync or background writers after preview.
+      final changedSessionIds = preview.changes
+          .where((c) => c.targetKind == ScheduleTargetKind.session)
+          .map((c) => c.targetId)
+          .toSet();
+      final projectedEvents = <(String, String), List<FixedEvent>>{};
+      for (final change in preview.changes) {
+        if (change.afterStartsAt != null && change.afterEndsAt != null) {
+          final startsAtIso = change.afterStartsAt!.toUtc().toIso8601String();
+          final endsAtIso = change.afterEndsAt!.toUtc().toIso8601String();
+
+          final start = change.afterStartsAt!;
+          final end = change.afterEndsAt!;
+          final window = (localDate(start.toLocal()), localDate(end.toLocal()));
+          final occurrences = projectedEvents[window] ??=
+              await eventOccurrences(
+                window.$1,
+                window.$2,
+                showCancelled: false,
+              );
+          if (occurrences.any(
+            (event) =>
+                event.startsAt.isBefore(end) && event.endsAt.isAfter(start),
+          )) {
+            stale.add(change.targetId);
+            continue;
+          }
+
+          final sessionQuery = changedSessionIds.isEmpty
+              ? 'SELECT id FROM work_sessions WHERE deleted_at IS NULL AND starts_at < ? AND ends_at > ? LIMIT 1'
+              : 'SELECT id FROM work_sessions WHERE deleted_at IS NULL AND id NOT IN (${changedSessionIds.map((_) => '?').join(',')}) AND starts_at < ? AND ends_at > ? LIMIT 1';
+          final sessionVars = changedSessionIds.isEmpty
+              ? [
+                  Variable.withString(endsAtIso),
+                  Variable.withString(startsAtIso),
+                ]
+              : [
+                  ...changedSessionIds.map(Variable.withString),
+                  Variable.withString(endsAtIso),
+                  Variable.withString(startsAtIso),
+                ];
+          final conflictingSessions = await db
+              .customSelect(sessionQuery, variables: sessionVars)
+              .get();
+          if (conflictingSessions.isNotEmpty) {
+            stale.add(change.targetId);
+          }
         }
       }
       if (stale.isNotEmpty) throw StaleSchedulePreviewException(stale);

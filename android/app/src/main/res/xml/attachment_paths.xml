@@ -1,3 +1,4 @@
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <files-path name="attachments" path="TodoPilot/attachment-cache/" />
+    <files-path name="shared_inbox" path="TodoPilot/shared_inbox/" />
 </paths>

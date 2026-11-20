@@ -15,7 +15,7 @@ import '../../app/app_controller.dart';
 import '../../domain/appearance.dart';
 import '../../domain/settings_history.dart';
 import '../shared/settings_history_scope.dart';
-import '../workspace/windows_resource_dialog.dart';
+import '../../platform/platform_resource_dialog.dart';
 import '../../platform/android/android_platform.dart';
 
 class ThemeDialog extends ConsumerStatefulWidget {

@@ -1,5 +1,21 @@
 # Decisions
 
+## 2026-11-18 legacy Sync settings, Android Shared Inbox & Beta 24 publication gate
+
+Preserve captured revisions and staged Sync envelopes when retiring a portable
+setting. Stop exchange at incompatible retained content and keep the stage and
+causal links for reconciliation when its transmission status is uncertain.
+Standard Beta 23 to Beta 24 upgrades are confirmed non-breaking because Beta 23
+never contained `detailPresentation`, and Beta 24 keeps it local-only, omitting it
+from initial enrollment and outgoing sync batches.
+Use one Android worker for intent and Flutter inbox storage. Commit file bytes
+before manifest publication and commit the manifest before deleting indexed
+files.
+Enforce packaging integrity: conditional publication is strictly blocked when
+any mandatory packaging or CI gate fails (Windows CI unconstrained test runner failure
+blocking release setup/portable compilation). Release assets must never be published
+partially or without complete dual-platform packages. See [Beta 24 Verification & Publication Report](UIUX05_BETA_24_PUBLICATION.md).
+
 ## 2026-11-05: additive relationships and presentation-only grouping
 
 Schema 27 adds optional event projects and named task checklists. Schema-26

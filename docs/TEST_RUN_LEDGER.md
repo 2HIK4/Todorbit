@@ -1,5 +1,239 @@
 # Persistent test run ledger
 
+## Beta 25 Publication & Verification (2026-11-20, UTC+03:00)
+
+`feature/todorbit-release-p8`, release commit `6b75a559a1b7d3f9d849ba9ed27c7a291124d554`, tag `v1.0.19-beta.25`, published `1.0.19-beta.25+48`:
+- **Windows CI**: [Run 44694169827](https://github.com/2HIK4/Todorbit/actions/runs/44694169827) in 29m43s (**SUCCESS**).
+  - Full suite: 1,180+ tests passed (0 failed).
+  - Developer routes & background sync schema: PASS.
+  - Desktop Google Drive release configuration: verified.
+  - Windows Release compilation (`tools/build-windows-release.ps1`): PASS.
+  - CRT bundle validation (`tools/test-windows-crt.ps1`): PASS.
+  - Portable package creation (`tools/build-portable.ps1`): PASS.
+  - Native sync writer with disposable profile (`test_driver/native_sync_writer_test.dart`): PASS.
+  - Background sync barriers (`tools/test-background-sync.py`): PASS.
+  - Native widget self-test in disposable profile (`TodorbitWidget.exe --self-test`): PASS.
+  - Inno Setup installer compilation (`installer/build-installer.ps1`): PASS.
+  - Windows release checksums (`tools/write-release-checksums.ps1`): PASS.
+- **Android CI**: [Run 44694185735](https://github.com/2HIK4/Todorbit/actions/runs/44694185735) in 9m55s (**SUCCESS**).
+  - `android` job: 9m51s, static analysis, unit/widget tests, python verification, and debug APK build with 16-KiB alignment PASS.
+  - `android-workflow` job: 7m58s, emulator update workflow tests PASS.
+- **Android 16 KiB Runtime CI**: [Run 44699666409](https://github.com/2HIK4/Todorbit/actions/runs/44699666409) in 3m41s (**SUCCESS**).
+  - `runtime` job: verified upgrade acceptance and persistence on `google_apis_ps16k` API 36 emulator.
+- **Lightweight CI**: Validated locally in worktree across 13 critical regression test suites (103/103 passed in 3m02s) + documentation validation (0 errors) + developer tools (9/9 passed) + workflow contracts (5/5 passed) + architecture boundaries (39/39 passed).
+- **Architecture Unit/Widget Suites**:
+  - `tools/test_architecture_boundaries.py`: 39/39 PASS.
+  - `test/sync_status_button_test.dart`: 7/7 PASS.
+  - `test/calendar_workspace_boundary_test.dart`: 3/3 PASS.
+  - `test/app_controller_refresh_mapping_test.dart`: 5/5 PASS.
+  - `test/arch_06_state_encapsulation_test.dart`: 3/3 PASS.
+  - `test/arch_07_repository_encapsulation_test.dart`: 11/11 PASS.
+  - Reconciliation of reported suite: exactly 197 assertions across the verified test files.
+- **Published Assets**: All 10 Windows and Android release assets uploaded and verified with SHA-256 digests. Updaters (`SoftwareUpdateService` and `AndroidUpdateService`) verified. [Receipt](UIUX06_BETA_25_PUBLICATION.md).
+
+## Beta 24 Windows CI verification & publication (2026-11-19, UTC+03:00)
+
+`feature/todorbit-release-p8`, integrated commit `16de251cc0208ade5d54bbdebf26c60a278ac86f`, tag `v1.0.19-beta.24`.
+- **Windows CI**: [Run 44411095342](https://github.com/2HIK4/Todorbit/actions/runs/44411095342) in 33m55s (**1,178 passed, 0 failed, 9 skipped**). All 12 previously failing tests resolved.
+  - Full suite: 1,178 passed (including the 12 repaired widget, search, settings, and process-death cases).
+  - Developer routes & background sync schema: PASS.
+  - Desktop Google Drive release configuration: verified.
+  - Windows Release compilation (`tools/build-windows-release.ps1`): PASS.
+  - CRT bundle validation (`tools/test-windows-crt.ps1`): PASS.
+  - Portable package creation (`tools/build-portable.ps1`): PASS.
+  - Native sync writer with disposable profile (`test_driver/native_sync_writer_test.dart`): 1/1 PASS.
+  - Background sync barriers (`tools/test-background-sync.py`): PASS.
+  - Native widget self-test in disposable profile (`TodorbitWidget.exe --self-test`): PASS.
+  - Inno Setup installer compilation (`installer/build-installer.ps1`): PASS.
+  - Windows release checksums (`tools/write-release-checksums.ps1`): PASS.
+- **Android CI**: [Run 44411102129](https://github.com/2HIK4/Todorbit/actions/runs/44411102129) (**SUCCESS**).
+  - Static analysis, unit tests, and emulator update workflow tests PASS.
+- **Android Release Candidate**:
+  - `tools/build-android.ps1 -Mode Release`: Universal release APK generated (52.1 MB).
+  - Production signed (`CN=Hussam Alkhatib`, versionCode 47, versionName `1.0.19-beta.24`).
+  - 16-KiB native alignment verified across all 8 native `.so` libraries.
+  - Assets prepared with `tools/prepare-android-release.py --apk-only`.
+- **Publication**: Published pre-release `1.0.19-beta.24+47` at https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.24. All 10 release assets verified. [Publication receipt](UIUX05_BETA_24_PUBLICATION.md).
+
+## Beta 24 release-blocker integration verification (2026-11-18, UTC+03:00)
+
+`feature/todorbit-release-p8`, commit `12d7e46fe47d4da761b13b1be995b8c7420e157c`, integrating `fix/todorbit-beta24-release-blockers` (`cfde5b3b85d2cbc460be8fcf06075707c7481283`, base `253bc54eb74300505793cf0a6e5328a3858f23da`). [Report](UIUX05_BETA_24_PUBLICATION.md) and [Codex receipt](BETA24_CODEX_RELEASE_BLOCKER_FIXES_2026_11_18.md):
+- **Focused Host Regression Matrix**:
+  1. `test/sync_exchange_repository_test.dart`: **11/11 PASS** (reopen durability, retry byte matching, peer application, local presentation isolation).
+  2. `test/beta24_calendar_sync_test.dart`: **2/2 PASS** (calendar date mid-drag deferral, immediate sync signaling).
+  3. `test/prompt4_smart_reschedule_test.dart`: **20/20 PASS** (Smart Reschedule recurring event collision validation, Apply/Undo).
+  4. `test/workspace_draft_safety_test.dart`: **26/26 PASS** (unsaved editor guards, Save/Discard/Keep editing, SQLite save failure fallback).
+  5. `test/shared_inbox_store_test.dart`: **10/10 PASS** (Shared Inbox file ingestion, duplicate detection, atomic persistence).
+  6. `test/shared_inbox_task_integration_test.dart`: **5/5 PASS** (independent task copy semantics, surviving inbox deletion).
+  7. `test/database_initialization_test.dart`: **22/22 PASS** (Schema 29 forward compatibility, WAL mode, synchronous=FULL).
+  8. `test/sync_journal_test.dart`: **9/9 PASS** (causal record ancestry, transaction rollback, tombstone tracking).
+  - Total focused host test suite: **105 PASS, 0 FAIL, 0 SKIP**.
+- **Static Analysis**: `flutter analyze --no-pub` -> **0 issues found** (85.2s).
+- **Whitespace / Diff Check**: `git diff --check` -> **Clean** (0 whitespace/formatting issues).
+- **Native Companion (.NET 10)**:
+  - Release build: `dotnet build experiments/widget-shell-probe/widget-shell-probe.csproj -c Release` -> 0 warnings, 0 errors.
+  - Self-test: `dotnet run --project experiments/widget-shell-probe -c Release -- --self-test` -> **PASS** (task revision safety, monotonic clocks, alarm projections, widget persistence).
+- **Android Release Candidate**:
+  - `tools/build-android.ps1 -Mode Release`: Universal release APK generated at `build/app/outputs/flutter-apk/app-github-release.apk` (52.1 MB).
+  - Production signed with `android/key.properties` (versionCode 47, versionName `1.0.19-beta.24`).
+  - SHA-256: `107BDBD497455AE80444D17C5DB33CF9DCE05287D2BE6A91C654BA5DD373DAE7`.
+  - 16-KiB native alignment verified across all 8 native `.so` libraries (`tools/verify-android-artifact.py`).
+- **GitHub Actions CI**:
+  - Android validation: [Run 44390832263](https://github.com/2HIK4/Todorbit/actions/runs/44390832263) -> **SUCCESS** (8m29s).
+  - Windows checks failed at `Run Flutter tests` with 1,166 passed, 12 failed and 9 skipped. Windows packaging was blocked. [Run 44390804115](https://github.com/2HIK4/Todorbit/actions/runs/44390804115), [failure classification](BETA24_WINDOWS_CI_FAILURE_FIXES.md).
+- **Publication Status**: **BLOCKED** due to missing Windows release artifacts and failed Windows CI gate.
+
+## Prompt 7 Performance Optimization & Safety Review (2026-11-18, UTC+03:00)
+
+`feature/todorbit-performance-p7`, worktree `life_manager_worktrees/feature-todorbit-performance-p7`, base `016537ff32715b200a14be1e0a01595cf71b6cd3` (`016537f`, Prompt 6):
+- [Receipt](PROMPT7_PERFORMANCE_OPTIMIZATION_2026_11_18.md) records systematic profiling, safety audit, durability restoration, and verification across critical test suites:
+  1. Cache Correctness & Timer Behavior (`test/prompt7_cache_correctness_test.dart`): **14/14 PASS** (8s).
+     - Validated `(stat.modified, stat.size)` cache checking in `AppearancePreferenceStore` and `CalendarPreferenceStore`.
+     - Validated write idempotency, file deletion fallback, and cache invalidation.
+     - Validated `projectTaskList` memoization invalidation across task, parent, and grouping changes.
+     - Validated `BackupService._schemaCache` listing memoization, modification re-inspection, and corrupted file handling (-1).
+     - Verified mandatory isolation and integrity validation on restore/import paths.
+     - Verified `CompactTaskTimer` independent 1s ticking and task row status label parity without workspace rebuilds.
+  2. Performance Benchmark Suite (`test/performance_benchmark_test.dart`): **1/1 PASS** (19s) with `PRAGMA synchronous = FULL`.
+     - 15 representative scenarios measured against 120+ tasks, 50 events, 20 sessions, 14 backup snapshots.
+     - Active timer 3s workload: reduced from 1839.41 ms to 749.44 ms (-59.3%) by eliminating 3 full-workspace rebuilds.
+     - Warm return to foreground: reduced from 17.54 ms to 9.87 ms (-43.7%).
+     - Disclosed synthetic test runner limitations: timings represent debug test runner elapsed time, not native AOT or hardware profiler CPU percentages; cold frame (+194 ms) and next-month nav (+483 ms) acknowledged as test harness variances and synchronous durability trade-offs.
+  3. UI Audit Suite (`test/prompt6_ui_audit_test.dart`): **6/6 PASS** (3s).
+  4. Pointer Cancellation Suite (`test/pointer_cancellation_scope_test.dart`): **1/1 PASS** (1s).
+  5. Workspace & Task UX Suite (`test/workspace_test.dart`): **15/15 PASS** (33s).
+  6. Smart Reschedule Suite (`test/prompt4_smart_reschedule_test.dart`): **16/16 PASS** (26s).
+  7. Database Migrations & Atomic Creation (`test/database_initialization_test.dart`): **22/22 PASS** (1m 30s) verifying `PRAGMA synchronous = FULL` durability.
+  8. Isolated Profile Journeys (`tools/dev/test-profile-journeys.ps1`): **15/15 PASS** (53s).
+- Full static analysis: `flutter analyze --no-pub` -> **0 issues found** (16.3s).
+- Code formatting and whitespace: `git diff --check` -> **0 issues found**.
+- Invariants: Schema strictly preserved at 29, forward-only migrations, full SQLite durability in WAL mode, zero data loss, zero release publication.
+
+---
+
+## Prompt 6 Full App-Wide UI Audit & Interaction Polish (2026-11-18, UTC+03:00)
+
+`feature/todorbit-full-ui-audit`, worktree `life_manager_worktrees/feature-todorbit-full-ui-audit`, base `b95474f`:
+- [Receipt](PROMPT6_FULL_UI_AUDIT_2026_11_18.md) records systematic audit across desktop `Workspace` and mobile `MobileWorkspace` shells, repairs for screenshots 17-20 issues, and verified tests:
+  1. Prompt 6 UI Audit Suite (`test/prompt6_ui_audit_test.dart`): **6/6 PASS** (hover/focus tokens, row width equality, subtask hierarchy, viewports 800x600 to 1920x1080 and 320x640 to 393x852, retention notice).
+  2. Pointer Cancellation Suite (`test/pointer_cancellation_scope_test.dart`): **1/1 PASS** (`AppLifecycleState.inactive` pointer cancellation and hover flush).
+  3. Workspace & Task UX Regression (`test/workspace_test.dart`): **14/14 PASS**.
+  4. Shared Inbox Screen & Retention (`test/shared_inbox_screen_test.dart`): **7/7 PASS**.
+  5. Shared Inbox Task Integration (`test/shared_inbox_task_integration_test.dart`): **4/4 PASS**.
+  6. Smart Reschedule Regression (`test/prompt4_smart_reschedule_test.dart`): **15/15 PASS**.
+  7. Task Composition & Subtasks (`test/task_composition_widget_test.dart`): **2/2 PASS**.
+  8. Task Resources Regression (`test/task_resources_widget_test.dart`): **2/2 PASS**.
+  9. Anchored Select Field Focus (`test/anchored_select_field_test.dart`): **6/6 PASS**.
+- Full static analysis: `flutter analyze --no-pub lib/ test/` -> **0 issues found** (28.0s).
+- Changed file formatting: `dart format` -> clean (100%).
+- Diff check: `git diff --check` -> clean.
+- Invariants: Zero schema migration, zero data loss, zero beta publication.
+
+---
+
+## Prompts 4 and 5 integration (2026-11-18, UTC+03:00)
+
+`integration/ui-reliability-p4-p5`, worktree `life_manager_worktrees/integration-ui-p4-p5`, inputs `5a0e836` (Prompt 4: Smart Reschedule) and `3b98678` (Prompt 5: Android Share Inbox), baseline `62326bd`:
+- [Receipt](INTEGRATION_P4_P5_2026_11_17.md) records independent review, async streaming enhancements, and full serial test passes across 8 critical areas:
+  1. Prompt 4 Smart Reschedule (`test/prompt4_smart_reschedule_test.dart`, `test/smart_reschedule_widget_test.dart`): **20/20 PASS** (47s).
+  2. Prompt 5 Shared Inbox (`test/shared_inbox_store_test.dart`, `test/shared_inbox_screen_test.dart`, `test/shared_inbox_task_integration_test.dart`, `test/shared_inbox_mobile_navigation_test.dart`): **23/23 PASS** (19s).
+  3. Task Resources Regression (`test/task_resources_test.dart`, `test/task_resources_widget_test.dart`): **10/10 PASS** (23s).
+  4. Task Composition, Subtasks & Scheduling (`test/task_composition_widget_test.dart`, `test/scheduling_repository_test.dart`, `test/calendar_event_move_recurrence_test.dart`): **24/24 PASS** (36s).
+  5. Calendar Responsiveness & Event Metadata (`test/prompt3_calendar_events_test.dart`, `test/calendar_test.dart`, `test/event_editor_layout_test.dart`): **15/15 PASS** (35s).
+  6. Timer State, Focus & Workspace Navigation (`test/uiux03_focus_widget_test.dart`, `test/uiux03_navigation_test.dart`, `test/workspace_test.dart`): **18/18 PASS** (39s).
+  7. Critical Persistence & Concurrency Tokens (`test/repository_test.dart`, `test/task_revision_concurrency_test.dart`, `test/database_initialization_test.dart`): **38/38 PASS** (1m 37s).
+  8. Sync & Backup Compatibility (`test/cloud/sync_engine_test.dart`, `test/sync_apply_repository_test.dart`, `test/backup_service_test.dart`): **55/55 PASS** (3m 16s).
+- **Consolidated Verification**: **203 distinct PASS / 0 FAIL / 0 SKIP**.
+- Full static analysis: `flutter analyze --no-pub lib/ test/` -> **0 issues found** (15.2s).
+- Changed file formatting: `dart format` -> clean.
+- Diff check: `git diff --check` -> clean.
+- Architecture Invariants: SQLite Schema preserved at 29; zero schema migrations; zero cloud sync bloat for unattached inbox files; zero beta publication.
+- Platform note: Java/Gradle host environment unconfigured (`flutter doctor` reports `Could not determine java version`); native compile deferred honestly to Level 4 device acceptance.
+
+
+## Prompt 4 Smart Reschedule (2026-11-17, UTC+03:00)
+
+`feature/todorbit-smart-reschedule`, base `4d9292c`;
+[final normalized source/assertion/config manifest](PROMPT4_SMART_RESCHEDULE_2026_11_17_SOURCE.json).
+[Receipt](PROMPT4_SMART_RESCHEDULE_2026_11_17.md) records exact commands, intentional
+pre-fix failures, interrupted capture, test-helper fixes and the real compact
+PageStorage repair. Final focused batch19 + delta2 (one repeated/one added) +
+strengthened hierarchy1 (repeated) + adjacent safety43 + secondary surface1 =
+**64 distinct PASS / 0 final FAIL / 0 SKIP**. Full analysis, changed-file format,
+docs and diff checks PASS. Serial Windows host/Flutter3.47.7/Dart3.13.5, disposable
+data. All65 integration-manifest fingerprints match; reuse unchanged critical41
+and sync6 separately, without adding them to new counts. Offscreen theme/font
+captures inspected; actual runtime/hot reload blocked by no DTD/symlink support.
+No release acceptance claimed.
+
+## UI-REL-05 (Prompt 5 Authoritative) — Android Shared Files Inbox & Task Resource Integration (2026-11-18, UTC+03:00)
+
+Exact branch `feature/todorbit-android-share-inbox`, worktree `life_manager_worktrees/feature-todorbit-android-share-inbox`, base `4d9292c`:
+- `test/shared_inbox_store_test.dart`: 10/10 PASS (1s).
+  Covers empty store, single PDF ingestion, image MIME inference, sequential mixed ingestion, SHA-256 duplicate content detection, filename sanitization, 32 MiB size rejection, single deletion, batch deletion, and orphan staging cleanup.
+- `test/shared_inbox_screen_test.dart`: 7/7 PASS (6s).
+  Covers empty state guidance, full list presentation with sizes/dates, search filtering by displayName, category filter chips (All, PDFs, Images, Docs, Other), preview/open via `WindowsResourceDialog` / `FileProvider`, single file deletion confirmation dialog (`ISS-C11`), and multi-select batch deletion.
+- `test/shared_inbox_task_integration_test.dart`: 5/5 PASS (8s).
+  Covers `From Shared Inbox` button in draft resources section, draft task creation with cancel vs save semantics (cancelling leaves zero DB rows and preserves inbox original), persisted task attachment creating durable BLOB copy in `task_resources`, independent copy semantics (deleting task attachment does not delete inbox original and vice versa), and picker dialog duplicate attachment prevention.
+- `test/shared_inbox_mobile_navigation_test.dart`: 1/1 PASS (2s).
+  Covers `MobileWorkspace` drawer containing `Shared Files` navigation tile and navigating directly to `SharedInboxScreen`.
+- `test/task_resources_test.dart` + `test/task_resources_widget_test.dart`: 10/10 PASS (27s).
+  Level 2 critical regression checks verifying managed copies, external references, subtask mapping, oversized file rejection, tamper rejection, and resource UI controls.
+- `test/repository_test.dart`: 8/8 PASS (12s).
+  Level 2 critical persistence verification (Schema 29, task lifecycle, concurrency tokens, fixed events, and v1 migration preservation).
+- Static Analysis: `flutter analyze --no-pub lib/ test/` -> 0 issues found (12.4s).
+- Total checks: 41 focused tests executed, 41 passed (0 failures).
+- Root-cause diagnosis & harness fix: Resolved earlier fake-async timeout in `shared_inbox_task_integration_test.dart` by wrapping asynchronous native file I/O operations (`LifeRepository.addDraftResources`, `LifeRepository.attachManagedFile`) in `tester.runAsync()`, switching `SharedInboxStore` manifest loading to synchronous `loadSync()` to avoid infinite `CircularProgressIndicator` animation deadlocks in widget test harness, and using `tester.scrollUntilVisible` for lazy drawer items.
+- Preserved SQLite Schema at 29; zero migrations, zero cloud sync bloat for unattached inbox files, zero beta publication.
+
+## Prompts 2/3 integration (2026-11-17, UTC+03:00)
+
+`integration/ui-reliability-p2-p3`, base `5803e52`, inputs `9f7b3e3` / `b3ee745`;
+[final normalized source/assertion/config manifest](INTEGRATION_P2_P3_2026_11_17_SOURCE.json).
+[Receipt](INTEGRATION_P2_P3_2026_11_17.md) records every command, four intentional
+pre-fix failures, first repair check and final passes: combined prompts43,
+critical persistence41, shared UI29, sync compatibility6, timer accounting3 =
+**122 distinct PASS / 0 final FAIL / 0 SKIP**. Full `flutter analyze --no-pub`
+PASS; four follow-up Dart files format PASS; `git diff --check` PASS. Serial
+Windows host, Flutter3.47.7/Dart3.13.5, disposable data. Reused exact matching
+repository-only P2 evidence separately; shared controller/UI receipts invalidated
+and rerun. Native launch blocked by symlink support/no DTD target; physical and
+release acceptance remains pending, not inferred from host results.
+
+
+## Prompt 2 task timer/composition (2026-11-17 20:38 +03:00)
+
+Base `5803e52`, branch `feature/todorbit-task-ux`; [final source/assertion/config manifest](PROMPT2_TASK_UX_2026_11_17_SOURCE.json).
+[Receipt](PROMPT2_TASK_UX_2026_11_17.md) retains exact commands and failed/debug
+iterations. Serial Windows host/Flutter 3.47.7/Dart 3.13.5; disposable data only.
+Final focused batch PASS43; final dialog callback follow-up PASS2 (one repeated,
+one added) =44 distinct focused checks. Lifecycle/accounting PASS3; filtered adjacent PASS3 (two sync timer
+ownership checks and one mobile row). Full relevant analysis + follow-up PASS,
+22 changed Dart format PASS, diff check PASS. New `task-timers` gate plan resolves.
+Changed timer/Trash/UI behavior invalidated prior receipts; unchanged assertions
+are reused after the narrowly verified dialog callback follow-up. Physical/live,
+full integration and release acceptance are pending, not inferred from host passes.
+
+## UI-REL-03 (Prompt 3 Authoritative) — Calendar responsiveness, event metadata (categories & projects), color picker scrolling, and month navigation prefetch (2026-11-17, UTC+03:00)
+
+Exact branch `feature/todorbit-calendar-events`, worktree `life_manager_worktrees/feature-todorbit-calendar-events`:
+- `test/prompt3_calendar_events_test.dart`: 9/9 PASS (19s). Covers:
+  1. Month cells showing meaningful first items and clickable `+N` or `+N more` count affordance on narrow window widths (420px, 520px, 680px) without disappearing or overflowing.
+  2. Calendar content filter (Both / Events only / Tasks only) discoverability on narrow desktop widths without layout overflow.
+  3. Event category and project selector assignment, raw SQLite column persistence (`fixed_events.category_id`, `fixed_events.project_id`).
+  4. In-editor dynamic creation of new categories and projects (`+ New Category`, `+ New Project`) with immediate assignment.
+  5. Old events without category/project remain valid with null assignments and display 'None / Inbox' and 'None'.
+  6. Custom event color picker preserving steady scroll offset during user drag, palette switching (`ChoiceChip`), and hex editing without snapping back.
+  7. Color picker dialog (`ColorPickerDialog`) maintaining steady scroll offset under touch/mouse wheel drag and text editing.
+  8. Month navigation prefetch window (adjacent 3-month span `<= 93` days) showing events immediately with zero blank flicker.
+  9. Rapid back/forward month navigation clicks guarded against race conditions or stale months.
+- `test/event_editor_layout_test.dart`: 3/3 PASS (6s) verifying AnchoredSelectField category/project selectors and form layout.
+- `test/calendar_test.dart`: 3/3 PASS (13s) verifying calendar conflict indicators, content filters, and event/session creation.
+- `test/stage2_ui_regression_test.dart`: 18/18 PASS (35s) verifying mobile agenda, all-day boundaries, color dialogs, and IME layout.
+- `test/repository_test.dart`: 8/8 PASS (10s) Level 2 critical persistence verification (Schema 29, event and task lifecycle, v1 migration).
+- Static Analysis: `flutter analyze --no-pub` -> 0 issues found (12.7s).
+- Total checks: 41 focused tests executed, 41 passed (0 failures). No beta publication.
+
 ## Beta22 final publication acceptance (2026-11-15)
 
 [Publication receipt](UIUX03_BETA_22_PUBLICATION.md), exact tag/source1a5560a:

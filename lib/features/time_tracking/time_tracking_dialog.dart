@@ -1,3 +1,4 @@
+import 'task_timer_intent.dart';
 import '../shared/app_motion.dart';
 
 import 'dart:async';
@@ -376,7 +377,7 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
                         ),
                       ],
                     ),
-                  ] else if (run == null) ...[
+                  ] else ...[
                     const SizedBox(height: 12),
                     Align(
                       alignment: Alignment.centerLeft,
@@ -384,16 +385,27 @@ class _TimeTrackingDialogState extends ConsumerState<TimeTrackingDialog> {
                         onPressed: busy || task == null
                             ? null
                             : () => _run(
-                                () => controller.startTimer(widget.taskId),
+                                () => openTaskTimer(
+                                  context,
+                                  controller,
+                                  widget.taskId,
+                                  open: (taskId) {
+                                    if (taskId != widget.taskId) {
+                                      showDialog<void>(
+                                        context: context,
+                                        animationStyle: AppMotion.style(
+                                          context,
+                                        ),
+                                        builder: (_) =>
+                                            TimeTrackingDialog(taskId: taskId),
+                                      );
+                                    }
+                                  },
+                                ),
                               ),
                         icon: const Icon(Icons.play_arrow),
-                        label: const Text('Start focus stopwatch'),
+                        label: const Text('Start task timer'),
                       ),
-                    ),
-                  ] else ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      'A timer is active for another task. Pause or stop it there first.',
                     ),
                   ],
                   const SizedBox(height: 10),

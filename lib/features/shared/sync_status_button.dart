@@ -5,15 +5,32 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/sync_controller.dart';
 import '../../data/cloud/sync_engine.dart';
-import '../settings/sync_conflicts_dialog.dart';
-import '../settings/sync_settings_page.dart';
-import 'status_snackbar.dart';
 import 'app_motion.dart';
+import 'status_snackbar.dart';
+
+/// Signature for displaying sync settings/configuration.
+typedef SyncOpenSettingsCallback = FutureOr<void> Function(BuildContext context);
+
+/// Signature for displaying sync conflict resolution review.
+typedef SyncOpenConflictsCallback =
+    FutureOr<void> Function(BuildContext context, SyncController controller);
 
 class SyncStatusButton extends ConsumerStatefulWidget {
-  const SyncStatusButton({super.key, this.allowAutomatic = true});
+  const SyncStatusButton({
+    super.key,
+    this.allowAutomatic = true,
+    this.onOpenSettings,
+    this.onOpenConflicts,
+  });
+
   // Retained for shell callers. Automatic attention is a badge, never a modal.
   final bool allowAutomatic;
+
+  /// Callback to display sync settings/configuration dialog or page.
+  final SyncOpenSettingsCallback? onOpenSettings;
+
+  /// Callback to display sync conflict resolution review.
+  final SyncOpenConflictsCallback? onOpenConflicts;
 
   @override
   ConsumerState<SyncStatusButton> createState() => _SyncStatusButtonState();
@@ -39,6 +56,45 @@ class _SyncStatusButtonState extends ConsumerState<SyncStatusButton> {
     unawaited(shown.closed.then((_) => _successNoticePending = false));
   }
 
+  Future<void> _handleOpenSettings(BuildContext context) async {
+    if (!context.mounted) return;
+    final callback = widget.onOpenSettings;
+    if (callback != null) {
+      await callback(context);
+      return;
+    }
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger?.showSnackBar(
+      transientStatusSnackBar(
+        context,
+        'Sync settings are unavailable from this view.',
+        type: NotificationType.error,
+        key: const ValueKey('sync-settings-unavailable-notice'),
+      ),
+    );
+  }
+
+  Future<void> _handleOpenConflicts(
+    BuildContext context,
+    SyncController controller,
+  ) async {
+    if (!context.mounted) return;
+    final callback = widget.onOpenConflicts;
+    if (callback != null) {
+      await callback(context, controller);
+      return;
+    }
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger?.showSnackBar(
+      transientStatusSnackBar(
+        context,
+        'Sync conflict review is unavailable from this view.',
+        type: NotificationType.error,
+        key: const ValueKey('sync-conflicts-unavailable-notice'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(syncControllerProvider);
@@ -58,7 +114,7 @@ class _SyncStatusButtonState extends ConsumerState<SyncStatusButton> {
             ? null
             : () async {
                 if (controller.problem != null || controller.resetPending) {
-                  await showSyncSettings(context);
+                  await _handleOpenSettings(context);
                   return;
                 }
                 await controller.syncNow(manual: true);
@@ -71,10 +127,10 @@ class _SyncStatusButtonState extends ConsumerState<SyncStatusButton> {
                     controller.auth.needsReconnect ||
                     controller.snapshot?.binding == null ||
                     controller.snapshot?.quarantined == true) {
-                  await showSyncSettings(context);
+                  await _handleOpenSettings(context);
                   controller.recoveryReminder = false;
                 } else if (controller.conflictCount > 0) {
-                  await showSyncConflicts(context, controller);
+                  await _handleOpenConflicts(context, controller);
                 } else if (controller.standardIntroduction) {
                   final shown = ScaffoldMessenger.maybeOf(context)
                       ?.showSnackBar(
@@ -87,7 +143,7 @@ class _SyncStatusButtonState extends ConsumerState<SyncStatusButton> {
                           duration: const Duration(seconds: 8),
                           action: SnackBarAction(
                             label: 'Encryption options',
-                            onPressed: () => showSyncSettings(context),
+                            onPressed: () => _handleOpenSettings(context),
                           ),
                         ),
                       );
@@ -119,7 +175,7 @@ class _SyncStatusButtonState extends ConsumerState<SyncStatusButton> {
                       ),
                       action: SnackBarAction(
                         label: 'Sync settings',
-                        onPressed: () => showSyncSettings(context),
+                        onPressed: () => _handleOpenSettings(context),
                       ),
                     ),
                   );

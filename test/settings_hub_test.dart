@@ -82,14 +82,15 @@ void main() {
       expect(sectionPicker, findsOneWidget);
       await tester.tap(sectionPicker);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Task Preferences').last);
+      await tester.tap(find.widgetWithText(MenuItemButton, 'Task Preferences'));
       await tester.pumpAndSettle();
       expect(find.text('Task display and defaults'), findsOneWidget);
       await tester.tap(sectionPicker);
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Backups & Cloud').last);
+      final backups = find.widgetWithText(MenuItemButton, 'Backups & Cloud');
+      await tester.ensureVisible(backups);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Backups & Cloud').last);
+      await tester.tap(backups);
       await tester.pumpAndSettle();
       expect(find.text('Local Backups'), findsOneWidget);
       expect(find.text('Google Drive is disconnected.'), findsOneWidget);

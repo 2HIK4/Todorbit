@@ -22,13 +22,27 @@ import java.time.ZoneId
 /** Opt-in native rendering acceptance. Never opens or changes SQLite. */
 class WidgetRenderInstrumentation : Instrumentation() {
     private var isolated = false
+    private var checkSharedInbox = false
     override fun onCreate(arguments: Bundle?) {
         super.onCreate(arguments)
         isolated = arguments?.getString("isolated") == "true"
+        checkSharedInbox = arguments?.getString("sharedInbox") == "true"
         start()
     }
 
     override fun onStart() {
+        if (checkSharedInbox) {
+            val result = Bundle()
+            try {
+                check(isolated && Build.HARDWARE in listOf("ranchu", "goldfish"))
+                result.putInt("sharedInboxChecks", SharedInboxStorageChecks.run(targetContext.cacheDir))
+                finish(android.app.Activity.RESULT_OK, result)
+            } catch (error: Throwable) {
+                result.putString("error", error.stackTraceToString())
+                finish(android.app.Activity.RESULT_CANCELED, result)
+            }
+            return
+        }
         val result = Bundle()
         var activity: WidgetConfigurationActivity? = null
         val prefs = AndroidSurfaces.preferences(targetContext)

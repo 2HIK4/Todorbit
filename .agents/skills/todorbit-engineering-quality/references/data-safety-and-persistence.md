@@ -68,3 +68,43 @@ Incremental Synchronization and Snapshot Backups are independent systems with di
 - **Never overwrite local database on sync pull**: Sync applies discrete entity operations via `SyncApplyRepository`.
 - **Soft Deletes**: Deletions are journaled tombstones. Tombstones sync across clients so remote devices delete the record rather than resurrecting it.
 - **Immutable Operation Revisions**: Once an encrypted batch is published, its payload and causality proof are immutable.
+
+
+## Task timer entry and planned-session removal (Prompt 2)
+
+`startTimer(taskId)` is idempotent for the current task, returning the existing
+running or paused run without writes. Other-task switching closes and opens work
+intervals in one transaction using the reviewed timer revision and ownership checks;
+a failed destination start rolls back the stop. Never infer task status from a timer.
+Break phases start without creating work intervals. `deletePlannedSession` checks
+session revision, upcoming outcome and absent actual start inside the Trash
+transaction; actual work and task identity survive. Cover these contracts using
+`task-timers` in `tools/dev/features.json`. Schema remains 29; no migration applies.
+
+## Scheduling proposal boundaries
+
+- Deduplicate scoped UUIDs before building a scheduling proposal; a Set used for
+  checkboxes does not deduplicate a separate ordered input list. Verify one
+  change/history entry per target and guard preview/apply re-entry before await.
+- Preview and cancellation are reads only. Apply the complete reviewed proposal
+  through the existing transaction/stale checks; do not silently filter partial
+  swaps, recurrence collisions or eligibility issues after review.
+- A post-commit refresh can fail after persistence succeeds. Report an unconfirmed
+  result accurately, invalidate the proposal, and require a fresh read before
+  retrying; never promise rollback solely because the UI await threw.
+
+## Local file staging and independent copy boundaries
+
+- Stream large file hashing and writes: Ingesting files approaching the maximum
+  size limit (e.g. 32 MiB) must stream bytes via `sha256.bind(source.openRead())`
+  and OS file copying rather than reading the entire byte array into the Dart
+  heap on the UI isolate.
+- Dual-path I/O architecture: Pair synchronous metadata hydration (`loadSync()`)
+  for zero-jank frame-1 UI mounting and deterministic test execution with genuine
+  asynchronous methods (`load()`, `save()`, `addFile()`, `addBytes()`) so bulk
+  disk operations do not block Flutter's main isolate.
+- Local filesystem durability boundaries: Local files stored on disk outside the
+  SQLite database (e.g. `TodoPilot/shared_inbox/`) are NOT captured by SQLite
+  snapshots (`BackupService`) or Google Drive sync journals. Once attached to a
+  task, copy the bytes into managed SQLite `task_resources` with independent copy
+  semantics so inbox deletion never breaks task attachments and vice versa.

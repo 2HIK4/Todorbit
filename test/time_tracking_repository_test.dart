@@ -76,7 +76,7 @@ void main() {
       final task = await repository.addTask(const TaskDraft(title: 'Write'));
       var run = await repository.startTimer(task.id);
       expect(run.state, TimerState.running);
-      await expectLater(repository.startTimer(task.id), throwsStateError);
+      expect((await repository.startTimer(task.id)).id, run.id);
       expect(
         (await repository.timeEntries(taskId: task.id)).single.endsAt,
         isNull,

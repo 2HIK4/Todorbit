@@ -159,6 +159,8 @@ extension SyncRepository on LifeRepository {
           (await db.customSelect('PRAGMA table_info("$table")').get())
               .map((row) => row.data)
               .toList();
+      // Standalone detailPresentation rows can remain in upgraded profiles.
+      // A new origin must not publish them as a fresh baseline operation.
       await db.customStatement(
         '''INSERT INTO sync_journal(operation_id,workspace_id,account_id,device_id,entity,record_key,after_json,origin_sequence,observed_json,parent_ids_json,mutation_group_id,visible_json)
           SELECT $syncOperationUuidSql,?,?,?,'$table',${syncKeyJson(columns, 'source.')},${syncRowJson(columns, 'source.')},
@@ -167,7 +169,8 @@ extension SyncRepository on LifeRepository {
             CASE WHEN context.device_sequence+row_number() OVER(ORDER BY ${syncKeyJson(columns, 'source.')})>1
             THEN json_set(context.visible_json,'\$.' || json_quote(context.device_id),json_array(json_array(1,context.device_sequence+row_number() OVER(ORDER BY ${syncKeyJson(columns, 'source.')})-1))) ELSE context.visible_json END
           FROM "$table" AS source CROSS JOIN sync_capture_context AS context
-          WHERE context.id=1 AND ${syncRowIsPortable(table, 'source.')}''',
+          WHERE context.id=1 AND ${syncRowIsPortable(table, 'source.')}
+          ${table == 'portable_preferences' ? "AND source.key <> 'detailPresentation'" : ''}''',
         [workspaceId, accountId, deviceId],
       );
       await db.customStatement(

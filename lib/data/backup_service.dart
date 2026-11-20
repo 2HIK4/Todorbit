@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:meta/meta.dart' show visibleForTesting;
 import 'package:path/path.dart' as path;
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:crypto/crypto.dart';
@@ -58,6 +59,36 @@ class BackupService {
   Directory get backupDirectory =>
       Directory(path.join(databaseFile.parent.path, 'backups'));
 
+  static final Map<String, (int mtimeMs, int size, int schema)> _schemaCache =
+      {};
+
+  @visibleForTesting
+  static void clearSchemaCacheForTesting() => _schemaCache.clear();
+
+  @visibleForTesting
+  static int get schemaCacheCountForTesting => _schemaCache.length;
+
+  Future<int> _cachedOrInspectSnapshot(String filename, FileStat stat) async {
+    final cached = _schemaCache[filename];
+    if (cached != null &&
+        cached.$1 == stat.modified.millisecondsSinceEpoch &&
+        cached.$2 == stat.size) {
+      return cached.$3;
+    }
+    int schema;
+    try {
+      schema = await Isolate.run(() => _inspectSnapshot(filename));
+    } catch (_) {
+      schema = -1;
+    }
+    _schemaCache[filename] = (
+      stat.modified.millisecondsSinceEpoch,
+      stat.size,
+      schema,
+    );
+    return schema;
+  }
+
   Future<List<BackupRecord>> list() async {
     if (!await backupDirectory.exists()) return [];
     final files = await backupDirectory
@@ -79,13 +110,7 @@ class BackupService {
           ? BackupKind.beforeRestore
           : BackupKind.manual;
       final stat = await file.stat();
-      final filename = file.path;
-      int schema;
-      try {
-        schema = await Isolate.run(() => _inspectSnapshot(filename));
-      } catch (_) {
-        schema = -1;
-      }
+      final schema = await _cachedOrInspectSnapshot(file.path, stat);
       result.add(
         BackupRecord(
           file: file,
@@ -98,6 +123,32 @@ class BackupService {
     }
     result.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return result;
+  }
+
+  Future<bool> _hasRecentAutomaticBackup(DateTime current) async {
+    if (!await backupDirectory.exists()) return false;
+    final files = await backupDirectory
+        .list(followLinks: false)
+        .where(
+          (item) =>
+              item is File &&
+              path.basename(item.path).startsWith('auto-') &&
+              _managedName.hasMatch(path.basename(item.path)),
+        )
+        .cast<File>()
+        .toList();
+    for (final file in files) {
+      final name = path.basename(file.path);
+      final createdAt = _timeFromFilename(name);
+      if (current.difference(createdAt) < const Duration(hours: 24)) {
+        final stat = await file.stat();
+        if (stat.size > 0) {
+          final schema = await _cachedOrInspectSnapshot(file.path, stat);
+          if (schema >= 0) return true;
+        }
+      }
+    }
+    return false;
   }
 
   Future<BackupRecord?> ensureAutomaticBackup({
@@ -118,13 +169,7 @@ class BackupService {
     if (databaseSchema < appSchemaVersion) {
       return createBackup(BackupKind.beforeUpgrade, now: current);
     }
-    final recent = (await list()).where(
-      (item) =>
-          item.kind == BackupKind.automatic &&
-          item.schemaVersion >= 0 &&
-          current.difference(item.createdAt) < const Duration(hours: 24),
-    );
-    if (recent.isNotEmpty) return null;
+    if (await _hasRecentAutomaticBackup(current)) return null;
     return createBackup(BackupKind.automatic, now: current);
   }
 

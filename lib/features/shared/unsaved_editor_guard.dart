@@ -2,6 +2,62 @@ import 'app_motion.dart';
 
 import 'package:flutter/material.dart';
 
+enum UnsavedEditorDecision { save, discard }
+
+Future<UnsavedEditorDecision?> askUnsavedEditorDecision(
+  BuildContext context, {
+  required bool canSave,
+  String message = 'Your changes have not been saved.',
+}) => showDialog<UnsavedEditorDecision>(
+  context: context,
+  animationStyle: AppMotion.style(context),
+  builder: (context) => AlertDialog(
+    title: const Text('Discard unsaved changes?'),
+    content: Text(message),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Keep editing'),
+      ),
+      if (canSave)
+        TextButton(
+          onPressed: () =>
+              Navigator.pop(context, UnsavedEditorDecision.discard),
+          child: const Text('Discard changes'),
+        )
+      else
+        FilledButton(
+          onPressed: () =>
+              Navigator.pop(context, UnsavedEditorDecision.discard),
+          child: const Text('Discard changes'),
+        ),
+      if (canSave)
+        FilledButton(
+          onPressed: () => Navigator.pop(context, UnsavedEditorDecision.save),
+          child: const Text('Save'),
+        ),
+    ],
+  ),
+);
+
+/// Lightweight coordination controller for editor navigation and unsaved leave confirmation.
+class EditorNavigationController {
+  Future<bool> Function()? _confirmLeave;
+  bool get isAttached => _confirmLeave != null;
+
+  void attach(Future<bool> Function() handler) {
+    _confirmLeave = handler;
+  }
+
+  void detach(Future<bool> Function() handler) {
+    if (_confirmLeave == handler) {
+      _confirmLeave = null;
+    }
+  }
+
+  Future<bool> confirmLeave() async => await _confirmLeave?.call() ?? true;
+}
+
 /// Keeps platform Back and the visible close action on the same draft boundary.
 class UnsavedEditorGuard extends StatefulWidget {
   const UnsavedEditorGuard({
@@ -10,10 +66,12 @@ class UnsavedEditorGuard extends StatefulWidget {
     required this.dirty,
     required this.busy,
     required this.onClose,
+    this.onSave,
     required this.child,
   });
   final bool enabled, dirty, busy;
   final VoidCallback onClose;
+  final Future<bool> Function()? onSave;
   final Widget child;
   @override
   State<UnsavedEditorGuard> createState() => UnsavedEditorGuardState();
@@ -21,36 +79,33 @@ class UnsavedEditorGuard extends StatefulWidget {
 
 class UnsavedEditorGuardState extends State<UnsavedEditorGuard> {
   bool permitting = false, confirming = false;
+  Future<bool> confirmLeave({bool? dirty}) async {
+    if (confirming || widget.busy) return false;
+    if (!widget.enabled || !(dirty ?? widget.dirty)) return true;
+    confirming = true;
+    try {
+      final decision = await askUnsavedEditorDecision(
+        context,
+        canSave: widget.onSave != null,
+      );
+      if (!mounted) return false;
+      return switch (decision) {
+        UnsavedEditorDecision.discard => true,
+        UnsavedEditorDecision.save => await widget.onSave!(),
+        null => false,
+      };
+    } finally {
+      confirming = false;
+    }
+  }
+
   Future<void> close({bool saved = false}) async {
-    if (confirming || widget.busy && !saved) return;
+    if (permitting || confirming || (!saved && !await confirmLeave())) return;
+    if (!mounted) return;
     if (!widget.enabled) {
       widget.onClose();
       return;
     }
-    if (!saved && widget.dirty) {
-      confirming = true;
-      final discard = await showDialog<bool>(
-        context: context,
-        animationStyle: AppMotion.style(context),
-        builder: (context) => AlertDialog(
-          title: const Text('Discard unsaved changes?'),
-          content: const Text('Your changes have not been saved.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Keep editing'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Discard changes'),
-            ),
-          ],
-        ),
-      );
-      confirming = false;
-      if (discard != true || !mounted) return;
-    }
-    if (!mounted) return;
     setState(() => permitting = true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) widget.onClose();

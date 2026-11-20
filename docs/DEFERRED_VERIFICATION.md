@@ -1,5 +1,83 @@
 # Deferred Verification Backlog
 
+## Beta 25 Architecture Program Release Acceptance (2026-11-20)
+
+- **Level 3 pending.** Broader cross-platform manual matrix across non-primary host configurations.
+- **Level 4 pending.** Physical Windows 11 hardware acceptance (touch, DPI scaling, multi-monitor window management, shortcut navigation); physical Android device acceptance (TalkBack accessibility, Share sheet receiver, process death/recreation); real two-client Google Drive OAuth synchronization.
+
+## Beta 24 Windows CI correction acceptance (2026-11-19)
+
+- **Level 3 pending.** Run the complete Windows CI workflow once Gemini integrates `fix/todorbit-beta24-windows-ci`.
+- **Level 4 pending.** Verify the integrated Windows installer and portable artifacts through the existing package and update gates. Exercise the view-help menu with a physical Windows keyboard and the shared icon picker with the Android keyboard at large text. [Scoped host evidence](BETA24_WINDOWS_CI_FAILURE_FIXES.md).
+
+## Beta 24 release-blocker patch acceptance (2026-11-18)
+
+Before release, exercise real Android sharing with two external providers,
+multiple-file grants, Flutter inbox deletion during import, a process kill and
+restart, and the continued availability of managed task attachments. Use an
+isolated Android profile. Verify desktop keyboard/focus on physical Windows
+and run exact-candidate package/update, real Drive and 16 KiB runtime gates.
+See the [Codex Beta 24 implementation receipt](BETA24_CODEX_RELEASE_BLOCKER_FIXES_2026_11_18.md) for executed checks and the legacy Sync limitation.
+
+## Prompt 4 Smart Reschedule acceptance (2026-11-17)
+
+**L3/L4 PENDING; scoped Level1/2 host checks PASS.**
+[Receipt](PROMPT4_SMART_RESCHEDULE_2026_11_17.md) and [source manifest](PROMPT4_SMART_RESCHEDULE_2026_11_17_SOURCE.json).
+Before release, use isolated profiles and verify Windows keyboard/focus/Escape,
+resize/scroll/expansion at actual DPI, Android production menu/per-task entry,
+Back/IME/touch/TalkBack, narrow landscape and lifecycle interruption. Observe
+actual alarms/reminder reprojection/delivery after occurrence/session Apply/undo
+and timezone/DST transitions. Broad host integration, packaging/update and device
+acceptance remain separate gates. Reuse unrelated valid packaging/cloud evidence
+only for matching artifacts; no new real OAuth requirement is introduced by this
+UI change. No failed critical test deferred: 64 scoped host checks pass.
+No live app/DTD exists; native launch prerequisite is blocked by Windows symlink
+support. Offscreen font/theme captures do not close physical acceptance. Trigger
+independent review/integration with Prompt5; do not treat this as publication or
+permission to modify Stable. No Prompt5/6 work started.
+
+
+## Integrated Prompts 2/3 acceptance - 2026-11-17
+
+Target: final checkpoint on `integration/ui-reliability-p2-p3`; [source identity and executed gates](INTEGRATION_P2_P3_2026_11_17.md).
+Owner: next integration/release reviewer. Level 1/2 selected integration gates PASS
+(122 tests, full analysis); no critical failure is being deferred here.
+
+- Level 3 PENDING: wider application combinations, full RTL/theme/assistive-tech
+  matrix and measured performance profiling. Current source has focused narrow,
+  light/dark/large-text/IME and cache-identity evidence, not full runtime coverage.
+- Live debug BLOCKED: no DTD/debug app; requested hot reload had no target.
+  `flutter pub get --offline` resolves pinned packages but native plugin setup
+  reports missing Windows symlink support. Use an authorized isolated profile
+  after tooling is available; do not use personal or implementation profiles.
+- Level 4 PENDING: physical Windows pointer/keyboard/resize/DPI/native focus;
+  Android device Back/TalkBack/IME/background/kill/restart and actual month-edge
+  navigation under sync. Verify timer identity/work accounting and route retention.
+- Level 4 PENDING before release: exact-candidate native/installer/Android packaging,
+  install/update, 16-KiB runtime, actual alarms and real OAuth/Drive journeys.
+  Schema29/Stable unchanged; no push/publication or Prompt4/5 work was performed.
+
+
+## Prompt 2 task timer/composition acceptance — 2026-11-17
+
+Target: `feature/todorbit-task-ux`, base `5803e52` + [source manifest](PROMPT2_TASK_UX_2026_11_17_SOURCE.json).
+Owner: next Codex integration/release reviewer. [Executed Level 1/2 evidence](PROMPT2_TASK_UX_2026_11_17.md)
+is complete for changed critical boundaries; the items below are additional
+acceptance, not deferred critical unit/persistence verification.
+
+- Level 3 PENDING: wider shell integration, new compact/menu controls at 2x text,
+  light/dark, RTL, long labels, keyboard/semantics permutations.
+- Live debug BLOCKED: no DTD/debug app; requested hot reload had no target.
+  Flutter dependency setup reports Windows native plugin symlink support missing;
+  use an authorized isolated profile after Developer Mode/tooling is available.
+- Level 4 PENDING: Windows physical pointer/keyboard/DPI, Android physical Back,
+  TalkBack/background/kill/restart/checkpoint review. Confirm same-session identity,
+  one work interval, cancellation route retention, finish/recovery and task/status/
+  plan separation. Process-local focus phase is intentionally not restart-persisted.
+- Level 4 PENDING before any release: exact-candidate packaging/install/update,
+  Android 16-KiB runtime and existing real-service/release gates. No beta authorized.
+
+
 This backlog tracks unperformed Level 3 regression and Level 4 acceptance.
 [AI Review Queue](AI_REVIEW_QUEUE.md) tracks unreviewed code independently.
 An approved code review or empty queue does not establish platform/release readiness.

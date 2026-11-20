@@ -101,9 +101,11 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
         final rawCellHeight = (bounds.maxHeight - 40) / rowCount;
         final cellHeight = rawCellHeight.clamp(90.0, double.infinity);
         final isOverflowing = (cellHeight * rowCount) > (bounds.maxHeight - 40);
+        final cellWidth = ((bounds.maxWidth - 20) / 7).clamp(30.0, double.infinity);
+        final textScale = MediaQuery.textScalerOf(context).scale(1);
         final previewCount = monthEntryCapacity(
-          rawCellHeight,
-          MediaQuery.textScalerOf(context).scale(1),
+          cellHeight,
+          textScale,
         );
 
         return Column(
@@ -192,61 +194,73 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
                                 width: (isHoverTarget || isSelected) ? 1.5 : 1.0,
                               ),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
+                            child: Builder(
+                              builder: (context) {
+                                final visibleLimit = previewCount.clamp(1, 30);
+                                final showOverflow = items.length > visibleLimit;
+                                final visibleCount = showOverflow
+                                    ? (visibleLimit > 1 ? visibleLimit - 1 : 1)
+                                    : items.length;
+                                final overflowCount = items.length - visibleCount;
+
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      '${date.day}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: inMonth
-                                            ? (isToday ? scheme.primary : scheme.onSurface)
-                                            : scheme.outline,
+                                    Row(
+                                      children: [
+                                        Text(
+                                          '${date.day}',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: inMonth
+                                                ? (isToday ? scheme.primary : scheme.onSurface)
+                                                : scheme.outline,
+                                          ),
+                                        ),
+                                        if (isToday)
+                                          Container(
+                                            margin: const EdgeInsets.only(left: 4),
+                                            width: 5,
+                                            height: 5,
+                                            decoration: BoxDecoration(
+                                              color: scheme.primary,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Expanded(
+                                      child: ListView(
+                                        physics: const NeverScrollableScrollPhysics(),
+                                        children: [
+                                          for (final item in items.take(visibleCount))
+                                            _buildMonthItem(item, scheme, date, cellWidth),
+                                          if (showOverflow && overflowCount > 0)
+                                            InkWell(
+                                              onTap: () => widget.onDayTap(date),
+                                              borderRadius: BorderRadius.circular(4),
+                                              child: Padding(
+                                                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                                                child: Text(
+                                                  cellWidth < 75 ? '+$overflowCount' : '+$overflowCount more',
+                                                  style: TextStyle(
+                                                    fontSize: cellWidth < 75 ? 9.5 : 10.0,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: scheme.primary,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
                                       ),
                                     ),
-                                    if (isToday)
-                                      Container(
-                                        margin: const EdgeInsets.only(left: 4),
-                                        width: 5,
-                                        height: 5,
-                                        decoration: BoxDecoration(
-                                          color: scheme.primary,
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
                                   ],
-                                ),
-                                const SizedBox(height: 2),
-                                Expanded(
-                                  child: ListView(
-                                    physics: const NeverScrollableScrollPhysics(),
-                                    children: [
-                                      for (final item in items.take(
-                                        items.length > previewCount
-                                            ? (previewCount - 1).clamp(0, 30)
-                                            : previewCount,
-                                      ))
-                                        _buildMonthItem(item, scheme, date),
-                                      if (items.length > previewCount)
-                                        TextButton(
-                                          style: TextButton.styleFrom(
-                                            padding: EdgeInsets.zero,
-                                            minimumSize: const Size(0, 20),
-                                            alignment: Alignment.centerLeft,
-                                          ),
-                                          onPressed: () => widget.onDayTap(date),
-                                          child: Text(
-                                            '+${items.length - (previewCount - 1).clamp(0, 30)} more',
-                                            style: const TextStyle(fontSize: 10),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                                );
+                              },
                             ),
                           ),
                         ),
@@ -262,81 +276,97 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
     );
   }
 
-  Widget _buildMonthItem(CalendarItem item, ColorScheme scheme, DateTime date) {
+  Widget _buildMonthItem(
+    CalendarItem item,
+    ColorScheme scheme,
+    DateTime date,
+    double cellWidth,
+  ) {
     final accent = widget.colorResolver != null
         ? widget.colorResolver!(item)
         : (item.colorValue != null ? Color(item.colorValue!) : scheme.primary);
 
     final hasParent = item.parentTitle != null;
     final textScale = MediaQuery.textScalerOf(context).scale(1);
-    final cardHeight = (hasParent ? 34.0 : 28.0) * textScale.clamp(1.0, 1.4);
+    final isNarrow = cellWidth < 85;
+    final isVeryNarrow = cellWidth < 68;
+    final cardHeight = (hasParent && !isNarrow ? 34.0 : 26.0) * textScale.clamp(1.0, 1.4);
 
-    final itemWidget = Container(
-      width: double.infinity,
-      height: cardHeight,
-      margin: const EdgeInsets.only(bottom: 3),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: Color.lerp(scheme.surface, accent, item.isCancelled ? 0.12 : 0.18),
-        border: Border(
-          left: BorderSide(
-            color: accent,
-            width: 3.0,
-          ),
+    final itemWidget = Tooltip(
+      message: '${item.title}${item.parentTitle != null ? ' (${item.parentTitle})' : ''}',
+      waitDuration: const Duration(milliseconds: 400),
+      child: Container(
+        width: double.infinity,
+        height: cardHeight,
+        margin: const EdgeInsets.only(bottom: 2),
+        padding: EdgeInsets.symmetric(
+          horizontal: isNarrow ? 3 : 6,
+          vertical: 1.5,
         ),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            item.kind == CalendarItemKind.event
-                ? Icons.event_outlined
-                : item.kind == CalendarItemKind.session
-                ? Icons.schedule_outlined
-                : Icons.task_alt_outlined,
-            size: 12,
-            color: scheme.onSurfaceVariant,
+        decoration: BoxDecoration(
+          color: Color.lerp(scheme.surface, accent, item.isCancelled ? 0.12 : 0.18),
+          border: Border(
+            left: BorderSide(
+              color: accent,
+              width: isNarrow ? 2.5 : 3.0,
+            ),
           ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: hasParent
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        item.parentTitle!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Row(
+          children: [
+            if (!isVeryNarrow) ...[
+              Icon(
+                item.kind == CalendarItemKind.event
+                    ? Icons.event_outlined
+                    : item.kind == CalendarItemKind.session
+                    ? Icons.schedule_outlined
+                    : Icons.task_alt_outlined,
+                size: isNarrow ? 10 : 12,
+                color: scheme.onSurfaceVariant,
+              ),
+              SizedBox(width: isNarrow ? 2 : 4),
+            ],
+            Expanded(
+              child: hasParent && !isNarrow
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          item.parentTitle!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                      Text(
-                        item.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: scheme.onSurfaceVariant,
+                        Text(
+                          item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: scheme.onSurfaceVariant,
+                          ),
                         ),
+                      ],
+                    )
+                  : Text(
+                      item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: isNarrow ? 10 : 11,
+                        fontWeight: FontWeight.w500,
+                        color: item.isCancelled ? scheme.outline : scheme.onSurface,
+                        decoration: item.isCancelled ? TextDecoration.lineThrough : null,
                       ),
-                    ],
-                  )
-                : Text(
-                    item.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: item.isCancelled ? scheme.outline : scheme.onSurface,
-                      decoration: item.isCancelled ? TextDecoration.lineThrough : null,
                     ),
-                  ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
 

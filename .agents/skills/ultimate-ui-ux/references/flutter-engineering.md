@@ -266,3 +266,46 @@ Every UI modification, new component, or bugfix must pass these 16 explicit qual
 16. **Targeted Widget & Integration Tests**:
     - Every UI change must be accompanied by focused widget tests exercising responsive constraints, text scaling (1.0× vs 1.5×/2.0×), and keyboard insets where applicable.
     - Prioritize fast behavioral widget tests over brittle full-screen golden tests.
+17. **Calendar Grid Responsive Capacity & Discoverability**:
+    - Month grid cells on narrow desktop or mobile viewports must never hide scheduled events or render empty space when items exist. Compute cell item capacity using clamped cell height (>=90px) and width; always guarantee at least the first item or a clearly clickable `+N` or `+N more` count affordance (`InkWell`) that opens day details on tap without causing `RenderFlex` overflow.
+    - Memoize month/week projections by date, controller identity and its notification `stateRevision`. Filter getters may allocate new lists, so using their identity defeats cache reuse. Verify stable resize reuse and invalidation after edits, deletion, completion, filters, category colors and external refresh; no profiler claim follows from an identity test.
+18. **Color Picker Scroll Controller Lifecycle & Steady Offset**:
+    - Dialogs with scrollable color selection palettes (`AlertDialog(scrollable: false)`) must manage a dedicated `ScrollController` in `State` with a stable `PageStorageKey` and dispose it cleanly.
+    - Avoid thrashing widget keys (such as `ValueKey(pickerType)`) or relying on unmanaged `SingleChildScrollView` inside `AlertDialog(scrollable: true)`, which resets the scroll offset to 0 on color updates, chip taps, or hex typing.
+19. **Calendar Month Navigation Prefetching & Race Guards**:
+    - Prefetch exact previous/current/next civil months: `DateTime(year, month - 1, 1)` through `DateTime(year, month + 2, 0)`, inclusive. Fixed -30/+60 day offsets miss boundaries. Keep the repository span <=93 days and test leap/year transitions plus events on both edges.
+    - A widget navigation revision protects feedback only. Serialize/coalesce controller window loads to the latest request, skip unchanged same-month requests, and retain the confirmed window on failure. Test blocked overlapping requests and retry behavior.
+20. **One Detail Presentation Preference**:
+    - Explicit `TaskViewPreferences.detailPresentation` controls Side Panel (default) versus optional Full Page. Do not OR an independent theme flag into this choice: a stale theme value would prevent users from returning to Side Panel. Preserve theme metadata without making it a second route authority.
+
+
+## Task timer and composition contracts (Prompt 2)
+
+- Route all task timer entry through `openTaskTimer` on Windows and Android.
+  Same-task running/paused/recovered sessions reopen by identity; reopening never
+  resumes, adopts ownership, changes task status, or creates a work interval.
+  Other-task switches require an explicit reviewed choice and atomic ledger switch.
+- Repository time entries own recorded work; task status and planned sessions are
+  independent. Process-local countdown/Pomodoro state is not a durable work ledger.
+  Compact controls must freeze remote/recovered totals at the confirmed checkpoint.
+- Keep `New checklist` (group) distinct from `Add item` (within that group) and
+  ungrouped inline items. Use header menus and confirm removals. Subtasks support
+  one level; child details and resource dialogs must explain the limit.
+- Planned-session row deletion must use the guarded upcoming-session transaction
+  and existing Trash restoration. Never expose it for completed/started sessions.
+
+## Scheduling review contracts (Prompt 4)
+
+- Group parents/children and recurring families for presentation, while retaining
+  independent task UUID selection. A context-only parent or series header must
+  never authorize writes to children, other generations or the complete series.
+- Invalidate a preview on every scheduling input change, including availability.
+  Keep blocking eligibility issues even when the affected item emits no change;
+  filtering issues to emitted change IDs can accidentally enable Apply.
+- Group recurring collisions by family with distinct occurrence counts and an
+  expandable date breakdown. Offer only supported resolutions. If skipping
+  cancels an occurrence outside scheduling undo, offer leaving it unchanged
+  instead; explain the restriction without a disabled Combine selector.
+- Nested expansion controls need their own stable PageStorageKey, distinct from
+  scroll containers. Otherwise an expansion boolean can read a stored scroll
+  offset and crash only when lazily remounted after scrolling.

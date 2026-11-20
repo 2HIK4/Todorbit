@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.0.19-beta.25+48 - Modular Architecture & Maintainability Program (ARCH-02 through ARCH-09)
+
+- ARCH-02 Platform Resource Dialog Refactoring: Relocated `WindowsResourceDialog` to `lib/platform/windows_resource_dialog.dart`, decoupling `workspace`, `contributors`, `settings`, and `support` features from platform UI and eliminating 4 cross-feature import cycles.
+- ARCH-03 Settings & Shared Layer Decoupling: Refactored `SyncStatusButton` to eliminate circular dependency between `features/shared` and `features/settings`, routing sync dialog actions via caller callbacks.
+- ARCH-04 Domain & Data Boundary Enforcement: Hardened domain contracts, guaranteeing unidirectional dependencies where domain models and business logic never depend on Drift or SQLite persistence.
+- ARCH-05 Controller Interface Facades & Refresh Mappings: Introduced granular interface contracts and lifecycle refresh observers in `AppController`, isolating view controllers from concrete controller internals.
+- ARCH-06 State Encapsulation & Rebuild Optimization: Protected internal mutable state exposed by Riverpod providers using unmodifiable collection wrappers, granular selector equality, and isolated timer ticker state.
+- ARCH-07 Repository Transaction Encapsulation & Data Safety: Wrapped all multi-record mutations in atomic Drift transactions with automatic rollback on error; verified CAS revision invariants and sync journal causal sequence protection.
+- ARCH-08 Architecture Boundary Test Suite: Enforced 39 automated architecture and layer dependency rules in `tools/test_architecture_boundaries.py` integrated into CI pipelines.
+- Zero Database Schema Changes: Schema remains strictly at 29; zero Drift migrations; WAL mode and `PRAGMA synchronous = FULL` preserved; zero data loss across Windows and Android platforms.
+
+## 1.0.19-beta.24+47 - UI & Reliability Improvement Program: Search, Reschedule, Shared Inbox, and Detail Polish
+
+- Mixed-Version Sync & Rollback Compatibility: Treat `detailPresentation` as a device-local preference in `deviceLocalThemeFields`, prune legacy rows from `portable_preferences` SQLite table on open, and exclude it from cloud synchronization so older nodes (Beta 23) maintain complete interoperability.
+- Android Shared Inbox Multi-File & Security Hardening: Synchronize manifest updates during multi-file share receiver ingestion, accumulate batch entries to prevent overwriting earlier files, provide atomic publish fallback on rename failure, and enforce strict content scheme validation rejecting non-content schemes and self-package URI paths.
+- Event Editor State Reuse & Navigation Protection: Key `EventEditor` instances by event ID, nominal date, and revision; implement `didUpdateWidget` and `confirmLeave()` unsaved edit protection when switching between events or navigating away.
+- Full Page Task Details: Present `TaskEditor` full page on wide desktop windows when creating new tasks, and guarantee search result selection properly loads task details without modal interference.
+- Smart Reschedule Collision Detection: Prevent split sessions from colliding with fixed events (`fixedEventCollision`) or existing scheduled sessions (`sessionCollision`).
+- Calendar Navigation & Date Preservation: Preserve user-selected calendar dates across event edit and close transitions via `onDateSelected`.
+- Responsive Spacing & Geometry: Increase parent subtask expander pill trailing margin to prevent overlapping the task timer button, and add active timer status badges for child tasks.
+- Pointer & Lifecycle Safety: Enhance `PointerCancellationScope` to record mouse device kinds and dispatch proper `PointerExitEvent` and `PointerRemovedEvent` on window deactivation.
+- Task Details Active Duration: Run a lightweight 1-second ticker in `TaskDetailsView` to update the recorded Work Log session duration while a timer is active.
+- Schema 29 forward compatibility, WAL `PRAGMA synchronous = FULL`, and zero data loss preserved across Windows and Android platforms.
+
 ## 1.0.19-beta.23+46 - phantom sync conflict resolution, Focus timer rebuild optimization, and TaskDetails lifecycle safety
 
 - Eliminate phantom sync conflict badges by unifying status conflict counts with causal projection in `_readSyncResolution` via `readSyncSnapshot` (no unwanted database mutations or file watcher loops).

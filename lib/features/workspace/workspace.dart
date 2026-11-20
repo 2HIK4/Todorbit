@@ -1,4 +1,6 @@
-import '../../domain/focus_session.dart';
+import '../time_tracking/compact_task_timer.dart';
+import '../../domain/time_tracking.dart';
+import '../time_tracking/task_timer_intent.dart';
 import '../../domain/alarm_plan.dart';
 import '../shared/alarm_indicator.dart';
 import '../shared/app_motion.dart';
@@ -27,7 +29,6 @@ import '../calendar/event_editor.dart';
 import '../calendar/session_editor.dart';
 import '../../domain/widget_configuration.dart';
 import '../../domain/recurrence.dart';
-import '../../domain/time_tracking.dart';
 import '../../domain/saved_views.dart';
 import '../../domain/hotkeys.dart';
 import '../branding/brand_mark.dart';
@@ -49,6 +50,8 @@ import '../support/support_button.dart';
 import '../settings/theme_dialog.dart';
 import '../settings/settings_hub_dialog.dart';
 import '../settings/widget_settings_page.dart';
+import '../settings/sync_conflicts_dialog.dart';
+import '../settings/sync_settings_page.dart';
 import '../scheduling/smart_reschedule.dart';
 import '../shared/icon_picker.dart';
 import '../shared/event_color_picker.dart';
@@ -147,6 +150,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   final _widgetSettingsController = WidgetSettingsController();
   NavigationRequest? pendingNavigation;
   DateTime? navigationDay;
+  DateTime? _lastCalendarDate;
   bool navigating = false;
   void receiveNavigation(String payload) {
     try {
@@ -163,6 +167,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   bool get canOpenNavigation =>
       !creating &&
+      !changingEditor &&
+      _selectedEvent == null &&
       ref.read(appControllerProvider).selectedTask == null &&
       ModalRoute.of(context)?.isCurrent == true;
   bool deferIfEditing(NavigationRequest request) {
@@ -174,11 +180,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   Future<void> deliverNavigation() async {
     final request = pendingNavigation;
     final controller = ref.read(appControllerProvider);
-    if (request == null ||
-        navigating ||
-        creating ||
-        controller.selectedTask != null ||
-        ModalRoute.of(context)?.isCurrent != true) {
+    if (request == null || navigating || !canOpenNavigation) {
       return;
     }
     navigating = true;
@@ -194,8 +196,6 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         controller.select(request.id);
       } else {
         final day = DateTime.parse(request.day ?? localDate(DateTime.now()));
-        setState(() => navigationDay = day);
-        controller.navigate(WorkspaceView.calendar);
         Widget editor;
         if (request.kind == 'event') {
           final events = await controller.repository.eventOccurrences(
@@ -215,6 +215,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           }
           if (!mounted) return;
           editor = EventEditor(
+            key: ValueKey((event.id, event.nominalDate ?? '', editorRevision)),
             protectUnsavedEdits: true,
             event: event,
             initialDay: day,
@@ -235,6 +236,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           );
         }
         if (!mounted || deferIfEditing(request)) return;
+        setState(() {
+          navigationDay = DateUtils.isSameDay(day, _lastCalendarDate)
+              ? null
+              : day;
+        });
+        controller.navigate(WorkspaceView.calendar);
         await showDialog<void>(
           context: context,
           animationStyle: AppMotion.style(context),
@@ -268,6 +275,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   FixedEvent? _selectedEvent;
 
   void _openFocusWorkspace(String taskId) {
+    ref.read(appControllerProvider).select(null);
     setState(() {
       _focusWorkspaceTaskId = taskId;
       _viewingTaskDetails = false;
@@ -291,23 +299,31 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     );
   }
 
-  Future<bool> _prepareEditorChange() async {
+  Future<bool> _withEditorNavigation(FutureOr<void> Function() navigate) async {
     if (changingEditor) return false;
     changingEditor = true;
     try {
       if (!await editorNavigation.confirmLeave() || !mounted) return false;
-      setState(() {
-        creating = false;
-        _viewingTaskDetails = false;
-        _viewingEventDetails = false;
-        _selectedEvent = null;
-        _focusWorkspaceTaskId = null;
-        editorRevision++;
-      });
-      return true;
+      await navigate();
+      return mounted;
     } finally {
       changingEditor = false;
     }
+  }
+
+  Future<bool> _prepareEditorChange() => _withEditorNavigation(() {
+    setState(() {
+      creating = false;
+      _viewingTaskDetails = false;
+      _viewingEventDetails = false;
+      _selectedEvent = null;
+      _focusWorkspaceTaskId = null;
+      editorRevision++;
+    });
+  });
+
+  Future<void> _requestCloseEditor() async {
+    await _withEditorNavigation(_closeEditor);
   }
 
   Future<void> _navigate(WorkspaceView view, {String? id}) async {
@@ -316,9 +332,21 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     }
   }
 
-  Future<void> _openTask(LifeTask task, bool wide) async {
+  Future<void> _openTask(
+    LifeTask task,
+    bool wide, {
+    bool navigate = false,
+    bool skipConfirm = false,
+  }) async {
     final controller = ref.read(appControllerProvider);
-    if (!await _prepareEditorChange() || !mounted) return;
+    if (!skipConfirm) {
+      if (!await _prepareEditorChange() || !mounted) return;
+    }
+    if (navigate) {
+      controller.navigate(
+        task.isOpen ? WorkspaceView.all : WorkspaceView.completed,
+      );
+    }
     final useFullPage = controller.isFullPageDetails;
     controller.select(task.id);
     setState(() {
@@ -332,7 +360,6 @@ class _WorkspaceState extends ConsumerState<Workspace> {
 
   DateTime? newTaskInitialDate;
   final nativeWidget = NativeWidgetService();
-  Timer? _clock;
 
   @override
   void initState() {
@@ -428,11 +455,6 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         }
       });
     }
-    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && ref.read(appControllerProvider).activeTimer != null) {
-        setState(() {});
-      }
-    });
   }
 
   Future<void> _openWidgetSettings(DesktopWidgetKind kind) async {
@@ -477,7 +499,6 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     categoryDisclosure.dispose();
     _widgetSettingsController.dispose();
     HardwareKeyboard.instance.removeHandler(_handleHotkey);
-    _clock?.cancel();
     if (Platform.isWindows) _activationChannel.setMethodCallHandler(null);
     super.dispose();
   }
@@ -551,6 +572,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     ref.read(appControllerProvider).select(null);
     setState(() {
       creating = false;
+      newTaskInitialDate = null;
       _viewingTaskDetails = false;
       _viewingEventDetails = false;
       _selectedEvent = null;
@@ -604,6 +626,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     String title,
     String message, {
     String confirmLabel = 'Delete',
+    bool isDestructive = true,
   }) async {
     return await showDialog<bool>(
           context: context,
@@ -617,6 +640,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 child: const Text('Cancel'),
               ),
               FilledButton(
+                style: isDestructive
+                    ? FilledButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.error,
+                        foregroundColor: Theme.of(context).colorScheme.onError,
+                      )
+                    : null,
                 onPressed: () => Navigator.pop(context, true),
                 child: Text(confirmLabel),
               ),
@@ -655,8 +684,14 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     builder: (_) => const ScheduleHistoryDialog(),
   );
 
-  Future<void> _openEventDetails(FixedEvent event) async {
-    if (!await _prepareEditorChange() || !mounted) return;
+  Future<void> _openEventDetails(
+    FixedEvent event, {
+    bool skipConfirm = false,
+  }) async {
+    if (!skipConfirm) {
+      if (!await _prepareEditorChange() || !mounted) return;
+    }
+    _lastCalendarDate = event.startsAt.toLocal();
     final controller = ref.read(appControllerProvider);
     final useFullPage = controller.isFullPageDetails;
     controller.select(null);
@@ -669,14 +704,19 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     });
   }
 
-  Future<void> _showSearch() => showDialog<void>(
-    context: context,
-    animationStyle: AppMotion.style(context),
-    builder: (_) => QuickSearchDialog(
-      beforeNavigate: _prepareEditorChange,
-      onEventTap: _openEventDetails,
-    ),
-  );
+  Future<void> _showSearch([bool wide = true]) async {
+    if (changingEditor) return;
+    await showDialog<void>(
+      context: context,
+      animationStyle: AppMotion.style(context),
+      builder: (_) => QuickSearchDialog(
+        beforeNavigate: _prepareEditorChange,
+        onEventTap: (event) => _openEventDetails(event, skipConfirm: true),
+        onTaskTap: (task) =>
+            _openTask(task, wide, navigate: true, skipConfirm: true),
+      ),
+    );
+  }
 
   Future<void> _showSequences() => showDialog<void>(
     context: context,
@@ -730,14 +770,22 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     builder: (_) => const ArchiveTrashDialog(),
   );
 
-  Future<void> _showAdvancedSearch([SavedView? savedView]) => showDialog<void>(
-    context: context,
-    animationStyle: AppMotion.style(context),
-    builder: (_) => AdvancedSearchDialog(
-      savedView: savedView,
-      beforeNavigate: _prepareEditorChange,
-    ),
-  );
+  Future<void> _showAdvancedSearch([
+    SavedView? savedView,
+    bool wide = true,
+  ]) async {
+    if (changingEditor) return;
+    await showDialog<void>(
+      context: context,
+      animationStyle: AppMotion.style(context),
+      builder: (_) => AdvancedSearchDialog(
+        savedView: savedView,
+        beforeNavigate: _prepareEditorChange,
+        onTaskTap: (task) =>
+            _openTask(task, wide, navigate: true, skipConfirm: true),
+      ),
+    );
+  }
 
   Future<void> _deleteSavedView(SavedView savedView) async {
     if (await _confirm(
@@ -751,7 +799,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   }
 
   Future<void> _showActiveTimer(String taskId) async {
-    _openFocusWorkspace(taskId);
+    await _withEditorNavigation(() => _openFocusWorkspace(taskId));
   }
 
   Future<void> _changeIcon(String kind, String id) async {
@@ -764,53 +812,14 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   }
 
   Future<void> _quickStart(LifeTask task) async {
-    final choice = await showDialog<String>(
-      context: context,
-      animationStyle: AppMotion.style(context),
-      builder: (context) => AlertDialog(
-        title: Text(
-          task.status == TaskStatus.inProgress
-              ? 'Work on ${task.title}'
-              : 'Start ${task.title}',
-        ),
-        content: const Text(
-          'Start Task changes its status only. '
-          'Focus Session starts the stopwatch and records actual work.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          if (task.status == TaskStatus.inProgress)
-            OutlinedButton(
-              onPressed: () => Navigator.pop(context, 'end'),
-              child: const Text('End work'),
-            )
-          else
-            OutlinedButton(
-              onPressed: () => Navigator.pop(context, 'start'),
-              child: const Text('Start Task'),
-            ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, 'focus'),
-            child: const Text('Start Focus Session'),
-          ),
-        ],
+    await _withEditorNavigation(
+      () => openTaskTimer(
+        context,
+        ref.read(appControllerProvider),
+        task.id,
+        open: _openFocusWorkspace,
       ),
     );
-    if (!mounted || choice == null) return;
-    final controller = ref.read(appControllerProvider);
-    if (choice == 'start') {
-      await _run(() => controller.startTask(task));
-    } else if (choice == 'end') {
-      await _run(() => controller.endTaskWork(task));
-    } else {
-      await _run(() => controller.startFocusTask(task));
-      if (mounted && controller.activeTimer?.taskId == task.id) {
-        _showActiveTimer(task.id);
-      }
-    }
   }
 
   String _scheduleScope(AppController controller) => switch (controller.view) {
@@ -878,18 +887,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         for (final entry in controller.hotkeys.bindings.entries)
           entry.value.activator: () => _runHotkey(entry.key, controller),
         const SingleActivator(LogicalKeyboardKey.escape): () async {
-          if (_viewingTaskDetails || _viewingEventDetails) {
-            _closeEditor();
-            return;
-          }
-          if (_selectedEvent != null) {
-            _closeEditor();
-            return;
-          }
-          if (controller.selectedTask != null || creating) {
-            if (await editorNavigation.confirmLeave() && mounted) {
-              _closeEditor();
-            }
+          if (_viewingTaskDetails ||
+              _viewingEventDetails ||
+              _selectedEvent != null ||
+              controller.selectedTask != null ||
+              creating) {
+            await _requestCloseEditor();
           }
         },
       },
@@ -998,7 +1001,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                                   ],
                                 ),
                                 const SizedBox(width: 4),
-                                SyncStatusButton(allowAutomatic: !editor),
+                                SyncStatusButton(
+                                  allowAutomatic: !editor,
+                                  onOpenSettings: showSyncSettings,
+                                  onOpenConflicts: showSyncConflicts,
+                                ),
                               ],
                             ),
                           ),
@@ -1023,10 +1030,15 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                             ),
                       child: _selectedEvent != null
                           ? EventEditor(
-                              key: ValueKey((_selectedEvent!.id, editorRevision)),
+                              key: ValueKey((
+                                _selectedEvent!.id,
+                                _selectedEvent!.nominalDate ?? '',
+                                editorRevision,
+                              )),
                               event: _selectedEvent!,
                               initialDay: _selectedEvent!.startsAt.toLocal(),
                               protectUnsavedEdits: true,
+                              navigationController: editorNavigation,
                               onClose: _closeEditor,
                             )
                           : TaskEditor(
@@ -1037,7 +1049,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                               )),
                               navigationController: editorNavigation,
                               task: creating ? null : controller.selectedTask,
-                              initialScheduled: creating ? newTaskInitialDate : null,
+                              initialScheduled: creating
+                                  ? newTaskInitialDate
+                                  : null,
                               onSaved: _closeEditor,
                               onCancel: _closeEditor,
                             ),
@@ -1182,10 +1196,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     : (task.isOpen ? 'Active' : 'Completed'),
                 style: const TextStyle(fontSize: 11),
               ),
-              onTap: () {
-                controller.navigate(WorkspaceView.all);
-                _openTask(task, wide);
-              },
+              onTap: () => _openTask(task, wide, navigate: true),
             ),
         ],
       ],
@@ -1200,76 +1211,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (controller.activeTimer case final run?)
-            Card(
-              margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-              color: scheme.surfaceContainer,
-              child: ListTile(
-                dense: true,
-                leading: Icon(
-                  run.needsReview(DateTime.now())
-                      ? Icons.warning_amber_rounded
-                      : Icons.timer_outlined,
-                ),
-                title: Text(
-                  '${formatWorkClock(TimeEntry.distinctDuration(controller.timeEntries.where((entry) => entry.timerRunId == run.id), run.needsReview(DateTime.now()) ? run.lastSeenAt : DateTime.now()))} · ${run.needsReview(DateTime.now())
-                      ? 'Review'
-                      : run.state == TimerState.running
-                      ? 'Running'
-                      : 'Paused'}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                subtitle: Text(
-                  controller.tasks
-                          .where((task) => task.id == run.taskId)
-                          .map((task) => task.title)
-                          .firstOrNull ??
-                      'Deleted task',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                onTap: run.taskId == null
-                    ? null
-                    : () => _showActiveTimer(run.taskId!),
-                trailing: run.needsReview(DateTime.now())
-                    ? null
-                    : PopupMenuButton<String>(
-                        tooltip: 'Timer controls',
-                        onSelected: (value) => _run(
-                          () => value == 'stop'
-                              ? controller.stopTimer()
-                              : controller.focusSessions[run.taskId]?.mode !=
-                                        null &&
-                                    controller
-                                            .focusSessions[run.taskId]
-                                            ?.mode !=
-                                        FocusMode.stopwatch
-                              ? controller.toggleFocus(run.taskId!)
-                              : run.state == TimerState.running
-                              ? controller.pauseTimer()
-                              : controller.resumeTimer(),
-                        ),
-                        itemBuilder: (_) => [
-                          PopupMenuItem(
-                            value: 'toggle',
-                            child: Text(
-                              (controller.focusSessions[run.taskId]?.running ==
-                                          true ||
-                                      run.state == TimerState.running)
-                                  ? 'Pause'
-                                  : 'Resume',
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'stop',
-                            child: Text('Stop'),
-                          ),
-                        ],
-                      ),
-              ),
-            ),
+          WorkspaceActiveTimerBadge(open: _showActiveTimer),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 8, 10),
             child: Row(
@@ -1941,15 +1883,32 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         task: controller.selectedTask!,
         onBack: _closeEditor,
         onEdit: () => _editTaskDialog(controller.selectedTask!),
-        onStartFocus: () => _openFocusWorkspace(controller.selectedTask!.id),
+        onStartFocus: () => _quickStart(controller.selectedTask!),
       );
     }
     if (_viewingEventDetails && _selectedEvent != null) {
       return EventEditor(
+        key: ValueKey((
+          _selectedEvent!.id,
+          _selectedEvent!.nominalDate ?? '',
+          editorRevision,
+        )),
         event: _selectedEvent!,
         initialDay: _selectedEvent!.startsAt.toLocal(),
         protectUnsavedEdits: true,
+        navigationController: editorNavigation,
         onClose: _closeEditor,
+      );
+    }
+    if (controller.isFullPageDetails && creating) {
+      return TaskEditor(
+        protectUnsavedEdits: true,
+        key: ValueKey(('new', editorRevision)),
+        navigationController: editorNavigation,
+        task: null,
+        initialScheduled: newTaskInitialDate,
+        onSaved: _closeEditor,
+        onCancel: _closeEditor,
       );
     }
     if (controller.view == WorkspaceView.habits) {
@@ -1966,12 +1925,16 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     }
     if (controller.view == WorkspaceView.calendar) {
       return CalendarView(
-        key: ValueKey(navigationDay),
-        initialDate: navigationDay,
+        key: const ValueKey('workspace-calendar-view'),
+        initialDate: navigationDay ?? _lastCalendarDate,
+        onDateSelected: (date) {
+          _lastCalendarDate = date;
+          if (DateUtils.isSameDay(date, navigationDay)) navigationDay = null;
+        },
         onAddTask: _newTaskOn,
         onTaskTap: (task) => _openTask(task, wide),
         onEventTap: (event) => _openEventDetails(event),
-        onEscape: _closeEditor,
+        onEscape: _requestCloseEditor,
         onSmartReschedule: () {
           final sessions = controller.sessions
               .where(
@@ -2355,6 +2318,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     items: items,
                     parents: controller.taskParents,
                     row: (task) => _taskRow(controller, task, wide),
+                    subtaskRow: (task) => _subtaskRow(controller, task, wide),
                   );
                 },
               ),
@@ -2496,6 +2460,190 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           }
         },
       ),
+    );
+  }
+
+  Widget _subtaskRow(AppController controller, LifeTask task, bool wide) {
+    final scheme = Theme.of(context).colorScheme;
+    final done = task.status == TaskStatus.completed;
+    final focusActive = controller.activeTimer?.taskId == task.id;
+    final overdue =
+        task.isOpen &&
+        task.deadlineDate != null &&
+        task.deadlineDate!.compareTo(localDate(DateTime.now())) < 0;
+    final isSelected = controller.selectedTaskId == task.id;
+
+    return Material(
+      color: focusActive
+          ? scheme.primaryContainer.withValues(alpha: 0.5)
+          : isSelected
+          ? scheme.secondaryContainer.withValues(alpha: 0.45)
+          : Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => _openTask(task, wide),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            child: Row(
+              children: [
+                Tooltip(
+                  message: done ? 'Reopen subtask' : 'Complete subtask',
+                  child: Checkbox(
+                    value: done,
+                    semanticLabel:
+                        '${done ? 'Reopen' : 'Complete'} ${task.title}',
+                    onChanged: (value) => _run(
+                      () => controller.setComplete(task, value ?? false),
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.subdirectory_arrow_right_rounded,
+                  size: 16,
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        task.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          decoration: done ? TextDecoration.lineThrough : null,
+                          color: done
+                              ? scheme.onSurface.withValues(alpha: 0.55)
+                              : null,
+                        ),
+                      ),
+                      if (task.scheduledDate != null ||
+                          task.deadlineDate != null ||
+                          focusActive ||
+                          task.status == TaskStatus.inProgress)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Wrap(
+                            spacing: 10,
+                            runSpacing: 2,
+                            children: [
+                              if (focusActive ||
+                                  task.status == TaskStatus.inProgress)
+                                Text(
+                                  focusActive
+                                      ? (controller.activeTimer!.state ==
+                                                TimerState.paused
+                                            ? 'Timer paused'
+                                            : 'Timer running')
+                                      : 'In progress',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: scheme.primary,
+                                  ),
+                                ),
+                              if (task.scheduledDate != null)
+                                Text(
+                                  'Plan ${task.scheduledDate}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              if (task.deadlineDate != null)
+                                Text(
+                                  'Due ${task.deadlineDate}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: overdue
+                                        ? scheme.error
+                                        : scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (task.priority >= 2)
+                  Icon(
+                    Icons.flag_outlined,
+                    size: 16,
+                    color: task.priority == 3 ? scheme.error : scheme.primary,
+                  ),
+                if (task.isOpen)
+                  IconButton(
+                    iconSize: 18,
+                    visualDensity: VisualDensity.compact,
+                    tooltip: task.status == TaskStatus.inProgress
+                        ? 'Open task timer'
+                        : 'Start Subtask',
+                    onPressed: () => _quickStart(task),
+                    icon: Icon(
+                      focusActive ? Icons.timer : Icons.play_arrow_outlined,
+                      color: focusActive ? scheme.primary : null,
+                    ),
+                  ),
+                PopupMenuButton<String>(
+                  tooltip: 'Subtask actions',
+                  iconSize: 18,
+                  itemBuilder: (_) => [
+                    PopupMenuItem(value: 'edit', child: const Text('Edit')),
+                    PopupMenuItem(
+                      value: 'complete',
+                      child: Text(done ? 'Reopen' : 'Complete'),
+                    ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: const Text('Move to Trash'),
+                    ),
+                  ],
+                  onSelected: (action) async {
+                    if (action == 'edit') {
+                      await _openTask(task, wide);
+                    } else if (action == 'complete') {
+                      _run(() => controller.setComplete(task, !done));
+                    } else if (action == 'delete') {
+                      if (await _confirm(
+                        'Delete subtask?',
+                        'Move “${task.title}” to Trash? It can be restored with its history.',
+                      )) {
+                        _run(() => controller.deleteTask(task.id));
+                      }
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class WorkspaceActiveTimerBadge extends ConsumerWidget {
+  const WorkspaceActiveTimerBadge({super.key, required this.open});
+
+  final ValueChanged<String> open;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasActiveTimer = ref.watch(
+      appControllerProvider.select((c) => c.activeTimer != null),
+    );
+    if (!hasActiveTimer) return const SizedBox.shrink();
+    return Card(
+      margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+      child: CompactTaskTimer(open: open),
     );
   }
 }

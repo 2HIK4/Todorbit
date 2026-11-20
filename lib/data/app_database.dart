@@ -141,6 +141,10 @@ class AppDatabase extends GeneratedDatabase {
 
   static Future<AppDatabase> openDefault() async {
     final file = await defaultFile();
+    return open(file);
+  }
+
+  static Future<AppDatabase> open(File file) async {
     final database = AppDatabase(
       NativeDatabase.createInBackground(
         file,
@@ -148,6 +152,7 @@ class AppDatabase extends GeneratedDatabase {
           database.execute('PRAGMA busy_timeout = 5000');
           database.execute('PRAGMA foreign_keys = ON');
           database.execute('PRAGMA journal_mode = WAL');
+          database.execute('PRAGMA synchronous = FULL');
         },
       ),
     );
@@ -173,6 +178,8 @@ class AppDatabase extends GeneratedDatabase {
     beforeOpen: (_) => _duringSyncOpening(() async {
       await customStatement('PRAGMA foreign_keys = ON');
       await customStatement('PRAGMA busy_timeout = 5000');
+      // A profile may contain legacy settings with immutable Sync revisions.
+      // Starting the database must never write to their rows or journal.
       _syncGroupingReady = true;
     }),
     onCreate: (migrator) => _duringSyncOpening(

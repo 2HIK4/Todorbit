@@ -1,3 +1,4 @@
+import 'planned_session_delete.dart';
 import '../../data/alarm_device_store.dart';
 import '../shared/app_motion.dart';
 import '../../domain/task_composition.dart';
@@ -32,7 +33,7 @@ import '../shared/icon_picker.dart';
 import '../shared/checklist_entry.dart';
 import '../shared/inline_spelling_controller.dart';
 import '../../domain/recurrence.dart';
-import '../calendar/session_editor.dart';
+import '../scheduling/session_editor.dart';
 import '../shared/app_spacing.dart';
 import '../shared/unsaved_editor_guard.dart';
 import '../time_tracking/time_tracking_dialog.dart';
@@ -50,12 +51,7 @@ class _DraftSubtask {
   DateTime? deadline;
 }
 
-class TaskEditorController {
-  Future<bool> Function()? _confirmLeave;
-  bool get isAttached => _confirmLeave != null;
-
-  Future<bool> confirmLeave() async => await _confirmLeave?.call() ?? true;
-}
+typedef TaskEditorController = EditorNavigationController;
 
 class TaskEditor extends ConsumerStatefulWidget {
   const TaskEditor({
@@ -219,26 +215,21 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     if (saving || savingPrerequisites || confirmingClose) return false;
     if (!canLeave) {
       confirmingClose = true;
-      final discard = await showDialog<bool>(
-        context: context,
-        animationStyle: AppMotion.style(context),
-        builder: (context) => AlertDialog(
-          title: const Text('Discard unsaved changes?'),
-          content: const Text('Your changes to this task have not been saved.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Keep editing'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Discard changes'),
-            ),
-          ],
-        ),
-      );
-      confirmingClose = false;
-      if (discard != true || !mounted) return false;
+      try {
+        final decision = await askUnsavedEditorDecision(
+          context,
+          canSave: true,
+          message: 'Your changes to this task have not been saved.',
+        );
+        if (!mounted) return false;
+        return switch (decision) {
+          UnsavedEditorDecision.discard => true,
+          UnsavedEditorDecision.save => await _save(close: false),
+          null => false,
+        };
+      } finally {
+        confirmingClose = false;
+      }
     }
     return mounted;
   }
@@ -348,7 +339,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         : DateTime.parse(task!.deadlineDate!);
     initialDraft = draftKey;
     initialPrerequisites = prerequisiteKey;
-    widget.navigationController?._confirmLeave = confirmLeave;
+    widget.navigationController?.attach(confirmLeave);
     for (final field in [
       title,
       notes,
@@ -367,10 +358,8 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   void didUpdateWidget(covariant TaskEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.navigationController != widget.navigationController) {
-      if (oldWidget.navigationController?._confirmLeave == confirmLeave) {
-        oldWidget.navigationController?._confirmLeave = null;
-      }
-      widget.navigationController?._confirmLeave = confirmLeave;
+      oldWidget.navigationController?.detach(confirmLeave);
+      widget.navigationController?.attach(confirmLeave);
     }
   }
 
@@ -386,9 +375,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         );
       }
     }
-    if (widget.navigationController?._confirmLeave == confirmLeave) {
-      widget.navigationController?._confirmLeave = null;
-    }
+    widget.navigationController?.detach(confirmLeave);
     title.removeListener(_onTitleChanged);
     title.dispose();
     notes.dispose();
@@ -1021,13 +1008,13 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     }
   }
 
-  Future<void> _save() async {
-    if (saving) return;
+  Future<bool> _save({bool close = true}) async {
+    if (saving) return false;
     if (title.text.trim().isEmpty) {
       setState(() => titleError = 'Enter a task title.');
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Enter a task title.')));
-      return;
+      return false;
     }
     setState(() => saving = true);
     try {
@@ -1063,9 +1050,9 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
           allTasks: controller.tasks,
         );
         if (conflicts.isNotEmpty) {
-          if (!mounted) return;
+          if (!mounted) return false;
           final proceed = await _confirmPrerequisiteConflicts(conflicts);
-          if (!proceed) return;
+          if (!proceed) return false;
           reviewedPrerequisiteIds.addAll(conflicts.map((task) => task.id));
         }
       }
@@ -1080,13 +1067,15 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         controller,
         notificationChanged: notificationChanged,
       );
-      if (mounted) finish();
+      if (mounted && close) finish();
+      return mounted;
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Could not save task: $error')));
       }
+      return false;
     } finally {
       if (mounted) setState(() => saving = false);
     }
@@ -1810,16 +1799,20 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                                           task.id,
                                     )
                                     .toList(),
-                                onAddSubtask: (title) async {
-                                  LifeTask? created;
-                                  await controller.addSubtask(
-                                    task,
-                                    TaskDraft(title: title),
-                                    onCommitted: (child) => created = child,
-                                  );
-                                  controller.select(task.id);
-                                  return created;
-                                },
+                                onAddSubtask:
+                                    controller.taskParents.containsKey(task.id)
+                                    ? null
+                                    : (title) async {
+                                        LifeTask? created;
+                                        await controller.addSubtask(
+                                          task,
+                                          TaskDraft(title: title),
+                                          onCommitted: (child) =>
+                                              created = child,
+                                        );
+                                        controller.select(task.id);
+                                        return created;
+                                      },
                               ),
                             ],
                           ),
@@ -2198,6 +2191,11 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                                     ? 'Late start'
                                     : 'Tap to edit',
                               ),
+                              trailing:
+                                  session.outcome == SessionOutcome.upcoming &&
+                                      session.actualStartedAt == null
+                                  ? PlannedSessionDelete(session: session)
+                                  : null,
                               onTap: () => _editSession(session),
                             ),
                         ],

@@ -1,6 +1,7 @@
 import 'data/alarm_device_store.dart';
 import 'features/shared/app_restart_scope.dart';
 import 'features/shared/app_motion.dart';
+import 'features/shared/pointer_cancellation_scope.dart';
 
 import 'dart:async';
 import 'dart:convert';
@@ -150,19 +151,6 @@ Future<void> _prepareApplication(
     }
     exit(0);
   }
-  runApp(
-    const MaterialApp(
-      home: StartupPage(
-        children: [
-          Text('Opening Todorbit'),
-          SizedBox(height: 16),
-          LinearProgressIndicator(semanticsLabel: 'Preparing local data'),
-          SizedBox(height: 12),
-          Text('Checking local data and backups…'),
-        ],
-      ),
-    ),
-  );
   if (Platform.isAndroid) {
     final root = await AndroidPlatform.channel.invokeMethod<String>('dataRoot');
     if (root == null) {
@@ -794,7 +782,13 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
 
   @override
   Widget build(BuildContext context) {
-    final preference = ref.watch(appControllerProvider).theme;
+    final preference = ref.watch(appControllerProvider.select((c) => c.theme));
+    final firstWeekday = ref.watch(
+      appControllerProvider.select((c) => c.firstWeekday),
+    );
+    final customization = ref.watch(
+      appControllerProvider.select((c) => c.customization),
+    );
     final privacy = ref.watch(privacyManagerProvider);
     final mode = switch (preference) {
       ThemeModePreference.light => ThemeMode.light,
@@ -824,14 +818,12 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
           : const [Locale('en')],
       localizationsDelegates: [
         if (!Platform.isAndroid && !widget.mobileLayout)
-          WeekStartLocalizationsDelegate(
-            ref.watch(appControllerProvider).firstWeekday,
-          ),
+          WeekStartLocalizationsDelegate(firstWeekday),
         if (Platform.isAndroid || widget.mobileLayout)
           ...GlobalMaterialLocalizations.delegates,
       ],
       themeAnimationDuration:
-          ref.watch(appControllerProvider).customization.reducedMotion ||
+          customization.reducedMotion ||
               WidgetsBinding
                   .instance
                   .platformDispatcher
@@ -842,22 +834,13 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
       title: 'Todorbit',
       debugShowCheckedModeBanner: false,
       themeMode: mode,
-      theme: _theme(
-        Brightness.light,
-        ref.watch(appControllerProvider).customization.light,
-      ),
-      darkTheme: _theme(
-        Brightness.dark,
-        ref.watch(appControllerProvider).customization.dark,
-      ),
+      theme: _theme(Brightness.light, customization.light),
+      darkTheme: _theme(Brightness.dark, customization.dark),
       builder: (context, child) {
         _syncCaptionTheme(Theme.of(context));
         final existing = MediaQuery.of(context);
         final systemScale = existing.textScaler.scale(16) / 16;
-        final preferenceScale = ref
-            .read(appControllerProvider)
-            .customization
-            .textScale;
+        final preferenceScale = customization.textScale;
         if (widget.mobileLayout && !Platform.isAndroid) {
           return Center(
             child: SizedBox(
@@ -867,13 +850,13 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
                   size: Size(390, existing.size.height),
                   textScaler: TextScaler.linear(systemScale * preferenceScale),
                   disableAnimations:
-                      ref
-                          .read(appControllerProvider)
-                          .customization
-                          .reducedMotion ||
-                      existing.disableAnimations,
+                      customization.reducedMotion || existing.disableAnimations,
                 ),
-                child: AppMotionTheme(child: child ?? const SizedBox.shrink()),
+                child: AppMotionTheme(
+                  child: PointerCancellationScope(
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                ),
               ),
             ),
           );
@@ -886,23 +869,25 @@ class _LifeManagerAppState extends ConsumerState<LifeManagerApp>
                 existing.disableAnimations,
           ),
           child: AppMotionTheme(
-            child: Platform.isAndroid
-                ? Stack(
-                    children: [
-                      ExcludeSemantics(
-                        excluding: privacy.locked,
-                        child: AbsorbPointer(
-                          absorbing: privacy.locked,
-                          child: child ?? const SizedBox.shrink(),
+            child: PointerCancellationScope(
+              child: Platform.isAndroid
+                  ? Stack(
+                      children: [
+                        ExcludeSemantics(
+                          excluding: privacy.locked,
+                          child: AbsorbPointer(
+                            absorbing: privacy.locked,
+                            child: child ?? const SizedBox.shrink(),
+                          ),
                         ),
-                      ),
-                      if (privacy.locked)
-                        const Positioned.fill(
-                          child: PopScope(canPop: false, child: LockScreen()),
-                        ),
-                    ],
-                  )
-                : child ?? const SizedBox.shrink(),
+                        if (privacy.locked)
+                          const Positioned.fill(
+                            child: PopScope(canPop: false, child: LockScreen()),
+                          ),
+                      ],
+                    )
+                  : child ?? const SizedBox.shrink(),
+            ),
           ),
         );
       },

@@ -40,6 +40,96 @@ Implemented production Flutter UI foundation and Task Create/Edit consistency pi
 - **Verification Evidence**:
   - Full repo static analysis: `flutter analyze --no-pub` -> "No issues found!" (exit 0, 159.3s).
   - Executed test suites: `test/task_editor_ui_consistency_test.dart` (4/4 passed), `test/task_editor_ui_polish_test.dart` (3/3 passed), `test/task_editor_schedule_layout_test.dart` (1/1 passed), `test/workspace_draft_safety_test.dart` (14/14 passed), `test/workspace_test.dart` (15/15 passed). Total: 37 passing unit/widget tests.
+## Beta 25 Architecture Program Integration & Publication (2026-11-20)
+
+Published experimental GitHub pre-release Todorbit `1.0.19-beta.25+48` (tag `v1.0.19-beta.25`) at https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.25 from verified candidate commit `6b75a559a1b7d3f9d849ba9ed27c7a291124d554` on `feature/todorbit-release-p8`. Integrated the full Modular Architecture Improvement Program (ARCH-02 through ARCH-09). Remote GitHub Actions Windows checks ([Run 44694169827](https://github.com/2HIK4/Todorbit/actions/runs/44694169827)) passed in 29m43s (1,180+ tests passed, CRT verified, native companion self-test passed, Inno Setup installer and portable packages compiled); Android validation ([Run 44694185735](https://github.com/2HIK4/Todorbit/actions/runs/44694185735)) passed in 9m55s; Android 16 KiB runtime ([Run 44699666409](https://github.com/2HIK4/Todorbit/actions/runs/44699666409)) passed in 3m41s on `google_apis_ps16k` API 36 emulator. Lightweight CI validated locally across 13 critical regression suites (103/103 passed in 3m02s) and 39 architecture boundary checks. All 10 release assets uploaded with verified SHA-256 checksums. Updaters (`SoftwareUpdateService` and `AndroidUpdateService`) verified. Schema 29 preserved; crash resilience preserved; Stable untouched. [Receipt](UIUX06_BETA_25_PUBLICATION.md).
+
+## Beta 24 Publication & Release (2026-11-19)
+
+Integrated Codex's Windows CI fixes (`fix/todorbit-beta24-windows-ci`, commit `f568820e894ef6772cc39399bccfdbe8517132ae`) into `feature/todorbit-release-p8` at merge commit `16de251cc0208ade5d54bbdebf26c60a278ac86f` (0 conflicts). Static analysis passed (0 issues). Smoke tests passed (23/23 PASS). Pushed to `origin` and triggered GitHub Actions CI workflows. Windows CI passed completely on [Run 44411095342](https://github.com/2HIK4/Todorbit/actions/runs/44411095342) with 1,178 tests passed, 0 failed, 9 skipped; Windows Release compiled, CRT verified, native companion self-test passed, portable package created, and Inno Setup installer compiled. Android CI validation passed on [Run 44411102129](https://github.com/2HIK4/Todorbit/actions/runs/44411102129). Android release APK compiled, signed with production key, and 16-KiB page alignment verified. Prepared Android release assets with `tools/prepare-android-release.py`. Tagged `v1.0.19-beta.24` and published GitHub pre-release `1.0.19-beta.24+47` at https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.24 with all 10 assets. Updaters verified; Stable untouched. [Receipt](UIUX05_BETA_24_PUBLICATION.md).
+
+## Beta 24 release-blocker integration and verification (2026-11-18)
+
+Integrated Codex's four P1 release blocker fixes and related improvements from `fix/todorbit-beta24-release-blockers` (`cfde5b3b85d2cbc460be8fcf06075707c7481283`) into `feature/todorbit-release-p8` at commit `12d7e4624b455c17fae44ebae566110f0f4a8616` (0 merge conflicts). Verified causal history preservation on SQLite startup, Android Shared Inbox native single-worker serialization and task attachment survival, Workspace editor navigation guards across Side Panel and Full Page modes, and Smart Reschedule recurring occurrence collision checks. 105 focused regression tests PASS (100%), static analysis clean (0 issues), native companion .NET 10 Release build and self-test PASS, and Android release APK compiled, signed, and verified with 16-KiB alignment. GitHub Actions Android validation passed ([Run 44390832263](https://github.com/2HIK4/Todorbit/actions/runs/44390832263)). Publication is BLOCKED by failed Windows CI ([Run 44390804115](https://github.com/2HIK4/Todorbit/actions/runs/44390804115)) and missing Windows installer/portable artifacts. Stable remains untouched. [Receipt](UIUX05_BETA_24_PUBLICATION.md).
+
+## Prompt 8 — Verification Hardening, Codex Findings Resolution & Candidate Release (2026-11-18)
+
+Isolated branch `feature/todorbit-release-p8`, worktree `life_manager_worktrees/feature-todorbit-release-p8`, base `03abc27` (Prompt 7). Evaluated and resolved all 5 P1 and 7 P2 findings from Codex's independent read-only source review. Ensured mixed-version Google Drive sync and rollback compatibility by isolating `detailPresentation` in `deviceLocalThemeFields`, pruning legacy SQLite rows, and excluding it from cloud sync batches. Hardened Android Shared Inbox multi-file batch accumulation, native rename fallback, and content scheme security boundaries. Fixed EventEditor state reuse through composite keys, didUpdateWidget, and confirmLeave guards. Supported Full Page TaskEditor on wide desktop windows and preserved calendar selected dates across event edit/close transitions. Prevented Smart Reschedule split session collisions with fixed events and existing scheduled sessions. Increased parent expander trailing padding to 96dp to prevent timer button overlap. Upgraded `PointerCancellationScope` to record mouse device kinds and dispatch proper exit/removed events on blur. Added 1s Work Log duration ticker in `TaskDetailsView`. Version bumped to `1.0.19-beta.24+47`. 133 focused Level 1/2 regression tests PASS (100%), static analysis reports 0 errors/warnings, native .NET 10 self-test passes, and Android universal release APK successfully compiled and verified with 16-KiB page alignment across all 8 native libraries. Stable untouched. Release checkpoint preserved for review.
+
+---
+
+## Prompt 6 — Full App-Wide UI Audit, Design System & Interaction Polish (2026-11-18)
+
+Isolated branch `feature/todorbit-full-ui-audit`, worktree `life_manager_worktrees/feature-todorbit-full-ui-audit`, base `b95474f`. Systematically reviewed all navigable surfaces on Windows and Android shells and resolved remaining screenshot 17-20 issues. Established subtle, coherent hover and focus tokens in `app_theme.dart` (`hoverColor = onSurface.withValues(alpha: 0.04)`, `focusColor = primary.withValues(alpha: 0.14)`, `listTileTheme` 10px rounded corners, `cardTheme.clipBehavior = Clip.antiAlias`). Implemented `PointerCancellationScope` to cancel active pointers and flush hovered devices upon `AppLifecycleState.inactive`, eliminating stuck hover/highlight after Windows screenshot capture (<kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>). Normalized recurring task group container margins to eliminate the 8px width discrepancy. Redesigned `TaskListGroupView`, `_subtaskRow`, and `mobileSubtaskRow` to render subtasks as clean interactive rows with a 2px vertical connector line, 24dp indentation, and integrated parent expansion toggle pill, removing the disconnected standalone card anti-pattern. Standardized destructive error styling on confirm dialogs and clarified local-only retention in Shared Files. Added comprehensive test coverage in `prompt6_ui_audit_test.dart` and `pointer_cancellation_scope_test.dart`; all regression suites PASS; static analysis (0 issues) and formatting PASS. [Receipt](PROMPT6_FULL_UI_AUDIT_2026_11_18.md). Ready for Prompt 7. Stable untouched; no beta publication.
+
+---
+
+## Prompts 4/5 integrated - verified development checkpoint (2026-11-18)
+
+Isolated branch `integration/ui-reliability-p4-p5`, worktree
+`life_manager_worktrees/integration-ui-p4-p5`, base `62326bd`. Merged Prompt 4
+`5a0e836` first, then Prompt 5 `3b98678`, retaining both histories. Conducted
+independent reviews of both features: verified Smart Reschedule hierarchy,
+recurrence grouping by identity, complete-proposal eligibility, and undo safety;
+verified Android Share Inbox native intent ingestion, temporary URI streaming,
+duplicate detection, and independent copy semantics. Enhanced SharedInboxStore
+with non-blocking asynchronous file streaming/hashing for up to 32 MiB and
+added pull-to-refresh to SharedInboxScreen. 203 distinct serial tests PASS / 0 FAIL /
+0 SKIP across 8 critical suites; full static analysis (0 issues), formatting,
+and git diff checks PASS. [Receipt](INTEGRATION_P4_P5_2026_11_17.md). Ready as the
+verified development checkpoint for Prompt 6. Schema 29 preserved; Stable untouched;
+no beta publication, tag, push, or release performed.
+
+
+## Prompt 4 — Smart Reschedule implementation (2026-11-17)
+
+Assigned branch `feature/todorbit-smart-reschedule`, base `4d9292c`. Hierarchical
+independent selection, collapsed recurring families, grouped collision review,
+explicit Apply reasons, whole-proposal safety, input invalidation, re-entry/UUID
+guards and keyed scroll/expansion state implemented. Existing engine/repository,
+series identities, exceptions, history, alarms and actual work preserved.
+64 distinct host tests PASS / 0 final FAIL / 0 SKIP; full analysis, formatting and
+doc/diff checks PASS. [Receipt](PROMPT4_SMART_RESCHEDULE_2026_11_17.md) and
+[fingerprints](PROMPT4_SMART_RESCHEDULE_2026_11_17_SOURCE.json). Awaiting independent
+integration review; manual/device/release gates remain in Deferred Verification.
+No version/schema, Stable, publication, merge/rebase or remote changes.
+
+
+## Prompts 2/3 integrated - verified development checkpoint (2026-11-17)
+
+Isolated branch `integration/ui-reliability-p2-p3`, worktree
+`life_manager_worktrees/integration-ui-p2-p3`, base `5803e52`. Merged Prompt 2
+`9f7b3e3` first, then Prompt 3 `b3ee745`, retaining both histories. Repaired civil
+month bounds, overlapping requests, ineffective cache keys, preference authority
+and dialog controller lifetime. 122 selected tests PASS / 0 FAIL / 0 SKIP; full
+analysis and focused formatting/diff checks PASS. [Receipt](INTEGRATION_P2_P3_2026_11_17.md)
+and [fingerprints](INTEGRATION_P2_P3_2026_11_17_SOURCE.json). Ready as the shared
+base for Prompts 4/5; neither started. Schema 29, Stable, original/implementation
+checkouts and untracked original documents preserved. No push or publication.
+Live/device/release gates remain explicitly deferred; scoped review entries archived.
+
+
+## Prompt 2 — task timers and composition (2026-11-17)
+
+Implemented the current authoritative task scope on `feature/todorbit-task-ux`,
+base `5803e52`. Direct/idempotent timer entry is shared across Windows/Android;
+explicit atomic switching keeps actual work and separates task status/plans.
+Compact controls, checklist group menus/removal protection, one-level subtask
+explanation and guarded planned-session Trash actions are in place. 44 distinct
+focused tests plus 6 adjacent/lifecycle checks pass; analysis/format/diff checks pass.
+[Receipt and limitations](PROMPT2_TASK_UX_2026_11_17.md); source hashes are attached.
+Live/device/packaging acceptance remains tracked separately. No schema/version,
+Stable, publication, merge/rebase or remote changes. Implementation awaits
+independent integration review; older Gemini queue entries remain unchanged.
+
+## UI-REL-03 (Prompt 3 Authoritative) — Calendar responsive display, event metadata, color picker scrolling, and month navigation prefetch (2026-11-17)
+
+Implemented Prompt 3 of the Todorbit UI and Reliability Improvement Program on isolated worktree `feature/todorbit-calendar-events`:
+- **Calendar Responsive Display (Screenshot 6)**: Implemented adaptive capacity calculations for `CalendarMonthView` and `_monthGrid` based on clamped cell height (>=90px) and cell width. On narrow desktop window widths (380px–680px), scheduled items remain visible with at least 1 item or a non-overflowing, clickable `+N` count affordance (`InkWell` invoking `onDayTap(date)`). Filter states (Both, Events only, Tasks only) stay discoverable and non-overflowing. Memoized month and week item maps (`_cachedMonthKey`, `_cachedWeekKey`) in `_CalendarViewState` to eliminate expensive O(days × items) synchronous recalculations on window resize frames.
+- **Event Metadata (Categories & Projects Assignment & Persistence)**: Replaced raw popup menus in `EventEditor` with `AnchoredSelectField<String?>` for Category (supporting `None / Inbox`, choices, and dynamic `+ New Category` creation dialog) and Project (supporting `None`, category-scoped projects, and dynamic `+ New Project` creation dialog). Replaced color picker with `AnchoredSelectField<int?>` with backward-compatible tooltips. Full SQLite persistence to `fixed_events.category_id` and `project_id` (Schema 29) while preserving valid null state for legacy unassigned events.
+- **Color Picker Steady Scroll & Lifecycle**: Replaced unmanaged `AlertDialog(scrollable: true)` with dedicated `ScrollController` in State and `PageStorageKey` for `_EventColorDialog` and `ColorPickerDialog`. Removed thrashing `key: ValueKey(picker)` from `ColorPicker`. Tested mouse wheel, pointer drag, palette switching, and hex typing: scroll offset remains steady and never snaps back to 0.0 or prior positions; save and cancel behaviors cleanly preserved.
+- **Month Navigation Flicker Elimination**: Expanded `AppController.ensureRecurringMonth(date)` prefetch window to 90 days (`[first - 30 days, first + 60 days]`), covering adjacent months `[month - 1, month, month + 1]` strictly within `LifeRepository.ensureRecurringTasks` invariant (`span <= 93` days). Preloads adjacent events and recurrence in-memory so navigating back/forward shows events instantly on frame 1 with zero blank flicker. Guarded rapid back/forward clicks with `_monthNavigationRevision` counter to eliminate race conditions. Added lightweight 2px `LinearProgressIndicator` when loading distant months.
+- **Verification Evidence**: 41 focused tests passed with zero failures across `test/prompt3_calendar_events_test.dart` (9/9), `test/event_editor_layout_test.dart` (3/3), `test/calendar_test.dart` (3/3), `test/stage2_ui_regression_test.dart` (18/18), and Level 2 critical persistence `test/repository_test.dart` (8/8). Static analysis `flutter analyze --no-pub` clean (0 issues). Skills updated in `.agents/skills/ultimate-ui-ux/references/flutter-engineering.md`. Queued in `docs/AI_REVIEW_QUEUE.md` and recorded in `docs/TEST_RUN_LEDGER.md`. No beta published.
 
 ## UI-REL-01 (Prompt 1 Authoritative) — Search UX, progressive advanced search, keyboard insets, and single-route task/event detail presentation (2026-11-17)
 

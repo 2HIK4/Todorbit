@@ -1,7 +1,9 @@
+import 'app_refresh_snapshot.dart';
 import '../domain/focus_session.dart';
 import '../domain/task_resources.dart';
 
 import 'dart:async';
+import 'dart:collection';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart' hide Category;
@@ -31,6 +33,8 @@ import '../domain/hotkeys.dart';
 import '../domain/scheduling_models.dart';
 import '../domain/trash.dart';
 import '../domain/reports.dart';
+
+export 'app_refresh_snapshot.dart';
 
 final appControllerProvider = ChangeNotifierProvider<AppController>((ref) {
   throw StateError('AppController must be provided by the application');
@@ -73,23 +77,55 @@ class AppController extends ChangeNotifier {
   String? backupError;
   VoidCallback? onLocalChange;
 
-  List<AlarmRule> alarmRules = [];
-  List<Category> categories = [];
-  List<Project> projects = [];
+  List<AlarmRule> _alarmRules = [];
+  UnmodifiableListView<AlarmRule> get alarmRules =>
+      UnmodifiableListView(_alarmRules);
+
+  List<Category> _categories = [];
+  UnmodifiableListView<Category> get categories =>
+      UnmodifiableListView(_categories);
+
+  List<Project> _projects = [];
+  UnmodifiableListView<Project> get projects => UnmodifiableListView(_projects);
+
   List<LifeTask> _tasks = [];
-  List<LifeTask> get tasks => _tasks;
+  UnmodifiableListView<LifeTask> get tasks => UnmodifiableListView(_tasks);
   set tasks(List<LifeTask> value) {
-    _tasks = value;
+    _tasks = List.of(value);
     _invalidateTaskCaches();
   }
 
-  List<FixedEvent> events = [];
-  List<FixedEvent> todayEvents = [];
-  Map<String, String> iconKeys = {};
-  Map<String, String> taskParents = {};
-  List<TaskChecklistItem> checklistItems = [];
-  List<TaskChecklistGroup> checklistGroups = [];
-  Map<String, ProgressiveAssignment> progressiveAssignments = {};
+  List<FixedEvent> _events = [];
+  UnmodifiableListView<FixedEvent> get events => UnmodifiableListView(_events);
+
+  List<FixedEvent> _todayEvents = [];
+  UnmodifiableListView<FixedEvent> get todayEvents =>
+      UnmodifiableListView(_todayEvents);
+  @visibleForTesting
+  set todayEvents(List<FixedEvent> value) {
+    _todayEvents = List.of(value);
+  }
+
+  Map<String, String> _iconKeys = {};
+  UnmodifiableMapView<String, String> get iconKeys =>
+      UnmodifiableMapView(_iconKeys);
+
+  Map<String, String> _taskParents = {};
+  UnmodifiableMapView<String, String> get taskParents =>
+      UnmodifiableMapView(_taskParents);
+
+  List<TaskChecklistItem> _checklistItems = [];
+  UnmodifiableListView<TaskChecklistItem> get checklistItems =>
+      UnmodifiableListView(_checklistItems);
+
+  List<TaskChecklistGroup> _checklistGroups = [];
+  UnmodifiableListView<TaskChecklistGroup> get checklistGroups =>
+      UnmodifiableListView(_checklistGroups);
+
+  Map<String, ProgressiveAssignment> _progressiveAssignments = {};
+  UnmodifiableMapView<String, ProgressiveAssignment>
+  get progressiveAssignments => UnmodifiableMapView(_progressiveAssignments);
+
   String? _eventWindowFrom;
   String? _eventWindowThrough;
   String get eventWindowFrom =>
@@ -99,21 +135,64 @@ class AppController extends ChangeNotifier {
       _eventWindowThrough ??
       RecurrenceRule.shiftDate(localDate(DateTime.now()), 90);
   String get eventWindowLabel => '$eventWindowFrom to $eventWindowThrough';
-  List<WorkSession> sessions = [];
-  List<TaskDependency> dependencies = [];
-  List<TaskSequence> sequences = [];
-  List<Habit> habits = [];
-  List<HabitEntry> habitEntries = [];
-  List<HabitRestDay> habitRestDays = [];
-  List<Goal> goals = [];
-  List<GoalMilestone> goalMilestones = [];
-  List<TimeEntry> timeEntries = [];
-  List<LifeTemplate> templates = [];
-  List<SavedView> savedViews = [];
-  List<TrashItem> trashItems = [];
-  List<LifeTask> archivedTasks = [];
-  List<ArchivedSeries> archivedSeries = [];
-  List<LifeTask> reportTasks = [];
+
+  List<WorkSession> _sessions = [];
+  UnmodifiableListView<WorkSession> get sessions =>
+      UnmodifiableListView(_sessions);
+
+  List<TaskDependency> _dependencies = [];
+  UnmodifiableListView<TaskDependency> get dependencies =>
+      UnmodifiableListView(_dependencies);
+
+  List<TaskSequence> _sequences = [];
+  UnmodifiableListView<TaskSequence> get sequences =>
+      UnmodifiableListView(_sequences);
+
+  List<Habit> _habits = [];
+  UnmodifiableListView<Habit> get habits => UnmodifiableListView(_habits);
+
+  List<HabitEntry> _habitEntries = [];
+  UnmodifiableListView<HabitEntry> get habitEntries =>
+      UnmodifiableListView(_habitEntries);
+
+  List<HabitRestDay> _habitRestDays = [];
+  UnmodifiableListView<HabitRestDay> get habitRestDays =>
+      UnmodifiableListView(_habitRestDays);
+
+  List<Goal> _goals = [];
+  UnmodifiableListView<Goal> get goals => UnmodifiableListView(_goals);
+
+  List<GoalMilestone> _goalMilestones = [];
+  UnmodifiableListView<GoalMilestone> get goalMilestones =>
+      UnmodifiableListView(_goalMilestones);
+
+  List<TimeEntry> _timeEntries = [];
+  UnmodifiableListView<TimeEntry> get timeEntries =>
+      UnmodifiableListView(_timeEntries);
+
+  List<LifeTemplate> _templates = [];
+  UnmodifiableListView<LifeTemplate> get templates =>
+      UnmodifiableListView(_templates);
+
+  List<SavedView> _savedViews = [];
+  UnmodifiableListView<SavedView> get savedViews =>
+      UnmodifiableListView(_savedViews);
+
+  List<TrashItem> _trashItems = [];
+  UnmodifiableListView<TrashItem> get trashItems =>
+      UnmodifiableListView(_trashItems);
+
+  List<LifeTask> _archivedTasks = [];
+  UnmodifiableListView<LifeTask> get archivedTasks =>
+      UnmodifiableListView(_archivedTasks);
+
+  List<ArchivedSeries> _archivedSeries = [];
+  UnmodifiableListView<ArchivedSeries> get archivedSeries =>
+      UnmodifiableListView(_archivedSeries);
+
+  List<LifeTask> _reportTasks = [];
+  UnmodifiableListView<LifeTask> get reportTasks =>
+      UnmodifiableListView(_reportTasks);
   final focusSessions = <String, FocusSession>{};
   Timer? _focusTicker;
   bool _focusBusy = false;
@@ -138,7 +217,7 @@ class AppController extends ChangeNotifier {
     if (activeTimer?.taskId == taskId &&
         activeTimer?.state == TimerState.running) {
       await repository.pauseTimer(activeTimer!, endsAt: endsAt);
-      await refresh();
+      await refreshAfterLocalChange();
     }
     session.pause();
     notifyListeners();
@@ -227,7 +306,9 @@ class AppController extends ChangeNotifier {
   @visibleForTesting
   set lastKnownDate(String? value) => _lastKnownDate = value;
   AvailabilityPlan availability = const AvailabilityPlan(weekly: {});
-  List<SchedulingOperation> schedulingHistory = [];
+  List<SchedulingOperation> _schedulingHistory = [];
+  UnmodifiableListView<SchedulingOperation> get schedulingHistory =>
+      UnmodifiableListView(_schedulingHistory);
   WorkspaceView view = WorkspaceView.today;
 
   List<LifeTask>? _cachedVisibleTasks;
@@ -242,8 +323,13 @@ class AppController extends ChangeNotifier {
     _cachedFilteredTasksDate = null;
   }
 
+  int _stateRevision = 0;
+  int get stateRevision => _stateRevision;
+
   @override
   void notifyListeners() {
+    if (_disposed) return;
+    _stateRevision++;
     _invalidateTaskCaches();
     super.notifyListeners();
   }
@@ -254,8 +340,7 @@ class AppController extends ChangeNotifier {
   ThemeModePreference theme = ThemeModePreference.system;
   ThemeCustomization customization = const ThemeCustomization();
   TaskViewPreferences taskViewPreferences = const TaskViewPreferences();
-  bool get isFullPageDetails =>
-      taskViewPreferences.isFullPageDetails || customization.isFullPageDetails;
+  bool get isFullPageDetails => taskViewPreferences.isFullPageDetails;
   HotkeyPreferences hotkeys = HotkeyPreferences();
   CalendarContent calendarContent = CalendarContent.both;
   int firstWeekday = 7;
@@ -314,71 +399,66 @@ class AppController extends ChangeNotifier {
     return null;
   }
 
+  Future<void> refreshAfterLocalChange() {
+    onLocalChange?.call();
+    return refresh();
+  }
+
   Future<void> refresh() async {
     final today = localDate(DateTime.now());
-    await repository.ensureRecurringTasks(
+    final materialized = await repository.ensureRecurringTasks(
       RecurrenceRule.shiftDate(today, -14),
       RecurrenceRule.shiftDate(today, 30),
     );
-    final windowEvents = repository.eventOccurrences(
-      eventWindowFrom,
-      eventWindowThrough,
+    if (materialized > 0) {
+      onLocalChange?.call();
+    }
+    final snapshot = await AppRefreshSnapshot.load(
+      repository,
+      eventWindowFrom: eventWindowFrom,
+      eventWindowThrough: eventWindowThrough,
+      today: today,
     );
-    final todayEventsLoad =
-        today.compareTo(eventWindowFrom) >= 0 &&
-            today.compareTo(eventWindowThrough) <= 0
-        ? windowEvents
-        : repository.eventOccurrences(today, today);
-    final result = await Future.wait<Object?>([
-      repository.categories(),
-      repository.projects(),
-      repository.tasks(),
-      windowEvents,
-      repository.sessions(),
-      repository.availability(),
-      repository.schedulingHistory(),
-      repository.dependencies(),
-      repository.sequences(),
-      repository.habits(includeArchived: true),
-      repository.habitEntries(),
-      repository.habitRestDays(),
-      repository.goals(),
-      repository.goalMilestones(),
-      repository.timeEntries(),
-      repository.activeTimerRun(),
-      repository.templates(),
-      repository.savedViews(),
-      repository.trash(),
-      repository.archivedTasks(),
-      repository.archivedSeries(),
-      repository.reportTasks(),
-      repository.entityIcons(),
-      repository.taskParents(),
-      repository.checklistItems(),
-      repository.progressiveAssignments(),
-      repository.checklistGroups(),
-      todayEventsLoad,
-      repository.alarmRules(),
-    ]);
+    _applyRefreshSnapshot(snapshot, today);
+  }
+
+  @visibleForTesting
+  void applyRefreshSnapshotForTesting(
+    AppRefreshSnapshot snapshot,
+    String today,
+  ) {
+    _applyRefreshSnapshot(snapshot, today);
+  }
+
+  void _applyRefreshSnapshot(AppRefreshSnapshot snapshot, String today) {
     if (_disposed) return;
-    categories = result[0] as List<Category>;
-    projects = result[1] as List<Project>;
-    tasks = result[2] as List<LifeTask>;
-    events = result[3] as List<FixedEvent>;
-    todayEvents = result[27] as List<FixedEvent>;
-    alarmRules = result[28] as List<AlarmRule>;
-    sessions = result[4] as List<WorkSession>;
-    availability = result[5] as AvailabilityPlan;
-    schedulingHistory = result[6] as List<SchedulingOperation>;
-    dependencies = result[7] as List<TaskDependency>;
-    sequences = result[8] as List<TaskSequence>;
-    habits = result[9] as List<Habit>;
-    habitEntries = result[10] as List<HabitEntry>;
-    habitRestDays = result[11] as List<HabitRestDay>;
-    goals = result[12] as List<Goal>;
-    goalMilestones = result[13] as List<GoalMilestone>;
-    timeEntries = result[14] as List<TimeEntry>;
-    activeTimer = result[15] as TimerRun?;
+    _categories = snapshot.categories;
+    _projects = snapshot.projects;
+    _tasks = snapshot.tasks;
+    _events = snapshot.events;
+    _todayEvents = snapshot.todayEvents;
+    _alarmRules = snapshot.alarmRules;
+    _sessions = snapshot.sessions;
+    availability = snapshot.availability;
+    _schedulingHistory = snapshot.schedulingHistory;
+    _dependencies = snapshot.dependencies;
+    _sequences = snapshot.sequences;
+    _habits = snapshot.habits;
+    _habitEntries = snapshot.habitEntries;
+    _habitRestDays = snapshot.habitRestDays;
+    _goals = snapshot.goals;
+    _goalMilestones = snapshot.goalMilestones;
+    _timeEntries = snapshot.timeEntries;
+    activeTimer = snapshot.activeTimer;
+    for (final item in focusSessions.entries) {
+      if (item.value.recordsWork &&
+          (activeTimer?.taskId != item.key ||
+              activeTimer?.state != TimerState.running ||
+              !activeTimer!.canControl ||
+              activeTimer!.needsReview(DateTime.now()))) {
+        item.value.pause();
+      }
+    }
     if (!_timerLoaded) {
       _timerLoaded = true;
       if (activeTimer?.state == TimerState.running && activeTimer!.canControl) {
@@ -388,24 +468,24 @@ class AppController extends ChangeNotifier {
     if (activeTimer?.id == _interruptedTimerId && activeTimer != null) {
       activeTimer = activeTimer!.forRecovery();
     }
-    templates = result[16] as List<LifeTemplate>;
-    savedViews = result[17] as List<SavedView>;
-    trashItems = result[18] as List<TrashItem>;
-    archivedTasks = result[19] as List<LifeTask>;
-    archivedSeries = result[20] as List<ArchivedSeries>;
-    reportTasks = result[21] as List<LifeTask>;
-    iconKeys = result[22] as Map<String, String>;
-    taskParents = result[23] as Map<String, String>;
-    checklistItems = result[24] as List<TaskChecklistItem>;
-    checklistGroups = result[26] as List<TaskChecklistGroup>;
-    progressiveAssignments = result[25] as Map<String, ProgressiveAssignment>;
+    _templates = snapshot.templates;
+    _savedViews = snapshot.savedViews;
+    _trashItems = snapshot.trashItems;
+    _archivedTasks = snapshot.archivedTasks;
+    _archivedSeries = snapshot.archivedSeries;
+    _reportTasks = snapshot.reportTasks;
+    _iconKeys = snapshot.iconKeys;
+    _taskParents = snapshot.taskParents;
+    _checklistItems = snapshot.checklistItems;
+    _checklistGroups = snapshot.checklistGroups;
+    _progressiveAssignments = snapshot.progressiveAssignments;
     _syncTimerHeartbeat();
     _lastKnownDate = today;
     _scheduleMidnightTimer();
     if (selectedTaskId != null && selectedTask == null) selectedTaskId = null;
     loading = false;
+    _loadedCalendarStateRevision = _stateRevision;
     notifyListeners();
-    onLocalChange?.call();
   }
 
   @visibleForTesting
@@ -505,8 +585,10 @@ class AppController extends ChangeNotifier {
   }
 
   void select(String? taskId) {
+    if (selectedTaskId == taskId || _disposed) return;
     selectedTaskId = taskId;
-    notifyListeners();
+    _stateRevision++;
+    super.notifyListeners();
   }
 
   void setSort(TaskSort value) {
@@ -563,7 +645,6 @@ class AppController extends ChangeNotifier {
         'newTaskPlannedDay': taskViewPreferences.newTaskPlannedDay.name,
         'compositionTextDisplay':
             taskViewPreferences.compositionTextDisplay.name,
-        'detailPresentation': taskViewPreferences.detailPresentation,
       });
     }
     final values = await repository.portablePreferences();
@@ -606,11 +687,6 @@ class AppController extends ChangeNotifier {
               values['compositionTextDisplay'] as String,
             )
           : null,
-      detailPresentation: values['detailPresentation'] == 'fullPage'
-          ? 'fullPage'
-          : values['detailPresentation'] == 'sidePanel'
-              ? 'sidePanel'
-              : null,
     );
     _invalidateTaskCaches();
     // SQL is the durable source after sync. Profile JSON remains a compatible
@@ -632,7 +708,6 @@ class AppController extends ChangeNotifier {
       'hiddenStandardProjects': value.hiddenStandardProjects.toList(),
       'newTaskPlannedDay': value.newTaskPlannedDay.name,
       'compositionTextDisplay': value.compositionTextDisplay.name,
-      'detailPresentation': value.detailPresentation,
     });
     await appearanceStore?.saveTaskViewPreferences(value);
     taskViewPreferences = value;
@@ -699,7 +774,7 @@ class AppController extends ChangeNotifier {
 
   Future<void> setIcon(String kind, String id, String? key) async {
     await repository.setEntityIcon(kind, id, key);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> addSubtask(
@@ -709,19 +784,14 @@ class AppController extends ChangeNotifier {
     ValueChanged<LifeTask>? onCommitted,
     List<DraftChecklistGroup> groups = const [],
   }) async {
-    final child = await repository.db.transaction(() async {
-      final task = await repository.addSubtask(parent, draft);
-      for (final group in groups) {
-        final saved = await repository.addChecklistGroup(task.id, group.title);
-        for (final title in group.items) {
-          await repository.addChecklistItem(task.id, title, groupId: saved.id);
-        }
-      }
-      await repository.addDraftResources(task.id, resources);
-      return task;
-    });
+    final child = await repository.addSubtaskWithComposition(
+      parent,
+      draft,
+      groups: groups,
+      resources: resources,
+    );
     onCommitted?.call(child);
-    await refresh();
+    await refreshAfterLocalChange();
     select(child.id);
   }
 
@@ -731,7 +801,7 @@ class AppController extends ChangeNotifier {
     String? groupId,
   }) async {
     await repository.addChecklistItem(taskId, title, groupId: groupId);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> updateChecklistItem(
@@ -740,17 +810,17 @@ class AppController extends ChangeNotifier {
     bool? done,
   }) async {
     await repository.updateChecklistItem(item, title: title, done: done);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> removeChecklistItem(TaskChecklistItem item) async {
     await repository.removeChecklistItem(item);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> moveChecklistItem(TaskChecklistItem item, int direction) async {
     await repository.moveChecklistItem(item, direction);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> checkAutomaticBackup() async {
@@ -770,6 +840,7 @@ class AppController extends ChangeNotifier {
   Future<void> reloadTheme() async {
     final store = appearanceStore;
     if (store == null) return;
+    store.invalidateCache();
     final value = await store.load();
     final palette = await store.loadCustomization();
     await repository.savePortablePreferences({
@@ -967,7 +1038,7 @@ class AppController extends ChangeNotifier {
   ]) async {
     final name = newName ?? '${original.name} (copy)';
     final created = await repository.duplicateSavedView(original, name);
-    savedViews = await repository.savedViews();
+    _savedViews = await repository.savedViews();
     _invalidateTaskCaches();
     notifyListeners();
     return created;
@@ -975,19 +1046,19 @@ class AppController extends ChangeNotifier {
 
   Future<void> renameSavedView(SavedView previous, String newName) async {
     await repository.renameSavedView(previous, newName);
-    savedViews = await repository.savedViews();
+    _savedViews = await repository.savedViews();
     _invalidateTaskCaches();
     notifyListeners();
   }
 
   Future<void> deleteArchivedTask(LifeTask task) async {
     await repository.deleteArchivedTask(task);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> deleteArchivedSeries(ArchivedSeries series) async {
     await repository.deleteArchivedSeries(series);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<Map<String, List<String>>> taskResourceSubtaskMap(String taskId) =>
@@ -1158,7 +1229,7 @@ class AppController extends ChangeNotifier {
 
   Future<SavedView> addSavedView(String name, TaskFilter filter) async {
     final view = await repository.addSavedView(name, filter);
-    await refresh();
+    await refreshAfterLocalChange();
     navigate(WorkspaceView.saved, id: view.id);
     return view;
   }
@@ -1169,7 +1240,7 @@ class AppController extends ChangeNotifier {
     TaskFilter filter,
   ) async {
     await repository.updateSavedView(previous, name, filter);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> deleteSavedView(SavedView previous) async {
@@ -1177,7 +1248,7 @@ class AppController extends ChangeNotifier {
     if (view == WorkspaceView.saved && scopeId == previous.id) {
       navigate(WorkspaceView.today);
     }
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   int _compareNullable(String? a, String? b) {
@@ -1188,7 +1259,7 @@ class AppController extends ChangeNotifier {
 
   Future<void> addTask(TaskDraft draft) async {
     final task = await repository.addTask(draft);
-    await refresh();
+    await refreshAfterLocalChange();
     select(task.id);
   }
 
@@ -1200,18 +1271,15 @@ class AppController extends ChangeNotifier {
     ValueChanged<LifeTask>? onCommitted,
     List<DraftChecklistGroup> groups = const [],
   }) async {
-    final task = await repository.db.transaction(() async {
-      final task = await repository.addTaskWithComposition(
-        draft,
-        checklist,
-        subtasks,
-        groups: groups,
-      );
-      await repository.addDraftResources(task.id, resources);
-      return task;
-    });
+    final task = await repository.addTaskWithComposition(
+      draft,
+      checklist,
+      subtasks,
+      groups: groups,
+      resources: resources,
+    );
     onCommitted?.call(task);
-    await refresh();
+    await refreshAfterLocalChange();
     select(task.id);
   }
 
@@ -1226,42 +1294,92 @@ class AppController extends ChangeNotifier {
     List<String> checklist = const [],
     List<TaskDraft> subtasks = const [],
   }) async {
-    final task = await repository.db.transaction(() async {
-      final task = await repository.addRecurringTask(
-        draft,
-        rule,
-        progressiveSteps: progressiveSteps,
-        repeatPlanAtEnd: repeatPlanAtEnd,
-      );
-      for (final group in groups) {
-        final saved = await repository.addChecklistGroup(task.id, group.title);
-        for (final title in group.items) {
-          await repository.addChecklistItem(task.id, title, groupId: saved.id);
-        }
-      }
-      for (final title in checklist) {
-        await repository.addChecklistItem(task.id, title);
-      }
-      for (final child in subtasks) {
-        await repository.addSubtask(task, child);
-      }
-      await repository.addDraftResources(task.id, resources);
-      return task;
-    });
+    final task = await repository.addRecurringTaskWithComposition(
+      draft,
+      rule,
+      progressiveSteps: progressiveSteps,
+      repeatPlanAtEnd: repeatPlanAtEnd,
+      groups: groups,
+      checklist: checklist,
+      subtasks: subtasks,
+      resources: resources,
+    );
     onCommitted?.call(task);
-    await refresh();
+    await refreshAfterLocalChange();
     select(task.id);
   }
 
-  Future<void> ensureRecurringMonth(DateTime date) async {
-    final first = localDate(DateTime(date.year, date.month, 1));
-    _eventWindowFrom = RecurrenceRule.shiftDate(first, -7);
-    _eventWindowThrough = RecurrenceRule.shiftDate(first, 45);
-    await repository.ensureRecurringTasks(
-      RecurrenceRule.shiftDate(first, -7),
-      RecurrenceRule.shiftDate(first, 45),
+  DateTime? _requestedRecurringMonth;
+  Future<void>? _recurringMonthLoad;
+  int? _loadedCalendarStateRevision;
+
+  Future<void> ensureRecurringMonth(DateTime date) {
+    _requestedRecurringMonth = DateTime(date.year, date.month);
+    return _recurringMonthLoad ??= _loadRequestedRecurringMonths().whenComplete(
+      () {
+        _recurringMonthLoad = null;
+      },
     );
-    await refresh();
+  }
+
+  Future<void> refreshCalendarWindow() async {
+    final today = localDate(DateTime.now());
+    final windowEvents = repository.eventOccurrences(
+      eventWindowFrom,
+      eventWindowThrough,
+    );
+    final todayEventsLoad =
+        today.compareTo(eventWindowFrom) >= 0 &&
+            today.compareTo(eventWindowThrough) <= 0
+        ? windowEvents
+        : repository.eventOccurrences(today, today);
+    final results = await Future.wait([
+      windowEvents,
+      todayEventsLoad,
+      repository.tasks(),
+      repository.taskParents(),
+      repository.reportTasks(),
+    ]);
+    if (_disposed) return;
+    _events = results[0] as List<FixedEvent>;
+    _todayEvents = results[1] as List<FixedEvent>;
+    tasks = results[2] as List<LifeTask>;
+    _taskParents = results[3] as Map<String, String>;
+    _reportTasks = results[4] as List<LifeTask>;
+    notifyListeners();
+  }
+
+  Future<void> _loadRequestedRecurringMonths() async {
+    while (_requestedRecurringMonth != null) {
+      final date = _requestedRecurringMonth!;
+      _requestedRecurringMonth = null;
+      final from = localDate(DateTime(date.year, date.month - 1, 1));
+      final through = localDate(DateTime(date.year, date.month + 2, 0));
+      if (_eventWindowFrom == from &&
+          _eventWindowThrough == through &&
+          _loadedCalendarStateRevision == stateRevision) {
+        continue;
+      }
+      final materialized = await repository.ensureRecurringTasks(from, through);
+      if (materialized > 0) {
+        onLocalChange?.call();
+      }
+      // Navigation may have advanced while recurrence was materializing. Only
+      // load the newest requested window, and never run overlapping refreshes.
+      if (_requestedRecurringMonth != null) continue;
+      final previousFrom = _eventWindowFrom;
+      final previousThrough = _eventWindowThrough;
+      _eventWindowFrom = from;
+      _eventWindowThrough = through;
+      try {
+        await refreshCalendarWindow();
+        _loadedCalendarStateRevision = stateRevision;
+      } catch (_) {
+        _eventWindowFrom = previousFrom;
+        _eventWindowThrough = previousThrough;
+        rethrow;
+      }
+    }
   }
 
   Future<void> updateTask(
@@ -1274,62 +1392,119 @@ class AppController extends ChangeNotifier {
       draft,
       reviewedPrerequisiteIds: reviewedPrerequisiteIds,
     );
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> setComplete(LifeTask task, bool value) async {
     await repository.setComplete(task, value);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> deleteTask(String id) async {
     await repository.deleteTask(id);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> archiveTask(LifeTask task) async {
     await repository.archiveTask(task);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> archiveSeries(LifeTask task) async {
     await repository.archiveSeries(task);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> restoreArchivedSeries(ArchivedSeries series) async {
     await repository.restoreArchivedSeries(series);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> deleteSeries(LifeTask task) async {
     await repository.deleteSeries(task);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> restoreArchivedTask(LifeTask task) async {
     await repository.restoreArchivedTask(task);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> restoreTrashItem(TrashItem item) async {
     await repository.restoreTrashItem(item);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> permanentlyDelete(TrashItem item) async {
     await repository.permanentlyDelete(item);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> startTimer(String taskId) async {
     await repository.startTimer(taskId);
-    await refresh();
+    await refreshAfterLocalChange();
+  }
+
+  final _timerEntries = <String, Future<void>>{};
+
+  Future<void> enterTaskTimer(String taskId) => _timerEntries.putIfAbsent(
+    taskId,
+    () => _enterTaskTimer(taskId).whenComplete(() {
+      _timerEntries.remove(taskId);
+    }),
+  );
+
+  Future<void> _enterTaskTimer(String taskId) async {
+    final run = await repository.activeTimerRun();
+    if (run != null) {
+      // Reopening a paused/recovered/remote session never resumes or adopts it.
+      if (run.taskId != taskId) throw StateError('Another timer is active');
+      await refresh();
+      return;
+    }
+    if (focusSessionFor(taskId).mode == FocusMode.stopwatch) {
+      await startTimer(taskId);
+    } else {
+      await toggleFocus(taskId);
+    }
+  }
+
+  Future<void> switchTaskTimer(TimerRun previous, String taskId) async {
+    final session = focusSessionFor(taskId);
+    await repository.switchTaskTimer(
+      previous,
+      taskId,
+      startWork: session.mode == FocusMode.stopwatch || session.recordsWork,
+    );
+    focusSessions[previous.taskId]?.pause();
+    await refreshAfterLocalChange();
+    if (session.mode != FocusMode.stopwatch && !session.running) {
+      // The new ledger interval is already running. Start the selected phase
+      // without toggling (and therefore pausing) that interval.
+      if (session.remaining == Duration.zero) session.reset();
+      if (session.recordsWork) {
+        session.workDeadline = timeEntries
+            .firstWhere(
+              (entry) =>
+                  entry.timerRunId == activeTimer?.id && entry.endsAt == null,
+            )
+            .startsAt
+            .add(session.remaining);
+        session.start();
+        _focusTicker ??= Timer.periodic(
+          const Duration(milliseconds: 250),
+          (_) => _tickFocus(),
+        );
+      } else {
+        await toggleFocus(taskId);
+      }
+    }
+    notifyListeners();
   }
 
   Future<void> startTask(LifeTask task) async {
     await repository.setTaskWorking(task, true);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> endTaskWork(LifeTask task) async {
@@ -1337,48 +1512,48 @@ class AppController extends ChangeNotifier {
       await repository.stopTimer(activeTimer!);
     }
     await repository.setTaskWorking(task, false);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> startFocusTask(LifeTask task) async {
     await repository.startFocusTask(task);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> pauseTimer() async {
     final session = focusSessions[activeTimer?.taskId];
     await repository.pauseTimer(activeTimer!);
     session?.pause();
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> adoptTimerAtCheckpoint(TimerRun previous) async {
     await repository.adoptTimerAtCheckpoint(previous);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> resumeTimer() async {
     await repository.resumeTimer(activeTimer!);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> stopTimer() async {
     final session = focusSessions[activeTimer?.taskId];
     await repository.stopTimer(activeTimer!);
     session?.pause();
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> keepRecoveredTimer() async {
     await repository.keepRecoveredTimer(activeTimer!);
     _interruptedTimerId = null;
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> stopRecoveredTimerAtCheckpoint() async {
     await repository.stopRecoveredTimerAtCheckpoint(activeTimer!);
     _interruptedTimerId = null;
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> addManualTime(
@@ -1388,7 +1563,7 @@ class AppController extends ChangeNotifier {
     String notes,
   ) async {
     await repository.addManualTime(taskId, startsAt, endsAt, notes);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> updateManualTime(
@@ -1398,22 +1573,22 @@ class AppController extends ChangeNotifier {
     String notes,
   ) async {
     await repository.updateManualTime(previous, startsAt, endsAt, notes);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> clearManualTime(TimeEntry previous) async {
     await repository.clearManualTime(previous);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> saveTaskTemplate(LifeTask source, String name) async {
     await repository.saveTaskTemplate(source, name);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> saveProjectTemplate(Project project, String name) async {
     await repository.saveProjectTemplate(project, name);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<String> instantiateTemplate(
@@ -1430,7 +1605,7 @@ class AppController extends ChangeNotifier {
       projectId: projectId,
       projectName: projectName,
     );
-    await refresh();
+    await refreshAfterLocalChange();
     if (template.kind == TemplateKind.project) {
       navigate(WorkspaceView.project, id: id);
     } else {
@@ -1441,12 +1616,12 @@ class AppController extends ChangeNotifier {
 
   Future<void> deleteTemplate(LifeTemplate template) async {
     await repository.deleteTemplate(template);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> skipRecurringOccurrence(LifeTask task, {bool? carryPlan}) async {
     await repository.skipRecurringOccurrence(task, carryPlan: carryPlan);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<ProgressivePlan?> progressivePlan(String taskId) =>
@@ -1462,22 +1637,22 @@ class AppController extends ChangeNotifier {
       steps,
       repeatAtEnd: repeatAtEnd,
     );
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> reassignProgressiveStep(String taskId, int index) async {
     await repository.reassignProgressiveStep(taskId, index);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> setProgressiveCarry(String taskId, bool carry) async {
     await repository.setProgressiveCarry(taskId, carry);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> resumeCompletionSeries(LifeTask skipped, String nextDate) async {
     final next = await repository.resumeCompletionSeries(skipped, nextDate);
-    await refresh();
+    await refreshAfterLocalChange();
     select(next.id);
   }
 
@@ -1501,7 +1676,7 @@ class AppController extends ChangeNotifier {
     Map<String, SeriesCollisionChoice> choices,
   ) async {
     await repository.applySeriesEdit(preview, choices);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   List<LifeTask> unmetPrerequisites(String taskId) {
@@ -1516,42 +1691,42 @@ class AppController extends ChangeNotifier {
 
   Future<void> setPrerequisites(LifeTask task, Set<String> ids) async {
     await repository.setPrerequisites(task, ids);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> addSequence(String name) async {
     await repository.addSequence(name);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> renameSequence(TaskSequence sequence, String name) async {
     await repository.renameSequence(sequence, name);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> deleteSequence(TaskSequence sequence) async {
     await repository.deleteSequence(sequence);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> setSequenceTasks(TaskSequence sequence, List<String> ids) async {
     await repository.setSequenceTasks(sequence, ids);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> addEvent(EventDraft draft) async {
     await repository.addEvent(draft);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> updateEvent(FixedEvent previous, EventDraft draft) async {
     await repository.updateEvent(previous, draft);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> moveCalendarSeries(FixedEvent previous, EventDraft draft) async {
     await repository.moveCalendarSeries(previous, draft);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<String?> calendarSeriesMoveProblem(
@@ -1564,7 +1739,7 @@ class AppController extends ChangeNotifier {
     EventDraft draft,
   ) async {
     await repository.updateEventOccurrence(occurrence, draft);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> splitEventSeries(
@@ -1573,7 +1748,7 @@ class AppController extends ChangeNotifier {
     EventDraft draft,
   ) async {
     await repository.splitEventSeries(occurrence, boundary, draft);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> setEventOccurrenceCancelled(
@@ -1581,42 +1756,42 @@ class AppController extends ChangeNotifier {
     bool cancelled,
   ) async {
     await repository.setEventOccurrenceCancelled(occurrence, cancelled);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> endEventSeries(FixedEvent occurrence) async {
     await repository.endEventSeries(occurrence);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> deleteEventFamily(FixedEvent occurrence) async {
     await repository.deleteEventFamily(occurrence);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> deleteEvent(String id) async {
     await repository.deleteEvent(id);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> addSession(SessionDraft draft) async {
     await repository.addSession(draft);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> addHabit(HabitDraft draft) async {
     await repository.addHabit(draft);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> updateHabit(Habit previous, HabitDraft draft) async {
     await repository.updateHabit(previous, draft);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> setHabitArchived(Habit previous, bool archived) async {
     await repository.setHabitArchived(previous, archived);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> recordHabitDay(
@@ -1633,50 +1808,47 @@ class AppController extends ChangeNotifier {
       notes: notes,
       previous: previous,
     );
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> clearHabitDay(HabitEntry previous) async {
     await repository.clearHabitDay(previous);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> addHabitRestDay(Habit habit, String day) async {
     await repository.addHabitRestDay(habit, day);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> removeHabitRestDay(HabitRestDay rest) async {
     await repository.removeHabitRestDay(rest);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> addGoal(GoalDraft draft, {GoalLinks? links}) async {
-    await repository.db.transaction(() async {
-      final goal = await repository.addGoal(draft);
-      if (links != null) await repository.setGoalLinks(goal, links);
-    });
-    await refresh();
+    await repository.addGoalWithComposition(draft, links: links);
+    await refreshAfterLocalChange();
   }
 
   Future<void> updateGoal(Goal previous, GoalDraft draft) async {
     await repository.updateGoal(previous, draft);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> setGoalCompleted(Goal previous, bool completed) async {
     await repository.setGoalCompleted(previous, completed);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> setGoalArchived(Goal previous, bool archived) async {
     await repository.setGoalArchived(previous, archived);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> addGoalProgress(Goal goal, double delta, String notes) async {
     await repository.addGoalProgress(goal, delta, notes);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> addGoalMilestone(
@@ -1686,7 +1858,7 @@ class AppController extends ChangeNotifier {
     String? deadlineDate,
   ) async {
     await repository.addGoalMilestone(goal, title, threshold, deadlineDate);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> setGoalMilestoneCompleted(
@@ -1694,7 +1866,7 @@ class AppController extends ChangeNotifier {
     bool completed,
   ) async {
     await repository.setGoalMilestoneCompleted(milestone, completed);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> updateGoalMilestone(
@@ -1711,14 +1883,14 @@ class AppController extends ChangeNotifier {
       threshold,
       deadlineDate,
     );
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<GoalLinks> goalLinks(String goalId) => repository.goalLinks(goalId);
 
   Future<void> setGoalLinks(Goal goal, GoalLinks links) async {
     await repository.setGoalLinks(goal, links);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<List<GoalProgressEntry>> goalProgressHistory(String goalId) =>
@@ -1729,17 +1901,17 @@ class AppController extends ChangeNotifier {
 
   Future<void> updateSession(WorkSession previous, SessionDraft draft) async {
     await repository.updateSession(previous, draft);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> deleteSession(String id) async {
     await repository.deleteSession(id);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> saveAvailability(AvailabilityPlan value) async {
     await repository.saveAvailability(value);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<List<SeriesScheduleCollision>> scheduleSeriesCollisions(
@@ -1756,7 +1928,7 @@ class AppController extends ChangeNotifier {
       seriesChoices: seriesChoices,
       expectedSeriesCollisions: expectedSeriesCollisions,
     );
-    await refresh();
+    await refreshAfterLocalChange();
     return id;
   }
 
@@ -1768,17 +1940,17 @@ class AppController extends ChangeNotifier {
 
   Future<void> addCategory(String name) async {
     await repository.addCategory(name);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> renameCategory(String id, String name) async {
     await repository.renameCategory(id, name);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> setCategoryEventColor(String id, int? color) async {
     await repository.setCategoryEventColor(id, color);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   int? effectiveEventColor(FixedEvent event) =>
@@ -1791,22 +1963,22 @@ class AppController extends ChangeNotifier {
   Future<void> deleteCategory(String id) async {
     await repository.deleteCategory(id);
     navigate(WorkspaceView.today);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> addProject(String categoryId, String name) async {
     await repository.addProject(categoryId, name);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> renameProject(String id, String name) async {
     await repository.renameProject(id, name);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 
   Future<void> deleteProject(String id) async {
     await repository.deleteProject(id);
     navigate(WorkspaceView.today);
-    await refresh();
+    await refreshAfterLocalChange();
   }
 }

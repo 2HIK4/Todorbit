@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../domain/alarm_plan.dart';
 import '../shared/alarm_indicator.dart';
 import '../shared/scroll_edge_fade.dart';
@@ -63,6 +65,7 @@ class CalendarView extends ConsumerStatefulWidget {
     required this.onAddTask,
     this.onEventTap,
     this.onEscape,
+    this.onDateSelected,
   });
   final DateTime? initialDate;
   final void Function(LifeTask task) onTaskTap;
@@ -70,6 +73,7 @@ class CalendarView extends ConsumerStatefulWidget {
   final void Function(DateTime date) onAddTask;
   final void Function(FixedEvent event)? onEventTap;
   final VoidCallback? onEscape;
+  final void Function(DateTime date)? onDateSelected;
 
   @override
   ConsumerState<CalendarView> createState() => _CalendarViewState();
@@ -78,6 +82,12 @@ class CalendarView extends ConsumerStatefulWidget {
 class _CalendarViewState extends ConsumerState<CalendarView>
     with SingleTickerProviderStateMixin {
   DateTime selected = DateTime.now();
+
+  void _setSelected(DateTime date) {
+    selected = date;
+    widget.onDateSelected?.call(date);
+  }
+
   CalendarMode mode = CalendarMode.week;
   double _slotHeight = 60;
   double _targetSlotHeight = 60;
@@ -96,6 +106,12 @@ class _CalendarViewState extends ConsumerState<CalendarView>
   );
   final FocusNode _calendarFocusNode = FocusNode();
   bool _useLegacy = false;
+  int _monthNavigationRevision = 0;
+  bool _isLoadingMonth = false;
+  Object? _cachedMonthKey;
+  Map<DateTime, List<CalendarItem>>? _cachedMonthMap;
+  Object? _cachedWeekKey;
+  Map<DateTime, List<CalendarItem>>? _cachedWeekMap;
 
   @visibleForTesting
   FocusNode get calendarFocusNode => _calendarFocusNode;
@@ -106,6 +122,44 @@ class _CalendarViewState extends ConsumerState<CalendarView>
 
   @visibleForTesting
   Future<void> handleInteractionFinished() => _handleInteractionFinished();
+
+  @override
+  void didUpdateWidget(CalendarView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialDate case final date?
+        when date != oldWidget.initialDate) {
+      _pendingExternalDate = DateUtils.isSameDay(selected, date) ? null : date;
+      _scheduleExternalDate();
+    }
+  }
+
+  DateTime? _pendingExternalDate;
+  bool _externalDateScheduled = false;
+
+  void _scheduleExternalDate() {
+    if (_pendingExternalDate == null || _externalDateScheduled) return;
+    if (_handlingInteraction ||
+        _interactionController.gestureKind != CalendarGestureKind.none ||
+        _interactionController.activeItem != null) {
+      return;
+    }
+    _externalDateScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _externalDateScheduled = false;
+      if (!mounted ||
+          _handlingInteraction ||
+          _interactionController.gestureKind != CalendarGestureKind.none ||
+          _interactionController.activeItem != null) {
+        return;
+      }
+      final date = _pendingExternalDate;
+      _pendingExternalDate = null;
+      if (date == null || DateUtils.isSameDay(selected, date)) return;
+      setState(() => _setSelected(date));
+      unawaited(_loadSelectedMonth());
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
 
   @override
   void dispose() {
@@ -134,7 +188,10 @@ class _CalendarViewState extends ConsumerState<CalendarView>
   }
 
   void _onInteractionChanged() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+      _scheduleExternalDate();
+    }
   }
 
   @override
@@ -142,14 +199,17 @@ class _CalendarViewState extends ConsumerState<CalendarView>
     super.initState();
     _interactionController.addListener(_onInteractionChanged);
     selected = widget.initialDate ?? selected;
+    widget.onDateSelected?.call(selected);
     final controller = ref.read(appControllerProvider);
     mode = CalendarMode.values.byName(
       controller.lastCalendarMode ??
           controller.customization.calendarDefaultView,
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && !_calendarFocusNode.hasFocus) {
-        _calendarFocusNode.requestFocus();
+      if (!mounted) return;
+      if (!_calendarFocusNode.hasFocus) _calendarFocusNode.requestFocus();
+      if (!_isDateInWindow(selected, controller)) {
+        unawaited(_loadSelectedMonth());
       }
     });
   }
@@ -174,7 +234,7 @@ class _CalendarViewState extends ConsumerState<CalendarView>
 
   Future<void> _move(int direction) async {
     setState(() {
-      selected = switch (mode) {
+      _setSelected(switch (mode) {
         CalendarMode.day => DateTime(day.year, day.month, day.day + direction),
         CalendarMode.week => DateTime(
           day.year,
@@ -182,7 +242,7 @@ class _CalendarViewState extends ConsumerState<CalendarView>
           day.day + 7 * direction,
         ),
         CalendarMode.month => _shiftMonth(direction),
-      };
+      });
     });
     await _loadSelectedMonth();
   }
@@ -195,9 +255,11 @@ class _CalendarViewState extends ConsumerState<CalendarView>
     _interactionController.beginNavigation();
     try {
       setState(() {
-        selected = isWeek
-            ? DateTime(day.year, day.month, day.day + 7 * direction)
-            : DateTime(day.year, day.month, day.day + direction);
+        _setSelected(
+          isWeek
+              ? DateTime(day.year, day.month, day.day + 7 * direction)
+              : DateTime(day.year, day.month, day.day + direction),
+        );
       });
       await _loadSelectedMonth();
       if (mounted) await WidgetsBinding.instance.endOfFrame;
@@ -206,14 +268,38 @@ class _CalendarViewState extends ConsumerState<CalendarView>
     }
   }
 
+  bool _isDateInWindow(DateTime date, AppController controller) {
+    final firstDay = localDate(DateTime(date.year, date.month, 1));
+    final lastDay = localDate(
+      DateTime(
+        date.year,
+        date.month,
+        DateUtils.getDaysInMonth(date.year, date.month),
+      ),
+    );
+    return firstDay.compareTo(controller.eventWindowFrom) >= 0 &&
+        lastDay.compareTo(controller.eventWindowThrough) <= 0;
+  }
+
   Future<void> _loadSelectedMonth() async {
+    final revision = ++_monthNavigationRevision;
+    final controller = ref.read(appControllerProvider);
+    final inWindow = _isDateInWindow(selected, controller);
+    if (!inWindow && !_isLoadingMonth && mounted) {
+      setState(() => _isLoadingMonth = true);
+    }
     try {
-      await ref.read(appControllerProvider).ensureRecurringMonth(selected);
+      await controller.ensureRecurringMonth(selected);
+      if (!mounted || revision != _monthNavigationRevision) return;
     } catch (error) {
-      if (mounted) {
+      if (mounted && revision == _monthNavigationRevision) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not load recurring tasks: $error')),
         );
+      }
+    } finally {
+      if (mounted && revision == _monthNavigationRevision && _isLoadingMonth) {
+        setState(() => _isLoadingMonth = false);
       }
     }
   }
@@ -234,7 +320,8 @@ class _CalendarViewState extends ConsumerState<CalendarView>
       animationStyle: AppMotion.style(context),
       builder: (context) {
         final media = MediaQuery.of(context);
-        final availableHeight = media.size.height - media.viewInsets.bottom - 48;
+        final availableHeight =
+            media.size.height - media.viewInsets.bottom - 48;
         return Dialog(
           child: SizedBox(
             width: 500,
@@ -367,7 +454,7 @@ class _CalendarViewState extends ConsumerState<CalendarView>
                     onPressed: () {
                       Navigator.pop(popupContext);
                       setState(() {
-                        selected = date;
+                        _setSelected(date);
                         mode = CalendarMode.day;
                       });
                       ref
@@ -521,6 +608,7 @@ class _CalendarViewState extends ConsumerState<CalendarView>
     } finally {
       _interactionController.resolvingChoice = false;
       _handlingInteraction = false;
+      if (mounted) _scheduleExternalDate();
     }
   }
 
@@ -785,17 +873,26 @@ class _CalendarViewState extends ConsumerState<CalendarView>
   Map<DateTime, List<CalendarItem>> _buildWeekItemsByDay(
     AppController controller,
   ) {
+    final key = (controller, controller.stateRevision, weekStart);
+    if (_cachedWeekKey == key && _cachedWeekMap != null) {
+      return _cachedWeekMap!;
+    }
     final map = <DateTime, List<CalendarItem>>{};
     for (var i = 0; i < 7; i++) {
       final d = DateTime(weekStart.year, weekStart.month, weekStart.day + i);
       map[d] = _buildCalendarItems(controller, d);
     }
-    return map;
+    _cachedWeekKey = key;
+    return _cachedWeekMap = map;
   }
 
   Map<DateTime, List<CalendarItem>> _buildMonthItemsByDay(
     AppController controller,
   ) {
+    final key = (controller, controller.stateRevision, day.year, day.month);
+    if (_cachedMonthKey == key && _cachedMonthMap != null) {
+      return _cachedMonthMap!;
+    }
     final map = <DateTime, List<CalendarItem>>{};
     final first = DateTime(day.year, day.month);
     final offset =
@@ -807,7 +904,8 @@ class _CalendarViewState extends ConsumerState<CalendarView>
       final d = DateTime(first.year, first.month, first.day + i - offset);
       map[d] = _buildCalendarItems(controller, d);
     }
-    return map;
+    _cachedMonthKey = key;
+    return _cachedMonthMap = map;
   }
 
   DateTime _resolveAnchorDate(Offset localPosition, Size viewSize) {
@@ -846,7 +944,7 @@ class _CalendarViewState extends ConsumerState<CalendarView>
         const SingleActivator(LogicalKeyboardKey.digit3, control: true): () =>
             _setMode(CalendarMode.month),
         const SingleActivator(LogicalKeyboardKey.keyT): () {
-          setState(() => selected = DateTime.now());
+          setState(() => _setSelected(DateTime.now()));
           _loadSelectedMonth();
         },
         const SingleActivator(LogicalKeyboardKey.escape): () {
@@ -914,7 +1012,7 @@ class _CalendarViewState extends ConsumerState<CalendarView>
                   ),
                   OutlinedButton(
                     onPressed: () {
-                      setState(() => selected = DateTime.now());
+                      setState(() => _setSelected(DateTime.now()));
                       _loadSelectedMonth();
                     },
                     child: const Text('Today'),
@@ -1175,7 +1273,7 @@ class _CalendarViewState extends ConsumerState<CalendarView>
                                     bodySize,
                                   );
                                   setState(() {
-                                    selected = anchorDate;
+                                    _setSelected(anchorDate);
                                     mode = targetMode;
                                   });
                                   ref
@@ -1230,7 +1328,15 @@ class _CalendarViewState extends ConsumerState<CalendarView>
                               ? switch (mode) {
                                   CalendarMode.day => _dayList(controller, day),
                                   CalendarMode.week => _weekGrid(controller),
-                                  CalendarMode.month => _monthGrid(controller),
+                                  CalendarMode.month => Column(
+                                    children: [
+                                      if (_isLoadingMonth)
+                                        const LinearProgressIndicator(
+                                          minHeight: 2,
+                                        ),
+                                      Expanded(child: _monthGrid(controller)),
+                                    ],
+                                  ),
                                 }
                               : switch (mode) {
                                   CalendarMode.day => CalendarDayView(
@@ -1272,7 +1378,7 @@ class _CalendarViewState extends ConsumerState<CalendarView>
                                         onDayHeaderTap: (date) {
                                           _setMode(CalendarMode.day);
                                           setState(() {
-                                            selected = date;
+                                            _setSelected(date);
                                           });
                                         },
                                         alarmRules: controller.alarmRules,
@@ -1286,35 +1392,46 @@ class _CalendarViewState extends ConsumerState<CalendarView>
                                       );
                                     },
                                   ),
-                                  CalendarMode.month => CalendarMonthView(
-                                    selectedDate: day,
-                                    firstWeekday: ref
-                                        .read(appControllerProvider)
-                                        .firstWeekday,
-                                    itemsByDay: _buildMonthItemsByDay(
-                                      controller,
-                                    ),
-                                    config: _config,
-                                    onItemTap: _handleCalendarItemTap,
-                                    onDayTap: _showDayPreview,
-                                    onItemDroppedOnDate:
-                                        _handleMonthItemDropped,
-                                    onShowDay: (date) {
-                                      _setMode(CalendarMode.day);
-                                      setState(() {
-                                        selected = date;
-                                      });
-                                    },
-                                    onShowWeek: (date) {
-                                      _setMode(CalendarMode.week);
-                                      setState(() {
-                                        selected = date;
-                                      });
-                                    },
-                                    onAddEvent: (date) =>
-                                        _editEvent(null, date),
-                                    onAddTask: widget.onAddTask,
-                                    onAddSession: (date) => _editSession(),
+                                  CalendarMode.month => Column(
+                                    children: [
+                                      if (_isLoadingMonth)
+                                        const LinearProgressIndicator(
+                                          minHeight: 2,
+                                        ),
+                                      Expanded(
+                                        child: CalendarMonthView(
+                                          selectedDate: day,
+                                          firstWeekday: ref
+                                              .read(appControllerProvider)
+                                              .firstWeekday,
+                                          itemsByDay: _buildMonthItemsByDay(
+                                            controller,
+                                          ),
+                                          config: _config,
+                                          onItemTap: _handleCalendarItemTap,
+                                          onDayTap: _showDayPreview,
+                                          onItemDroppedOnDate:
+                                              _handleMonthItemDropped,
+                                          onShowDay: (date) {
+                                            _setMode(CalendarMode.day);
+                                            setState(() {
+                                              _setSelected(date);
+                                            });
+                                          },
+                                          onShowWeek: (date) {
+                                            _setMode(CalendarMode.week);
+                                            setState(() {
+                                              _setSelected(date);
+                                            });
+                                          },
+                                          onAddEvent: (date) =>
+                                              _editEvent(null, date),
+                                          onAddTask: widget.onAddTask,
+                                          onAddSession: (date) =>
+                                              _editSession(),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 },
                         ),
@@ -1484,7 +1601,12 @@ class _CalendarViewState extends ConsumerState<CalendarView>
     return LayoutBuilder(
       builder: (context, bounds) {
         final rows = cellCount ~/ 7;
-        final cellHeight = (bounds.maxHeight - 62) / rows;
+        final rawCellHeight = (bounds.maxHeight - 62) / rows;
+        final cellHeight = rawCellHeight.clamp(90.0, double.infinity);
+        final cellWidth = ((bounds.maxWidth - 24) / 7).clamp(
+          30.0,
+          double.infinity,
+        );
         final previewCount = monthEntryCapacity(
           cellHeight,
           MediaQuery.textScalerOf(context).scale(1),
@@ -1556,25 +1678,44 @@ class _CalendarViewState extends ConsumerState<CalendarView>
                               ),
                             ),
                             const SizedBox(height: 3),
-                            for (final entry in entries.take(
-                              entries.length > previewCount
-                                  ? (previewCount - 1).clamp(0, 30)
-                                  : previewCount,
-                            ))
-                              _monthEntry(entry),
-                            if (entries.length > previewCount)
-                              TextButton(
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  minimumSize: const Size(0, 22),
-                                  alignment: Alignment.centerLeft,
-                                ),
-                                onPressed: () => _showDayPreview(date),
-                                child: Text(
-                                  '+${entries.length - (previewCount - 1).clamp(0, 30)} more',
-                                  style: const TextStyle(fontSize: 11),
-                                ),
-                              ),
+                            ...() {
+                              final visibleLimit = previewCount.clamp(1, 30);
+                              final showOverflow =
+                                  entries.length > visibleLimit;
+                              final visibleCount = showOverflow
+                                  ? (visibleLimit > 1 ? visibleLimit - 1 : 1)
+                                  : entries.length;
+                              final overflowCount =
+                                  entries.length - visibleCount;
+
+                              return [
+                                for (final entry in entries.take(visibleCount))
+                                  _monthEntry(entry),
+                                if (showOverflow && overflowCount > 0)
+                                  InkWell(
+                                    onTap: () => _showDayPreview(date),
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 2,
+                                        vertical: 1,
+                                      ),
+                                      child: Text(
+                                        cellWidth < 75
+                                            ? '+$overflowCount'
+                                            : '+$overflowCount more',
+                                        style: TextStyle(
+                                          fontSize: cellWidth < 75 ? 9.5 : 10.0,
+                                          fontWeight: FontWeight.w600,
+                                          color: scheme.primary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ),
+                              ];
+                            }(),
                           ],
                         ),
                       ),

@@ -1,3 +1,5 @@
+import '../time_tracking/compact_task_timer.dart';
+import '../time_tracking/task_timer_intent.dart';
 import '../../domain/alarm_plan.dart';
 import '../shared/alarm_indicator.dart';
 import '../shared/app_motion.dart';
@@ -5,6 +7,8 @@ import '../shared/app_task_row.dart';
 import '../support/support_button.dart';
 import '../shared/item_filters.dart';
 import '../settings/sidebar_order_dialog.dart';
+import '../settings/sync_conflicts_dialog.dart';
+import '../settings/sync_settings_page.dart';
 import '../../domain/task_list_projection.dart';
 import '../shared/task_list_group.dart';
 import '../shared/scroll_edge_fade.dart';
@@ -41,6 +45,7 @@ import '../workspace/task_editor.dart';
 import '../workspace/trash_dialog.dart';
 import '../workspace/task_details_view.dart';
 import '../time_tracking/focus_workspace.dart';
+import '../shared_inbox/shared_inbox_screen.dart';
 import 'mobile_calendar.dart';
 import 'mobile_settings.dart';
 import 'mobile_ui.dart';
@@ -93,6 +98,8 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
         if (call.method == 'openLink') {
           pendingLink = call.arguments as String;
           await deliverLink();
+        } else if (call.method == 'sharedInboxUpdated') {
+          if (mounted) message('New file(s) received in Shared Inbox');
         }
       });
       WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -445,15 +452,11 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
             ? Container(
                 height: 42,
                 decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .surfaceContainerHighest
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest
                       .withValues(alpha: 0.65),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primary
+                    color: Theme.of(context).colorScheme.primary
                         .withValues(alpha: 0.7),
                     width: 1.5,
                   ),
@@ -515,7 +518,11 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
             : Text(title(c)),
         actions: [
           if (!searching) ...[
-            SyncStatusButton(allowAutomatic: true),
+            SyncStatusButton(
+              allowAutomatic: true,
+              onOpenSettings: showSyncSettings,
+              onOpenConflicts: showSyncConflicts,
+            ),
             PopupMenuButton<String>(
               tooltip: 'Library',
               icon: const Icon(Icons.collections_bookmark_outlined),
@@ -603,28 +610,10 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
         top: false,
         child: Column(
           children: [
-            if (c.activeTimer case final timer?)
+            if (c.activeTimer != null)
               Material(
                 color: Theme.of(context).colorScheme.secondaryContainer,
-                child: ListTile(
-                  leading: const Icon(Icons.timer_outlined),
-                  title: Text(
-                    c.tasks
-                            .where((t) => t.id == timer.taskId)
-                            .firstOrNull
-                            ?.title ??
-                        'Active timer',
-                  ),
-                  subtitle: Text(
-                    timer.needsReview(DateTime.now())
-                        ? 'Interrupted timer needs review'
-                        : 'Timer ${timer.state.name}',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: timer.taskId == null
-                      ? null
-                      : () => openFocus(timer.taskId!),
-                ),
+                child: CompactTaskTimer(open: openFocus),
               ),
             if (pendingLink != null)
               ListTile(
@@ -940,6 +929,8 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
             items: tasks,
             parents: c.taskParents,
             row: (t) => mobileTaskRow(t, c),
+            subtaskRow: (t) => mobileSubtaskRow(t, c),
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           );
         },
       ),
@@ -968,9 +959,64 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
       onLongPress: () => actions(t, c),
       onToggleComplete: (value) => run(() => c.setComplete(t, value)),
       trailingActions: IconButton(
-        tooltip: 'Actions for ${t.title}',
+        tooltip: 'Actions for ',
         icon: const Icon(Icons.more_vert),
         onPressed: () => actions(t, c),
+      ),
+    );
+  }
+
+  Widget mobileSubtaskRow(LifeTask t, AppController c) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final done = t.status == TaskStatus.completed;
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => openTaskDetails(t),
+        onLongPress: () => actions(t, c),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: Row(
+            children: [
+              Checkbox(
+                value: done,
+                semanticLabel: '${done ? 'Reopen' : 'Complete'} ${t.title}',
+                onChanged: (v) => run(() => c.setComplete(t, v == true)),
+              ),
+              Icon(
+                Icons.subdirectory_arrow_right_rounded,
+                size: 16,
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  t.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: done
+                      ? const TextStyle(
+                          fontSize: 14,
+                          decoration: TextDecoration.lineThrough,
+                        )
+                      : const TextStyle(fontSize: 14),
+                ),
+              ),
+              IconButton(
+                iconSize: 20,
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Actions for ${t.title}',
+                icon: const Icon(Icons.more_vert),
+                onPressed: () => actions(t, c),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -988,16 +1034,28 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                 .tasks
                 .firstWhere((current) => current.id == t.id),
           ),
-          onStartFocus: () {
-            Navigator.pop(context);
-            openFocus(t.id);
-          },
+          onStartFocus: () => openTaskTimer(
+            context,
+            ref.read(appControllerProvider),
+            t.id,
+            open: (taskId) {
+              Navigator.pop(context);
+              _showFocus(taskId);
+            },
+          ),
         ),
       ),
     );
   }
 
-  void openFocus(String taskId) {
+  Future<void> openFocus(String taskId) => openTaskTimer(
+    context,
+    ref.read(appControllerProvider),
+    taskId,
+    open: _showFocus,
+  );
+
+  void _showFocus(String taskId) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1240,6 +1298,17 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                 supportAvailable
                     ? const SupportDialog()
                     : const ProjectSupportDialog(),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.folder_shared_outlined),
+            title: const Text('Shared Files'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push<void>(
+                context,
+                MaterialPageRoute(builder: (_) => const SharedInboxScreen()),
               );
             },
           ),

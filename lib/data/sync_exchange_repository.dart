@@ -29,23 +29,37 @@ Map<String, Object?>? _syncPortableValue(String? source) {
   });
 }
 
-SyncRevision _syncRevisionFromJournal(Map<String, Object?> row) => SyncRevision(
-  id: row['operation_id'] as String,
-  device: row['device_id'] as String,
-  sequence: row['origin_sequence'] as int,
-  parents: (jsonDecode(row['parent_ids_json'] as String) as List)
-      .cast<String>(),
-  observed: (jsonDecode(row['observed_json'] as String) as Map)
-      .cast<String, int>(),
-  visible: row['visible_json'] == null
-      ? null
-      : SyncVisibility.fromJson(
-          (jsonDecode(row['visible_json'] as String) as Map)
-              .cast<String, dynamic>(),
-        ),
-  value: _syncPortableValue(row['after_json'] as String?),
-  intent: row['intent'] as String? ?? 'edit',
-);
+SyncRevision _syncRevisionFromJournal(Map<String, Object?> row) {
+  return SyncRevision(
+    id: row['operation_id'] as String,
+    device: row['device_id'] as String,
+    sequence: row['origin_sequence'] as int,
+    parents: (jsonDecode(row['parent_ids_json'] as String) as List)
+        .cast<String>(),
+    observed: (jsonDecode(row['observed_json'] as String) as Map)
+        .cast<String, int>(),
+    visible: row['visible_json'] == null
+        ? null
+        : SyncVisibility.fromJson(
+            (jsonDecode(row['visible_json'] as String) as Map)
+                .cast<String, dynamic>(),
+          ),
+    value: _syncPortableValue(row['after_json'] as String?),
+    intent: row['intent'] as String? ?? 'edit',
+  );
+}
+
+bool _syncPreferenceCanUpload(SyncRecordOperation operation) {
+  final value = operation.revision.value;
+  if (operation.entity != 'portable_preferences' || value == null) return true;
+  final key = value['key'] as String;
+  final raw = jsonDecode(value['value_json'] as String);
+  try {
+    return _syncSame(raw, validatePortablePreference(key, raw));
+  } on FormatException {
+    return false;
+  }
+}
 
 SyncBatch _buildOutgoingSyncBatch(
   List<Map<String, Object?>> rows,
@@ -77,6 +91,12 @@ SyncBatch _buildOutgoingSyncBatch(
         );
       }
       break;
+    }
+    if (!_syncPreferenceCanUpload(operation)) {
+      // Send any compatible prefix first. Later sequences still depend on the
+      // retained operation, so it must never be skipped or rewritten.
+      if (operations.isNotEmpty) break;
+      throw const SyncPreferenceCompatibilityException();
     }
     operations.add(operation);
     bytes += length;
@@ -152,6 +172,18 @@ extension SyncExchangeRepository on LifeRepository {
         .get();
     if (existing.isNotEmpty) {
       final pending = await _pendingSyncBatch(existing.single.data, binding);
+      final staged = await (codec ?? SyncBatchCodec()).decrypt(
+        pending.bytes,
+        key,
+        workspace: binding.workspace,
+        account: binding.account,
+        expectedSchema: AppDatabase.currentSchemaVersion,
+      );
+      if (!staged.operations.every(_syncPreferenceCanUpload)) {
+        // The network may already have received this identity. Keep the exact
+        // envelope and its journal links for explicit reconciliation.
+        throw const SyncPreferenceCompatibilityException();
+      }
       await _requireSyncExchange(binding, lease);
       return pending;
     }

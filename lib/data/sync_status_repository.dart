@@ -19,7 +19,11 @@ extension SyncStatusRepository on LifeRepository {
 
   Future<Map<String, Object?>> portablePreferences() async => {
     for (final row
-        in await db.customSelect('SELECT * FROM portable_preferences').get())
+        in await db
+            .customSelect(
+              "SELECT * FROM portable_preferences WHERE key <> 'detailPresentation'",
+            )
+            .get())
       row.read<String>('key'): validatePortablePreference(
         row.read<String>('key'),
         jsonDecode(row.read<String>('value_json')),

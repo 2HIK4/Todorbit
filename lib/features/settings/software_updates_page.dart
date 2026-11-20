@@ -397,7 +397,7 @@ class _SoftwareUpdatesPageState extends ConsumerState<SoftwareUpdatesPage> {
       ],
     );
     try {
-      await ref.read(appControllerProvider).repository.db.close();
+      await ref.read(appControllerProvider).repository.close();
     } finally {
       // Once the helper is running, this process must release bundle files.
       exit(0);

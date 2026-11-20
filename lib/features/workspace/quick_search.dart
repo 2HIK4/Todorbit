@@ -7,9 +7,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_controller.dart';
 
 class QuickSearchDialog extends ConsumerStatefulWidget {
-  const QuickSearchDialog({super.key, this.beforeNavigate, this.onEventTap});
+  const QuickSearchDialog({
+    super.key,
+    this.beforeNavigate,
+    this.onEventTap,
+    this.onTaskTap,
+  });
   final Future<bool> Function()? beforeNavigate;
   final ValueChanged<FixedEvent>? onEventTap;
+  final ValueChanged<LifeTask>? onTaskTap;
 
   @override
   ConsumerState<QuickSearchDialog> createState() => _QuickSearchDialogState();
@@ -84,10 +90,14 @@ class _QuickSearchDialogState extends ConsumerState<QuickSearchDialog> {
               ? 1
               : 3,
           open: () {
-            controller.navigate(
-              task.isOpen ? WorkspaceView.all : WorkspaceView.completed,
-            );
-            controller.select(task.id);
+            if (widget.onTaskTap != null) {
+              widget.onTaskTap!(task);
+            } else {
+              controller.navigate(
+                task.isOpen ? WorkspaceView.all : WorkspaceView.completed,
+              );
+              controller.select(task.id);
+            }
           },
         ),
       );

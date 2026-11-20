@@ -288,6 +288,9 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Shared title'), findsNWidgets(5));
+      expect(find.text('Child independently searchable'), findsOneWidget);
+      await tester.tap(find.byTooltip('Collapse 1 subtask'));
+      await tester.pumpAndSettle();
       expect(find.text('Child independently searchable'), findsNothing);
       controller.setFilter(const TaskFilter(text: 'Child independently'));
       await tester.pumpAndSettle();
@@ -311,7 +314,7 @@ void main() {
         'Packing task',
       );
       await expandEditorSection(tester, 'Checklist and subtasks');
-      await tester.tap(find.text('Add checklist'));
+      await tester.tap(find.text('New checklist'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextFormField), 'Pack');
       await tester.tap(find.text('Continue'));
