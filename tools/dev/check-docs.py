@@ -6,7 +6,9 @@ import sys
 from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULTS = ['AGENTS.md', 'docs/ARCHITECTURE_MAP.md', 'docs/ARCHITECTURE.md',
+DEFAULTS = ['AGENTS.md', 'README.md', 'CONTRIBUTING.md', 'SECURITY.md',
+            'docs/DEVELOPMENT.md', 'docs/INSTALLATION.md',
+            'docs/ARCHITECTURE_MAP.md', 'docs/ARCHITECTURE.md',
             'docs/CODEX_WORKFLOW.md', 'docs/TESTING.md', 'docs/ANDROID.md',
             'docs/ANDROID_SETUP.md', 'docs/ANDROID_GOOGLE_DRIVE.md',
             'docs/ANDROID_RELEASE.md', 'docs/ANDROID_UPDATES.md']

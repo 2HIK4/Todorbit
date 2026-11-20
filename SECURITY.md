@@ -1,13 +1,28 @@
 # Security
 
-Please report security concerns privately to hussamalkhatib24@gmail.com. Include the affected version, reproduction steps using disposable data, and likely impact. Do not post private databases, credentials, or exploit details in public issues.
+Report security concerns privately to the maintainer at
+[hussamalkhatib24@gmail.com](mailto:hussamalkhatib24@gmail.com). Include the
+Todorbit version, platform, behavior and likely impact. Use disposable data
+for any reproduction. Keep private databases, credentials, recovery keys and
+reproduction details out of public issues.
 
-Todorbit stores its SQLite database locally and does not encrypt it. The optional PIN is an interface privacy feature, not file encryption. Windows desktop widget hosting depends on Explorer behavior and needs manual testing after Windows updates.
+## Data protection
 
-Optional Google Drive snapshots use authenticated passphrase encryption before
-upload; local/restored databases and recovery copies remain unencrypted.
-Recovery passphrases and user access/refresh tokens are never packaged. Desktop
-OAuth client ID/client-secret parameters are public application configuration,
-not user credentials or a security boundary; PKCE and the user's grant protect
-the login. The public release gate and [privacy disclosure](docs/PRIVACY.md)
-separate production approval from test-account acceptance.
+- The local SQLite database and local recovery copies are readable by the
+  operating-system account that owns them. Todorbit's optional PIN locks the
+  interface. Use OS-level disk or account protections if you need local file
+  encryption.
+- [Drive snapshots](docs/GOOGLE_DRIVE_BACKUP.md) are passphrase-encrypted before
+  upload. Restored data and local review copies are stored locally.
+- [Standard Sync](docs/GOOGLE_DRIVE_SYNC.md) uses Google Drive's transport and
+  storage protections and uploads planner operations without Todorbit
+  client-side encryption. Private Encrypted Sync encrypts those operations
+  on the device and requires the appropriate passphrase or recovery code to
+  unlock on another device.
+- User tokens and recovery secrets are excluded from packages and settings
+  exports. Desktop OAuth client ID and shared client configuration identify
+  the installed application. PKCE and the user's grant protect authorization.
+
+See the [privacy disclosure](docs/PRIVACY.md) and
+[platform support](docs/PLATFORM_SUPPORT.md) for current distribution and
+experimental service limits.
