@@ -192,6 +192,86 @@ void main() {
     },
   );
 
+  test(
+    'clock rollback creates and retains a fresh automatic snapshot',
+    () async {
+      final directory = await Directory.systemTemp.createTemp('life-backup-');
+      final file = File('${directory.path}/life.sqlite');
+      final database = AppDatabase(NativeDatabase(file));
+      try {
+        final repository = LifeRepository(database);
+        await repository.addTask(const TaskDraft(title: 'Before rollback'));
+        final service = BackupService(file);
+        final correctedTime = DateTime.utc(2026, 10, 1);
+        final manual = await service.createBackup(
+          BackupKind.manual,
+          now: correctedTime,
+        );
+        for (var index = 0; index < BackupService.automaticRetention; index++) {
+          await service.createBackup(
+            BackupKind.automatic,
+            now: correctedTime.add(Duration(days: index + 2)),
+          );
+        }
+
+        await repository.addTask(const TaskDraft(title: 'After rollback'));
+        final backup = await service.ensureAutomaticBackup(
+          appSchemaVersion: AppDatabase.currentSchemaVersion,
+          now: correctedTime,
+        );
+
+        expect(backup, isNotNull);
+        final records = await service.list();
+        final automatic = records.where(
+          (item) => item.kind == BackupKind.automatic,
+        );
+        expect(automatic, hasLength(BackupService.automaticRetention));
+        expect(
+          automatic.map((item) => item.file.path),
+          contains(backup!.file.path),
+        );
+        expect(await manual.file.exists(), isTrue);
+        final snapshot = sqlite.sqlite3.open(
+          backup.file.path,
+          mode: sqlite.OpenMode.readOnly,
+        );
+        try {
+          expect(
+            snapshot
+                .select('SELECT title FROM tasks')
+                .map((row) => row['title']),
+            unorderedEquals(['Before rollback', 'After rollback']),
+          );
+        } finally {
+          snapshot.close();
+        }
+        expect(
+          await service.ensureAutomaticBackup(
+            appSchemaVersion: AppDatabase.currentSchemaVersion,
+            now: correctedTime.add(const Duration(hours: 1)),
+          ),
+          isNull,
+        );
+        final nextDayBackup = await service.ensureAutomaticBackup(
+          appSchemaVersion: AppDatabase.currentSchemaVersion,
+          now: correctedTime.add(const Duration(days: 1)),
+        );
+        expect(nextDayBackup, isNotNull);
+        expect(await backup.file.exists(), isTrue);
+        expect(await nextDayBackup!.file.exists(), isTrue);
+        expect(
+          (await service.list()).where(
+            (item) => item.kind == BackupKind.automatic,
+          ),
+          hasLength(BackupService.automaticRetention),
+        );
+      } finally {
+        await database.close();
+        await directory.delete(recursive: true);
+      }
+    },
+  );
+
   test('pre-upgrade snapshot remains at old schema after migration', () async {
     final directory = await Directory.systemTemp.createTemp(
       'life-backup-upgrade-',
