@@ -1,85 +1,102 @@
-﻿# Todorbit Visual Design Concepts â€” Evaluation & Recommendation
+﻿# Todorbit Visual Design Concepts — Evaluation & Design Iteration 2
 
 **Authored:** 2026-11-20
 **Branch:** `design-foundation-docs`
 **Prototypes:**
 - Concept A: [`docs/design-concepts/concept-a-refined-minimalist.html`](design-concepts/concept-a-refined-minimalist.html)
 - Concept B: [`docs/design-concepts/concept-b-modern-workspace.html`](design-concepts/concept-b-modern-workspace.html)
+- **Concept C (Iteration 2):** [`docs/design-concepts/concept-c-adaptive-workspace.html`](design-concepts/concept-c-adaptive-workspace.html)
 
-Both prototypes are self-contained HTML/CSS files with live light/dark theme toggles, interactive task selection, resizable side panels, and collapsible Progressive Disclosure sections. They can be opened in any browser.
-
----
-
-## 1. Concept Overviews
-
-| Aspect | Concept A: Refined Minimalist | Concept B: Modern Productivity Workspace |
-|--------|------------------------------|------------------------------------------|
-| **Visual identity** | Calm, spacious, Fluent-adjacent. Rounded cards, subtle borders, restrained blue accent (`#3B6FE0`). | High-density, professional, developer-tool feel. Dark-first, tabular task rows, indigo accent (`#6366F1`) + cyan. |
-| **Task row style** | Card-style list item with left priority border. Due date and tags in a metadata row below the title. | Tabular/grid layout: Checkbox \| Title \| Project \| Due Date \| Priority \| Badges. |
-| **Information density** | Medium: 48â€“56 dp per task row. Generous white space. Highly legible at any screen size. | High: 36â€“40 dp per task row. 30% more tasks visible simultaneously. |
-| **Task details panel** | 380 dp default. Form-style vertical layout with labeled fields. | 420 dp default. Tabbed workspace (Details / Subtasks / Focus Log) with a 2-column metadata grid. |
-| **Dark theme** | Deep slate (`#0F0F13` bg, `#1A1A22` surface). Soft contrast. | Dark graphite (`#181920` bg, `#21222C` surface). High-contrast indigo glow accents. |
-| **Navigation** | Standard category tree with pill-style selection. | Grouped sections with quick-add header button and inline keyboard shortcut indicator. |
+All prototypes are standalone, offline-capable HTML/CSS/JS applications that can be opened in any web browser.
 
 ---
 
-## 2. Detailed Evaluation
+## 1. Product Owner Review of Iteration 1 (Concepts A & B)
 
-### Concept A: Refined Minimalist
+**Verdict:** Neither Concept A nor Concept B was approved.
 
-**Strengths:**
-- **Superior readability:** Generous line-height and spacing make scanning effortless. Does not induce cognitive overload.
-- **Natural Progressive Disclosure:** Advanced fields (recurrence, reminders, dependencies) sit comfortably in collapsible cards that don't crowd the viewport.
-- **Easy cross-platform parity:** The card-style row maps directly to Android's `ListTile` patterns with minimal adaptation.
-- **Matches existing codebase:** Close to Todorbit's current component structure (uses `ExpansionTile`, `CardTheme`, `ListTileThemeData` already in `app_theme.dart`). Lowest implementation risk.
-- **Better accessibility headroom:** Ample space for â‰¥48 dp tap targets and large text scaling (up to 200%) without clipping.
-
-**Weaknesses:**
-- Shows fewer tasks on screen simultaneously (~8â€“10 tasks on a standard 1080p display before scrolling).
-- Power users with large monitors (1440p+) may find the horizontal space underutilized in the list pane.
+### Critical Deficiencies Identified:
+1. **Generic Appearance:** Neither concept established a distinctive Todorbit identity. Concept A resembled generic note apps; Concept B resembled developer issue trackers.
+2. **Space Utilization Trade-offs:** Concept A was clean but sparse and underutilized desktop width. Concept B was over-dense, clipping long task titles and producing cognitive fatigue.
+3. **Small Metadata Reliance:** Both concepts relied heavily on tiny, hard-to-read metadata badges.
+4. **Task Editor vs. Property Inspector:** Both detail side-panels felt like database inspectors rather than focused, enjoyable task editing workspaces.
+5. **Fixed Viewport Bias:** Neither prototype demonstrated adaptive responsiveness across varied desktop window widths (1000×800) or Android mobile viewports (390×844).
+6. **Incomplete Product IA:** The navigation models did not clearly accommodate Todorbit's full feature set (Habits, Goals, Focus Sessions, Reports, Backups, Settings).
 
 ---
 
-### Concept B: Modern Productivity Workspace
+## 2. Concept Comparison Matrix
 
-**Strengths:**
-- **High information throughput:** Tabular layout lets power users compare due dates, priorities, and projects across many tasks in a single glance.
-- **Excellent desktop space utilization:** Makes effective use of wide monitors (â‰¥1200 dp) without feeling sparse.
-- **Multitasking panel:** The tabbed detail workspace (Details, Subtasks, Focus Log) allows deep editing without leaving the main view.
-- **Appealing to developers / technical users:** Aesthetic resembles Linear, Raycast, or GitHub Projects.
-
-**Weaknesses:**
-- **Poor Android translation:** Tabular columns cannot fit on a mobile screen (<600 dp). Would require maintaining two substantially different task-row implementations, defeating the goal of a unified design system.
-- **Higher implementation complexity:** Requires a custom grid/table widget rather than reusing Flutter's built-in `ListTile` / `Card` infrastructure.
-- **Fragile at large text scale:** Fixed-column layouts clip when `textScaleFactor â‰¥ 1.5` unless complex truncation or column-hiding logic is added.
-- **Higher cognitive load:** Initial visual impression is busier, conflicting with the "simple by default" product requirement.
-
----
-
-## 3. Product Requirement Scorecard
-
-| Requirement | Concept A (Minimalist) | Concept B (Workspace) | Winner |
-|-------------|:---------------------:|:---------------------:|:------:|
-| 1. Excellent default experience | â˜…â˜…â˜…â˜…â˜… | â˜…â˜…â˜…â˜†â˜† | **A** |
-| 2. Simple by default, powerful on demand | â˜…â˜…â˜…â˜…â˜… | â˜…â˜…â˜…â˜†â˜† | **A** |
-| 3. Hide irrelevant technical info | â˜…â˜…â˜…â˜…â˜… | â˜…â˜…â˜…â˜…â˜† | **A** |
-| 4. Cross-platform consistency (Win + Android) | â˜…â˜…â˜…â˜…â˜… | â˜…â˜…â˜†â˜†â˜† | **A** |
-| 5. Deep customization via tokens | â˜…â˜…â˜…â˜…â˜† | â˜…â˜…â˜…â˜…â˜† | Tie |
-| 6. Desktop space utilization (large screens) | â˜…â˜…â˜…â˜†â˜† | â˜…â˜…â˜…â˜…â˜… | **B** |
-| 7. Implementation safety & component reuse | â˜…â˜…â˜…â˜…â˜… | â˜…â˜…â˜†â˜†â˜† | **A** |
-| 8. Accessibility & text-scaling tolerance | â˜…â˜…â˜…â˜…â˜… | â˜…â˜…â˜…â˜†â˜† | **A** |
+| Attribute | Concept A: Refined Minimalist | Concept B: Modern Productivity | **Concept C: Adaptive Workspace (New)** |
+|---|---|---|---|
+| **Visual Identity** | Plain minimalist card list, generic blue (`#3B6FE0`). | High-density developer grid, dark indigo (`#6366F1`) + cyan. | **Celestial Twilight / Luminous Canvas:** bespoke orbital brand identity, twilight slate dark theme (`#0F1017` / `#171823`), subtle violet-indigo accent (`#7E74F1`), clean responsive cards. |
+| **Task Presentation** | Vertical cards with colored left borders. | Strict multi-column tabular grid. | **Adaptive Task Rows:** 52 dp balanced default (or 38 dp compact toggle). Geometric priority shapes (▲ P1 Urgent, ■ P2 High, ▬ P3 Normal) ensuring readability without relying on color alone. |
+| **Title Readability** | Good, but single line. | Poor; frequent truncation. | **Exceptional:** Dedicated primary line with generous font scaling (14.5px / 13.5px), handles long titles gracefully without layout break. |
+| **Domain Invariant Clarity** | Planned and Due dates rendered similarly. | Single "Due" date column. | **Strict Todorbit separation:** Labeled Planned Date (🗓️ intentional schedule) vs. Hard Deadline (⏰ commitment gate) with distinct color semantics. |
+| **Task Details Workspace** | Form fields in cards; property inspector feel. | Tabbed metadata grid with tiny text. | **True Task Workspace:** Resizable side panel (340–650 dp) with drag handle, prominent editable title, dual schedule cards, interactive subtask checklist, progressive disclosure accordions, and optional **Expanded Modal Workspace** (⤢). |
+| **Responsive Adaptation** | Fixed width assumption. | Fixed width table (broken on mobile). | **Built-in multi-viewport simulator:** Live preview modes for Desktop Wide (1440×900), Medium Desktop (1000×800 with auto-collapsed padding), and Mobile (390×844 with bottom navigation & full-screen editor). |
+| **Information Architecture** | Basic subset of views. | Basic subset of views. | **Complete Todorbit IA:** Today, Calendar, Upcoming & Overdue, All Tasks, Focus Sessions, Habits, Goals, Reports, Projects, Google Drive Sync status, Preferences. |
+| **Density Options** | Fixed medium density. | Fixed compact density. | **User-selectable:** Balanced (52 dp) vs. Compact (38 dp) toggle in toolbar. |
 
 ---
 
-## 4. Recommendation
+## 3. Deep Dive: Concept C Innovations
 
-**Strongly recommend Concept A (Refined Minimalist)** for the following decisive reasons:
+### 3.1 Distinctive Visual Identity
+Concept C avoids generic SaaS tropes (excessive drop shadows, heavy purple gradients, redundant container borders). It introduces a refined, calm aesthetic:
+- **Dark Theme:** Deep celestial obsidian (`#0F1017` canvas, `#171823` card surfaces, `#272B3E` subtle structural borders).
+- **Light Theme:** Luminous clean slate (`#F6F7FB` canvas, `#FFFFFF` cards, `#E2E6F0` crisp outlines).
+- **Brand Motifs:** Circular orbital check-rings that visualize subtask completion progress, paired with a modern geometric brand logo.
 
-1. **Cross-platform shared components:** Concept A's `AppTaskRow` works identically on Windows and Android (with minor padding adjustments). Concept B would require divergent implementations for mobile vs. desktop, re-introducing the exact fragmentation identified in RC-1 of the UI audit.
-2. **True to "Simple by Default":** Todorbit is a personal productivity app, not an enterprise issue tracker. Concept A delivers a calm, focused experience for ordinary users while preserving full access to advanced features via contextual Progressive Disclosure.
-3. **Safe, incremental migration:** Concept A reuses existing `buildAppTheme()` typography, `AppSpacing`, and `ExpansionTile` mechanisms. It can be implemented in the pilot with ~400 lines of new Flutter code. Concept B requires extensive custom layout work.
-4. **Desktop responsiveness:** Concept A scales naturally from 600 dp to 1920 dp by adjusting list pane margins and side-panel width, without column truncation issues.
+### 3.2 Dual Scheduling System (Planned Date vs. Deadline)
+Todorbit's core architectural principle is that when you plan to work on a task is distinct from when that task is due. Concept C explicitly visualizes this:
+- **Planned Date:** Rendered in warm amber (`#F59E0B`) with an intentional calendar icon (e.g., `🗓️ Planned: Today`).
+- **Deadline:** Rendered in coral red (`#F43F5E`) when overdue or distinct secondary slate when upcoming (e.g., `⏰ Deadline: Nov 25`).
 
-> [!NOTE]
-> **This recommendation is proposed for Codex and product owner review.** It is not approved.
-> Implementation must not begin until the design direction is selected.
+### 3.3 Genuine Task Details Workspace
+The side panel in Concept C is not an inspector:
+- Draggable resize handle with visual grip feedback.
+- Prominent inline-editable task title.
+- Interactive subtask list directly inside the panel (check off subtasks, view progress).
+- Contextual progressive disclosure accordions for Recurrence, Alarms, and Dependencies.
+- An **Expanded Workspace button (⤢)** that opens complex tasks in a distraction-free two-column editing canvas.
+
+### 3.4 Cross-Platform Responsive Architecture
+Concept C includes an integrated simulator bar in the prototype:
+1. **Desktop Wide (1440 × 900):** Side rail navigation + task stream + persistent resizable details panel.
+2. **Desktop Medium (1000 × 800):** Narrowed sidebar (210 dp), compact panel (380 dp), and adaptive headers that avoid truncation or overflow.
+3. **Mobile Shell (390 × 844):** Auto-hides the desktop sidebar, replaces it with a native mobile bottom navigation bar (Today, Calendar, New, Focus, Settings), and opens the task editor as an overlay modal with full touch clearance.
+
+---
+
+## 4. Remaining Trade-offs & Limitations
+
+1. **Horizontal Space in Wide Viewports:** When the details panel is closed on an ultra-wide display (≥1920 dp), the single-column task stream must have an explicit maximum content constraint (e.g., `max-width: 900px`) centered in the workspace to prevent unreadably long text lines.
+2. **Gesture Conflicts on Mobile:** The drag-to-resize side panel feature is strictly desktop-only; on Android, the task editor must remain a full-screen route or bottom sheet.
+3. **Simulated State in Prototype:** Interactions (saving, checkbox toggles, panel resizing, theme switching) are demonstrated using client-side vanilla JavaScript; production SQLite transactions and CAS tokens will be connected during Phase 2 implementation.
+
+---
+
+## 5. Design System Implementation Refinements
+
+Based on Concept C, the following updates are scheduled for the Todorbit Design System:
+
+1. **`AppLayout` Tokens:**
+   - `breakpointCompact = 600`
+   - `breakpointMedium = 1050`
+   - `breakpointWide = 1200`
+   - `rowHeightBalanced = 52`
+   - `rowHeightCompact = 38`
+   - `panelMinWidth = 340`
+   - `panelDefaultWidth = 440`
+   - `panelMaxWidth = 650`
+2. **`AppTaskRow` Widget:**
+   - Parameter `density: TaskListDensity.balanced | TaskListDensity.compact`.
+   - Accessible `priorityPip` rendering geometric shapes (▲, ■, ▬) in addition to theme colors.
+3. **`AppTaskDetailPanel` Widget:**
+   - Stateful horizontal drag gesture detector persisting width preference to `ThemeCustomization`.
+   - Dual-date selector widget separating planned dates from deadlines.
+
+---
+
+*Concept C prototype is available at `docs/design-concepts/concept-c-adaptive-workspace.html`. Open directly in Google Chrome, Microsoft Edge, or Firefox.*
