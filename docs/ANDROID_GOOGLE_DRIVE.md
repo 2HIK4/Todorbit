@@ -1,10 +1,15 @@
 # Android Google Drive configuration and portable recovery
 
-Android Drive is enabled by default. Users select **Settings > Backups and
-Google Drive > Connect Google Drive**, choose an account and authorize backups.
-They never enter an OAuth client ID, secret or credentials JSON. Builds can
-explicitly opt out with `-DisableGoogleDrive` on `tools/build-android.ps1`.
-Enabling code does not register the publisher's certificate with Google.
+Open **Settings → Backups and Google Drive** to connect Google Drive for encrypted
+snapshots. Open **Settings → Sync** to set up optional incremental exchange.
+Users choose a Google account and approve access. The GitHub APK uses the
+publisher's registered application identity.
+
+Android Drive is enabled by default in the GitHub build configuration.
+Developer builds can opt out with `-DisableGoogleDrive` on
+`tools/build-android.ps1`. Read the [backup guide](GOOGLE_DRIVE_BACKUP.md),
+[sync guide](GOOGLE_DRIVE_SYNC.md), and [current account limits](GOOGLE_DRIVE_RELEASE_READINESS.md)
+before testing with an authorized disposable account.
 
 ## Publisher setup in the existing Cloud project
 
@@ -65,24 +70,19 @@ the authorized-account procedure below remains required.
     remain with their original account. Local disconnect works offline and does
     not delete cloud objects or revoke the Google Account grant.
 
-## Windows/Android discovery gate
+## Windows/Android snapshot interoperability
 
-For the first Android beta `1.0.19-beta.1` only, the owner explicitly deferred
-this gate on 2026-10-31 until after publication. Android production authorization
-and encrypted backup/restore passed real-account acceptance; Windows/Android
-discovery and restoration remain unverified. The owner will test a Windows-created
-backup on Android after publication. Start with disposable data and preserve an
-independently accessible backup of existing data before any replacement restore.
-This scoped beta acceptance does not establish interoperability or waive OAuth
-revocation, signing, integrity, CI or migration-safety requirements. Do not restart
-Windows application testing as part of this publication task. Snapshot recovery
-is not automatic two-way synchronization.
+The first Android beta's limited scope is recorded in the
+[beta 1 publication](ANDROID_BETA_1_PUBLICATION.md). Later authorized test
+runs exercised cross-platform workflows. See [Drive verification history](GOOGLE_DRIVE_BACKUP.md)
+and [deferred verification](DEFERRED_VERIFICATION.md) for the scope and the
+checks still required before a new release.
 
-Both adapters use the existing project, Drive `appDataFolder`,
-`appProperties.application=todorbit`, `todorbit-<kind>-<UUID>.tdbackup` names,
-format version 1, AES-256-GCM/recovery passphrase and schema 22. Android keeps only
-profile-specific account identity in secure storage and access tokens in memory;
-Google Play services reacquires tokens. It never imports Desktop refresh tokens.
+Both adapters use the existing project, Drive `appDataFolder`, and the
+same versioned authenticated backup format. The backup records its database
+schema, which must be supported by the receiving build. Android keeps
+profile-specific account identity in secure storage and access tokens in
+memory. Google Play services reacquires tokens for the Android client.
 
 The same Google account alone does **not** establish shared application identity.
 Google's [app-data documentation](https://developers.google.com/workspace/drive/api/guides/appdata)
@@ -99,8 +99,8 @@ Record the Cloud project, OAuth client types/certificate fingerprints and file
 IDs without recording tokens. If records are missing, first compare projects,
 accounts and private properties. Do not widen Drive scopes, create a second
 store, or migrate/delete backups as a fallback. Export a verified portable local
-snapshot/settings package while the owner corrects registration. Real Drive
-cross-client discovery has not yet been observed in this task.
+snapshot/settings package if registration needs correction. Record which
+account and builds were checked without including private account identifiers.
 
 ## Contents and recovery
 

@@ -9,10 +9,16 @@ Application releases and Google Cloud configuration are outside this deployment.
 - Terms of Service: `dist/terms.html`
 - Shared responsive light/dark CSS, existing brand and screenshot: `dist/assets/`
 
-The published site links **v1.0.14**, the owner-approved experimental
-Windows x64 pre-release. Google Drive is enabled; branding verification, full
-public OAuth policy compliance and broad account eligibility remain unresolved.
-No analytics, external fonts, forms, JavaScript or cookies are added.
+The current preview links the **1.0.19-beta.25** experimental Windows and
+Android packages. The live site still serves the owner-approved v1.0.14
+deployment pending a new approval. Google Drive branding verification and
+broad account acceptance remain unresolved. The site uses local assets and
+includes no analytics, cookies, forms, JavaScript or external fonts.
+
+The Windows Today screenshot is an actual v1.0.12 capture. Replace it with
+isolated-profile Windows and Android screenshots when suitable current-build
+captures are available. Keep the version in each caption and update the
+README screenshot alongside the website.
 
 ## v1.0.14 deployment (2026-10-26)
 
@@ -40,21 +46,33 @@ No analytics, external fonts, forms, JavaScript or cookies are added.
 
 ```powershell
 python website/verify.py
+python website/verify_live.py --preview
 python website/verify_live.py
 ```
 
 Static checks cover local links/anchors, headings, image metadata, theme
 contrast, static content, responsive breakpoints and keyboard-focus rules.
-The live check anonymously fetches all deployed files over HTTPS, compares
-their bytes with `dist/` (normalizing Windows text line endings as Git does),
-checks external links and download URLs, and confirms
-the download version against the latest actual public release, including
-pre-releases. It requires internet access and no credentials.
+The preview check confirms that all external links respond over HTTPS and that
+the package and checksum links match the latest coordinated public pre-release
+with both platforms. It compares
+published checksum text with GitHub's asset digests, without downloading the
+installers. Omit `--preview` after approved deployment to also compare every
+deployed file with `dist/`. These checks require internet access and use
+anonymous public endpoints.
 
-For rendered review, serve `dist/` with a local HTTP server. Inspect desktop,
-375/768 px widths, light/dark OS themes, keyboard focus and 200% zoom.
-Browser/native UI infrastructure was unavailable during publication; rendered
-appearance, physical zoom and screen-reader interactions remain unverified.
+For rendered review, run `python -m http.server 8123 --bind 127.0.0.1 --directory website/dist`.
+Inspect desktop, narrow and tablet widths, light and dark themes, keyboard focus
+and zoom. Review static and rendered results separately.
+
+## Updating downloads
+
+When a new coordinated pre-release is public, update the version, release notes,
+three package links and both checksum links in `dist/index.html`. Update the
+[platform support matrix](../docs/PLATFORM_SUPPORT.md) if the release changes
+platform requirements or feature support. Run static and preview checks before
+requesting publication. Keep the GitHub Releases list as a fallback for older or
+alternative packages. GitHub's `/releases/latest` endpoint excludes pre-releases,
+so the preview check uses the public release list.
 
 ## Deployment
 
