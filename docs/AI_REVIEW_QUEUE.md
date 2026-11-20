@@ -1,25 +1,28 @@
 # AI Review Queue
 
-## Beta 25 Release Candidate Preparation (2026-11-20)
+## Beta 25 Architecture Program Integrated & Published (2026-11-20)
 
 - **Branch**: `feature/todorbit-release-p8`
-- **Candidate Commit Base**: `dad29afbf19630b11009d2b7c85644b9182f0faf`
+- **Release Commit**: `6b75a559a1b7d3f9d849ba9ed27c7a291124d554`
 - **Target Version**: `1.0.19-beta.25+48` (versionName `1.0.19-beta.25`, versionCode `48`, tag `v1.0.19-beta.25`)
+- **Published Release URL**: https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.25
 - **Remote CI Verification**:
-  - **Windows checks** ([Run 44688131094](https://github.com/2HIK4/Todorbit/actions/runs/44688131094)): **SUCCESS** in 35m11s. Full Dart analysis, 1,180+ tests passed, CRT verified, native sync writer, background sync barriers, native widget self-test, and Inno Setup installer compiled.
-  - **Android validation** ([Run 44688229069](https://github.com/2HIK4/Todorbit/actions/runs/44688229069)): **SUCCESS** in 7m39s (`android` and `android-workflow` both green; 16-KiB alignment and emulator updates verified).
-- **Lightweight CI**: Validated locally across all Python checks and 13 critical regression test suites (103/103 passed in 3m02s) with zero errors.
+  - **Windows checks** ([Run 44694169827](https://github.com/2HIK4/Todorbit/actions/runs/44694169827)): **SUCCESS** in 29m43s (1,180+ tests passed, CRT verified, native sync writer, background sync barriers, native widget self-test, Inno Setup installer compiled, portable zip generated).
+  - **Android validation** ([Run 44694185735](https://github.com/2HIK4/Todorbit/actions/runs/44694185735)): **SUCCESS** in 9m55s (`android` and `android-workflow` both green; 16-KiB alignment and emulator updates verified).
+  - **Android 16 KiB runtime** ([Run 44699666409](https://github.com/2HIK4/Todorbit/actions/runs/44699666409)): **SUCCESS** in 3m41s on `google_apis_ps16k` API 36 emulator.
+- **Lightweight CI**: Validated locally across all Python checks, 39 architecture boundary checks, and 13 critical regression test suites (103/103 passed in 3m02s) with zero errors.
 - **Architecture Program Scope (ARCH-02 through ARCH-09)**:
-  - ARCH-02: Platform resource dialog refactoring (`lib/platform/windows_resource_dialog.dart`).
+  - ARCH-02: Platform resource dialog refactoring (`lib/platform/windows_resource_dialog.dart`), eliminating 4 feature import cycles.
   - ARCH-03: `SyncStatusButton` decoupling from `features/settings`.
-  - ARCH-04: Domain contracts free of Drift/SQLite persistence.
-  - ARCH-05: `AppController` interface facades and domain refresh mappings.
+  - ARCH-04: Calendar and Workspace unidirectional decoupling via `calendar_contracts.dart`.
+  - ARCH-05: Strongly typed `AppRefreshSnapshot` domain mapping.
   - ARCH-06: State encapsulation (unmodifiable collections, selector equality, timer isolation).
   - ARCH-07: Atomic Drift transactions, CAS revision protection, and sync sequence preservation.
-  - ARCH-08: 39 automated architecture boundary tests in CI.
-  - ARCH-09: Architecture map and documentation alignment.
+  - ARCH-08: Optional feature modularity and sync safety evaluation.
+  - ARCH-09: Architecture documentation and 39 boundary checks in CI.
+- **Release Assets**: All 10 Windows and Android assets uploaded and verified with SHA-256 checksums; updaters verified.
 - **Safety**: Schema remains at 29; zero schema migrations; zero data loss; Stable untouched.
-- **Status**: Candidate prepared; publication deferred pending user authorization.
+- **Status**: **PUBLISHED (Experimental Pre-Release)**. See [Publication Report](UIUX06_BETA_25_PUBLICATION.md).
 
 ## Beta 24 Windows CI corrections integrated & published (2026-11-19)
 

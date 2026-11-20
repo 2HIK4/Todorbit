@@ -1,9 +1,9 @@
 # Persistent test run ledger
 
-## Beta 25 Release Candidate Architecture Verification (2026-11-20, UTC+03:00)
+## Beta 25 Publication & Verification (2026-11-20, UTC+03:00)
 
-`feature/todorbit-release-p8`, integrated commit `dad29afbf19630b11009d2b7c85644b9182f0faf`, preparing candidate `1.0.19-beta.25+48`:
-- **Windows CI**: [Run 44688131094](https://github.com/2HIK4/Todorbit/actions/runs/44688131094) in 35m11s (**SUCCESS**).
+`feature/todorbit-release-p8`, release commit `6b75a559a1b7d3f9d849ba9ed27c7a291124d554`, tag `v1.0.19-beta.25`, published `1.0.19-beta.25+48`:
+- **Windows CI**: [Run 44694169827](https://github.com/2HIK4/Todorbit/actions/runs/44694169827) in 29m43s (**SUCCESS**).
   - Full suite: 1,180+ tests passed (0 failed).
   - Developer routes & background sync schema: PASS.
   - Desktop Google Drive release configuration: verified.
@@ -15,18 +15,21 @@
   - Native widget self-test in disposable profile (`TodorbitWidget.exe --self-test`): PASS.
   - Inno Setup installer compilation (`installer/build-installer.ps1`): PASS.
   - Windows release checksums (`tools/write-release-checksums.ps1`): PASS.
-- **Android CI**: [Run 44688229069](https://github.com/2HIK4/Todorbit/actions/runs/44688229069) in 7m39s (**SUCCESS**).
-  - `android` job: 8m54s, static analysis, unit/widget tests, python verification, and debug APK build with 16-KiB alignment PASS.
-  - `android-workflow` job: 7m34s, emulator update workflow tests PASS.
-- **Lightweight CI**: Validated locally in worktree across 13 critical regression test suites (103/103 passed in 3m02s) + documentation validation (0 errors) + developer tools (9/9 passed) + workflow contracts (5/5 passed) + architecture boundaries (18/18 passed).
+- **Android CI**: [Run 44694185735](https://github.com/2HIK4/Todorbit/actions/runs/44694185735) in 9m55s (**SUCCESS**).
+  - `android` job: 9m51s, static analysis, unit/widget tests, python verification, and debug APK build with 16-KiB alignment PASS.
+  - `android-workflow` job: 7m58s, emulator update workflow tests PASS.
+- **Android 16 KiB Runtime CI**: [Run 44699666409](https://github.com/2HIK4/Todorbit/actions/runs/44699666409) in 3m41s (**SUCCESS**).
+  - `runtime` job: verified upgrade acceptance and persistence on `google_apis_ps16k` API 36 emulator.
+- **Lightweight CI**: Validated locally in worktree across 13 critical regression test suites (103/103 passed in 3m02s) + documentation validation (0 errors) + developer tools (9/9 passed) + workflow contracts (5/5 passed) + architecture boundaries (39/39 passed).
 - **Architecture Unit/Widget Suites**:
   - `tools/test_architecture_boundaries.py`: 39/39 PASS.
   - `test/sync_status_button_test.dart`: 7/7 PASS.
+  - `test/calendar_workspace_boundary_test.dart`: 3/3 PASS.
   - `test/app_controller_refresh_mapping_test.dart`: 5/5 PASS.
   - `test/arch_06_state_encapsulation_test.dart`: 3/3 PASS.
   - `test/arch_07_repository_encapsulation_test.dart`: 11/11 PASS.
-  - Reconciliation of reported suite: exactly 197 assertions across the 13 verified test files.
-- **Version Bump**: `1.0.19-beta.25+48` synchronized across `pubspec.yaml`, `widget-shell-probe.csproj`, and `CHANGELOG.md`.
+  - Reconciliation of reported suite: exactly 197 assertions across the verified test files.
+- **Published Assets**: All 10 Windows and Android release assets uploaded and verified with SHA-256 digests. Updaters (`SoftwareUpdateService` and `AndroidUpdateService`) verified. [Receipt](UIUX06_BETA_25_PUBLICATION.md).
 
 ## Beta 24 Windows CI verification & publication (2026-11-19, UTC+03:00)
 
