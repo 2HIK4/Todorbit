@@ -14,7 +14,7 @@ Todorbit is an offline-first productivity system. User tasks, planned schedules,
 
 ---
 
-## 2. SQLite Schema Evolution (Current: Schema 28)
+## 2. SQLite Schema Evolution
 
 The schema version is tracked in `lib/data/app_database.dart` via `AppDatabase.currentSchemaVersion`.
 
@@ -24,7 +24,7 @@ The schema version is tracked in `lib/data/app_database.dart` via `AppDatabase.c
 3. **Trigger Reinstallation**: When schema updates introduce new tables or columns tracked by sync, `sync_capture_*` triggers must be dropped and safely re-installed (`installSyncCaptureTriggers`).
 4. **Migration Verification Gate**:
    - Every migration must be accompanied by a test in `test/database_initialization_test.dart` or `test/alarm_migration_test.dart`.
-   - `MigrationGate` (`lib/data/migration_gate.dart`) inspects SQLite `user_version` before Drift opens the database. It enforces that unmigrated databases have an automated Before-Restore backup created before migration starts.
+   - `MigrationGate` (`lib/data/migration_gate.dart`) inspects SQLite `user_version` before Drift opens the database. For supported older schemas above 0, startup requires approval and creates a verified Before Upgrade snapshot before opening Drift. Schema 0 follows the partial-initialization recovery path.
 
 ---
 
@@ -58,16 +58,16 @@ Incremental Synchronization and Snapshot Backups are independent systems with di
 ### Distinct Subsystems:
 | Dimension | Google Drive Incremental Sync | Google Drive Snapshot Backups |
 |---|---|---|
-| **Storage Target** | `drive.appdata` hidden app folder | Dedicated user-selected Drive folder or root |
-| **Data Format** | AES-GCM encrypted operation batches | Full SQLite snapshot ZIP / JSON export |
+| **Storage Target** | Google Drive application data (`drive.appdata`) | Google Drive application data (`drive.appdata`) |
+| **Data Format** | Operation batches | JSON envelope with selected settings and, for full backups, a SQLite snapshot |
 | **Protocol** | Protocol 2, causal vector clocks, immutable workspace heads | Timestamped whole-database snapshot |
-| **Encryption** | Standard (account-bound) or Scoped Private (AES-256-GCM + user recovery code) | Encrypted with user passphrase (optional) |
+| **Encryption** | Standard uploads readable JSON. Private encrypts batches on-device and uses a passphrase or recovery code to unlock the workspace. | AES-256-GCM with a key derived from the required snapshot passphrase |
 | **Safety Barrier** | Conflict resolution dialog; Durability ACK | "Before Restore" automatic safety snapshot |
 
 ### Sync Engineering Rules:
 - **Never overwrite local database on sync pull**: Sync applies discrete entity operations via `SyncApplyRepository`.
 - **Soft Deletes**: Deletions are journaled tombstones. Tombstones sync across clients so remote devices delete the record rather than resurrecting it.
-- **Immutable Operation Revisions**: Once an encrypted batch is published, its payload and causality proof are immutable.
+- **Immutable Operation Revisions**: Once a batch is published, its payload and causality proof are immutable in both sync modes.
 
 
 ## Task timer entry and planned-session removal (Prompt 2)

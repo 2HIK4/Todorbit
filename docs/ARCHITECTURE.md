@@ -77,7 +77,7 @@ Todorbit enforces strict separation of concerns across four primary software lay
   - `SyncStatusButton` (ARCH-03) communicates via explicit callback signatures (`SyncOpenSettingsCallback`, `SyncOpenConflictsCallback`) without direct dependency on `settings/sync_settings_page.dart` or `settings/sync_conflicts_dialog.dart`.
   - Calendar and Workspace isolation (ARCH-04): `lib/features/calendar/` and `lib/features/workspace/` maintain zero leaf-level cross-imports. Reusable editor contracts (`EditorNavigationController`) reside in `lib/features/shared/unsaved_editor_guard.dart`. `session_editor.dart` is housed in `lib/features/scheduling/session_editor.dart` (with a backwards-compatible re-export in calendar for existing callers).
 - **Application Orchestration (`lib/app/`)**: `AppController` coordinates presentation state and handles user actions. It interacts with domain calculators and delegates data operations to `LifeRepository`.
-- **Domain Layer (`lib/domain/`)**: Pure business logic, recurrence calculations, scheduling models, and immutable domain entities. Files under `lib/domain/` must remain pure Dart without dependencies on `package:flutter/`, `lib/app/`, or `lib/data/` (with narrowly scoped legacy adaptors `appearance.dart` and `hotkeys.dart` as the sole allowable exceptions).
+- **Domain Layer (`lib/domain/`)**: Pure business logic, recurrence calculations, scheduling models, and immutable domain entities. Domain libraries are pure Dart. `tools/test_architecture_boundaries.py` checks imports and exports, including conditional branches, for dependencies on `lib/app/`, `lib/data/`, `lib/features/`, and `lib/platform/`. The exact legacy paths `lib/domain/appearance.dart` and `lib/domain/hotkeys.dart` may import Flutter; the layer rules still apply.
 - **Persistence & Data Layer (`lib/data/`)**: SQLite access managed exclusively via Drift and `LifeRepository`. Contains schema definitions, forward migrations, and incremental Google Drive sync infrastructure.
 
 ### 2. Repository Transaction and Lifecycle Encapsulation (ARCH-07)
@@ -100,9 +100,9 @@ Todorbit enforces strict separation of concerns across four primary software lay
 - High-frequency periodic tickers (such as the 1-second active timer clock) are isolated inside self-contained widgets (`CompactTaskTimerBadge`), eliminating full-shell `setState()` thrashing in `WorkspaceState`.
 
 ### 5. Preference-Driven Modular Monolith Visibility (ARCH-08)
-- Built-in features (Habits, Goals, Time Tracking, Alarms, Reports, Templates, Scheduling, Trash) reside in the modular monolith to guarantee relational integrity, zero data loss, and protocol sync safety (`portableSyncTables`).
+- Built-in features (Habits, Goals, Time Tracking, Alarms, Reports, Templates, Scheduling, Trash) share the relational schema and the sync contract (`portableSyncTables`).
 - Dynamic runtime unloading of database tables or sync schemas is unsound because it breaks cross-feature calculations (e.g. Goal progress depending on Habits, Reports aggregating time and habits) and remote sync parity.
-- Modular feature visibility is driven safely through user preferences (`hiddenNavigation`), allowing modules to be shown or hidden from UI navigation without modifying database schemas or compromising sync durability.
+- Modular feature visibility is driven safely through user preferences (`hiddenNavigation`). Hiding a navigation entry leaves its tables and sync participation in place. See the [reuse assessment](REUSABLE_COMPONENTS.md) for smaller potential extraction boundaries.
 
 ---
 
