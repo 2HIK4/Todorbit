@@ -240,6 +240,21 @@ extension GoalRepository on LifeRepository {
     return (await goals()).singleWhere((goal) => goal.id == id);
   }
 
+  Future<Goal> addGoalWithComposition(
+    GoalDraft draft, {
+    GoalLinks? links,
+  }) async {
+    return await db.transaction(() async {
+      final goal = await addGoal(draft);
+      if (links != null) {
+        await setGoalLinks(goal, links);
+        return (await goals()).singleWhere((g) => g.id == goal.id);
+      }
+      return goal;
+    });
+  }
+
+
   Future<void> updateGoal(Goal previous, GoalDraft draft) async {
     _validateGoal(draft);
     await db.transaction(() async {

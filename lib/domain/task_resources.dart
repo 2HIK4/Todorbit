@@ -8,6 +8,9 @@ class DraftTaskResource {
   final String target, label;
 }
 
+typedef DraftResourceAttachment = DraftTaskResource;
+
+
 class TaskResource {
   const TaskResource({
     required this.id,

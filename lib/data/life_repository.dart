@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:meta/meta.dart';
 import 'package:drift/drift.dart';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as path;
@@ -63,9 +64,16 @@ part 'sync_restore_repository.dart';
 class LifeRepository {
   LifeRepository(this.db, {DateTime Function()? taskClock})
     : _taskClock = taskClock ?? DateTime.now;
+
+  @visibleForTesting
   final AppDatabase db;
   final DateTime Function() _taskClock;
   final _uuid = const Uuid();
+
+  Future<void> close() async {
+    await db.close();
+  }
+
 
   // updated_at is also the persisted task concurrency token. A frozen/coarse
   // clock or rollback must never reuse it. Writers with an expected snapshot use
@@ -976,6 +984,49 @@ class LifeRepository {
       (task) => task.recurrenceSeriesId == seriesId,
     );
   }
+
+  Future<LifeTask> addRecurringTaskWithComposition(
+    TaskDraft draft,
+    RecurrenceRule rule, {
+    dynamic progressiveSteps = const <String>[],
+    dynamic repeatPlanAtEnd = false,
+    List<DraftChecklistGroup> groups = const [],
+    List<String> checklist = const [],
+    List<TaskDraft> subtasks = const [],
+    List<DraftTaskResource> resources = const [],
+  }) async {
+    final steps = progressiveSteps is List<String>
+        ? progressiveSteps
+        : progressiveSteps is List
+            ? progressiveSteps.map((s) => s.toString()).toList()
+            : progressiveSteps is int
+                ? List.generate(progressiveSteps, (i) => 'Step ${i + 1}')
+                : const <String>[];
+    final bool repeatEnd = repeatPlanAtEnd == true;
+    return await db.transaction(() async {
+      final task = await addRecurringTask(
+        draft,
+        rule,
+        progressiveSteps: steps,
+        repeatPlanAtEnd: repeatEnd,
+      );
+      for (final group in groups) {
+        final saved = await addChecklistGroup(task.id, group.title);
+        for (final title in group.items) {
+          await addChecklistItem(task.id, title, groupId: saved.id);
+        }
+      }
+      for (final title in checklist) {
+        await addChecklistItem(task.id, title);
+      }
+      for (final child in subtasks) {
+        await addSubtask(task, child);
+      }
+      await addDraftResources(task.id, resources);
+      return task;
+    });
+  }
+
 
   /// Materializes only the requested civil-date window. Existing occurrence
   /// rows, including skipped/deleted tombstones, are never regenerated.

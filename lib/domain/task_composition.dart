@@ -37,3 +37,5 @@ class DraftChecklistGroup {
   final String title;
   final List<String> items;
 }
+
+typedef ChecklistGroupDraft = DraftChecklistGroup;

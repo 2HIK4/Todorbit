@@ -784,17 +784,12 @@ class AppController extends ChangeNotifier {
     ValueChanged<LifeTask>? onCommitted,
     List<DraftChecklistGroup> groups = const [],
   }) async {
-    final child = await repository.db.transaction(() async {
-      final task = await repository.addSubtask(parent, draft);
-      for (final group in groups) {
-        final saved = await repository.addChecklistGroup(task.id, group.title);
-        for (final title in group.items) {
-          await repository.addChecklistItem(task.id, title, groupId: saved.id);
-        }
-      }
-      await repository.addDraftResources(task.id, resources);
-      return task;
-    });
+    final child = await repository.addSubtaskWithComposition(
+      parent,
+      draft,
+      groups: groups,
+      resources: resources,
+    );
     onCommitted?.call(child);
     await refreshAfterLocalChange();
     select(child.id);
@@ -1276,16 +1271,13 @@ class AppController extends ChangeNotifier {
     ValueChanged<LifeTask>? onCommitted,
     List<DraftChecklistGroup> groups = const [],
   }) async {
-    final task = await repository.db.transaction(() async {
-      final task = await repository.addTaskWithComposition(
-        draft,
-        checklist,
-        subtasks,
-        groups: groups,
-      );
-      await repository.addDraftResources(task.id, resources);
-      return task;
-    });
+    final task = await repository.addTaskWithComposition(
+      draft,
+      checklist,
+      subtasks,
+      groups: groups,
+      resources: resources,
+    );
     onCommitted?.call(task);
     await refreshAfterLocalChange();
     select(task.id);
@@ -1302,28 +1294,16 @@ class AppController extends ChangeNotifier {
     List<String> checklist = const [],
     List<TaskDraft> subtasks = const [],
   }) async {
-    final task = await repository.db.transaction(() async {
-      final task = await repository.addRecurringTask(
-        draft,
-        rule,
-        progressiveSteps: progressiveSteps,
-        repeatPlanAtEnd: repeatPlanAtEnd,
-      );
-      for (final group in groups) {
-        final saved = await repository.addChecklistGroup(task.id, group.title);
-        for (final title in group.items) {
-          await repository.addChecklistItem(task.id, title, groupId: saved.id);
-        }
-      }
-      for (final title in checklist) {
-        await repository.addChecklistItem(task.id, title);
-      }
-      for (final child in subtasks) {
-        await repository.addSubtask(task, child);
-      }
-      await repository.addDraftResources(task.id, resources);
-      return task;
-    });
+    final task = await repository.addRecurringTaskWithComposition(
+      draft,
+      rule,
+      progressiveSteps: progressiveSteps,
+      repeatPlanAtEnd: repeatPlanAtEnd,
+      groups: groups,
+      checklist: checklist,
+      subtasks: subtasks,
+      resources: resources,
+    );
     onCommitted?.call(task);
     await refreshAfterLocalChange();
     select(task.id);
@@ -1847,10 +1827,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> addGoal(GoalDraft draft, {GoalLinks? links}) async {
-    await repository.db.transaction(() async {
-      final goal = await repository.addGoal(draft);
-      if (links != null) await repository.setGoalLinks(goal, links);
-    });
+    await repository.addGoalWithComposition(draft, links: links);
     await refreshAfterLocalChange();
   }
 

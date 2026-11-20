@@ -120,6 +120,7 @@ extension TaskCompositionRepository on LifeRepository {
     List<String> checklist,
     List<TaskDraft> subtasks, {
     List<DraftChecklistGroup> groups = const [],
+    List<DraftTaskResource> resources = const [],
   }) async {
     _validate(parent);
     for (final title in checklist) {
@@ -152,9 +153,30 @@ extension TaskCompositionRepository on LifeRepository {
           ],
         );
       }
+      await addDraftResources(created.id, resources);
     });
     return created;
   }
+
+  Future<LifeTask> addSubtaskWithComposition(
+    LifeTask parent,
+    TaskDraft draft, {
+    List<DraftChecklistGroup> groups = const [],
+    List<DraftTaskResource> resources = const [],
+  }) async {
+    return await db.transaction(() async {
+      final task = await addSubtask(parent, draft);
+      for (final group in groups) {
+        final saved = await addChecklistGroup(task.id, group.title);
+        for (final title in group.items) {
+          await addChecklistItem(task.id, title, groupId: saved.id);
+        }
+      }
+      await addDraftResources(task.id, resources);
+      return task;
+    });
+  }
+
 
   Future<Map<String, String>> taskParents() async {
     final rows = await db
