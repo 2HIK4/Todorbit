@@ -1,11 +1,12 @@
-﻿# Todorbit Visual Design Concepts — Evaluation & Design Iteration 2
+﻿# Todorbit Visual Design Concepts — Evaluation & Design Iterations
 
 **Authored:** 2026-11-20
 **Branch:** `design-foundation-docs`
 **Prototypes:**
-- Concept A: [`docs/design-concepts/concept-a-refined-minimalist.html`](design-concepts/concept-a-refined-minimalist.html)
-- Concept B: [`docs/design-concepts/concept-b-modern-workspace.html`](design-concepts/concept-b-modern-workspace.html)
-- **Concept C (Iteration 2):** [`docs/design-concepts/concept-c-adaptive-workspace.html`](design-concepts/concept-c-adaptive-workspace.html)
+- Concept A (Iteration 1): [`docs/design-concepts/concept-a-refined-minimalist.html`](design-concepts/concept-a-refined-minimalist.html)
+- Concept B (Iteration 1): [`docs/design-concepts/concept-b-modern-workspace.html`](design-concepts/concept-b-modern-workspace.html)
+- Concept C v1 (Iteration 2 Baseline): [`docs/design-concepts/concept-c-adaptive-workspace.v1.html`](design-concepts/concept-c-adaptive-workspace.v1.html)
+- **Concept C Refined (Final UX Refinement):** [`docs/design-concepts/concept-c-adaptive-workspace.html`](design-concepts/concept-c-adaptive-workspace.html)
 
 All prototypes are standalone, offline-capable HTML/CSS/JS applications that can be opened in any web browser.
 
@@ -27,76 +28,90 @@ All prototypes are standalone, offline-capable HTML/CSS/JS applications that can
 
 ## 2. Concept Comparison Matrix
 
-| Attribute | Concept A: Refined Minimalist | Concept B: Modern Productivity | **Concept C: Adaptive Workspace (New)** |
+| Attribute | Concept A: Refined Minimalist | Concept B: Modern Productivity | Concept C (Refined Final UX) |
 |---|---|---|---|
-| **Visual Identity** | Plain minimalist card list, generic blue (`#3B6FE0`). | High-density developer grid, dark indigo (`#6366F1`) + cyan. | **Celestial Twilight / Luminous Canvas:** bespoke orbital brand identity, twilight slate dark theme (`#0F1017` / `#171823`), subtle violet-indigo accent (`#7E74F1`), clean responsive cards. |
-| **Task Presentation** | Vertical cards with colored left borders. | Strict multi-column tabular grid. | **Adaptive Task Rows:** 52 dp balanced default (or 38 dp compact toggle). Geometric priority shapes (▲ P1 Urgent, ■ P2 High, ▬ P3 Normal) ensuring readability without relying on color alone. |
-| **Title Readability** | Good, but single line. | Poor; frequent truncation. | **Exceptional:** Dedicated primary line with generous font scaling (14.5px / 13.5px), handles long titles gracefully without layout break. |
-| **Domain Invariant Clarity** | Planned and Due dates rendered similarly. | Single "Due" date column. | **Strict Todorbit separation:** Labeled Planned Date (🗓️ intentional schedule) vs. Hard Deadline (⏰ commitment gate) with distinct color semantics. |
-| **Task Details Workspace** | Form fields in cards; property inspector feel. | Tabbed metadata grid with tiny text. | **True Task Workspace:** Resizable side panel (340–650 dp) with drag handle, prominent editable title, dual schedule cards, interactive subtask checklist, progressive disclosure accordions, and optional **Expanded Modal Workspace** (⤢). |
-| **Responsive Adaptation** | Fixed width assumption. | Fixed width table (broken on mobile). | **Built-in multi-viewport simulator:** Live preview modes for Desktop Wide (1440×900), Medium Desktop (1000×800 with auto-collapsed padding), and Mobile (390×844 with bottom navigation & full-screen editor). |
-| **Information Architecture** | Basic subset of views. | Basic subset of views. | **Complete Todorbit IA:** Today, Calendar, Upcoming & Overdue, All Tasks, Focus Sessions, Habits, Goals, Reports, Projects, Google Drive Sync status, Preferences. |
-| **Density Options** | Fixed medium density. | Fixed compact density. | **User-selectable:** Balanced (52 dp) vs. Compact (38 dp) toggle in toolbar. |
+| **Visual Identity** | Plain minimalist card list, generic blue (`#3B6FE0`). | High-density developer grid, dark indigo (`#6366F1`) + cyan. | **Celestial Twilight / Luminous Slate:** bespoke orbital brand identity, twilight obsidian dark theme (`#0D0E14` / `#151722`), high-contrast luminous light theme (`#F5F6FA` / `#FFFFFF`), violet brand accent (`#7C3AED`). |
+| **Task Presentation** | Vertical cards with colored left borders. | Strict multi-column tabular grid. | **Adaptive Task Rows:** 52 dp balanced default (or 40 dp compact toggle). Geometric priority shapes matching Todorbit domain model (▲ High, ■ Med, ◆ Low, None). |
+| **Title Readability & Wrapping** | Single-line ellipsis truncation. | Severe tabular truncation. | **Exceptional 2-Line Wrapping:** Dedicated primary line with generous font scaling (14px–17px); handles long titles gracefully without truncation or layout overflow. |
+| **Domain Invariant Clarity** | Planned and Due dates rendered similarly. | Single "Due" date column. | **Strict Todorbit separation:** Labeled Planned Date (🗓️ intentional schedule in warm amber) vs. Hard Deadline (⏰ commitment gate in coral red). |
+| **Today View Comprehensiveness** | Tasks only. | Tasks only. | **Unified Today View:** Integrated **Active Focus Session Banner** (running timer with pause/resume) + **Fixed Events Timeline** (e.g. lectures, dentist appointment) + Planned Tasks. |
+| **Task Details Workspace** | Form fields in cards; property inspector feel. | Tabbed metadata grid with tiny text. | **Unified Task Workspace:** Clean non-nested form, auto-wrapping title textarea, direct dual-date pickers, inline subtask completion, and contextual progressive disclosure accordions. |
+| **Data Realism** | Generic developer placeholders. | Generic developer placeholders. | **Realistic Everyday Data:** University assignments, thesis proposal, dentist appointments, grocery & pharmacy errands, and recurring habits. |
+| **Responsive & Text Scaling** | Fixed viewport assumption. | Fixed viewport table (broken on mobile). | **Arbitrary Viewports & Text Scaling:** Previews for 1440 Wide, 1100 Med, 820 Narrow Desktop, and 390 Mobile; includes live **Text Scale Factor** controls (100%, 125%, 150%) and **Empty State** toggle. |
+| **Information Architecture** | Basic subset of views. | Basic subset of views. | **Complete Todorbit IA:** Schedule (Today, Calendar, Upcoming & Overdue, All Tasks), Productivity (Focus Sessions, Habits, Goals, Reports), Projects & Categories, Preferences, and Sync status. |
 
 ---
 
-## 3. Deep Dive: Concept C Innovations
+## 3. Systematic Resolution of the 12 Final UX Refinement Objectives
 
-### 3.1 Distinctive Visual Identity
-Concept C avoids generic SaaS tropes (excessive drop shadows, heavy purple gradients, redundant container borders). It introduces a refined, calm aesthetic:
-- **Dark Theme:** Deep celestial obsidian (`#0F1017` canvas, `#171823` card surfaces, `#272B3E` subtle structural borders).
-- **Light Theme:** Luminous clean slate (`#F6F7FB` canvas, `#FFFFFF` cards, `#E2E6F0` crisp outlines).
-- **Brand Motifs:** Circular orbital check-rings that visualize subtask completion progress, paired with a modern geometric brand logo.
+### Objective 1: Improve Readability & Contrast
+- Base font size set to a comfortable `14px`, task titles to `14.5px–15px` weight 600, section headings to `12px` uppercase.
+- Verified WCAG AA contrast (>4.5:1) across both Dark (`#F3F5FC` on `#151722`) and Light (`#111424` on `#FFFFFF`) themes.
+- Metadata text uses legible `12.5px` with distinct semantic color badges, eliminating unreadable micro-labels.
 
-### 3.2 Dual Scheduling System (Planned Date vs. Deadline)
-Todorbit's core architectural principle is that when you plan to work on a task is distinct from when that task is due. Concept C explicitly visualizes this:
-- **Planned Date:** Rendered in warm amber (`#F59E0B`) with an intentional calendar icon (e.g., `🗓️ Planned: Today`).
-- **Deadline:** Rendered in coral red (`#F43F5E`) when overdue or distinct secondary slate when upcoming (e.g., `⏰ Deadline: Nov 25`).
+### Objective 2: Reduce Visual Clutter
+- Removed excessive nested card borders, redundant pills, and multi-colored pill soup.
+- Tasks display only essential metadata: Planned date / Deadline, Project dot + name, and Subtask/Checklist progress counter.
+- Background surfaces simplified to unified layers: Canvas (`--bg-app`) and Card Surface (`--bg-surface`).
 
-### 3.3 Genuine Task Details Workspace
-The side panel in Concept C is not an inspector:
-- Draggable resize handle with visual grip feedback.
-- Prominent inline-editable task title.
-- Interactive subtask list directly inside the panel (check off subtasks, view progress).
-- Contextual progressive disclosure accordions for Recurrence, Alarms, and Dependencies.
-- An **Expanded Workspace button (⤢)** that opens complex tasks in a distraction-free two-column editing canvas.
+### Objective 3: Fix Title Truncation
+- Task titles now use a 2-line flexible clamp (`-webkit-line-clamp: 2` with `line-height: 1.4` and `word-break: break-word`) instead of cutting off with a 1-line ellipsis.
+- Extremely long academic and professional task titles (e.g. *"Draft and submit comprehensive thesis proposal on distributed consensus protocols to academic advisory committee"*) render cleanly and legibly without clipping or breaking row alignment.
 
-### 3.4 Cross-Platform Responsive Architecture
-Concept C includes an integrated simulator bar in the prototype:
-1. **Desktop Wide (1440 × 900):** Side rail navigation + task stream + persistent resizable details panel.
-2. **Desktop Medium (1000 × 800):** Narrowed sidebar (210 dp), compact panel (380 dp), and adaptive headers that avoid truncation or overflow.
-3. **Mobile Shell (390 × 844):** Auto-hides the desktop sidebar, replaces it with a native mobile bottom navigation bar (Today, Calendar, New, Focus, Settings), and opens the task editor as an overlay modal with full touch clearance.
+### Objective 4: Improve Task-Details Editor
+- Eliminated card-inside-a-card nesting. Replaced with clean, cohesive input cells with subtle borders.
+- Replaced single-line input with an auto-wrapping title textarea.
+- Dual schedule cards explicitly explain their roles: *"When you intend to work on it"* vs. *"Hard completion commitment"*.
+- Checklist and subtasks are editable and checkable directly within the panel.
+
+### Objective 5: Hide Internal Technical Terminology
+- Completely removed developer-only references (e.g. SQLite, WAL checkpoint, CAS concurrency tokens, Drift schema, IPC).
+- Replaced with clear user-facing language: *"Synced · Offline Ready"*, *"All edits saved locally"*, and *"When this task is completed, next occurrence will be scheduled automatically"*.
+
+### Objective 6: Refine Progressive Disclosure
+- Common actions (*Add Task*, *Filter*, *Search*) are immediately accessible.
+- Advanced operations (*Smart Reschedule*, *Bulk edit*) are placed in secondary positions to avoid dominating the primary view.
+- Advanced task settings (*Recurrence Rules*, *Alarms & Notifications*, *Prerequisites & Blockers*) are tucked inside clean, collapsible accordions.
+
+### Objective 7: Preserve Todorbit's Actual Feature Model
+- **Priorities:** Strictly uses Todorbit's four actual priorities from `lib/domain/models.dart`: None (0), Low (1), Medium (2), and High (3).
+- **Statuses:** Strictly uses Todorbit's `TaskStatus`: Not Started, In Progress, Waiting, On Hold, Completed, Cancelled.
+- **Distinct Concepts:** Preserves separation between Planned Dates, Deadlines, Fixed Calendar Events, and Focus Sessions.
+
+### Objective 8: Demonstrate Today View's Tasks, Events, and Focus Sessions
+- **Active Focus Session Banner:** Displays current running focus timer (18:24 remaining on Thesis research) with pause affordance.
+- **Fixed Events Timeline:** Displays time-bound appointments (*CS450 Distributed Systems Lecture* at 10:00 AM, *Dentist Appointment* at 2:30 PM).
+- **Tasks for Today:** Organizes tasks into Overdue Deadlines and Planned Today groups.
+
+### Objective 9: Realistic Sample Data
+- Replaced synthetic developer tasks with diverse, relatable examples:
+  - *Academic / University:* Raft consensus assignment, Thesis proposal draft.
+  - *Errands / Healthcare:* Grocery list (almond milk, spinach), pharmacy prescription pickup, dentist appointment.
+  - *Personal Habits:* Daily 20-minute evening mindfulness and stretching routine.
+  - *Hardware:* Replacement ergonomic keyboard arm (Waiting status).
+
+### Objective 10: Arbitrary Viewport Resizing & Text Scaling
+- Added a responsive simulation bar with:
+  - Presets: 1440 Desktop Wide, 1100 Desktop Medium, 820 Narrow Desktop, 390 Mobile.
+  - **Text Scale Factor Control:** 100%, 125%, 150% text scaling simulation to test accessibility font enlargement without layout breakage.
+  - **Empty State Switcher:** Allows toggling between the populated Today view and an empty state card (*"All clear for today!"*).
+
+### Objective 11: Explicit Prototype Simulation Notice
+- Added a permanent notice in the simulator bar: *(Visual prototype simulation — no actual database writes)*.
+- Clear dialog notices on interactive triggers (e.g. "Saved locally. Prototype simulation").
+
+### Objective 12: Keyboard Accessibility & Interaction Semantics
+- Checkboxes implemented with semantic `<button>` tags, explicit `aria-label`, and high-contrast `:focus-visible` outlines.
+- Priority cues combine geometric shapes (▲ High, ■ Med, ◆ Low) with text labels to ensure full accessibility without relying on color alone.
 
 ---
 
-## 4. Remaining Trade-offs & Limitations
+## 4. Remaining Trade-offs & Implementation Notes
 
-1. **Horizontal Space in Wide Viewports:** When the details panel is closed on an ultra-wide display (≥1920 dp), the single-column task stream must have an explicit maximum content constraint (e.g., `max-width: 900px`) centered in the workspace to prevent unreadably long text lines.
-2. **Gesture Conflicts on Mobile:** The drag-to-resize side panel feature is strictly desktop-only; on Android, the task editor must remain a full-screen route or bottom sheet.
-3. **Simulated State in Prototype:** Interactions (saving, checkbox toggles, panel resizing, theme switching) are demonstrated using client-side vanilla JavaScript; production SQLite transactions and CAS tokens will be connected during Phase 2 implementation.
-
----
-
-## 5. Design System Implementation Refinements
-
-Based on Concept C, the following updates are scheduled for the Todorbit Design System:
-
-1. **`AppLayout` Tokens:**
-   - `breakpointCompact = 600`
-   - `breakpointMedium = 1050`
-   - `breakpointWide = 1200`
-   - `rowHeightBalanced = 52`
-   - `rowHeightCompact = 38`
-   - `panelMinWidth = 340`
-   - `panelDefaultWidth = 440`
-   - `panelMaxWidth = 650`
-2. **`AppTaskRow` Widget:**
-   - Parameter `density: TaskListDensity.balanced | TaskListDensity.compact`.
-   - Accessible `priorityPip` rendering geometric shapes (▲, ■, ▬) in addition to theme colors.
-3. **`AppTaskDetailPanel` Widget:**
-   - Stateful horizontal drag gesture detector persisting width preference to `ThemeCustomization`.
-   - Dual-date selector widget separating planned dates from deadlines.
+1. **Ultra-Wide Screens (≥1920 dp):** On ultra-wide displays when the detail panel is closed, the task list should be centered with a `max-width: 960px` in production Flutter code to prevent excessively wide text scanning.
+2. **Desktop Drag vs. Mobile Touch:** Drag-to-resize side panel functionality is enabled on desktop viewports; on mobile (Android), the task editor must use a full-screen route or bottom sheet.
+3. **Simulated State:** Prototype interactions (checkbox toggling, empty state switching, text scaling) are client-side JavaScript simulations. Production integration will bind to Drift SQLite, `LifeRepository`, and Riverpod `AppController`.
 
 ---
 
-*Concept C prototype is available at `docs/design-concepts/concept-c-adaptive-workspace.html`. Open directly in Google Chrome, Microsoft Edge, or Firefox.*
+*Open [`docs/design-concepts/concept-c-adaptive-workspace.html`](concept-c-adaptive-workspace.html) in Google Chrome, Microsoft Edge, or Firefox to review.*

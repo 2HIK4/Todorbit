@@ -3,230 +3,230 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Todorbit – Concept C: Adaptive Productivity Workspace</title>
+<title>Todorbit – Concept C (Refined): Adaptive Productivity Workspace</title>
 <style>
   /* ==========================================================================
-     TODORBIT DESIGN SYSTEM — CONCEPT C: ADAPTIVE PRODUCTIVITY WORKSPACE
+     TODORBIT DESIGN SYSTEM — CONCEPT C REFINED
+     Adaptive Productivity Workspace (Today View: Tasks, Events & Focus)
      ========================================================================== */
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    /* Brand & Accent Palettes */
-    --brand-hue: 248;
-    --brand-primary: hsl(var(--brand-hue), 78%, 62%);
-    --brand-primary-hover: hsl(var(--brand-hue), 82%, 56%);
-    --brand-primary-subtle: hsla(var(--brand-hue), 78%, 62%, 0.12);
-    --brand-primary-border: hsla(var(--brand-hue), 78%, 62%, 0.28);
-    --brand-glow: hsla(var(--brand-hue), 78%, 62%, 0.24);
+    /* Brand & Accent */
+    --brand-hue: 246;
+    --brand-primary: hsl(var(--brand-hue), 76%, 60%);
+    --brand-primary-hover: hsl(var(--brand-hue), 80%, 54%);
+    --brand-primary-subtle: hsla(var(--brand-hue), 76%, 60%, 0.12);
+    --brand-primary-border: hsla(var(--brand-hue), 76%, 60%, 0.28);
+    --brand-glow: hsla(var(--brand-hue), 76%, 60%, 0.22);
 
-    --orbit-teal: #0EA5E9;
-    --orbit-teal-subtle: rgba(14, 165, 233, 0.12);
-    --status-planned: #F59E0B;     /* Amber: Intentional planned schedule */
-    --status-planned-bg: rgba(245, 158, 11, 0.12);
-    --status-deadline: #F43F5E;    /* Coral: Strict due date commitment */
-    --status-deadline-bg: rgba(244, 63, 94, 0.12);
-    --status-success: #10B981;     /* Emerald: Completed */
-    --status-success-bg: rgba(16, 185, 129, 0.12);
-    --status-focus: #8B5CF6;       /* Violet: Active Focus Session */
-    --status-focus-bg: rgba(139, 92, 246, 0.15);
+    /* Real Todorbit Semantic Priorities */
+    --prio-high: #EF4444;       /* High (3) */
+    --prio-high-bg: rgba(239, 68, 68, 0.12);
+    --prio-med: #F59E0B;        /* Medium (2) */
+    --prio-med-bg: rgba(245, 158, 11, 0.12);
+    --prio-low: #3B82F6;        /* Low (1) */
+    --prio-low-bg: rgba(59, 130, 246, 0.12);
 
-    /* Light Theme (Default clean luminous) */
-    --bg-canvas: #F6F7FB;
+    /* Scheduling Domain Roles: Planned Date vs Deadline */
+    --plan-amber: #D97706;
+    --plan-amber-bg: rgba(217, 119, 6, 0.12);
+    --due-coral: #DC2626;
+    --due-coral-bg: rgba(220, 38, 38, 0.12);
+    --event-purple: #7C3AED;
+    --event-purple-bg: rgba(124, 58, 237, 0.12);
+    --focus-emerald: #059669;
+    --focus-emerald-bg: rgba(5, 150, 105, 0.12);
+
+    /* Light Theme Palette (Default high-contrast, clean) */
+    --bg-app: #F5F6FA;
     --bg-surface: #FFFFFF;
     --bg-surface-elevated: #FFFFFF;
-    --bg-subtle: #EEF1F7;
-    --bg-hover: #E7EBF4;
-    --bg-active: #DFE4F0;
-    --border-subtle: #E2E6F0;
-    --border-strong: #CBD2E1;
+    --bg-subtle: #EEF1F6;
+    --bg-hover: #E5E9F2;
+    --border-subtle: #DDE2EC;
+    --border-strong: #BDC6D8;
     --text-primary: #111424;
-    --text-secondary: #4E556E;
-    --text-tertiary: #848DA5;
-    --text-disabled: #A8B1C7;
-    --shadow-sm: 0 1px 2px rgba(18, 22, 45, 0.05);
-    --shadow-md: 0 4px 14px rgba(18, 22, 45, 0.08), 0 1px 3px rgba(18, 22, 45, 0.04);
-    --shadow-lg: 0 12px 32px rgba(18, 22, 45, 0.12), 0 2px 6px rgba(18, 22, 45, 0.04);
-    --shadow-panel: -4px 0 24px rgba(18, 22, 45, 0.07);
+    --text-secondary: #424961;
+    --text-tertiary: #6E7791;
+    --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+    --shadow-md: 0 4px 14px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 14px 34px rgba(15, 23, 42, 0.12);
 
-    /* Layout metrics */
-    --sidebar-width: 250px;
-    --sidebar-collapsed-width: 68px;
+    /* Layout & Sizing Metrics */
+    --sidebar-width: 240px;
     --detail-panel-width: 440px;
     --row-height: 52px;
-    --row-gap: 6px;
+    --row-gap: 8px;
     --radius-sm: 6px;
     --radius-md: 10px;
     --radius-lg: 14px;
     --radius-full: 9999px;
 
+    /* Scalable Typography Factor (simulated textScaleFactor) */
+    --text-scale: 1.0;
+    --font-base: calc(14px * var(--text-scale));
+    --font-heading: calc(18px * var(--text-scale));
+    --font-sm: calc(12.5px * var(--text-scale));
+    --font-xs: calc(11.5px * var(--text-scale));
+
     --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   }
 
-  /* Dark Theme (Celestial Deep Slate) */
+  /* Dark Theme Palette (Deep Celestial Obsidian) */
   [data-theme="dark"] {
-    --bg-canvas: #0F1017;
-    --bg-surface: #171823;
-    --bg-surface-elevated: #1E2030;
-    --bg-subtle: #222536;
-    --bg-hover: #292D42;
-    --bg-active: #323752;
-    --border-subtle: #272B3E;
-    --border-strong: #383E58;
-    --text-primary: #F2F4FC;
-    --text-secondary: #9DA6C4;
-    --text-tertiary: #656E8A;
-    --text-disabled: #474E66;
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
-    --shadow-panel: -6px 0 28px rgba(0, 0, 0, 0.5);
+    --bg-app: #0D0E14;
+    --bg-surface: #151722;
+    --bg-surface-elevated: #1B1E2C;
+    --bg-subtle: #202436;
+    --bg-hover: #292E45;
+    --border-subtle: #252A3F;
+    --border-strong: #373E5C;
+    --text-primary: #F3F5FC;
+    --text-secondary: #A0A9C6;
+    --text-tertiary: #6D7799;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 16px 42px rgba(0, 0, 0, 0.65);
+
+    --plan-amber: #F59E0B;
+    --plan-amber-bg: rgba(245, 158, 11, 0.14);
+    --due-coral: #F87171;
+    --due-coral-bg: rgba(248, 113, 113, 0.14);
+    --event-purple: #A78BFA;
+    --event-purple-bg: rgba(167, 139, 250, 0.15);
+    --focus-emerald: #10B981;
+    --focus-emerald-bg: rgba(16, 185, 129, 0.15);
   }
 
-  /* Compact density modifier */
+  /* Compact Density */
   [data-density="compact"] {
-    --row-height: 38px;
-    --row-gap: 3px;
+    --row-height: 40px;
+    --row-gap: 4px;
   }
 
   body {
     font-family: var(--font-family);
-    background: #08090C;
+    background: #07080B;
     color: var(--text-primary);
+    font-size: var(--font-base);
     line-height: 1.45;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
   }
 
+  /* Focus ring for accessibility */
+  :focus-visible {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 2px;
+  }
+
   /* ==========================================================================
-     PROTOTYPE HARNESS / CONTROLLER BAR (TOP NOTCH)
+     PROTOTYPE SIMULATOR CONTROLLER (TOP NOTCH BAR)
      ========================================================================== */
-  .preview-harness-bar {
+  .simulator-bar {
     position: sticky;
     top: 0;
-    z-index: 10000;
-    background: #141620;
-    border-bottom: 1px solid #282C40;
+    z-index: 9999;
+    background: #11131C;
+    border-bottom: 1px solid #23273A;
     padding: 8px 18px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    font-size: 13px;
-    color: #E2E6F5;
+    gap: 12px;
+    font-size: 12.5px;
+    color: #CBD3EA;
   }
 
-  .harness-title {
+  .sim-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+  }
+
+  .sim-badge {
+    background: var(--brand-primary);
+    color: #FFF;
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .sim-controls-cluster {
     display: flex;
     align-items: center;
     gap: 10px;
-    font-weight: 700;
-    letter-spacing: -0.2px;
-  }
-
-  .harness-title .version-badge {
-    background: linear-gradient(135deg, var(--brand-primary), var(--orbit-teal));
-    color: #FFF;
-    font-size: 11px;
-    padding: 2px 7px;
-    border-radius: 6px;
-    font-weight: 700;
-  }
-
-  .harness-controls {
-    display: flex;
-    align-items: center;
-    gap: 12px;
     flex-wrap: wrap;
   }
 
-  .btn-group {
+  .ctrl-pill-group {
     display: inline-flex;
-    background: #0B0C12;
-    padding: 3px;
+    background: #090A0F;
+    padding: 2px;
     border-radius: 8px;
-    border: 1px solid #2B3045;
+    border: 1px solid #282C40;
   }
 
-  .btn-group-btn {
+  .ctrl-btn {
     background: transparent;
     border: none;
-    color: #8C96B5;
-    padding: 5px 11px;
-    font-size: 12px;
+    color: #8C96B3;
+    padding: 5px 10px;
+    font-size: 11.5px;
     font-weight: 600;
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.15s ease;
-    display: flex;
-    align-items: center;
-    gap: 6px;
   }
 
-  .btn-group-btn:hover {
-    color: #FFF;
-  }
-
-  .btn-group-btn.active {
+  .ctrl-btn:hover { color: #FFF; }
+  .ctrl-btn.active {
     background: var(--brand-primary);
     color: #FFF;
-    box-shadow: 0 2px 6px var(--brand-glow);
   }
 
   /* ==========================================================================
-     VIEWPORT SIMULATOR WRAPPER
+     VIEWPORT STAGE
      ========================================================================== */
   .viewport-stage {
     min-height: calc(100vh - 50px);
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    padding: 24px 16px;
-    background: #0B0D14;
-    transition: padding 0.2s ease;
+    padding: 20px 16px 40px;
   }
 
-  .viewport-frame {
-    background: var(--bg-canvas);
+  .viewport-container {
+    background: var(--bg-app);
     border: 1px solid var(--border-subtle);
-    border-radius: 16px;
+    border-radius: 14px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
     overflow: hidden;
     position: relative;
-    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), height 0.3s ease;
+    transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), height 0.25s ease;
   }
 
-  /* Viewport mode sizing */
-  .viewport-frame.mode-desktop-wide {
-    width: 1440px;
-    height: 900px;
-  }
+  .viewport-container.mode-desktop-wide   { width: 1440px; height: 900px; }
+  .viewport-container.mode-desktop-medium { width: 1100px; height: 800px; }
+  .viewport-container.mode-desktop-narrow { width: 820px;  height: 740px; }
+  .viewport-container.mode-mobile         { width: 390px;  height: 844px; border-radius: 36px; border: 8px solid #24283B; }
 
-  .viewport-frame.mode-desktop-medium {
-    width: 1000px;
-    height: 800px;
-  }
-
-  .viewport-frame.mode-mobile {
-    width: 390px;
-    height: 844px;
-    border-radius: 36px;
-    border: 8px solid #2D3247;
-    box-shadow: 0 24px 70px rgba(0,0,0,0.7);
-  }
-
-  /* Application Shell Container */
+  /* Full App Shell */
   .app-shell {
     width: 100%;
     height: 100%;
     display: flex;
-    background: var(--bg-canvas);
     position: relative;
     overflow: hidden;
+    background: var(--bg-app);
   }
 
   /* ==========================================================================
-     SIDEBAR NAVIGATION (Full IA: Today, Calendar, Habits, Goals, Focus, etc.)
+     1. SIDEBAR (Full Todorbit Navigation Model)
      ========================================================================== */
   .app-sidebar {
     width: var(--sidebar-width);
@@ -235,58 +235,50 @@
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
-    transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     z-index: 20;
     overflow-y: auto;
-    overflow-x: hidden;
   }
 
-  .sidebar-header {
-    padding: 16px 18px 14px;
+  .sidebar-brand-box {
+    padding: 16px 18px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     border-bottom: 1px solid var(--border-subtle);
   }
 
-  .brand-mark {
+  .brand-identity {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 9px;
     text-decoration: none;
     color: var(--text-primary);
   }
 
-  .brand-logo-icon {
-    width: 30px;
-    height: 30px;
-    border-radius: 9px;
+  .brand-orbit-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
     background: linear-gradient(135deg, var(--brand-primary), #4338CA);
     display: flex;
     align-items: center;
     justify-content: center;
     color: #FFF;
-    box-shadow: 0 4px 10px var(--brand-glow);
+    box-shadow: 0 3px 8px var(--brand-glow);
   }
 
-  .brand-text {
-    font-size: 16px;
+  .brand-name-text {
+    font-size: 15.5px;
     font-weight: 700;
-    letter-spacing: -0.4px;
+    letter-spacing: -0.3px;
   }
 
-  .brand-tagline {
-    font-size: 11px;
-    color: var(--text-tertiary);
-    font-weight: 500;
+  /* Search */
+  .sidebar-search-area {
+    padding: 10px 14px 4px;
   }
 
-  /* Quick action search */
-  .sidebar-search-box {
-    padding: 12px 14px 6px;
-  }
-
-  .search-affordance {
+  .search-input-pill {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -297,40 +289,35 @@
     color: var(--text-tertiary);
     font-size: 13px;
     cursor: pointer;
-    transition: all 0.15s ease;
   }
 
-  .search-affordance:hover {
+  .search-input-pill:hover {
     border-color: var(--border-strong);
     color: var(--text-secondary);
   }
 
-  .search-shortcut {
+  .search-kbd-tag {
     margin-left: auto;
     background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
     border-radius: 4px;
-    padding: 2px 5px;
+    padding: 1px 5px;
     font-size: 10px;
     font-weight: 600;
-    color: var(--text-tertiary);
   }
 
-  /* Navigation Sections */
-  .nav-group {
+  /* Nav Groups */
+  .nav-section {
     padding: 8px 10px;
   }
 
-  .nav-group-header {
+  .nav-section-title {
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.6px;
     color: var(--text-tertiary);
     padding: 8px 10px 4px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
   }
 
   .nav-item {
@@ -340,7 +327,7 @@
     padding: 7px 11px;
     border-radius: var(--radius-md);
     color: var(--text-secondary);
-    font-size: 13.5px;
+    font-size: var(--font-base);
     font-weight: 500;
     cursor: pointer;
     transition: background 0.12s, color 0.12s;
@@ -370,38 +357,29 @@
     background: var(--brand-primary);
   }
 
-  .nav-icon {
-    width: 18px;
-    height: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-
-  .nav-badge {
+  .nav-counter {
     margin-left: auto;
-    font-size: 11px;
+    font-size: 11.5px;
     font-weight: 600;
-    padding: 2px 7px;
+    padding: 1px 7px;
     border-radius: 10px;
     background: var(--bg-subtle);
     color: var(--text-tertiary);
   }
 
-  .nav-item.active .nav-badge {
+  .nav-item.active .nav-counter {
     background: var(--brand-primary);
     color: #FFF;
   }
 
-  .project-color-dot {
-    width: 9px;
-    height: 9px;
+  .project-dot {
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     flex-shrink: 0;
   }
 
-  .sidebar-footer {
+  .sidebar-bottom-bar {
     margin-top: auto;
     padding: 12px 14px;
     border-top: 1px solid var(--border-subtle);
@@ -410,28 +388,28 @@
     gap: 4px;
   }
 
-  /* Cloud sync indicator pill */
-  .sync-indicator-card {
+  .sync-status-card {
     display: flex;
     align-items: center;
-    gap: 9px;
+    gap: 8px;
     background: var(--bg-subtle);
     padding: 8px 10px;
     border-radius: var(--radius-md);
-    font-size: 12px;
-    margin-bottom: 6px;
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
   }
 
-  .sync-dot-pulse {
+  .sync-active-dot {
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: var(--status-success);
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+    background: var(--focus-emerald);
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
   }
 
   /* ==========================================================================
-     MAIN CONTENT WORKSPACE
+     2. MAIN WORKSPACE AREA (TODAY VIEW WITH TASKS, EVENTS & FOCUS)
      ========================================================================== */
   .app-main {
     flex: 1;
@@ -439,46 +417,43 @@
     flex-direction: column;
     overflow: hidden;
     min-width: 0;
-    background: var(--bg-canvas);
+    background: var(--bg-app);
   }
 
-  /* Top Control Header Bar */
-  .workspace-topbar {
+  /* Workspace Topbar */
+  .workspace-header {
     background: var(--bg-surface);
     border-bottom: 1px solid var(--border-subtle);
     padding: 12px 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    min-height: 60px;
+    min-height: 58px;
     gap: 16px;
   }
 
-  .view-heading-group {
+  .header-titles {
     display: flex;
     align-items: baseline;
     gap: 10px;
-    min-width: 0;
   }
 
-  .view-main-title {
-    font-size: 19px;
+  .page-main-heading {
+    font-size: var(--font-heading);
     font-weight: 700;
-    letter-spacing: -0.4px;
+    letter-spacing: -0.3px;
     color: var(--text-primary);
   }
 
-  .view-subtitle-meta {
-    font-size: 13px;
+  .page-sub-caption {
+    font-size: var(--font-sm);
     color: var(--text-tertiary);
-    font-weight: 500;
   }
 
-  .topbar-actions {
+  .header-actions-group {
     display: flex;
     align-items: center;
     gap: 8px;
-    flex-shrink: 0;
   }
 
   /* Buttons */
@@ -488,14 +463,13 @@
     gap: 7px;
     padding: 7px 14px;
     border-radius: var(--radius-md);
-    font-size: 13px;
+    font-size: var(--font-base);
     font-weight: 600;
     cursor: pointer;
     border: 1px solid transparent;
-    transition: all 0.15s ease;
-    white-space: nowrap;
-    text-decoration: none;
+    transition: all 0.12s ease;
     font-family: inherit;
+    text-decoration: none;
   }
 
   .btn-primary {
@@ -532,7 +506,7 @@
     color: var(--text-primary);
   }
 
-  .btn-icon-square {
+  .btn-icon-sq {
     width: 32px;
     height: 32px;
     padding: 0;
@@ -542,112 +516,195 @@
     justify-content: center;
   }
 
-  /* Filter & View Option Toolbar */
-  .workspace-filter-toolbar {
+  /* Filter Toolbar */
+  .filter-strip {
     background: var(--bg-surface);
     border-bottom: 1px solid var(--border-subtle);
-    padding: 8px 24px;
+    padding: 6px 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    font-size: 13px;
   }
 
-  .filter-chips-container {
+  .filter-pills-row {
     display: flex;
     align-items: center;
     gap: 6px;
     overflow-x: auto;
   }
 
-  .filter-pill {
-    padding: 4px 11px;
+  .filter-chip {
+    padding: 4px 10px;
     border-radius: var(--radius-full);
-    font-size: 12.5px;
+    font-size: var(--font-sm);
     font-weight: 500;
     color: var(--text-secondary);
     background: transparent;
     border: 1px solid transparent;
     cursor: pointer;
-    transition: all 0.12s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
   }
 
-  .filter-pill:hover {
-    background: var(--bg-subtle);
-    color: var(--text-primary);
-  }
-
-  .filter-pill.active {
+  .filter-chip.active {
     background: var(--brand-primary-subtle);
     color: var(--brand-primary);
     border-color: var(--brand-primary-border);
     font-weight: 600;
   }
 
-  .view-mode-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  /* ==========================================================================
-     TASK LIST & DETAIL SPLIT AREA
-     ========================================================================== */
-  .workspace-body-split {
+  /* Split Content Area */
+  .workspace-split-body {
     flex: 1;
     display: flex;
     position: relative;
     overflow: hidden;
   }
 
-  .task-stream-container {
+  .stream-scroll-container {
     flex: 1;
     overflow-y: auto;
-    padding: 18px 24px 32px;
+    padding: 16px 24px 32px;
     min-width: 0;
   }
 
-  /* Section Groups */
-  .task-group-block {
-    margin-bottom: 22px;
+  /* ==========================================================================
+     TODAY VIEW: 1. FIXED CALENDAR EVENTS & FOCUS SESSIONS STRIP
+     ========================================================================== */
+  .today-context-strip {
+    margin-bottom: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
 
-  .task-group-title {
+  .active-focus-banner {
+    background: var(--focus-emerald-bg);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
     display: flex;
     align-items: center;
-    gap: 9px;
-    font-size: 12.5px;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .focus-banner-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .focus-pulsing-badge {
+    background: var(--focus-emerald);
+    color: #FFF;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    letter-spacing: 0.3px;
+  }
+
+  .focus-task-name {
+    font-size: var(--font-base);
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .focus-timer-clock {
+    font-size: 14px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--focus-emerald);
+  }
+
+  /* Fixed Calendar Events Section */
+  .fixed-events-container {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+  }
+
+  .events-header-line {
+    font-size: var(--font-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .events-cards-row {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+  }
+
+  .fixed-event-card {
+    background: var(--event-purple-bg);
+    border: 1px solid rgba(167, 139, 250, 0.3);
+    border-left: 3px solid var(--event-purple);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    display: flex;
+    flex-direction: column;
+    min-width: 220px;
+  }
+
+  .event-time-range {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--event-purple);
+  }
+
+  .event-title-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ==========================================================================
+     REFINED ADAPTIVE TASK ROW COMPONENT
+     ========================================================================== */
+  .task-group-wrap {
+    margin-bottom: 20px;
+  }
+
+  .group-title-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--font-xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.6px;
     color: var(--text-tertiary);
-    margin-bottom: 10px;
-    padding: 0 4px;
+    margin-bottom: 8px;
+    padding: 0 2px;
   }
 
-  .task-group-badge {
+  .group-count-tag {
     background: var(--bg-subtle);
     color: var(--text-secondary);
-    border-radius: 12px;
+    border-radius: 10px;
     padding: 1px 7px;
     font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0;
     text-transform: none;
+    letter-spacing: 0;
   }
 
-  .task-group-badge.alert {
-    background: var(--status-deadline-bg);
-    color: var(--status-deadline);
+  .group-count-tag.alert {
+    background: var(--due-coral-bg);
+    color: var(--due-coral);
   }
 
-  /* ==========================================================================
-     ADAPTIVE TASK ROW COMPONENT (CONCEPT C CORE)
-     ========================================================================== */
   .adaptive-task-row {
     background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
@@ -655,29 +712,26 @@
     margin-bottom: var(--row-gap);
     min-height: var(--row-height);
     display: flex;
-    align-items: center;
-    padding: 8px 14px;
+    align-items: flex-start;
+    padding: 10px 14px;
     gap: 12px;
     cursor: pointer;
-    transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
-    position: relative;
+    transition: border-color 0.15s, box-shadow 0.15s;
     user-select: none;
   }
 
   .adaptive-task-row:hover {
     border-color: var(--border-strong);
-    background-color: var(--bg-surface-elevated);
     box-shadow: var(--shadow-sm);
   }
 
   .adaptive-task-row.selected {
     border-color: var(--brand-primary);
-    background: var(--bg-surface-elevated);
     box-shadow: 0 0 0 1px var(--brand-primary), var(--shadow-md);
   }
 
-  /* Checkbox with progress orbital ring */
-  .task-checkbox-container {
+  /* Checkbox with accessibility */
+  .task-check-ring {
     width: 20px;
     height: 20px;
     border-radius: 50%;
@@ -686,204 +740,190 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    margin-top: 1px;
     flex-shrink: 0;
-    position: relative;
+    background: transparent;
   }
 
-  .task-checkbox-container:hover {
+  .task-check-ring:hover {
     border-color: var(--brand-primary);
-    transform: scale(1.1);
+    transform: scale(1.08);
   }
 
-  .task-checkbox-container.checked {
-    background: var(--status-success);
-    border-color: var(--status-success);
+  .task-check-ring.checked {
+    background: var(--focus-emerald);
+    border-color: var(--focus-emerald);
   }
 
-  .task-checkbox-container.checked svg {
-    display: block;
-  }
-
-  .task-checkbox-container svg {
+  .task-check-ring svg {
     display: none;
     color: #FFF;
   }
 
-  /* Priority indicator pip (geometric shape + color for accessibility) */
-  .priority-pip {
+  .task-check-ring.checked svg {
+    display: block;
+  }
+
+  /* Priority Indicator (Todorbit Real Model: 0=None, 1=Low, 2=Med, 3=High) */
+  .prio-shape-badge {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
-    border-radius: 4px;
+    gap: 3px;
     font-size: 11px;
-    font-weight: 800;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
     flex-shrink: 0;
+    margin-top: 1px;
   }
 
-  .priority-pip.p-urgent {
-    background: var(--status-deadline-bg);
-    color: var(--status-deadline);
+  .prio-shape-badge.p-high {
+    background: var(--prio-high-bg);
+    color: var(--prio-high);
   }
 
-  .priority-pip.p-high {
-    background: var(--status-planned-bg);
-    color: var(--status-planned);
+  .prio-shape-badge.p-med {
+    background: var(--prio-med-bg);
+    color: var(--prio-med);
   }
 
-  .priority-pip.p-normal {
-    background: var(--bg-subtle);
-    color: var(--text-tertiary);
+  .prio-shape-badge.p-low {
+    background: var(--prio-low-bg);
+    color: var(--prio-low);
   }
 
-  /* Main Task Details Content */
-  .task-row-center {
+  .prio-shape-badge.p-none {
+    display: none; /* None priority leaves row clean */
+  }
+
+  /* Task Center (Multi-Line Wrapping to Prevent Truncation) */
+  .task-center-content {
     flex: 1;
     min-width: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
   }
 
-  [data-density="compact"] .task-row-center {
-    flex-direction: row;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .task-title-line {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-  }
-
-  .task-title-text {
-    font-size: 14.5px;
-    font-weight: 500;
+  .task-headline-text {
+    font-size: var(--font-base);
+    font-weight: 600;
     color: var(--text-primary);
-    white-space: nowrap;
+    line-height: 1.4;
+    word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* 2-line wrap instead of aggressive 1-line truncation */
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
-    line-height: 1.35;
   }
 
-  [data-density="compact"] .task-title-text {
-    font-size: 13.5px;
+  [data-density="compact"] .task-headline-text {
+    -webkit-line-clamp: 1;
   }
 
-  .adaptive-task-row.is-done .task-title-text {
+  .adaptive-task-row.is-done .task-headline-text {
     text-decoration: line-through;
     color: var(--text-tertiary);
   }
 
-  /* Distinct Todorbit Metadata Chips */
-  .task-meta-row {
+  /* Semantic Metadata Line */
+  .task-metadata-line {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-top: 4px;
+    margin-top: 5px;
     flex-wrap: wrap;
+    font-size: var(--font-sm);
   }
 
-  [data-density="compact"] .task-meta-row {
-    margin-top: 0;
-    margin-left: auto;
+  [data-density="compact"] .task-metadata-line {
+    margin-top: 2px;
   }
 
-  .meta-tag {
+  .semantic-meta-tag {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 12px;
     font-weight: 500;
     color: var(--text-secondary);
   }
 
-  /* Distinct Planned Date vs Deadline */
-  .meta-tag.tag-plan {
-    color: var(--status-planned);
-    background: var(--status-planned-bg);
-    padding: 1px 7px;
+  .semantic-meta-tag.is-planned {
+    color: var(--plan-amber);
+    background: var(--plan-amber-bg);
+    padding: 1px 6px;
     border-radius: 4px;
     font-weight: 600;
   }
 
-  .meta-tag.tag-due {
+  .semantic-meta-tag.is-deadline-overdue {
+    color: var(--due-coral);
+    background: var(--due-coral-bg);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  .semantic-meta-tag.is-deadline-normal {
     color: var(--text-secondary);
     background: var(--bg-subtle);
-    padding: 1px 7px;
+    padding: 1px 6px;
     border-radius: 4px;
   }
 
-  .meta-tag.tag-overdue {
-    color: var(--status-deadline);
-    background: var(--status-deadline-bg);
-    padding: 1px 7px;
-    border-radius: 4px;
-    font-weight: 600;
-  }
-
-  .meta-tag.tag-project {
+  .semantic-meta-tag.is-project {
     color: var(--text-secondary);
-    background: var(--bg-subtle);
-    padding: 1px 7px;
-    border-radius: 4px;
-  }
-
-  .meta-tag.tag-focus-active {
-    color: var(--status-focus);
-    background: var(--status-focus-bg);
-    padding: 1px 7px;
-    border-radius: 4px;
-    font-weight: 600;
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.65; }
-  }
-
-  .badge-icon-recur {
     display: inline-flex;
     align-items: center;
-    gap: 3px;
+    gap: 5px;
+  }
+
+  .semantic-meta-tag.is-recur {
     color: var(--brand-primary);
     background: var(--brand-primary-subtle);
     padding: 1px 6px;
     border-radius: 4px;
-    font-size: 11.5px;
     font-weight: 600;
   }
 
   /* Trailing Action Controls */
-  .task-row-trailing {
+  .task-trailing-actions {
     display: flex;
     align-items: center;
     gap: 4px;
     margin-left: auto;
-    opacity: 0.35;
+    opacity: 0.4;
     transition: opacity 0.15s;
+    flex-shrink: 0;
   }
 
-  .adaptive-task-row:hover .task-row-trailing,
-  .adaptive-task-row.selected .task-row-trailing {
+  .adaptive-task-row:hover .task-trailing-actions,
+  .adaptive-task-row:focus-within .task-trailing-actions {
     opacity: 1;
   }
 
-  /* Nested Subtask View Structure */
-  .subtask-indent-wrapper {
+  /* Nested Subtask Hierarchy */
+  .subtask-tree-bracket {
     margin-left: 28px;
     padding-left: 14px;
     border-left: 2px solid var(--border-subtle);
     margin-bottom: 8px;
   }
 
+  /* Empty State Presentation */
+  .empty-state-card {
+    display: none;
+    background: var(--bg-surface);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-md);
+    padding: 40px 24px;
+    text-align: center;
+    margin: 20px 0;
+  }
+
+  .empty-state-card.visible {
+    display: block;
+  }
+
   /* ==========================================================================
-     RESIZABLE TASK-DETAILS WORKSPACE PANEL
+     3. REFINED TASK-DETAILS WORKSPACE (CLEAN FORM, REDUCED CARD NESTING)
      ========================================================================== */
   .task-detail-pane {
     width: var(--detail-panel-width);
@@ -891,17 +931,16 @@
     max-width: 650px;
     background: var(--bg-surface);
     border-left: 1px solid var(--border-subtle);
-    box-shadow: var(--shadow-panel);
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.05);
     display: flex;
     flex-direction: column;
     position: relative;
     flex-shrink: 0;
     z-index: 15;
-    transition: width 0.05s linear;
   }
 
-  /* Resizer drag handle */
-  .panel-resizer-grip {
+  /* Resizer grip */
+  .pane-resize-handle {
     position: absolute;
     left: -4px;
     top: 0;
@@ -909,42 +948,39 @@
     width: 8px;
     cursor: col-resize;
     z-index: 30;
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
-  .panel-resizer-grip::after {
+  .pane-resize-handle::after {
     content: '';
+    position: absolute;
+    left: 3px;
+    top: 50%;
+    transform: translateY(-50%);
     width: 2px;
     height: 36px;
     border-radius: 2px;
     background: var(--border-strong);
-    transition: background 0.15s;
   }
 
-  .panel-resizer-grip:hover::after,
-  .panel-resizer-grip.dragging::after {
+  .pane-resize-handle:hover::after {
     background: var(--brand-primary);
     width: 4px;
-    height: 48px;
   }
 
-  .detail-pane-header {
-    padding: 14px 18px;
+  .detail-pane-top {
+    padding: 12px 18px;
     border-bottom: 1px solid var(--border-subtle);
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    background: var(--bg-surface);
   }
 
-  .detail-status-pill {
+  .detail-status-selector {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--font-sm);
     font-weight: 600;
     padding: 4px 10px;
     border-radius: var(--radius-full);
@@ -954,230 +990,216 @@
     cursor: pointer;
   }
 
-  .detail-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .detail-scrollable-body {
+  .detail-body-scroll {
     flex: 1;
     overflow-y: auto;
-    padding: 20px 22px;
+    padding: 18px 20px;
   }
 
-  /* Large Editable Task Title */
-  .task-editable-title {
+  /* Editable Title (Auto-wrapping textarea) */
+  .task-title-input-field {
     width: 100%;
     background: transparent;
     border: 1px solid transparent;
     border-radius: var(--radius-sm);
-    font-size: 18px;
+    font-size: calc(17px * var(--text-scale));
     font-weight: 700;
     color: var(--text-primary);
     font-family: inherit;
     line-height: 1.35;
-    padding: 4px 6px;
+    padding: 6px 8px;
     margin-bottom: 14px;
     outline: none;
-    transition: border-color 0.15s, background 0.15s;
+    resize: none;
   }
 
-  .task-editable-title:hover {
-    border-color: var(--border-subtle);
+  .task-title-input-field:focus {
+    border-color: var(--brand-primary);
     background: var(--bg-subtle);
   }
 
-  .task-editable-title:focus {
-    border-color: var(--brand-primary);
-    background: var(--bg-surface);
-  }
-
-  /* Core Schedule Cards: Planned Date vs Deadline (Todorbit Invariant) */
-  .schedule-dual-grid {
+  /* Dual Schedule Cards (Clean, non-nested) */
+  .schedule-block-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 18px;
+    gap: 10px;
+    margin-bottom: 16px;
   }
 
-  .schedule-field-card {
+  .schedule-cell {
     background: var(--bg-subtle);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
-    padding: 10px 12px;
+    padding: 9px 12px;
     cursor: pointer;
-    transition: border-color 0.15s;
   }
 
-  .schedule-field-card:hover {
-    border-color: var(--border-strong);
-  }
-
-  .schedule-card-label {
-    font-size: 11px;
+  .schedule-cell-caption {
+    font-size: var(--font-xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
   }
 
-  .schedule-card-label.planned { color: var(--status-planned); }
-  .schedule-card-label.deadline { color: var(--status-deadline); }
+  .schedule-cell-caption.plan { color: var(--plan-amber); }
+  .schedule-cell-caption.due  { color: var(--due-coral); }
 
-  .schedule-card-value {
-    font-size: 13.5px;
+  .schedule-cell-val {
+    font-size: var(--font-base);
     font-weight: 600;
     color: var(--text-primary);
   }
 
-  .schedule-card-subtext {
-    font-size: 11.5px;
+  .schedule-cell-note {
+    font-size: 11px;
     color: var(--text-tertiary);
-    margin-top: 2px;
+    margin-top: 1px;
   }
 
-  /* Project and Priority Row */
-  .detail-property-row {
+  /* Project and Priority (Clean Row) */
+  .props-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    gap: 10px;
     margin-bottom: 16px;
   }
 
-  .property-selector-box {
+  .prop-cell {
     background: var(--bg-subtle);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
     padding: 8px 12px;
   }
 
-  .property-selector-label {
-    font-size: 11px;
+  .prop-caption {
+    font-size: var(--font-xs);
     font-weight: 700;
     text-transform: uppercase;
-    color: var(--text-tertiary);
     letter-spacing: 0.5px;
+    color: var(--text-tertiary);
     margin-bottom: 3px;
   }
 
-  .property-selector-val {
+  .prop-content {
     display: flex;
     align-items: center;
     gap: 7px;
-    font-size: 13.5px;
+    font-size: var(--font-base);
     font-weight: 500;
     color: var(--text-primary);
   }
 
-  /* Rich notes / description editor */
-  .description-box-container {
-    margin-bottom: 20px;
+  /* Description Box */
+  .notes-box {
+    margin-bottom: 18px;
   }
 
-  .field-section-title {
-    font-size: 12px;
+  .notes-header-line {
+    font-size: var(--font-xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--text-tertiary);
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     display: flex;
-    align-items: center;
     justify-content: space-between;
   }
 
-  .editor-textarea-mock {
+  .notes-textarea {
+    width: 100%;
+    min-height: 85px;
     background: var(--bg-subtle);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
-    padding: 12px 14px;
-    font-size: 13.5px;
+    padding: 10px 12px;
+    font-size: var(--font-base);
     color: var(--text-primary);
-    line-height: 1.55;
-    min-height: 90px;
+    font-family: inherit;
+    line-height: 1.5;
+    outline: none;
+    resize: vertical;
   }
 
-  /* Interactive Subtasks in Editor */
-  .subtask-editor-card {
+  .notes-textarea:focus {
+    border-color: var(--brand-primary);
     background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    padding: 12px;
-    margin-bottom: 18px;
   }
 
-  .subtask-editor-list {
+  /* Checklist & Subtasks in Editor */
+  .subtasks-section {
+    margin-bottom: 16px;
+  }
+
+  .subtasks-list-block {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    margin-top: 8px;
+    margin-top: 6px;
   }
 
-  .subtask-item-row {
+  .subtask-item-line {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 8px;
+    padding: 6px 10px;
     background: var(--bg-subtle);
     border-radius: var(--radius-sm);
-    font-size: 13px;
+    font-size: var(--font-base);
   }
 
   /* Progressive Disclosure Accordions */
-  .disclosure-block {
+  .disclosure-panel {
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
-    margin-bottom: 10px;
-    overflow: hidden;
+    margin-bottom: 8px;
     background: var(--bg-surface);
+    overflow: hidden;
   }
 
-  .disclosure-header {
+  .disclosure-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 11px 14px;
-    font-size: 13px;
+    padding: 10px 14px;
+    font-size: var(--font-base);
     font-weight: 600;
     color: var(--text-secondary);
     cursor: pointer;
-    user-select: none;
-    transition: background 0.12s;
   }
 
-  .disclosure-header:hover {
+  .disclosure-bar:hover {
     background: var(--bg-subtle);
     color: var(--text-primary);
   }
 
-  .disclosure-header .icon-toggle {
+  .disclosure-arrow-icon {
     font-size: 11px;
     color: var(--text-tertiary);
     transition: transform 0.2s ease;
   }
 
-  .disclosure-block.open .disclosure-header .icon-toggle {
+  .disclosure-panel.open .disclosure-arrow-icon {
     transform: rotate(180deg);
   }
 
-  .disclosure-content {
+  .disclosure-inner-body {
     display: none;
-    padding: 14px;
+    padding: 12px 14px;
     background: var(--bg-subtle);
     border-top: 1px solid var(--border-subtle);
-    font-size: 13px;
+    font-size: var(--font-sm);
   }
 
-  .disclosure-block.open .disclosure-content {
+  .disclosure-panel.open .disclosure-inner-body {
     display: block;
   }
 
-  /* Detail Panel Sticky Footer */
-  .detail-pane-footer {
+  /* Detail Footer */
+  .detail-pane-bottom-bar {
     padding: 12px 18px;
     border-top: 1px solid var(--border-subtle);
     background: var(--bg-surface);
@@ -1186,101 +1208,55 @@
     justify-content: space-between;
   }
 
-  .unsaved-status-indicator {
+  .simulated-save-pill {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--font-xs);
     color: var(--text-tertiary);
   }
 
-  .unsaved-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--status-planned);
-  }
-
   /* ==========================================================================
-     RESPONSIVE ADAPTATIONS FOR MEDIUM DESKTOP (1000x800) & MOBILE (390x844)
+     MOBILE SHELL OVERRIDES (390x844)
      ========================================================================== */
-
-  /* Medium Desktop (1000x800) adjustments */
-  .viewport-frame.mode-desktop-medium .app-sidebar {
-    width: 210px;
-  }
-  .viewport-frame.mode-desktop-medium .task-detail-pane {
-    width: 380px;
-  }
-  .viewport-frame.mode-desktop-medium .workspace-topbar {
-    padding: 10px 18px;
-  }
-  .viewport-frame.mode-desktop-medium .task-stream-container {
-    padding: 14px 18px 24px;
-  }
-  .viewport-frame.mode-desktop-medium .schedule-dual-grid {
-    gap: 8px;
-  }
-  .viewport-frame.mode-desktop-medium .schedule-field-card {
-    padding: 8px 10px;
+  .viewport-container.mode-mobile .app-sidebar {
+    display: none;
   }
 
-  /* Mobile Shell Overrides (390x844) */
-  .viewport-frame.mode-mobile .app-sidebar {
-    display: none; /* Mobile uses bottom navigation */
-  }
-
-  .viewport-frame.mode-mobile .workspace-topbar {
+  .viewport-container.mode-mobile .workspace-header {
     padding: 10px 14px;
-    min-height: 52px;
   }
 
-  .viewport-frame.mode-mobile .view-main-title {
+  .viewport-container.mode-mobile .page-main-heading {
     font-size: 17px;
   }
 
-  .viewport-frame.mode-mobile .view-subtitle-meta {
-    display: none; /* Conserve vertical space on mobile */
+  .viewport-container.mode-mobile .page-sub-caption {
+    display: none;
   }
 
-  .viewport-frame.mode-mobile .topbar-actions .btn-secondary {
-    display: none; /* Hide secondary desktop action on mobile header */
+  .viewport-container.mode-mobile .header-actions-group .btn-secondary {
+    display: none; /* Keep mobile topbar clean */
   }
 
-  .viewport-frame.mode-mobile .topbar-actions .btn-primary {
-    padding: 6px 11px;
-    font-size: 12px;
+  .viewport-container.mode-mobile .stream-scroll-container {
+    padding: 12px 12px 76px;
   }
 
-  .viewport-frame.mode-mobile .workspace-filter-toolbar {
-    padding: 6px 12px;
+  .viewport-container.mode-mobile .task-trailing-actions {
+    display: none;
   }
 
-  .viewport-frame.mode-mobile .task-stream-container {
-    padding: 12px 12px 76px; /* Extra bottom clearance for mobile navbar */
-  }
-
-  .viewport-frame.mode-mobile .adaptive-task-row {
-    padding: 8px 10px;
-    gap: 10px;
-  }
-
-  .viewport-frame.mode-mobile .task-row-trailing {
-    display: none; /* Cleaner mobile tap rows; use long-press / editor */
-  }
-
-  .viewport-frame.mode-mobile .task-detail-pane {
+  .viewport-container.mode-mobile .task-detail-pane {
     position: absolute;
     inset: 0;
     width: 100% !important;
     max-width: none;
     z-index: 50;
-    border-left: none;
-    border-radius: 0;
     box-shadow: none;
   }
 
-  .mobile-bottom-nav-bar {
+  .mobile-bottom-navbar {
     display: none;
     height: 56px;
     background: var(--bg-surface);
@@ -1294,11 +1270,11 @@
     align-items: center;
   }
 
-  .viewport-frame.mode-mobile .mobile-bottom-nav-bar {
+  .viewport-container.mode-mobile .mobile-bottom-navbar {
     display: flex;
   }
 
-  .mobile-nav-item {
+  .mob-nav-item {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1309,31 +1285,11 @@
     cursor: pointer;
   }
 
-  .mobile-nav-item.active {
+  .mob-nav-item.active {
     color: var(--brand-primary);
   }
 
-  /* ==========================================================================
-     EXPANDED WORKSPACE MODAL OVERLAY
-     ========================================================================== */
-  .expanded-workspace-modal {
-    display: none;
-    position: absolute;
-    inset: 20px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-lg);
-    z-index: 200;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .expanded-workspace-modal.open {
-    display: flex;
-  }
-
-  /* SVG Icons inline */
+  /* SVG Icons */
   svg.feather {
     width: 16px;
     height: 16px;
@@ -1348,606 +1304,616 @@
 <body data-theme="dark" data-density="balanced">
 
   <!-- ==========================================================================
-       PROTOTYPE HARNESS: Allows Product Owner to evaluate all 5 required views
+       TOP NOTCH SIMULATOR CONTROLLER BAR
        ========================================================================== -->
-  <header class="preview-harness-bar">
-    <div class="harness-title">
+  <header class="simulator-bar">
+    <div class="sim-title-group">
       <span>Todorbit Concept C</span>
-      <span class="version-badge">Adaptive Productivity Workspace</span>
+      <span class="sim-badge">Refined UX</span>
+      <span style="font-size:11px;color:#8C96B3;margin-left:4px;">(Visual prototype simulation — no actual database writes)</span>
     </div>
 
-    <div class="harness-controls">
-      <!-- Viewport Mode Switcher -->
-      <span style="font-size:11.5px;color:#8C96B5;">Viewport:</span>
-      <div class="btn-group">
-        <button class="btn-group-btn active" onclick="setViewport('desktop-wide')">
-          🖥️ 1440×900
-        </button>
-        <button class="btn-group-btn" onclick="setViewport('desktop-medium')">
-          💻 1000×800
-        </button>
-        <button class="btn-group-btn" onclick="setViewport('mobile')">
-          📱 390×844 Mobile
-        </button>
+    <div class="sim-controls-cluster">
+      <!-- Viewport Size -->
+      <span style="font-size:11px;color:#8C96B3;">Viewport:</span>
+      <div class="ctrl-pill-group">
+        <button class="ctrl-btn active" onclick="setViewport('desktop-wide')">🖥️ 1440 Wide</button>
+        <button class="ctrl-btn" onclick="setViewport('desktop-medium')">💻 1100 Med</button>
+        <button class="ctrl-btn" onclick="setViewport('desktop-narrow')">📐 820 Narrow</button>
+        <button class="ctrl-btn" onclick="setViewport('mobile')">📱 390 Mobile</button>
       </div>
 
       <!-- Theme Switcher -->
-      <span style="font-size:11.5px;color:#8C96B5;margin-left:8px;">Theme:</span>
-      <div class="btn-group">
-        <button class="btn-group-btn active" id="btnThemeDark" onclick="setTheme('dark')">🌙 Dark</button>
-        <button class="btn-group-btn" id="btnThemeLight" onclick="setTheme('light')">☀️ Light</button>
+      <span style="font-size:11px;color:#8C96B3;margin-left:4px;">Theme:</span>
+      <div class="ctrl-pill-group">
+        <button class="ctrl-btn active" id="btnThemeDark" onclick="setTheme('dark')">🌙 Dark</button>
+        <button class="ctrl-btn" id="btnThemeLight" onclick="setTheme('light')">☀️ Light</button>
       </div>
 
       <!-- Density Switcher -->
-      <span style="font-size:11.5px;color:#8C96B5;margin-left:8px;">Density:</span>
-      <div class="btn-group">
-        <button class="btn-group-btn active" id="btnDensityBal" onclick="setDensity('balanced')">Balanced</button>
-        <button class="btn-group-btn" id="btnDensityCmp" onclick="setDensity('compact')">Compact</button>
+      <span style="font-size:11px;color:#8C96B3;margin-left:4px;">Density:</span>
+      <div class="ctrl-pill-group">
+        <button class="ctrl-btn active" id="btnDensityBal" onclick="setDensity('balanced')">Balanced</button>
+        <button class="ctrl-btn" id="btnDensityCmp" onclick="setDensity('compact')">Compact</button>
       </div>
 
-      <!-- Toggle Detail Panel -->
-      <button class="btn btn-secondary btn-icon-square" title="Toggle Detail Panel" onclick="toggleDetailPanel()" style="margin-left:8px;">
-        <svg class="feather" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+      <!-- Text Scale Selector (100%, 125%, 150%) -->
+      <span style="font-size:11px;color:#8C96B3;margin-left:4px;">Text Scale:</span>
+      <div class="ctrl-pill-group">
+        <button class="ctrl-btn active" onclick="setTextScale(1.0)">100%</button>
+        <button class="ctrl-btn" onclick="setTextScale(1.25)">125%</button>
+        <button class="ctrl-btn" onclick="setTextScale(1.5)">150%</button>
+      </div>
+
+      <!-- Empty State Switcher -->
+      <button class="ctrl-btn" id="btnEmptyToggle" onclick="toggleEmptyState()" style="border:1px solid #282C40;border-radius:6px;">
+        State: Populated
       </button>
 
-      <!-- Toggle Expanded Modal View -->
-      <button class="btn btn-secondary" onclick="toggleExpandedModal()" style="font-size:12px;padding:5px 10px;">
-        ⤢ Expanded Editor
+      <!-- Toggle Detail Panel -->
+      <button class="btn btn-secondary btn-icon-sq" title="Toggle Task Detail Panel" onclick="toggleDetailPanel()" style="margin-left:4px;">
+        <svg class="feather" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
       </button>
     </div>
   </header>
 
   <!-- ==========================================================================
-       VIEWPORT STAGE
-       ========================================================================== -->
+     SIMULATOR STAGE
+     ========================================================================== -->
   <main class="viewport-stage">
-    <div class="viewport-frame mode-desktop-wide" id="viewportFrame">
-
+    <div class="viewport-container mode-desktop-wide" id="viewportContainer">
       <div class="app-shell" id="appShell">
 
         <!-- ==================================================================
-             1. SIDEBAR (Full Todorbit Information Architecture)
+             1. SIDEBAR NAVIGATION
              ================================================================== -->
         <aside class="app-sidebar" id="appSidebar">
-          <div class="sidebar-header">
-            <a href="#" class="brand-mark">
-              <div class="brand-logo-icon">
+          <div class="sidebar-brand-box">
+            <a href="#" class="brand-identity">
+              <div class="brand-orbit-icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <circle cx="12" cy="12" r="9"/>
                   <path d="M12 3a9 9 0 0 1 9 9"/>
                   <path d="M9 12l2 2 4-4"/>
                 </svg>
               </div>
-              <div>
-                <div class="brand-text">Todorbit</div>
-                <div class="brand-tagline">Personal Momentum</div>
-              </div>
+              <span class="brand-name-text">Todorbit</span>
             </a>
           </div>
 
-          <div class="sidebar-search-box">
-            <div class="search-affordance" onclick="alert('Quick Search & Filter (Ctrl + K) simulation');">
+          <div class="sidebar-search-area">
+            <div class="search-input-pill" onclick="alert('Prototype note: Search & Filter (Ctrl + K) simulation');">
               <svg class="feather" viewBox="0 0 24 24" style="width:14px;height:14px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <span>Search or filter…</span>
-              <span class="search-shortcut">Ctrl K</span>
+              <span>Quick search…</span>
+              <span class="search-kbd-tag">Ctrl K</span>
             </div>
           </div>
 
-          <!-- Primary Flow: Today, Calendar, Upcoming -->
-          <div class="nav-group">
-            <div class="nav-group-header">Core Views</div>
+          <!-- Core Views -->
+          <div class="nav-section">
+            <div class="nav-section-title">Schedule</div>
             <div class="nav-item active">
-              <div class="nav-icon">
-                <svg class="feather" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              </div>
+              <svg class="feather" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
               <span>Today</span>
-              <span class="nav-badge">8</span>
+              <span class="nav-counter">6</span>
             </div>
             <div class="nav-item">
-              <div class="nav-icon">
-                <svg class="feather" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              </div>
+              <svg class="feather" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               <span>Calendar</span>
             </div>
             <div class="nav-item">
-              <div class="nav-icon">
-                <svg class="feather" viewBox="0 0 24 24"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
-              </div>
+              <svg class="feather" viewBox="0 0 24 24"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
               <span>Upcoming &amp; Overdue</span>
-              <span class="nav-badge">14</span>
+              <span class="nav-counter">12</span>
             </div>
             <div class="nav-item">
-              <div class="nav-icon">
-                <svg class="feather" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-              </div>
+              <svg class="feather" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
               <span>All Tasks</span>
             </div>
           </div>
 
           <!-- Productivity Systems -->
-          <div class="nav-group">
-            <div class="nav-group-header">Productivity</div>
+          <div class="nav-section">
+            <div class="nav-section-title">Productivity</div>
             <div class="nav-item">
-              <div class="nav-icon">
-                <svg class="feather" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              </div>
+              <svg class="feather" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               <span>Focus Sessions</span>
-              <span class="nav-badge" style="background:var(--status-focus-bg);color:var(--status-focus);">Active</span>
+              <span class="nav-counter" style="background:var(--focus-emerald-bg);color:var(--focus-emerald);">18m</span>
             </div>
             <div class="nav-item">
-              <div class="nav-icon">
-                <svg class="feather" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              </div>
+              <svg class="feather" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
               <span>Habits</span>
             </div>
             <div class="nav-item">
-              <div class="nav-icon">
-                <svg class="feather" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-              </div>
+              <svg class="feather" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
               <span>Goals &amp; Milestones</span>
             </div>
             <div class="nav-item">
-              <div class="nav-icon">
-                <svg class="feather" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-              </div>
+              <svg class="feather" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
               <span>Reports</span>
             </div>
           </div>
 
           <!-- Projects -->
-          <div class="nav-group">
-            <div class="nav-group-header">
-              <span>Projects</span>
-              <span style="cursor:pointer;font-size:14px;">+</span>
+          <div class="nav-section">
+            <div class="nav-section-title">Projects</div>
+            <div class="nav-item">
+              <div class="project-dot" style="background:#8B5CF6;"></div>
+              <span>University Thesis</span>
+              <span class="nav-counter">4</span>
             </div>
             <div class="nav-item">
-              <div class="project-color-dot" style="background:#7E74F1;"></div>
-              <span>Todorbit UI Redesign</span>
-              <span class="nav-badge">5</span>
+              <div class="project-dot" style="background:#0EA5E9;"></div>
+              <span>Distributed Systems</span>
+              <span class="nav-counter">5</span>
             </div>
             <div class="nav-item">
-              <div class="project-color-dot" style="background:#0EA5E9;"></div>
-              <span>Core Engineering</span>
-              <span class="nav-badge">8</span>
-            </div>
-            <div class="nav-item">
-              <div class="project-color-dot" style="background:#10B981;"></div>
-              <span>Personal Life</span>
-              <span class="nav-badge">3</span>
+              <div class="project-dot" style="background:#10B981;"></div>
+              <span>Personal Life &amp; Errands</span>
+              <span class="nav-counter">3</span>
             </div>
           </div>
 
-          <!-- Sidebar Footer: Status & Settings -->
-          <div class="sidebar-footer">
-            <div class="sync-indicator-card">
-              <div class="sync-dot-pulse"></div>
-              <div style="flex:1;line-height:1.2;">
-                <div style="font-weight:600;color:var(--text-primary);">Google Drive Sync</div>
-                <div style="font-size:10.5px;color:var(--text-tertiary);">Up to date · Local SQLite</div>
-              </div>
+          <!-- Bottom Status & Settings -->
+          <div class="sidebar-bottom-bar">
+            <div class="sync-status-card">
+              <div class="sync-active-dot"></div>
+              <span>Synced · Offline Ready</span>
             </div>
             <div class="nav-item" style="padding:6px 8px;">
-              <div class="nav-icon">
-                <svg class="feather" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-              </div>
-              <span>Preferences &amp; Tokens</span>
+              <svg class="feather" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <span>Preferences</span>
             </div>
           </div>
         </aside>
 
         <!-- ==================================================================
-             2. MAIN WORKSPACE VIEW
+             2. MAIN TODAY WORKSPACE
              ================================================================== -->
         <section class="app-main">
 
-          <!-- Topbar -->
-          <div class="workspace-topbar">
-            <div class="view-heading-group">
-              <h1 class="view-main-title">Today</h1>
-              <span class="view-subtitle-meta">Friday, November 20 · 8 tasks scheduled</span>
+          <!-- Workspace Header -->
+          <div class="workspace-header">
+            <div class="header-titles">
+              <h1 class="page-main-heading">Today</h1>
+              <span class="page-sub-caption">Friday, November 20 · 6 tasks · 2 events</span>
             </div>
 
-            <div class="topbar-actions">
-              <button class="btn btn-secondary">
-                <svg class="feather" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-                <span>Filter</span>
+            <div class="header-actions-group">
+              <!-- Advanced actions tucked behind contextual 'More' button to reduce clutter -->
+              <button class="btn btn-secondary" onclick="alert('Smart Reschedule preview dialog');">
+                <svg class="feather" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/></svg>
+                <span>Reschedule</span>
               </button>
-              <button class="btn btn-secondary">
-                <svg class="feather" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
-                <span>Smart Reschedule</span>
-              </button>
-              <button class="btn btn-primary" onclick="alert('Quick Add Task modal');">
+              <button class="btn btn-primary" onclick="alert('Quick Add Task modal simulation');">
                 <svg class="feather" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                <span>New Task</span>
+                <span>Add Task</span>
               </button>
             </div>
           </div>
 
-          <!-- Secondary Filter & View Bar -->
-          <div class="workspace-filter-toolbar">
-            <div class="filter-chips-container">
-              <button class="filter-pill active">All (8)</button>
-              <button class="filter-pill">⚡ In Progress (1)</button>
-              <button class="filter-pill">⏰ Overdue (2)</button>
-              <button class="filter-pill">↻ Recurring (2)</button>
-              <button class="filter-pill">⏳ Waiting / On-hold</button>
+          <!-- Filter Toolbar -->
+          <div class="filter-strip">
+            <div class="filter-pills-row">
+              <button class="filter-chip active">All (6)</button>
+              <button class="filter-chip">⚡ In Progress (1)</button>
+              <button class="filter-chip">⏰ Overdue (1)</button>
+              <button class="filter-chip">↻ Recurring (1)</button>
+              <button class="filter-chip">⏳ Waiting</button>
             </div>
-
-            <div class="view-mode-controls">
-              <span style="font-size:12px;color:var(--text-tertiary);">Sort: Priority</span>
-            </div>
+            <div style="font-size:12px;color:var(--text-tertiary);">Sort: Priority</div>
           </div>
 
-          <!-- Split: Task Stream & Details Workspace -->
-          <div class="workspace-body-split">
+          <!-- Split Body Area -->
+          <div class="workspace-split-body">
 
-            <!-- Task Stream List -->
-            <div class="task-stream-container" id="taskStream">
+            <!-- Stream Scroll Container -->
+            <div class="stream-scroll-container" id="streamScroll">
 
-              <!-- Group: Overdue -->
-              <div class="task-group-block">
-                <div class="task-group-title">
-                  <span>Overdue Deadlines</span>
-                  <span class="task-group-badge alert">2 overdue</span>
-                </div>
+              <!-- ==============================================================
+                   TODAY CONTEXT: ACTIVE FOCUS SESSION & FIXED EVENTS
+                   ============================================================== -->
+              <div class="today-context-strip" id="todayContextStrip">
 
-                <!-- Overdue Task 1 -->
-                <div class="adaptive-task-row" onclick="selectRow(this, 'task1')">
-                  <div class="task-checkbox-container" onclick="event.stopPropagation(); toggleCheck(this);">
-                    <svg width="11" height="11" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                <!-- Running Focus Session Banner -->
+                <div class="active-focus-banner">
+                  <div class="focus-banner-left">
+                    <span class="focus-pulsing-badge">● FOCUS ACTIVE</span>
+                    <span class="focus-task-name">Thesis research: distributed consensus protocols</span>
                   </div>
-                  <div class="priority-pip p-urgent" title="Urgent Priority">▲</div>
-                  <div class="task-row-center">
-                    <div class="task-title-line">
-                      <span class="task-title-text">Publish Beta 25 release notes and migration advisory</span>
-                    </div>
-                    <div class="task-meta-row">
-                      <span class="meta-tag tag-overdue">⏰ Due Nov 18</span>
-                      <span class="meta-tag tag-project">Core Engineering</span>
-                    </div>
-                  </div>
-                  <div class="task-row-trailing">
-                    <button class="btn btn-ghost btn-icon-square" title="Reschedule">
-                      <svg class="feather" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
-                    </button>
-                    <button class="btn btn-ghost btn-icon-square" title="More Options">
-                      <svg class="feather" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-                    </button>
+                  <div style="display:flex;align-items:center;gap:12px;">
+                    <span class="focus-timer-clock">18:24 remaining</span>
+                    <button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;" onclick="alert('Focus paused (simulation)');">Pause</button>
                   </div>
                 </div>
 
-                <!-- Overdue Task 2 -->
-                <div class="adaptive-task-row" onclick="selectRow(this, 'task2')">
-                  <div class="task-checkbox-container" onclick="event.stopPropagation(); toggleCheck(this);">
-                    <svg width="11" height="11" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                <!-- Fixed Events Timeline -->
+                <div class="fixed-events-container">
+                  <div class="events-header-line">
+                    <svg class="feather" viewBox="0 0 24 24" style="width:13px;height:13px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span>Fixed Events Today</span>
                   </div>
-                  <div class="priority-pip p-high" title="High Priority">■</div>
-                  <div class="task-row-center">
-                    <div class="task-title-line">
-                      <span class="task-title-text">Review accessibility audit findings for touch targets</span>
+                  <div class="events-cards-row">
+                    <div class="fixed-event-card">
+                      <span class="event-time-range">10:00 AM – 11:15 AM</span>
+                      <span class="event-title-text">CS450: Distributed Systems Lecture (Hall B)</span>
                     </div>
-                    <div class="task-meta-row">
-                      <span class="meta-tag tag-overdue">⏰ Due Nov 19</span>
-                      <span class="meta-tag tag-project">Todorbit UI Redesign</span>
-                      <span class="meta-tag">3 subtasks</span>
+                    <div class="fixed-event-card">
+                      <span class="event-time-range">02:30 PM – 03:00 PM</span>
+                      <span class="event-title-text">Dentist Appointment (Dr. Smith)</span>
                     </div>
-                  </div>
-                  <div class="task-row-trailing">
-                    <button class="btn btn-ghost btn-icon-square" title="More">
-                      <svg class="feather" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-                    </button>
                   </div>
                 </div>
+
+              </div><!-- /Today Context Strip -->
+
+              <!-- Empty State Mockup -->
+              <div class="empty-state-card" id="emptyStateCard">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--focus-emerald)" stroke-width="2" style="margin-bottom:12px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <h3 style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:6px;">All clear for today!</h3>
+                <p style="font-size:13.5px;color:var(--text-secondary);max-width:320px;margin:0 auto 16px;">You have completed all planned tasks and appointments. Take a break or plan for tomorrow.</p>
+                <button class="btn btn-primary" onclick="toggleEmptyState()">Reload Sample Tasks</button>
               </div>
 
-              <!-- Group: Today -->
-              <div class="task-group-block">
-                <div class="task-group-title">
-                  <span>Planned for Today</span>
-                  <span class="task-group-badge">6 tasks</span>
-                </div>
+              <!-- ==============================================================
+                   TASK GROUPS WITH REALISTIC EVERYDAY DATA
+                   ============================================================== -->
+              <div id="populatedTaskGroups">
 
-                <!-- SELECTED ACTIVE TASK (Focus Running) -->
-                <div class="adaptive-task-row selected" id="taskRowSelected" onclick="selectRow(this, 'taskSelected')">
-                  <div class="task-checkbox-container" onclick="event.stopPropagation(); toggleCheck(this);">
-                    <svg width="11" height="11" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                <!-- Group 1: Overdue -->
+                <div class="task-group-wrap">
+                  <div class="group-title-bar">
+                    <span>Overdue Deadlines</span>
+                    <span class="group-count-tag alert">1 overdue</span>
                   </div>
-                  <div class="priority-pip p-urgent" title="Urgent Priority">▲</div>
-                  <div class="task-row-center">
-                    <div class="task-title-line">
-                      <span class="task-title-text">Design token architecture: integrate AppLayout &amp; theme tokens</span>
-                    </div>
-                    <div class="task-meta-row">
-                      <span class="meta-tag tag-plan">🗓️ Planned: Today</span>
-                      <span class="meta-tag tag-due">⏰ Deadline: Nov 25</span>
-                      <span class="meta-tag tag-project">Todorbit UI Redesign</span>
-                      <span class="meta-tag tag-focus-active">▶ Focus Active (25m)</span>
-                    </div>
-                  </div>
-                  <div class="task-row-trailing">
-                    <button class="btn btn-ghost btn-icon-square" title="Pause Focus">
-                      <svg class="feather" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-                    </button>
-                    <button class="btn btn-ghost btn-icon-square" title="More">
-                      <svg class="feather" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-                    </button>
-                  </div>
-                </div>
 
-                <!-- Recurring Task -->
-                <div class="adaptive-task-row" onclick="selectRow(this, 'taskRecur')">
-                  <div class="task-checkbox-container" onclick="event.stopPropagation(); toggleCheck(this);">
-                    <svg width="11" height="11" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                  </div>
-                  <div class="priority-pip p-normal" title="Normal Priority">▬</div>
-                  <div class="task-row-center">
-                    <div class="task-title-line">
-                      <span class="task-title-text">Weekly core contributor engineering sync</span>
-                    </div>
-                    <div class="task-meta-row">
-                      <span class="meta-tag tag-plan">🗓️ 10:00 AM</span>
-                      <span class="badge-icon-recur">↻ Every Friday</span>
-                      <span class="meta-tag tag-project">Core Engineering</span>
-                    </div>
-                  </div>
-                  <div class="task-row-trailing">
-                    <button class="btn btn-ghost btn-icon-square" title="More">
-                      <svg class="feather" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Parent Task with Nested Subtasks -->
-                <div class="adaptive-task-row" onclick="selectRow(this, 'taskParent')">
-                  <div class="task-checkbox-container" onclick="event.stopPropagation(); toggleCheck(this);">
-                    <svg width="11" height="11" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                  </div>
-                  <div class="priority-pip p-high" title="High Priority">■</div>
-                  <div class="task-row-center">
-                    <div class="task-title-line">
-                      <span class="task-title-text">Q4 productivity audit &amp; storage optimization</span>
-                    </div>
-                    <div class="task-meta-row">
-                      <span class="meta-tag tag-plan">🗓️ Today</span>
-                      <span class="meta-tag tag-due">⏰ Deadline: Nov 28</span>
-                      <span class="meta-tag tag-project">Core Engineering</span>
-                      <span class="meta-tag" style="font-weight:600;color:var(--text-secondary);">1 / 2 subtasks done</span>
-                    </div>
-                  </div>
-                  <div class="task-row-trailing">
-                    <button class="btn btn-ghost btn-icon-square" title="Toggle Subtasks">
-                      <svg class="feather" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Nested Subtask 1 (Completed) -->
-                <div class="subtask-indent-wrapper">
-                  <div class="adaptive-task-row is-done" style="border-left: 2px solid var(--status-success);">
-                    <div class="task-checkbox-container checked" onclick="event.stopPropagation(); toggleCheck(this);">
+                  <!-- Task 1: Overdue Academic Assignment -->
+                  <div class="adaptive-task-row" onclick="selectTaskRow(this, 'task1')">
+                    <button class="task-check-ring" aria-label="Mark task complete" onclick="event.stopPropagation(); toggleCheck(this);">
                       <svg width="11" height="11" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    </button>
+                    <!-- Todorbit Priority: High (3) -->
+                    <span class="prio-shape-badge p-high" title="High Priority">▲ High</span>
+
+                    <div class="task-center-content">
+                      <div class="task-headline-text">
+                        CS450: Complete Assignment 3 — Raft consensus leader election implementation
+                      </div>
+                      <div class="task-metadata-line">
+                        <span class="semantic-meta-tag is-deadline-overdue">⏰ Due Yesterday (Nov 19)</span>
+                        <span class="semantic-meta-tag is-project">
+                          <span class="project-dot" style="background:#0EA5E9;"></span>
+                          <span>Distributed Systems</span>
+                        </span>
+                        <span class="semantic-meta-tag">3 subtasks</span>
+                      </div>
                     </div>
-                    <div class="task-row-center">
-                      <span class="task-title-text">Analyze SQLite WAL checkpoint metrics</span>
+
+                    <div class="task-trailing-actions">
+                      <button class="btn btn-ghost btn-icon-sq" title="Quick Reschedule"><svg class="feather" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg></button>
+                      <button class="btn btn-ghost btn-icon-sq" title="More options"><svg class="feather" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
                     </div>
                   </div>
+                </div>
 
-                  <!-- Nested Subtask 2 (Open) -->
-                  <div class="adaptive-task-row">
-                    <div class="task-checkbox-container" onclick="event.stopPropagation(); toggleCheck(this);">
+                <!-- Group 2: Planned for Today -->
+                <div class="task-group-wrap">
+                  <div class="group-title-bar">
+                    <span>Planned for Today</span>
+                    <span class="group-count-tag">5 tasks</span>
+                  </div>
+
+                  <!-- Task 2: Active Task (Long title multi-line wrapping demonstrated!) -->
+                  <div class="adaptive-task-row selected" id="taskRowSelected" onclick="selectTaskRow(this, 'taskSelected')">
+                    <button class="task-check-ring" aria-label="Mark task complete" onclick="event.stopPropagation(); toggleCheck(this);">
                       <svg width="11" height="11" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                    </div>
-                    <div class="task-row-center">
-                      <span class="task-title-text">Generate storage maintenance summary report</span>
-                    </div>
-                  </div>
-                </div>
+                    </button>
+                    <!-- Todorbit Priority: High (3) -->
+                    <span class="prio-shape-badge p-high" title="High Priority">▲ High</span>
 
-                <!-- Task with Waiting Status -->
-                <div class="adaptive-task-row" onclick="selectRow(this, 'taskWaiting')">
-                  <div class="task-checkbox-container" onclick="event.stopPropagation(); toggleCheck(this);">
-                    <svg width="11" height="11" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                  </div>
-                  <div class="priority-pip p-normal">▬</div>
-                  <div class="task-row-center">
-                    <div class="task-title-line">
-                      <span class="task-title-text">Windows native companion IPC verification</span>
+                    <div class="task-center-content">
+                      <!-- Multi-line title wrap test -->
+                      <div class="task-headline-text" id="activeTaskTitle">
+                        Draft and submit comprehensive thesis proposal on distributed consensus protocols to academic advisory committee
+                      </div>
+                      <div class="task-metadata-line">
+                        <span class="semantic-meta-tag is-planned">🗓️ Planned: Today</span>
+                        <span class="semantic-meta-tag is-deadline-normal">⏰ Deadline: Nov 25</span>
+                        <span class="semantic-meta-tag is-project">
+                          <span class="project-dot" style="background:#8B5CF6;"></span>
+                          <span>University Thesis</span>
+                        </span>
+                        <span class="semantic-meta-tag" style="color:var(--focus-emerald);font-weight:600;">▶ Focus Active</span>
+                      </div>
                     </div>
-                    <div class="task-meta-row">
-                      <span class="meta-tag" style="background:var(--bg-subtle);color:var(--text-tertiary);">⏳ Waiting on .NET test</span>
-                      <span class="meta-tag tag-project">Core Engineering</span>
+
+                    <div class="task-trailing-actions">
+                      <button class="btn btn-ghost btn-icon-sq" title="Pause session"><svg class="feather" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg></button>
+                      <button class="btn btn-ghost btn-icon-sq"><svg class="feather" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
                     </div>
                   </div>
-                  <div class="task-row-trailing">
-                    <button class="btn btn-ghost btn-icon-square"><svg class="feather" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+
+                  <!-- Task 3: Everyday Errand with Subtasks -->
+                  <div class="adaptive-task-row" onclick="selectTaskRow(this, 'taskErrand')">
+                    <button class="task-check-ring" aria-label="Mark task complete" onclick="event.stopPropagation(); toggleCheck(this);">
+                      <svg width="11" height="11" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    </button>
+                    <!-- Todorbit Priority: Medium (2) -->
+                    <span class="prio-shape-badge p-med" title="Medium Priority">■ Med</span>
+
+                    <div class="task-center-content">
+                      <div class="task-headline-text">
+                        Buy weekly groceries and pharmacy prescription refill
+                      </div>
+                      <div class="task-metadata-line">
+                        <span class="semantic-meta-tag is-planned">🗓️ Planned: 04:30 PM</span>
+                        <span class="semantic-meta-tag is-project">
+                          <span class="project-dot" style="background:#10B981;"></span>
+                          <span>Personal Life</span>
+                        </span>
+                        <span class="semantic-meta-tag">Checklist 2/4</span>
+                      </div>
+                    </div>
+
+                    <div class="task-trailing-actions">
+                      <button class="btn btn-ghost btn-icon-sq"><svg class="feather" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+                    </div>
                   </div>
-                </div>
 
-              </div><!-- /Today Group -->
+                  <!-- Nested Subtasks for Errand -->
+                  <div class="subtask-tree-bracket">
+                    <div class="adaptive-task-row" style="min-height:36px;padding:6px 10px;">
+                      <button class="task-check-ring checked" onclick="event.stopPropagation(); toggleCheck(this);">
+                        <svg width="11" height="11" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                      </button>
+                      <div class="task-center-content">
+                        <span class="task-headline-text" style="font-size:13px;text-decoration:line-through;color:var(--text-tertiary);">Almond milk &amp; fresh spinach</span>
+                      </div>
+                    </div>
+                    <div class="adaptive-task-row" style="min-height:36px;padding:6px 10px;">
+                      <button class="task-check-ring checked" onclick="event.stopPropagation(); toggleCheck(this);">
+                        <svg width="11" height="11" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                      </button>
+                      <div class="task-center-content">
+                        <span class="task-headline-text" style="font-size:13px;text-decoration:line-through;color:var(--text-tertiary);">Omega-3 vitamin supplements</span>
+                      </div>
+                    </div>
+                    <div class="adaptive-task-row" style="min-height:36px;padding:6px 10px;">
+                      <button class="task-check-ring" onclick="event.stopPropagation(); toggleCheck(this);">
+                        <svg width="11" height="11" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                      </button>
+                      <div class="task-center-content">
+                        <span class="task-headline-text" style="font-size:13px;">Pick up prescription at City Pharmacy</span>
+                      </div>
+                    </div>
+                  </div>
 
-            </div><!-- /Task Stream -->
+                  <!-- Task 4: Recurring Personal Routine -->
+                  <div class="adaptive-task-row" onclick="selectTaskRow(this, 'taskRecur')">
+                    <button class="task-check-ring" aria-label="Mark task complete" onclick="event.stopPropagation(); toggleCheck(this);">
+                      <svg width="11" height="11" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    </button>
+                    <!-- Todorbit Priority: Low (1) -->
+                    <span class="prio-shape-badge p-low" title="Low Priority">◆ Low</span>
+
+                    <div class="task-center-content">
+                      <div class="task-headline-text">
+                        Daily 20-minute evening mindfulness and stretching session
+                      </div>
+                      <div class="task-metadata-line">
+                        <span class="semantic-meta-tag is-planned">🗓️ 08:00 PM</span>
+                        <span class="semantic-meta-tag is-recur">↻ Daily</span>
+                        <span class="semantic-meta-tag is-project">Personal Life</span>
+                      </div>
+                    </div>
+
+                    <div class="task-trailing-actions">
+                      <button class="btn btn-ghost btn-icon-sq"><svg class="feather" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+                    </div>
+                  </div>
+
+                  <!-- Task 5: Waiting Status Task -->
+                  <div class="adaptive-task-row" onclick="selectTaskRow(this, 'taskWaiting')">
+                    <button class="task-check-ring" aria-label="Mark task complete" onclick="event.stopPropagation(); toggleCheck(this);">
+                      <svg width="11" height="11" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    </button>
+                    <span class="prio-shape-badge p-none">None</span>
+
+                    <div class="task-center-content">
+                      <div class="task-headline-text">
+                        Order replacement ergonomic keyboard arm
+                      </div>
+                      <div class="task-metadata-line">
+                        <span class="semantic-meta-tag" style="background:var(--bg-subtle);color:var(--text-tertiary);">⏳ Waiting for desk measurement</span>
+                        <span class="semantic-meta-tag is-project">Personal Life</span>
+                      </div>
+                    </div>
+
+                    <div class="task-trailing-actions">
+                      <button class="btn btn-ghost btn-icon-sq"><svg class="feather" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+                    </div>
+                  </div>
+
+                </div><!-- /Planned Group -->
+
+              </div><!-- /Populated Task Groups -->
+
+            </div><!-- /Stream Scroll -->
 
             <!-- ==============================================================
-                 3. RESIZABLE TASK-DETAILS WORKSPACE PANEL
+                 3. REFINED TASK-DETAILS WORKSPACE PANEL
                  ============================================================== -->
-            <div class="task-detail-pane" id="detailPanel">
-              <!-- Resizer Grab Strip -->
-              <div class="panel-resizer-grip" id="panelResizer" title="Drag to resize panel"></div>
+            <div class="task-detail-pane" id="detailPane">
+              <!-- Draggable resize handle -->
+              <div class="pane-resize-handle" id="paneResizer" title="Drag to adjust panel width"></div>
 
-              <!-- Header Bar -->
-              <div class="detail-pane-header">
-                <div class="detail-status-pill">
-                  <span style="color:var(--status-planned);">●</span>
+              <!-- Top Bar -->
+              <div class="detail-pane-top">
+                <!-- Real Todorbit TaskStatus: inProgress -->
+                <div class="detail-status-selector" onclick="alert('Status picker simulation: Not Started, In Progress, Waiting, On Hold, Completed');">
+                  <span style="color:var(--plan-amber);">●</span>
                   <span>In Progress</span>
                   <svg class="feather" viewBox="0 0 24 24" style="width:12px;height:12px;"><polyline points="6 9 12 15 18 9"/></svg>
                 </div>
 
-                <div class="detail-header-actions">
-                  <button class="btn btn-secondary btn-icon-square" title="Launch Focus Session (25m)">
-                    <svg class="feather" viewBox="0 0 24 24" style="color:var(--status-focus);"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <button class="btn btn-secondary btn-icon-sq" title="Start Focus Session" onclick="alert('Starting 25m Focus Session (simulation)');">
+                    <svg class="feather" viewBox="0 0 24 24" style="color:var(--focus-emerald);"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
                   </button>
-                  <button class="btn btn-secondary btn-icon-square" title="Expand to Full Workspace" onclick="toggleExpandedModal()">
-                    <svg class="feather" viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-                  </button>
-                  <button class="btn btn-secondary btn-icon-square" title="Close Panel" onclick="toggleDetailPanel()">
+                  <button class="btn btn-secondary btn-icon-sq" title="Close Panel" onclick="toggleDetailPanel()">
                     <svg class="feather" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   </button>
                 </div>
               </div>
 
               <!-- Scrollable Editor Body -->
-              <div class="detail-scrollable-body">
+              <div class="detail-body-scroll">
 
-                <!-- Editable Title -->
-                <input type="text" class="task-editable-title" value="Design token architecture: integrate AppLayout &amp; theme tokens" placeholder="Task title">
+                <!-- Editable Title (Direct Auto-wrapping Textarea) -->
+                <textarea class="task-title-input-field" id="detailTitleInput" rows="2" aria-label="Task title">Draft and submit comprehensive thesis proposal on distributed consensus protocols to academic advisory committee</textarea>
 
                 <!-- Todorbit Invariant: Planned Date vs Deadline -->
-                <div class="schedule-dual-grid">
-                  <div class="schedule-field-card">
-                    <div class="schedule-card-label planned">
+                <div class="schedule-block-grid">
+                  <div class="schedule-cell" onclick="alert('Select Planned Date simulation');">
+                    <div class="schedule-cell-caption plan">
                       <svg class="feather" viewBox="0 0 24 24" style="width:12px;height:12px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
                       <span>Planned Date</span>
                     </div>
-                    <div class="schedule-card-value">Today, Nov 20</div>
-                    <div class="schedule-card-subtext">Intentional schedule</div>
+                    <div class="schedule-cell-val">Today, Nov 20</div>
+                    <div class="schedule-cell-note">When you intend to work on it</div>
                   </div>
 
-                  <div class="schedule-field-card">
-                    <div class="schedule-card-label deadline">
+                  <div class="schedule-cell" onclick="alert('Select Deadline Date simulation');">
+                    <div class="schedule-cell-caption due">
                       <svg class="feather" viewBox="0 0 24 24" style="width:12px;height:12px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                      <span>Hard Deadline</span>
+                      <span>Deadline</span>
                     </div>
-                    <div class="schedule-card-value">Nov 25, 2026</div>
-                    <div class="schedule-card-subtext">Commitment gate</div>
+                    <div class="schedule-cell-val">Nov 25, 2026</div>
+                    <div class="schedule-cell-note">Hard completion commitment</div>
                   </div>
                 </div>
 
-                <!-- Project & Priority Properties -->
-                <div class="detail-property-row">
-                  <div class="property-selector-box">
-                    <div class="property-selector-label">Project</div>
-                    <div class="property-selector-val">
-                      <div class="project-color-dot" style="background:#7E74F1;"></div>
-                      <span>Todorbit UI Redesign</span>
+                <!-- Properties Row (Project & Todorbit Priority) -->
+                <div class="props-row">
+                  <div class="prop-cell">
+                    <div class="prop-caption">Project</div>
+                    <div class="prop-content">
+                      <div class="project-dot" style="background:#8B5CF6;"></div>
+                      <span>University Thesis</span>
                     </div>
                   </div>
 
-                  <div class="property-selector-box">
-                    <div class="property-selector-label">Priority</div>
-                    <div class="property-selector-val">
-                      <span style="color:var(--status-deadline);font-weight:700;">▲ Urgent (P1)</span>
+                  <div class="prop-cell">
+                    <div class="prop-caption">Priority</div>
+                    <div class="prop-content" style="color:var(--prio-high);font-weight:700;">
+                      ▲ High (3)
                     </div>
                   </div>
                 </div>
 
-                <!-- Description / Rich Notes -->
-                <div class="description-box-container">
-                  <div class="field-section-title">
+                <!-- Notes / Description -->
+                <div class="notes-box">
+                  <div class="notes-header-line">
                     <span>Notes &amp; Context</span>
-                    <span style="color:var(--brand-primary);cursor:pointer;font-size:11px;">Markdown</span>
+                    <span style="color:var(--brand-primary);font-size:11px;">Markdown</span>
                   </div>
-                  <div class="editor-textarea-mock" contenteditable="true">
-                    Implement <code>AppLayout</code> tokens in <code>app_spacing.dart</code> with standard responsive breakpoints (600, 1050, 1200 dp). Replace raw magic numbers and establish pure Riverpod state bindings.
+                  <textarea class="notes-textarea" placeholder="Add detailed notes or requirements…">Cover Raft leader election invariants, log replication edge cases, and compare with Paxos consensus overhead in geo-distributed clusters.</textarea>
+                </div>
+
+                <!-- Subtasks / Checklist -->
+                <div class="subtasks-section">
+                  <div class="notes-header-line">
+                    <span>Subtasks (2/3 completed)</span>
+                    <button class="btn btn-ghost" style="padding:1px 6px;font-size:11px;color:var(--brand-primary);" onclick="alert('Add subtask simulation');">+ Add Item</button>
+                  </div>
+                  <div class="subtasks-list-block">
+                    <div class="subtask-item-line">
+                      <input type="checkbox" checked aria-label="Subtask done">
+                      <span style="text-decoration:line-through;color:var(--text-tertiary);">Draft literature review outline</span>
+                    </div>
+                    <div class="subtask-item-line">
+                      <input type="checkbox" checked aria-label="Subtask done">
+                      <span style="text-decoration:line-through;color:var(--text-tertiary);">Document formal problem statement</span>
+                    </div>
+                    <div class="subtask-item-line">
+                      <input type="checkbox" aria-label="Subtask in progress">
+                      <span>Incorporate advisor feedback on methodology</span>
+                    </div>
                   </div>
                 </div>
 
-                <!-- Interactive Subtasks & Checklist -->
-                <div class="subtask-editor-card">
-                  <div class="field-section-title" style="margin-bottom:4px;">
-                    <span>Subtasks (2/3)</span>
-                    <button class="btn btn-ghost" style="padding:2px 6px;font-size:11px;color:var(--brand-primary);">+ Add Subtask</button>
-                  </div>
-                  <div class="subtask-editor-list">
-                    <div class="subtask-item-row">
-                      <input type="checkbox" checked>
-                      <span style="text-decoration:line-through;color:var(--text-tertiary);">Draft layout_tokens specification</span>
-                    </div>
-                    <div class="subtask-item-row">
-                      <input type="checkbox" checked>
-                      <span style="text-decoration:line-through;color:var(--text-tertiary);">Define typography scale tokens</span>
-                    </div>
-                    <div class="subtask-item-row">
-                      <input type="checkbox">
-                      <span>Refactor workspace breakpoint literals</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Progressive Disclosure Section 1: Recurrence Rule -->
-                <div class="disclosure-block" onclick="this.classList.toggle('open')">
-                  <div class="disclosure-header">
+                <!-- Contextual Progressive Disclosure: Advanced Settings -->
+                <!-- Accordion 1: Recurrence Routine -->
+                <div class="disclosure-panel" onclick="this.classList.toggle('open')">
+                  <div class="disclosure-bar">
                     <div style="display:flex;align-items:center;gap:8px;">
                       <svg class="feather" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                      <span>Recurrence Routine</span>
+                      <span>Recurrence Rule</span>
                     </div>
-                    <span class="icon-toggle">▼</span>
+                    <span class="disclosure-arrow-icon">▼</span>
                   </div>
-                  <div class="disclosure-content" onclick="event.stopPropagation()">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                      <span>Repeat rule:</span>
-                      <select style="background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border-subtle);border-radius:6px;padding:4px 8px;">
+                  <div class="disclosure-inner-body" onclick="event.stopPropagation()">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                      <span>Frequency:</span>
+                      <select style="background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border-subtle);border-radius:6px;padding:3px 6px;">
                         <option>Does not repeat</option>
-                        <option selected>Every working day (Mon-Fri)</option>
+                        <option selected>Every weekday (Mon–Fri)</option>
                         <option>Weekly on Friday</option>
-                        <option>Custom monthly...</option>
                       </select>
                     </div>
                     <div style="font-size:11.5px;color:var(--text-tertiary);">
-                      Next occurrence scheduled automatically upon completion in current SQLite transaction.
+                      Next occurrence will be planned automatically once this task is completed.
                     </div>
                   </div>
                 </div>
 
-                <!-- Progressive Disclosure Section 2: Alarms & Reminders -->
-                <div class="disclosure-block" onclick="this.classList.toggle('open')">
-                  <div class="disclosure-header">
+                <!-- Accordion 2: Alarms & Notifications -->
+                <div class="disclosure-panel" onclick="this.classList.toggle('open')">
+                  <div class="disclosure-bar">
                     <div style="display:flex;align-items:center;gap:8px;">
                       <svg class="feather" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                      <span>Alarms &amp; Native Notifications</span>
+                      <span>Alarms &amp; Notifications</span>
                     </div>
-                    <span class="icon-toggle">▼</span>
+                    <span class="disclosure-arrow-icon">▼</span>
                   </div>
-                  <div class="disclosure-content" onclick="event.stopPropagation()">
-                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">
-                      🔔 10 minutes before planned date (09:50 AM)
-                    </div>
-                    <button class="btn btn-secondary" style="font-size:11px;padding:3px 8px;">+ Add Alarm</button>
+                  <div class="disclosure-inner-body" onclick="event.stopPropagation()">
+                    <div style="font-size:12px;margin-bottom:6px;">🔔 Desktop reminder 15 minutes before planned time</div>
+                    <button class="btn btn-secondary" style="font-size:11px;padding:2px 8px;" onclick="alert('Add alarm simulation');">+ Add Alarm</button>
                   </div>
                 </div>
 
-                <!-- Progressive Disclosure Section 3: Prerequisites & Blockers -->
-                <div class="disclosure-block open" onclick="this.classList.toggle('open')">
-                  <div class="disclosure-header">
+                <!-- Accordion 3: Prerequisites & Blockers -->
+                <div class="disclosure-panel open" onclick="this.classList.toggle('open')">
+                  <div class="disclosure-bar">
                     <div style="display:flex;align-items:center;gap:8px;">
                       <svg class="feather" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                      <span>Prerequisites &amp; Dependencies (1)</span>
+                      <span>Prerequisites &amp; Blockers (1)</span>
                     </div>
-                    <span class="icon-toggle">▼</span>
+                    <span class="disclosure-arrow-icon">▼</span>
                   </div>
-                  <div class="disclosure-content" onclick="event.stopPropagation()">
-                    <div style="font-size:11px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;margin-bottom:4px;">Blocked By:</div>
-                    <div style="font-size:12.5px;color:var(--status-deadline);margin-bottom:8px;">
-                      🔒 Review accessibility audit findings (Incomplete)
+                  <div class="disclosure-inner-body" onclick="event.stopPropagation()">
+                    <div style="font-size:11px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;margin-bottom:3px;">Blocked By:</div>
+                    <div style="font-size:12.5px;color:var(--due-coral);margin-bottom:8px;">
+                      🔒 Literature Review Draft (In progress)
                     </div>
-                    <div style="font-size:11px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;margin-bottom:4px;">Blocks:</div>
+                    <div style="font-size:11px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;margin-bottom:3px;">Blocks:</div>
                     <div style="font-size:12.5px;color:var(--text-secondary);">
-                      🔓 Production task row migration
+                      🔓 Final Thesis Proposal Defense
                     </div>
                   </div>
                 </div>
 
-              </div><!-- /Detail Scrollable Body -->
+              </div><!-- /Detail Body Scroll -->
 
-              <!-- Sticky Action Footer -->
-              <div class="detail-pane-footer">
-                <div class="unsaved-status-indicator">
-                  <div class="unsaved-dot"></div>
-                  <span>Unsaved changes</span>
+              <!-- Sticky Detail Action Footer -->
+              <div class="detail-pane-bottom-bar">
+                <div class="simulated-save-pill">
+                  <span style="color:var(--plan-amber);">●</span>
+                  <span>All edits saved locally</span>
                 </div>
                 <div style="display:flex;gap:8px;">
-                  <button class="btn btn-ghost" style="color:var(--status-deadline);" onclick="alert('Confirm delete dialog');">Delete</button>
-                  <button class="btn btn-secondary" onclick="alert('Reverted to saved revision');">Revert</button>
-                  <button class="btn btn-primary" onclick="alert('Saved to local SQLite database with CAS concurrency token');">Save</button>
+                  <button class="btn btn-ghost" style="color:var(--due-coral);" onclick="alert('Delete task confirmation dialog (simulation)');">Delete</button>
+                  <button class="btn btn-primary" onclick="alert('Saved locally. (Prototype simulation)');">Done</button>
                 </div>
               </div>
 
@@ -1955,150 +1921,143 @@
 
           </div><!-- /Split Body -->
 
-          <!-- Mobile Bottom Navigation (Visible only when in Mobile viewport mode) -->
-          <nav class="mobile-bottom-nav-bar">
-            <div class="mobile-nav-item active">
-              <svg class="feather" viewBox="0 0 24 24" style="width:20px;height:20px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <!-- Mobile Bottom Navbar (Visible only in 390 Mobile Viewport Mode) -->
+          <nav class="mobile-bottom-navbar">
+            <div class="mob-nav-item active">
+              <svg class="feather" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
               <span>Today</span>
             </div>
-            <div class="mobile-nav-item">
-              <svg class="feather" viewBox="0 0 24 24" style="width:20px;height:20px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
+            <div class="mob-nav-item">
+              <svg class="feather" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               <span>Calendar</span>
             </div>
-            <div class="mobile-nav-item" style="color:var(--brand-primary);font-size:24px;font-weight:700;">+</div>
-            <div class="mobile-nav-item">
-              <svg class="feather" viewBox="0 0 24 24" style="width:20px;height:20px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <div class="mob-nav-item" style="color:var(--brand-primary);font-size:22px;font-weight:700;">+</div>
+            <div class="mob-nav-item">
+              <svg class="feather" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               <span>Focus</span>
             </div>
-            <div class="mobile-nav-item">
-              <svg class="feather" viewBox="0 0 24 24" style="width:20px;height:20px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83"/></svg>
+            <div class="mob-nav-item">
+              <svg class="feather" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83"/></svg>
               <span>Settings</span>
             </div>
           </nav>
 
         </section><!-- /App Main -->
 
-        <!-- ==================================================================
-             4. OPTIONAL EXPANDED FULL-SCREEN WORKSPACE MODAL
-             ================================================================== -->
-        <div class="expanded-workspace-modal" id="expandedModal">
-          <div class="detail-pane-header" style="padding:16px 24px;">
-            <div style="display:flex;align-items:center;gap:12px;">
-              <span class="detail-status-pill">▶ In Progress</span>
-              <span style="font-weight:700;font-size:16px;">Expanded Task Workspace</span>
-            </div>
-            <button class="btn btn-secondary btn-icon-square" onclick="toggleExpandedModal()">
-              <svg class="feather" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-          <div style="flex:1;display:flex;overflow:hidden;padding:24px;gap:24px;">
-            <div style="flex:2;overflow-y:auto;">
-              <h2 style="font-size:22px;font-weight:700;margin-bottom:14px;">Design token architecture: integrate AppLayout &amp; theme tokens</h2>
-              <div class="editor-textarea-mock" style="min-height:220px;" contenteditable="true">
-                Detailed notes and implementation specifications:
-                - Add AppLayout in app_spacing.dart
-                - Encapsulate repository transactions in LifeRepository
-                - Ensure zero data loss forward SQLite migrations
-              </div>
-            </div>
-            <div style="flex:1;background:var(--bg-subtle);border-radius:12px;padding:18px;">
-              <h3 style="font-size:13px;font-weight:700;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:12px;">Task Metadata</h3>
-              <div style="margin-bottom:12px;"><strong>Planned:</strong> Today, Nov 20</div>
-              <div style="margin-bottom:12px;"><strong>Deadline:</strong> Nov 25, 2026</div>
-              <div style="margin-bottom:12px;"><strong>Project:</strong> Todorbit UI Redesign</div>
-              <div style="margin-bottom:12px;"><strong>Priority:</strong> Urgent (P1)</div>
-            </div>
-          </div>
-          <div class="detail-pane-footer" style="padding:14px 24px;">
-            <span>Press Esc or click close to return to split view</span>
-            <button class="btn btn-primary" onclick="toggleExpandedModal()">Save &amp; Return</button>
-          </div>
-        </div>
-
       </div><!-- /appShell -->
-    </div><!-- /viewportFrame -->
+    </div><!-- /viewportContainer -->
   </main>
 
   <!-- ==========================================================================
-     INTERACTION LOGIC & SIMULATOR SCRIPTS
+     INTERACTION & SIMULATION SCRIPTS
      ========================================================================== -->
   <script>
-    // Viewport Mode Switcher
+    // 1. Viewport Switcher
     function setViewport(mode) {
-      const frame = document.getElementById('viewportFrame');
-      frame.className = 'viewport-frame mode-' + mode;
+      const container = document.getElementById('viewportContainer');
+      container.className = 'viewport-container mode-' + mode;
 
-      const panel = document.getElementById('detailPanel');
+      const panel = document.getElementById('detailPane');
       if (mode === 'mobile') {
         panel.style.display = 'none'; // Mobile starts with task list
       } else {
         panel.style.display = 'flex';
       }
 
-      document.querySelectorAll('.btn-group-btn').forEach(btn => {
+      document.querySelectorAll('.ctrl-pill-group .ctrl-btn').forEach(btn => {
         if (btn.innerText.includes('1440') && mode === 'desktop-wide') btn.classList.add('active');
-        else if (btn.innerText.includes('1000') && mode === 'desktop-medium') btn.classList.add('active');
-        else if (btn.innerText.includes('390') && mode === 'mobile') btn.classList.add('active');
-        else if (btn.innerText.includes('1440') || btn.innerText.includes('1000') || btn.innerText.includes('390')) btn.classList.remove('active');
+        else if (btn.innerText.includes('1100') && mode === 'desktop-medium') btn.classList.add('active');
+        else if (btn.innerText.includes('820')  && mode === 'desktop-narrow') btn.classList.add('active');
+        else if (btn.innerText.includes('390')  && mode === 'mobile') btn.classList.add('active');
+        else if (btn.innerText.includes('1440') || btn.innerText.includes('1100') || btn.innerText.includes('820') || btn.innerText.includes('390')) {
+          btn.classList.remove('active');
+        }
       });
     }
 
-    // Theme Switcher
+    // 2. Theme Switcher
     function setTheme(theme) {
       document.body.setAttribute('data-theme', theme);
       document.getElementById('btnThemeDark').classList.toggle('active', theme === 'dark');
       document.getElementById('btnThemeLight').classList.toggle('active', theme === 'light');
     }
 
-    // Density Switcher
+    // 3. Density Switcher
     function setDensity(density) {
       document.body.setAttribute('data-density', density);
       document.getElementById('btnDensityBal').classList.toggle('active', density === 'balanced');
       document.getElementById('btnDensityCmp').classList.toggle('active', density === 'compact');
     }
 
-    // Task Selection
-    function selectRow(el, taskId) {
-      document.querySelectorAll('.adaptive-task-row').forEach(row => row.classList.remove('selected'));
-      el.classList.add('selected');
-      const panel = document.getElementById('detailPanel');
-      panel.style.display = 'flex';
+    // 4. Text Scale Selector (100%, 125%, 150%)
+    function setTextScale(scale) {
+      document.documentElement.style.setProperty('--text-scale', scale);
+      event.target.parentElement.querySelectorAll('.ctrl-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
     }
 
-    // Checkbox toggle
-    function toggleCheck(checkbox) {
-      checkbox.classList.toggle('checked');
-      const row = checkbox.closest('.adaptive-task-row');
+    // 5. Empty State Toggle
+    let isEmpty = false;
+    function toggleEmptyState() {
+      isEmpty = !isEmpty;
+      const tasksDiv = document.getElementById('populatedTaskGroups');
+      const emptyDiv = document.getElementById('emptyStateCard');
+      const todayStrip = document.getElementById('todayContextStrip');
+      const btn = document.getElementById('btnEmptyToggle');
+
+      if (isEmpty) {
+        tasksDiv.style.display = 'none';
+        todayStrip.style.display = 'none';
+        emptyDiv.classList.add('visible');
+        btn.innerText = 'State: Empty';
+        btn.classList.add('active');
+      } else {
+        tasksDiv.style.display = 'block';
+        todayStrip.style.display = 'flex';
+        emptyDiv.classList.remove('visible');
+        btn.innerText = 'State: Populated';
+        btn.classList.remove('active');
+      }
+    }
+
+    // 6. Task Selection
+    function selectTaskRow(rowEl, taskId) {
+      document.querySelectorAll('.adaptive-task-row').forEach(r => r.classList.remove('selected'));
+      rowEl.classList.add('selected');
+      const panel = document.getElementById('detailPane');
+      panel.style.display = 'flex';
+
+      const titleText = rowEl.querySelector('.task-headline-text').innerText.trim();
+      document.getElementById('detailTitleInput').value = titleText;
+    }
+
+    // 7. Checkbox Toggle
+    function toggleCheck(ring) {
+      ring.classList.toggle('checked');
+      const row = ring.closest('.adaptive-task-row');
       if (row) row.classList.toggle('is-done');
     }
 
-    // Toggle Detail Panel Open/Closed
+    // 8. Toggle Detail Panel Visibility
     function toggleDetailPanel() {
-      const panel = document.getElementById('detailPanel');
+      const panel = document.getElementById('detailPane');
       panel.style.display = (panel.style.display === 'none') ? 'flex' : 'none';
     }
 
-    // Toggle Expanded Workspace Modal
-    function toggleExpandedModal() {
-      const modal = document.getElementById('expandedModal');
-      modal.classList.toggle('open');
-    }
-
-    // Drag-to-resize side panel simulation
-    const resizer = document.getElementById('panelResizer');
-    const panel = document.getElementById('detailPanel');
+    // 9. Drag to Resize Side Panel
+    const resizer = document.getElementById('paneResizer');
+    const panel = document.getElementById('detailPane');
     let isResizing = false;
 
     resizer.addEventListener('mousedown', function(e) {
       isResizing = true;
-      resizer.classList.add('dragging');
       document.body.style.cursor = 'col-resize';
     });
 
     document.addEventListener('mousemove', function(e) {
       if (!isResizing) return;
-      const frameRect = document.getElementById('viewportFrame').getBoundingClientRect();
-      const newWidth = frameRect.right - e.clientX;
+      const containerRect = document.getElementById('viewportContainer').getBoundingClientRect();
+      const newWidth = containerRect.right - e.clientX;
       if (newWidth >= 320 && newWidth <= 650) {
         panel.style.width = newWidth + 'px';
       }
@@ -2107,7 +2066,6 @@
     document.addEventListener('mouseup', function(e) {
       if (isResizing) {
         isResizing = false;
-        resizer.classList.remove('dragging');
         document.body.style.cursor = 'default';
       }
     });
