@@ -1,5 +1,12 @@
 # Persistent test run ledger
 
+## Open-source readiness (2026-11-20, UTC+03:00)
+
+See the [readiness receipt](OPEN_SOURCE_READINESS.md#implementation-and-verification-checkpoint-2026-11-20-1807-utc0300)
+for exact source, host, commands, expected failures, analysis and targeted
+results. The published beta 25 runs below represent the baseline. The readiness
+branch is a separate candidate with its own PR checks.
+
 ## Beta 25 Publication & Verification (2026-11-20, UTC+03:00)
 
 `feature/todorbit-release-p8`, release commit `6b75a559a1b7d3f9d849ba9ed27c7a291124d554`, tag `v1.0.19-beta.25`, published `1.0.19-beta.25+48`:

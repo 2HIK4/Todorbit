@@ -1,5 +1,19 @@
 # Deferred Verification Backlog
 
+## Open-source readiness candidate (2026-11-20)
+
+- **Level 3.** Review the draft PR's current Actions checks. Extend real-input
+  coverage beyond the isolated Windows-host widget and browser previews.
+- **Level 4.** Verify Windows keyboard/focus, Narrator and mixed DPI, Android
+  real IME, large text and TalkBack, Android Share Sheet and 16 KiB runtime
+  on the candidate artifact, and signed in-place/portable updates. Exercise
+  pause/retry/install and snapshot recovery after clock correction with
+  disposable profiles. Real two-client Drive OAuth and mixed-version cloud
+  journeys remain separately gated.
+- Pages publication requires the existing approved deployment flow. Refresh
+  product captures using an isolated profile during future screenshot work.
+  See [local evidence and scope](OPEN_SOURCE_READINESS.md).
+
 ## Beta 25 Architecture Program Release Acceptance (2026-11-20)
 
 - **Level 3 pending.** Broader cross-platform manual matrix across non-primary host configurations.

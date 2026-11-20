@@ -1,5 +1,14 @@
 # Progress
 
+## Open-source readiness checkpoint (2026-11-20)
+
+Implemented the beta 25 public guide and Pages preview refresh, backup and
+updater recovery, desktop and Android search fixes, contributor onboarding,
+and focused architecture/developer tooling improvements. The
+[readiness receipt](OPEN_SOURCE_READINESS.md) records the source, local checks,
+and independent review. Keep packaged and device acceptance in
+[deferred verification](DEFERRED_VERIFICATION.md).
+
 ## Beta 25 Architecture Program Integration & Publication (2026-11-20)
 
 Published experimental GitHub pre-release Todorbit `1.0.19-beta.25+48` (tag `v1.0.19-beta.25`) at https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.25 from verified candidate commit `6b75a559a1b7d3f9d849ba9ed27c7a291124d554` on `feature/todorbit-release-p8`. Integrated the full Modular Architecture Improvement Program (ARCH-02 through ARCH-09). Remote GitHub Actions Windows checks ([Run 44694169827](https://github.com/2HIK4/Todorbit/actions/runs/44694169827)) passed in 29m43s (1,180+ tests passed, CRT verified, native companion self-test passed, Inno Setup installer and portable packages compiled); Android validation ([Run 44694185735](https://github.com/2HIK4/Todorbit/actions/runs/44694185735)) passed in 9m55s; Android 16 KiB runtime ([Run 44699666409](https://github.com/2HIK4/Todorbit/actions/runs/44699666409)) passed in 3m41s on `google_apis_ps16k` API 36 emulator. Lightweight CI validated locally across 13 critical regression suites (103/103 passed in 3m02s) and 39 architecture boundary checks. All 10 release assets uploaded with verified SHA-256 checksums. Updaters (`SoftwareUpdateService` and `AndroidUpdateService`) verified. Schema 29 preserved; crash resilience preserved; Stable untouched. [Receipt](UIUX06_BETA_25_PUBLICATION.md).
