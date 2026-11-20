@@ -1,5 +1,18 @@
 # Progress
 
+## UI-FOUNDATION-TASK-ROW-02 — Shared AppTaskRow Component & Task Editor Polish (2026-11-20)
+
+Implemented reusable production `AppTaskRow` component on `design-foundation-docs`, eliminating duplicated task presentation logic between desktop and Android surfaces:
+- **Canonical Component & Clean Separation**: Created `AppTaskRow` in `lib/features/shared/app_task_row.dart`. Encapsulates task completion checkbox semantics, title 2-line clamping with natural wrapping, line-through decoration and dimming when completed, planned date vs deadline distinction, overdue warning styling, priority flag/token coloring, alarm indicator, and subtask/checklist progress badges. Database transactions, SQLite writes, and navigation handling remain strictly in the calling controllers (`_run`, `controller.setComplete`, `actions`).
+- **Platform-Appropriate Presentation Variants**:
+  - Desktop variant (`AppTaskRowVariant.desktop`): Min-height 52dp, `Card` + `InkWell`, hover/selection background tinting, task icon, `Wrap` badges for metadata (subtasks, checklist, focus, plan, due, blocked by prerequisites), priority flag icon with semantic tokens, inline timer/quick-start button, and desktop popup action menu.
+  - Mobile variant (`AppTaskRowVariant.mobile`): Min-height 56dp, `Card` + `ListTile`, rich text subtitle with ` · ` delimiters (priority, status, planned date, overdue due date, category, project), warning amber icon + red due text on overdue tasks, alarm indicator, long-press bottom sheet trigger, and trailing more-actions button.
+- **Task Editor Microcopy Polish**: In `lib/features/workspace/task_editor.dart`, removed redundant helper descriptions ("Optional for a new task", "Optional planning details") when editing existing tasks (`widget.task != null`), reducing visual clutter.
+- **AI Skill Strengthening**: Updated `AGENTS.md` and `.agents/skills/ultimate-ui-ux/references/flutter-engineering.md` to document `AppTaskRow` inspection and usage, shared presentation component patterns, and deduplication principles.
+- **Verification Evidence**:
+  - Full repo static analysis: `flutter analyze --no-pub` -> "No issues found!" (exit 0).
+  - Executed test suites: `test/app_task_row_test.dart` (7/7 passed), `test/workspace_test.dart` (15/15 passed), `test/mobile_workspace_test.dart` (23/23 passed), `test/task_editor_ui_consistency_test.dart` (4/4 passed), `test/workspace_draft_safety_test.dart` (14/14 passed). Total: 63 passing unit/widget tests.
+
 ## UI-FOUNDATION-PILOT-01 — Flutter UI Foundation & Task Create/Edit Consistency Pilot (2026-11-20)
 
 Implemented production Flutter UI foundation and Task Create/Edit consistency pilot on `design-foundation-docs`:

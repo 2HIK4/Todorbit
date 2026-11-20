@@ -1,5 +1,41 @@
 # AI Review Queue
 
+## UI-FOUNDATION-TASK-ROW-02 — Shared AppTaskRow Component & Task Editor Polish (2026-11-20)
+
+- **Scope & Addressed Requirements**:
+  - Implemented reusable production `AppTaskRow` in `lib/features/shared/app_task_row.dart`, eliminating duplicated task-row presentation code across desktop (`workspace.dart`) and mobile (`mobile_workspace.dart`).
+  - **Shared Contract & Presentation Encapsulation**:
+    - Centralized task completion checkbox, title 2-line clamping with natural wrapping, line-through decoration and dimming when completed, planned date vs deadline distinction, overdue warning presentation, priority token color coding, alarm indicator, and subtask/checklist progress badges.
+    - Kept business logic, database transactions, SQLite writes, and navigation handling strictly outside the presentation widget; callers provide domain models (`LifeTask`), pre-resolved progress numbers, and callbacks (`onTap`, `onToggleComplete`, `onLongPress`, `quickStartAction`, `trailingActions`).
+  - **Platform-Appropriate Variants**:
+    - Desktop: Min-height 52dp, `Card` + `InkWell`, hover/selection background tinting, task icon, `Wrap` badges for metadata (subtasks, checklist, focus, plan, due, blocked by prerequisites), priority flag icon with semantic tokens, inline timer/quick-start button, and desktop popup action menu.
+    - Mobile: Min-height 56dp, `Card` + `ListTile`, rich text subtitle with ` · ` delimiters (priority, status, planned date, overdue due date, category, project), warning amber icon + red due text on overdue tasks, alarm indicator, long-press bottom sheet trigger, and trailing more-actions button.
+  - **Task Editor Microcopy Polish**:
+    - Removed redundant helper descriptions ("Optional for a new task", "Optional planning details") in `task_editor.dart` when editing existing tasks (`widget.task != null`), eliminating visual clutter.
+  - **AI Skill Strengthening**:
+    - Updated `AGENTS.md` and `.agents/skills/ultimate-ui-ux/references/flutter-engineering.md` to document `AppTaskRow` inspection and usage, shared presentation component patterns, and deduplication principles.
+- **Source Paths Modified / Created**:
+  - `lib/features/shared/app_task_row.dart` (new)
+  - `lib/features/shared/app_theme_tokens.dart` (added `colorForPriority` helper)
+  - `lib/features/workspace/task_editor.dart`
+  - `lib/features/workspace/workspace.dart`
+  - `lib/features/mobile/mobile_workspace.dart`
+  - `test/app_task_row_test.dart` (new)
+  - `AGENTS.md`
+  - `.agents/skills/ultimate-ui-ux/references/flutter-engineering.md`
+  - `docs/PROGRESS.md`
+  - `docs/AI_REVIEW_QUEUE.md`
+- **Verification Evidence**:
+  - Static Analysis: `flutter analyze --no-pub` -> "No issues found!" (exit 0).
+  - Dedicated Component Tests: `test/app_task_row_test.dart` -> 7/7 passed (desktop layout, subtasks/checklist/priority badges, overdue error styling, completed decoration, mobile layout with ListTile, overdue warning amber icon, narrow layout and 1.5x text scaling).
+  - Integration & Regression Suites:
+    - `test/workspace_test.dart` -> 15/15 passed.
+    - `test/mobile_workspace_test.dart` -> 23/23 passed.
+    - `test/task_editor_ui_consistency_test.dart` -> 4/4 passed.
+    - `test/workspace_draft_safety_test.dart` -> 14/14 passed.
+    - Total Passing Tests: 63 tests.
+- **Status**: Production Flutter code implemented and verified. Queued for Codex independent review.
+
 ## UI-FOUNDATION-PILOT-01 — Flutter UI Foundation & Task Create/Edit Consistency Pilot (2026-11-20)
 
 - **Scope & Addressed Requirements**:

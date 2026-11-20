@@ -202,6 +202,19 @@ separate. Respect Microsoft Fluent guidance, Android Back/touch conventions and
 native evidence gates. Never migrate/reset data or change cloud/product policy
 as a UI repair. These are project constraints, not requirements for other apps.
 
+## Shared presentation components and deduplication
+
+- Discover and inspect existing shared components in `lib/features/shared/` before implementing new UI or modifying existing screens:
+  - `AppTaskRow`: Canonical task row presentation across desktop and mobile surfaces. Encapsulates title wrapping, completion checkbox semantics, planned date vs deadline distinction, overdue warning styling, priority flag / theme tokens, and subtask/checklist badges. Replaces duplicated ad-hoc task list rows.
+  - `AppModalShell` / `showAppModal`: Standard dialog container enforcing `AppLayout` responsive constraints (`dialogDefaultWidth = 520`, max height 680) and keyboard avoidance.
+  - `AppLayout` & `AppSpacing`: Centralized breakpoints (`breakpointCompact = 600`, `breakpointMedium = 1050`, `breakpointWide = 1200`), panel widths (`panelDefaultWidth = 370`), dialog widths, and tap target minimums (`minTapTarget = 48`).
+  - `TodorbitThemeTokens`: Semantic priority colors (`priorityLow`, `priorityMedium`, `priorityHigh`) and status colors with helper `colorForPriority(priority)`.
+  - `SettingsSection`: Grouped card container with collapsible headers and optional descriptions. Avoid showing redundant helper microcopy on existing persisted records.
+- Preserve separation of concerns:
+  - Presentation widgets (`AppTaskRow`, `AppModalShell`, etc.) must remain purely presentational or state-binding without embedding database transactions, SQLite queries, or direct navigation side-effects.
+  - Callers pass down domain models (`LifeTask`), pre-resolved progress/prerequisite counts, and callback handlers (`onToggleComplete`, `onTap`, `trailingActions`).
+  - Distinguish intentional presentation variants (e.g. desktop `Wrap` badges vs mobile `ListTile` rich text subtitles) from accidental duplication of business rules or data parsing.
+
 ## Explicit UI & Reliability Quality Gates
 
 Every UI modification, new component, or bugfix must pass these 16 explicit quality gates:

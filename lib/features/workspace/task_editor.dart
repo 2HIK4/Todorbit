@@ -2007,7 +2007,8 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                           initiallyExpanded:
                               status != TaskStatus.notStarted || priority != 0,
                           title: 'Status and priority',
-                          description: 'Optional for a new task',
+                          description:
+                              widget.task == null ? 'Optional for a new task' : null,
                           children: [
                             AnchoredSelectField<TaskStatus>(
                               key: ValueKey('status:$status:$recurrenceKind'),
@@ -2054,7 +2055,9 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                               remainingWork.text.isNotEmpty ||
                               schedulingLocked,
                           title: 'Estimates and schedule protection',
-                          description: 'Optional planning details',
+                          description: widget.task == null
+                              ? 'Optional planning details'
+                              : null,
                           children: [
                             Row(
                               children: [

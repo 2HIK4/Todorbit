@@ -1,6 +1,7 @@
 import '../../domain/alarm_plan.dart';
 import '../shared/alarm_indicator.dart';
 import '../shared/app_motion.dart';
+import '../shared/app_task_row.dart';
 import '../support/support_button.dart';
 import '../shared/item_filters.dart';
 import '../settings/sidebar_order_dialog.dart';
@@ -954,108 +955,22 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
         .where((v) => v.id == t.projectId)
         .firstOrNull
         ?.name;
-    final today = localDate(DateTime.now());
-    final isOverdue =
-        t.isOpen &&
-        t.deadlineDate != null &&
-        t.deadlineDate!.compareTo(today) < 0;
+    final hasAlarm = t.isOpen &&
+        taskAlarmRule(t, c.alarmRules)?.config.enabled == true;
 
-    final subtitleParts = <InlineSpan>[];
-    void addPart(InlineSpan span) {
-      if (subtitleParts.isNotEmpty) {
-        subtitleParts.add(const TextSpan(text: ' · '));
-      }
-      subtitleParts.add(span);
-    }
-
-    if (t.priority > 0) {
-      addPart(TextSpan(text: 'Priority ${t.priority}'));
-    }
-    if (t.status != TaskStatus.notStarted) {
-      addPart(TextSpan(text: t.status.name));
-    }
-    if (t.scheduledDate != null) {
-      addPart(
-        TextSpan(
-          text:
-              'Planned ${MaterialLocalizations.of(context).formatMediumDate(DateTime.parse(t.scheduledDate!))}',
-        ),
-      );
-    }
-    if (t.deadlineDate != null) {
-      final formatted = MaterialLocalizations.of(context)
-          .formatMediumDate(DateTime.parse(t.deadlineDate!));
-      addPart(
-        TextSpan(
-          text: isOverdue ? 'Overdue · Due $formatted' : 'Due $formatted',
-          style: isOverdue
-              ? TextStyle(
-                  color: Theme.of(context).colorScheme.error,
-                  fontWeight: FontWeight.w600,
-                )
-              : null,
-        ),
-      );
-    }
-    if (category != null) addPart(TextSpan(text: category));
-    if (project != null) addPart(TextSpan(text: project));
-
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 56),
-        child: ListTile(
-          contentPadding: const EdgeInsetsDirectional.only(start: 6, end: 8),
-          leading: Checkbox(
-            value: t.status == TaskStatus.completed,
-            semanticLabel:
-                '${t.status == TaskStatus.completed ? 'Reopen' : 'Complete'} ${t.title}',
-            onChanged: (v) => run(() => c.setComplete(t, v == true)),
-          ),
-          title: Text(
-            t.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: t.status == TaskStatus.completed
-                ? const TextStyle(decoration: TextDecoration.lineThrough)
-                : null,
-          ),
-          subtitle: subtitleParts.isEmpty
-              ? null
-              : Text.rich(
-                  TextSpan(
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    children: subtitleParts,
-                  ),
-                ),
-          onTap: () => openTaskDetails(t),
-          onLongPress: () => actions(t, c),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isOverdue)
-                Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: Icon(
-                    Icons.warning_amber_rounded,
-                    color: Theme.of(context).colorScheme.error,
-                    size: 20,
-                    semanticLabel: 'Overdue',
-                  ),
-                ),
-              if (t.isOpen &&
-                  taskAlarmRule(t, c.alarmRules)?.config.enabled == true)
-                const AlarmIndicator(),
-              IconButton(
-                tooltip: 'Actions for ${t.title}',
-                icon: const Icon(Icons.more_vert),
-                onPressed: () => actions(t, c),
-              ),
-            ],
-          ),
-        ),
+    return AppTaskRow(
+      task: t,
+      variant: AppTaskRowVariant.mobile,
+      categoryName: category,
+      projectName: project,
+      hasAlarm: hasAlarm,
+      onTap: () => openTaskDetails(t),
+      onLongPress: () => actions(t, c),
+      onToggleComplete: (value) => run(() => c.setComplete(t, value)),
+      trailingActions: IconButton(
+        tooltip: 'Actions for ${t.title}',
+        icon: const Icon(Icons.more_vert),
+        onPressed: () => actions(t, c),
       ),
     );
   }

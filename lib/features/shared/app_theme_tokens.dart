@@ -81,6 +81,20 @@ class TodorbitThemeTokens extends ThemeExtension<TodorbitThemeTokens> {
     );
   }
 
+  /// Returns the semantic color corresponding to the numeric priority level (0-3).
+  Color colorForPriority(int priority) {
+    switch (priority) {
+      case 3:
+        return priorityHigh;
+      case 2:
+        return priorityMedium;
+      case 1:
+        return priorityLow;
+      default:
+        return priorityNone;
+    }
+  }
+
   @override
   TodorbitThemeTokens lerp(ThemeExtension<TodorbitThemeTokens>? other, double t) {
     if (other is! TodorbitThemeTokens) return this;
