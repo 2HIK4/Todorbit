@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.19-beta.25+48 - Modular Architecture & Maintainability Program (ARCH-02 through ARCH-09)
+
+- ARCH-02 Platform Resource Dialog Refactoring: Relocated `WindowsResourceDialog` to `lib/platform/windows_resource_dialog.dart`, decoupling `workspace`, `contributors`, `settings`, and `support` features from platform UI and eliminating 4 cross-feature import cycles.
+- ARCH-03 Settings & Shared Layer Decoupling: Refactored `SyncStatusButton` to eliminate circular dependency between `features/shared` and `features/settings`, routing sync dialog actions via caller callbacks.
+- ARCH-04 Domain & Data Boundary Enforcement: Hardened domain contracts, guaranteeing unidirectional dependencies where domain models and business logic never depend on Drift or SQLite persistence.
+- ARCH-05 Controller Interface Facades & Refresh Mappings: Introduced granular interface contracts and lifecycle refresh observers in `AppController`, isolating view controllers from concrete controller internals.
+- ARCH-06 State Encapsulation & Rebuild Optimization: Protected internal mutable state exposed by Riverpod providers using unmodifiable collection wrappers, granular selector equality, and isolated timer ticker state.
+- ARCH-07 Repository Transaction Encapsulation & Data Safety: Wrapped all multi-record mutations in atomic Drift transactions with automatic rollback on error; verified CAS revision invariants and sync journal causal sequence protection.
+- ARCH-08 Architecture Boundary Test Suite: Enforced 39 automated architecture and layer dependency rules in `tools/test_architecture_boundaries.py` integrated into CI pipelines.
+- Zero Database Schema Changes: Schema remains strictly at 29; zero Drift migrations; WAL mode and `PRAGMA synchronous = FULL` preserved; zero data loss across Windows and Android platforms.
+
 ## 1.0.19-beta.24+47 - UI & Reliability Improvement Program: Search, Reschedule, Shared Inbox, and Detail Polish
 
 - Mixed-Version Sync & Rollback Compatibility: Treat `detailPresentation` as a device-local preference in `deviceLocalThemeFields`, prune legacy rows from `portable_preferences` SQLite table on open, and exclude it from cloud synchronization so older nodes (Beta 23) maintain complete interoperability.

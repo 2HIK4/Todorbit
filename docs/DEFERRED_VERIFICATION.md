@@ -1,5 +1,10 @@
 # Deferred Verification Backlog
 
+## Beta 25 Architecture Program Release Acceptance (2026-11-20)
+
+- **Level 3 pending.** Broader cross-platform manual matrix across non-primary host configurations.
+- **Level 4 pending.** Physical Windows 11 hardware acceptance (touch, DPI scaling, multi-monitor window management, shortcut navigation); physical Android device acceptance (TalkBack accessibility, Share sheet receiver, process death/recreation); real two-client Google Drive OAuth synchronization.
+
 ## Beta 24 Windows CI correction acceptance (2026-11-19)
 
 - **Level 3 pending.** Run the complete Windows CI workflow once Gemini integrates `fix/todorbit-beta24-windows-ci`.

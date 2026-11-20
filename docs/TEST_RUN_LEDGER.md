@@ -1,5 +1,33 @@
 # Persistent test run ledger
 
+## Beta 25 Release Candidate Architecture Verification (2026-11-20, UTC+03:00)
+
+`feature/todorbit-release-p8`, integrated commit `dad29afbf19630b11009d2b7c85644b9182f0faf`, preparing candidate `1.0.19-beta.25+48`:
+- **Windows CI**: [Run 44688131094](https://github.com/2HIK4/Todorbit/actions/runs/44688131094) in 35m11s (**SUCCESS**).
+  - Full suite: 1,180+ tests passed (0 failed).
+  - Developer routes & background sync schema: PASS.
+  - Desktop Google Drive release configuration: verified.
+  - Windows Release compilation (`tools/build-windows-release.ps1`): PASS.
+  - CRT bundle validation (`tools/test-windows-crt.ps1`): PASS.
+  - Portable package creation (`tools/build-portable.ps1`): PASS.
+  - Native sync writer with disposable profile (`test_driver/native_sync_writer_test.dart`): PASS.
+  - Background sync barriers (`tools/test-background-sync.py`): PASS.
+  - Native widget self-test in disposable profile (`TodorbitWidget.exe --self-test`): PASS.
+  - Inno Setup installer compilation (`installer/build-installer.ps1`): PASS.
+  - Windows release checksums (`tools/write-release-checksums.ps1`): PASS.
+- **Android CI**: [Run 44688229069](https://github.com/2HIK4/Todorbit/actions/runs/44688229069) in 7m39s (**SUCCESS**).
+  - `android` job: 8m54s, static analysis, unit/widget tests, python verification, and debug APK build with 16-KiB alignment PASS.
+  - `android-workflow` job: 7m34s, emulator update workflow tests PASS.
+- **Lightweight CI**: Validated locally in worktree across 13 critical regression test suites (103/103 passed in 3m02s) + documentation validation (0 errors) + developer tools (9/9 passed) + workflow contracts (5/5 passed) + architecture boundaries (18/18 passed).
+- **Architecture Unit/Widget Suites**:
+  - `tools/test_architecture_boundaries.py`: 39/39 PASS.
+  - `test/sync_status_button_test.dart`: 7/7 PASS.
+  - `test/app_controller_refresh_mapping_test.dart`: 5/5 PASS.
+  - `test/arch_06_state_encapsulation_test.dart`: 3/3 PASS.
+  - `test/arch_07_repository_encapsulation_test.dart`: 11/11 PASS.
+  - Reconciliation of reported suite: exactly 197 assertions across the 13 verified test files.
+- **Version Bump**: `1.0.19-beta.25+48` synchronized across `pubspec.yaml`, `widget-shell-probe.csproj`, and `CHANGELOG.md`.
+
 ## Beta 24 Windows CI verification & publication (2026-11-19, UTC+03:00)
 
 `feature/todorbit-release-p8`, integrated commit `16de251cc0208ade5d54bbdebf26c60a278ac86f`, tag `v1.0.19-beta.24`.

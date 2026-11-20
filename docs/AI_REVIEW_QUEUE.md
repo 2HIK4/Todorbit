@@ -1,5 +1,26 @@
 # AI Review Queue
 
+## Beta 25 Release Candidate Preparation (2026-11-20)
+
+- **Branch**: `feature/todorbit-release-p8`
+- **Candidate Commit Base**: `dad29afbf19630b11009d2b7c85644b9182f0faf`
+- **Target Version**: `1.0.19-beta.25+48` (versionName `1.0.19-beta.25`, versionCode `48`, tag `v1.0.19-beta.25`)
+- **Remote CI Verification**:
+  - **Windows checks** ([Run 44688131094](https://github.com/2HIK4/Todorbit/actions/runs/44688131094)): **SUCCESS** in 35m11s. Full Dart analysis, 1,180+ tests passed, CRT verified, native sync writer, background sync barriers, native widget self-test, and Inno Setup installer compiled.
+  - **Android validation** ([Run 44688229069](https://github.com/2HIK4/Todorbit/actions/runs/44688229069)): **SUCCESS** in 7m39s (`android` and `android-workflow` both green; 16-KiB alignment and emulator updates verified).
+- **Lightweight CI**: Validated locally across all Python checks and 13 critical regression test suites (103/103 passed in 3m02s) with zero errors.
+- **Architecture Program Scope (ARCH-02 through ARCH-09)**:
+  - ARCH-02: Platform resource dialog refactoring (`lib/platform/windows_resource_dialog.dart`).
+  - ARCH-03: `SyncStatusButton` decoupling from `features/settings`.
+  - ARCH-04: Domain contracts free of Drift/SQLite persistence.
+  - ARCH-05: `AppController` interface facades and domain refresh mappings.
+  - ARCH-06: State encapsulation (unmodifiable collections, selector equality, timer isolation).
+  - ARCH-07: Atomic Drift transactions, CAS revision protection, and sync sequence preservation.
+  - ARCH-08: 39 automated architecture boundary tests in CI.
+  - ARCH-09: Architecture map and documentation alignment.
+- **Safety**: Schema remains at 29; zero schema migrations; zero data loss; Stable untouched.
+- **Status**: Candidate prepared; publication deferred pending user authorization.
+
 ## Beta 24 Windows CI corrections integrated & published (2026-11-19)
 
 - **Merged branch**: `fix/todorbit-beta24-windows-ci` (commit `f568820e894ef6772cc39399bccfdbe8517132ae`) into `feature/todorbit-release-p8` at merge commit `16de251cc0208ade5d54bbdebf26c60a278ac86f` (0 conflicts).
