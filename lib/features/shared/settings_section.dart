@@ -11,6 +11,7 @@ class SettingsSection extends StatefulWidget {
     this.initiallyExpanded = false,
     this.contentPadding = const EdgeInsets.fromLTRB(16, 0, 16, 16),
     this.expansionKey,
+    this.controller,
     required this.children,
   });
 
@@ -20,6 +21,7 @@ class SettingsSection extends StatefulWidget {
   final List<Widget> children;
   final EdgeInsetsGeometry contentPadding;
   final Key? expansionKey;
+  final ExpansibleController? controller;
 
   @override
   State<SettingsSection> createState() => _SettingsSectionState();
@@ -44,6 +46,7 @@ class _SettingsSectionState extends State<SettingsSection> {
         shape: shape,
         clipBehavior: Clip.antiAlias,
         child: ExpansionTile(
+          controller: widget.controller,
           key: widget.expansionKey ?? PageStorageKey(widget.title),
           initiallyExpanded: widget.initiallyExpanded,
           maintainState: true,

@@ -108,12 +108,13 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
     final size = media.size;
     final insets = media.viewInsets;
     final narrow = size.width < 650;
-    final availableHeight = size.height - insets.bottom - 48;
+    final availableHeight = math.max(0.0, size.height - insets.bottom - 48);
+    final availableWidth = math.max(0.0, size.width - 48);
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: SizedBox(
-        width: math.min(920, size.width - 48),
-        height: math.max(320, math.min(720, availableHeight)),
+        width: math.min(920.0, availableWidth),
+        height: math.min(720.0, availableHeight),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
