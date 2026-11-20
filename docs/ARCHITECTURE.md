@@ -3,7 +3,7 @@
 ## Start here
 
 For a specific change, begin with the compact [feature index](ARCHITECTURE_MAP.md).
-This document owns deeper subsystem boundaries and startup behavior.
+This document owns deeper subsystem boundaries, runtime realities, and startup behavior.
 
 Android uses the same schema/repository/controller with a separate touch shell
 under `lib/features/mobile/` and device adapters under `lib/platform/android/`.
@@ -19,9 +19,11 @@ publication and widget rendering run on a serialized worker, with `goAsync`
 receiver lifetimes. [Android UI/widget acceptance](ANDROID_UI_REDESIGN.md)
 distinguishes launcher observations from native render-window checks.
 
-Current source is schema **28** (additive optional native task and event alarms,
-retaining additive event-project and named-checklist relationships from schema 27;
-immutable schema-26 Sync history is retained). This map owns subsystem discovery; commands
+Current source is schema **29** (`AppDatabase.currentSchemaVersion = 29`,
+compatible schemas `{26, 27, 28, 29}` with additive `task_resources` table and
+sync capture triggers, retaining additive native task and event alarms from schema 28,
+additive event-project and named-checklist relationships from schema 27, and immutable
+schema-26 causal Sync history). This map owns subsystem discovery; commands
 live in [Testing](TESTING.md), setup in [Development](DEVELOPMENT.md), and
 packaging/publication in [Release](RELEASE.md). Paths below are repository-relative.
 
@@ -50,8 +52,61 @@ legacy native timestamp compatibility. Task edits use an expected-token SQL CAS;
 completion revalidates state and token inside its transaction and keeps recurrence
 advancement in that transaction. Duplicate desired completion states do not write.
 Windows widget commands carry their displayed revision, not just an ID. Actual
-completion time is separate from the logical revision. Schema stays at 22 and
+completion time is separate from the logical revision. Schema stays at 29 and
 the backup format is unchanged. See [task revision safety](TASK_REVISION_SAFETY.md).
+
+---
+
+## Architectural Realities & Layer Boundaries
+
+Todorbit enforces strict separation of concerns across four primary software layers:
+
+```text
+[ Presentation: lib/features/ ]
+        │
+        ▼ (Riverpod selectors & actions)
+[ Application Orchestration: lib/app/ ]
+        │
+        ├──────────────────────────────┐
+        ▼                              ▼
+[ Pure Domain: lib/domain/ ]   [ Persistence / Data: lib/data/ ]
+```
+
+### 1. Layer and Feature Boundaries
+- **Presentation (`lib/features/`)**: Screens, dialogs, sheets, and modular feature views. Leaf feature components must never depend on sibling leaf components. Cross-feature coordination occurs via explicit contracts in `lib/features/shared/` or callback parameters:
+  - `SyncStatusButton` (ARCH-03) communicates via explicit callback signatures (`SyncOpenSettingsCallback`, `SyncOpenConflictsCallback`) without direct dependency on `settings/sync_settings_page.dart` or `settings/sync_conflicts_dialog.dart`.
+  - Calendar and Workspace isolation (ARCH-04): `lib/features/calendar/` and `lib/features/workspace/` maintain zero leaf-level cross-imports. Reusable editor contracts (`EditorNavigationController`) reside in `lib/features/shared/unsaved_editor_guard.dart`. `session_editor.dart` is housed in `lib/features/scheduling/session_editor.dart` (with a backwards-compatible re-export in calendar for existing callers).
+- **Application Orchestration (`lib/app/`)**: `AppController` coordinates presentation state and handles user actions. It interacts with domain calculators and delegates data operations to `LifeRepository`.
+- **Domain Layer (`lib/domain/`)**: Pure business logic, recurrence calculations, scheduling models, and immutable domain entities. Files under `lib/domain/` must remain pure Dart without dependencies on `package:flutter/`, `lib/app/`, or `lib/data/` (with narrowly scoped legacy adaptors `appearance.dart` and `hotkeys.dart` as the sole allowable exceptions).
+- **Persistence & Data Layer (`lib/data/`)**: SQLite access managed exclusively via Drift and `LifeRepository`. Contains schema definitions, forward migrations, and incremental Google Drive sync infrastructure.
+
+### 2. Repository Transaction and Lifecycle Encapsulation (ARCH-07)
+- Presentation (`lib/features/`) and orchestration (`lib/app/`) code must never directly initiate raw SQLite transactions (`.db.transaction`) or close the database (`.db.close()`).
+- All multi-record mutations are encapsulated behind composite repository methods ensuring SQLite transaction atomicity, CAS tokens, and `sync_mutation_groups` grouping:
+  - `LifeRepository.addSubtaskWithComposition`: atomically persists child tasks, checklist items, checklist groups, and draft resources.
+  - `LifeRepository.addTaskWithComposition`: atomically creates task rows, initial checklists, child tasks, and resources.
+  - `LifeRepository.addRecurringTaskWithComposition`: atomically binds recurring rules, progressive plans, checklist groups, and attachments.
+  - `LifeRepository.addGoalWithComposition`: atomically saves goals and binds entity links.
+- `LifeRepository.db` is strictly marked `@visibleForTesting`.
+- Database closing for updater execution is encapsulated behind `LifeRepository.close()` and `AppController.closeDatabase()`.
+
+### 3. Concurrent Typed Refresh Loading (ARCH-05)
+- `AppController.refresh()` uses `AppRefreshSnapshot` to strongly type the 29 concurrent database queries, eliminating fragile positional indexing (`Future.wait<Object?>` positional array lookups) while retaining identical query concurrency, ordering, and state notification semantics.
+- Result mapping is validated and protected by `test/app_controller_refresh_mapping_test.dart`.
+
+### 4. State Encapsulation & Rebuild Optimization (ARCH-06)
+- In-memory domain collections on `AppController` are exposed via `UnmodifiableListView` and `UnmodifiableMapView`, preventing external mutations from bypassing invalidation caches or change notifications.
+- Root widgets in `lib/main.dart` employ scoped Riverpod selectors (`ref.watch(appControllerProvider.select((c) => c.property))`), eliminating app-wide rebuild cascades on task ticks, navigation changes, or focus sessions.
+- High-frequency periodic tickers (such as the 1-second active timer clock) are isolated inside self-contained widgets (`CompactTaskTimerBadge`), eliminating full-shell `setState()` thrashing in `WorkspaceState`.
+
+### 5. Preference-Driven Modular Monolith Visibility (ARCH-08)
+- Built-in features (Habits, Goals, Time Tracking, Alarms, Reports, Templates, Scheduling, Trash) reside in the modular monolith to guarantee relational integrity, zero data loss, and protocol sync safety (`portableSyncTables`).
+- Dynamic runtime unloading of database tables or sync schemas is unsound because it breaks cross-feature calculations (e.g. Goal progress depending on Habits, Reports aggregating time and habits) and remote sync parity.
+- Modular feature visibility is driven safely through user preferences (`hiddenNavigation`), allowing modules to be shown or hidden from UI navigation without modifying database schemas or compromising sync durability.
+
+---
+
+## Subsystem Catalog
 
 | Subsystem / purpose | Main implementation and dependencies | Tests / constraints |
 | --- | --- | --- |
@@ -69,12 +124,9 @@ the backup format is unchanged. See [task revision safety](TASK_REVISION_SAFETY.
 | Optional Drive snapshots | `lib/data/cloud/`: `cloud_backup_service.dart`, `cloud_backup_codec.dart`, `cloud_storage_provider.dart`, `google_drive_auth.dart`, `google_drive_provider.dart`; `lib/features/settings/backups_cloud_page.dart` | `test/cloud/`; reuses local backup, encrypted portable manifest; tokens/PIN/device controls stay local. Independent from incremental sync. [Drive format/setup](GOOGLE_DRIVE_BACKUP.md). |
 | Updates and distribution | `lib/data/software_update_service.dart`, `update_helper_launcher.dart`, `lib/features/settings/software_updates_page.dart`, `tools/update-helper.ps1`, `tools/build-*.ps1`, `installer/`, `.github/workflows/windows-ci.yml` | `test/software_update_service_test.dart`, `test/update_helper_launcher_test.dart`, PowerShell harnesses in [Testing](TESTING.md); keep AppId, paths, version/asset names, hash and rollback checks. |
 
-## Cross-boundary constraints and schema history
+---
 
-The following details retain implementation rationale and migration history.
-Version-specific statements describe that migration, not the current maximum
-supported schema. Current schema/version checks live in `app_database.dart` and
-the native repository; consult source before changing compatibility ranges.
+## Cross-Boundary Constraints & Operational Rationale
 
 The Tasks Widget and Calendar Widget share the existing native companion,
 profile-scoped mutex/pipe, reminder service and startup registration. Each is
@@ -89,7 +141,7 @@ Widget appearance/layout and per-kind preset libraries are portable through
 settings transfer and backups. Enabled state, layout lock, geometry and startup
 remain device-local. See [widget upgrade](WIDGET_SETTINGS_UPGRADE.md).
 
-Widget customization now keeps a committed baseline and an unsaved draft.
+Widget customization keeps a committed baseline and an unsaved draft.
 `life_manager/widget_preview` sends bounded, ordered JSON envelopes directly to
 the established native pipe; preview never starts a process or saves files.
 Native per-host leases expire after eight seconds without a heartbeat and restore
@@ -98,8 +150,7 @@ independent native-menu saves survive; a newer same-property saved edit wins.
 Apply advances the baseline without closing, Cancel ends the lease, and normal
 dirty closure offers Save/Discard/Continue. Shared Apply rolls back its first
 file if the second save fails; it is not a crash-atomic two-file transaction.
-Calendar now has one bounded month grid above a continuously scrollable agenda.
-Legacy `calendarPresentation` fields are ignored without resetting other values.
+Calendar has one bounded month grid above a continuously scrollable agenda.
 Date geometry follows the month's 4/5/6-week shape; extra height expands the
 agenda. Companion snapping uses physical screen bounds, with same-DPI physical
 dimensions and logical fallback stored only in each widget's local geometry file.
@@ -150,13 +201,6 @@ recorded offline; background attention uses a badge without modal navigation.
 See the [sync guide](GOOGLE_DRIVE_SYNC.md) and
 [current verification boundary](SMART_SYNC_REDESIGN.md).
 
-- Flutter Material 3 UI with a compact Fluent-inspired desktop layout.
-- Riverpod owns application state. Feature widgets observe a controller, while data access stays in the repository.
-- Drift opens SQLite in a background isolate. The repository owns SQL, migrations, transactions, and mapping to immutable domain objects. Initial schema uses explicit SQL to keep migration changes reviewable.
-- SQLite lives in the per-user application-support directory. Stable UUIDs and UTC modification fields coexist with explicit causal sync revisions; timestamps never select competing values.
-- `lib/domain/`: entity models. `lib/data/`: SQLite and repository. `lib/features/`: screens and reusable controls. `lib/app/`: shell, state, theme.
-- Windows widget and tray code live behind a separate native-companion boundary.
-
 The integrated Windows widget is a separately packaged .NET companion,
 implemented in `experiments/widget-shell-probe` and published beside
 `Todorbit.exe` as `TodorbitWidget.exe`. Its persistent displays are owner-drawn
@@ -168,16 +212,10 @@ schemas v4 through v25, validates the schema before opening, uses UUIDs/UTC time
 transactions, rejects stale edits, and never creates or migrates the database.
 A named-pipe command boundary lets Flutter show, hide, toggle, refresh, open
 Quick Add, select Today/Inbox/All Tasks/Upcoming, or close the single native
-instance. Both processes use
-debounced filesystem events on the SQLite database/WAL rather than polling.
+instance. Both processes use debounced filesystem events on the SQLite database/WAL rather than polling.
 The companion owns its tray lifecycle, persists geometry/view separately from
 the shared appearance preference, clamps placement to connected monitors, and
-makes bounded recreation attempts if Explorer destroys its child HWND. Manual
-acceptance on an earlier widget build observed visibility, `Win+D`, input,
-editing, resizing, icons, views, theme synchronization, and independent
-main-app lifecycle. Every candidate needs relevant direct acceptance; earlier observations do not
-verify the current package. Explorer hosting remains an undocumented compatibility dependency
-and its diagnostics are retained.
+makes bounded recreation attempts if Explorer destroys its child HWND. Explorer hosting remains an undocumented compatibility dependency and its diagnostics are retained.
 
 `Todorbit.exe --widget` is a compatibility entry point that launches the
 packaged native companion and exits before creating a Flutter engine. The known
@@ -187,36 +225,6 @@ widget controls never select it. The native companion is also directly
 launchable as `TodorbitWidget.exe --widget`.
 
 Data integrity: foreign keys on, WAL, indexed common filters, schema versioning, and transactions for related writes. Date-only values use local calendar dates (`YYYY-MM-DD`); instants use UTC ISO 8601.
-
-Schema v16 extends `fixed_events` in place. Its recurrence fields are local
-date rules; `event_occurrence_changes` stores only cancellations and manually
-changed occurrences keyed by the original nominal date. Calendar windows are
-projected on read without bulk materialization. Linked event generations carry
-active date boundaries for future-series edits. The native task widget accepts
-the additive schema but does not edit or notify on calendar events.
-
-Schema v17 uses `entity_icons` for UUID-identified task, series, category, and
-project icon keys; fixed events use their own icon column. Schema v18 uses
-`task_checklist` and `task_parent_links`. Checklist rows do not carry task
-metadata; child tasks remain ordinary task rows. Active views filter children
-when their parent is archived or in Trash. Permanent owner deletion cascades
-checklist and child-link cleanup while linked child tasks restrict parent purge.
-
-Schema v19 adds `progressive_plans`, ordered `progressive_plan_steps`, and
-`progressive_plan_assignments` keyed by stable recurrence occurrence IDs.
-Assignment snapshots preserve historical activity text. The repository derives
-the occurrence position across recurrence generations from date-only rules,
-applies explicit carry markers, and updates future untouched assignments in
-transactions. The native widget accepts the additive schema but does not edit
-study plans.
-
-Schema v20 adds `event_reminder_deliveries`. The native tray companion reads
-event recurrence rules and per-date exceptions, checks a short due window,
-and atomically claims each event occurrence before showing a notification.
-It honors cancellations and moved occurrences, and does not require bulk
-materialization of a semester's events. The main app starts the companion when
-saved reminders exist; the event editor requires the packaged companion before
-enabling a new reminder.
 
 Optional UI privacy is owned by `PrivacyManager` and a per-user policy outside
 SQLite. The PIN verifier uses PBKDF2-HMAC-SHA256 and a persisted wrong-attempt
@@ -231,86 +239,6 @@ Before backup or opening Drift, startup reads the existing SQLite schema with
 a read-only connection. Older schemas require an explicit upgrade choice;
 approval then enters the existing verified Before upgrade backup and migration
 path. No migration is attempted when the user exits from that choice.
-
-Schema v4 adds task duration/remaining-work estimates and a scheduling lock,
-weekly availability and date exceptions, plus focused scheduling operation and
-change history. Migrations from v1, v2, and v3 preserve existing rows. Smart
-Reschedule applies reviewed task/session changes in one repository transaction
-after optimistic `updated_at` and before-value checks. History stores only the
-affected scheduling fields, not full-database snapshots. Restores are new
-operations and compare current scheduling values with the selected operation's
-after-state so later manual changes remain protected.
-
-Schema v5 adds `task_sequences`, `sequence_tasks`, and `task_dependencies`.
-Sequences persist explicit positions; dependencies persist directed prerequisite
-edges. Repository transactions validate cycles and keep sequence reorders
-atomic. Smart Reschedule's reviewed dependency warnings are checked again at
-Apply, so a newly conflicting prerequisite cannot silently bypass the preview.
-The native widget never migrates the database; consult its current schema guard
-rather than inferring compatibility from this historical migration.
-
-Schema v6 separates recurring rule templates from independent task occurrences.
-Schema v7 links rule generations with a family ID and active date boundaries.
-Series edits use a read-only impact preview, a task/occurrence/link revision
-snapshot, and one transaction for the split, materialization, collision choices,
-and audit row. The old version remains for historical tasks. Smart Reschedule
-checks same-family planned-date collisions inside its apply transaction and
-records each reviewed choice. The native widget respects completion-series
-boundaries when advancing or reopening occurrences.
-
-Schema v8 stores habits, daily value logs, rest days, and entry-change history
-apart from tasks. The domain computes rates and streaks from stored values and
-schedule dates; it does not materialize missed habit tasks. The native widget
-accepts v8 without reading or writing the habit tables.
-
-Schema v9 stores goals, milestone checkpoints, an append-only manual adjustment
-ledger, and foreign-keyed links to tasks, projects, and binary habits. Derived
-progress is recalculated from current completed tasks and stored habit logs.
-Direct and project task links use one contribution per task ID, so the same
-completion cannot count twice. Goal completion and archiving are independent
-of the numeric total. The native widget accepts v9 without goal access.
-
-Schema v10 stores timer runs, actual work intervals, and manual-correction
-history independently of planned sessions. A partial unique index admits one
-active timer and one open interval per run. The repository writes timer state
-and intervals in transactions. AppController heartbeats a running timer and
-stops heartbeat when recovery review is required. Actual totals merge
-overlapping intervals. The native widget accepts v10 without time access.
-
-Schema v11 stores named task, recurring routine, and project template recipes
-as JSON snapshots with a format version. Instantiation checks the template
-revision and writes new project/task/recurrence identities in a transaction.
-Project prerequisite edges are remapped through the new task IDs. The native
-widget accepts v11 without template access.
-
-Schema v12 stores named, versioned task-filter JSON definitions. The
-controller evaluates filters against its loaded task/category/project and
-dependency snapshot using local relative dates, then renders the same task
-rows used by built-in views. Saving/editing/deleting a view writes through the
-repository with revision checks. The native widget accepts v12 without view
-access.
-
-Schema v13 marks tasks, projects, categories, fixed events, planned sessions,
-and recurrence families as archived or deleted without removing linked rows.
-Active reads and the native companion filter those markers; the repository
-owns transactional restore and checks related records before permanent purge.
-Permanent purges write tombstones with entity IDs and UTC deletion times.
-Recurring occurrence slots remain after an individual task purge so bounded
-materialization cannot recreate that occurrence. Startup performs no Trash
-purge.
-
-Reports use a read-only repository query that includes archived tasks and
-excludes Trash, then a pure domain calculator merges actual work intervals by
-local day and combines persisted habit and goal state. Reports add no schema
-tables or synthetic history.
-
-Schema v14 stores opt-in notification settings and a unique delivery ledger
-in SQLite. The native companion owns the tray timer and claims each local-day
-due reminder or summary in a transaction before invoking WinForms NotifyIcon.
-It can run with its widget hidden. Flutter writes settings through the
-repository and starts the companion after database migration if enabled.
-Notifications depend on the companion process and Windows notification
-settings; the SQLite ledger records attempted display, not user receipt.
 
 `BackupService` runs SQLite integrity checks and `VACUUM INTO` in a worker
 isolate, producing one self-contained file under the per-user `backups`
@@ -330,30 +258,51 @@ events. Local availability is converted at the proposed date, so calendar-day
 movement observes the host time zone and preserves session duration across date
 and daylight-saving boundaries. The repository remains the only Flutter writer.
 
-Schema v2 adds `fixed_events` with UTC start/end instants and a start-time index. The v1→v2 migration preserves task rows.
+---
 
-Schema v3 adds `work_sessions` with separate outcome and optional recorded start. Both v1→v3 and v2→v3 upgrade paths are supported. Session status does not drive parent task completion.
+## Appendix: Historical Schema Evolution (Schemas 1–22)
 
-## Schema 22 and widget customization upgrade
+The following historical notes retain the implementation rationale, schema additions,
+and migration mechanics from legacy revisions (v1 through v22). They are historical
+context and do not represent the current schema ceiling (Schema 29).
 
-`tasks.notification_json` defaults to explicit Off. Per-task custom UTC instants
-or offsets from the next upcoming work session are claimed once in
-`task_reminder_deliveries` by the existing native timer. Planned days/deadlines
-still have no clock time; recurrence reminders belong to individual task IDs.
-Existing global due-date/event reminders are preserved. Native schema support
-extends to 22; the main app alone migrates databases.
+### Schema v2 & v3
+- **Schema v2**: Adds `fixed_events` with UTC start/end instants and a start-time index. The v1→v2 migration preserves task rows.
+- **Schema v3**: Adds `work_sessions` with separate outcome and optional recorded start. Both v1→v3 and v2→v3 upgrade paths are supported. Session status does not drive parent task completion.
 
-`WidgetConfiguration` format 1 gains additive navigation order, optional Calendar
-split, preset name and independent row/selected-navigation surfaces/text alpha.
-`WidgetPresets` has a bounded version-1 library per widget. `SettingsHistory` and
-`SettingsHistoryScope` serve widget/theme drafts and immediate task-display/sidebar
-contexts, preserving focused text editing. Geometry remains in legacy native files.
-Local SQLite snapshots carry a `backup_widget_personalization` envelope table;
-restore validates/applies its files and removes the snapshot-only table from the
-live database. Settings-only/Drive transfer uses the widgets allowlist category.
+### Schema v4 & v5
+- **Schema v4**: Adds task duration/remaining-work estimates and a scheduling lock, weekly availability and date exceptions, plus focused scheduling operation and change history. Migrations from v1, v2, and v3 preserve existing rows. Smart Reschedule applies reviewed task/session changes in one repository transaction after optimistic `updated_at` and before-value checks. History stores only the affected scheduling fields, not full-database snapshots. Restores are new operations and compare current scheduling values with the selected operation's after-state so later manual changes remain protected.
+- **Schema v5**: Adds `task_sequences`, `sequence_tasks`, and `task_dependencies`. Sequences persist explicit positions; dependencies persist directed prerequisite edges. Repository transactions validate cycles and keep sequence reorders atomic. Smart Reschedule's reviewed dependency warnings are checked again at Apply, so a newly conflicting prerequisite cannot silently bypass the preview.
 
-`NavigationRequest` and native `NavigationActivation` send versioned stable IDs,
-item kind, action, actual day and recurring nominal day over the existing
-single-instance activation readiness channel. Workspace opens existing task,
-event or session editors. Requests wait while another editor/modal is active;
-a banner lets the user finish/dismiss them. No intermediate schedule popup.
+### Schema v6 & v7
+- **Schema v6**: Separates recurring rule templates from independent task occurrences.
+- **Schema v7**: Links rule generations with a family ID and active date boundaries. Series edits use a read-only impact preview, a task/occurrence/link revision snapshot, and one transaction for the split, materialization, collision choices, and audit row. The old version remains for historical tasks. Smart Reschedule checks same-family planned-date collisions inside its apply transaction and records each reviewed choice. The native widget respects completion-series boundaries when advancing or reopening occurrences.
+
+### Schema v8 & v9
+- **Schema v8**: Stores habits, daily value logs, rest days, and entry-change history apart from tasks. The domain computes rates and streaks from stored values and schedule dates; it does not materialize missed habit tasks. The native widget accepts v8 without reading or writing the habit tables.
+- **Schema v9**: Stores goals, milestone checkpoints, an append-only manual adjustment ledger, and foreign-keyed links to tasks, projects, and binary habits. Derived progress is recalculated from current completed tasks and stored habit logs. Direct and project task links use one contribution per task ID, so the same completion cannot count twice. Goal completion and archiving are independent of the numeric total.
+
+### Schema v10 & v11
+- **Schema v10**: Stores timer runs, actual work intervals, and manual-correction history independently of planned sessions. A partial unique index admits one active timer and one open interval per run. The repository writes timer state and intervals in transactions. AppController heartbeats a running timer and stops heartbeat when recovery review is required. Actual totals merge overlapping intervals.
+- **Schema v11**: Stores named task, recurring routine, and project template recipes as JSON snapshots with a format version. Instantiation checks the template revision and writes new project/task/recurrence identities in a transaction. Project prerequisite edges are remapped through the new task IDs.
+
+### Schema v12 & v13
+- **Schema v12**: Stores named, versioned task-filter JSON definitions. The controller evaluates filters against its loaded task/category/project and dependency snapshot using local relative dates, then renders the same task rows used by built-in views. Saving/editing/deleting a view writes through the repository with revision checks.
+- **Schema v13**: Marks tasks, projects, categories, fixed events, planned sessions, and recurrence families as archived or deleted without removing linked rows. Active reads and the native companion filter those markers; the repository owns transactional restore and checks related records before permanent purge. Permanent purges write tombstones with entity IDs and UTC deletion times. Recurring occurrence slots remain after an individual task purge so bounded materialization cannot recreate that occurrence. Startup performs no Trash purge.
+
+### Schema v14
+- **Schema v14**: Stores opt-in notification settings and a unique delivery ledger in SQLite. The native companion owns the tray timer and claims each local-day due reminder or summary in a transaction before invoking WinForms NotifyIcon. It can run with its widget hidden. Flutter writes settings through the repository and starts the companion after database migration if enabled. Notifications depend on the companion process and Windows notification settings; the SQLite ledger records attempted display, not user receipt.
+
+### Schema v16
+- **Schema v16**: Extends `fixed_events` in place. Its recurrence fields are local date rules; `event_occurrence_changes` stores only cancellations and manually changed occurrences keyed by the original nominal date. Calendar windows are projected on read without bulk materialization. Linked event generations carry active date boundaries for future-series edits. The native task widget accepts the additive schema but does not edit or notify on calendar events.
+
+### Schema v17, v18, v19, v20
+- **Schema v17**: Uses `entity_icons` for UUID-identified task, series, category, and project icon keys; fixed events use their own icon column.
+- **Schema v18**: Uses `task_checklist` and `task_parent_links`. Checklist rows do not carry task metadata; child tasks remain ordinary task rows. Active views filter children when their parent is archived or in Trash. Permanent owner deletion cascades checklist and child-link cleanup while linked child tasks restrict parent purge.
+- **Schema v19**: Adds `progressive_plans`, ordered `progressive_plan_steps`, and `progressive_plan_assignments` keyed by stable recurrence occurrence IDs. Assignment snapshots preserve historical activity text. The repository derives the occurrence position across recurrence generations from date-only rules, applies explicit carry markers, and updates future untouched assignments in transactions.
+- **Schema v20**: Adds `event_reminder_deliveries`. The native tray companion reads event recurrence rules and per-date exceptions, checks a short due window, and atomically claims each event occurrence before showing a notification. It honors cancellations and moved occurrences, and does not require bulk materialization of a semester's events. The main app starts the companion when saved reminders exist; the event editor requires the packaged companion before enabling a new reminder.
+
+### Schema v22 and Widget Customization Upgrade
+- `tasks.notification_json` defaults to explicit Off. Per-task custom UTC instants or offsets from the next upcoming work session are claimed once in `task_reminder_deliveries` by the existing native timer. Planned days/deadlines still have no clock time; recurrence reminders belong to individual task IDs. Existing global due-date/event reminders are preserved. Native schema support extends to 22; the main app alone migrates databases.
+- `WidgetConfiguration` format 1 gains additive navigation order, optional Calendar split, preset name and independent row/selected-navigation surfaces/text alpha. `WidgetPresets` has a bounded version-1 library per widget. `SettingsHistory` and `SettingsHistoryScope` serve widget/theme drafts and immediate task-display/sidebar contexts, preserving focused text editing. Geometry remains in legacy native files. Local SQLite snapshots carry a `backup_widget_personalization` envelope table; restore validates/applies its files and removes the snapshot-only table from the live database. Settings-only/Drive transfer uses the widgets allowlist category.
+- `NavigationRequest` and native `NavigationActivation` send versioned stable IDs, item kind, action, actual day and recurring nominal day over the existing single-instance activation readiness channel. Workspace opens existing task, event or session editors. Requests wait while another editor/modal is active; a banner lets the user finish/dismiss them. No intermediate schedule popup.

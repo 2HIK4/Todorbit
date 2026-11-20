@@ -378,6 +378,45 @@ class BoundaryCheckerFixtureTests(unittest.TestCase):
         directives = extract_directives(source)
         self.assertEqual(directives, [])
 
+    def test_fixture_detects_forbidden_raw_db_operations(self):
+        with tempfile.TemporaryDirectory(prefix='todorbit-db-encap-') as temporary:
+            root = Path(temporary)
+            app_file = root / 'lib/app/leaky_controller.dart'
+            app_file.parent.mkdir(parents=True)
+            app_file.write_text("await repository.db.transaction(() async {});\n", encoding='utf-8')
+            feat_file = root / 'lib/features/settings/leaky_page.dart'
+            feat_file.parent.mkdir(parents=True)
+            feat_file.write_text("await repo.db.close();\n", encoding='utf-8')
+            violations = check_raw_database_handle_encapsulation(root)
+            self.assertEqual(len(violations), 2)
+            self.assertIn(".db.transaction", violations[0])
+            self.assertIn(".db.close", violations[1])
+
+    def test_fixture_detects_domain_impurities(self):
+        with tempfile.TemporaryDirectory(prefix='todorbit-dom-purity-') as temporary:
+            root = Path(temporary)
+            dom_file = root / 'lib/domain/sample_entity.dart'
+            dom_file.parent.mkdir(parents=True)
+            dom_file.write_text(
+                "import 'package:flutter/widgets.dart';\n"
+                "import '../app/app_controller.dart';\n"
+                "import '../data/life_repository.dart';\n",
+                encoding='utf-8'
+            )
+            adaptor = root / 'lib/domain/appearance.dart'
+            adaptor.write_text("import 'package:flutter/material.dart';\n", encoding='utf-8')
+            violations = check_domain_layer_purity(root)
+            self.assertEqual(len(violations), 3)
+
+    def test_fixture_allows_meta_in_domain(self):
+        with tempfile.TemporaryDirectory(prefix='todorbit-dom-meta-') as temporary:
+            root = Path(temporary)
+            dom_file = root / 'lib/domain/sample_entity.dart'
+            dom_file.parent.mkdir(parents=True)
+            dom_file.write_text("import 'package:meta/meta.dart';\n", encoding='utf-8')
+            violations = check_domain_layer_purity(root)
+            self.assertEqual(len(violations), 0)
+
 
 class RealCalendarArchitectureBoundaryTests(unittest.TestCase):
     """Enforce architectural constraints against real project files."""
@@ -562,6 +601,85 @@ class RealCalendarWorkspaceBoundaryTests(unittest.TestCase):
     def test_event_editor_does_not_import_task_editor(self):
         violations = check_event_editor_does_not_import_task_editor(ROOT)
         self.assertEqual(violations, [], "\n".join(violations))
+
+
+RAW_DB_OPERATION_PATTERN = re.compile(r'\.db\.(?:transaction|close)\b')
+
+
+def check_raw_database_handle_encapsulation(repo_root: Path = ROOT) -> list[str]:
+    """Enforce ARCH-07: Ensure zero occurrences of .db.transaction or .db.close() in lib/app/ and lib/features/."""
+    violations = []
+    for folder in ('lib/app', 'lib/features'):
+        target_dir = repo_root / folder
+        if not target_dir.exists():
+            continue
+        for path in target_dir.rglob('*.dart'):
+            lines = path.read_text(encoding='utf-8').splitlines()
+            for idx, line in enumerate(lines, 1):
+                stripped = line.strip()
+                if stripped.startswith('//') or stripped.startswith('*') or stripped.startswith('/*'):
+                    continue
+                match = RAW_DB_OPERATION_PATTERN.search(line)
+                if match:
+                    violations.append(
+                        f"{path.relative_to(repo_root).as_posix()}:{idx}: Forbidden raw database operation "
+                        f"'{match.group()}'. Database transactions and lifecycle must be encapsulated within LifeRepository."
+                    )
+    return violations
+
+
+DOMAIN_ALLOWED_FLUTTER_ADAPTORS = {'appearance.dart', 'hotkeys.dart'}
+
+
+def check_domain_layer_purity(repo_root: Path = ROOT) -> list[str]:
+    """Enforce ARCH-09 / Domain purity: lib/domain/ must not import Flutter, lib/app/, or lib/data/."""
+    violations = []
+    domain_dir = repo_root / 'lib/domain'
+    if not domain_dir.exists():
+        return violations
+    for path in domain_dir.rglob('*.dart'):
+        directives = extract_directives(path.read_text(encoding='utf-8'))
+        rel_file = path.relative_to(repo_root).as_posix()
+        for d in directives:
+            uri = d.uri
+            resolved = resolve_import_uri(path, uri, repo_root)
+
+            # Check Flutter / dart:ui import unless allowlisted
+            if path.name not in DOMAIN_ALLOWED_FLUTTER_ADAPTORS:
+                if resolved.startswith('package:flutter/') or resolved == 'dart:ui':
+                    violations.append(
+                        f"{rel_file}:{d.line}: Domain purity violation: Domain model must not import Flutter: {d.kind} '{uri}'"
+                    )
+
+            # Check lib/app/ dependency
+            if resolved.startswith('lib/app/'):
+                violations.append(
+                    f"{rel_file}:{d.line}: Domain purity violation: Domain model must not depend on app layer: {d.kind} '{uri}'"
+                )
+
+            # Check lib/data/ dependency
+            if resolved.startswith('lib/data/'):
+                violations.append(
+                    f"{rel_file}:{d.line}: Domain purity violation: Domain model must not depend on data/persistence layer: {d.kind} '{uri}'"
+                )
+    return violations
+
+
+class RealRepositoryAndDomainBoundaryTests(unittest.TestCase):
+    """Enforce ARCH-07 and ARCH-09 architectural constraints: db encapsulation and domain purity."""
+
+    def test_no_raw_db_calls_in_app_and_features(self):
+        violations = check_raw_database_handle_encapsulation(ROOT)
+        self.assertEqual(violations, [], "\n".join(violations))
+
+    def test_domain_layer_purity(self):
+        violations = check_domain_layer_purity(ROOT)
+        self.assertEqual(violations, [], "\n".join(violations))
+
+    def test_domain_allowed_exceptions(self):
+        for name in DOMAIN_ALLOWED_FLUTTER_ADAPTORS:
+            target = ROOT / 'lib/domain' / name
+            self.assertTrue(target.exists(), f"Allowed adaptor {target} must exist")
 
 
 if __name__ == '__main__':
