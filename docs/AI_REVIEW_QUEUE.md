@@ -12,16 +12,16 @@
   - **Android 16 KiB runtime** ([Run 44699666409](https://github.com/2HIK4/Todorbit/actions/runs/44699666409)): **SUCCESS** in 3m41s on `google_apis_ps16k` API 36 emulator.
 - **Lightweight CI**: Validated locally across all Python checks, 39 architecture boundary checks, and 13 critical regression test suites (103/103 passed in 3m02s) with zero errors.
 - **Architecture Program Scope (ARCH-02 through ARCH-09)**:
-  - ARCH-02: Platform resource dialog refactoring (`lib/platform/windows_resource_dialog.dart`), eliminating 4 feature import cycles.
-  - ARCH-03: `SyncStatusButton` decoupling from `features/settings`.
-  - ARCH-04: Calendar and Workspace unidirectional decoupling via `calendar_contracts.dart`.
-  - ARCH-05: Strongly typed `AppRefreshSnapshot` domain mapping.
+  - ARCH-02: Platform resource dialog refactoring (`lib/platform/platform_resource_dialog.dart`), eliminating 4 feature import cycles.
+  - ARCH-03: `SyncStatusButton` decoupling from `features/settings` via `onOpenSettings` and `onOpenConflicts`.
+  - ARCH-04: Calendar and Workspace boundary decoupling via `SessionEditor` relocation to `features/scheduling` and `EditorNavigationController`.
+  - ARCH-05: Strongly typed `AppRefreshSnapshot` in `lib/app/app_refresh_snapshot.dart` and `AppController.refresh` refactoring.
   - ARCH-06: State encapsulation (unmodifiable collections, selector equality, timer isolation).
   - ARCH-07: Atomic Drift transactions, CAS revision protection, and sync sequence preservation.
   - ARCH-08: Optional feature modularity and sync safety evaluation.
   - ARCH-09: Architecture documentation and 39 boundary checks in CI.
 - **Release Assets**: All 10 Windows and Android assets uploaded and verified with SHA-256 checksums; updaters verified.
-- **Safety**: Schema remains at 29; zero schema migrations; zero data loss; Stable untouched.
+- **Safety**: Schema remains at 29; zero schema migrations; crash resilience preserved; Stable untouched.
 - **Status**: **PUBLISHED (Experimental Pre-Release)**. See [Publication Report](UIUX06_BETA_25_PUBLICATION.md).
 
 ## Beta 24 Windows CI corrections integrated & published (2026-11-19)
