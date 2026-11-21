@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.19-beta.26+49
+
+- Task rows show whether a timer is running or paused. The timer action starts
+  or opens the timer without changing task status.
+- Task creation and editing share a more consistent layout, with optional
+  guidance for new tasks and clearer controls in Settings, Updates, and Sync.
+
 ## 1.0.19-beta.25+48 - Modular Architecture & Maintainability Program (ARCH-02 through ARCH-09)
 
 - ARCH-02 Platform Resource Dialog Refactoring: Relocated `WindowsResourceDialog` to `lib/platform/windows_resource_dialog.dart`, decoupling `workspace`, `contributors`, `settings`, and `support` features from platform UI and eliminating 4 cross-feature import cycles.
