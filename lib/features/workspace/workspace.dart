@@ -2333,7 +2333,10 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         .where((id) => id == task.id)
         .length;
     final done = task.status == TaskStatus.completed;
-    final focusActive = controller.activeTimer?.taskId == task.id;
+    final timer = controller.activeTimer;
+    final timerState = timer != null && timer.taskId == task.id
+        ? timer.state
+        : null;
     final unmetPrerequisites = controller.unmetPrerequisites(task.id);
     final hasAlarm = task.isOpen &&
         taskAlarmRule(task, controller.alarmRules)?.config.enabled == true;
@@ -2365,7 +2368,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       task: task,
       variant: AppTaskRowVariant.desktop,
       isSelected: controller.selectedTaskId == task.id,
-      isFocusActive: focusActive,
+      timerState: timerState,
       hasAlarm: hasAlarm,
       iconKey: controller.iconForTask(task),
       subtaskProgress: subtasks,
@@ -2379,12 +2382,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           _run(() => controller.setComplete(task, value)),
       quickStartAction: task.isOpen
           ? IconButton(
-              tooltip: task.status == TaskStatus.inProgress
-                  ? 'Work or focus actions'
-                  : 'Start task or focus',
+              tooltip: timerState == null
+                  ? 'Start task timer'
+                  : 'Open task timer',
               onPressed: () => _quickStart(task),
               icon: Icon(
-                focusActive ? Icons.timer : Icons.play_circle_outline,
+                timerState == null ? Icons.play_circle_outline : Icons.timer,
               ),
             )
           : null,

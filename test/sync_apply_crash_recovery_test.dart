@@ -78,22 +78,12 @@ void main() {
           await receiver.retainIncomingSyncBatch(b, key, object, batch.bytes);
           await db.close();
           db = null;
-          final child = await Process.start(
-            'dart',
-            [
-              'run',
-              'test/support/sync_apply_crash_worker.dart',
-              target.path,
-              marker.path,
-              stop,
-            ],
-            runInShell: Platform.isWindows,
-            environment: {
-              'APPDATA': '${root.path}/roaming',
-              'LOCALAPPDATA': '${root.path}/local',
-            },
+          await runSyncCrashWorker(
+            script: 'test/support/sync_apply_crash_worker.dart',
+            database: target,
+            marker: marker,
+            stop: stop,
           );
-          await terminateSyncWorkerAtBarrier(child, marker);
           db = AppDatabase(NativeDatabase(target));
           receiver = LifeRepository(db);
           expect(await receiver.tasks(), isEmpty);

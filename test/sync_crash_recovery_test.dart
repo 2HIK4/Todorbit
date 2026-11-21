@@ -39,23 +39,15 @@ void main() {
           recovery: BackupService(file),
         );
         await db.close();
-        final child = await Process.start(
-          'dart',
-          [
-            'run',
-            'test/support/sync_crash_worker.dart',
-            file.path,
-            marker.path,
-            stop,
-          ],
-          runInShell: Platform.isWindows,
+        await runSyncCrashWorker(
+          script: 'test/support/sync_crash_worker.dart',
+          database: file,
+          marker: marker,
+          stop: stop,
           environment: {
-            'APPDATA': '${root.path}/roaming',
-            'LOCALAPPDATA': '${root.path}/local',
             'TODORBIT_SYNTHETIC_SYNC_KEY': key.exportRecoveryCode(),
           },
         );
-        await terminateSyncWorkerAtBarrier(child, marker);
         db = AppDatabase(NativeDatabase(file));
         repository = LifeRepository(db);
         expect((await repository.tasks()).map((task) => task.title), [

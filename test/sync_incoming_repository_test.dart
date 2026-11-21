@@ -396,6 +396,7 @@ void main() {
       expect(await receiver.tasks(), isEmpty);
     },
   );
+  // This 1,025-operation fixture exceeded the default timeout in parallel runs.
   test('a delayed page unlocks bounded durable work across restart', () async {
     await left.transaction(() async {
       for (var i = 0; i < 1025; i++) {
@@ -461,5 +462,5 @@ void main() {
       jsonDecode(context.read<String>('visible_json'))[source.device],
       isNull,
     );
-  });
+  }, timeout: const Timeout(Duration(minutes: 2)));
 }

@@ -3,7 +3,36 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-Future<void> terminateSyncWorkerAtBarrier(Process child, File marker) async {
+Future<void> runSyncCrashWorker({
+  required String script,
+  required File database,
+  required File marker,
+  required String stop,
+  Map<String, String> environment = const {},
+}) async {
+  // Parallel dart run workers share the package's JIT native assets. Hold the
+  // lock until exit because Windows cannot replace a loaded SQLite DLL.
+  final lock = await File('.dart_tool/todorbit-sync-crash.lock')
+      .open(mode: FileMode.append);
+  try {
+    await lock.lock(FileLock.blockingExclusive);
+    final child = await Process.start(
+      'dart',
+      ['run', script, database.path, marker.path, stop],
+      runInShell: Platform.isWindows,
+      environment: {
+        ...environment,
+        'APPDATA': '${marker.parent.path}/roaming',
+        'LOCALAPPDATA': '${marker.parent.path}/local',
+      },
+    );
+    await _terminateAtBarrier(child, marker);
+  } finally {
+    await lock.close();
+  }
+}
+
+Future<void> _terminateAtBarrier(Process child, File marker) async {
   final output = child.stdout.transform(utf8.decoder).join();
   final errors = child.stderr.transform(utf8.decoder).join();
   int? exitCode;

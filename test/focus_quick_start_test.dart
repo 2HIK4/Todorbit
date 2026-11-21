@@ -33,7 +33,7 @@ void main() {
       );
       await tester.tap(find.widgetWithText(ListTile, 'All tasks'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Start Task'));
+      await tester.tap(find.byTooltip('Start task timer'));
       await tester.pumpAndSettle();
       expect((await repository.tasks()).single.status, TaskStatus.notStarted);
       expect((await repository.activeTimerRun())?.taskId, task.id);
@@ -41,6 +41,7 @@ void main() {
       expect(find.byTooltip('Return to tasks'), findsOneWidget);
       await tester.tap(find.byTooltip('Return to tasks'));
       await tester.pumpAndSettle();
+      expect(find.byTooltip('Open task timer'), findsOneWidget);
       expect(find.byTooltip('Timer controls'), findsOneWidget);
       await tester.tap(find.widgetWithText(ListTile, 'Calendar'));
       await tester.pumpAndSettle();

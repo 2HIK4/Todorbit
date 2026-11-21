@@ -1,5 +1,31 @@
 # Persistent test run ledger
 
+## Focused timer, editor, and sync regression repair (2026-11-21)
+
+Windows 11 Pro 10.0.26200, Flutter 3.47.7 `abaf9c5237`, Dart 3.13.5. Executed
+between 10:39 and 10:45 UTC+03:00 on `design-foundation-docs`. Baseline
+`3621e35faf49256c7d0f600db0d93a01df1a0b16`. Patched Dart source fingerprint
+`42f437a3f0690b7506423b94685762b57dfd0297b05ddcf50b9a55a2ded133c4` is the
+SHA-256 of the newline-delimited Git blob IDs and paths in the analyzer order
+below. Lockfile blob `d8bcda914402d58613854dcce3b2e6ae6d461f76` and analyzer
+config blob `b184301c4d403ce431eb7a76613f9c30be8fa309`. Tests used disposable
+`APPDATA` and `LOCALAPPDATA`, in-memory databases and synthetic disk fixtures.
+Local logs are under `.buildlog/regression-3621e35/`.
+
+| Invocation and scope | Source and result | Reason |
+| --- | --- | --- |
+| Antigravity `task-1736` and `task-1738` logs | Historical failures. Both logged the timer tooltip, missing running badge, editor helper, and incoming timeout. Only `task-1738` logged the crash worker DLL lock. | Used the assertions and stack traces for diagnosis. No pass reused. |
+| `flutter test --no-pub --concurrency=1 --reporter expanded test/sync_incoming_repository_test.dart` | Baseline. **8 passed**, including the 1,025-operation case in about 18s. `incoming-baseline.log`. | Isolate the fixture from reported full-suite load. |
+| `flutter test --no-pub --concurrency=3 --reporter expanded test/sync_crash_recovery_test.dart test/sync_apply_crash_recovery_test.dart test/sync_incoming_repository_test.dart` | Patched. **12 passed**, including four forced worker deaths and durable work across restart. `sync-final.log`. | Verify the shared harness with concurrent suites and the narrowly scoped fixture timeout. |
+| `flutter test --no-pub --concurrency=2 --reporter expanded test/focus_quick_start_test.dart test/prompt7_cache_correctness_test.dart test/window_theme_test.dart test/prompt2_task_timer_test.dart test/app_task_row_test.dart test/task_editor_ui_consistency_test.dart` | Patched. **43 passed**. `ui-final.log`. | Verify direct timer entry and status independence, row and compact timer state, shared row, and create/edit layout with increased text size. |
+| `flutter analyze --no-pub lib/features/shared/app_task_row.dart lib/features/workspace/workspace.dart test/focus_quick_start_test.dart test/support/sync_crash_barrier.dart test/sync_crash_recovery_test.dart test/sync_apply_crash_recovery_test.dart test/sync_incoming_repository_test.dart test/window_theme_test.dart` | Patched. **Passed**, no issues. `analyze.log`. | Verify all changed Dart files. |
+| `dart format` on six changed tests and support files, then `dart format --output=none --set-exit-if-changed` on the eight analyzer paths | Patched. Six test/support files needed no formatting. Whole-file check **flagged pre-existing formatting** in `app_task_row.dart` and `workspace.dart`. `format.log`. | Checked read-only copies of both files at baseline and compared the patched formatter diff. Kept the formatter-only churn out of the patch. |
+| `git diff --check` and final diff review | Patched. **Passed**. | Check whitespace and scope. |
+| Live Flutter inspection and hot reload | **Skipped**. DTD discovery found no running debug app. | Used isolated host widget tests. No Windows or Android application build was run. |
+
+The full suite, physical-device checks and release gates are
+[deferred](DEFERRED_VERIFICATION.md#timer-editor-and-sync-regression-repair-2026-11-21).
+
 ## Beta 25 Publication & Verification (2026-11-20, UTC+03:00)
 
 `feature/todorbit-release-p8`, release commit `6b75a559a1b7d3f9d849ba9ed27c7a291124d554`, tag `v1.0.19-beta.25`, published `1.0.19-beta.25+48`:

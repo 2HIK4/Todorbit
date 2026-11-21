@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/models.dart';
+import '../../domain/time_tracking.dart';
 import 'alarm_indicator.dart';
 import 'app_theme_tokens.dart';
 import 'icon_picker.dart';
@@ -31,7 +32,7 @@ class AppTaskRow extends StatelessWidget {
     required this.task,
     this.variant,
     this.isSelected = false,
-    this.isFocusActive = false,
+    this.timerState,
     this.hasAlarm = false,
     this.iconKey,
     this.categoryName,
@@ -50,7 +51,7 @@ class AppTaskRow extends StatelessWidget {
   final LifeTask task;
   final AppTaskRowVariant? variant;
   final bool isSelected;
-  final bool isFocusActive;
+  final TimerState? timerState;
   final bool hasAlarm;
   final String? iconKey;
   final String? categoryName;
@@ -64,6 +65,9 @@ class AppTaskRow extends StatelessWidget {
   final VoidCallback? onLongPress;
   final Widget? quickStartAction;
   final Widget? trailingActions;
+
+  bool get _isTimerActive =>
+      timerState == TimerState.running || timerState == TimerState.paused;
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +96,7 @@ class AppTaskRow extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      color: isFocusActive
+      color: _isTimerActive
           ? scheme.primaryContainer.withValues(alpha: 0.7)
           : isSelected
               ? scheme.secondaryContainer.withValues(alpha: 0.55)
@@ -183,7 +187,7 @@ class AppTaskRow extends StatelessWidget {
     return task.scheduledDate != null ||
         task.deadlineDate != null ||
         task.status == TaskStatus.inProgress ||
-        isFocusActive ||
+        _isTimerActive ||
         (subtaskProgress != null && subtaskProgress!.total > 0) ||
         (checklistProgress != null && checklistProgress!.total > 0) ||
         task.status == TaskStatus.waiting ||
@@ -222,10 +226,14 @@ class AppTaskRow extends StatelessWidget {
       );
     }
 
-    if (isFocusActive || task.status == TaskStatus.inProgress) {
+    if (_isTimerActive || task.status == TaskStatus.inProgress) {
       badges.add(
         Text(
-          isFocusActive ? 'Focus running' : 'In progress',
+          switch (timerState) {
+            TimerState.running => 'Timer running',
+            TimerState.paused => 'Timer paused',
+            TimerState.stopped || null => 'In progress',
+          },
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,

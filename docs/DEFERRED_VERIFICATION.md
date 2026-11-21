@@ -1,5 +1,16 @@
 # Deferred Verification Backlog
 
+## Timer, editor, and sync regression repair (2026-11-21)
+
+- **Level 3 pending.** Run the full host suite at the next integration or release
+  checkpoint. The earlier Antigravity run also reported isolated failures in
+  Backups sign-out, PIN restart and updater conflict detection that were outside
+  this repair.
+- **Level 4 pending.** Exercise the desktop timer and editor in an isolated
+  Windows session and complete the existing release gates before publication.
+  The [focused receipt](TEST_RUN_LEDGER.md#focused-timer-editor-and-sync-regression-repair-2026-11-21)
+  covers host widget tests and synthetic SQLite process death.
+
 ## Beta 25 Architecture Program Release Acceptance (2026-11-20)
 
 - **Level 3 pending.** Broader cross-platform manual matrix across non-primary host configurations.

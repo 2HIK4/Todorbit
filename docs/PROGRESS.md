@@ -1,5 +1,13 @@
 # Progress
 
+## Focused timer, editor, and sync regression repair (2026-11-21)
+
+Restored running and paused badges on desktop task rows and aligned timer action
+labels with the direct-start flow. Updated editor layout assertions for
+create-only helper text. Serialized crash-test workers that share a SQLite DLL
+and scoped the longer timeout to the 1,025-operation restart fixture. All 55
+targeted and neighboring tests passed. See the [test receipt](TEST_RUN_LEDGER.md#focused-timer-editor-and-sync-regression-repair-2026-11-21).
+
 ## UI-SETTINGS-UPDATE-SYNC-03 — Settings Hub, Software Updates, and Sync Progressive Disclosure (2026-11-20)
 
 Refined existing Settings Hub, Software Updates, and Sync Settings interfaces on `design-foundation-docs` to improve consistency, clarity, progressive disclosure, and responsive keyboard adaptability:

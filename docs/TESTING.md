@@ -141,6 +141,11 @@ an ordinary full-suite pass therefore does not establish startup acceptance.
 Never substitute personal profile paths. Run this separately from other Flutter
 test processes to avoid native-asset contention.
 
+Use [the shared crash-worker harness](../test/support/sync_crash_barrier.dart)
+for sync tests that start and forcibly terminate a Dart worker. It serializes
+workers that share JIT native assets, since Windows holds the SQLite DLL open
+until the worker exits.
+
 The optional helper preserves these commands and CI as the authority:
 
 ```powershell

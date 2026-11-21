@@ -174,11 +174,13 @@ void main() {
             );
             await tester.ensureVisible(status);
             await tester.pumpAndSettle();
-            final subtitle = tester.getRect(
-              find.text('Optional for a new task'),
-            );
+            final subtitle = find.text('Optional for a new task');
+            expect(subtitle, task == null ? findsOneWidget : findsNothing);
+            final header = task == null
+                ? subtitle
+                : find.text('Status and priority');
             expect(
-              tester.getRect(status).top - subtitle.bottom,
+              tester.getRect(status).top - tester.getRect(header).bottom,
               greaterThanOrEqualTo(12),
             );
             expect(tester.takeException(), isNull);
