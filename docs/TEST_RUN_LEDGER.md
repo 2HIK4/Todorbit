@@ -1,5 +1,37 @@
 # Persistent test run ledger
 
+## Release candidate host baseline (2026-11-21)
+
+Tested `ca57dcb9afae73432fff4d2a376b77f770694c1d` on
+`codex/todorbit-release-candidate`, Windows 11 Pro 10.0.26200, Flutter 3.47.7
+and Dart 3.13.5, 19:06–19:47 UTC+03:00. The candidate branches from the
+verified repair with identical tracked source, assertions, lockfile and
+configuration. Reused its 55 targeted results without a separate rerun.
+The new run used disposable child `APPDATA` and `LOCALAPPDATA`.
+Logs are under `.buildlog/verify/rc-ca57dcb/`.
+
+| Command | Result |
+| --- | --- |
+| `flutter analyze --no-pub` | Passed, no issues. `analyze.log`. |
+| `python -m unittest discover -s tools -p test_architecture_boundaries.py` | 39 passed. `architecture.log`. |
+| `flutter test --no-pub --concurrency=1 --reporter expanded` | 1,227 passed, 9 skipped, 0 failed in 37m02s. `flutter-test.log`. |
+
+Backups disconnect, PIN restart and updater conflict detection passed unchanged.
+The earlier runs recorded a Backups `pumpAndSettle` timeout during initialization,
+a PIN fixture timeout followed by a missing temporary file, and contention for
+the Windows updater handoff mutex. These failures did not recur in the serial run.
+
+All four crash cases passed. The harness lock covers only worker startup through
+exit to protect the shared JIT SQLite DLL. Workers still die at the same database
+barriers and assertions cover exact committed or rolled-back state after reopen.
+The independent SQLite lease race, task CAS tests, and durable incoming restart
+also passed with their own fixtures.
+
+The Beta 25 Windows, Android and 16 KiB runtime CI runs are confirmed successful
+at `6b75a559a1b7d3f9d849ba9ed27c7a291124d554`. Their packages and checksums
+remain evidence for that release. The candidate adds compiled Flutter UI
+changes. See [remaining release gates](DEFERRED_VERIFICATION.md#release-candidate-build-and-acceptance-2026-11-21).
+
 ## Focused timer, editor, and sync regression repair (2026-11-21)
 
 Windows 11 Pro 10.0.26200, Flutter 3.47.7 `abaf9c5237`, Dart 3.13.5. Executed
@@ -23,8 +55,8 @@ Local logs are under `.buildlog/regression-3621e35/`.
 | `git diff --check` and final diff review | Patched. **Passed**. | Check whitespace and scope. |
 | Live Flutter inspection and hot reload | **Skipped**. DTD discovery found no running debug app. | Used isolated host widget tests. No Windows or Android application build was run. |
 
-The full suite, physical-device checks and release gates are
-[deferred](DEFERRED_VERIFICATION.md#timer-editor-and-sync-regression-repair-2026-11-21).
+The [candidate baseline](#release-candidate-host-baseline-2026-11-21) records
+the follow-up full suite and remaining release gates.
 
 ## Beta 25 Publication & Verification (2026-11-20, UTC+03:00)
 

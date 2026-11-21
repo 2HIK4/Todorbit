@@ -1,15 +1,22 @@
 # Deferred Verification Backlog
 
-## Timer, editor, and sync regression repair (2026-11-21)
+## Release candidate build and acceptance (2026-11-21)
 
-- **Level 3 pending.** Run the full host suite at the next integration or release
-  checkpoint. The earlier Antigravity run also reported isolated failures in
-  Backups sign-out, PIN restart and updater conflict detection that were outside
-  this repair.
-- **Level 4 pending.** Exercise the desktop timer and editor in an isolated
-  Windows session and complete the existing release gates before publication.
-  The [focused receipt](TEST_RUN_LEDGER.md#focused-timer-editor-and-sync-regression-repair-2026-11-21)
-  covers host widget tests and synthetic SQLite process death.
+- **Level 3 host verification passed.** Full analysis, the architecture gate,
+  the serial suite and all three previously intermittent cases passed.
+  [Test receipt](TEST_RUN_LEDGER.md#release-candidate-host-baseline-2026-11-21).
+- **Windows execution pending.** Select and synchronize the release version,
+  run exact-candidate CI, build the native companion and Windows Release,
+  run packaged self-test, validate installer and portable contents, and
+  generate and verify checksums. Exercise isolated install/update/recovery
+  and physical Windows timer, editor, keyboard, widget and DPI behavior.
+- **Android execution pending.** Run exact-candidate CI and workflow tests,
+  verify release signing and package identity, and check the production
+  artifact for 16 KiB alignment and runtime behavior. Use a physical device
+  for lifecycle, accessibility, share, notification and timer acceptance.
+- **Cross-platform acceptance pending.** Verify the approved Drive release
+  configuration, live two-client OAuth, sync and recovery. Use the existing
+  [release checklist](RELEASE.md) and [Android acceptance](ANDROID.md).
 
 ## Beta 25 Architecture Program Release Acceptance (2026-11-20)
 

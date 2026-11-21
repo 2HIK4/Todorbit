@@ -1,5 +1,15 @@
 # Progress
 
+## Release candidate host baseline (2026-11-21)
+
+Created `codex/todorbit-release-candidate` at the verified repair `ca57dcb`.
+The existing `3621e35` merge includes all ARCH-01 through ARCH-09 history.
+The UI branch was 11 commits ahead of `feature/todorbit-release-p8` with no
+architecture-only commits to merge. The candidate uses schema 29 and the same
+repository, app-state, sync, native runner and dependency inputs as Beta 25.
+Full analysis, 39 architecture checks and the serial Flutter suite passed.
+The three previously intermittent tests passed. [Test receipt](TEST_RUN_LEDGER.md#release-candidate-host-baseline-2026-11-21).
+
 ## Focused timer, editor, and sync regression repair (2026-11-21)
 
 Restored running and paused badges on desktop task rows and aligned timer action
