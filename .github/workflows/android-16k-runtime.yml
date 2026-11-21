@@ -5,6 +5,10 @@ on:
     paths: ['.github/workflows/android-16k-runtime.yml']
   workflow_dispatch:
     inputs:
+      beta26_testing_downloads:
+        description: Copy verified Beta 26 packages to Actions without running the emulator
+        type: boolean
+        default: false
       asset_id:
         description: Existing GitHub x64 APK asset ID (draft allowed)
         required: true
@@ -21,9 +25,10 @@ permissions:
   # GitHub requires push access to read unpublished release assets. This trusted
   # artifact-only job makes no repository/release write calls and has no signing keys.
   contents: write
+  actions: read
 jobs:
   runtime:
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[16k-runtime]')
+    if: "!inputs.beta26_testing_downloads && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[16k-runtime]'))"
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -83,3 +88,57 @@ jobs:
             .buildlog/16k-runtime/*.xml
             .buildlog/16k-runtime/*.png
           retention-days: 14
+  beta26-downloads:
+    name: Verified Beta 26 manual-testing downloads
+    if: github.event_name == 'workflow_dispatch' && inputs.beta26_testing_downloads
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Copy and verify the existing candidate packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          source_commit=ace8b3d25b2e760dde189cdabd7defa29035c7ea
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/44927010386" |
+            jq -e --arg sha "$source_commit" '.head_sha == $sha and .conclusion == "success"' >/dev/null
+          gh api "repos/$GITHUB_REPOSITORY/releases/453847236" |
+            jq -e --arg sha "$source_commit" '.draft and .prerelease and .target_commitish == $sha and any(.assets[]; .id == 776268493)' >/dev/null
+          mkdir -p downloads/{setup,portable,android}
+          gh run download 44927010386 --repo "$GITHUB_REPOSITORY" --name windows-release-candidate --dir windows
+          mv windows/Todorbit-1.0.19-beta.26-win-x64-setup.exe downloads/setup/
+          mv windows/Todorbit-1.0.19-beta.26-win-x64-portable.zip downloads/portable/
+          gh api "repos/$GITHUB_REPOSITORY/releases/assets/776268493" -H 'Accept: application/octet-stream' > downloads/android/Todorbit-1.0.19-beta.26-android-universal.apk
+          verify() {
+            local folder="$1" file="$2" hash="$3"
+            (cd "downloads/$folder" && printf '%s  %s\n' "$hash" "$file" | tee SHA256SUMS.txt | sha256sum --check)
+          }
+          verify setup Todorbit-1.0.19-beta.26-win-x64-setup.exe bf6ea346bae7becf7202fb6cc5e2a524e65dfadf137243fabfae38b53f5331a2
+          verify portable Todorbit-1.0.19-beta.26-win-x64-portable.zip 43d70d1fc3f2a1b01e9c53657587b08e25b28e63630e72233d1790df28befdc3
+          verify android Todorbit-1.0.19-beta.26-android-universal.apk 0a3fb0f09d490d6e6bbd457988fa9ca238f460cfbaf01d0cecb33344799d6d1f
+          {
+            echo '## Todorbit Beta 26 experimental manual testing'
+            echo 'Build 1.0.19-beta.26+49, source `ace8b3d25b2e760dde189cdabd7defa29035c7ea`.'
+            echo 'Registered Windows installer upgrade, physical Windows and Android acceptance, and live two-client Drive sync and recovery remain unverified.'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Todorbit-beta26-Windows-installer
+          path: downloads/setup/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Todorbit-beta26-Windows-portable
+          path: downloads/portable/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Todorbit-beta26-Android-universal
+          path: downloads/android/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
