@@ -1,5 +1,43 @@
 # Persistent test run ledger
 
+## Batch 2 Inbox and task lists (2026-11-23)
+
+Baseline `9921686`, verified source `2bf025f`. Flutter 3.47.7 and Dart 3.13.5
+on Windows, using in-memory records and disposable APPDATA and LOCALAPPDATA.
+The capture harness and logs are in `.buildlog/ui-redesign/`.
+
+- `batch2-tests.log` records 64 passing tests for the first implementation.
+  The run covered MobileWorkspace, shared rows, saved views, the workspace
+  toolbar, Today, quick-start timers and draft safety.
+- `batch2-final-tests.log` records 39 regression tests and seven render cases
+  passing after the saved sort and compact Add fixes. The command was
+  `flutter test --no-pub --concurrency=2 --reporter expanded` on
+  `mobile_workspace`, `app_task_row`, `saved_views`, `workspace_toolbar`,
+  `today_workspace_redesign` and the capture harness. During earlier
+  acceptance, the Windows saved-view fixture exposed a name mismatch between
+  the persisted and UI sort enums. The regression uses two matching dates and
+  verifies their order.
+- `batch2-render-final.log` records all seven captures and the final geometry
+  test passing after caption cleanup. That test checks the last row above
+  the floating Add button, compact toolbar access, and editor help above the
+  Save bar. The first help assertion ran before the scroll layout settled.
+- `batch2-checkpoint-analyze.log` records clean analysis of 10 Dart paths.
+  The 39 architecture-boundary tests, developer doc checks and
+  `git diff --check` passed.
+
+Final offscreen Flutter captures use production widgets under
+`C:/Users/User/Documents/Codex/Todorbit-batch2-renders/`.
+
+- Windows captures include `windows-inbox-light.png`, `windows-all-dark.png`,
+  `windows-project-narrow.png` and `windows-saved-dark.png`.
+- Android captures include `android-inbox-narrow.png`, `android-all-dark.png`
+  and `android-overdue-empty.png`.
+
+Reviewed light and dark layouts, scoped event and task sections, long titles,
+the empty Overdue view, and the dense Inbox at 320 dp and 150% text. Batch 2
+is suitable as the visual baseline for Batch 3. Physical-device, native
+assistive input and packaged release checks remain pending.
+
 ## Batch 1 visual refinement and acceptance (2026-11-23)
 
 Baseline `23f31fe`. Verified source `586e3a3` on Windows using Flutter

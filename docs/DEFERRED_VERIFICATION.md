@@ -1,5 +1,12 @@
 # Deferred Verification Backlog
 
+## Batch 2 task-list native acceptance (2026-11-23)
+
+The [Batch 2 receipt](TEST_RUN_LEDGER.md#batch-2-inbox-and-task-lists-2026-11-23)
+records host and offscreen acceptance at `2bf025f`. Windows DPI and
+assistive-input checks, Android TalkBack and IME, and packaged-device
+acceptance remain pending.
+
 ## Todorbit UI redesign pilot (2026-11-23)
 
 Batch 1 visual refinement is recorded for source `586e3a3` in the

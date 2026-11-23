@@ -73,6 +73,23 @@ Todorbit retains its own schedule, timer and navigation contracts.
   accessible name. Keep a hover tooltip for truncated sidebar destinations
   and retain the full name for assistive technology.
 
+## Batch 2 task-list presentation
+
+- Inbox, All tasks, date and status views, categories, projects and saved
+  views share the task list presentation. Use the bounded Today column on
+  Windows and a scrollable list with the existing app bar on Android.
+- Use shared sort labels and show a specific empty message for search or
+  filter results. In scoped views, give events their own heading and keep
+  task completion controls in the task section.
+- Keep recurring series as expandable rows. Place the subtask disclosure
+  below its parent so it does not take space from the title. Show category
+  and project metadata where it adds context. Keep the existing density
+  preference and separate task opening from completion.
+- Move Android's New task action into the toolbar when compact navigation
+  is active. Where the floating button is used, reserve trailing space so
+  the last row can scroll above it. Check the editor's final explanatory
+  text and actions against its fixed Save bar at 320 dp and 150% text.
+
 ## Customization and compatibility
 
 Settings → Appearance retains System, Light and Dark, two editable palettes,
@@ -101,6 +118,6 @@ Flutter renders where practical alongside targeted behavior tests. Record
 Windows and Android coverage separately, including narrow layouts and 150%
 text. Use the [testing policy](TESTING.md) for evidence.
 
-Next batches are Inbox and task lists, followed by Calendar and event editing.
-Focus, Habits and Goals come next, then Settings, sync feedback and native
-widgets. Review each batch in light and dark before expanding.
+The next batch covers Calendar and event editing. Focus, Habits and Goals
+follow, then Settings, sync feedback and native widgets. Review each batch in
+light and dark before expanding.

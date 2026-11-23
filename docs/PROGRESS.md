@@ -1,5 +1,22 @@
 # Progress
 
+## Batch 2 Inbox and task lists (2026-11-23)
+
+Both workspace shells now use the Batch 1 visual rules for Inbox and the
+remaining task lists. Scoped events have their own section. Recurring groups
+use expandable rows, and the subtask disclosure leaves room for the parent
+title. A typed sort mapping lets saved views use their default scheduled sort
+without changing saved filter data.
+
+Compact Android task lists keep New task in the toolbar. The acceptance test
+checks the last row with a floating Add button at regular width and verifies
+the compact editor help remains reachable above Save changes.
+
+[Design rules](UI_DESIGN_SYSTEM.md#batch-2-task-list-presentation) ·
+[Verification and captures](TEST_RUN_LEDGER.md#batch-2-inbox-and-task-lists-2026-11-23)
+
+The next batch covers Calendar and event editing.
+
 ## Batch 1 visual refinement and acceptance (2026-11-23)
 
 The Todorbit redesign branch now uses Batch 1 as the visual reference for

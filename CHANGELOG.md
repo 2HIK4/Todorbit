@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Unified Inbox and task list layouts on Windows and Android, including
+  recurring groups, scoped events and empty states. Compact Android lists
+  keep New task in the toolbar so row actions stay clear.
+- Fixed opening a saved view with the default scheduled sort.
+
 - Improved Today and task editing at large text sizes. Narrow Windows editors
   use the workspace width, task dates use localized labels, and Android
   task rows show more of long titles.

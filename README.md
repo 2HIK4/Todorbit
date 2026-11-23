@@ -11,7 +11,8 @@ Todorbit is an offline Windows productivity app with an Android beta for tasks, 
 ## What it does
 
 - Plan tasks and deadlines separately; track actual work with focus timers and sessions.
-- Organize categories, projects, subtasks, recurring tasks, and saved views.
+- Organize categories, projects, subtasks, and recurring tasks. Use Inbox,
+  focused task lists, and saved filters on Windows and Android.
 - View fixed events and tasks on the calendar; preview Smart Reschedule before applying it.
 - Track habits and goals, and review reports.
 - Use a native Windows desktop widget for Quick Add, task editing, and completion.

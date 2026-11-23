@@ -6,6 +6,8 @@ Install Flutter, Visual Studio Windows C++ desktop tools, and .NET 10 SDK. Run `
 
 For Flutter presentation work, start with the [Todorbit design system](UI_DESIGN_SYSTEM.md)
 and reuse its shared controls in the Windows and Android entry points.
+For Inbox, scoped lists, grouping, and row presentation, see the
+[task-list entry points](ARCHITECTURE_MAP.md) and the `task-lists` check group.
 
 Use [storage maintenance](STORAGE_MAINTENANCE.md) for artifact retention and safe
 manual cleanup. Ignored build/log directories can contain profiles and release

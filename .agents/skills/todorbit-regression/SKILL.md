@@ -9,6 +9,10 @@ Identify changed boundaries with `git diff` and a targeted `rg` search. Reuse ne
 
 For redesigns, apply the [design system rollout checks](../../../docs/UI_DESIGN_SYSTEM.md#rollout-and-checks). When a pane adapts to a resize, exercise a live edit draft across the breakpoint at regular and enlarged text. Verify the active field and save action remain reachable in the narrow layout. When a palette or preference changes, check applicable contrast, existing data compatibility and a save/reopen round trip.
 
+For task lists, exercise the final row with the floating Add button and
+compact toolbar. Verify the fixed editor footer leaves scrollable help and
+controls reachable. Use the [task-list presentation rules](../../../docs/UI_DESIGN_SYSTEM.md#batch-2-task-list-presentation).
+
 For SQLite, recurrence, and profile changes, include focused migration/round-trip or isolated in-memory/disposable-profile tests as appropriate. Preserve production data; never open or migrate the personal profile to test a change. For native IPC or widget rendering/input changes, build the native Release target, run `TodorbitWidget.exe --self-test`, then follow the relevant manual checks in `docs/windows-widget.md` on an isolated profile. For update/installer changes, use `docs/SOFTWARE_UPDATES.md` and `docs/ACCEPTANCE.md`; verify package identity, helper failure paths, and disposable upgrade behavior before release claims.
 
 At integration or release checkpoints run `flutter analyze --no-pub`, relevant `flutter test` coverage (full serial suite when broad behavior changed), native and Windows Release builds, and packaged self-test as applicable. The exact build commands and profile setup are in `docs/DEVELOPMENT.md`. Run GUI checks in an isolated Windows profile when available, and distinguish live debug GUI, Release GUI, offscreen render, widget test, and manual native checks in the report. Record failures and unverified items explicitly; update `docs/PROGRESS.md` after meaningful work.

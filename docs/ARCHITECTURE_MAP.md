@@ -6,6 +6,7 @@ Paths are repository relative. `tools/dev/features.json` owns runnable host-test
 
 | Feature | Presentation / entry | Logic and persistence | Start with these tests / group |
 | --- | --- | --- | --- |
+| Task lists | `lib/features/workspace/workspace.dart`, `lib/features/mobile/mobile_workspace.dart`, and `lib/features/shared/task_list_group.dart` | `AppController.visibleTasks`, `lib/domain/task_list_projection.dart`, and existing saved filters | `test/mobile_workspace_test.dart`, `test/saved_views_test.dart`, `test/app_task_row_test.dart`; `task-lists` |
 | Task editing | `lib/features/workspace/task_editor.dart` | `lib/app/app_controller.dart`, `lib/data/life_repository.dart`, `lib/domain/models.dart` | `test/repository_test.dart`, `test/task_editor_schedule_layout_test.dart`; `tasks` |
 | Calendar | `lib/features/calendar/calendar_view.dart`, `event_editor.dart`, `session_editor.dart` in that directory | `lib/data/event_repository.dart`, `lib/domain/recurrence.dart`; scheduling in `lib/domain/scheduling_engine.dart` | `test/calendar_improvements_test.dart`, `test/event_recurrence_test.dart`; `calendar`; [desktop/mobile recommendation](CALENDAR_PLATFORM_ARCHITECTURE_RECOMMENDATION.md) |
 | Android shell | `lib/features/mobile/mobile_workspace.dart`, `mobile_settings.dart` in that directory | Shared controller/repository; `lib/platform/android/android_platform.dart` | `test/mobile_workspace_test.dart`, `test/mobile_editors_test.dart`; `mobile` |
