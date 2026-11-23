@@ -8,6 +8,7 @@ import '../shared/item_filters.dart';
 import '../shared/scroll_edge_fade.dart';
 import '../../domain/task_list_projection.dart';
 import '../shared/task_list_group.dart';
+import '../shared/task_date_label.dart';
 
 import 'dart:io';
 
@@ -957,8 +958,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   (hasTaskSelected || hasEventSelected) &&
                   _focusWorkspaceTaskId == null;
               final inlineEditor = editor;
+              final taskPage =
+                  inlineEditor && hasTaskSelected && !hasEventSelected && !wide;
               final showSidebar =
-                  !inlineEditor || width >= AppLayout.breakpointCompact;
+                  !taskPage &&
+                  (!inlineEditor || width >= AppLayout.breakpointCompact);
               final canResize = wide && hasTaskSelected && !hasEventSelected;
               final preferredPanelWidth =
                   _resizedPanelWidth ??
@@ -1085,35 +1089,50 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                       width: wide && !canResize ? panelWidth - 1 : panelWidth,
                       child: Material(
                         color: Theme.of(context).colorScheme.surface,
-                        child: _selectedEvent != null
-                            ? EventEditor(
-                                key: ValueKey((
-                                  _selectedEvent!.id,
-                                  _selectedEvent!.nominalDate ?? '',
-                                  editorRevision,
-                                )),
-                                event: _selectedEvent!,
-                                initialDay: _selectedEvent!.startsAt.toLocal(),
-                                protectUnsavedEdits: true,
-                                navigationController: editorNavigation,
-                                onClose: _closeEditor,
-                              )
-                            : TaskEditor(
-                                protectUnsavedEdits: true,
-                                key: ValueKey((
-                                  creating
-                                      ? 'new'
-                                      : controller.selectedTask!.id,
-                                  editorRevision,
-                                )),
-                                navigationController: editorNavigation,
-                                task: creating ? null : controller.selectedTask,
-                                initialScheduled: creating
-                                    ? newTaskInitialDate
-                                    : null,
-                                onSaved: _closeEditor,
-                                onCancel: _closeEditor,
-                              ),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: taskPage
+                                ? math.max(
+                                    0,
+                                    (panelWidth -
+                                            AppLayout.editorPageMaxWidth) /
+                                        2,
+                                  )
+                                : 0,
+                          ),
+                          child: _selectedEvent != null
+                              ? EventEditor(
+                                  key: ValueKey((
+                                    _selectedEvent!.id,
+                                    _selectedEvent!.nominalDate ?? '',
+                                    editorRevision,
+                                  )),
+                                  event: _selectedEvent!,
+                                  initialDay: _selectedEvent!.startsAt
+                                      .toLocal(),
+                                  protectUnsavedEdits: true,
+                                  navigationController: editorNavigation,
+                                  onClose: _closeEditor,
+                                )
+                              : TaskEditor(
+                                  protectUnsavedEdits: true,
+                                  key: ValueKey((
+                                    creating
+                                        ? 'new'
+                                        : controller.selectedTask!.id,
+                                    editorRevision,
+                                  )),
+                                  navigationController: editorNavigation,
+                                  task: creating
+                                      ? null
+                                      : controller.selectedTask,
+                                  initialScheduled: creating
+                                      ? newTaskInitialDate
+                                      : null,
+                                  onSaved: _closeEditor,
+                                  onCancel: _closeEditor,
+                                ),
+                        ),
                       ),
                     ),
                   ],
@@ -1252,7 +1271,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
               ),
               subtitle: Text(
                 task.scheduledDate != null
-                    ? 'Plan ${task.scheduledDate}'
+                    ? 'Planned ${taskDateLabel(context, task.scheduledDate!)}'
                     : (task.isOpen ? 'Active' : 'Completed'),
                 style: const TextStyle(fontSize: 11),
               ),
@@ -1345,13 +1364,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                       style: const TextStyle(fontSize: 13, height: 1.2),
                       decoration: InputDecoration(
                         isDense: true,
-                        hintText: controller.customization.sidebarWidth < 220
-                            ? 'Search...'
-                            : 'Search tasks & events...',
-                        hintStyle: TextStyle(
-                          fontSize: 13,
-                          color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
-                        ),
+                        hintText: 'Search',
+                        hintStyle: theme.textTheme.bodySmall,
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
@@ -1918,21 +1932,29 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     final scheme = theme.colorScheme;
     return ListTile(
       dense: true,
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.content,
+      ),
+      horizontalTitleGap: AppSpacing.related,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.control),
       ),
       selectedTileColor: scheme.primaryContainer,
       selectedColor: scheme.onPrimaryContainer,
       leading: Icon(icon, size: 19),
-      title: Text(
-        title,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: active
-            ? theme.textTheme.titleSmall?.copyWith(
-                color: scheme.onPrimaryContainer,
-              )
-            : null,
+      title: Tooltip(
+        message: title,
+        excludeFromSemantics: true,
+        child: Text(
+          title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: active
+              ? theme.textTheme.titleSmall?.copyWith(
+                  color: scheme.onPrimaryContainer,
+                )
+              : theme.textTheme.titleSmall,
+        ),
       ),
       trailing: trailing,
       selected: active,
@@ -2099,6 +2121,18 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 ?.name ??
             'Project',
     };
+    final goalsDueSoon =
+        isToday &&
+        controller.goals.any(
+          (goal) =>
+              !goal.archived &&
+              !goal.completed &&
+              goal.deadlineDate != null &&
+              goal.deadlineDate!.compareTo(
+                    RecurrenceRule.shiftDate(today, 7),
+                  ) <=
+                  0,
+        );
     final canvas = Theme.of(context).scaffoldBackgroundColor;
     final content = ScrollEdgeFade(
       topFadeColor: canvas,
@@ -2165,7 +2199,20 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                                 child: Text('Newest first'),
                               ),
                             ],
-                            icon: const Icon(Icons.sort),
+                            icon: isToday ? null : const Icon(Icons.sort),
+                            child: isToday
+                                ? const Padding(
+                                    padding: EdgeInsets.all(AppSpacing.gap),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.sort),
+                                        SizedBox(width: AppSpacing.small),
+                                        Text('Sort'),
+                                      ],
+                                    ),
+                                  )
+                                : null,
                           ),
                           IconButton(
                             key: const ValueKey('schedule-history-button'),
@@ -2262,7 +2309,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ),
-                if (controller.view == WorkspaceView.today)
+                if (isToday &&
+                    (todaySessions > 0 || overdueCount > 0 || goalsDueSoon))
                   Padding(
                     padding: const EdgeInsets.fromLTRB(28, 0, 24, 16),
                     child: Wrap(
@@ -2289,16 +2337,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                             ),
                             onPressed: () => _navigate(WorkspaceView.overdue),
                           ),
-                        if (controller.goals.any(
-                          (goal) =>
-                              !goal.archived &&
-                              !goal.completed &&
-                              goal.deadlineDate != null &&
-                              goal.deadlineDate!.compareTo(
-                                    RecurrenceRule.shiftDate(today, 7),
-                                  ) <=
-                                  0,
-                        ))
+                        if (goalsDueSoon)
                           ActionChip(
                             avatar: const Icon(Icons.flag_outlined, size: 17),
                             label: const Text('Goals due soon'),
@@ -2680,7 +2719,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                                 ),
                               if (task.scheduledDate != null)
                                 Text(
-                                  'Plan ${task.scheduledDate}',
+                                  'Planned ${taskDateLabel(context, task.scheduledDate!)}',
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: scheme.onSurfaceVariant,
@@ -2688,7 +2727,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                                 ),
                               if (task.deadlineDate != null)
                                 Text(
-                                  'Due ${task.deadlineDate}',
+                                  'Due ${taskDateLabel(context, task.deadlineDate!)}',
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: overdue

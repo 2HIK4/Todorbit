@@ -4,6 +4,7 @@ import '../../domain/models.dart';
 import '../../domain/time_tracking.dart';
 import 'alarm_indicator.dart';
 import 'app_spacing.dart';
+import 'task_date_label.dart';
 import 'app_theme_tokens.dart';
 import 'icon_picker.dart';
 
@@ -168,10 +169,13 @@ class AppTaskRow extends StatelessWidget {
                   ),
                 ),
                 if (task.priority >= 2)
-                  Icon(
-                    Icons.flag_outlined,
-                    size: 18,
-                    color: tokens.colorForPriority(task.priority),
+                  Tooltip(
+                    message: 'Priority ${task.priority}',
+                    child: Icon(
+                      Icons.flag_outlined,
+                      size: 18,
+                      color: tokens.colorForPriority(task.priority),
+                    ),
                   ),
                 ?quickStartAction,
                 ?trailingActions,
@@ -238,13 +242,18 @@ class AppTaskRow extends StatelessWidget {
     }
 
     if (task.scheduledDate != null) {
-      badges.add(Text('Plan ${task.scheduledDate}', style: style));
+      badges.add(
+        Text(
+          'Planned ${taskDateLabel(context, task.scheduledDate!)}',
+          style: style,
+        ),
+      );
     }
 
     if (task.deadlineDate != null) {
       badges.add(
         Text(
-          'Due ${task.deadlineDate}',
+          'Due ${taskDateLabel(context, task.deadlineDate!)}',
           style: style?.copyWith(
             color: overdue ? scheme.error : scheme.onSurfaceVariant,
           ),
@@ -316,17 +325,11 @@ class AppTaskRow extends StatelessWidget {
       );
     }
     if (task.scheduledDate != null) {
-      final parsed = DateTime.tryParse(task.scheduledDate!);
-      final formatted = parsed != null
-          ? MaterialLocalizations.of(context).formatMediumDate(parsed)
-          : task.scheduledDate!;
+      final formatted = taskDateLabel(context, task.scheduledDate!);
       addPart(TextSpan(text: 'Planned $formatted'));
     }
     if (task.deadlineDate != null) {
-      final parsed = DateTime.tryParse(task.deadlineDate!);
-      final formatted = parsed != null
-          ? MaterialLocalizations.of(context).formatMediumDate(parsed)
-          : task.deadlineDate!;
+      final formatted = taskDateLabel(context, task.deadlineDate!);
       addPart(
         TextSpan(
           text: overdue ? 'Overdue · Due $formatted' : 'Due $formatted',
@@ -365,7 +368,7 @@ class AppTaskRow extends StatelessWidget {
           ),
           title: Text(
             task.title,
-            maxLines: 2,
+            maxLines: 4,
             overflow: TextOverflow.ellipsis,
             style: done
                 ? const TextStyle(decoration: TextDecoration.lineThrough)

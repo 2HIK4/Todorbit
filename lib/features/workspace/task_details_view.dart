@@ -5,6 +5,7 @@ import 'planned_session_delete.dart';
 import '../shared/app_motion.dart';
 import '../shared/scroll_edge_fade.dart';
 import '../shared/status_snackbar.dart';
+import '../shared/task_date_label.dart';
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
 import '../../domain/time_tracking.dart';
@@ -433,7 +434,9 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
               if (task.scheduledDate != null)
                 Chip(
                   avatar: const Icon(Icons.calendar_today_outlined, size: 15),
-                  label: Text('Planned: ${task.scheduledDate}'),
+                  label: Text(
+                    'Planned ${taskDateLabel(context, task.scheduledDate!)}',
+                  ),
                 ),
 
               // Deadline Badge
@@ -451,7 +454,7 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
                         : null,
                   ),
                   label: Text(
-                    'Due: ${task.deadlineDate}',
+                    'Due ${taskDateLabel(context, task.deadlineDate!)}',
                     style: TextStyle(
                       color:
                           (task.isOpen &&

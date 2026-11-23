@@ -331,16 +331,16 @@ void main() {
 
       // Verify non-redundant descriptions for Resources and Checklist
       await tester.scrollUntilVisible(
-        find.text('Subtasks and checklist steps update directly.'),
+        find.text('Checklist and subtask edits save immediately.'),
         200,
         scrollable: find.byType(Scrollable).first,
       );
       expect(
-        find.text('Attached files and links are updated directly.'),
+        find.text('Files and links save immediately.'),
         findsOneWidget,
       );
       expect(
-        find.text('Subtasks and checklist steps update directly.'),
+        find.text('Checklist and subtask edits save immediately.'),
         findsOneWidget,
       );
       await tester.ensureVisible(find.text('Resources'));

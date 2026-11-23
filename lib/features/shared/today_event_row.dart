@@ -32,11 +32,12 @@ class TodayEventRow extends StatelessWidget {
         : '${localizations.formatShortDate(start)} ${time(start)} – '
               '${localizations.formatShortDate(end)} ${time(end)}';
     return ListTile(
+      dense: theme.platform == TargetPlatform.windows,
       contentPadding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.related,
       ),
       leading: const Icon(Icons.event_outlined),
-      title: Text(event.title),
+      title: Text(event.title, style: theme.textTheme.bodyLarge),
       subtitle: Text(
         event.allDay ? 'All day' : range,
         style: theme.textTheme.bodySmall,

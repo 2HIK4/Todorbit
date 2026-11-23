@@ -319,7 +319,11 @@ void main() {
         expect(bar.selectedIndex, bar.destinations.length - 1);
         await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
         await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
-        await tester.tap(find.text('More'));
+        expect(
+          bar.labelBehavior,
+          NavigationDestinationLabelBehavior.alwaysHide,
+        );
+        await tester.tap(find.byType(NavigationDestination).last);
         await tester.pumpAndSettle();
         expect(
           tester.state<ScaffoldState>(find.byType(Scaffold)).isDrawerOpen,
@@ -328,7 +332,7 @@ void main() {
         expect(controller.view, WorkspaceView.habits);
         tester.state<ScaffoldState>(find.byType(Scaffold)).closeDrawer();
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Tasks'));
+        await tester.tap(find.byType(NavigationDestination).at(1));
         await tester.pumpAndSettle();
         expect(controller.view, WorkspaceView.all);
         expect(
@@ -385,6 +389,11 @@ void main() {
     );
     try {
       await open(tester);
+      await tester.tap(find.byTooltip('Actions for Check this'));
+      await tester.pumpAndSettle();
+      expect(find.text('Start task timer').hitTestable(), findsOneWidget);
+      tester.state<NavigatorState>(find.byType(Navigator).first).pop();
+      await tester.pumpAndSettle();
       await tester.tap(find.byType(Checkbox).first);
       await tester.pumpAndSettle();
       final saved = await controller.repository.tasks();
@@ -403,9 +412,7 @@ void main() {
       final yesterday = localDate(
         DateTime.now().subtract(const Duration(days: 1)),
       );
-      final tomorrow = localDate(
-        DateTime.now().add(const Duration(days: 1)),
-      );
+      final tomorrow = localDate(DateTime.now().add(const Duration(days: 1)));
       await controller.addTask(
         TaskDraft(
           title: 'Overdue task',

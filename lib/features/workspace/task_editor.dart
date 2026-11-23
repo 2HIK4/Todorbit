@@ -36,6 +36,7 @@ import '../../domain/recurrence.dart';
 import '../scheduling/session_editor.dart';
 import '../shared/app_section_heading.dart';
 import '../shared/app_spacing.dart';
+import '../shared/task_date_label.dart';
 import '../shared/unsaved_editor_guard.dart';
 import '../time_tracking/time_tracking_dialog.dart';
 import '../templates/templates_dialog.dart';
@@ -1374,6 +1375,13 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                                 key: const ValueKey('task-title-field'),
                                 controller: title,
                                 autofocus: widget.task == null,
+                                minLines: 1,
+                                maxLines: 3,
+                                keyboardType: TextInputType.text,
+                                textInputAction: TextInputAction.done,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.singleLineFormatter,
+                                ],
                                 decoration: InputDecoration(
                                   labelText: 'Title *',
                                   errorText: titleError,
@@ -1458,108 +1466,6 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                               ],
                             );
                           },
-                        ),
-                        const SizedBox(height: 16),
-                        SettingsSection(
-                          divider: true,
-                          title: 'Organization',
-                          initiallyExpanded:
-                              categoryId != null || projectId != null,
-                          children: [
-                            LayoutBuilder(
-                              builder: (context, constraints) {
-                                final categoryField = AnchoredSelectField<String?>(
-                                  key: ValueKey(
-                                    'category:$categoryId:$organizationPickerRevision',
-                                  ),
-                                  initialValue: categoryId,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Category',
-                                  ),
-                                  items: [
-                                    const DropdownMenuItem<String?>(
-                                      value: null,
-                                      child: Text('None / Inbox'),
-                                    ),
-                                    ...controller.categories.map(
-                                      (category) => DropdownMenuItem<String?>(
-                                        value: category.id,
-                                        child: Text(category.name),
-                                      ),
-                                    ),
-                                    const DropdownMenuItem<String?>(
-                                      value: '__new_category__',
-                                      child: Text('+ New Category'),
-                                    ),
-                                  ],
-                                  onChanged: (value) {
-                                    if (value == '__new_category__') {
-                                      _createCategory();
-                                      return;
-                                    }
-                                    setState(() {
-                                      categoryId = value;
-                                      projectId = null;
-                                    });
-                                  },
-                                );
-                                final projectField = AnchoredSelectField<String?>(
-                                  key: ValueKey(
-                                    'project:$projectId:$categoryId:$organizationPickerRevision',
-                                  ),
-                                  initialValue: projectId,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Project',
-                                  ),
-                                  items: [
-                                    const DropdownMenuItem<String?>(
-                                      value: null,
-                                      child: Text('None'),
-                                    ),
-                                    ...projectChoices.map(
-                                      (project) => DropdownMenuItem<String?>(
-                                        value: project.id,
-                                        child: Text(project.name),
-                                      ),
-                                    ),
-                                    const DropdownMenuItem<String?>(
-                                      value: '__new_project__',
-                                      child: Text('+ New Project'),
-                                    ),
-                                  ],
-                                  onChanged: categoryId == null
-                                      ? null
-                                      : (value) {
-                                          if (value == '__new_project__') {
-                                            _createProject();
-                                          } else {
-                                            setState(() => projectId = value);
-                                          }
-                                        },
-                                );
-                                if (constraints.maxWidth <
-                                    380 *
-                                        MediaQuery.textScalerOf(context)
-                                            .scale(1)) {
-                                  return Column(
-                                    children: [
-                                      categoryField,
-                                      const SizedBox(height: 12),
-                                      projectField,
-                                    ],
-                                  );
-                                }
-                                return Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(child: categoryField),
-                                    const SizedBox(width: 12),
-                                    Expanded(child: projectField),
-                                  ],
-                                );
-                              },
-                            ),
-                          ],
                         ),
                         if (widget.task == null) ...[
                           const SizedBox(height: 12),
@@ -1694,13 +1600,117 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                               ),
                             ],
                           ],
-                        ] else if (widget.task!.recurrenceSeriesId != null) ...[
+                        ],
+                        const SizedBox(height: 16),
+                        SettingsSection(
+                          divider: true,
+                          title: 'Organization',
+                          initiallyExpanded:
+                              categoryId != null || projectId != null,
+                          children: [
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final categoryField = AnchoredSelectField<String?>(
+                                  key: ValueKey(
+                                    'category:$categoryId:$organizationPickerRevision',
+                                  ),
+                                  initialValue: categoryId,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Category',
+                                  ),
+                                  items: [
+                                    const DropdownMenuItem<String?>(
+                                      value: null,
+                                      child: Text('None / Inbox'),
+                                    ),
+                                    ...controller.categories.map(
+                                      (category) => DropdownMenuItem<String?>(
+                                        value: category.id,
+                                        child: Text(category.name),
+                                      ),
+                                    ),
+                                    const DropdownMenuItem<String?>(
+                                      value: '__new_category__',
+                                      child: Text('+ New Category'),
+                                    ),
+                                  ],
+                                  onChanged: (value) {
+                                    if (value == '__new_category__') {
+                                      _createCategory();
+                                      return;
+                                    }
+                                    setState(() {
+                                      categoryId = value;
+                                      projectId = null;
+                                    });
+                                  },
+                                );
+                                final projectField = AnchoredSelectField<String?>(
+                                  key: ValueKey(
+                                    'project:$projectId:$categoryId:$organizationPickerRevision',
+                                  ),
+                                  initialValue: projectId,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Project',
+                                  ),
+                                  items: [
+                                    const DropdownMenuItem<String?>(
+                                      value: null,
+                                      child: Text('None'),
+                                    ),
+                                    ...projectChoices.map(
+                                      (project) => DropdownMenuItem<String?>(
+                                        value: project.id,
+                                        child: Text(project.name),
+                                      ),
+                                    ),
+                                    const DropdownMenuItem<String?>(
+                                      value: '__new_project__',
+                                      child: Text('+ New Project'),
+                                    ),
+                                  ],
+                                  onChanged: categoryId == null
+                                      ? null
+                                      : (value) {
+                                          if (value == '__new_project__') {
+                                            _createProject();
+                                          } else {
+                                            setState(() => projectId = value);
+                                          }
+                                        },
+                                );
+                                if (constraints.maxWidth <
+                                    380 *
+                                        MediaQuery.textScalerOf(context)
+                                            .scale(1)) {
+                                  return Column(
+                                    children: [
+                                      categoryField,
+                                      const SizedBox(height: 12),
+                                      projectField,
+                                    ],
+                                  );
+                                }
+                                return Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(child: categoryField),
+                                    const SizedBox(width: 12),
+                                    Expanded(child: projectField),
+                                  ],
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                        if (widget.task?.recurrenceSeriesId != null) ...[
                           const SizedBox(height: 12),
                           SettingsSection(
                             divider: true,
                             title: 'Recurring occurrence',
-                            description:
-                                '${widget.task!.nominalDate} • Edits affect this occurrence',
+                            description: widget.task!.nominalDate == null
+                                ? 'Edits affect this occurrence'
+                                : '${taskDateLabel(context, widget.task!.nominalDate!)} · Edits affect this occurrence',
                             initiallyExpanded: true,
                             children: [
                               if (widget.task!.recurrenceDisposition ==
@@ -1794,7 +1804,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                           SettingsSection(
                             divider: true,
                             title: 'Resources',
-                            description: 'Attached files and links are updated directly.',
+                            description: 'Files and links save immediately.',
                             children: [
                               UnifiedResourcesSection.persisted(
                                 key: ValueKey('resources:${task.id}'),
@@ -1824,12 +1834,11 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
                           SettingsSection(
                             divider: true,
                             title: 'Checklist and subtasks',
                             description:
-                                'Subtasks and checklist steps update directly.',
+                                'Checklist and subtask edits save immediately.',
                             children: [
                               TaskCompositionSection(
                                 task: task,
@@ -1843,7 +1852,6 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
                         ],
                         if (currentTask == null)
                           SettingsSection(
@@ -2247,50 +2255,48 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
     DateTime? date,
     VoidCallback pick,
     VoidCallback clear,
-  ) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: Theme.of(context).textTheme.labelMedium),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            Expanded(
-              child: Tooltip(
-                message: date == null ? 'Set $label' : 'Change $label',
-                child: OutlinedButton.icon(
-                  onPressed: pick,
-                  icon: const Icon(Icons.calendar_today_outlined, size: 18),
-                  label: Text(
-                    date == null
-                        ? 'No date'
-                        : Platform.isAndroid
-                        ? MaterialLocalizations.of(context)
-                              .formatMediumDate(date)
-                        : localDate(date),
-                    overflow: TextOverflow.ellipsis,
-                    semanticsLabel:
-                        '$label: ${date == null ? 'No date' : (Platform.isAndroid ? MaterialLocalizations.of(context).formatMediumDate(date) : localDate(date))}',
+  ) {
+    final formatted = date == null
+        ? 'No date'
+        : MaterialLocalizations.of(context).formatShortDate(date);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.gap),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: Theme.of(context).textTheme.labelMedium),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(
+                child: Tooltip(
+                  message: date == null ? 'Set $label' : 'Change $label',
+                  child: OutlinedButton.icon(
+                    onPressed: pick,
+                    icon: const Icon(Icons.calendar_today_outlined, size: 18),
+                    label: Text(
+                      formatted,
+                      semanticsLabel: '$label, $formatted',
+                    ),
                   ),
                 ),
               ),
-            ),
-            if (date != null)
-              IconButton(
-                tooltip: 'Clear $label',
-                constraints: const BoxConstraints(
-                  minWidth: AppLayout.minTapTarget,
-                  minHeight: AppLayout.minTapTarget,
+              if (date != null)
+                IconButton(
+                  tooltip: 'Clear $label',
+                  constraints: const BoxConstraints(
+                    minWidth: AppLayout.minTapTarget,
+                    minHeight: AppLayout.minTapTarget,
+                  ),
+                  onPressed: clear,
+                  icon: const Icon(Icons.close, size: 18),
                 ),
-                onPressed: clear,
-                icon: const Icon(Icons.close, size: 18),
-              ),
-          ],
-        ),
-      ],
-    ),
-  );
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 String _statusName(TaskStatus status) => switch (status) {

@@ -44,7 +44,8 @@ abstract final class AppLayout {
   static const double panelMaxWidth = 560;
   static const double panelResizeHandle = 16;
   static const double workspaceMinWidth = 420;
-  static const double workspaceMaxWidth = 960;
+  static const double workspaceMaxWidth = 800;
+  static const double editorPageMaxWidth = 680;
   static const double editorFieldMinWidth = 190;
 
   // Dialog dimensions

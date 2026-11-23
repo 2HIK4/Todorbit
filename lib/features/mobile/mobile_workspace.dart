@@ -3,6 +3,7 @@ import '../time_tracking/task_timer_intent.dart';
 import '../../domain/alarm_plan.dart';
 import '../shared/alarm_indicator.dart';
 import '../shared/app_section_heading.dart';
+import '../shared/app_spacing.dart';
 import '../shared/app_motion.dart';
 import '../shared/app_task_row.dart';
 import '../support/support_button.dart';
@@ -448,6 +449,100 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
         ],
       );
     }
+    final compactChrome =
+        !tablet &&
+        MediaQuery.sizeOf(context).width <
+            (preferences.destinations.length + 1) *
+                (AppLayout.minTapTarget + AppSpacing.gap) *
+                MediaQuery.textScalerOf(context).scale(1);
+    final toolbarActions = <Widget>[
+      if (!searching) ...[
+        SyncStatusButton(
+          allowAutomatic: true,
+          onOpenSettings: showSyncSettings,
+          onOpenConflicts: showSyncConflicts,
+        ),
+        PopupMenuButton<String>(
+          tooltip: 'Library',
+          icon: const Icon(Icons.collections_bookmark_outlined),
+          onSelected: (value) {
+            if (value == 'templates') dialog(const TemplatesDialog());
+            if (value == 'sequences') dialog(const SequenceDialog());
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem(
+              value: 'templates',
+              child: Row(
+                children: [
+                  Icon(Icons.copy_all_outlined, size: 20),
+                  SizedBox(width: 12),
+                  Text('Templates and routines'),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: 'sequences',
+              child: Row(
+                children: [
+                  Icon(Icons.linear_scale, size: 20),
+                  SizedBox(width: 12),
+                  Text('Task sequences'),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+      IconButton(
+        tooltip: searching ? 'Close search' : 'Search tasks and events',
+        onPressed: () => setState(() {
+          searching = !searching;
+          if (!searching) {
+            search.clear();
+          } else {
+            c.navigate(WorkspaceView.all);
+          }
+        }),
+        icon: Icon(searching ? Icons.close : Icons.search),
+      ),
+      if (!searching)
+        PopupMenuButton<String>(
+          tooltip: 'Workspace actions',
+          onSelected: (value) {
+            if (value == 'filters') dialog(const AdvancedSearchDialog());
+            if (value == 'reschedule') {
+              dialog(
+                SmartRescheduleDialog(
+                  scope: title(c),
+                  taskIds: c.visibleTasks
+                      .where((t) => t.isOpen)
+                      .map((t) => t.id)
+                      .toList(),
+                ),
+              );
+            }
+            if (value.startsWith('sort:')) {
+              c.setSort(TaskSort.values.byName(value.substring(5)));
+            }
+          },
+          itemBuilder: (_) => [
+            const PopupMenuItem(
+              value: 'filters',
+              child: Text('Filters and saved views'),
+            ),
+            const PopupMenuItem(
+              value: 'reschedule',
+              child: Text('Smart Reschedule'),
+            ),
+            for (final sort in TaskSort.values)
+              CheckedPopupMenuItem(
+                value: 'sort:${sort.name}',
+                checked: sort == c.sort,
+                child: Text('Sort by ${sort.name}'),
+              ),
+          ],
+        ),
+    ];
     return Scaffold(
       appBar: AppBar(
         title: searching
@@ -520,94 +615,19 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                 ),
               )
             : Text(title(c)),
-        actions: [
-          if (!searching) ...[
-            SyncStatusButton(
-              allowAutomatic: true,
-              onOpenSettings: showSyncSettings,
-              onOpenConflicts: showSyncConflicts,
-            ),
-            PopupMenuButton<String>(
-              tooltip: 'Library',
-              icon: const Icon(Icons.collections_bookmark_outlined),
-              onSelected: (value) {
-                if (value == 'templates') dialog(const TemplatesDialog());
-                if (value == 'sequences') dialog(const SequenceDialog());
-              },
-              itemBuilder: (_) => const [
-                PopupMenuItem(
-                  value: 'templates',
+        actions: !compactChrome || searching ? toolbarActions : null,
+        bottom: compactChrome && !searching
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(AppLayout.minTapTarget),
+                child: SizedBox(
+                  height: AppLayout.minTapTarget,
                   child: Row(
-                    children: [
-                      Icon(Icons.copy_all_outlined, size: 20),
-                      SizedBox(width: 12),
-                      Text('Templates and routines'),
-                    ],
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: toolbarActions,
                   ),
                 ),
-                PopupMenuItem(
-                  value: 'sequences',
-                  child: Row(
-                    children: [
-                      Icon(Icons.linear_scale, size: 20),
-                      SizedBox(width: 12),
-                      Text('Task sequences'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-          IconButton(
-            tooltip: searching ? 'Close search' : 'Search tasks and events',
-            onPressed: () => setState(() {
-              searching = !searching;
-              if (!searching) {
-                search.clear();
-              } else {
-                c.navigate(WorkspaceView.all);
-              }
-            }),
-            icon: Icon(searching ? Icons.close : Icons.search),
-          ),
-          if (!searching)
-            PopupMenuButton<String>(
-              tooltip: 'Workspace actions',
-              onSelected: (value) {
-                if (value == 'filters') dialog(const AdvancedSearchDialog());
-                if (value == 'reschedule') {
-                  dialog(
-                    SmartRescheduleDialog(
-                      scope: title(c),
-                      taskIds: c.visibleTasks
-                          .where((t) => t.isOpen)
-                          .map((t) => t.id)
-                          .toList(),
-                    ),
-                  );
-                }
-                if (value.startsWith('sort:')) {
-                  c.setSort(TaskSort.values.byName(value.substring(5)));
-                }
-              },
-              itemBuilder: (_) => [
-                const PopupMenuItem(
-                  value: 'filters',
-                  child: Text('Filters and saved views'),
-                ),
-                const PopupMenuItem(
-                  value: 'reschedule',
-                  child: Text('Smart Reschedule'),
-                ),
-                for (final sort in TaskSort.values)
-                  CheckedPopupMenuItem(
-                    value: 'sort:${sort.name}',
-                    checked: sort == c.sort,
-                    child: Text('Sort by ${sort.name}'),
-                  ),
-              ],
-            ),
-        ],
+              )
+            : null,
       ),
       drawer: drawer(c),
       body: SafeArea(
@@ -635,6 +655,12 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
           ? null
           : Builder(
               builder: (context) => NavigationBar(
+                height: compactChrome
+                    ? AppLayout.minTapTarget + AppSpacing.content
+                    : null,
+                labelBehavior: compactChrome
+                    ? NavigationDestinationLabelBehavior.alwaysHide
+                    : null,
                 selectedIndex: selected < 0
                     ? preferences.destinations.length
                     : selected,
@@ -1073,10 +1099,12 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
               style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
-          for (final entry in const {
+          for (final entry in {
             'edit': 'Edit task',
             'reschedule': 'Reschedule',
-            'timer': 'Actual work and timer',
+            'timer': c.activeTimer?.taskId == t.id
+                ? 'Open task timer'
+                : 'Start task timer',
             'duplicate': 'Duplicate',
             'archive': 'Archive',
             'delete': 'Move to Trash',

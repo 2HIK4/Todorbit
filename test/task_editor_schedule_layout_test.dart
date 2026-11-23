@@ -42,6 +42,11 @@ void main() {
           } else {
             expect(deadline.dy, greaterThan(planned.dy));
           }
+          final day = const DefaultMaterialLocalizations().formatShortDate(
+            DateTime.now(),
+          );
+          expect(find.text(day), findsOneWidget);
+          expect(find.text('No date'), findsOneWidget);
           expect(find.byTooltip('Clear Scheduled day'), findsOneWidget);
           expect(tester.takeException(), isNull);
         }

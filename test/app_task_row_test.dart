@@ -116,13 +116,16 @@ void main() {
         ),
       );
 
-      expect(find.text('Plan $today'), findsOneWidget);
-      expect(find.text('Due $today'), findsOneWidget);
-      expect(find.text('Subtasks 2/4'), findsOneWidget);
-      expect(find.text('Checklist 1/3'), findsOneWidget);
-      expect(find.text('Blocked by 2'), findsOneWidget);
-      expect(find.byIcon(Icons.flag_outlined), findsOneWidget);
-    });
+        final localizedDay = const DefaultMaterialLocalizations()
+            .formatShortDate(DateTime.parse(today));
+        expect(find.text('Planned $localizedDay'), findsOneWidget);
+        expect(find.text('Due $localizedDay'), findsOneWidget);
+        expect(find.text('Subtasks 2/4'), findsOneWidget);
+        expect(find.text('Checklist 1/3'), findsOneWidget);
+        expect(find.text('Blocked by 2'), findsOneWidget);
+        expect(find.byIcon(Icons.flag_outlined), findsOneWidget);
+      },
+    );
 
     testWidgets('highlights overdue tasks with error styling on desktop', (
       tester,
@@ -144,7 +147,10 @@ void main() {
         ),
       );
 
-      final dueTextFinder = find.text('Due $yesterday');
+      final localizedDay = const DefaultMaterialLocalizations().formatShortDate(
+        DateTime.parse(yesterday),
+      );
+      final dueTextFinder = find.text('Due $localizedDay');
       expect(dueTextFinder, findsOneWidget);
 
       final textWidget = tester.widget<Text>(dueTextFinder);
@@ -276,9 +282,11 @@ void main() {
         ),
       );
 
-      expect(tester.takeException(), isNull);
-      expect(find.textContaining('A very long task title'), findsOneWidget);
-      expect(find.byIcon(Icons.more_vert), findsOneWidget);
-    });
+        expect(tester.takeException(), isNull);
+        final title = find.textContaining('A very long task title');
+        expect(tester.widget<Text>(title).maxLines, 4);
+        expect(find.byIcon(Icons.more_vert), findsOneWidget);
+      },
+    );
   });
 }

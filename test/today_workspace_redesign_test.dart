@@ -105,12 +105,17 @@ void main() {
     expect(controller.taskPanelWidth, greaterThan(before));
 
     tester.view.physicalSize = const Size(800, 660);
+    tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     await tester.pumpAndSettle();
     expect(handle, findsNothing);
+    expect(find.text('Todorbit'), findsNothing);
+    expect(tester.getSize(editor).width, greaterThan(600));
     expect(
       tester.widget<TextField>(title).controller?.text,
       'Unsaved weekly review',
     );
+    expect(tester.widget<TextField>(title).maxLines, greaterThan(1));
     expect(find.text('Save changes').hitTestable(), findsOneWidget);
 
     await tester.tap(find.byTooltip('Close details'));
