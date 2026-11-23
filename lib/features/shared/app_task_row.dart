@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../domain/models.dart';
 import '../../domain/time_tracking.dart';
 import 'alarm_indicator.dart';
+import 'app_spacing.dart';
 import 'app_theme_tokens.dart';
 import 'icon_picker.dart';
 
@@ -94,20 +95,21 @@ class AppTaskRow extends StatelessWidget {
         task.deadlineDate != null &&
         task.deadlineDate!.compareTo(today) < 0;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      color: _isTimerActive
-          ? scheme.primaryContainer.withValues(alpha: 0.7)
-          : isSelected
-              ? scheme.secondaryContainer.withValues(alpha: 0.55)
-              : null,
+    final theme = Theme.of(context);
+    final compact = theme.visualDensity == VisualDensity.compact;
+    return _TaskRowSurface(
+      highlighted: _isTimerActive || isSelected,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         onTap: onTap,
+        onLongPress: onLongPress,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 52),
+          constraints: BoxConstraints(minHeight: compact ? 48 : 52),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.gap,
+              vertical: compact ? 0 : AppSpacing.small,
+            ),
             child: Row(
               children: [
                 Tooltip(
@@ -121,14 +123,12 @@ class AppTaskRow extends StatelessWidget {
                         : null,
                   ),
                 ),
-                Icon(
-                  iconForKey(
-                    iconKey,
-                    Icons.task_alt_outlined,
+                if (iconKey != null)
+                  Icon(
+                    iconForKey(iconKey, Icons.task_alt_outlined),
+                    size: 19,
+                    color: scheme.onSurfaceVariant,
                   ),
-                  size: 19,
-                  color: scheme.primary,
-                ),
                 if (task.isOpen && hasAlarm)
                   const Padding(
                     padding: EdgeInsets.only(left: 6),
@@ -143,15 +143,15 @@ class AppTaskRow extends StatelessWidget {
                         task.title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                           decoration: done ? TextDecoration.lineThrough : null,
                           color: done
-                              ? scheme.onSurface.withValues(alpha: 0.55)
-                              : null,
+                              ? scheme.onSurfaceVariant
+                              : scheme.onSurface,
                         ),
                       ),
-                      if (_hasDesktopBadges(overdue))
+                      if (_hasDesktopBadges)
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Wrap(
@@ -183,7 +183,7 @@ class AppTaskRow extends StatelessWidget {
     );
   }
 
-  bool _hasDesktopBadges(bool overdue) {
+  bool get _hasDesktopBadges {
     return task.scheduledDate != null ||
         task.deadlineDate != null ||
         task.status == TaskStatus.inProgress ||
@@ -201,15 +201,13 @@ class AppTaskRow extends StatelessWidget {
     bool overdue,
   ) {
     final badges = <Widget>[];
+    final style = Theme.of(context).textTheme.bodySmall;
 
     if (subtaskProgress != null && subtaskProgress!.total > 0) {
       badges.add(
         Text(
           'Subtasks ${subtaskProgress!.completed}/${subtaskProgress!.total}',
-          style: TextStyle(
-            fontSize: 12,
-            color: scheme.onSurfaceVariant,
-          ),
+          style: style,
         ),
       );
     }
@@ -218,10 +216,7 @@ class AppTaskRow extends StatelessWidget {
       badges.add(
         Text(
           'Checklist ${checklistProgress!.completed}/${checklistProgress!.total}',
-          style: TextStyle(
-            fontSize: 12,
-            color: scheme.onSurfaceVariant,
-          ),
+          style: style,
         ),
       );
     }
@@ -234,8 +229,7 @@ class AppTaskRow extends StatelessWidget {
             TimerState.paused => 'Timer paused',
             TimerState.stopped || null => 'In progress',
           },
-          style: TextStyle(
-            fontSize: 12,
+          style: style?.copyWith(
             fontWeight: FontWeight.w600,
             color: scheme.primary,
           ),
@@ -244,23 +238,14 @@ class AppTaskRow extends StatelessWidget {
     }
 
     if (task.scheduledDate != null) {
-      badges.add(
-        Text(
-          'Plan ${task.scheduledDate}',
-          style: TextStyle(
-            fontSize: 12,
-            color: scheme.onSurfaceVariant,
-          ),
-        ),
-      );
+      badges.add(Text('Plan ${task.scheduledDate}', style: style));
     }
 
     if (task.deadlineDate != null) {
       badges.add(
         Text(
           'Due ${task.deadlineDate}',
-          style: TextStyle(
-            fontSize: 12,
+          style: style?.copyWith(
             color: overdue ? scheme.error : scheme.onSurfaceVariant,
           ),
         ),
@@ -271,10 +256,7 @@ class AppTaskRow extends StatelessWidget {
       badges.add(
         Text(
           task.status == TaskStatus.waiting ? 'Waiting' : 'On hold',
-          style: TextStyle(
-            fontSize: 12,
-            color: scheme.onSurfaceVariant,
-          ),
+          style: style,
         ),
       );
     }
@@ -286,10 +268,7 @@ class AppTaskRow extends StatelessWidget {
               'Blocked by $unmetPrerequisitesCount prerequisite(s)',
           child: Text(
             'Blocked by $unmetPrerequisitesCount',
-            style: TextStyle(
-              fontSize: 12,
-              color: scheme.error,
-            ),
+            style: style?.copyWith(color: scheme.error),
           ),
         ),
       );
@@ -317,8 +296,24 @@ class AppTaskRow extends StatelessWidget {
     if (task.priority > 0) {
       addPart(TextSpan(text: 'Priority ${task.priority}'));
     }
-    if (task.status != TaskStatus.notStarted) {
-      addPart(TextSpan(text: task.status.name));
+    final status = switch (task.status) {
+      TaskStatus.notStarted => null,
+      TaskStatus.inProgress => 'In progress',
+      TaskStatus.waiting => 'Waiting',
+      TaskStatus.onHold => 'On hold',
+      TaskStatus.completed => 'Completed',
+      TaskStatus.cancelled => 'Cancelled',
+    };
+    if (status != null) addPart(TextSpan(text: status));
+    if (_isTimerActive) {
+      addPart(
+        TextSpan(
+          text: timerState == TimerState.running
+              ? 'Timer running'
+              : 'Timer paused',
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+      );
     }
     if (task.scheduledDate != null) {
       final parsed = DateTime.tryParse(task.scheduledDate!);
@@ -351,12 +346,16 @@ class AppTaskRow extends StatelessWidget {
       addPart(TextSpan(text: projectName!));
     }
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    return _TaskRowSurface(
+      highlighted: _isTimerActive || isSelected,
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 56),
         child: ListTile(
-          contentPadding: const EdgeInsetsDirectional.only(start: 6, end: 8),
+          selected: isSelected,
+          contentPadding: const EdgeInsetsDirectional.only(
+            start: AppSpacing.small,
+            end: AppSpacing.gap,
+          ),
           leading: Checkbox(
             value: done,
             semanticLabel: '${done ? 'Reopen' : 'Complete'} ${task.title}',
@@ -376,9 +375,7 @@ class AppTaskRow extends StatelessWidget {
               ? null
               : Text.rich(
                   TextSpan(
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall,
                     children: subtitleParts,
                   ),
                 ),
@@ -403,6 +400,29 @@ class AppTaskRow extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _TaskRowSurface extends StatelessWidget {
+  const _TaskRowSurface({required this.highlighted, required this.child});
+
+  final bool highlighted;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Material(
+          color: highlighted ? scheme.primaryContainer : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.control),
+          child: child,
+        ),
+        const Divider(height: 1),
+      ],
     );
   }
 }

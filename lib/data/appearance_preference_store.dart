@@ -15,6 +15,7 @@ class AppearancePreferenceStore {
   Map<String, dynamic>? _cachedData;
   DateTime? _cachedModified;
   int? _cachedSize;
+  Future<void> _pendingWrite = Future<void>.value();
 
   void invalidateCache() {
     _cachedData = null;
@@ -39,7 +40,7 @@ class AppearancePreferenceStore {
   }
 
   Future<void> save(ThemeModePreference theme) async {
-    await _write({...await _read(), 'theme': theme.name});
+    await _write({'theme': theme.name});
   }
 
   Future<ThemeCustomization> loadCustomization() async {
@@ -62,7 +63,6 @@ class AppearancePreferenceStore {
 
   Future<void> saveCustomization(ThemeCustomization value) async {
     await _write({
-      ...await _read(),
       'customization': value.toJson(),
       'widgetOpacity': value.widgetOpacity,
     });
@@ -94,7 +94,6 @@ class AppearancePreferenceStore {
 
   Future<void> saveTaskViewPreferences(TaskViewPreferences value) async {
     await _write({
-      ...await _read(),
       'newTaskPlannedDay': value.newTaskPlannedDay.name,
       'keepCompletedVisible': value.keepCompletedVisible,
       'spellCheckEnabled': value.spellCheckEnabled,
@@ -105,11 +104,19 @@ class AppearancePreferenceStore {
     });
   }
 
+  Future<int?> loadTaskPanelWidth() async {
+    final value = (await _read())['taskPanelWidth'];
+    return value is int && value >= 320 && value <= 560 ? value : null;
+  }
+
+  Future<void> saveTaskPanelWidth(int width) async =>
+      _write({'taskPanelWidth': width});
+
   Future<HotkeyPreferences> loadHotkeys() async =>
       HotkeyPreferences.fromJson((await _read())['hotkeys']);
 
   Future<void> saveHotkeys(HotkeyPreferences value) async {
-    await _write({...await _read(), 'hotkeys': value.toJson()});
+    await _write({'hotkeys': value.toJson()});
   }
 
   Future<int> loadFirstWeekday() async {
@@ -119,7 +126,7 @@ class AppearancePreferenceStore {
 
   Future<void> saveFirstWeekday(int value) async {
     if (value < 1 || value > 7) throw ArgumentError.value(value);
-    await _write({...await _read(), 'firstWeekday': value});
+    await _write({'firstWeekday': value});
   }
 
   Future<String?> loadLastCalendarMode() async {
@@ -133,7 +140,7 @@ class AppearancePreferenceStore {
     if (value != null && !const ['day', 'week', 'month'].contains(value)) {
       throw ArgumentError.value(value);
     }
-    await _write({...await _read(), 'lastCalendarMode': value});
+    await _write({'lastCalendarMode': value});
   }
 
   Future<List<String>> loadSidebarOrder(List<String> defaults) async {
@@ -144,7 +151,7 @@ class AppearancePreferenceStore {
   }
 
   Future<void> saveSidebarOrder(List<String> value) async {
-    await _write({...await _read(), 'sidebarOrder': value});
+    await _write({'sidebarOrder': value});
   }
 
   Future<Map<String, dynamic>> loadNavigationState() async {
@@ -165,7 +172,7 @@ class AppearancePreferenceStore {
   }
 
   Future<void> saveNavigationState(Map<String, dynamic> value) async =>
-      _write({...await _read(), 'navigationState': value});
+      _write({'navigationState': value});
 
   Future<Map<String, dynamic>> _read() async {
     if (!await file.exists()) {
@@ -192,8 +199,18 @@ class AppearancePreferenceStore {
     );
   }
 
-  Future<void> _write(Map<String, dynamic> value) async {
+  Future<void> _write(Map<String, dynamic> updates) {
+    final write = _pendingWrite.then((_) => _writeUpdates(updates));
+    _pendingWrite = write.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return write;
+  }
+
+  Future<void> _writeUpdates(Map<String, dynamic> updates) async {
     final existing = await _read();
+    final value = {...existing, ...updates};
     final encodedNew = const JsonEncoder.withIndent('  ').convert(value);
     final encodedExisting = const JsonEncoder.withIndent('  ')
         .convert(existing);

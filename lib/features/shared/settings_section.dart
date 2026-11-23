@@ -12,6 +12,7 @@ class SettingsSection extends StatefulWidget {
     this.contentPadding = const EdgeInsets.fromLTRB(16, 0, 16, 16),
     this.expansionKey,
     this.controller,
+    this.divider = false,
     required this.children,
   });
 
@@ -22,6 +23,7 @@ class SettingsSection extends StatefulWidget {
   final EdgeInsetsGeometry contentPadding;
   final Key? expansionKey;
   final ExpansibleController? controller;
+  final bool divider;
 
   @override
   State<SettingsSection> createState() => _SettingsSectionState();
@@ -35,23 +37,31 @@ class _SettingsSectionState extends State<SettingsSection> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(10),
-      side: BorderSide(color: theme.colorScheme.outlineVariant),
-    );
+    final line = BorderSide(color: theme.colorScheme.outlineVariant);
+    final ShapeBorder shape = widget.divider
+        ? Border(bottom: line)
+        : RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.surface),
+            side: line,
+          );
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.related),
       child: Material(
-        color: theme.colorScheme.surface,
+        color: widget.divider ? Colors.transparent : theme.colorScheme.surface,
         shape: shape,
-        clipBehavior: Clip.antiAlias,
+        clipBehavior: widget.divider ? Clip.none : Clip.antiAlias,
         child: ExpansionTile(
           controller: widget.controller,
           key: widget.expansionKey ?? PageStorageKey(widget.title),
           initiallyExpanded: widget.initiallyExpanded,
           maintainState: true,
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          childrenPadding: widget.contentPadding,
+          tilePadding: EdgeInsets.symmetric(
+            horizontal: widget.divider ? 0 : AppSpacing.content,
+            vertical: AppSpacing.small,
+          ),
+          childrenPadding: widget.divider
+              ? const EdgeInsets.only(bottom: AppSpacing.content)
+              : widget.contentPadding,
           shape: const Border(),
           collapsedShape: const Border(),
           title: Semantics(

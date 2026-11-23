@@ -19,6 +19,8 @@ void main() {
       for (final background in [
         theme.colorScheme.surface,
         theme.scaffoldBackgroundColor,
+        theme.colorScheme.primaryContainer,
+        theme.colorScheme.surfaceContainerLow,
       ]) {
         expect(
           contrast(theme.textTheme.bodyMedium!.color!, background),
@@ -29,6 +31,10 @@ void main() {
           greaterThanOrEqualTo(4.5),
         );
       }
+      expect(
+        contrast(theme.colorScheme.outline, theme.colorScheme.surface),
+        greaterThanOrEqualTo(3),
+      );
       expect(
         contrast(theme.colorScheme.primary, theme.colorScheme.onPrimary),
         greaterThanOrEqualTo(4.5),

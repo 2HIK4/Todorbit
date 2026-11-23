@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/appearance.dart';
+import 'app_spacing.dart';
 import 'app_theme_tokens.dart';
 import 'desktop_tooltip_theme.dart';
 
@@ -19,17 +20,21 @@ ThemeData buildAppTheme(
         : Colors.white;
   }
 
+  final surface = palette['surface'];
+  final accent = palette['accent'];
+  final selection = Color.lerp(surface, accent, 0.12)!;
   final scheme =
       ColorScheme.fromSeed(
         seedColor: palette['accent'],
         brightness: brightness,
       ).copyWith(
-        surface: palette['surface'],
+        surface: surface,
+        surfaceTint: Colors.transparent,
         surfaceContainerLowest: palette['background'],
         surfaceContainerLow: Color.lerp(
           palette['background'],
-          palette['surface'],
-          0.5,
+          palette['secondaryText'],
+          0.045,
         ),
         surfaceContainer: palette['surface'],
         surfaceContainerHigh: Color.lerp(
@@ -44,9 +49,13 @@ ThemeData buildAppTheme(
         ),
         onSurface: palette['primaryText'],
         onSurfaceVariant: palette['secondaryText'],
-        primary: palette['accent'],
-        onPrimary: foregroundOn(palette['accent']),
-        outline: palette['border'],
+        primary: accent,
+        onPrimary: foregroundOn(accent),
+        primaryContainer: selection,
+        onPrimaryContainer: palette['primaryText'],
+        secondaryContainer: selection,
+        onSecondaryContainer: palette['primaryText'],
+        outline: Color.lerp(palette['border'], palette['secondaryText'], 0.75),
         outlineVariant: palette['border'],
         error: palette['error'],
         onError: foregroundOn(palette['error']),
@@ -57,6 +66,12 @@ ThemeData buildAppTheme(
     displayColor: scheme.onSurface,
   );
   final typography = text.copyWith(
+    headlineLarge: text.headlineLarge?.copyWith(
+      fontSize: 32,
+      fontWeight: FontWeight.w700,
+      height: 1.2,
+      letterSpacing: -0.4,
+    ),
     headlineMedium: text.headlineMedium?.copyWith(
       fontSize: 28,
       fontWeight: FontWeight.w600,
@@ -109,25 +124,52 @@ ThemeData buildAppTheme(
     focusColor: scheme.primary.withValues(alpha: 0.14),
     highlightColor: scheme.onSurface.withValues(alpha: 0.06),
     splashColor: scheme.primary.withValues(alpha: 0.08),
+    platform: android ? TargetPlatform.android : null,
     materialTapTargetSize: android ? MaterialTapTargetSize.padded : null,
     iconButtonTheme: IconButtonThemeData(
       style: IconButton.styleFrom(
-        minimumSize: Size(android ? 48 : 36, android ? 48 : 36),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        minimumSize: Size(
+          android ? AppLayout.minTapTarget : 36,
+          android ? AppLayout.minTapTarget : 36,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.control),
+        ),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        minimumSize: Size(0, android ? 48 : 36),
+        minimumSize: Size(0, android ? AppLayout.minTapTarget : 36),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.control),
+        ),
       ),
     ),
     tooltipTheme: desktopTooltipTheme(scheme),
     scaffoldBackgroundColor: palette['background'],
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: accent,
+      foregroundColor: scheme.onPrimary,
+      elevation: 0,
+      focusElevation: 1,
+      hoverElevation: 1,
+      highlightElevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.dialog),
+      ),
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: surface,
+      indicatorColor: selection,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+    ),
     textTheme: typography,
     listTileTheme: ListTileThemeData(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.control),
+      ),
       titleTextStyle: typography.titleSmall?.copyWith(
         fontWeight: FontWeight.w500,
       ),
@@ -138,15 +180,19 @@ ThemeData buildAppTheme(
       titleTextStyle: typography.titleLarge,
       backgroundColor: scheme.surface,
       foregroundColor: scheme.onSurface,
+      surfaceTintColor: Colors.transparent,
+      scrolledUnderElevation: 0,
     ),
     inputDecorationTheme: InputDecorationTheme(
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadius.control),
+      ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: scheme.outlineVariant),
+        borderRadius: BorderRadius.circular(AppRadius.control),
+        borderSide: BorderSide(color: scheme.outline),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         borderSide: BorderSide(color: scheme.primary, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
@@ -164,7 +210,7 @@ ThemeData buildAppTheme(
       clipBehavior: Clip.antiAlias,
       margin: const EdgeInsets.only(bottom: 8),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.surface),
         side: BorderSide(color: scheme.outlineVariant),
       ),
     ),
@@ -172,20 +218,26 @@ ThemeData buildAppTheme(
       backgroundColor: palette['surface'],
       titleTextStyle: typography.titleLarge,
       contentTextStyle: typography.bodyMedium,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.dialog),
+      ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        minimumSize: Size(0, android ? 48 : 40),
+        minimumSize: Size(0, android ? AppLayout.minTapTarget : 40),
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.control),
+        ),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        minimumSize: Size(0, android ? 48 : 40),
+        minimumSize: Size(0, android ? AppLayout.minTapTarget : 40),
         padding: const EdgeInsets.symmetric(horizontal: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.control),
+        ),
         side: BorderSide(color: scheme.outlineVariant),
       ),
     ),

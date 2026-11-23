@@ -1,4 +1,6 @@
 import '../shared/app_motion.dart';
+import '../shared/app_section_heading.dart';
+import '../shared/app_spacing.dart';
 import '../shared/scroll_edge_fade.dart';
 
 import 'dart:convert';
@@ -46,6 +48,7 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
   }
 
   bool dark = false;
+  bool saving = false;
   late ThemeCustomization draft;
   String? message;
 
@@ -95,7 +98,11 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
 
   Future<void> savePreset() async {
     final name = await askText('Save as preset');
-    if (name == null || name.isEmpty) return;
+    if (!mounted || name == null || name.isEmpty) return;
+    if (draft.presets.length >= 30) {
+      setState(() => message = 'You can save up to 30 palettes.');
+      return;
+    }
     if (draft.presets.containsKey(name)) {
       setState(() => message = 'A preset with that name already exists.');
       return;
@@ -188,7 +195,17 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final contrast = palette.contrast('primaryText', 'surface');
+    final lowContrast = [
+      for (final foreground in [
+        'primaryText',
+        'secondaryText',
+        'accent',
+        'error',
+      ])
+        for (final background in ['surface', 'background'])
+          if (palette.contrast(foreground, background) < 4.5)
+            '${_label(foreground)} on ${_label(background).toLowerCase()}',
+    ];
     return SettingsHistoryScope(
       undo: () => travel(false),
       redo: () => travel(true),
@@ -239,6 +256,44 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
                 child: FadingListView(
                   padding: const EdgeInsets.only(top: 8, right: 8, bottom: 16),
                   children: [
+                    const AppSectionHeading('Palettes'),
+                    Wrap(
+                      spacing: AppSpacing.gap,
+                      children: [
+                        TextButton(
+                          onPressed: () => update(defaults),
+                          child: const Text('Use Todorbit'),
+                        ),
+                        TextButton(
+                          onPressed: () => update(
+                            dark ? ThemePalette.dusk : ThemePalette.ocean,
+                          ),
+                          child: Text(dark ? 'Use Dusk' : 'Use Ocean'),
+                        ),
+                        TextButton(
+                          onPressed: () => setState(() {
+                            draft = draft.copyWith(
+                              light: ThemePalette.light,
+                              dark: ThemePalette.dark,
+                            );
+                            message = null;
+                          }),
+                          child: const Text('Reset both palettes'),
+                        ),
+                      ],
+                    ),
+                    if (lowContrast.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(AppSpacing.gap),
+                        child: Text(
+                          'Below 4.5:1 contrast: ${lowContrast.join(', ')}.',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                        ),
+                      ),
+                    const AppSectionHeading('Colors'),
                     for (final key in ThemePalette.keys)
                       ListTile(
                         dense: true,
@@ -253,48 +308,19 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
                     const Divider(),
                     ListTile(
                       title: const Text('Preview task'),
-                      subtitle: const Text(
-                        'Your colors update here before saving.',
+                      subtitle: Text(
+                        'Planned today',
+                        style: TextStyle(color: palette['secondaryText']),
                       ),
                       tileColor: palette['surface'],
                       textColor: palette['primaryText'],
                       iconColor: palette['accent'],
                       leading: const Icon(Icons.check_circle_outline),
                     ),
-                    if (contrast < 4.5)
-                      Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Text(
-                          'Contrast warning: primary text on surface is ${contrast.toStringAsFixed(1)}:1; aim for at least 4.5:1.',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                      ),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        TextButton(
-                          onPressed: () => update(
-                            dark ? ThemePalette.dusk : ThemePalette.ocean,
-                          ),
-                          child: Text(dark ? 'Try Dusk' : 'Try Ocean'),
-                        ),
-                        TextButton(
-                          onPressed: () => update(defaults),
-                          child: const Text('Reset this mode'),
-                        ),
-                        TextButton(
-                          onPressed: () => setState(
-                            () => draft = const ThemeCustomization(),
-                          ),
-                          child: const Text('Reset all themes'),
-                        ),
-                        TextButton(
-                          onPressed: savePreset,
-                          child: const Text('Save as preset'),
-                        ),
-                      ],
+                    const AppSectionHeading('Saved palettes'),
+                    TextButton(
+                      onPressed: savePreset,
+                      child: const Text('Save as preset'),
                     ),
                     for (final entry in draft.presets.entries)
                       ListTile(
@@ -302,6 +328,14 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
                         onTap: () => update(entry.value),
                         trailing: PopupMenuButton<String>(
                           onSelected: (action) async {
+                            if (action == 'duplicate' &&
+                                draft.presets.length >= 30) {
+                              setState(
+                                () =>
+                                    message = 'You can save up to 30 palettes.',
+                              );
+                              return;
+                            }
                             if (action == 'delete') {
                               setState(() {
                                 final next = {...draft.presets}
@@ -318,9 +352,17 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
                                     ? entry.key
                                     : '${entry.key} copy',
                               );
-                              if (name == null ||
-                                  name.isEmpty ||
-                                  draft.presets.containsKey(name)) {
+                              if (!mounted || name == null || name.isEmpty) {
+                                return;
+                              }
+                              if (name == entry.key && action == 'rename') {
+                                return;
+                              }
+                              if (draft.presets.containsKey(name)) {
+                                setState(
+                                  () => message =
+                                      'A preset with that name already exists.',
+                                );
                                 return;
                               }
                               setState(() {
@@ -360,11 +402,7 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
                         ),
                       ],
                     ),
-                    if (message != null)
-                      Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Text(message!),
-                      ),
+
                     if (draft.author != null)
                       ListTile(
                         dense: true,
@@ -529,6 +567,8 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
           ),
         ),
         actions: [
+          if (message != null)
+            Semantics(liveRegion: true, child: Text(message!)),
           IconButton(
             tooltip: 'Undo setting (Ctrl+Z)',
             onPressed: history.canUndo ? () => travel(false) : null,
@@ -540,19 +580,28 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
             icon: const Icon(Icons.redo),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: saving ? null : () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () async {
-              try {
-                await ref.read(appControllerProvider).saveCustomization(draft);
-                if (context.mounted) Navigator.pop(context);
-              } catch (error) {
-                setState(() => message = 'Could not save theme: $error');
-              }
-            },
-            child: const Text('Save changes'),
+            onPressed: saving
+                ? null
+                : () async {
+                    setState(() => saving = true);
+                    try {
+                      await ref
+                          .read(appControllerProvider)
+                          .saveCustomization(draft);
+                      if (context.mounted) Navigator.pop(context);
+                    } catch (error) {
+                      if (!mounted) return;
+                      setState(() {
+                        saving = false;
+                        message = 'Could not save theme: $error';
+                      });
+                    }
+                  },
+            child: Text(saving ? 'Saving…' : 'Save changes'),
           ),
         ],
       ),

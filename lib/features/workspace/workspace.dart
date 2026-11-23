@@ -38,6 +38,7 @@ import '../goals/goals_view.dart';
 import '../reports/reports_view.dart';
 import '../shared/about_view_button.dart';
 import '../shared/app_modal_shell.dart';
+import '../shared/app_section_heading.dart';
 import '../shared/app_spacing.dart';
 import '../shared/app_task_row.dart';
 import '../shared/sync_status_button.dart';
@@ -54,8 +55,10 @@ import '../settings/sync_conflicts_dialog.dart';
 import '../settings/sync_settings_page.dart';
 import '../scheduling/smart_reschedule.dart';
 import '../shared/icon_picker.dart';
+import '../shared/panel_resize_handle.dart';
 import '../shared/event_color_picker.dart';
 import '../shared/sidebar_items.dart';
+import '../shared/today_event_row.dart';
 import '../widget/native_widget_service.dart';
 import 'task_editor.dart';
 import 'sequence_dialog.dart';
@@ -268,6 +271,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
   bool creating = false;
   bool changingEditor = false;
   int editorRevision = 0;
+  double? _resizedPanelWidth;
   final editorNavigation = TaskEditorController();
   String? _focusWorkspaceTaskId;
   bool _viewingTaskDetails = false;
@@ -927,7 +931,21 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 ),
           body: LayoutBuilder(
             builder: (context, constraints) {
-              final wide = constraints.maxWidth >= 1050;
+              final width = constraints.maxWidth;
+              final sidebarWidth = width < AppLayout.breakpointSidebar
+                  ? 190.0
+                  : controller.customization.sidebarWidth.toDouble();
+              final maxPanelWidth = math.min(
+                AppLayout.panelMaxWidth,
+                width -
+                    sidebarWidth -
+                    AppLayout.workspaceMinWidth -
+                    AppLayout.panelResizeHandle -
+                    1,
+              );
+              final wide =
+                  width >= AppLayout.breakpointMedium &&
+                  maxPanelWidth >= AppLayout.panelMinWidth;
               final useFullPage = controller.isFullPageDetails;
               final hasTaskSelected =
                   (controller.selectedTask != null || creating) &&
@@ -939,19 +957,54 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   (hasTaskSelected || hasEventSelected) &&
                   _focusWorkspaceTaskId == null;
               final inlineEditor = editor;
-              final sidebarWidth = constraints.maxWidth < 760
-                  ? 190.0
-                  : controller.customization.sidebarWidth.toDouble();
+              final showSidebar =
+                  !inlineEditor || width >= AppLayout.breakpointCompact;
+              final canResize = wide && hasTaskSelected && !hasEventSelected;
+              final preferredPanelWidth =
+                  _resizedPanelWidth ??
+                  controller.taskPanelWidth?.toDouble() ??
+                  (width >= AppLayout.breakpointWide
+                      ? AppLayout.panelWideWidth
+                      : AppLayout.panelDefaultWidth);
+              final panelWidth = wide
+                  ? preferredPanelWidth
+                        .clamp(AppLayout.panelMinWidth, maxPanelWidth)
+                        .toDouble()
+                  : width - (showSidebar ? sidebarWidth + 1 : 0);
+              void resize(double delta) {
+                final current =
+                    _resizedPanelWidth?.clamp(
+                      AppLayout.panelMinWidth,
+                      maxPanelWidth,
+                    ) ??
+                    panelWidth;
+                final next = (current + delta)
+                    .clamp(AppLayout.panelMinWidth, maxPanelWidth)
+                    .toDouble();
+                if (next == current) return;
+                setState(() => _resizedPanelWidth = next);
+              }
+
+              void commitPanelWidth() {
+                final resized = _resizedPanelWidth?.round();
+                if (resized == null || resized == controller.taskPanelWidth) {
+                  return;
+                }
+                unawaited(_run(() => controller.setTaskPanelWidth(resized)));
+              }
+
               return Row(
                 children: [
-                  SizedBox(
-                    width: sidebarWidth,
-                    child: _sidebar(controller, wide: wide),
-                  ),
-                  VerticalDivider(
-                    width: 1,
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                  ),
+                  if (showSidebar) ...[
+                    SizedBox(
+                      width: sidebarWidth,
+                      child: _sidebar(controller, wide: wide),
+                    ),
+                    VerticalDivider(
+                      width: 1,
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                  ],
                   if (wide || !inlineEditor)
                     Expanded(
                       child: Column(
@@ -1014,47 +1067,54 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                       ),
                     ),
                   if (inlineEditor) ...[
-                    VerticalDivider(
-                      width: 1,
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
+                    if (canResize)
+                      PanelResizeHandle(
+                        width: panelWidth,
+                        maxWidth: maxPanelWidth,
+                        onDrag: resize,
+                        onCommit: commitPanelWidth,
+                        onAdjust: (delta) {
+                          resize(delta);
+                          commitPanelWidth();
+                        },
+                      )
+                    else if (wide)
+                      const VerticalDivider(width: 1),
                     SizedBox(
                       key: const ValueKey('desktop-task-editor-panel'),
-                      width: wide
-                          ? constraints.maxWidth >= AppLayout.breakpointWide
-                                ? AppLayout.panelWideWidth
-                                : AppLayout.panelDefaultWidth
-                          : math.max(
-                              0,
-                              constraints.maxWidth - sidebarWidth - 2,
-                            ),
-                      child: _selectedEvent != null
-                          ? EventEditor(
-                              key: ValueKey((
-                                _selectedEvent!.id,
-                                _selectedEvent!.nominalDate ?? '',
-                                editorRevision,
-                              )),
-                              event: _selectedEvent!,
-                              initialDay: _selectedEvent!.startsAt.toLocal(),
-                              protectUnsavedEdits: true,
-                              navigationController: editorNavigation,
-                              onClose: _closeEditor,
-                            )
-                          : TaskEditor(
-                              protectUnsavedEdits: true,
-                              key: ValueKey((
-                                creating ? 'new' : controller.selectedTask!.id,
-                                editorRevision,
-                              )),
-                              navigationController: editorNavigation,
-                              task: creating ? null : controller.selectedTask,
-                              initialScheduled: creating
-                                  ? newTaskInitialDate
-                                  : null,
-                              onSaved: _closeEditor,
-                              onCancel: _closeEditor,
-                            ),
+                      width: wide && !canResize ? panelWidth - 1 : panelWidth,
+                      child: Material(
+                        color: Theme.of(context).colorScheme.surface,
+                        child: _selectedEvent != null
+                            ? EventEditor(
+                                key: ValueKey((
+                                  _selectedEvent!.id,
+                                  _selectedEvent!.nominalDate ?? '',
+                                  editorRevision,
+                                )),
+                                event: _selectedEvent!,
+                                initialDay: _selectedEvent!.startsAt.toLocal(),
+                                protectUnsavedEdits: true,
+                                navigationController: editorNavigation,
+                                onClose: _closeEditor,
+                              )
+                            : TaskEditor(
+                                protectUnsavedEdits: true,
+                                key: ValueKey((
+                                  creating
+                                      ? 'new'
+                                      : controller.selectedTask!.id,
+                                  editorRevision,
+                                )),
+                                navigationController: editorNavigation,
+                                task: creating ? null : controller.selectedTask,
+                                initialScheduled: creating
+                                    ? newTaskInitialDate
+                                    : null,
+                                onSaved: _closeEditor,
+                                onCancel: _closeEditor,
+                              ),
+                      ),
                     ),
                   ],
                 ],
@@ -1218,10 +1278,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
               children: [
                 const BrandMark(),
                 const SizedBox(width: 10),
-                const Expanded(
-                  child: Text(
-                    'Todorbit',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+                Expanded(
+                  child: FittedBox(
+                    alignment: AlignmentDirectional.centerStart,
+                    fit: BoxFit.scaleDown,
+                    child: Text('Todorbit', style: theme.textTheme.titleSmall),
                   ),
                 ),
                 SupportButton(
@@ -1247,7 +1308,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
             child: Container(
-              height: 38,
+              constraints: const BoxConstraints(minHeight: 38),
               decoration: BoxDecoration(
                 color: scheme.surfaceContainer,
                 borderRadius: BorderRadius.circular(8),
@@ -1292,6 +1353,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                           color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
                         ),
                         border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(vertical: 9),
                       ),
                       onChanged: (_) => setState(() {}),
@@ -1851,23 +1914,29 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     Widget? trailing,
   }) {
     final active = controller.view == view && controller.scopeId == id;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Material(
-        color: active
-            ? Theme.of(context).colorScheme.secondaryContainer
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(9),
-        child: ListTile(
-          dense: true,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
-          leading: Icon(icon, size: 19),
-          title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-          trailing: trailing,
-          selected: active,
-          onTap: () => _navigate(view, id: id),
-        ),
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return ListTile(
+      dense: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.control),
       ),
+      selectedTileColor: scheme.primaryContainer,
+      selectedColor: scheme.onPrimaryContainer,
+      leading: Icon(icon, size: 19),
+      title: Text(
+        title,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: active
+            ? theme.textTheme.titleSmall?.copyWith(
+                color: scheme.onPrimaryContainer,
+              )
+            : null,
+      ),
+      trailing: trailing,
+      selected: active,
+      onTap: () => _navigate(view, id: id),
     );
   }
 
@@ -1969,35 +2038,34 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         }.contains(controller.view)
         ? controller.filteredEvents.where((event) => !event.cancelled).toList()
         : <FixedEvent>[];
-    final today = localDate(DateTime.now());
-    final todayStart = DateTime.now();
-    final dayStart = DateTime(
-      todayStart.year,
-      todayStart.month,
-      todayStart.day,
-    );
-    final dayEnd = dayStart.add(const Duration(days: 1));
-    final todayEvents = controller.filteredEvents.where((event) {
-      final start = event.startsAt.toLocal();
-      final end = event.endsAt.toLocal();
-      return !event.cancelled &&
-          start.isBefore(dayEnd) &&
-          end.isAfter(dayStart);
-    }).length;
-    final todaySessions = controller.sessions.where((session) {
-      final start = session.startsAt.toLocal();
-      return start.isBefore(dayEnd) &&
-          session.endsAt.toLocal().isAfter(dayStart) &&
-          session.outcome != SessionOutcome.skipped;
-    }).length;
-    final overdueCount = controller.tasks
-        .where(
-          (t) =>
-              t.isOpen &&
-              t.deadlineDate != null &&
-              t.deadlineDate!.compareTo(today) < 0,
-        )
-        .length;
+    final isToday = controller.view == WorkspaceView.today;
+    final now = DateTime.now();
+    final today = localDate(now);
+    final dayStart = DateUtils.dateOnly(now);
+    final dayEnd = DateTime(now.year, now.month, now.day + 1);
+    final todayEvents = isToday
+        ? controller.agendaForDay(now)
+        : const <FixedEvent>[];
+    final todaySessions = isToday
+        ? controller.filteredSessions
+              .where(
+                (session) =>
+                    session.startsAt.toLocal().isBefore(dayEnd) &&
+                    session.endsAt.toLocal().isAfter(dayStart) &&
+                    session.outcome != SessionOutcome.skipped,
+              )
+              .length
+        : 0;
+    final overdueCount = isToday
+        ? controller.tasks
+              .where(
+                (task) =>
+                    task.isOpen &&
+                    task.deadlineDate != null &&
+                    task.deadlineDate!.compareTo(today) < 0,
+              )
+              .length
+        : 0;
     final title = switch (controller.view) {
       WorkspaceView.today => 'Today',
       WorkspaceView.anytime => 'Anytime',
@@ -2031,7 +2099,10 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 ?.name ??
             'Project',
     };
-    return ScrollEdgeFade(
+    final canvas = Theme.of(context).scaffoldBackgroundColor;
+    final content = ScrollEdgeFade(
+      topFadeColor: canvas,
+      bottomFadeColor: canvas,
       child: CustomScrollView(
         key: PageStorageKey(
           'task-list:${controller.view.name}:${controller.scopeId}',
@@ -2042,120 +2113,107 @@ class _WorkspaceState extends ConsumerState<Workspace> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(28, 26, 24, 16),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) => Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      runSpacing: 6,
-                      children: [
-                        SizedBox(
-                          width: constraints.maxWidth < 700
-                              ? constraints.maxWidth
-                              : math.max(180, constraints.maxWidth - 430),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                title,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headlineMedium
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                '${items.length} ${items.length == 1 ? 'task' : 'tasks'}',
-                                style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        AboutViewButton(
-                          description: _viewDescription(controller.view),
-                        ),
-                        PopupMenuButton<TaskSort>(
-                          tooltip: 'Sort tasks',
-                          onSelected: controller.setSort,
-                          itemBuilder: (_) => const [
-                            PopupMenuItem(
-                              value: TaskSort.schedule,
-                              child: Text('Scheduled date'),
-                            ),
-                            PopupMenuItem(
-                              value: TaskSort.priority,
-                              child: Text('Priority'),
-                            ),
-                            PopupMenuItem(
-                              value: TaskSort.title,
-                              child: Text('Title'),
-                            ),
-                            PopupMenuItem(
-                              value: TaskSort.created,
-                              child: Text('Newest first'),
-                            ),
-                          ],
-                          icon: const Icon(Icons.sort),
-                        ),
-                        IconButton(
-                          key: const ValueKey('schedule-history-button'),
-                          tooltip: 'Schedule History',
-                          onPressed: _showHistory,
-                          style: ButtonStyle(
-                            foregroundColor: WidgetStateProperty.resolveWith((
-                              states,
-                            ) {
-                              if (states.contains(WidgetState.disabled)) {
-                                return Theme.of(context).colorScheme.onSurface
-                                    .withValues(alpha: 0.38);
-                              }
-                              return Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant;
-                            }),
-                            overlayColor: WidgetStateProperty.resolveWith((
-                              states,
-                            ) {
-                              if (states.contains(WidgetState.hovered)) {
-                                return Theme.of(context).colorScheme.onSurface
-                                    .withValues(alpha: 0.08);
-                              }
-                              if (states.contains(WidgetState.focused) ||
-                                  states.contains(WidgetState.pressed)) {
-                                return Theme.of(context).colorScheme.onSurface
-                                    .withValues(alpha: 0.12);
-                              }
-                              return null;
-                            }),
-                          ),
-                          icon: const Icon(
-                            Icons.restore_rounded,
-                            semanticLabel: 'Schedule History',
-                          ),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: items.any((task) => task.isOpen)
-                              ? () => _showSmart()
-                              : null,
-                          icon: const Icon(Icons.auto_fix_high),
-                          label: const Text('Reschedule'),
-                        ),
-                        const SizedBox(width: 8),
-                        FilledButton.icon(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppLayout.pageInsetH,
+                    AppSpacing.section,
+                    AppLayout.pageInsetH,
+                    AppSpacing.content,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AppPageHeading(
+                        title: title,
+                        detail: isToday
+                            ? MaterialLocalizations.of(context)
+                                  .formatFullDate(now)
+                            : '${items.length} ${items.length == 1 ? 'task' : 'tasks'}',
+                        action: FilledButton.icon(
                           onPressed: _newTask,
                           icon: const Icon(Icons.add),
                           label: const Text('New task'),
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: AppSpacing.content),
+                      Wrap(
+                        spacing: AppSpacing.small,
+                        runSpacing: AppSpacing.gap,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          const ItemFilters(),
+                          AboutViewButton(
+                            description: _viewDescription(controller.view),
+                          ),
+                          PopupMenuButton<TaskSort>(
+                            tooltip: 'Sort tasks',
+                            onSelected: controller.setSort,
+                            itemBuilder: (_) => const [
+                              PopupMenuItem(
+                                value: TaskSort.schedule,
+                                child: Text('Scheduled date'),
+                              ),
+                              PopupMenuItem(
+                                value: TaskSort.priority,
+                                child: Text('Priority'),
+                              ),
+                              PopupMenuItem(
+                                value: TaskSort.title,
+                                child: Text('Title'),
+                              ),
+                              PopupMenuItem(
+                                value: TaskSort.created,
+                                child: Text('Newest first'),
+                              ),
+                            ],
+                            icon: const Icon(Icons.sort),
+                          ),
+                          IconButton(
+                            key: const ValueKey('schedule-history-button'),
+                            tooltip: 'Schedule History',
+                            onPressed: _showHistory,
+                            style: ButtonStyle(
+                              foregroundColor: WidgetStateProperty.resolveWith((
+                                states,
+                              ) {
+                                if (states.contains(WidgetState.disabled)) {
+                                  return Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.38);
+                                }
+                                return Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant;
+                              }),
+                              overlayColor: WidgetStateProperty.resolveWith((
+                                states,
+                              ) {
+                                if (states.contains(WidgetState.hovered)) {
+                                  return Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.08);
+                                }
+                                if (states.contains(WidgetState.focused) ||
+                                    states.contains(WidgetState.pressed)) {
+                                  return Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.12);
+                                }
+                                return null;
+                              }),
+                            ),
+                            icon: const Icon(
+                              Icons.restore_rounded,
+                              semanticLabel: 'Schedule History',
+                            ),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: items.any((task) => task.isOpen)
+                                ? () => _showSmart()
+                                : null,
+                            icon: const Icon(Icons.auto_fix_high),
+                            label: const Text('Reschedule'),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
-                  child: ItemFilters(),
                 ),
                 if (controller.hiddenStandardTasksCount > 0)
                   Padding(
@@ -2182,9 +2240,11 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                                 .onSurfaceVariant,
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            '${controller.hiddenStandardTasksCount} task${controller.hiddenStandardTasksCount == 1 ? '' : 's'} hidden by category or project settings',
-                            style: Theme.of(context).textTheme.bodySmall,
+                          Expanded(
+                            child: Text(
+                              '${controller.hiddenStandardTasksCount} task${controller.hiddenStandardTasksCount == 1 ? '' : 's'} hidden by category or project settings',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                           ),
                         ],
                       ),
@@ -2209,20 +2269,15 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                       spacing: 10,
                       runSpacing: 8,
                       children: [
-                        Chip(
-                          avatar: const Icon(Icons.today, size: 17),
-                          label: Text('$today · ${items.length} planned tasks'),
-                        ),
-                        ActionChip(
-                          avatar: const Icon(Icons.event_outlined, size: 17),
-                          label: Text('$todayEvents events'),
-                          onPressed: () => _navigate(WorkspaceView.calendar),
-                        ),
-                        ActionChip(
-                          avatar: const Icon(Icons.schedule_outlined, size: 17),
-                          label: Text('$todaySessions work sessions'),
-                          onPressed: () => _navigate(WorkspaceView.calendar),
-                        ),
+                        if (todaySessions > 0)
+                          ActionChip(
+                            avatar: const Icon(
+                              Icons.schedule_outlined,
+                              size: 17,
+                            ),
+                            label: Text('$todaySessions work sessions'),
+                            onPressed: () => _navigate(WorkspaceView.calendar),
+                          ),
                         if (overdueCount > 0)
                           ActionChip(
                             avatar: const Icon(
@@ -2255,7 +2310,63 @@ class _WorkspaceState extends ConsumerState<Workspace> {
               ],
             ),
           ),
-          if (items.isEmpty && scopedEvents.isEmpty)
+          if (todayEvents.isNotEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppLayout.pageInsetH,
+              ),
+              sliver: SliverList.builder(
+                itemCount: todayEvents.length + 1,
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return const AppSectionHeading('On your calendar');
+                  }
+                  final event = todayEvents[index - 1];
+                  return TodayEventRow(
+                    event: event,
+                    hasAlarm:
+                        eventAlarmRule(
+                          event,
+                          controller.alarmRules,
+                        )?.config.enabled ==
+                        true,
+                    onOpen: () => _openEventDetails(event),
+                  );
+                },
+              ),
+            ),
+          if (isToday && items.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppLayout.pageInsetH,
+                  AppSpacing.related,
+                  AppLayout.pageInsetH,
+                  0,
+                ),
+                child: AppSectionHeading(
+                  'Planned tasks',
+                  detail: '${items.length}',
+                ),
+              ),
+            ),
+          if (isToday && items.isEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppLayout.pageInsetH,
+                ),
+                child: AppEmptyState(
+                  title: controller.activeFilter.isActive
+                      ? 'No matching tasks'
+                      : 'No tasks planned for today',
+                  message: controller.activeFilter.isActive
+                      ? 'Change or clear the current filters.'
+                      : null,
+                ),
+              ),
+            )
+          else if (items.isEmpty && scopedEvents.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
               child: Center(
@@ -2271,8 +2382,6 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     Text(
                       controller.activeFilter.isActive
                           ? 'No matching items'
-                          : controller.view == WorkspaceView.today
-                          ? 'No tasks planned for today'
                           : 'Nothing here yet',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
@@ -2280,8 +2389,6 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     Text(
                       controller.activeFilter.isActive
                           ? 'Change filters or clear them to see more items.'
-                          : controller.view == WorkspaceView.today
-                          ? 'Add a task or review today’s calendar.'
                           : 'Create a task or choose another view.',
                     ),
                   ],
@@ -2290,7 +2397,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
             )
           else
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+              padding: const EdgeInsets.fromLTRB(
+                AppLayout.pageInsetH,
+                0,
+                AppLayout.pageInsetH,
+                AppSpacing.section,
+              ),
               sliver: SliverList.builder(
                 itemCount: roots.length + scopedEvents.length,
                 itemBuilder: (context, index) {
@@ -2326,6 +2438,17 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         ],
       ),
     );
+    return isToday
+        ? Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: AppLayout.workspaceMaxWidth,
+              ),
+              child: content,
+            ),
+          )
+        : content;
   }
 
   Widget _taskRow(AppController controller, LifeTask task, bool wide) {
@@ -2338,15 +2461,18 @@ class _WorkspaceState extends ConsumerState<Workspace> {
         ? timer.state
         : null;
     final unmetPrerequisites = controller.unmetPrerequisites(task.id);
-    final hasAlarm = task.isOpen &&
+    final hasAlarm =
+        task.isOpen &&
         taskAlarmRule(task, controller.alarmRules)?.config.enabled == true;
 
     final subtasks = childCount > 0
         ? TaskProgress(
             completed: controller.tasks
-                .where((child) =>
-                    controller.taskParents[child.id] == task.id &&
-                    child.status == TaskStatus.completed)
+                .where(
+                  (child) =>
+                      controller.taskParents[child.id] == task.id &&
+                      child.status == TaskStatus.completed,
+                )
                 .length,
             total: childCount,
           )

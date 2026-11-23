@@ -61,6 +61,37 @@ void main() {
     );
   });
 
+  test(
+    'task panel width is device-local and keeps existing appearance',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'todorbit-panel-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File('${directory.path}/appearance.json');
+      final store = AppearancePreferenceStore(file);
+      expect(await store.loadTaskPanelWidth(), isNull);
+      await Future.wait([
+        store.save(ThemeModePreference.dark),
+        store.saveCustomization(const ThemeCustomization(sidebarWidth: 260)),
+        store.saveTaskPanelWidth(470),
+      ]);
+
+      final reopened = AppearancePreferenceStore(file);
+      expect(await reopened.loadTaskPanelWidth(), 470);
+      expect(await reopened.load(), ThemeModePreference.dark);
+      expect((await reopened.loadCustomization()).sidebarWidth, 260);
+      final json =
+          jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+      expect(json['customization'], isNot(contains('taskPanelWidth')));
+      await file.writeAsString(jsonEncode({...json, 'taskPanelWidth': -1}));
+      expect(
+        await AppearancePreferenceStore(file).loadTaskPanelWidth(),
+        isNull,
+      );
+    },
+  );
+
   test('contrast calculation warns for low contrast', () {
     final bad = ThemePalette.light.withColor(
       'primaryText',

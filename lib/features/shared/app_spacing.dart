@@ -23,19 +23,29 @@ abstract final class AppSpacing {
 abstract final class AppLayout {
   // Breakpoints
   static const double breakpointCompact = 600;
+  static const double breakpointSidebar = 760;
   static const double breakpointMedium = 1050;
   static const double breakpointWide = 1200;
 
   // Page and container insets
   static const double pageInsetH = 20;
   static const double pageInsetV = 16;
-  static const EdgeInsets pageInsets = EdgeInsets.fromLTRB(20, 16, 20, 12);
+  static const EdgeInsets pageInsets = EdgeInsets.fromLTRB(
+    pageInsetH,
+    pageInsetV,
+    pageInsetH,
+    AppSpacing.related,
+  );
 
   // Side panel dimensions
   static const double panelMinWidth = 320;
   static const double panelDefaultWidth = 370;
   static const double panelWideWidth = 440;
   static const double panelMaxWidth = 560;
+  static const double panelResizeHandle = 16;
+  static const double workspaceMinWidth = 420;
+  static const double workspaceMaxWidth = 960;
+  static const double editorFieldMinWidth = 190;
 
   // Dialog dimensions
   static const double dialogMinWidth = 320;
@@ -46,4 +56,11 @@ abstract final class AppLayout {
 
   // Minimum accessible tap / click target size
   static const double minTapTarget = 48;
+}
+
+/// Shared corner radii for controls and contained surfaces.
+abstract final class AppRadius {
+  static const double control = 8;
+  static const double surface = 10;
+  static const double dialog = 14;
 }

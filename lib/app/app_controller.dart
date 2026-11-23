@@ -339,6 +339,7 @@ class AppController extends ChangeNotifier {
   String? selectedTaskId;
   ThemeModePreference theme = ThemeModePreference.system;
   ThemeCustomization customization = const ThemeCustomization();
+  int? taskPanelWidth;
   TaskViewPreferences taskViewPreferences = const TaskViewPreferences();
   bool get isFullPageDetails => taskViewPreferences.isFullPageDetails;
   HotkeyPreferences hotkeys = HotkeyPreferences();
@@ -600,6 +601,7 @@ class AppController extends ChangeNotifier {
     if (appearanceStore != null) {
       theme = await appearanceStore!.load();
       customization = await appearanceStore!.loadCustomization();
+      taskPanelWidth = await appearanceStore!.loadTaskPanelWidth();
       final navigation = await appearanceStore!.loadNavigationState();
       hiddenNavigation = (navigation['hidden'] as List? ?? [])
           .cast<String>()
@@ -868,6 +870,11 @@ class AppController extends ChangeNotifier {
     onLocalChange?.call();
   }
 
+  Future<void> setTaskPanelWidth(int width) async {
+    await appearanceStore?.saveTaskPanelWidth(width);
+    taskPanelWidth = width;
+  }
+
   Future<void> setTheme(ThemeModePreference value) async {
     final previous = theme;
     theme = value;
@@ -925,6 +932,21 @@ class AppController extends ChangeNotifier {
                   )),
         )
         .toList();
+  }
+
+  /// Projects the filtered event window onto one local calendar day.
+  List<FixedEvent> agendaForDay(DateTime day) {
+    final start = DateTime(day.year, day.month, day.day);
+    final end = DateTime(day.year, day.month, day.day + 1);
+    return filteredEvents
+        .where(
+          (event) =>
+              !event.cancelled &&
+              event.startsAt.toLocal().isBefore(end) &&
+              event.endsAt.toLocal().isAfter(start),
+        )
+        .toList()
+      ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
   }
 
   List<WorkSession> get filteredSessions {

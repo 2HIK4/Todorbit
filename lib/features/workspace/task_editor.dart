@@ -34,6 +34,7 @@ import '../shared/checklist_entry.dart';
 import '../shared/inline_spelling_controller.dart';
 import '../../domain/recurrence.dart';
 import '../scheduling/session_editor.dart';
+import '../shared/app_section_heading.dart';
 import '../shared/app_spacing.dart';
 import '../shared/unsaved_editor_guard.dart';
 import '../time_tracking/time_tracking_dialog.dart';
@@ -1326,9 +1327,12 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        widget.task == null ? 'New task' : 'Task details',
-                        style: Theme.of(context).textTheme.titleLarge,
+                      child: Semantics(
+                        header: true,
+                        child: Text(
+                          widget.task == null ? 'New task' : 'Task details',
+                          style: theme.textTheme.titleLarge,
+                        ),
                       ),
                     ),
                     IconButton(
@@ -1342,11 +1346,11 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                     ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.related),
+                const Divider(height: AppSpacing.related),
                 Expanded(
                   child: Scrollbar(
                     controller: editorScroll,
-                    thumbVisibility: true,
+                    thumbVisibility: theme.platform != TargetPlatform.android,
                     child: FadingListView(
                       key: ValueKey(
                         'task-editor:${widget.task?.id ?? widget.parentTaskId ?? 'new'}',
@@ -1407,6 +1411,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                         ),
                         const SizedBox(height: AppSpacing.related),
                         SettingsSection(
+                          divider: true,
                           title: 'Notes',
                           initiallyExpanded: notes.text.isNotEmpty,
                           children: [
@@ -1421,12 +1426,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Schedule',
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                        const SizedBox(height: 8),
+                        const AppSectionHeading('Schedule'),
                         LayoutBuilder(
                           builder: (context, constraints) {
                             final planned = _dateRow(
@@ -1441,7 +1441,12 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                               () => _pickDate(true),
                               () => setState(() => deadline = null),
                             );
-                            if (constraints.maxWidth < 380) {
+                            final fieldWidth =
+                                AppLayout.editorFieldMinWidth *
+                                MediaQuery.textScalerOf(context).scale(14) /
+                                14;
+                            if (constraints.maxWidth <
+                                fieldWidth * 2 + AppSpacing.related) {
                               return Column(children: [planned, due]);
                             }
                             return Row(
@@ -1456,6 +1461,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                         ),
                         const SizedBox(height: 16),
                         SettingsSection(
+                          divider: true,
                           title: 'Organization',
                           initiallyExpanded:
                               categoryId != null || projectId != null,
@@ -1691,6 +1697,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                         ] else if (widget.task!.recurrenceSeriesId != null) ...[
                           const SizedBox(height: 12),
                           SettingsSection(
+                            divider: true,
                             title: 'Recurring occurrence',
                             description:
                                 '${widget.task!.nominalDate} • Edits affect this occurrence',
@@ -1785,6 +1792,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                         const SizedBox(height: AppSpacing.related),
                         if (currentTask case final task?) ...[
                           SettingsSection(
+                            divider: true,
                             title: 'Resources',
                             description: 'Attached files and links are updated directly.',
                             children: [
@@ -1818,6 +1826,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                           ),
                           const SizedBox(height: 16),
                           SettingsSection(
+                            divider: true,
                             title: 'Checklist and subtasks',
                             description:
                                 'Subtasks and checklist steps update directly.',
@@ -1838,6 +1847,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                         ],
                         if (currentTask == null)
                           SettingsSection(
+                            divider: true,
                             title: 'Checklist and subtasks',
                             children: [
                               if (recurrenceKind != null)
@@ -1856,6 +1866,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                           ),
                         if (currentTask == null)
                           SettingsSection(
+                            divider: true,
                             title: 'Resources',
                             children: [
                               UnifiedResourcesSection.draft(
@@ -1997,6 +2008,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                           ),
                         ),
                         SettingsSection(
+                          divider: true,
                           initiallyExpanded:
                               status != TaskStatus.notStarted || priority != 0,
                           title: 'Status and priority',
@@ -2043,6 +2055,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                           ],
                         ),
                         SettingsSection(
+                          divider: true,
                           initiallyExpanded:
                               plannedDuration.text.isNotEmpty ||
                               remainingWork.text.isNotEmpty ||
@@ -2117,6 +2130,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                           ),
                           const SizedBox(height: 8),
                           SettingsSection(
+                            divider: true,
                             title: 'Prerequisites',
                             description: controller
                                     .unmetPrerequisites(widget.task!.id)
@@ -2203,7 +2217,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const Divider(height: AppSpacing.related),
                 Tooltip(
                   message: widget.task == null
                       ? 'Create task (Ctrl+S, Ctrl+Enter)'

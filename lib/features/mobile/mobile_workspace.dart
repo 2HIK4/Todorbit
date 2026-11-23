@@ -2,6 +2,7 @@ import '../time_tracking/compact_task_timer.dart';
 import '../time_tracking/task_timer_intent.dart';
 import '../../domain/alarm_plan.dart';
 import '../shared/alarm_indicator.dart';
+import '../shared/app_section_heading.dart';
 import '../shared/app_motion.dart';
 import '../shared/app_task_row.dart';
 import '../support/support_button.dart';
@@ -35,6 +36,7 @@ import '../reports/reports_view.dart';
 import '../scheduling/smart_reschedule.dart';
 import '../search/advanced_search_dialog.dart';
 import '../shared/sidebar_items.dart';
+import '../shared/today_event_row.dart';
 import '../shared/sync_status_button.dart';
 import '../shared/text_prompt_dialog.dart';
 import '../shared/icon_picker.dart';
@@ -479,6 +481,8 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                           hintText: 'Search tasks and events',
                           hintStyle: TextStyle(fontSize: 14),
                           border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
                           isDense: true,
                           contentPadding: EdgeInsets.symmetric(vertical: 10),
                         ),
@@ -665,7 +669,9 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
   }
 
   Widget taskList(AppController c) {
-    final today = localDate(DateTime.now());
+    final isToday = c.view == WorkspaceView.today;
+    final now = DateTime.now();
+    final today = localDate(now);
     final tasks = c.visibleTasks
         .where(
           (t) =>
@@ -704,39 +710,31 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
               )
               .toList()
         : <FixedEvent>[];
-    final overdue = c.filteredTasks
-        .where(
-          (t) =>
-              t.isOpen &&
-              t.deadlineDate != null &&
-              t.deadlineDate!.compareTo(today) < 0,
-        )
-        .length;
-    final todayTasks = c.filteredTasks
-        .where((t) => t.scheduledDate == today)
-        .toList();
+    final overdue = isToday
+        ? c.filteredTasks
+              .where(
+                (task) =>
+                    task.isOpen &&
+                    task.deadlineDate != null &&
+                    task.deadlineDate!.compareTo(today) < 0,
+              )
+              .length
+        : 0;
+    final todayTasks = isToday
+        ? c.filteredTasks.where((task) => task.scheduledDate == today).toList()
+        : const <LifeTask>[];
     final done = todayTasks
-        .where((t) => t.status == TaskStatus.completed)
+        .where((task) => task.status == TaskStatus.completed)
         .length;
-    final sessions =
-        c.filteredSessions
-            .where((s) => localDate(s.startsAt.toLocal()) == today)
-            .toList()
-          ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
-    final events = c.filteredEvents
-        .where(
-          (e) =>
-              !e.cancelled &&
-              e.startsAt.toLocal().isBefore(
-                DateTime(
-                  DateTime.now().year,
-                  DateTime.now().month,
-                  DateTime.now().day + 1,
-                ),
-              ) &&
-              e.endsAt.toLocal().isAfter(DateUtils.dateOnly(DateTime.now())),
-        )
-        .toList();
+    final sessions = isToday
+        ? (c.filteredSessions
+              .where(
+                (session) => localDate(session.startsAt.toLocal()) == today,
+              )
+              .toList()
+            ..sort((a, b) => a.startsAt.compareTo(b.startsAt)))
+        : const <WorkSession>[];
+    final events = isToday ? c.agendaForDay(now) : const <FixedEvent>[];
     return RefreshIndicator(
       onRefresh: () => c.refresh(),
       child: FadingListView.builder(
@@ -748,6 +746,14 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (isToday)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                    child: Text(
+                      MaterialLocalizations.of(context).formatFullDate(now),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
                 const ItemFilters(),
                 if (c.isStandardView(c.view) && c.hiddenStandardTasksCount > 0)
                   Container(
@@ -802,47 +808,33 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ),
-                if (c.view == WorkspaceView.today) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    child: Text(
-                      '$done of ${todayTasks.length} planned tasks complete',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
+                if (isToday) ...[
                   if (overdue > 0)
                     ListTile(
                       leading: const Icon(
                         Icons.notification_important_outlined,
                       ),
                       title: Text(
-                        '$overdue overdue ${overdue == 1 ? 'task' : 'tasks'}',
+                        '$overdue overdue ${overdue == 1 ? 'deadline' : 'deadlines'}',
                       ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => navigate(WorkspaceView.overdue),
                     ),
                   if (events.isNotEmpty || sessions.isNotEmpty) ...[
-                    Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text(
-                        'On your calendar',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: AppSectionHeading('On your calendar'),
                     ),
-                    for (final e in events)
-                      ListTile(
-                        leading: const Icon(Icons.event_outlined),
-                        title: Text(e.title),
-                        subtitle: Text(
-                          e.allDay
-                              ? 'All day'
-                              : TimeOfDay.fromDateTime(e.startsAt.toLocal())
-                                    .format(context),
-                        ),
-                        onTap: () => openEvent(e),
+                    for (final event in events)
+                      TodayEventRow(
+                        event: event,
+                        hasAlarm:
+                            eventAlarmRule(
+                              event,
+                              c.alarmRules,
+                            )?.config.enabled ==
+                            true,
+                        onOpen: () => openEvent(event),
                       ),
                     for (final s in sessions)
                       ListTile(
@@ -868,6 +860,15 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                       ),
                   ],
                 ],
+                if (isToday)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: AppSectionHeading(
+                      'Tasks',
+                      detail:
+                          '$done of ${todayTasks.length} planned tasks complete',
+                    ),
+                  ),
                 if (c.view != WorkspaceView.today && tasks.isNotEmpty)
                   MobileSectionTitle(
                     '${tasks.length} ${tasks.length == 1 ? 'task' : 'tasks'}',
@@ -876,34 +877,23 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                         : 'Tap a task for details; check it off when finished',
                   ),
                 if (tasks.isEmpty && scopedEvents.isEmpty)
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 40, horizontal: 16),
-                    child: Column(
-                      children: [
-                        const Icon(Icons.check_circle_outline, size: 40),
-                        const SizedBox(height: 12),
-                        Text(
-                          (c.activeFilter.isActive ||
-                                  searching && search.text.isNotEmpty)
-                              ? 'No matching tasks'
-                              : 'No tasks here yet',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          (c.activeFilter.isActive ||
-                                  searching && search.text.isNotEmpty)
-                              ? 'Change the filters or clear your search.'
-                              : 'A little space for what comes next.',
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        OutlinedButton.icon(
-                          onPressed: () => task(),
-                          icon: const Icon(Icons.add),
-                          label: const Text('Add task'),
-                        ),
-                      ],
+                  AppEmptyState(
+                    title:
+                        (c.activeFilter.isActive ||
+                            searching && search.text.isNotEmpty)
+                        ? 'No matching tasks'
+                        : isToday
+                        ? 'No tasks planned for today'
+                        : 'No tasks here yet',
+                    message:
+                        (c.activeFilter.isActive ||
+                            searching && search.text.isNotEmpty)
+                        ? 'Change the filters or clear your search.'
+                        : null,
+                    action: OutlinedButton.icon(
+                      onPressed: () => task(),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add task'),
                     ),
                   ),
               ],
@@ -946,12 +936,13 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
         .where((v) => v.id == t.projectId)
         .firstOrNull
         ?.name;
-    final hasAlarm = t.isOpen &&
-        taskAlarmRule(t, c.alarmRules)?.config.enabled == true;
+    final hasAlarm =
+        t.isOpen && taskAlarmRule(t, c.alarmRules)?.config.enabled == true;
 
     return AppTaskRow(
       task: t,
       variant: AppTaskRowVariant.mobile,
+      timerState: c.activeTimer?.taskId == t.id ? c.activeTimer?.state : null,
       categoryName: category,
       projectName: project,
       hasAlarm: hasAlarm,
@@ -959,7 +950,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
       onLongPress: () => actions(t, c),
       onToggleComplete: (value) => run(() => c.setComplete(t, value)),
       trailingActions: IconButton(
-        tooltip: 'Actions for ',
+        tooltip: 'Actions for ${t.title}',
         icon: const Icon(Icons.more_vert),
         onPressed: () => actions(t, c),
       ),

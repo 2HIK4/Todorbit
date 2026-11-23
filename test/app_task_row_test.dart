@@ -209,7 +209,7 @@ void main() {
 
       // Subtitle contains priority, status, category, project separated by ·
       expect(find.textContaining('Priority 2'), findsOneWidget);
-      expect(find.textContaining('inProgress'), findsOneWidget);
+      expect(find.textContaining('In progress'), findsOneWidget);
       expect(find.textContaining('Work'), findsOneWidget);
       expect(find.textContaining('Todorbit'), findsOneWidget);
 
