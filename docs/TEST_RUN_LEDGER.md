@@ -1,5 +1,32 @@
 # Persistent test run ledger
 
+## Todorbit UI redesign pilot (2026-11-23)
+
+Windows 11, Flutter 3.47.7 (`abaf9c5237`), Dart 3.13.5 and the repository
+lockfile. Source `bb37558` on `feature/todorbit-ui-redesign-2`. Flutter
+tests used disposable APPDATA and LOCALAPPDATA paths and synthetic fixtures.
+Logs are in `.buildlog/ui-redesign/`.
+
+| Scope | Verification | Result |
+| --- | --- | --- |
+| Changed Dart source and tests | `flutter analyze --no-pub <20 changed Dart paths>` | Passed, no issues. `visual-polish-analyze.log`. |
+| Final UI polish | `flutter test --no-pub --concurrency=2 --reporter expanded` on `today_workspace_redesign`, `app_theme`, `window_theme`, `mobile_workspace`, `task_editor_schedule_layout`, and `task_editor_ui_consistency`, plus the six offscreen render cases | 37 tests and six render cases passed. `visual-polish-test.log`. |
+| Broader pilot checks before the final visual polish | Same command, also covering `app_task_row`, `theme_customization`, `task_editor_ui_polish`, `workspace_draft_safety`, `focus_quick_start`, `settings_transfer`, `profile_isolation` and `prompt7_cache_correctness` | 99 tests and six render cases passed. `final-test.log`. The subsequent patch changed search borders, wordmark layout, scrollbar presentation and the floating action button theme. |
+| Layer boundaries and docs | `python -m unittest discover -s tools -p test_architecture_boundaries.py`, `python tools/dev/check-docs.py`, `git diff --check` | 39 architecture checks passed, zero documentation errors and no whitespace violations. |
+
+The first run exposed missing screen-reader values on the resize handle and
+a 51 dp overflow in the Habits header on a 320 dp viewport at 150% text.
+The handle now announces both current and adjusted values. Habits scrolls its
+header with the content. The initial screenshots caught a wrapping sidebar
+wordmark and nested search borders, which the final render confirms are fixed.
+
+The six final images were rendered in Flutter's host engine using the production
+Windows and Android workspace widgets. Inspected desktop 1440×900 light and dark
+with a selected task, desktop 800×720 at 150% text, and Android 390×844 in
+light and dark and with Create at 150% text. The Windows preview in the README
+uses synthetic tasks. Physical devices, operating-system integration, packaged
+builds and performance profiling remain pending.
+
 ## Release candidate host baseline (2026-11-21)
 
 Tested `ca57dcb9afae73432fff4d2a376b77f770694c1d` on

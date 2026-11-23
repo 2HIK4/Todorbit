@@ -13,7 +13,7 @@
 - UI belongs in `lib/features/`, domain logic in `lib/domain/`, SQLite access in `lib/data/`. Flutter database writes go through `LifeRepository` and its part files; use stable UUIDs and UTC modification timestamps.
 - `AppController` coordinates shared state; profile JSON stores own device/preferences data. The native companion has a deliberately narrow database writer and never migrates schemas. See [architecture](docs/ARCHITECTURE.md).
 - Follow existing Dart/Flutter conventions. Reuse nearby components, domain calculations, services and theme tokens; prefer small changes over parallel implementations.
-- Follow Microsoft Fluent guidance, keyboard access and responsive layout. Keep visible controls functional or explicitly unavailable; never invent data.
+- Follow the [Todorbit design system](docs/UI_DESIGN_SYSTEM.md) and Microsoft Fluent guidance. Identify the user journey and existing tokens, controls, and Windows/Android entry points before changing presentation. Keep visible controls functional and check keyboard access, larger text, both themes, and real Flutter rendering where practical.
 - Theme JSON is validated data only. Keep light/dark and native widget tokens synchronized; imported metadata never changes the official contributor registry.
 - Keep Windows runner, native widget and packaged behavior compatible. `experiments/widget-shell-probe/` is production companion source despite its name.
 

@@ -1,5 +1,14 @@
 # Deferred Verification Backlog
 
+## Todorbit UI redesign pilot (2026-11-23)
+
+Source `bb37558`. The [pilot receipt](TEST_RUN_LEDGER.md#todorbit-ui-redesign-pilot-2026-11-23)
+covers targeted host checks and offscreen Flutter rendering. Native acceptance
+remains pending for Windows mouse, keyboard and assistive input at real DPI,
+Android system Back and IME on a physical device, and independent native
+widget appearance. Packaged-build checks and native performance profiling
+remain pending. The redesign is a development branch based on Beta 26.
+
 ## Release candidate build and acceptance (2026-11-21)
 
 - **Level 3 host verification passed.** Full analysis, the architecture gate,

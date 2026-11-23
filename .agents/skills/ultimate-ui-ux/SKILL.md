@@ -29,7 +29,8 @@ and viewport auto-scrolling are primary quality criteria alongside visual aesthe
 
 ## Start and choose scope
 
-1. Read project instructions, relevant architecture/design tokens and testing
+1. Read project instructions, the [Todorbit design system](../../../docs/UI_DESIGN_SYSTEM.md),
+   relevant architecture/design tokens and testing
    policy. Preserve data, drafts, preferences, established visual language and
    platform conventions. Use existing shared controls and services.
 2. Choose **Build** (new UI), **Audit only** (findings), **Fix** (confirmed defects),

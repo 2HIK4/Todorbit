@@ -1,5 +1,23 @@
 # Progress
 
+## Todorbit UI redesign pilot (2026-11-23)
+
+`feature/todorbit-ui-redesign-2` branches from the Beta 26 manual-download
+commit `a93e558`. Its ancestry contains the verified candidate and the
+architecture modernization merge. The source worktree was created on C:
+because the original D: volume was unavailable.
+
+`bb37558` delivers neutral light and dark palettes, the Windows and Android
+Today agenda, flatter shared task rows and the shared Create/Edit layout. The
+Windows detail pane remembers its device-local width. Appearance validates
+contrast and can reset colors without clearing palettes or layouts.
+
+[Verification](TEST_RUN_LEDGER.md#todorbit-ui-redesign-pilot-2026-11-23) includes
+production-widget Flutter renders, desktop draft resizing, Android navigation
+and text scaling, contrast and isolated preference/cache checks. The next
+batch is Inbox and the remaining task lists. See the [design system](UI_DESIGN_SYSTEM.md)
+for rollout order and [pending native checks](DEFERRED_VERIFICATION.md#todorbit-ui-redesign-pilot-2026-11-23).
+
 ## Release candidate host baseline (2026-11-21)
 
 Created `codex/todorbit-release-candidate` at the verified repair `ca57dcb`.

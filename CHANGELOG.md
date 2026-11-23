@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Updated Todorbit’s default light and dark appearance, with a clearer Today
+  workspace, fixed calendar commitments and shared task rows.
+- Windows task editors can be resized. Appearance shows contrast warnings and
+  can reset both palettes while keeping saved presets and layout settings.
+
 ## 1.0.19-beta.26+49
 
 - Task rows show whether a timer is running or paused. The timer action starts

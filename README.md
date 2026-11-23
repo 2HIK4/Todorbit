@@ -4,7 +4,7 @@
 
 ![Todorbit icon](assets/app_icon.png)
 
-![Todorbit Today view](docs/screenshots/todorbit-today.png)
+![Unreleased Todorbit Today redesign preview](docs/screenshots/todorbit-today-redesign.png)
 
 Todorbit is an offline Windows productivity app with an Android beta for tasks, calendar events, habits, goals, and focus sessions. It is built with Flutter and SQLite. Creator: [Hussam Alkhatib](https://2hik4.github.io/).
 
@@ -55,6 +55,9 @@ The Release bundle is `build\windows\x64\runner\Release`. See [Development](docs
 If a moved portable copy looks empty, check Settings > Data profile and reopen the original extracted path or import its verified backup. Keep the full application bundle together. See [installation troubleshooting](docs/INSTALLATION.md) for recovery steps.
 
 ## Customization and contributions
+
+The [Todorbit design system](docs/UI_DESIGN_SYSTEM.md) describes the redesigned
+Today workspace and its shared Flutter controls.
 
 See [theming](docs/THEMING.md), [customization extension points](docs/CUSTOMIZATION.md), and [contribution guidance](CONTRIBUTING.md). Official community entries come from `assets/contributors.json` through reviewed pull requests; imported themes do not add someone to that list.
 

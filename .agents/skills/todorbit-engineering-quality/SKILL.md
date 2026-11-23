@@ -26,6 +26,7 @@ Treat rules by their strict level of authority:
 2. **Recommended Engineering Practices (Strong Defaults)**:
    - **Layer Separation**: UI strictly in `lib/features/`, business/calculation logic in `lib/domain/`, SQLite/Drift access in `lib/data/`, coordinated via Riverpod `AppController`.
    - **Pure Domain Code**: `lib/domain/` MUST NOT import Flutter widgets or platform-native channels. Keep domain logic pure and deterministic.
+   - **Presentation boundary**: Keep shared Flutter controls callback-driven. Route Todorbit visual changes through the [design system](../../../docs/UI_DESIGN_SYSTEM.md) and preserve the controller owners for drafts, planned dates, deadlines, and settings. Verify device-local appearance preferences stay outside portable sync payloads.
    - **Smallest Safe Diff**: Prefer localized, reversible edits over broad architectural overhauls. Never introduce parallel implementations or speculative abstractions just to reduce file line count.
    - **Verified Root-Cause Fixes**: Diagnose the full caller graph and reproducible failure mechanism before modifying code. Band-aid checks (e.g. arbitrary null-coalescing or silent returns) hide architectural corruption.
 
