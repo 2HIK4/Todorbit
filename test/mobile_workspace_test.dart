@@ -406,6 +406,82 @@ void main() {
   });
 
   testWidgets(
+    'narrow Inbox clears the Add button and Edit keeps help reachable',
+    (tester) async {
+      const lastTitle =
+          'Task 19 with a long title to exercise wrapping in Inbox';
+      for (var index = 0; index < 20; index++) {
+        final title = index == 19
+            ? lastTitle
+            : 'Task ${index.toString().padLeft(2, '0')}';
+        await controller.repository.addTask(TaskDraft(title: title));
+      }
+      await controller.refresh();
+      controller.setSort(TaskSort.title);
+      try {
+        final rowActions = find.byTooltip('Actions for $lastTitle');
+        Future<void> scrollToLastRow() async {
+          controller.navigate(WorkspaceView.inbox);
+          await tester.pumpAndSettle();
+          await tester.scrollUntilVisible(
+            rowActions,
+            360,
+            scrollable: find.byType(Scrollable).first,
+            maxScrolls: 50,
+          );
+          final list = tester.state<ScrollableState>(
+            find.byType(Scrollable).first,
+          );
+          list.position.jumpTo(list.position.maxScrollExtent);
+          await tester.pumpAndSettle();
+        }
+
+        await open(tester);
+        await scrollToLastRow();
+        expect(rowActions.hitTestable(), findsOneWidget);
+        expect(
+          tester.getBottomLeft(rowActions).dy,
+          lessThan(tester.getTopLeft(find.byType(FloatingActionButton)).dy),
+        );
+        await open(tester, size: const Size(320, 640), scale: 1.5);
+        await scrollToLastRow();
+        expect(find.byType(FloatingActionButton), findsNothing);
+        expect(find.byTooltip('New task').hitTestable(), findsOneWidget);
+        expect(rowActions.hitTestable(), findsOneWidget);
+        expect(
+          tester.getBottomLeft(rowActions).dy,
+          lessThan(tester.getTopLeft(find.byType(NavigationBar)).dy),
+        );
+        await tester.tap(rowActions);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Edit task'));
+        await tester.pumpAndSettle();
+        final editor = find.byType(TaskEditor);
+        final help = find.text('Checklist and subtask edits save immediately.');
+        await tester.scrollUntilVisible(
+          help,
+          150,
+          scrollable: find
+              .descendant(of: editor, matching: find.byType(Scrollable))
+              .first,
+        );
+        await tester.pumpAndSettle();
+        expect(help.hitTestable(), findsOneWidget);
+        final save = find.widgetWithText(FilledButton, 'Save changes');
+        expect(save.hitTestable(), findsOneWidget);
+        expect(
+          tester.getBottomLeft(help).dy,
+          lessThan(tester.getTopLeft(save).dy),
+        );
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.binding.setSurfaceSize(null);
+      }
+    },
+  );
+
+  testWidgets(
     'mobile task row highlights overdue tasks with warning icon and error text',
     (tester) async {
       final today = localDate(DateTime.now());

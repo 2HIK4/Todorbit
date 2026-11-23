@@ -45,6 +45,9 @@ abstract final class AppLayout {
   static const double panelResizeHandle = 16;
   static const double workspaceMinWidth = 420;
   static const double workspaceMaxWidth = 800;
+  // Standard FAB, its edge gap, and clearance for the final row.
+  static const double taskListFabClearance =
+      56 + AppSpacing.content * 2 + AppSpacing.related;
   static const double editorPageMaxWidth = 680;
   static const double editorFieldMinWidth = 190;
 

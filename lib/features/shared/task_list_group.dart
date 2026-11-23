@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../domain/models.dart';
 import '../../domain/task_list_projection.dart';
+import 'app_spacing.dart';
+import 'task_date_label.dart';
 
 class TaskListGroupView extends StatefulWidget {
   const TaskListGroupView({
@@ -11,7 +13,6 @@ class TaskListGroupView extends StatefulWidget {
     required this.parents,
     required this.row,
     this.subtaskRow,
-    this.margin,
   });
 
   final TaskListGroup group;
@@ -19,7 +20,6 @@ class TaskListGroupView extends StatefulWidget {
   final Map<String, String> parents;
   final Widget Function(LifeTask) row;
   final Widget Function(LifeTask)? subtaskRow;
-  final EdgeInsetsGeometry? margin;
 
   @override
   State<TaskListGroupView> createState() => _TaskListGroupViewState();
@@ -38,82 +38,36 @@ class _TaskListGroupViewState extends State<TaskListGroupView> {
       if (parent != null) (childrenByParent[parent] ??= []).add(child);
     }
 
-    Widget hierarchy(LifeTask task, {bool isOccurrence = false}) {
+    Widget hierarchy(LifeTask task) {
       final children = childrenByParent[task.id] ?? const <LifeTask>[];
       if (children.isEmpty) return widget.row(task);
 
       final expanded = _isExpanded(task.id);
       final scheme = Theme.of(context).colorScheme;
 
-      final expanderPill = Tooltip(
-        message: expanded
-            ? 'Collapse ${children.length} subtask${children.length == 1 ? '' : 's'}'
-            : 'Expand ${children.length} subtask${children.length == 1 ? '' : 's'}',
-        child: Material(
-          color: scheme.surfaceContainerHighest.withValues(
-            alpha: 0.6,
-          ),
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () {
-              setState(() {
-                _expandedSubtasks[task.id] = !expanded;
-              });
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 6,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.subdirectory_arrow_right_rounded,
-                    size: 14,
-                    color: scheme.primary,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${children.length}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: scheme.primary,
-                    ),
-                  ),
-                  Icon(
-                    expanded
-                        ? Icons.keyboard_arrow_up_rounded
-                        : Icons.keyboard_arrow_down_rounded,
-                    size: 16,
-                    color: scheme.primary,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(child: widget.row(task)),
-              Padding(
-                padding: const EdgeInsetsDirectional.only(
-                  start: 6,
-                  end: 4,
-                  bottom: 8,
+          widget.row(task),
+          Padding(
+            padding: const EdgeInsetsDirectional.only(
+              start: AppSpacing.related,
+            ),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Semantics(
+                expanded: expanded,
+                child: TextButton.icon(
+                  onPressed: () =>
+                      setState(() => _expandedSubtasks[task.id] = !expanded),
+                  icon: Icon(expanded ? Icons.expand_less : Icons.expand_more),
+                  label: Text(
+                    '${children.length} ${children.length == 1 ? 'subtask' : 'subtasks'}',
+                  ),
                 ),
-                child: expanderPill,
               ),
-            ],
+            ),
           ),
           if (expanded)
             Padding(
@@ -173,26 +127,23 @@ class _TaskListGroupViewState extends State<TaskListGroupView> {
         )
         .firstOrNull;
 
-    final resolvedMargin = widget.margin ?? const EdgeInsets.only(bottom: 8);
-
-    return Card(
-      margin: resolvedMargin,
-      clipBehavior: Clip.antiAlias,
-      child: ExpansionTile(
-        key: PageStorageKey(widget.group.key),
-        leading: const Icon(Icons.repeat),
-        title: Text((next ?? ordered.first).title),
-        subtitle: Text(
-          '${next == null ? 'Recurring task' : 'Next: ${next.scheduledDate}'} · ${ordered.length} occurrences',
+    return Column(
+      children: [
+        ExpansionTile(
+          key: PageStorageKey(widget.group.key),
+          leading: const Icon(Icons.repeat),
+          title: Text((next ?? ordered.first).title),
+          subtitle: Text(
+            '${next == null ? 'Recurring task' : 'Next ${taskDateLabel(context, next.scheduledDate!)}'} · ${ordered.length} occurrences',
+          ),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+          shape: const Border(),
+          collapsedShape: const Border(),
+          children: [for (final task in ordered) hierarchy(task)],
         ),
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-        shape: const Border(),
-        collapsedShape: const Border(),
-        children: [
-          for (final task in ordered) hierarchy(task, isOccurrence: true),
-        ],
-      ),
+        const Divider(height: 1),
+      ],
     );
   }
 }

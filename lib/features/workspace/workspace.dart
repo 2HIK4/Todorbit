@@ -2,12 +2,12 @@ import '../time_tracking/compact_task_timer.dart';
 import '../../domain/time_tracking.dart';
 import '../time_tracking/task_timer_intent.dart';
 import '../../domain/alarm_plan.dart';
-import '../shared/alarm_indicator.dart';
 import '../shared/app_motion.dart';
 import '../shared/item_filters.dart';
 import '../shared/scroll_edge_fade.dart';
 import '../../domain/task_list_projection.dart';
 import '../shared/task_list_group.dart';
+import '../shared/task_list_presentation.dart';
 import '../shared/task_date_label.dart';
 
 import 'dart:io';
@@ -2121,6 +2121,15 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 ?.name ??
             'Project',
     };
+    final categories = {
+      if (!isToday)
+        for (final category in controller.categories)
+          category.id: category.name,
+    };
+    final projects = {
+      if (!isToday)
+        for (final project in controller.projects) project.id: project.name,
+    };
     final goalsDueSoon =
         isToday &&
         controller.goals.any(
@@ -2181,38 +2190,24 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                           PopupMenuButton<TaskSort>(
                             tooltip: 'Sort tasks',
                             onSelected: controller.setSort,
-                            itemBuilder: (_) => const [
-                              PopupMenuItem(
-                                value: TaskSort.schedule,
-                                child: Text('Scheduled date'),
-                              ),
-                              PopupMenuItem(
-                                value: TaskSort.priority,
-                                child: Text('Priority'),
-                              ),
-                              PopupMenuItem(
-                                value: TaskSort.title,
-                                child: Text('Title'),
-                              ),
-                              PopupMenuItem(
-                                value: TaskSort.created,
-                                child: Text('Newest first'),
-                              ),
+                            itemBuilder: (_) => [
+                              for (final sort in TaskSort.values)
+                                PopupMenuItem(
+                                  value: sort,
+                                  child: Text(taskSortLabel(sort)),
+                                ),
                             ],
-                            icon: isToday ? null : const Icon(Icons.sort),
-                            child: isToday
-                                ? const Padding(
-                                    padding: EdgeInsets.all(AppSpacing.gap),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.sort),
-                                        SizedBox(width: AppSpacing.small),
-                                        Text('Sort'),
-                                      ],
-                                    ),
-                                  )
-                                : null,
+                            child: const Padding(
+                              padding: EdgeInsets.all(AppSpacing.gap),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.sort),
+                                  SizedBox(width: AppSpacing.small),
+                                  Text('Sort'),
+                                ],
+                              ),
+                            ),
                           ),
                           IconButton(
                             key: const ValueKey('schedule-history-button'),
@@ -2389,52 +2384,52 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 ),
               ),
             ),
-          if (isToday && items.isEmpty)
+          if (!isToday && scopedEvents.isNotEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppLayout.pageInsetH,
+              ),
+              sliver: SliverList.builder(
+                itemCount: scopedEvents.length + 1,
+                itemBuilder: (context, index) {
+                  if (index == 0) return const AppSectionHeading('Events');
+                  final event = scopedEvents[index - 1];
+                  return TodayEventRow(
+                    event: event,
+                    showDate: true,
+                    hasAlarm:
+                        eventAlarmRule(
+                          event,
+                          controller.alarmRules,
+                        )?.config.enabled ==
+                        true,
+                    onOpen: () => _openEventDetails(event),
+                  );
+                },
+              ),
+            ),
+          if (items.isEmpty)
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppLayout.pageInsetH,
                 ),
-                child: AppEmptyState(
-                  title: controller.activeFilter.isActive
-                      ? 'No matching tasks'
-                      : 'No tasks planned for today',
-                  message: controller.activeFilter.isActive
-                      ? 'Change or clear the current filters.'
-                      : null,
+                child: TaskListEmptyState(
+                  view: controller.view,
+                  filtered: controller.activeFilter.isActive,
                 ),
               ),
             )
-          else if (items.isEmpty && scopedEvents.isEmpty)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.task_alt_outlined,
-                      size: 42,
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      controller.activeFilter.isActive
-                          ? 'No matching items'
-                          : 'Nothing here yet',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      controller.activeFilter.isActive
-                          ? 'Change filters or clear them to see more items.'
-                          : 'Create a task or choose another view.',
-                    ),
-                  ],
+          else ...[
+            if (scopedEvents.isNotEmpty)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppLayout.pageInsetH,
+                  ),
+                  child: AppSectionHeading('Tasks'),
                 ),
               ),
-            )
-          else
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(
                 AppLayout.pageInsetH,
@@ -2443,54 +2438,51 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 AppSpacing.section,
               ),
               sliver: SliverList.builder(
-                itemCount: roots.length + scopedEvents.length,
+                itemCount: roots.length,
                 itemBuilder: (context, index) {
-                  if (index < scopedEvents.length) {
-                    final event = scopedEvents[index];
-                    return Card(
-                      child: ListTile(
-                        leading: const Icon(Icons.event_outlined),
-                        trailing:
-                            eventAlarmRule(
-                                  event,
-                                  controller.alarmRules,
-                                )?.config.enabled ==
-                                true
-                            ? const AlarmIndicator()
-                            : null,
-                        title: Text(event.title),
-                        subtitle: Text(localDate(event.startsAt.toLocal())),
-                        onTap: () => _openEventDetails(event),
-                      ),
-                    );
-                  }
                   return TaskListGroupView(
-                    group: roots[index - scopedEvents.length],
+                    key: ValueKey(roots[index].key),
+                    group: roots[index],
                     items: items,
                     parents: controller.taskParents,
-                    row: (task) => _taskRow(controller, task, wide),
+                    row: (task) => _taskRow(
+                      controller,
+                      task,
+                      wide,
+                      categoryName: controller.view == WorkspaceView.category
+                          ? null
+                          : categories[task.categoryId],
+                      projectName: controller.view == WorkspaceView.project
+                          ? null
+                          : projects[task.projectId],
+                    ),
                     subtaskRow: (task) => _subtaskRow(controller, task, wide),
                   );
                 },
               ),
             ),
+          ],
         ],
       ),
     );
-    return isToday
-        ? Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: AppLayout.workspaceMaxWidth,
-              ),
-              child: content,
-            ),
-          )
-        : content;
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: AppLayout.workspaceMaxWidth,
+        ),
+        child: content,
+      ),
+    );
   }
 
-  Widget _taskRow(AppController controller, LifeTask task, bool wide) {
+  Widget _taskRow(
+    AppController controller,
+    LifeTask task,
+    bool wide, {
+    String? categoryName,
+    String? projectName,
+  }) {
     final childCount = controller.taskParents.values
         .where((id) => id == task.id)
         .length;
@@ -2532,6 +2524,8 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     return AppTaskRow(
       task: task,
       variant: AppTaskRowVariant.desktop,
+      categoryName: categoryName,
+      projectName: projectName,
       isSelected: controller.selectedTaskId == task.id,
       timerState: timerState,
       hasAlarm: hasAlarm,

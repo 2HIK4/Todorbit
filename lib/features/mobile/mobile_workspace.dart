@@ -1,7 +1,6 @@
 import '../time_tracking/compact_task_timer.dart';
 import '../time_tracking/task_timer_intent.dart';
 import '../../domain/alarm_plan.dart';
-import '../shared/alarm_indicator.dart';
 import '../shared/app_section_heading.dart';
 import '../shared/app_spacing.dart';
 import '../shared/app_motion.dart';
@@ -13,6 +12,7 @@ import '../settings/sync_conflicts_dialog.dart';
 import '../settings/sync_settings_page.dart';
 import '../../domain/task_list_projection.dart';
 import '../shared/task_list_group.dart';
+import '../shared/task_list_presentation.dart';
 import '../shared/scroll_edge_fade.dart';
 import '../shared/status_snackbar.dart';
 
@@ -51,7 +51,6 @@ import '../time_tracking/focus_workspace.dart';
 import '../shared_inbox/shared_inbox_screen.dart';
 import 'mobile_calendar.dart';
 import 'mobile_settings.dart';
-import 'mobile_ui.dart';
 
 class MobileWorkspace extends ConsumerStatefulWidget {
   const MobileWorkspace({
@@ -413,6 +412,22 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
     final c = ref.watch(appControllerProvider);
     final selected = preferences.destinations.indexOf(c.view);
     final tablet = MediaQuery.sizeOf(context).width >= 720;
+    final compactChrome =
+        !tablet &&
+        MediaQuery.sizeOf(context).width <
+            (preferences.destinations.length + 1) *
+                (AppLayout.minTapTarget + AppSpacing.gap) *
+                MediaQuery.textScalerOf(context).scale(1);
+    final compactAdd =
+        compactChrome &&
+        switch (c.view) {
+          WorkspaceView.calendar ||
+          WorkspaceView.habits ||
+          WorkspaceView.goals ||
+          WorkspaceView.reports ||
+          WorkspaceView.contributors => false,
+          _ => true,
+        };
     Widget content = switch (c.view) {
       WorkspaceView.calendar => MobileCalendar(
         key: ValueKey(calendarDay),
@@ -425,7 +440,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
       WorkspaceView.goals => const GoalsView(),
       WorkspaceView.reports => const ReportsView(),
       WorkspaceView.contributors => const ContributorsView(),
-      _ => taskList(c),
+      _ => taskList(c, floatingAdd: !compactAdd),
     };
     if (tablet) {
       content = Row(
@@ -449,12 +464,6 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
         ],
       );
     }
-    final compactChrome =
-        !tablet &&
-        MediaQuery.sizeOf(context).width <
-            (preferences.destinations.length + 1) *
-                (AppLayout.minTapTarget + AppSpacing.gap) *
-                MediaQuery.textScalerOf(context).scale(1);
     final toolbarActions = <Widget>[
       if (!searching) ...[
         SyncStatusButton(
@@ -538,9 +547,18 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
               CheckedPopupMenuItem(
                 value: 'sort:${sort.name}',
                 checked: sort == c.sort,
-                child: Text('Sort by ${sort.name}'),
+                child: Text(taskSortLabel(sort)),
               ),
           ],
+        ),
+      if (compactAdd)
+        Padding(
+          padding: const EdgeInsetsDirectional.only(end: AppSpacing.gap),
+          child: IconButton.filled(
+            tooltip: 'New task',
+            onPressed: () => task(),
+            icon: const Icon(Icons.add),
+          ),
         ),
     ];
     return Scaffold(
@@ -684,7 +702,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                 ],
               ),
             ),
-      floatingActionButton: c.view == WorkspaceView.calendar
+      floatingActionButton: compactAdd || c.view == WorkspaceView.calendar
           ? null
           : FloatingActionButton(
               tooltip: 'New task',
@@ -694,7 +712,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
     );
   }
 
-  Widget taskList(AppController c) {
+  Widget taskList(AppController c, {required bool floatingAdd}) {
     final isToday = c.view == WorkspaceView.today;
     final now = DateTime.now();
     final today = localDate(now);
@@ -761,12 +779,21 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
             ..sort((a, b) => a.startsAt.compareTo(b.startsAt)))
         : const <WorkSession>[];
     final events = isToday ? c.agendaForDay(now) : const <FixedEvent>[];
+    final showTaskSection =
+        !isToday && (tasks.isNotEmpty || scopedEvents.isNotEmpty);
+    final eventEnd = scopedEvents.length + 1;
+    final taskStart = eventEnd + (showTaskSection ? 1 : 0);
     return RefreshIndicator(
-      onRefresh: () => c.refresh(),
+      onRefresh: () => run(c.refresh),
       child: FadingListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
-        itemCount: groups.length + scopedEvents.length + 1,
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.related,
+          AppSpacing.gap,
+          AppSpacing.related,
+          floatingAdd ? AppLayout.taskListFabClearance : AppSpacing.section,
+        ),
+        itemCount: groups.length + taskStart,
         itemBuilder: (context, index) {
           if (index == 0) {
             return Column(
@@ -895,58 +922,47 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                           '$done of ${todayTasks.length} planned tasks complete',
                     ),
                   ),
-                if (c.view != WorkspaceView.today && tasks.isNotEmpty)
-                  MobileSectionTitle(
-                    '${tasks.length} ${tasks.length == 1 ? 'task' : 'tasks'}',
-                    subtitle: searching
-                        ? 'Matching your search'
-                        : 'Tap a task for details; check it off when finished',
-                  ),
+                if (scopedEvents.isNotEmpty) const AppSectionHeading('Events'),
                 if (tasks.isEmpty && scopedEvents.isEmpty)
-                  AppEmptyState(
-                    title:
-                        (c.activeFilter.isActive ||
-                            searching && search.text.isNotEmpty)
-                        ? 'No matching tasks'
-                        : isToday
-                        ? 'No tasks planned for today'
-                        : 'No tasks here yet',
-                    message:
-                        (c.activeFilter.isActive ||
-                            searching && search.text.isNotEmpty)
-                        ? 'Change the filters or clear your search.'
-                        : null,
-                    action: OutlinedButton.icon(
-                      onPressed: () => task(),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add task'),
-                    ),
+                  TaskListEmptyState(
+                    view: c.view,
+                    filtered:
+                        c.activeFilter.isActive ||
+                        searching && search.text.trim().isNotEmpty,
                   ),
               ],
             );
           }
-          if (index <= scopedEvents.length) {
+          if (index < eventEnd) {
             final event = scopedEvents[index - 1];
-            return Card(
-              child: ListTile(
-                leading: const Icon(Icons.event_outlined),
-                trailing:
-                    eventAlarmRule(event, c.alarmRules)?.config.enabled == true
-                    ? const AlarmIndicator()
-                    : null,
-                title: Text(event.title),
-                subtitle: Text(localDate(event.startsAt.toLocal())),
-                onTap: () => openEvent(event),
-              ),
+            return TodayEventRow(
+              event: event,
+              showDate: true,
+              hasAlarm:
+                  eventAlarmRule(event, c.alarmRules)?.config.enabled == true,
+              onOpen: () => openEvent(event),
             );
           }
+          if (showTaskSection && index == eventEnd) {
+            if (tasks.isEmpty) {
+              return TaskListEmptyState(
+                view: c.view,
+                filtered: c.activeFilter.isActive || searching,
+              );
+            }
+            return AppSectionHeading(
+              'Tasks',
+              detail: '${tasks.length}',
+            );
+          }
+          final group = groups[index - taskStart];
           return TaskListGroupView(
-            group: groups[index - 1 - scopedEvents.length],
+            key: ValueKey(group.key),
+            group: group,
             items: tasks,
             parents: c.taskParents,
             row: (t) => mobileTaskRow(t, c),
             subtaskRow: (t) => mobileSubtaskRow(t, c),
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           );
         },
       ),

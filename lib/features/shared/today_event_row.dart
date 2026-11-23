@@ -11,10 +11,12 @@ class TodayEventRow extends StatelessWidget {
     required this.event,
     required this.onOpen,
     this.hasAlarm = false,
+    this.showDate = false,
   });
 
   final FixedEvent event;
   final bool hasAlarm;
+  final bool showDate;
   final VoidCallback onOpen;
 
   @override
@@ -39,7 +41,11 @@ class TodayEventRow extends StatelessWidget {
       leading: const Icon(Icons.event_outlined),
       title: Text(event.title, style: theme.textTheme.bodyLarge),
       subtitle: Text(
-        event.allDay ? 'All day' : range,
+        showDate && (event.allDay || DateUtils.isSameDay(start, end))
+            ? '${localizations.formatShortDate(start)} · ${event.allDay ? 'All day' : range}'
+            : event.allDay
+            ? 'All day'
+            : range,
         style: theme.textTheme.bodySmall,
       ),
       trailing: hasAlarm ? const AlarmIndicator() : null,

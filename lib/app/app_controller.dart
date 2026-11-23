@@ -1183,15 +1183,21 @@ class AppController extends ChangeNotifier {
           return active(task) && task.projectId == scopeId;
       }
     }).toList();
+    final effectiveSort = switch (view == WorkspaceView.saved
+        ? selectedView?.filter.sort
+        : null) {
+      SavedViewSort.scheduled => TaskSort.schedule,
+      SavedViewSort.priority => TaskSort.priority,
+      SavedViewSort.title => TaskSort.title,
+      SavedViewSort.created => TaskSort.created,
+      null => sort,
+    };
     items.sort((a, b) {
       final aDone = a.status == TaskStatus.completed;
       final bDone = b.status == TaskStatus.completed;
       if (view != WorkspaceView.completed && aDone != bDone) {
         return aDone ? 1 : -1;
       }
-      final effectiveSort = view == WorkspaceView.saved && selectedView != null
-          ? TaskSort.values.byName(selectedView.filter.sort.name)
-          : sort;
       switch (effectiveSort) {
         case TaskSort.schedule:
           return _compareNullable(a.scheduledDate, b.scheduledDate) != 0

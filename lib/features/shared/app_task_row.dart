@@ -192,6 +192,8 @@ class AppTaskRow extends StatelessWidget {
         task.deadlineDate != null ||
         task.status == TaskStatus.inProgress ||
         _isTimerActive ||
+        categoryName != null ||
+        projectName != null ||
         (subtaskProgress != null && subtaskProgress!.total > 0) ||
         (checklistProgress != null && checklistProgress!.total > 0) ||
         task.status == TaskStatus.waiting ||
@@ -283,6 +285,10 @@ class AppTaskRow extends StatelessWidget {
       );
     }
 
+    if (categoryName != null || projectName != null) {
+      badges.add(Text([?categoryName, ?projectName].join(' · '), style: style));
+    }
+
     return badges;
   }
 
@@ -355,6 +361,7 @@ class AppTaskRow extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: 56),
         child: ListTile(
           selected: isSelected,
+          horizontalTitleGap: AppSpacing.gap,
           contentPadding: const EdgeInsetsDirectional.only(
             start: AppSpacing.small,
             end: AppSpacing.gap,

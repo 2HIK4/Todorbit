@@ -65,6 +65,23 @@ void main() {
     },
   );
 
+  test('saved view default sort orders two matches by scheduled day', () async {
+    await repository.addTask(
+      const TaskDraft(title: 'Later', scheduledDate: '2026-12-02'),
+    );
+    await repository.addTask(
+      const TaskDraft(title: 'Earlier', scheduledDate: '2026-12-01'),
+    );
+    final controller = AppController(repository);
+    addTearDown(controller.dispose);
+    await controller.refresh();
+    await controller.addSavedView('Scheduled tasks', const TaskFilter());
+    expect(controller.visibleTasks.map((task) => task.title), [
+      'Earlier',
+      'Later',
+    ]);
+  });
+
   test(
     'saved views persist unlimited filters and reject stale edits',
     () async {
