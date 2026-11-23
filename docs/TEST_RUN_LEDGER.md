@@ -1,5 +1,36 @@
 # Persistent test run ledger
 
+## Batch 1 visual refinement and acceptance (2026-11-23)
+
+Baseline `23f31fe`. Verified source `586e3a3` on Windows using Flutter
+3.47.7 and Dart 3.13.5. Tests used disposable APPDATA and LOCALAPPDATA and
+synthetic records. Logs and the capture harness are in `.buildlog/ui-redesign/`.
+
+| Check | Result |
+| --- | --- |
+| `flutter test --no-pub --concurrency=2 --reporter expanded` on `mobile_workspace`, `task_editor_schedule_layout`, `task_editor_ui_polish`, `task_editor_ui_consistency`, `today_workspace_redesign`, `workspace_draft_safety` and the render harness | 59 regression tests and 11 render cases passed after compact navigation correction. `batch1-final-tests.log`. |
+| Same command on the three task editor suites and `today_workspace_redesign` plus the render harness | 10 tests and 11 render cases passed after the title input change. `batch1-title-tests.log`. |
+| First focused pass on `app_task_row`, `workspace_toolbar` and `focus_quick_start` | Passed on the task-row and Today toolbar changes. `batch1-tests.log`. Two editor checks in that run failed because the moved Edit recurrence section displaced controls outside the lazy list viewport. Create retains the new Repeat position, and the Edit group retained its place after Organization. The later passes include those editor checks. |
+| `flutter analyze --no-pub` on 13 changed Dart files, architecture tests, docs checks and `git diff --check` | No analyzer issues, 39 architecture checks passed, zero documentation errors and no whitespace errors. |
+
+Final offscreen Flutter captures are in
+`C:/Users/User/Documents/Codex/Todorbit-batch1-acceptance/`:
+
+- Windows Today: `windows-today-light.png` and `windows-today-narrow.png`.
+- Windows editor: `windows-create-light.png`, `windows-editor-dark.png`,
+  `windows-narrow-large-text.png` and `windows-narrow-dark-large-text.png`.
+- Android Today: `android-today-light.png`, `android-today-dark.png` and
+  `android-today-narrow-large-text.png`.
+- Android forms: `android-create-large-text.png` and
+  `android-edit-light-large-text.png`.
+
+The 800 dp Windows captures show both date controls and the reachable save
+action. The 320 dp Android capture confirms the title and toolbar fit at 150%
+text, with named navigation targets tested separately. The final Android Edit
+capture shows the title wrapping. Batch 1 is accepted as the visual reference
+for Batch 2. Native device, IME, assistive input and release checks remain
+pending under [Deferred verification](DEFERRED_VERIFICATION.md).
+
 ## Todorbit UI redesign pilot (2026-11-23)
 
 Windows 11, Flutter 3.47.7 (`abaf9c5237`), Dart 3.13.5 and the repository

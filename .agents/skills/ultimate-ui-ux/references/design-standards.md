@@ -55,7 +55,9 @@ Todorbit: `app_theme.dart` owns semantic text and palette-derived surfaces;
 `SettingsSection`, `SettingsHelperText`, `StatusNotice`, anchored selectors and dialog
 action bars already exist. In forms and editors, provide in-place field validation
 via `errorText` on the input control rather than relying exclusively on disconnected
-SnackBars. Do not replace the lavender identity or overwrite saved custom palettes.
+SnackBars. Preserve Todorbit's neutral/teal defaults and users' saved palettes.
+Use the [Batch 1 presentation rules](../../../../docs/UI_DESIGN_SYSTEM.md#batch-1-presentation-rules)
+for task dates, save timing, truncation and adaptive editor layout.
 Native widget mappings are separate consumers of the same palette, not proof that
 Flutter styling propagates there.
 

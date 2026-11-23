@@ -2,6 +2,9 @@
 
 ## Todorbit UI redesign pilot (2026-11-23)
 
+Batch 1 visual refinement is recorded for source `586e3a3` in the
+[Batch 1 receipt](TEST_RUN_LEDGER.md#batch-1-visual-refinement-and-acceptance-2026-11-23).
+
 Source `bb37558`. The [pilot receipt](TEST_RUN_LEDGER.md#todorbit-ui-redesign-pilot-2026-11-23)
 covers targeted host checks and offscreen Flutter rendering. Native acceptance
 remains pending for Windows mouse, keyboard and assistive input at real DPI,

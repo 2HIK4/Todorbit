@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Improved Today and task editing at large text sizes. Narrow Windows editors
+  use the workspace width, task dates use localized labels, and Android
+  task rows show more of long titles.
+
 - Updated Todorbit’s default light and dark appearance, with a clearer Today
   workspace, fixed calendar commitments and shared task rows.
 - Windows task editors can be resized. Appearance shows contrast warnings and

@@ -1,5 +1,19 @@
 # Progress
 
+## Batch 1 visual refinement and acceptance (2026-11-23)
+
+The Todorbit redesign branch now uses Batch 1 as the visual reference for
+future task lists. Windows keeps a live draft when the editor expands to
+the full workspace. Android gives the app-bar title room at 150% text and
+retains named navigation targets. Task dates use the same localized style
+and preserve the distinction between scheduled days and deadlines.
+
+[Design rules](UI_DESIGN_SYSTEM.md#batch-1-presentation-rules) ·
+[Verification and capture paths](TEST_RUN_LEDGER.md#batch-1-visual-refinement-and-acceptance-2026-11-23)
+
+Batch 2 remains pending. Physical devices, native assistive input and
+release acceptance remain tracked in [Deferred verification](DEFERRED_VERIFICATION.md).
+
 ## Todorbit UI redesign pilot (2026-11-23)
 
 `feature/todorbit-ui-redesign-2` branches from the Beta 26 manual-download

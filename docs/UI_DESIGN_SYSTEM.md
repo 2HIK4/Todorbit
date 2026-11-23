@@ -5,9 +5,11 @@
 Todorbit uses neutral surfaces and a restrained teal accent. The date anchors
 Today, New task is the primary action, and a divided list gives task titles
 room. Calendar commitments stay visible alongside the work they affect.
-Windows keeps navigation and a resizable editor. Android keeps its own
-navigation and full-screen editor. Both use the same section typography,
-surface roles and row rhythm.
+Windows shows navigation and a resizable editor when they fit beside the
+workspace. Below that breakpoint, an open task occupies the workspace and
+keeps its existing editor instance. Closing it reveals navigation again.
+Android keeps its own navigation and full-screen editor. Both use shared
+section typography, surface roles and row rhythm.
 
 Beta 26 supplied shared form controls and task rows. Today repeated task
 counts and each row had a card border. Desktop showed fixed appointments by
@@ -48,6 +50,28 @@ Todorbit retains its own schedule, timer and navigation contracts.
   [NN/g](https://www.nngroup.com/articles/visual-hierarchy-ux-definition/) ·
   [Flutter](https://docs.flutter.dev/ui/adaptive-responsive/best-practices) ·
   [WCAG](https://www.w3.org/TR/WCAG22/)
+
+## Batch 1 presentation rules
+
+- Limit desktop Today to an 800 dp content column. Keep calendar commitments
+  and planned tasks in separate groups. Only reserve space for schedule
+  shortcuts when an actionable summary exists.
+- Use localized, abbreviated dates with the year. Task rows and details use
+  Planned and Due. Forms label the corresponding inputs Scheduled day and
+  Deadline. Keep their clear actions distinct. Place Repeat beside the date
+  controls during Create. Edit groups recurring occurrence actions together.
+  Let the title field wrap while preserving a single-line title value.
+- In Edit, identify resources and checklist or subtask actions that save
+  immediately. Keep draft fields under the form's Save changes action and
+  dedicated saves beside their own fields.
+- Allow Android task titles up to four lines. The details view and actions
+  sheet show the complete title. Keep text labels for priority and identify
+  the task timer with the action it performs. When phone width and text scale
+  make navigation captions wrap, keep full destination names in semantics and
+  tooltips. Give the app-bar title its own line and keep actions reachable.
+- Use text for frequently used actions where it fits. Icon actions need an
+  accessible name. Keep a hover tooltip for truncated sidebar destinations
+  and retain the full name for assistive technology.
 
 ## Customization and compatibility
 
