@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Kept Advanced Search readable at larger text sizes and fixed Reset for
+  custom views with inherited date or recurrence filters.
+- Matched report dates to the app's localized dates and gave portable
+  settings preview more room on narrow screens.
+- Added spoken cancellation status to timed Calendar entries and kept the
+  Android widget date and footer controls readable at larger text sizes.
+
 - Adapted Settings navigation to larger text and made current Sync state,
   pending changes and last successful sync easier to find.
 - Improved compact Shared Files and Archive/Trash presentation. Native

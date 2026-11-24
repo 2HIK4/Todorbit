@@ -6,6 +6,10 @@ API names and platform integration vary by version. Reuse its architecture,
 controllers, domain rules and semantic tokens rather than adopting a new state
 framework or component package to fix a UI defect.
 
+For file-backed widget journeys, follow the repository's [async and
+restart test guidance](../../../../docs/TESTING.md). A test that stops before
+the first frame needs fixture and zone diagnostics before a UI change.
+
 ## Constraints, spacing and responsive layout
 
 - Trace incoming constraints at the failing RenderObject through parents. A

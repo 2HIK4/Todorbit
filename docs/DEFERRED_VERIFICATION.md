@@ -1,16 +1,35 @@
 # Deferred Verification Backlog
 
+## UI Redesign 2.0 release acceptance (2026-11-24)
+
+The [final integration review](UI_REDESIGN_FINAL_ACCEPTANCE.md#remaining-acceptance-and-decision)
+classifies outstanding gates for implementation `90768ef`.
+The settings restart stall is resolved. Normal-session Windows portable
+reopen, the Android emulator's 192 native widget cases, and local packaging
+have verified receipts. Keep final verification on the normal Windows
+session with disposable app-data directories and the disposable Android
+emulator. This review's execution policy excludes Windows Sandbox.
+
+- **Release blockers**. Exact-candidate green CI and production package
+  identity, plus the official 16 KiB API 36 Release emulator gate.
+- **Required manual acceptance**. Registered installer/update on an
+  isolated Windows test installation, physical Windows input/DPI and
+  assistive output, and separately authorized two-client Drive/recovery.
+  Verify OEM-only behavior on its target hardware when applicable.
+- **Nonblocking deferred improvement**. Longer Focus and memory profiling
+  with a controlled release-mode comparison.
+
 ## Batch 5 Settings, Sync and widgets (2026-11-24)
 
 The [Batch 5 receipt](TEST_RUN_LEDGER.md#batch-5-settings-sync-and-native-widgets-2026-11-24)
 records Flutter and native-render verification at `2227ff0`. The settings
-export/import/restart journey did not complete on the isolated host.
-Portable codec checks passed. Windows Explorer attachment, native input,
+export/import/restart journey initially stalled. The [final integration
+review](UI_REDESIGN_FINAL_ACCEPTANCE.md#settings-exportimportrestart)
+records its harness correction and passing persistence check. Windows Explorer attachment, native input,
 assistive technology and DPI on physical displays remain pending.
-Android physical launcher placement, TalkBack, background updates and
-touch remain pending. The full Android native stress matrix, real cloud
-account and recovery journeys, and packaged release acceptance are
-assigned to final integration and release checks.
+The final integration receipt covers the full Android native stress
+matrix and emulator touch/IME. Real cloud and device-dependent behaviors
+remain tracked in the release gates above.
 
 ## Batch 4 Focus, Habits and Goals native acceptance (2026-11-24)
 

@@ -63,6 +63,17 @@ relevant task receipt. Before **any** test, identify changed behavior and its
 smallest covering assertion, compare prior source/dependency/configuration/
 environment fingerprints, and reuse an equivalent valid pass. A new task, a
 documentation edit, or an unrelated platform edit does not justify rerunning.
+When a widget journey uses real file or SQLite I/O, construct the store and
+executor in the same `runAsync` zone used for initialization. Bound the I/O
+waits, keep interaction assertions on the actual widget, and close and reopen
+the file-backed database when the journey claims restart persistence.
+A suite timeout alone may leave a test waiting on fake-zone futures.
+
+Set the fixture's platform explicitly when a test checks platform-specific
+formatting or geometry. Assert reachability, relationship and contrast using
+the rendered control. Keep the pinned SDK's `dart` on the test process's
+`PATH` for crash-recovery cases that spawn worker processes.
+
 Prefer one final focused check after code stabilizes. Log necessary debugging
 reruns with the change or new evidence that invalidated the earlier result.
 

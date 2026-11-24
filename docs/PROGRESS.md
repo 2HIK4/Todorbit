@@ -1,5 +1,22 @@
 # Progress
 
+## UI Redesign 2.0 final integration (2026-11-24)
+
+Final source `90768ef` on `feature/todorbit-ui-redesign-2`. All 67
+categories were reviewed. Advanced Search, localized reports, compact
+settings transfer, cancelled-event semantics and native Android widget
+geometry received targeted corrections. The Settings and theme restart
+stalls were fixture async defects, and their preservation assertions now
+pass. Windows normal-session portable reopen retained the Beta 26 fixture.
+Android widget stress passed 192 cases and the disposable-key Release APK
+compiled and verified. The initial serial test failure is retained alongside
+passing affected reruns. Exact-candidate CI, production signing/OAuth,
+16 KiB runtime and remaining manual paths still gate beta approval.
+
+[Final review](UI_REDESIGN_FINAL_ACCEPTANCE.md) ·
+[Verification](TEST_RUN_LEDGER.md#ui-redesign-20-final-integration-2026-11-24) ·
+[Remaining gates](DEFERRED_VERIFICATION.md#ui-redesign-20-release-acceptance-2026-11-24)
+
 ## Batch 5 Settings, Sync and native widgets (2026-11-24)
 
 Windows Settings switches to a section picker at enlarged text. Android

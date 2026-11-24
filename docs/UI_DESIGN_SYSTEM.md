@@ -144,6 +144,20 @@ Todorbit retains its own schedule, timer and navigation contracts.
   of the native layout and preserves access to the heading and date
   controls in compact Calendar widgets.
 
+## Cross-surface presentation
+
+- Let search headings wrap on narrow screens. Keep the short query label
+  and scope hint above filter help so they remain visible when the keyboard opens.
+- Reset clears active filters, including criteria carried in from an existing
+  view. Preserve the view name and icon and commit changes on explicit save.
+- Keep the report help action with its heading. Format the displayed period
+  and day labels with the shared local date formatter.
+- Use the compact dialog edge inset for portable settings. Keep categories
+  scrollable and import, export, confirmation and dismissal reachable.
+- Announce cancelled timeline entries and maintain contrast on their rendered
+  cards. Keep compact Android widget date targets at 48 dp. Use shorter
+  empty messages before they crowd out the footer at enlarged text.
+
 ## Customization and compatibility
 
 Settings → Appearance retains System, Light and Dark, two editable palettes,
@@ -172,5 +186,5 @@ Flutter renders where practical alongside targeted behavior tests. Record
 Windows and Android coverage separately, including narrow layouts and 150%
 text. Use the [testing policy](TESTING.md) for evidence.
 
-Final integration reviews the five implementation batches together, including
-real native input, physical device accessibility and packaged behavior.
+See the [final integration audit](UI_REDESIGN_FINAL_ACCEPTANCE.md) for the
+67-category review, render inventory and remaining release acceptance gates.

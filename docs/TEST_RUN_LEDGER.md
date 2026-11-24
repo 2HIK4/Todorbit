@@ -1,5 +1,39 @@
 # Persistent test run ledger
 
+## UI Redesign 2.0 final integration (2026-11-24)
+
+Initial integrated source `f17b6f8441363b71f9e142f9190059aea223681e`.
+Final implementation `90768ef905d0d242301861aeaf9c76445d11bbbf`.
+Flutter 3.47.7, Dart 3.13.5, pinned lockfile, synthetic records,
+disposable APPDATA/LOCALAPPDATA and Android emulator profiles.
+Logs and build receipts are under `.buildlog/ui-redesign/`.
+
+| Command or receipt | Result |
+| --- | --- |
+| `flutter test --no-pub --concurrency=1 --reporter expanded`, `final-integrated-host.log` | Initial run at `f17b6f8` reported 1,211 passes, 25 fails, 9 opt-in skips and two separately reported incomplete cases in the theme/transfer file. Its first case stalled and the matching test child was stopped. The remaining files completed. |
+| `final-focused-settings.log` | 18 passed, including the repaired Settings export, scoped apply, and first real SQLite reopen. |
+| `final-focused-and-render.log`, `final-visual-correction.log`, `final-exact-renders.log` | 57 focused/render checks, 11 after the correction pass, and 7 exact initial integration checks passed. Offscreen Flutter embeds the production widgets and Segoe UI/Roboto. |
+| `test/database_initialization_test.dart test/startup_recovery_journeys_test.dart test/resource_journeys_test.dart`, `final-profile-journeys.log` | 37 passed in an exact archive with pinned SDK `dart` on PATH and explicit profile opt-in. Covers all six failed DB worker cases and the original opt-in skips. |
+| `final-corrected-calendar-and-theme.log`, `final-corrected-render-tests.log`, `final-corrected-older-audit-tests.log` | Two theme/transfer cases and 16 calendar review cases passed. One retry found stale test controls/formatting and draft test instrumentation issues. Five populated cases and all 34 corrected layout/contrast/audit cases passed on the subsequent groups. |
+| `final-corrected-color-and-reports.log` and `final-contrast-and-interruption.log` | 39 color/dialog/report cases and 22 contrast/data-safety cases passed, including all four Sync worker-interruption reruns. |
+| `final-verified-checkpoint-tests.log` | 46 passed at `90768ef` with final Settings/theme, Calendar semantics, Android platform/widget actions, and draft protection. |
+| `flutter analyze --no-pub`, `dart analyze <affected Dart files>` | Clean full analysis on `f17b6f8`. Clean affected analysis on `90768ef`. |
+| `python -m unittest discover -s tools -p test_architecture_boundaries.py`, `python tools/dev/check-docs.py`, `git diff --check` | 39 architecture checks and documentation/diff checks passed. |
+| `tools/build-windows-release.ps1`, portable and installer scripts with the disabled fixture | Final Release compiled, CRT verification passed, ZIP and setup produced with digests. Packaged native self-test passed and its executable matches the final archive. |
+| `final-windows-normal-data.log` with normal-session portable app | Rebuilt Beta 26 and redesigned portable packages used the same disposable profile. Schema 29 integrity, a synthetic task and a local preference survived. A hidden-window probe is recorded separately. |
+| `tools/build-android.ps1 -Mode Release -DisableGoogleDrive`, disposable key, `apksigner verify` | Final arm64/x64 APK compiled, signature verified, eight native libraries passed alignment. Production signer verification remains open. |
+| `WidgetRenderInstrumentation`, disposable API 35 emulator | Initial stress failures documented. Final `widgets-matrix-density.log` passed 192 geometry/action cases. Separate native Shared Files checks passed 4. Real Flutter Today, touch/IME task creation and foreground return observed. |
+| `test/performance_benchmark_test.dart` within the serial run | 15 measurement scenarios passed. Process timing, memory, hardware and frame evidence are distinguished in the final report. |
+
+The final source changed no product paths outside the UI and native Android
+widget renderer during this integration pass. The failing serial run is
+retained as evidence. All reported failures and unfinished test bodies
+have passing targeted reruns with their changed test paths and required
+environment. A single green exact-candidate run is still required in CI.
+Prior Batches 1–5 route evidence remains applicable on unchanged surfaces.
+The [final review](UI_REDESIGN_FINAL_ACCEPTANCE.md) lists the 67 categories,
+capture paths, source fingerprints, failure diagnostics and remaining gates.
+
 ## Batch 5 Settings, Sync and native widgets (2026-11-24)
 
 Baseline `6b8990a`. Verified source `2227ff0`. Flutter 3.47.7 and
