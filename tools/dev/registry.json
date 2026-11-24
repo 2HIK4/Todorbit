@@ -1,7 +1,7 @@
 ﻿{
     "Version":  "1.0.0",
-    "GeneratedAt":  "2026-11-24T17:04:50.5544038+03:00",
-    "TotalTests":  233,
+    "GeneratedAt":  "2026-11-24T17:28:56.7733668+03:00",
+    "TotalTests":  234,
     "Tests":  [
                   {
                       "Id":  "test:advanced_productivity_ui_test",
@@ -1443,6 +1443,26 @@
                                     ],
                       "EvidenceReuse":  "Eligible",
                       "Description":  "Automated Flutter test suite: interactive_calendar_redesign_test",
+                      "Prerequisites":  [
+                                            "flutter_sdk",
+                                            "pub_get"
+                                        ]
+                  },
+                  {
+                      "Id":  "test:lab_render_test",
+                      "Type":  "flutter_test",
+                      "Path":  "test/lab_render_test.dart",
+                      "Command":  "flutter test --no-pub --reporter=expanded test/lab_render_test.dart",
+                      "Tier":  "Level1_Fast",
+                      "Features":  [
+                                       "shared"
+                                   ],
+                      "Platforms":  [
+                                        "Windows",
+                                        "Android"
+                                    ],
+                      "EvidenceReuse":  "Eligible",
+                      "Description":  "Automated Flutter test suite: lab_render_test",
                       "Prerequisites":  [
                                             "flutter_sdk",
                                             "pub_get"
