@@ -1,7 +1,7 @@
 ﻿{
     "Version":  "1.0.0",
-    "GeneratedAt":  "2026-11-24T16:06:52.1591566+03:00",
-    "TotalTests":  229,
+    "GeneratedAt":  "2026-11-24T17:04:50.5544038+03:00",
+    "TotalTests":  233,
     "Tests":  [
                   {
                       "Id":  "test:advanced_productivity_ui_test",
@@ -743,6 +743,26 @@
                                         ]
                   },
                   {
+                      "Id":  "test:calendar_recurrence_invariants_test",
+                      "Type":  "flutter_test",
+                      "Path":  "test/calendar_recurrence_invariants_test.dart",
+                      "Command":  "flutter test --no-pub --reporter=expanded test/calendar_recurrence_invariants_test.dart",
+                      "Tier":  "Level1_Fast",
+                      "Features":  [
+                                       "calendar"
+                                   ],
+                      "Platforms":  [
+                                        "Windows",
+                                        "Android"
+                                    ],
+                      "EvidenceReuse":  "Eligible",
+                      "Description":  "Automated Flutter test suite: calendar_recurrence_invariants_test",
+                      "Prerequisites":  [
+                                            "flutter_sdk",
+                                            "pub_get"
+                                        ]
+                  },
+                  {
                       "Id":  "test:calendar_review_boundaries_test",
                       "Type":  "flutter_test",
                       "Path":  "test/calendar_review_boundaries_test.dart",
@@ -1018,6 +1038,26 @@
                                     ],
                       "EvidenceReuse":  "Eligible",
                       "Description":  "Automated Flutter test suite: database_initialization_test",
+                      "Prerequisites":  [
+                                            "flutter_sdk",
+                                            "pub_get"
+                                        ]
+                  },
+                  {
+                      "Id":  "test:database_migration_recovery_test",
+                      "Type":  "flutter_test",
+                      "Path":  "test/database_migration_recovery_test.dart",
+                      "Command":  "flutter test --no-pub --reporter=expanded test/database_migration_recovery_test.dart",
+                      "Tier":  "Level2_Critical",
+                      "Features":  [
+                                       "database"
+                                   ],
+                      "Platforms":  [
+                                        "Windows",
+                                        "Android"
+                                    ],
+                      "EvidenceReuse":  "Eligible",
+                      "Description":  "Automated Flutter test suite: database_migration_recovery_test",
                       "Prerequisites":  [
                                             "flutter_sdk",
                                             "pub_get"
@@ -2996,6 +3036,26 @@
                                         ]
                   },
                   {
+                      "Id":  "test:sync_simulated_transport_test",
+                      "Type":  "flutter_test",
+                      "Path":  "test/sync_simulated_transport_test.dart",
+                      "Command":  "flutter test --no-pub --reporter=expanded test/sync_simulated_transport_test.dart",
+                      "Tier":  "Level1_Fast",
+                      "Features":  [
+                                       "sync"
+                                   ],
+                      "Platforms":  [
+                                        "Windows",
+                                        "Android"
+                                    ],
+                      "EvidenceReuse":  "Eligible",
+                      "Description":  "Automated Flutter test suite: sync_simulated_transport_test",
+                      "Prerequisites":  [
+                                            "flutter_sdk",
+                                            "pub_get"
+                                        ]
+                  },
+                  {
                       "Id":  "test:sync_status_button_test",
                       "Type":  "flutter_test",
                       "Path":  "test/sync_status_button_test.dart",
@@ -4556,6 +4616,26 @@
                                     ],
                       "EvidenceReuse":  "Eligible",
                       "Description":  "Developer tool/architecture test: test_prepare_android_release",
+                      "Prerequisites":  [
+                                            "python"
+                                        ]
+                  },
+                  {
+                      "Id":  "tool:test_process_invocation_safety",
+                      "Type":  "python_test",
+                      "Path":  "tools/test_process_invocation_safety.py",
+                      "Command":  "python -m unittest discover -s tools -p test_process_invocation_safety.py",
+                      "Tier":  "Level1_Fast",
+                      "Features":  [
+                                       "architecture",
+                                       "dev-tools"
+                                   ],
+                      "Platforms":  [
+                                        "Windows",
+                                        "Host"
+                                    ],
+                      "EvidenceReuse":  "Eligible",
+                      "Description":  "Developer tool/architecture test: test_process_invocation_safety",
                       "Prerequisites":  [
                                             "python"
                                         ]
