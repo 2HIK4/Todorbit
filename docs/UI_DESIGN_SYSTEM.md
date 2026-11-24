@@ -178,6 +178,13 @@ HEX roles for each mode, check contrast and import it through Appearance.
 Flutter contributors should use the existing color, spacing and component
 contracts before extending them. Keep file formats and storage keys compatible.
 
+## Android launch screen
+
+Use the existing orbit geometry on the neutral launch background. Keep the
+art inside the Android 12 circular safe area in both system themes and use
+the same visual for older supported Android versions. Verify the actual
+starting window and its first-frame handoff on a Release APK.
+
 ## Rollout and checks
 
 Protect editor drafts on navigation, keep planned dates and deadlines separate,

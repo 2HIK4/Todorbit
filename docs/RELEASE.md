@@ -1,6 +1,17 @@
 # Windows v1.0 release preparation
 
+The [Beta 27 candidate review](TODORBIT_BETA_27_CANDIDATE.md) records the
+redesign source, gate results and remaining install acceptance.
+
 ## Current status
+
+As of 2026-11-24, the latest published experimental release is
+[Beta 25](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.25),
+version `1.0.19-beta.25+48`. Beta 26 remains a draft. The redesign's Beta 27
+candidate has green Windows and Android CI. The production Android signer
+and official 16 KiB acceptance are still pending.
+
+## Earlier release evidence
 
 The latest published experimental release verified on 2026-11-15 is
 **[v1.0.19-beta.22](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.22)**,

@@ -1,5 +1,16 @@
 # Deferred Verification Backlog
 
+## Beta 27 publication gates (2026-11-24)
+
+See the [Beta 27 candidate receipt](TODORBIT_BETA_27_CANDIDATE.md) for
+exact source, package results and manual steps. Provision the existing
+production Android signer locally, verify candidate APKs against the published
+certificate, and run the official API 36 16 KiB upgrade and reopen gate before
+publication. Public discovery, downloads and checksums are verified after
+publication. The registered Windows upgrade needs an isolated test account or
+machine. Physical input, assistive output and separately authorized real Drive
+recovery remain manual checks. Windows Sandbox is excluded from this review.
+
 ## UI Redesign 2.0 release acceptance (2026-11-24)
 
 The [final integration review](UI_REDESIGN_FINAL_ACCEPTANCE.md#remaining-acceptance-and-decision)

@@ -29,7 +29,11 @@ For Settings and Sync presentation, check the narrow section picker, long
 account labels, last success, pending work and the conflict review entry point.
 Android native widget geometry can use the 180 and 380 dp representative
 matrix at 100% and 150% text. Track physical launcher and Windows shell
-checks separately.
+checks separately. When the Android splash changes, inspect a cold launch
+from a Release APK in both system themes. Keep the logo within the platform
+mask and distinguish measured Release timing, Debug observations and the
+official 16 KiB candidate gate. Use the existing production signer for
+upgrade evidence and keep signing properties local.
 
 For SQLite, recurrence, and profile changes, include focused migration/round-trip or isolated in-memory/disposable-profile tests as appropriate. Preserve production data; never open or migrate the personal profile to test a change. For native IPC or widget rendering/input changes, build the native Release target, run `TodorbitWidget.exe --self-test`, then follow the relevant manual checks in `docs/windows-widget.md` on an isolated profile. For update/installer changes, use `docs/SOFTWARE_UPDATES.md` and `docs/ACCEPTANCE.md`; verify package identity, helper failure paths, and disposable upgrade behavior before release claims.
 

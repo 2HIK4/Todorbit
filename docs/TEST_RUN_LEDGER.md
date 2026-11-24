@@ -1,5 +1,33 @@
 # Persistent test run ledger
 
+## UI Redesign 2.0 Beta 27 candidate (2026-11-24)
+
+Candidate `7ede8890cc1216cf70b6dfa1454cb1ab45b53cd2`, Flutter 3.47.7,
+Dart 3.13.5 and SQLite Schema 29. The exact-source
+[Android run](https://github.com/2HIK4/Todorbit/actions/runs/45388885387)
+passed targeted analysis, 76 tests and both emulator integrations after
+the Calendar fixture scrolled to a tappable row. The initial run and fix
+are recorded in the [candidate receipt](TODORBIT_BETA_27_CANDIDATE.md).
+Local workflow tests passed 5, architecture checks passed 39, and the
+documentation checker reported zero errors.
+
+The exact-source [Windows run](https://github.com/2HIK4/Todorbit/actions/runs/45388886278)
+passed full analysis, 1,238 tests with 9 opt-in skips, developer tooling,
+architecture, docs, OAuth configuration, native writer, hidden background
+barriers, CRT, packaged widget self-test, installer and portable packaging.
+Independent download verification matched both Windows package hashes to
+their sidecars and manifest, checked all 43 ZIP entries, verified PE version
+`1.0.19.50`, and confirmed the enabled Drive build receipt, runner and AOT
+hashes and expected native files. See the artifact and checksums in the
+candidate receipt.
+
+The Release startup APK came from `50f5652`, with the same packaged inputs,
+an existing disposable signing fixture and Drive disabled. On API 35 with
+4 KiB pages, Android drew after 20.637 s on first launch and 3.254–6.356 s
+on three cold reopens. A foreground return took 0.722 s. Timing logs and
+actual renders are linked from the candidate receipt. Production signing
+and official 16 KiB runtime verification are still open.
+
 ## UI Redesign 2.0 final integration (2026-11-24)
 
 Initial integrated source `f17b6f8441363b71f9e142f9190059aea223681e`.

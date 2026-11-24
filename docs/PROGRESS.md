@@ -1,5 +1,16 @@
 # Progress
 
+## UI Redesign 2.0 Beta 27 candidate (2026-11-24)
+
+Version `1.0.19-beta.27+50` on `feature/todorbit-ui-redesign-2`. The
+Release-mode Android renders confirm the neutral launch screen and real
+Calendar and Trash glyphs. Exact-candidate Windows and Android CI passed.
+The production Android signing configuration and official 16 KiB
+candidate run remain release gates. Beta 27 is unpublished.
+
+[Candidate evidence, gates and manual steps](TODORBIT_BETA_27_CANDIDATE.md) ·
+[Release notes](TODORBIT_BETA_27_RELEASE_NOTES.md)
+
 ## UI Redesign 2.0 final integration (2026-11-24)
 
 Final source `90768ef` on `feature/todorbit-ui-redesign-2`. All 67

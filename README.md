@@ -27,7 +27,14 @@ Settings keeps Sync status and queued changes alongside the last successful
 sync. Backups provide point-in-time recovery. Windows and Android native
 widgets use the selected palette when available.
 
-## Android beta installation
+## Experimental beta downloads
+
+Current Windows and Android builds are listed on [GitHub Releases](https://github.com/2HIK4/Todorbit/releases).
+The unpublished Beta 27 redesign candidate includes the new Today workspace,
+larger-text layouts, shared editors and appearance controls.
+See the [Beta 27 notes](docs/TODORBIT_BETA_27_RELEASE_NOTES.md).
+
+## Earlier Android beta installation
 
 The production-signed [Android 1.0.19-beta.12 pre-release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.12) supports Android 8.0+ with a universal ARM64/x86-64 APK, resumable updates, Tasks/Calendar widgets and incremental Sync with Standard or optional private encryption. Download the APK and verify its published SHA-256. Real Drive cross-device acceptance remains unverified. Back up existing data and start with disposable profiles. Before replacing a debug-signed app, verify an external backup and recovery first. See [phone signing and backup testing](docs/ANDROID_BETA_2_PHONE_TESTING.md), [sync setup](docs/GOOGLE_DRIVE_SYNC.md) and [publication evidence and test skips](docs/UI_QUALITY_BETA_12_PUBLICATION.md).
 
@@ -72,7 +79,7 @@ See [theming](docs/THEMING.md), [customization extension points](docs/CUSTOMIZAT
 
 Creator: **Hussam Alkhatib**, Creator & Project Founder. Original concept, product direction, and development of Todorbit. [Email](mailto:hussamalkhatib24@gmail.com) · [Portfolio](https://2hik4.github.io/) · [LinkedIn](https://www.linkedin.com/in/hussam-alkhatib-dev).
 
-## Current release status
+## Earlier release evidence
 
 The coordinated v1.0.19-beta.12 pre-release includes six UI reliability batches:
 draft protection, compact/large-text layouts, resource/template failure recovery,

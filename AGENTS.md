@@ -39,6 +39,7 @@
 - Native painting, shell attachment, input, DPI or menu changes require native Release/self-test plus the relevant [manual widget checklist](docs/windows-widget.md). Automated tests do not prove physical Windows behavior; report unobserved behavior accurately.
 - Review diffs and run `git diff --check`. Do not commit builds, caches, secrets, credentials or machine-specific settings.
 - Do not publish a release unless explicitly requested. Preserve version synchronization, CI, installer, updater and checksum gates in [release preparation](docs/RELEASE.md). Documentation-only work needs no version bump or package rebuild.
+- Before publishing Android packages, verify the candidate certificate against the previous production APK and run the official 16 KiB runtime on the actual candidate. Keep the existing signing configuration local or in the approved protected workflow. Use disposable profiles and record any physical or registered-install checks still pending.
 
 ## Skills and documentation routing
 
