@@ -23,6 +23,7 @@
 
 ## Efficient workflow and verification
 
+- **Automation and non-interactive process safety**: Automated CLI operations, test runners, and developer scripts MUST remain strictly non-interactive. Never invoke extensionless scripts (e.g. `flutter`, `dart` on Windows) via shell execution; always resolve explicit Windows extensions (`flutter.bat`, `dart.exe`). Automated PowerShell processes must pass `-NonInteractive` alongside `-NoProfile`. Never invoke `Process.Start` or `Start-Process` with `UseShellExecute = true` or trigger unassociated Windows file handlers that open "Pick an app" (`OpenWith.exe`) dialogs. Enforce explicit execution timeouts and bounded retries (max 2) with fail-closed diagnostics.
 - Start with `git status --short` and the smallest relevant `rg` search. Exclude generated, build and dependency directories. Read only task-relevant documentation.
 - Preserve unrelated uncommitted work; use a focused branch. Never reset another task's changes or move release tags. See [Codex workflow](docs/CODEX_WORKFLOW.md).
 - Find the feature in [Architecture map](docs/ARCHITECTURE_MAP.md) before searching broadly. `tools/dev/verify.ps1` selects explicit Quick/Feature/Full checks; `-Plan` previews them. Never guess tests for an uncertain dependency.

@@ -19,7 +19,7 @@ function Add-Step([string]$Tool, [string[]]$Arguments) {
   $steps.Add([pscustomobject]@{ tool=$Tool; arguments=$Arguments })
 }
 function Add-ScriptStep([string]$Script, [string[]]$Arguments) {
-  Add-Step (Get-Process -Id $PID).Path (@('-NoProfile','-ExecutionPolicy','Bypass','-File',$Script) + $Arguments)
+  Add-Step (Get-Process -Id $PID).Path (@('-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',$Script) + $Arguments)
 }
 if ($Feature -and $Feature -notin $catalog.PSObject.Properties.Name) {
   throw "Unknown feature '$Feature'. Choose: $($catalog.PSObject.Properties.Name -join ', ')"
@@ -89,10 +89,22 @@ try {
     $watch = [Diagnostics.Stopwatch]::StartNew()
     $code = 0
     try {
-      $null = Get-Command $step.tool -ErrorAction Stop
+      $resolvedTool = $step.tool
+      if ($step.tool -eq 'flutter') {
+        $candBat = Get-Command 'flutter.bat' -ErrorAction SilentlyContinue
+        if ($candBat) { $resolvedTool = $candBat.Source }
+      } elseif ($step.tool -eq 'dart') {
+        $candExe = Get-Command 'dart.exe' -ErrorAction SilentlyContinue
+        if ($candExe) { $resolvedTool = $candExe.Source }
+        else {
+          $candBat = Get-Command 'dart.bat' -ErrorAction SilentlyContinue
+          if ($candBat) { $resolvedTool = $candBat.Source }
+        }
+      }
+      $null = Get-Command $resolvedTool -ErrorAction Stop
       $global:LASTEXITCODE = 0
       $ErrorActionPreference = 'Continue'
-      & $step.tool @($step.arguments) *> $log
+      & $resolvedTool @($step.arguments) *> $log
       if ($LASTEXITCODE) { $code = $LASTEXITCODE }
     } catch { $_ | Out-String | Add-Content -LiteralPath $log; $code = 1 }
     finally { $ErrorActionPreference = 'Stop' }

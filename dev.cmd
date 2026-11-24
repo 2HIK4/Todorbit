@@ -1,3 +1,3 @@
 @echo off
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\dev\dev.ps1" %*
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%~dp0tools\dev\dev.ps1" %*
 exit /b %ERRORLEVEL%

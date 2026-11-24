@@ -34,31 +34,36 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+if (-not $scriptDir) { $scriptDir = (Join-Path (Get-Location) 'tools\dev') }
+$repoRoot = (Resolve-Path (Join-Path $scriptDir '..\..')).Path
 
 # Import core modules
-Import-Module (Join-Path $PSScriptRoot 'modules\Doctor.psm1') -DisableNameChecking -Force
-Import-Module (Join-Path $PSScriptRoot 'modules\Session.psm1') -DisableNameChecking -Force
-Import-Module (Join-Path $PSScriptRoot 'modules\Registry.psm1') -DisableNameChecking -Force
+Import-Module (Join-Path $scriptDir 'modules\Doctor.psm1') -Global -DisableNameChecking -Force
+Import-Module (Join-Path $scriptDir 'modules\Session.psm1') -Global -DisableNameChecking -Force
+Import-Module (Join-Path $scriptDir 'modules\Registry.psm1') -Global -DisableNameChecking -Force
 
 # Optional lazy modules
-$impactModule = Join-Path $PSScriptRoot 'modules\Impact.psm1'
-if (Test-Path -LiteralPath $impactModule) { Import-Module $impactModule -DisableNameChecking -Force }
+$impactModule = Join-Path $scriptDir 'modules\Impact.psm1'
+if (Test-Path -LiteralPath $impactModule) { Import-Module $impactModule -Global -DisableNameChecking -Force }
 
-$evidenceModule = Join-Path $PSScriptRoot 'modules\Evidence.psm1'
-if (Test-Path -LiteralPath $evidenceModule) { Import-Module $evidenceModule -DisableNameChecking -Force }
+$evidenceModule = Join-Path $scriptDir 'modules\Evidence.psm1'
+if (Test-Path -LiteralPath $evidenceModule) { Import-Module $evidenceModule -Global -DisableNameChecking -Force }
 
-$harnessModule = Join-Path $PSScriptRoot 'modules\Harness.psm1'
-if (Test-Path -LiteralPath $harnessModule) { Import-Module $harnessModule -DisableNameChecking -Force }
+$diagnosticsModule = Join-Path $scriptDir 'modules\Diagnostics.psm1'
+if (Test-Path -LiteralPath $diagnosticsModule) { Import-Module $diagnosticsModule -Global -DisableNameChecking -Force }
 
-$fixturesModule = Join-Path $PSScriptRoot 'modules\Fixtures.psm1'
-if (Test-Path -LiteralPath $fixturesModule) { Import-Module $fixturesModule -DisableNameChecking -Force }
+$harnessModule = Join-Path $scriptDir 'modules\Harness.psm1'
+if (Test-Path -LiteralPath $harnessModule) { Import-Module $harnessModule -Global -DisableNameChecking -Force }
 
-$labModule = Join-Path $PSScriptRoot 'modules\Lab.psm1'
-if (Test-Path -LiteralPath $labModule) { Import-Module $labModule -DisableNameChecking -Force }
+$fixturesModule = Join-Path $scriptDir 'modules\Fixtures.psm1'
+if (Test-Path -LiteralPath $fixturesModule) { Import-Module $fixturesModule -Global -DisableNameChecking -Force }
 
-$benchmarksModule = Join-Path $PSScriptRoot 'modules\Benchmarks.psm1'
-if (Test-Path -LiteralPath $benchmarksModule) { Import-Module $benchmarksModule -DisableNameChecking -Force }
+$labModule = Join-Path $scriptDir 'modules\Lab.psm1'
+if (Test-Path -LiteralPath $labModule) { Import-Module $labModule -Global -DisableNameChecking -Force }
+
+$benchmarksModule = Join-Path $scriptDir 'modules\Benchmarks.psm1'
+if (Test-Path -LiteralPath $benchmarksModule) { Import-Module $benchmarksModule -Global -DisableNameChecking -Force }
 
 function Show-Help {
     Write-Host "=================================================================" -ForegroundColor Cyan
@@ -93,7 +98,8 @@ function Show-Help {
     Write-Host "=================================================================" -ForegroundColor Cyan
 }
 
-switch ($Command.ToLowerInvariant()) {
+try {
+    switch ($Command.ToLowerInvariant()) {
     'help' {
         Show-Help
     }
@@ -177,42 +183,115 @@ switch ($Command.ToLowerInvariant()) {
         }
     }
     'verify' {
-        # Bridge to verify.ps1 and future impact analyzer
+        Ensure-TodorbitEnvironment
         $verifyScript = Join-Path $PSScriptRoot 'verify.ps1'
         $passArgs = @()
-        $targetMode = switch ($Subcommand.ToLowerInvariant()) {
+        $sub = if ($Subcommand) { $Subcommand.ToLowerInvariant() } else { 'quick' }
+        $targetMode = switch ($sub) {
             'quick' { 'Quick' }
             'feature' { 'Feature' }
             'full' { 'Full' }
-            'changed' { 'Quick' } # Handled via impact analyzer if available
+            'changed' { 'Quick' }
             Default { 'Quick' }
         }
 
-        # If verify changed is called and Impact module is loaded, auto-resolve changed files and tests
-        if ($Subcommand.ToLowerInvariant() -eq 'changed') {
-            if (Get-Command 'Invoke-ImpactAnalysis' -ErrorAction SilentlyContinue) {
-                $impact = Invoke-ImpactAnalysis
-                if ($impact.SelectedTests.Count -eq 0) {
-                    Write-Host "No affected tests detected by impact analysis." -ForegroundColor Green
-                    return
-                }
-                $ChangedPaths = @($impact.ChangedFiles)
-                $Tests = @($impact.SelectedTests)
-                Write-Host "Impact analysis selected $($Tests.Count) test(s) for $($ChangedPaths.Count) changed file(s)." -ForegroundColor Cyan
-            } else {
+        # If verify changed is requested, use impact analysis and evidence reuse
+        if ($sub -eq 'changed') {
+            if (-not (Get-Command 'Invoke-ImpactAnalysis' -ErrorAction SilentlyContinue)) {
                 throw "Impact analyzer module not loaded. Run 'dev verify quick -ChangedPaths ... -Tests ...' instead."
             }
+            $impact = Invoke-ImpactAnalysis
+            if ($impact.SelectedTests.Count -eq 0) {
+                Write-Host "No affected tests detected by impact analysis." -ForegroundColor Green
+                $receipt = New-VerificationReceipt -Scope 'Changed' -SelectionRationale 'No source changes detected'
+                if ($Json) { $receipt | ConvertTo-Json -Depth 4 }
+                return
+            }
+
+            $selected = @($impact.SelectedTests)
+            $changed = @($impact.ChangedFiles)
+            $testsToRun = [Collections.Generic.List[string]]::new()
+            $reusedTests = [Collections.Generic.List[string]]::new()
+
+            # Check evidence reuse for each selected test
+            foreach ($t in $selected) {
+                $fp = Get-TestCompositeFingerprint -TestPath $t -SourcePaths $changed
+                $cached = Get-EvidenceRecord -Fingerprint $fp.CompositeFingerprint
+                if ($cached -and -not $Force) {
+                    $reusedTests.Add($t)
+                    Write-Host " [REUSED] $t (Saved $([math]::Round($cached.DurationSeconds, 1))s from cached evidence: $($fp.CompositeFingerprint.Substring(0,8)))" -ForegroundColor Cyan
+                } else {
+                    $testsToRun.Add($t)
+                }
+            }
+
+            if ($testsToRun.Count -eq 0 -and $reusedTests.Count -gt 0) {
+                Write-Host ""
+                Write-Host "All $($reusedTests.Count) required verification check(s) matched valid evidence. No execution needed." -ForegroundColor Green
+                $receipt = New-VerificationReceipt -Scope 'Changed' -RequiredChecks $selected -ReusedChecks $reusedTests.ToArray() -SelectionRationale 'All tests matched 4-fingerprint evidence'
+                if ($Json) { $receipt | ConvertTo-Json -Depth 4 }
+                return
+            }
+
+            Write-Host "Impact analysis: $($reusedTests.Count) test(s) reused, $($testsToRun.Count) test(s) require fresh execution." -ForegroundColor White
+            $ChangedPaths = $changed
+            $Tests = @($testsToRun.ToArray())
         }
 
-        $passArgs += @('-Mode', $targetMode)
-        if ($Feature) { $passArgs += @('-Feature', $Feature) }
-        if ($ChangedPaths.Count -gt 0) { $passArgs += @('-ChangedPaths', ($ChangedPaths -join ',')) }
-        if ($Tests.Count -gt 0) { $passArgs += @('-Tests', ($Tests -join ',')) }
-        if ($Platform -ne 'None') { $passArgs += @('-Platform', $Platform) }
-        if ($Plan) { $passArgs += '-Plan' }
+        $verifyArgs = @{
+            Mode = $targetMode
+            ChangedPaths = $ChangedPaths
+            Tests = $Tests
+            Platform = $Platform
+        }
+        if ($Feature) { $verifyArgs['Feature'] = $Feature }
+        if ($Plan) { $verifyArgs['Plan'] = $true }
 
-        Ensure-TodorbitEnvironment
-        & powershell -NoProfile -ExecutionPolicy Bypass -File $verifyScript @passArgs
+        & $verifyScript @verifyArgs
+    }
+    'diagnose' {
+        $lastFail = Get-LastFailure
+        if (-not $lastFail) {
+            Write-Host "No recorded test failure found in .buildlog/failures." -ForegroundColor Green
+            return
+        }
+        if ($Json) {
+            $lastFail | ConvertTo-Json -Depth 5
+        } else {
+            Write-Host "=================================================================" -ForegroundColor Red
+            Write-Host "                 LAST FAILURE DIAGNOSTICS                       " -ForegroundColor Red
+            Write-Host "=================================================================" -ForegroundColor Red
+            Write-Host "Failure ID: $($lastFail.FailureId) (Recorded: $($lastFail.Timestamp))" -ForegroundColor White
+            Write-Host "Test Path: $($lastFail.TestPath)" -ForegroundColor Yellow
+            Write-Host "Reproduction Command:" -ForegroundColor White
+            Write-Host "  $($lastFail.ReproductionCommand)" -ForegroundColor Cyan
+            Write-Host ""
+            if ($lastFail.FailedTests.Count -gt 0) {
+                Write-Host "Failed Test Names:" -ForegroundColor Red
+                foreach ($fn in $lastFail.FailedTests) { Write-Host " - $fn" -ForegroundColor Red }
+                Write-Host ""
+            }
+            if ($lastFail.Errors.Count -gt 0) {
+                Write-Host "Errors & Exceptions:" -ForegroundColor Yellow
+                foreach ($err in $lastFail.Errors) { Write-Host "  $err" -ForegroundColor Gray }
+                Write-Host ""
+            }
+            if ($lastFail.StackTrace.Count -gt 0) {
+                Write-Host "Stack Trace:" -ForegroundColor DarkGray
+                foreach ($st in $lastFail.StackTrace) { Write-Host "  $st" -ForegroundColor DarkGray }
+                Write-Host ""
+            }
+            Write-Host "=================================================================" -ForegroundColor Red
+        }
+    }
+    'reproduce' {
+        $lastFail = Get-LastFailure
+        if (-not $lastFail) {
+            Write-Host "No recorded failure found to reproduce." -ForegroundColor Yellow
+            return
+        }
+        Write-Host "To reproduce the failure, run:" -ForegroundColor Cyan
+        Write-Host "  $($lastFail.ReproductionCommand)" -ForegroundColor White
     }
     'context' {
         if (-not $Subcommand -and -not $Feature) {
@@ -282,4 +361,9 @@ switch ($Command.ToLowerInvariant()) {
         Write-Host "Unknown command '$Command'. Run '.\dev help' for usage." -ForegroundColor Red
         exit 1
     }
+}
+} catch {
+    Write-Host "CAUGHT ERROR on Line $($_.InvocationInfo.ScriptLineNumber): $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Line text: $($_.InvocationInfo.Line)" -ForegroundColor Yellow
+    exit 1
 }

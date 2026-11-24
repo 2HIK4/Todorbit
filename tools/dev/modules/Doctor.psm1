@@ -47,6 +47,60 @@ function Ensure-TodorbitEnvironment {
     }
 }
 
+function Resolve-TodorbitTool {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)][string]$ToolName
+    )
+    Ensure-TodorbitEnvironment
+
+    switch ($ToolName.ToLowerInvariant()) {
+        'flutter' {
+            # Strictly prefer flutter.bat on Windows to prevent OpenWith on extensionless bash script
+            $cand = Get-Command 'flutter.bat' -ErrorAction SilentlyContinue
+            if ($cand) { return $cand.Source }
+            $raw = Get-Command 'flutter' -ErrorAction SilentlyContinue
+            if ($raw -and $raw.Extension -eq '.bat') { return $raw.Source }
+            $fallback = 'C:\VScode\flutter\bin\flutter.bat'
+            if (Test-Path -LiteralPath $fallback) { return $fallback }
+            throw "Unable to safely resolve flutter.bat on Windows (preventing extensionless shell execution)."
+        }
+        'dart' {
+            # Strictly prefer dart.exe (or dart.bat) to prevent OpenWith on extensionless bash script
+            $candExe = Get-Command 'dart.exe' -ErrorAction SilentlyContinue
+            if ($candExe) { return $candExe.Source }
+            $candBat = Get-Command 'dart.bat' -ErrorAction SilentlyContinue
+            if ($candBat) { return $candBat.Source }
+            $fallbackExe = 'C:\VScode\flutter\bin\cache\dart-sdk\bin\dart.exe'
+            if (Test-Path -LiteralPath $fallbackExe) { return $fallbackExe }
+            $fallbackBat = 'C:\VScode\flutter\bin\dart.bat'
+            if (Test-Path -LiteralPath $fallbackBat) { return $fallbackBat }
+            throw "Unable to safely resolve dart.exe or dart.bat on Windows."
+        }
+        'python' {
+            $cand = Get-Command 'python.exe' -ErrorAction SilentlyContinue
+            if ($cand) { return $cand.Source }
+            return 'python'
+        }
+        'git' {
+            $cand = Get-Command 'git.exe' -ErrorAction SilentlyContinue
+            if ($cand) { return $cand.Source }
+            return 'git'
+        }
+        Default {
+            $cmd = Get-Command $ToolName -ErrorAction SilentlyContinue
+            if ($cmd -and $cmd.Extension -in @('.exe', '.bat', '.cmd', '.ps1')) {
+                return $cmd.Source
+            }
+            if ($cmd -and [string]::IsNullOrEmpty($cmd.Extension)) {
+                # Extensionless file detected - NEVER invoke directly via shell on Windows!
+                throw "Refusing to invoke extensionless file '$($cmd.Source)' directly on Windows. Missing executable handler."
+            }
+            return $ToolName
+        }
+    }
+}
+
 function Invoke-TodorbitDoctor {
     [CmdletBinding()]
     param(
@@ -268,4 +322,4 @@ function Invoke-TodorbitDoctor {
     return $report
 }
 
-Export-ModuleMember -Function Ensure-TodorbitEnvironment, Invoke-TodorbitDoctor
+Export-ModuleMember -Function Ensure-TodorbitEnvironment, Resolve-TodorbitTool, Invoke-TodorbitDoctor
