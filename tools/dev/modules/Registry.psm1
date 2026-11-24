@@ -1,0 +1,233 @@
+# Registry.psm1 - Todorbit Centralized Test & Automation Registry
+# Automatically discovers, categorizes, and validates all repository test suites.
+$ErrorActionPreference = 'Stop'
+
+function Get-RepoRoot {
+    return (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+}
+
+function Get-RegistryPath {
+    return Join-Path (Get-RepoRoot) 'tools\dev\registry.json'
+}
+
+function Build-TestRegistry {
+    [CmdletBinding()]
+    param()
+
+    $repoRoot = Get-RepoRoot
+    $featuresJsonPath = Join-Path $repoRoot 'tools\dev\features.json'
+    $featureCatalog = $null
+    if (Test-Path -LiteralPath $featuresJsonPath) {
+        $featureCatalog = Get-Content -LiteralPath $featuresJsonPath -Raw | ConvertFrom-Json
+    }
+
+    $testsList = [Collections.Generic.List[object]]::new()
+    $seenIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+
+    # 1. Discover Dart tests in test/
+    $dartTestFiles = Get-ChildItem -Path (Join-Path $repoRoot 'test') -Recurse -File -Filter *.dart
+    foreach ($file in $dartTestFiles) {
+        $relPath = ($file.FullName.Substring($repoRoot.Length + 1)).Replace('\', '/')
+        $baseName = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+        $id = "test:$baseName"
+        if ($seenIds.Contains($id)) {
+            $id = "test:$relPath"
+        }
+        $seenIds.Add($id) | Out-Null
+
+        # Analyze content for imports and test descriptions
+        $content = Get-Content -LiteralPath $file.FullName -Raw -ErrorAction SilentlyContinue
+        $associatedFeatures = [Collections.Generic.List[string]]::new()
+        if ($featureCatalog) {
+            foreach ($prop in $featureCatalog.PSObject.Properties) {
+                $featName = $prop.Name
+                $featTests = @($prop.Value.tests)
+                if ($featTests -contains $relPath) {
+                    $associatedFeatures.Add($featName)
+                }
+            }
+        }
+
+        # If not explicitly mapped, infer feature from name or directory
+        if ($associatedFeatures.Count -eq 0) {
+            if ($relPath -match 'calendar') { $associatedFeatures.Add('calendar') }
+            elseif ($relPath -match 'task|workspace') { $associatedFeatures.Add('tasks') }
+            elseif ($relPath -match 'sync') { $associatedFeatures.Add('sync') }
+            elseif ($relPath -match 'habit') { $associatedFeatures.Add('habits') }
+            elseif ($relPath -match 'goal') { $associatedFeatures.Add('goals') }
+            elseif ($relPath -match 'timer|focus') { $associatedFeatures.Add('task-timers') }
+            elseif ($relPath -match 'settings|appearance|theme') { $associatedFeatures.Add('settings') }
+            elseif ($relPath -match 'widget') { $associatedFeatures.Add('widgets') }
+            elseif ($relPath -match 'alarm') { $associatedFeatures.Add('alarms') }
+            elseif ($relPath -match 'database|migration|repository') { $associatedFeatures.Add('database') }
+            elseif ($relPath -match 'update') { $associatedFeatures.Add('windows-updates') }
+            else { $associatedFeatures.Add('shared') }
+        }
+
+        # Determine Tier
+        $tier = 'Level1_Fast'
+        $evidenceEligibility = 'Eligible'
+        if ($relPath -match 'migration|database|journal|persistence|concurrency|sync_apply|sync_lease|crash_recovery|undo_redo|safety') {
+            $tier = 'Level2_Critical'
+            $evidenceEligibility = 'Eligible'
+        } elseif ($relPath -match 'journeys|stress|benchmark|mobile_workspace|integration') {
+            $tier = 'Level3_DeferredRegression'
+            $evidenceEligibility = 'Eligible'
+        }
+
+        # Determine supported platforms
+        $platforms = @('Windows', 'Android')
+        if ($relPath -match 'android') { $platforms = @('Android') }
+        elseif ($relPath -match 'windows') { $platforms = @('Windows') }
+
+        $testsList.Add([pscustomobject]@{
+            Id = $id
+            Type = 'flutter_test'
+            Path = $relPath
+            Command = "flutter test --no-pub --reporter=expanded $relPath"
+            Tier = $tier
+            Features = @($associatedFeatures.ToArray())
+            Platforms = $platforms
+            EvidenceReuse = $evidenceEligibility
+            Description = "Automated Flutter test suite: $baseName"
+            Prerequisites = @('flutter_sdk', 'pub_get')
+        })
+    }
+
+    # 2. Discover Integration Tests in integration_test/
+    $intTestFiles = Get-ChildItem -Path (Join-Path $repoRoot 'integration_test') -Recurse -File -Filter *.dart -ErrorAction SilentlyContinue
+    if ($intTestFiles) {
+        foreach ($file in $intTestFiles) {
+            $relPath = ($file.FullName.Substring($repoRoot.Length + 1)).Replace('\', '/')
+            $baseName = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+            $id = "integration:$baseName"
+            $seenIds.Add($id) | Out-Null
+
+            $testsList.Add([pscustomobject]@{
+                Id = $id
+                Type = 'integration_test'
+                Path = $relPath
+                Command = "flutter test --no-pub $relPath"
+                Tier = 'Level3_DeferredRegression'
+                Features = @('mobile', 'integration')
+                Platforms = @('Android')
+                EvidenceReuse = 'Eligible'
+                Description = "Integration workflow test: $baseName"
+                Prerequisites = @('flutter_sdk', 'android_emulator')
+            })
+        }
+    }
+
+    # 3. Discover Tool unit tests in tools/
+    $pyTestFiles = Get-ChildItem -Path (Join-Path $repoRoot 'tools') -Recurse -File -Filter test_*.py -ErrorAction SilentlyContinue
+    if ($pyTestFiles) {
+        foreach ($file in $pyTestFiles) {
+            $relPath = ($file.FullName.Substring($repoRoot.Length + 1)).Replace('\', '/')
+            $baseName = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+            $id = "tool:$baseName"
+            $seenIds.Add($id) | Out-Null
+
+            $testsList.Add([pscustomobject]@{
+                Id = $id
+                Type = 'python_test'
+                Path = $relPath
+                Command = "python -m unittest discover -s tools -p $($file.Name)"
+                Tier = if ($baseName -match 'boundary|architecture') { 'Level2_Critical' } else { 'Level1_Fast' }
+                Features = @('architecture', 'dev-tools')
+                Platforms = @('Windows', 'Host')
+                EvidenceReuse = 'Eligible'
+                Description = "Developer tool/architecture test: $baseName"
+                Prerequisites = @('python')
+            })
+        }
+    }
+
+    # 4. Check-docs & diff validation
+    $testsList.Add([pscustomobject]@{
+        Id = "tool:check-docs"
+        Type = "python_script"
+        Path = "tools/dev/check-docs.py"
+        Command = "python tools/dev/check-docs.py"
+        Tier = "Level1_Fast"
+        Features = @("documentation", "architecture")
+        Platforms = @("Host")
+        EvidenceReuse = "Eligible"
+        Description = "Documentation, map and catalog integrity validator"
+        Prerequisites = @("python")
+    })
+
+    $registry = [pscustomobject]@{
+        Version = '1.0.0'
+        GeneratedAt = (Get-Date -Format 'o')
+        TotalTests = $testsList.Count
+        Tests = @($testsList.ToArray())
+    }
+
+    return $registry
+}
+
+function Save-TestRegistry {
+    [CmdletBinding()]
+    param()
+    $registry = Build-TestRegistry
+    $regPath = Get-RegistryPath
+    $json = $registry | ConvertTo-Json -Depth 6
+    [IO.File]::WriteAllText($regPath, $json, [Text.Encoding]::UTF8)
+    return $registry
+}
+
+function Get-TestRegistry {
+    [CmdletBinding()]
+    param(
+        [switch]$Refresh
+    )
+    $regPath = Get-RegistryPath
+    if ($Refresh -or -not (Test-Path -LiteralPath $regPath)) {
+        return (Save-TestRegistry)
+    }
+    try {
+        $content = Get-Content -LiteralPath $regPath -Raw | ConvertFrom-Json
+        return $content
+    } catch {
+        return (Save-TestRegistry)
+    }
+}
+
+function Test-TestRegistry {
+    [CmdletBinding()]
+    param()
+
+    $repoRoot = Get-RepoRoot
+    $registry = Get-TestRegistry
+    $issues = [Collections.Generic.List[string]]::new()
+
+    # Check 1: Ensure all registered test files actually exist on disk
+    foreach ($entry in $registry.Tests) {
+        $abs = Join-Path $repoRoot ($entry.Path.Replace('/', '\'))
+        if (-not (Test-Path -LiteralPath $abs)) {
+            $issues.Add("Missing test file on disk for registered id '$($entry.Id)': $($entry.Path)")
+        }
+    }
+
+    # Check 2: Check for any unregistered test files in test/
+    $existingTestFiles = Get-ChildItem -Path (Join-Path $repoRoot 'test') -Recurse -File -Filter *.dart
+    $registeredPaths = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($entry in $registry.Tests) {
+        $registeredPaths.Add($entry.Path) | Out-Null
+    }
+    foreach ($tf in $existingTestFiles) {
+        $rel = ($tf.FullName.Substring($repoRoot.Length + 1)).Replace('\', '/')
+        if (-not $registeredPaths.Contains($rel)) {
+            $issues.Add("Unregistered test file detected on disk: $rel")
+        }
+    }
+
+    return [pscustomobject]@{
+        Valid = ($issues.Count -eq 0)
+        TotalTests = $registry.Tests.Count
+        IssuesCount = $issues.Count
+        Issues = @($issues.ToArray())
+    }
+}
+
+Export-ModuleMember -Function Build-TestRegistry, Save-TestRegistry, Get-TestRegistry, Test-TestRegistry
