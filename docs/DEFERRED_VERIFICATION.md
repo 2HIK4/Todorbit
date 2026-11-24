@@ -1,5 +1,13 @@
 # Deferred Verification Backlog
 
+## Batch 4 Focus, Habits and Goals native acceptance (2026-11-24)
+
+The [Batch 4 receipt](TEST_RUN_LEDGER.md#batch-4-focus-habits-and-goals-2026-11-24)
+records host and offscreen acceptance at `6815424`. Windows
+physical keyboard, pointer, reader and DPI checks remain due. Android
+physical touch, hardware Back, TalkBack, IME, background timer and recovery
+observations remain due. Packaged acceptance is pending for both platforms.
+
 ## Batch 3 calendar native acceptance (2026-11-24)
 
 The [Batch 3 receipt](TEST_RUN_LEDGER.md#batch-3-calendar-and-event-editing-2026-11-24)

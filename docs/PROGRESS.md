@@ -1,5 +1,19 @@
 # Progress
 
+## Batch 4 Focus, Habits and Goals (2026-11-24)
+
+Focus uses themed state, clock and controls, with work history below. Habits
+keeps check-in tied to the selected date, and Goals separates completion
+from progress, milestones and linked contributions. Shared editor shells
+keep actions reachable above a simulated Android keyboard. Android retains
+New task in Workspace actions on both surfaces.
+
+Batch 4 is ready as the visual baseline for Batch 5. Physical-device and
+packaged acceptance remain pending.
+
+[Design rules](UI_DESIGN_SYSTEM.md#batch-4-focus-habits-and-goals) ·
+[Verification and captures](TEST_RUN_LEDGER.md#batch-4-focus-habits-and-goals-2026-11-24)
+
 ## Batch 3 Calendar and event editing (2026-11-24)
 
 Windows Month, Week and Day use compact date controls and clearer timeline

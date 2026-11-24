@@ -1,5 +1,53 @@
 # Persistent test run ledger
 
+## Batch 4 Focus, Habits and Goals (2026-11-24)
+
+Baseline `fcc5307`. Verified application source `6815424`.
+Windows host, Flutter 3.47.7, Dart 3.13.5, in-memory records and disposable
+APPDATA and LOCALAPPDATA. Harness and logs are in `.buildlog/ui-redesign/`.
+
+```text
+flutter test --no-pub --concurrency=2 --reporter expanded .buildlog/ui-redesign/batch4_render_test.dart test/uiux03_focus_widget_test.dart test/focus_quick_start_test.dart test/uiux03_navigation_test.dart test/focus_session_test.dart test/time_tracking_repository_test.dart test/time_tracking_widget_test.dart test/prompt2_task_timer_test.dart test/habits_widget_test.dart test/habits_repository_test.dart test/goals_widget_test.dart test/goals_repository_test.dart test/habit_goal_editor_layout_test.dart test/mobile_workspace_test.dart
+flutter test --no-pub --concurrency=2 --reporter expanded .buildlog/ui-redesign/batch4_render_test.dart
+flutter test --no-pub --concurrency=2 --reporter expanded test/mobile_workspace_test.dart --plain-name "stays usable on a small phone"
+flutter test --no-pub --concurrency=2 --reporter expanded .buildlog/ui-redesign/batch4_render_test.dart --name "android-[hg]"
+flutter test --no-pub --concurrency=2 --reporter expanded .buildlog/ui-redesign/batch4_render_test.dart test/goals_widget_test.dart test/habit_goal_editor_layout_test.dart test/mobile_workspace_test.dart --name "[Gg]oal"
+dart analyze <13 Dart paths changed from fcc5307 to 6815424>
+dart analyze lib/features/goals/goals_view.dart
+python -m unittest discover -s tools -p test_architecture_boundaries.py
+python tools/dev/check-docs.py
+git diff --check fcc5307
+```
+
+- `batch4-tests.log`: 65 focused behavior tests passed, including Focus
+  lifecycle and recovery, time accounting, habit correction and recurrence,
+  and goal milestones and linked progress. The initial render run had one
+  harness failure tapping a partially visible chip. The rerun scrolls the
+  chip into the viewport before tapping.
+- `batch4-renders-final.log`: 13 render scenarios passed. The final version
+  keeps the clock and primary action in the first compact viewport and
+  keeps form actions above the simulated IME.
+- `batch4-shell-final.log`: four small-phone tests passed, including New task
+  opening from Workspace actions in Habits and Goals. The five Android Habits/Goals render scenarios passed with scroll and check-in assertions (`batch4-phone-actions.log`). A final history readability pass verified four goal tests and five goal render scenarios (`batch4-goal-history-final.log`).
+- `dart analyze` on the 13 changed Dart paths, 39 architecture checks,
+  developer link and catalog validation, and `git diff --check` passed.
+
+20 inspected PNGs use production Flutter widgets, synthetic records and
+platform-specific fonts under
+`C:/Users/User/Documents/Codex/Todorbit-batch4-renders/`.
+
+| Surface | PNG names |
+|---|---|
+| Windows Focus | `windows-focus-running-light`, `windows-focus-paused-dark-150`, `windows-focus-work-log-light`, `windows-focus-settings-dark-150` |
+| Android Focus | `android-focus-running-light`, `android-focus-break-dark-150` |
+| Windows Habits and Goals | `windows-habits-light`, `windows-habits-empty-dark-150`, `windows-goals-dark`, `windows-goal-editor-light-150` |
+| Android Habits | `android-habits-dark-150`, `android-habit-editor-light-150`, `android-habit-editor-light-150-ime`, `android-habits-check-in-dark-150` |
+| Android Goals | `android-goals-light-150`, `android-goals-empty-dark`, `android-goal-editor-dark-150`, `android-goal-editor-dark-150-ime`, `android-goal-history-light-150`, `android-goals-progress-light-150` |
+
+Batch 4 is ready as the visual baseline for Batch 5.
+[Physical-device and release verification](DEFERRED_VERIFICATION.md#batch-4-focus-habits-and-goals-native-acceptance-2026-11-24)
+remains pending.
+
 ## Batch 3 Calendar and event editing (2026-11-24)
 
 Baseline `a2f71af`. Verified application source `0741dd2`. Tests ran
