@@ -31,7 +31,7 @@ def screen(name):
     return ET.parse(ROOT / f'{name}.xml')
 
 
-def find(label, name, timeout=30):
+def find(label, name, timeout=30, *, selected=False):
     end = time.monotonic() + timeout
     while time.monotonic() < end:
         try:
@@ -42,7 +42,7 @@ def find(label, name, timeout=30):
             time.sleep(2)
             continue
         for node in tree.iter('node'):
-            if node.get('enabled') == 'true' and any(
+            if node.get('enabled') == 'true' and (not selected or node.get('selected') == 'true') and any(
                 label == node.get(key, '') or label in node.get(key, '').split('\n')
                 for key in ('text', 'content-desc')
             ):
@@ -138,7 +138,11 @@ def main():
     find(title, 'sqlite-reopen')
     upgraded_code = None
     upgrade_start = None
+    calendar_mode_retained = False
     if previous.exists():
+        tap(find('Calendar', 'previous-calendar-tab'))
+        tap(find('Month', 'previous-calendar-mode'))
+        find('Month', 'previous-selected-month', selected=True)
         adb('shell', 'am', 'force-stop', PACKAGE)
         # The package manager must accept the actual production-signed update.
         # No uninstall, clear-data command or debug-signing fallback is allowed.
@@ -153,6 +157,10 @@ def main():
             tap(tab)
         find(title, 'upgraded-retained-task')
         snapshot('upgraded-retained-task')
+        tap(find('Calendar', 'upgraded-calendar-tab'))
+        find('Month', 'upgraded-selected-month', selected=True)
+        calendar_mode_retained = True
+        tap(find('Tasks', 'upgraded-tasks-tab'))
     tap(find('Complete ' + title, 'task-interaction'))
     time.sleep(2)
     snapshot('completed')
@@ -181,6 +189,7 @@ def main():
         'previousApkSha256': previous_digest,
         'previousVersionCode': previous_code, 'upgradedVersionCode': upgraded_code,
         'productionInPlaceUpgradeRetainedTask': previous.exists(),
+        'productionInPlaceUpgradeRetainedCalendarMode': calendar_mode_retained,
     }, indent=2) + '\n', encoding='utf-8')
     print('16 KiB artifact runtime passed:', digest)
 

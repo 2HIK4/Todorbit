@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.0.19-beta.28+51
+
+- Default dark appearance uses Graphite Neutral Silver, with saved palettes
+  preserved and Violet, Sage, Amber, and Beta 27 Teal available.
+
 - Keep Upcoming's matching planned date in the group heading and accessible
   row context. Deadlines remain visible.
 - Move compact Android Calendar filters into workspace actions with active

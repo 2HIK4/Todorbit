@@ -26,7 +26,7 @@ class ThemePalette {
   static const dark = ThemePalette({
     'background': Color(0xFF181819),
     'surface': Color(0xFF232325),
-    'accent': Color(0xFFB4ABEE),
+    'accent': Color(0xFFC8CDD2),
     'primaryText': Color(0xFFF1F1F2),
     'secondaryText': Color(0xFFBDBDC2),
     'border': Color(0xFF414145),
@@ -70,9 +70,10 @@ class ThemePalette {
 
   Color operator [](String key) => colors[key]!;
 
-  static final graphiteSilver = dark.withColor(
+  static const graphiteSilver = dark;
+  static final graphiteViolet = dark.withColor(
     'accent',
-    const Color(0xFFC8CDD2),
+    const Color(0xFFB4ABEE),
   );
   static final graphiteAmber = dark.withColor(
     'accent',
@@ -81,7 +82,7 @@ class ThemePalette {
   static final graphiteSage = dark.withColor('accent', const Color(0xFFB0C3AB));
 
   static final darkPresets = Map<String, ThemePalette>.unmodifiable({
-    'Graphite Violet': dark,
+    'Graphite Violet': graphiteViolet,
     'Graphite Neutral Silver': graphiteSilver,
     'Graphite Amber': graphiteAmber,
     'Graphite Sage': graphiteSage,

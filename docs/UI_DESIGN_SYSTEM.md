@@ -27,9 +27,9 @@ Todorbit retains its own schedule, timer and navigation contracts.
 ## Tokens and controls
 
 - Default light uses #F6F8F9 canvas, #FFFFFF surface and #006A66 accent.
-  Dark uses #181819 canvas, #232325 surface and #B4ABEE accent.
-  Graphite Violet is the current default. Neutral Silver, Amber, Sage, and
-  Beta 27 Teal are choices for the user. Explicit saved colors keep their
+  Dark uses #181819 canvas, #232325 surface and #C8CDD2 accent.
+  Graphite Neutral Silver is the approved default. Graphite Violet, Amber,
+  Sage, Beta 27 Teal and Dusk remain selectable. Explicit saved colors keep their
   existing values. Compare complete screens with identical fixtures before
   changing a default, and keep that choice with the user.
   ColorScheme assigns foregrounds, surfaces and interaction states.

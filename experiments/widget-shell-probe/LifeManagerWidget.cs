@@ -445,8 +445,8 @@ internal sealed record WidgetPalette(
   internal static WidgetPalette Dark { get; } = new(
     Color.FromArgb(24, 24, 25), Color.FromArgb(241, 241, 242),
     Color.FromArgb(189, 189, 194), Color.FromArgb(35, 35, 37),
-    Color.FromArgb(35, 35, 37), Color.FromArgb(180, 171, 238),
-    Color.FromArgb(180, 171, 238), Color.FromArgb(65, 65, 69),
+    Color.FromArgb(35, 35, 37), Color.FromArgb(200, 205, 210),
+    Color.FromArgb(200, 205, 210), Color.FromArgb(65, 65, 69),
     Color.FromArgb(255, 155, 176));
 
   internal static WidgetPalette Light { get; } = new(

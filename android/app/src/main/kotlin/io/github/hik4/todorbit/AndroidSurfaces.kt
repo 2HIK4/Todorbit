@@ -244,7 +244,7 @@ object AndroidSurfaces {
         }
         val foreground = contrastText(color("primaryText",if(dark) "#F1F1F2" else "#20272B"))
         val secondary = contrastText(color("secondaryText",if(dark) "#BDBDC2" else "#505E65"))
-        val accent = contrastText(color("accent",if(dark) "#B4ABEE" else "#006A66"))
+        val accent = contrastText(color("accent",if(dark) "#C8CDD2" else "#006A66"))
         val opacity = prefs.getInt("opacity-$id",95).coerceIn(40,100)
         val remote = RemoteViews(context.packageName,R.layout.todorbit_widget)
         // Opacity belongs to the outer shell; opaque content surfaces keep text

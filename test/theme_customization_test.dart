@@ -50,7 +50,17 @@ void main() {
 
   test('built-in dark choices keep text and controls readable on surfaces', () {
     expect(const ThemeCustomization().dark, ThemePalette.dark);
-    expect(ThemePalette.darkPresets['Graphite Violet'], ThemePalette.dark);
+    expect(
+      ThemePalette.darkPresets['Graphite Neutral Silver'],
+      ThemePalette.dark,
+    );
+    expect(ThemePalette.dark['accent'], const Color(0xFFC8CDD2));
+    final violet = ThemePalette.darkPresets['Graphite Violet']!;
+    expect(violet['accent'], const Color(0xFFB4ABEE));
+    final stored = ThemeCustomization(dark: violet, compact: true);
+    final restored = ThemeCustomization.fromJson(stored.toJson());
+    expect(restored.dark.toJson(), violet.toJson());
+    expect(restored.compact, isTrue);
     for (final entry in ThemePalette.darkPresets.entries) {
       final palette = entry.value;
       for (final background in ['background', 'surface']) {
