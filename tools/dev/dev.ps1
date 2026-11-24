@@ -77,6 +77,7 @@ function Show-Help {
     Write-Host "  dev registry [--validate|--refresh]    Query or validate test and tool registry." -ForegroundColor Gray
     Write-Host "  dev cleanup [--dry-run|--force]        Safely clean old logs and disposable profiles." -ForegroundColor Gray
     Write-Host "  dev context <feature>                  Generate concise AI feature context pack." -ForegroundColor Gray
+    Write-Host "  dev repomap                            Generate compact repository architecture map." -ForegroundColor Gray
     Write-Host "  dev impact                             Perform conservative impact analysis on changes." -ForegroundColor Gray
     Write-Host ""
     Write-Host "Verification Commands:" -ForegroundColor Yellow
@@ -300,6 +301,13 @@ try {
         $targetFeature = if ($Feature) { $Feature } else { $Subcommand }
         if (Get-Command 'Get-FeatureContextPack' -ErrorAction SilentlyContinue) {
             Get-FeatureContextPack -Feature $targetFeature -Json:$Json
+        } else {
+            throw "Harness module not loaded."
+        }
+    }
+    'repomap' {
+        if (Get-Command 'Get-RepositoryMap' -ErrorAction SilentlyContinue) {
+            Get-RepositoryMap -Json:$Json
         } else {
             throw "Harness module not loaded."
         }
