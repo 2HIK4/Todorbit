@@ -1,5 +1,73 @@
 # Persistent test run ledger
 
+## Batch 5 Settings, Sync and native widgets (2026-11-24)
+
+Baseline `6b8990a`. Verified source `2227ff0`. Flutter 3.47.7 and
+Dart 3.13.5 on Windows, using synthetic records and disposable APPDATA
+and LOCALAPPDATA. Logs and the Flutter render harness are under
+`.buildlog/ui-redesign/`.
+
+### Commands and results
+
+```text
+flutter test --no-pub --concurrency=2 --reporter expanded .buildlog/ui-redesign/batch5_render_test.dart test/settings_hub_test.dart test/settings_ui_quality_test.dart test/sync_conflicts_dialog_test.dart test/sync_controller_test.dart test/shared_inbox_screen_test.dart test/shared_inbox_mobile_navigation_test.dart test/trash_widget_test.dart test/settings_transfer_test.dart test/sync_apply_repository_test.dart
+flutter test --no-pub --reporter expanded .buildlog/ui-redesign/batch5_render_test.dart --name android-privacy
+flutter test --no-pub --reporter expanded test/privacy_test.dart
+flutter test --no-pub --timeout 30s --reporter expanded test/settings_transfer_journeys_test.dart
+dart analyze <eight Dart paths changed from 6b8990a to 2227ff0>
+python -m unittest discover -s tools -p test_architecture_boundaries.py
+python tools/dev/check-docs.py
+git diff --check 6b8990a
+dotnet build experiments/widget-shell-probe/widget-shell-probe.csproj -c Release -o .buildlog/ui-redesign/batch5-native-windows
+TodorbitWidget.exe --self-test
+TodorbitWidget.exe --capture-widgets <render-root>/native-windows
+gradle -p android :app:assembleGithubDebug :app:assembleGithubDebugAndroidTest -Ptarget-platform=android-x64 --max-workers=2 --offline
+adb -s emulator-5586 shell am instrument -w -r -e isolated true -e representative true io.github.hik4.todorbit.test/io.github.hik4.todorbit.WidgetRenderInstrumentation
+```
+
+- `batch5-checkpoint.log`: 104 focused behavior tests and 12 render cases
+  passed. Tests covered Sync review and repository reconciliation,
+  retained conflict decisions, settings layout and portable formats,
+  Shared Files, Archive and Trash. No reported conflict-count mismatch
+  was reproduced on the exercised paths.
+- `batch5-privacy-final.log` and `batch5-privacy-tests.log`: final PIN
+  capture including simulated IME and six privacy tests passed.
+- `batch5-tests.log` includes passing backup recovery, palette, native
+  service and Android adapter tests. The first compact Shared Files
+  case reproduced a metadata overflow. The final checkpoint confirms
+  the wrap correction and the category-empty state. The standalone
+  settings transfer restart journey stalled on both attempts
+  (`batch5-settings-transfer-retry.log`). The codec and selection checks
+  in `settings_transfer_test.dart` passed.
+- Eight changed Dart files analyzed cleanly. All 39 architecture checks
+  passed. Developer links, feature selectors, the 67-category catalog
+  and `git diff --check` passed.
+- Windows companion Release build and `--self-test` passed. The native
+  preview renderer produced 62 PNGs. Android debug and instrumentation
+  APKs built on Gradle 9.3.1 with JDK 21. Native instrumentation on a fresh
+  API 35 emulator passed 32 cases at 180 and 380 dp widths, 100% and 150%
+  text, both palettes, and empty and populated data. The failing 180 dp
+  Tasks case showed the footer below its 48 dp target. Matching Android
+  pixel rounding preserves the footer. The compact Calendar date action
+  was shortened after visual inspection. The final run checks that action
+  for truncation and checks the one-use completion capability.
+  `batch5-native-android-date-final.log`.
+
+### Captures
+
+Root `C:/Users/User/Documents/Codex/Todorbit-batch5-renders/`.
+
+| Surface | Evidence |
+|---|---|
+| Windows Flutter | `windows-settings-light.png`, `windows-theme-light-150.png`, `windows-backups-dark-150.png`, `windows-sync-offline-dark.png`, `windows-trash-light-150.png` |
+| Android Flutter | `android-settings-dark-150.png`, `android-sync-pending-light-150.png`, `android-sync-success-dark.png`, `android-sync-error-light-150.png`, `android-conflict-dark-150.png`, `android-shared-files-light-150.png`, `android-privacy-dark-150.png`, `android-privacy-ime-dark-150.png` |
+| Windows native companion | `native-windows/tasks-light-100.png` and `native-windows/calendar-dark-150.png` are representative companion-rendered previews. |
+| Android native RemoteViews | `native-android/tasks-light-180x180-1-font100-dpi420-local.png`, `native-android/tasks-dark-380x540-1-font150-dpi420-local.png`, `native-android/calendar-dark-180x180-1-font150-dpi420-local.png`, `native-android/calendar-light-380x540-1-font100-dpi420-local.png` and measured `footer-bounds.json`. |
+
+The five implementation batches are ready for final app-wide review.
+[Deferred checks](DEFERRED_VERIFICATION.md#batch-5-settings-sync-and-widgets-2026-11-24)
+include the complete settings transfer journey and device acceptance.
+
 ## Batch 4 Focus, Habits and Goals (2026-11-24)
 
 Baseline `fcc5307`. Verified application source `6815424`.

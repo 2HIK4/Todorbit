@@ -1,5 +1,32 @@
 # Progress
 
+## Batch 5 Settings, Sync and native widgets (2026-11-24)
+
+Windows Settings switches to a section picker at enlarged text. Android
+uses divider sections. Sync places current state, last success and pending
+work together. Shared Files, PIN and Archive/Trash received compact
+layout refinements. Both native widget fallbacks now match the default
+palette. Android preserves the compact footer target and date label.
+
+The existing 67-category catalog was used to scope the final implementation
+batch.
+
+| Catalog categories | Implementation and review coverage |
+|---|---|
+| 1–20 | Batches 1–4 establish primary navigation, workflows and visual tokens. Batch 5 covers settings navigation and palette presentation. |
+| 21–35 | Earlier batches own editing, task lists, Calendar and Focus. Batch 5 covers sensitive form reachability, Sync state and conflict feedback, file filters and archive flows. |
+| 36–46 | Flutter window, text scaling and semantics evidence and native palette and geometry checks. Physical input, readers, notification delivery and launcher behavior remain device checks. |
+| 47–55 | Settings and profile, current Sync feedback, conflict review, local recovery and privacy. Existing backup/restore, portable settings and encryption owners retain their established contracts. |
+| 56–67 | Existing performance, lifecycle and platform evidence. Final integration still covers follow-through across routes, device lifecycle, restore/update and packaged acceptance. |
+
+Search, task resources, notification settings, reports, history and updates
+use their existing route-specific controls. Review their cross-route
+consistency during final integration alongside prior batches. Batch 5 is
+ready for that review.
+
+[Design rules](UI_DESIGN_SYSTEM.md#batch-5-settings-sync-and-native-widgets) ·
+[Verification and captures](TEST_RUN_LEDGER.md#batch-5-settings-sync-and-native-widgets-2026-11-24)
+
 ## Batch 4 Focus, Habits and Goals (2026-11-24)
 
 Focus uses themed state, clock and controls, with work history below. Habits

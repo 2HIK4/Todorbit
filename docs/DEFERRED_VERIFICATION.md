@@ -1,5 +1,17 @@
 # Deferred Verification Backlog
 
+## Batch 5 Settings, Sync and widgets (2026-11-24)
+
+The [Batch 5 receipt](TEST_RUN_LEDGER.md#batch-5-settings-sync-and-native-widgets-2026-11-24)
+records Flutter and native-render verification at `2227ff0`. The settings
+export/import/restart journey did not complete on the isolated host.
+Portable codec checks passed. Windows Explorer attachment, native input,
+assistive technology and DPI on physical displays remain pending.
+Android physical launcher placement, TalkBack, background updates and
+touch remain pending. The full Android native stress matrix, real cloud
+account and recovery journeys, and packaged release acceptance are
+assigned to final integration and release checks.
+
 ## Batch 4 Focus, Habits and Goals native acceptance (2026-11-24)
 
 The [Batch 4 receipt](TEST_RUN_LEDGER.md#batch-4-focus-habits-and-goals-2026-11-24)
