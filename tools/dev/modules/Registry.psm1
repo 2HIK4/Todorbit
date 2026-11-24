@@ -73,7 +73,7 @@ function Build-TestRegistry {
             else { $associatedFeatures.Add('shared') }
         }
 
-        # Determine Tier
+        # Determine Tier and Evidence Reuse Eligibility
         $tier = 'Level1_Fast'
         $evidenceEligibility = 'Eligible'
         if ($relPath -match 'migration|database|journal|persistence|concurrency|sync_apply|sync_lease|crash_recovery|undo_redo|safety') {
@@ -82,6 +82,12 @@ function Build-TestRegistry {
         } elseif ($relPath -match 'journeys|stress|benchmark|mobile_workspace|integration') {
             $tier = 'Level3_DeferredRegression'
             $evidenceEligibility = 'Eligible'
+        }
+
+        # Enforce non-cacheable / environment-gated / screenshot-side-effect tests in code
+        # so `dev registry --refresh` can never reset or bypass cache eligibility.
+        if ($relPath -match 'runtime_workflow_journey_test\.dart$|startup_recovery_journeys_test\.dart$|resource_journeys_test\.dart$|native_widget_launch_integration_test\.dart$|performance_benchmark_test\.dart$|lab_render_test\.dart$') {
+            $evidenceEligibility = 'Ineligible'
         }
 
         # Determine supported platforms
@@ -125,7 +131,7 @@ function Build-TestRegistry {
             Tier = 'Level3_DeferredRegression'
             Features = @('mobile', 'integration')
             Platforms = @('Android')
-            EvidenceReuse = 'Eligible'
+            EvidenceReuse = 'Ineligible'
             Description = "Integration workflow test: $baseName"
             Prerequisites = @('flutter_sdk', 'android_emulator')
         })
@@ -153,7 +159,7 @@ function Build-TestRegistry {
             Tier = if ($baseName -match 'boundary|architecture|safety|evidence') { 'Level2_Critical' } else { 'Level1_Fast' }
             Features = @('architecture', 'dev-tools')
             Platforms = @('Windows', 'Host')
-            EvidenceReuse = 'Eligible'
+            EvidenceReuse = 'Ineligible'
             Description = "Developer tool/architecture test: $baseName"
             Prerequisites = @('python')
         })
@@ -168,7 +174,7 @@ function Build-TestRegistry {
         Tier = "Level1_Fast"
         Features = @("documentation", "architecture")
         Platforms = @("Host")
-        EvidenceReuse = "Eligible"
+        EvidenceReuse = "Ineligible"
         Description = "Documentation, map and catalog integrity validator"
         Prerequisites = @("python")
     })
@@ -201,7 +207,7 @@ function Save-TestRegistry {
     $registry = Build-TestRegistry
     $regPath = Get-RegistryPath
     $json = $registry | ConvertTo-Json -Depth 6
-    [IO.File]::WriteAllText($regPath, $json, [Text.Encoding]::UTF8)
+    [IO.File]::WriteAllText($regPath, $json, [Text.UTF8Encoding]::new($false))
     return $registry
 }
 
@@ -248,6 +254,31 @@ function Test-TestRegistry {
         $rel = ($tf.FullName.Substring($repoRoot.Length + 1)).Replace('\', '/')
         if (-not $registeredPaths.Contains($rel)) {
             $issues.Add("Unregistered test file detected on disk: $rel")
+        }
+    }
+
+    # Check 3: Ensure integration_test/*.dart and tools/**/test_*.py are also registered
+    $intFiles = @(Get-ChildItem -Path (Join-Path $repoRoot 'integration_test') -Recurse -File -Filter '*.dart' -ErrorAction SilentlyContinue)
+    foreach ($inf in $intFiles) {
+        $rel = ($inf.FullName.Substring($repoRoot.Length + 1)).Replace('\', '/')
+        if (-not $registeredPaths.Contains($rel)) {
+            $issues.Add("Unregistered integration test detected on disk: $rel")
+        }
+    }
+    $pyFiles = @(Get-ChildItem -Path (Join-Path $repoRoot 'tools') -Recurse -File -Filter 'test_*.py' -ErrorAction SilentlyContinue)
+    foreach ($pf in $pyFiles) {
+        $rel = ($pf.FullName.Substring($repoRoot.Length + 1)).Replace('\', '/')
+        if (-not $registeredPaths.Contains($rel)) {
+            $issues.Add("Unregistered tool test detected on disk: $rel")
+        }
+    }
+
+    # Check 4: Enforce cache-ineligibility invariants so registry edits cannot silently make non-cacheable tests eligible
+    $ineligiblePattern = 'runtime_workflow_journey_test\.dart$|startup_recovery_journeys_test\.dart$|resource_journeys_test\.dart$|native_widget_launch_integration_test\.dart$|performance_benchmark_test\.dart$|lab_render_test\.dart$'
+    foreach ($entry in $registry.Tests) {
+        $mustBeIneligible = ($entry.Type -in @('integration_test', 'python_test', 'python_script')) -or ($entry.Path -match $ineligiblePattern)
+        if ($mustBeIneligible -and $entry.EvidenceReuse -ne 'Ineligible') {
+            $issues.Add("Non-cacheable test '$($entry.Path)' must have EvidenceReuse='Ineligible' (found '$($entry.EvidenceReuse)').")
         }
     }
 

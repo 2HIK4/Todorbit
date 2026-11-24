@@ -47,10 +47,29 @@ foreach ($relative in @($formatPaths + $testPaths)) {
     throw "Verification path must exist inside the repository: $relative"
   }
 }
-Add-Step 'dart' (@('format','--output=none','--set-exit-if-changed') + $formatPaths + $testPaths | Select-Object -Unique)
+$dartFormatPaths = @($formatPaths | Where-Object {
+  $abs = Join-Path $repo $_
+  ($_ -match '\.dart$') -or (Test-Path -LiteralPath $abs -PathType Container)
+} | Select-Object -Unique)
+$dartAnalysisPaths = @($analysisPaths | Where-Object {
+  $abs = Join-Path $repo $_
+  ($_ -match '\.dart$') -or (Test-Path -LiteralPath $abs -PathType Container)
+} | Select-Object -Unique)
+$flutterTestPaths = @($testPaths | Where-Object {
+  $abs = Join-Path $repo $_
+  ($_ -match '\.dart$') -or (Test-Path -LiteralPath $abs -PathType Container)
+} | Select-Object -Unique)
+
+if ($dartFormatPaths.Count -gt 0) {
+  Add-Step 'dart' (@('format','--output=none','--set-exit-if-changed') + $dartFormatPaths)
+}
 # Explicit source roots avoid analyzing ignored temporary checkouts and SDKs.
-Add-Step 'flutter' (@('analyze','--no-pub') + $analysisPaths)
-Add-Step 'flutter' (@('test','--no-pub','--concurrency=1','--reporter=expanded') + $testPaths)
+if ($dartAnalysisPaths.Count -gt 0) {
+  Add-Step 'flutter' (@('analyze','--no-pub') + $dartAnalysisPaths)
+}
+if ($flutterTestPaths.Count -gt 0) {
+  Add-Step 'flutter' (@('test','--no-pub','--concurrency=1','--reporter=expanded') + $flutterTestPaths)
+}
 if ($Mode -eq 'Full' -or $Feature -eq 'android-updates') {
   Add-Step 'python' @('-m','unittest','discover','-s','tools','-p','test_prepare_android_release.py')
 }
@@ -90,7 +109,10 @@ try {
     $code = 0
     try {
       $resolvedTool = $step.tool
-      if ($step.tool -eq 'flutter') {
+      $firstCmd = Get-Command $step.tool -ErrorAction SilentlyContinue
+      if ($firstCmd -and $firstCmd.Extension -in @('.exe', '.bat', '.cmd', '.ps1')) {
+        $resolvedTool = $firstCmd.Source
+      } elseif ($step.tool -eq 'flutter') {
         $candBat = Get-Command 'flutter.bat' -ErrorAction SilentlyContinue
         if ($candBat) { $resolvedTool = $candBat.Source }
       } elseif ($step.tool -eq 'dart') {

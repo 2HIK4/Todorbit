@@ -837,5 +837,41 @@
       "docs/ARCHITECTURE_MAP.md"
     ],
     "fixtures": ["typical"]
+  },
+  "time-tracking": {
+    "summary": "Focus timers (stopwatch, countdown, Pomodoro), session logging, and time tracking summaries linked to tasks.",
+    "primaryRequirements": [
+      "Keep timer ticks local to timer widgets without global workspace rebuilds.",
+      "Derive elapsed durations monotonically from UTC timestamps.",
+      "Persist completed/interrupted focus sessions accurately via TimeRepository."
+    ],
+    "entryPoints": {
+      "presentation": ["lib/features/time_tracking"],
+      "logicAndPersistence": ["lib/data/time_repository.dart", "lib/domain/time_tracking.dart"]
+    },
+    "architectureBoundaries": [
+      "Timer ticks remain local to timer widgets; persistence routes through TimeRepository."
+    ],
+    "designSystemTokens": [
+      "Focus clock state tokens and accessible timer controls."
+    ],
+    "tests": [
+      "test/time_tracking_repository_test.dart",
+      "test/time_tracking_widget_test.dart",
+      "test/focus_session_test.dart",
+      "test/focus_quick_start_test.dart"
+    ],
+    "historicalInvariants": [
+      "Starting a timer multiple times must never spawn parallel ticking loops."
+    ],
+    "applicableSkills": [
+      ".agents/skills/todorbit-engineering-quality/SKILL.md",
+      ".agents/skills/ultimate-ui-ux/SKILL.md"
+    ],
+    "documentation": [
+      "docs/ARCHITECTURE_MAP.md",
+      "docs/TESTING.md"
+    ],
+    "fixtures": ["typical"]
   }
 }

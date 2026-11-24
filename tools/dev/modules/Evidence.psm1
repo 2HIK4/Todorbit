@@ -74,15 +74,29 @@ function Get-VerificationConfigHash {
     $repoRoot = Get-RepoRoot
     $configFiles = @(
         'tools\dev\verify.ps1',
+        'tools\dev\dev.ps1',
         'tools\dev\features.json',
-        'tools\dev\registry.json',
-        'tools\dev\modules\Evidence.psm1'
+        'tools\dev\modules\Evidence.psm1',
+        'tools\dev\modules\Impact.psm1',
+        'tools\dev\modules\Registry.psm1'
     )
     $hashes = [Collections.Generic.List[string]]::new()
     foreach ($cf in $configFiles) {
         $abs = Join-Path $repoRoot $cf
         if (Test-Path -LiteralPath $abs) {
             $hashes.Add((Get-FileContentHash $abs))
+        }
+    }
+    # Hash normalized registry test metadata (excluding volatile GeneratedAt timestamp)
+    # so `dev registry --refresh` preserves valid cached evidence while eligibility/tier changes invalidate it.
+    $regPath = Join-Path $repoRoot 'tools\dev\registry.json'
+    if (Test-Path -LiteralPath $regPath) {
+        try {
+            $regObj = Get-Content -LiteralPath $regPath -Raw | ConvertFrom-Json
+            $normalizedTests = @($regObj.Tests | Sort-Object Path | ForEach-Object { "$($_.Path)|$($_.Type)|$($_.Tier)|$($_.EvidenceReuse)" }) -join "`n"
+            $hashes.Add($normalizedTests)
+        } catch {
+            $hashes.Add((Get-FileContentHash $regPath))
         }
     }
     $combined = $hashes -join ':'
@@ -93,40 +107,63 @@ function Get-VerificationConfigHash {
     return $res
 }
 
+function Get-EnvironmentFingerprint {
+    $envKeys = @(
+        'TODORBIT_PROFILE_JOURNEYS',
+        'TODORBIT_PRIVATE_DRIVE_TEST',
+        'TODORBIT_GOOGLE_DRIVE_CONFIG',
+        'TODORBIT_NATIVE_SERVICE_EXE',
+        'TODORBIT_REFINEMENT_EXE',
+        'UIUX_CAPTURE_DIR',
+        'CI',
+        'FLUTTER_TEST'
+    )
+    $pairs = [Collections.Generic.List[string]]::new()
+    foreach ($k in $envKeys) {
+        $val = [Environment]::GetEnvironmentVariable($k, 'Process')
+        if (-not [string]::IsNullOrEmpty($val)) {
+            $pairs.Add("$k=$val")
+        }
+    }
+    $raw = $pairs -join ';'
+    $bytes = [Text.Encoding]::UTF8.GetBytes($raw)
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    $res = -join ($sha256.ComputeHash($bytes) | ForEach-Object { '{0:x2}' -f $_ })
+    $sha256.Dispose()
+    return $res
+}
+
 function Get-DartImports([string]$FilePath, [string]$RepoRoot) {
     if (-not (Test-Path -LiteralPath $FilePath)) { return @() }
     $resolved = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $fileDir = [IO.Path]::GetDirectoryName($FilePath)
-    $lines = Get-Content -LiteralPath $FilePath -ErrorAction SilentlyContinue
-    if (-not $lines) { return @() }
+    $rawText = Get-Content -LiteralPath $FilePath -Raw -ErrorAction SilentlyContinue
+    if ([string]::IsNullOrWhiteSpace($rawText)) { return @() }
 
-    foreach ($line in $lines) {
-        $trimmed = $line.Trim()
-        if ($trimmed -match "^(?:import|export|part)\b") {
-            $quoteMatches = [regex]::Matches($trimmed, "['""]([^'""]+)['""]")
-            foreach ($m in $quoteMatches) {
-                $uri = $m.Groups[1].Value
-                if ($uri.StartsWith('package:life_manager/')) {
-                    $rel = 'lib/' + $uri.Substring('package:life_manager/'.Length)
-                    $abs = Join-Path $RepoRoot ($rel.Replace('/', '\'))
-                    if (Test-Path -LiteralPath $abs) {
-                        $resolved.Add($abs) | Out-Null
-                    }
-                } elseif ($uri -notmatch '^dart:' -and $uri -notmatch '^package:') {
-                    try {
-                        $abs = [IO.Path]::GetFullPath((Join-Path $fileDir $uri))
-                        if ($abs.StartsWith($RepoRoot, [StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $abs)) {
-                            $resolved.Add($abs) | Out-Null
-                        }
-                    } catch {}
-                }
+    # Strip single-line comments to avoid false matches in comments, while supporting multi-line import/export/part statements
+    $noComments = [regex]::Replace($rawText, '(?m)//.*$', '')
+    $directiveMatches = [regex]::Matches($noComments, "(?ms)(?:^|;|\r|\n)\s*(?:import|export|part)\s+(?:['""]([^'""]+)['""])")
+    foreach ($m in $directiveMatches) {
+        $uri = $m.Groups[1].Value
+        if ($uri.StartsWith('package:life_manager/')) {
+            $rel = 'lib/' + $uri.Substring('package:life_manager/'.Length)
+            $abs = Join-Path $RepoRoot ($rel.Replace('/', '\'))
+            if (Test-Path -LiteralPath $abs) {
+                $resolved.Add($abs) | Out-Null
             }
+        } elseif ($uri -notmatch '^dart:' -and $uri -notmatch '^package:') {
+            try {
+                $abs = [IO.Path]::GetFullPath((Join-Path $fileDir $uri))
+                if ($abs.StartsWith($RepoRoot, [StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $abs)) {
+                    $resolved.Add($abs) | Out-Null
+                }
+            } catch {}
         }
     }
     return @($resolved)
 }
 
-function Resolve-AllTransitiveDependencies([string[]]$FilePaths, [string]$RepoRoot, [int]$MaxDepth = 300) {
+function Resolve-AllTransitiveDependencies([string[]]$FilePaths, [string]$RepoRoot, [int]$MaxDepth = 2500) {
     $visited = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $queue = [Collections.Generic.Queue[string]]::new()
     foreach ($fp in $FilePaths) {
@@ -137,10 +174,10 @@ function Resolve-AllTransitiveDependencies([string[]]$FilePaths, [string]$RepoRo
             }
         }
     }
-    $depth = 0
-    while ($queue.Count -gt 0 -and $depth -lt $MaxDepth) {
+    $processed = 0
+    while ($queue.Count -gt 0 -and $processed -lt $MaxDepth) {
         $current = $queue.Dequeue()
-        $depth++
+        $processed++
         if ($current.EndsWith('.dart', [StringComparison]::OrdinalIgnoreCase)) {
             $imports = Get-DartImports -FilePath $current -RepoRoot $RepoRoot
             foreach ($imp in $imports) {
@@ -150,16 +187,35 @@ function Resolve-AllTransitiveDependencies([string[]]$FilePaths, [string]$RepoRo
             }
         }
     }
+    if ($queue.Count -gt 0) {
+        # Fail-closed signal: if dependency graph exceeds safety limit, do not silently omit dependencies
+        $visited.Add('__TRUNCATED_DEPENDENCY_GRAPH__') | Out-Null
+    }
     return @($visited)
 }
 
 function Test-IsTestEligibleForReuse([string]$TestPath) {
+    $norm = $TestPath.Replace('\', '/')
+    # Non-Dart tests (Python, scripts, integration tests) or side-effect/env-gated tests:
+    # disable caching when dependencies cannot be established safely via Dart import graph.
+    if (-not $norm.EndsWith('.dart', [StringComparison]::OrdinalIgnoreCase)) {
+        return $false
+    }
+    if ($norm -match '^integration_test/') {
+        return $false
+    }
+    if ($norm -match 'runtime_workflow_journey_test\.dart$|startup_recovery_journeys_test\.dart$|resource_journeys_test\.dart$|native_widget_launch_integration_test\.dart$|performance_benchmark_test\.dart$|lab_render_test\.dart$') {
+        return $false
+    }
+    if (-not [string]::IsNullOrEmpty($env:UIUX_CAPTURE_DIR)) {
+        return $false
+    }
+
     $repoRoot = Get-RepoRoot
     $registryPath = Join-Path $repoRoot 'tools\dev\registry.json'
     if (Test-Path -LiteralPath $registryPath) {
         try {
             $reg = Get-Content -LiteralPath $registryPath -Raw | ConvertFrom-Json
-            $norm = $TestPath.Replace('\', '/')
             foreach ($t in $reg.Tests) {
                 if ($t.Path -eq $norm) {
                     if ($t.EvidenceReuse -eq 'Ineligible' -or $t.deterministic -eq $false) {
@@ -210,8 +266,18 @@ function Get-TestCompositeFingerprint {
         $resolvedDeps = $allFilesToHash.ToArray()
     }
 
+    $dependenciesTruncated = $false
+    $filteredDeps = [Collections.Generic.List[string]]::new()
+    foreach ($dep in $resolvedDeps) {
+        if ($dep -eq '__TRUNCATED_DEPENDENCY_GRAPH__') {
+            $dependenciesTruncated = $true
+        } else {
+            $filteredDeps.Add($dep)
+        }
+    }
+
     # Sort files deterministically for stable hashing
-    $sortedDeps = $resolvedDeps | Sort-Object
+    $sortedDeps = $filteredDeps.ToArray() | Sort-Object
     foreach ($depFile in $sortedDeps) {
         $rel = $depFile.Substring($repoRoot.Length).TrimStart('\', '/').Replace('\', '/')
         $hash = Get-FileContentHash $depFile
@@ -225,12 +291,13 @@ function Get-TestCompositeFingerprint {
 
     # 4. Toolchain / environment hash
     $toolchainHash = Get-ToolchainHash
+    $envHash = Get-EnvironmentFingerprint
 
     # 5. Verification config and script hash
     $configHash = Get-VerificationConfigHash
 
     # Composite SHA-256
-    $compositeRaw = "$TestPath|$testHash|$sourceCombined|$lockHash|$toolchainHash|$configHash|$Arguments"
+    $compositeRaw = "$TestPath|$testHash|$sourceCombined|$lockHash|$toolchainHash|$envHash|$configHash|$Arguments"
     $bytes = [Text.Encoding]::UTF8.GetBytes($compositeRaw)
     $sha256 = [Security.Cryptography.SHA256]::Create()
     $compositeHash = -join ($sha256.ComputeHash($bytes) | ForEach-Object { '{0:x2}' -f $_ })
@@ -243,9 +310,11 @@ function Get-TestCompositeFingerprint {
         SourceHashes = $sourceHashes.ToArray()
         LockfileHash = $lockHash
         ToolchainHash = $toolchainHash
+        EnvironmentHash = $envHash
         ConfigHash = $configHash
         Arguments = $Arguments
         DependenciesCount = $sortedDeps.Count
+        DependenciesTruncated = $dependenciesTruncated
     }
 }
 
@@ -306,11 +375,15 @@ function Save-EvidenceRecord {
         [string]$LogExcerpt = '',
         [string]$LogPath = '',
         [string]$Arguments = '',
+        [string]$PreRunFingerprint = '',
         [switch]$ForceFresh
     )
 
     $fpInfo = Get-TestCompositeFingerprint -TestPath $TestPath -SourcePaths $SourcePaths -Arguments $Arguments
     $fingerprint = $fpInfo.CompositeFingerprint
+
+    # Detect source/test/config mutation during test execution
+    $mutatedDuringRun = (-not [string]::IsNullOrWhiteSpace($PreRunFingerprint)) -and ($fingerprint -ne $PreRunFingerprint)
 
     # Redact sensitive tokens from log excerpt
     $sanitizedExcerpt = $LogExcerpt
@@ -318,6 +391,17 @@ function Save-EvidenceRecord {
         $sanitizedExcerpt = $sanitizedExcerpt -replace '(?i)(bearer\s+[a-zA-Z0-9_\-\.]+)', 'Bearer [REDACTED]'
         $sanitizedExcerpt = $sanitizedExcerpt -replace '(?i)(key\s*=\s*[a-zA-Z0-9_\-]+)', 'key=[REDACTED]'
         $sanitizedExcerpt = $sanitizedExcerpt -replace '(?i)(password\s*=\s*\S+)', 'password=[REDACTED]'
+    }
+
+    $cacheSkippedReason = ''
+    if ($mutatedDuringRun) {
+        $cacheSkippedReason = 'SourceModifiedDuringExecution'
+    } elseif ($fpInfo.DependenciesTruncated) {
+        $cacheSkippedReason = 'DependencyGraphTruncated'
+    } elseif ($ForceFresh) {
+        $cacheSkippedReason = 'ForceFresh'
+    } elseif (-not (Test-IsTestEligibleForReuse -TestPath $TestPath)) {
+        $cacheSkippedReason = 'IneligibleForReuse'
     }
 
     $record = [pscustomobject]@{
@@ -330,9 +414,13 @@ function Save-EvidenceRecord {
         TestHash = $fpInfo.TestHash
         LockfileHash = $fpInfo.LockfileHash
         ToolchainHash = $fpInfo.ToolchainHash
+        EnvironmentHash = $fpInfo.EnvironmentHash
         ConfigHash = $fpInfo.ConfigHash
         Arguments = $Arguments
         DependenciesCount = $fpInfo.DependenciesCount
+        DependenciesTruncated = $fpInfo.DependenciesTruncated
+        CacheSaved = $false
+        CacheSkippedReason = $cacheSkippedReason
         LogExcerpt = $sanitizedExcerpt
         LogPath = $LogPath
     }
@@ -342,11 +430,13 @@ function Save-EvidenceRecord {
     # 2. FAIL, FLAKY, BLOCKED, TIMEOUT, and SKIPPED outcomes are NEVER cached as passing evidence.
     # 3. Tests marked Ineligible or nondeterministic are never cached.
     # 4. Mandatory fresh runs ($ForceFresh) bypass cache writing.
-    if ($Outcome -eq 'PASS' -and -not $ForceFresh) {
+    # 5. Any source/test/config modification during test execution or truncated dependency graph prevents caching.
+    if ($Outcome -eq 'PASS' -and -not $ForceFresh -and -not $mutatedDuringRun -and -not $fpInfo.DependenciesTruncated) {
         if (Test-IsTestEligibleForReuse -TestPath $TestPath) {
             $evidenceDir = Get-EvidenceDir
             $evidenceFile = Join-Path $evidenceDir "$fingerprint.json"
             $tempFile = Join-Path $evidenceDir "$fingerprint.tmp.$([Guid]::NewGuid().ToString('N'))"
+            $record.CacheSaved = $true
             $json = $record | ConvertTo-Json -Depth 6
             # Atomic write to prevent partially-written corrupted files
             [IO.File]::WriteAllText($tempFile, $json, [Text.UTF8Encoding]::new($false))
@@ -374,4 +464,4 @@ function Clear-StaleEvidence {
     return $count
 }
 
-Export-ModuleMember -Function Get-TestCompositeFingerprint, Get-EvidenceRecord, Save-EvidenceRecord, Clear-StaleEvidence, Get-DartImports, Resolve-AllTransitiveDependencies, Test-IsTestEligibleForReuse, Get-RepoRoot, Get-EvidenceDir, Get-VerificationConfigHash, Get-ToolchainHash
+Export-ModuleMember -Function Get-TestCompositeFingerprint, Get-EvidenceRecord, Save-EvidenceRecord, Clear-StaleEvidence, Get-DartImports, Resolve-AllTransitiveDependencies, Test-IsTestEligibleForReuse, Get-RepoRoot, Get-EvidenceDir, Get-VerificationConfigHash, Get-ToolchainHash, Get-EnvironmentFingerprint

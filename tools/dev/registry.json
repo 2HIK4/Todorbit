@@ -1,14 +1,14 @@
-﻿{
+{
     "Version":  "2.0.0",
-    "GeneratedAt":  "2026-11-24T20:34:43.7109493+03:00",
-    "TotalTests":  224,
+    "GeneratedAt":  "2026-11-25T00:34:23.0640496+03:00",
+    "TotalTests":  225,
     "Metrics":  {
-                    "TotalExecutableSuites":  224,
+                    "TotalExecutableSuites":  225,
                     "DartUnitAndWidgetSuites":  210,
                     "IntegrationSuites":  3,
-                    "ToolTestSuites":  11,
+                    "ToolTestSuites":  12,
                     "SupportHelperFiles":  14,
-                    "EstimatedIndividualTestCases":  1214
+                    "EstimatedIndividualTestCases":  1228
                 },
     "SupportHelpers":  [
                            "test/seed_isolated_calendar_profile.dart",
@@ -1606,7 +1606,7 @@
                                         "Windows",
                                         "Android"
                                     ],
-                      "EvidenceReuse":  "Eligible",
+                      "EvidenceReuse":  "Ineligible",
                       "Description":  "Automated Flutter test suite: native_widget_launch_integration_test",
                       "Prerequisites":  [
                                             "flutter_sdk",
@@ -1726,7 +1726,7 @@
                                         "Windows",
                                         "Android"
                                     ],
-                      "EvidenceReuse":  "Eligible",
+                      "EvidenceReuse":  "Ineligible",
                       "Description":  "Automated Flutter test suite: performance_benchmark_test",
                       "Prerequisites":  [
                                             "flutter_sdk",
@@ -2247,7 +2247,7 @@
                                         "Windows",
                                         "Android"
                                     ],
-                      "EvidenceReuse":  "Eligible",
+                      "EvidenceReuse":  "Ineligible",
                       "Description":  "Automated Flutter test suite: resource_journeys_test",
                       "Prerequisites":  [
                                             "flutter_sdk",
@@ -2790,7 +2790,7 @@
                                         "Windows",
                                         "Android"
                                     ],
-                      "EvidenceReuse":  "Eligible",
+                      "EvidenceReuse":  "Ineligible",
                       "Description":  "Automated Flutter test suite: startup_recovery_journeys_test",
                       "Prerequisites":  [
                                             "flutter_sdk",
@@ -4318,7 +4318,7 @@
                                         "Windows",
                                         "Host"
                                     ],
-                      "EvidenceReuse":  "Eligible",
+                      "EvidenceReuse":  "Ineligible",
                       "Description":  "Developer tool/architecture test: test_architecture_boundaries",
                       "Prerequisites":  [
                                             "python"
@@ -4338,7 +4338,7 @@
                                         "Windows",
                                         "Host"
                                     ],
-                      "EvidenceReuse":  "Eligible",
+                      "EvidenceReuse":  "Ineligible",
                       "Description":  "Developer tool/architecture test: test_background_sync_schema",
                       "Prerequisites":  [
                                             "python"
@@ -4358,7 +4358,7 @@
                                         "Windows",
                                         "Host"
                                     ],
-                      "EvidenceReuse":  "Eligible",
+                      "EvidenceReuse":  "Ineligible",
                       "Description":  "Developer tool/architecture test: test_ci_workflows",
                       "Prerequisites":  [
                                             "python"
@@ -4378,7 +4378,7 @@
                                         "Windows",
                                         "Host"
                                     ],
-                      "EvidenceReuse":  "Eligible",
+                      "EvidenceReuse":  "Ineligible",
                       "Description":  "Developer tool/architecture test: test_dev_verify",
                       "Prerequisites":  [
                                             "python"
@@ -4398,7 +4398,7 @@
                                         "Windows",
                                         "Host"
                                     ],
-                      "EvidenceReuse":  "Eligible",
+                      "EvidenceReuse":  "Ineligible",
                       "Description":  "Developer tool/architecture test: test_prepare_android_release",
                       "Prerequisites":  [
                                             "python"
@@ -4418,8 +4418,28 @@
                                         "Windows",
                                         "Host"
                                     ],
-                      "EvidenceReuse":  "Eligible",
+                      "EvidenceReuse":  "Ineligible",
                       "Description":  "Developer tool/architecture test: test_process_invocation_safety",
+                      "Prerequisites":  [
+                                            "python"
+                                        ]
+                  },
+                  {
+                      "Id":  "tool:test_registry_sync",
+                      "Type":  "python_test",
+                      "Path":  "tools/test_registry_sync.py",
+                      "Command":  "python -m unittest discover -s tools -p test_registry_sync.py",
+                      "Tier":  "Level1_Fast",
+                      "Features":  [
+                                       "architecture",
+                                       "dev-tools"
+                                   ],
+                      "Platforms":  [
+                                        "Windows",
+                                        "Host"
+                                    ],
+                      "EvidenceReuse":  "Ineligible",
+                      "Description":  "Developer tool/architecture test: test_registry_sync",
                       "Prerequisites":  [
                                             "python"
                                         ]
@@ -4438,7 +4458,7 @@
                                         "Windows",
                                         "Host"
                                     ],
-                      "EvidenceReuse":  "Eligible",
+                      "EvidenceReuse":  "Ineligible",
                       "Description":  "Developer tool/architecture test: test_windows_sandbox_prepare",
                       "Prerequisites":  [
                                             "python"
@@ -4458,7 +4478,7 @@
                                         "Windows",
                                         "Host"
                                     ],
-                      "EvidenceReuse":  "Eligible",
+                      "EvidenceReuse":  "Ineligible",
                       "Description":  "Developer tool/architecture test: test_evidence_cache_safety",
                       "Prerequisites":  [
                                             "python"
@@ -4478,7 +4498,7 @@
                                         "Windows",
                                         "Host"
                                     ],
-                      "EvidenceReuse":  "Eligible",
+                      "EvidenceReuse":  "Ineligible",
                       "Description":  "Developer tool/architecture test: test_impact_behavior",
                       "Prerequisites":  [
                                             "python"
@@ -4498,7 +4518,7 @@
                                         "Windows",
                                         "Host"
                                     ],
-                      "EvidenceReuse":  "Eligible",
+                      "EvidenceReuse":  "Ineligible",
                       "Description":  "Developer tool/architecture test: test_session_locking_safety",
                       "Prerequisites":  [
                                             "python"
@@ -4517,7 +4537,7 @@
                       "Platforms":  [
                                         "Host"
                                     ],
-                      "EvidenceReuse":  "Eligible",
+                      "EvidenceReuse":  "Ineligible",
                       "Description":  "Documentation, map and catalog integrity validator",
                       "Prerequisites":  [
                                             "python"

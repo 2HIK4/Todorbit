@@ -11,7 +11,9 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 void main() {
   group('Database Migration & Forward Recovery Tests', () {
     test('migrates schema 27 to currentSchemaVersion preserving all user data and relationships', () async {
-      final tempDir = await Directory.systemTemp.createTemp('todorbit-mig-test-');
+      final tempDir = await Directory.systemTemp.createTemp(
+        'todorbit-mig-test-',
+      );
       final dbFile = File('${tempDir.path}/legacy_27.sqlite');
 
       try {
@@ -59,7 +61,10 @@ void main() {
         repo = LifeRepository(db);
 
         final versionRows = await db.customSelect('PRAGMA user_version').get();
-        expect(versionRows.single.data['user_version'], AppDatabase.currentSchemaVersion);
+        expect(
+          versionRows.single.data['user_version'],
+          AppDatabase.currentSchemaVersion,
+        );
 
         // Step 5: Verify all user data survived migration completely intact
         final loadedTasks = await repo.tasks();
@@ -86,33 +91,45 @@ void main() {
       }
     });
 
-    test('future schema version throws StateError and aborts without overwriting', () async {
-      final tempDir = await Directory.systemTemp.createTemp('todorbit-future-test-');
-      final dbFile = File('${tempDir.path}/future.sqlite');
-
-      try {
-        final raw = sqlite.sqlite3.open(dbFile.path);
-        raw.execute('PRAGMA user_version = ${AppDatabase.currentSchemaVersion + 5}');
-        raw.execute('CREATE TABLE sample(id TEXT PRIMARY KEY, data TEXT)');
-        raw.execute("INSERT INTO sample VALUES('id-1', 'preserved future data')");
-        raw.close();
-
-        // MigrationGate must throw StateError on future schema versions
-        await expectLater(
-          MigrationGate.olderSchema(dbFile),
-          throwsStateError,
+    test(
+      'future schema version throws StateError and aborts without overwriting',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'todorbit-future-test-',
         );
+        final dbFile = File('${tempDir.path}/future.sqlite');
 
-        // Verify data was not deleted or mutated
-        final verify = sqlite.sqlite3.open(dbFile.path, mode: sqlite.OpenMode.readOnly);
-        expect(
-          verify.select('SELECT data FROM sample').single.values.single,
-          'preserved future data',
-        );
-        verify.close();
-      } finally {
-        await tempDir.delete(recursive: true);
-      }
-    });
+        try {
+          final raw = sqlite.sqlite3.open(dbFile.path);
+          raw.execute(
+            'PRAGMA user_version = ${AppDatabase.currentSchemaVersion + 5}',
+          );
+          raw.execute('CREATE TABLE sample(id TEXT PRIMARY KEY, data TEXT)');
+          raw.execute(
+            "INSERT INTO sample VALUES('id-1', 'preserved future data')",
+          );
+          raw.close();
+
+          // MigrationGate must throw StateError on future schema versions
+          await expectLater(
+            MigrationGate.olderSchema(dbFile),
+            throwsStateError,
+          );
+
+          // Verify data was not deleted or mutated
+          final verify = sqlite.sqlite3.open(
+            dbFile.path,
+            mode: sqlite.OpenMode.readOnly,
+          );
+          expect(
+            verify.select('SELECT data FROM sample').single.values.single,
+            'preserved future data',
+          );
+          verify.close();
+        } finally {
+          await tempDir.delete(recursive: true);
+        }
+      },
+    );
   });
 }

@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -126,7 +125,10 @@ void main() {
       final remoteTask = remoteTasks.single;
       expect(remoteTask.id, task.id);
       expect(remoteTask.title, 'Automate Sync Transport Test');
-      expect(remoteTask.notes, 'Ensuring zero data loss across simulated transport');
+      expect(
+        remoteTask.notes,
+        'Ensuring zero data loss across simulated transport',
+      );
       expect(remoteTask.priority, 2);
 
       final remoteCats = await rightRepo.categories();
@@ -162,7 +164,14 @@ void main() {
       await rightRepo.addTask(const TaskDraft(title: 'Important Local Task'));
 
       // Inject malformed/corrupted object into mock drive
-      final badPayload = Uint8List.fromList([0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x01]);
+      final badPayload = Uint8List.fromList([
+        0xDE,
+        0xAD,
+        0xBE,
+        0xEF,
+        0x00,
+        0x01,
+      ]);
       drive.payloads['corrupted-object'] = badPayload;
       drive.objects.add(
         CloudObject(
@@ -191,48 +200,47 @@ void main() {
       expect(currentTasks.single.title, 'Important Local Task');
     });
 
-    test('concurrent modifications on different fields coalesce without data loss', () async {
-      // 1. Initial shared task
-      final task = await leftRepo.addTask(
-        const TaskDraft(
-          title: 'Shared Task',
-          notes: 'Initial notes',
-          priority: 1,
-        ),
-      );
-      await leftEngine.syncNow(manual: true);
-      await rightEngine.syncNow(manual: true);
+    test(
+      'concurrent modifications on different fields coalesce without data loss',
+      () async {
+        // 1. Initial shared task
+        final task = await leftRepo.addTask(
+          const TaskDraft(
+            title: 'Shared Task',
+            notes: 'Initial notes',
+            priority: 1,
+          ),
+        );
+        await leftEngine.syncNow(manual: true);
+        await rightEngine.syncNow(manual: true);
 
-      // 2. Device A updates title
-      await leftRepo.updateTask(
-        task,
-        TaskDraft(
-          title: 'Updated Title by Device A',
-          notes: task.notes,
-          priority: task.priority,
-        ),
-      );
-      await leftEngine.syncNow(manual: true);
+        // 2. Device A updates title
+        await leftRepo.updateTask(
+          task,
+          TaskDraft(
+            title: 'Updated Title by Device A',
+            notes: task.notes,
+            priority: task.priority,
+          ),
+        );
+        await leftEngine.syncNow(manual: true);
 
-      // 3. Device B updates priority
-      final bTask = (await rightRepo.tasks()).single;
-      await rightRepo.updateTask(
-        bTask,
-        TaskDraft(
-          title: bTask.title,
-          notes: bTask.notes,
-          priority: 3,
-        ),
-      );
-      await rightEngine.syncNow(manual: true);
+        // 3. Device B updates priority
+        final bTask = (await rightRepo.tasks()).single;
+        await rightRepo.updateTask(
+          bTask,
+          TaskDraft(title: bTask.title, notes: bTask.notes, priority: 3),
+        );
+        await rightEngine.syncNow(manual: true);
 
-      // 4. Device A pulls changes
-      await leftEngine.syncNow(manual: true);
+        // 4. Device A pulls changes
+        await leftEngine.syncNow(manual: true);
 
-      // Verify convergence: both devices agree and state is preserved
-      final finalTasksA = await leftRepo.tasks();
-      expect(finalTasksA.length, 1);
-      expect(finalTasksA.single.id, task.id);
-    });
+        // Verify convergence: both devices agree and state is preserved
+        final finalTasksA = await leftRepo.tasks();
+        expect(finalTasksA.length, 1);
+        expect(finalTasksA.single.id, task.id);
+      },
+    );
   });
 }

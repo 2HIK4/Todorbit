@@ -228,6 +228,57 @@ class TestEvidenceCacheSafety(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, f"Error: {proc.stderr}")
         self.assertIn("CONFIG_HASH_VALID:", proc.stdout)
 
+    def test_mid_execution_source_modification_refuses_caching(self):
+        """If PreRunFingerprint differs from post-run fingerprint, caching must be refused."""
+        script = """
+        $preFp = '0000000000000000000000000000000000000000000000000000000000000000'
+        $rec = Save-EvidenceRecord -TestPath 'test/workspace_test.dart' -Outcome 'PASS' -DurationSeconds 1.0 -PreRunFingerprint $preFp
+        $cached = Get-EvidenceRecord -Fingerprint $rec.Fingerprint
+        if (-not $rec.CacheSaved -and $rec.CacheSkippedReason -eq 'SourceModifiedDuringExecution' -and $null -eq $cached) {
+            Write-Output "MID_RUN_MUTATION_REJECTED"
+        } else {
+            Write-Error "Mid-execution mutation was incorrectly cached!"
+        }
+        """
+        proc = self._run_ps_evidence_cmd(script)
+        self.assertEqual(proc.returncode, 0, f"Error: {proc.stderr}")
+        self.assertIn("MID_RUN_MUTATION_REJECTED", proc.stdout)
+
+    def test_non_dart_and_integration_tests_ineligible(self):
+        """Python scripts and integration tests are never eligible for cache reuse."""
+        script = """
+        $pyElig = Test-IsTestEligibleForReuse -TestPath 'tools/test_dev_verify.py'
+        $intElig = Test-IsTestEligibleForReuse -TestPath 'integration_test/android_workflow_test.dart'
+        $labElig = Test-IsTestEligibleForReuse -TestPath 'test/lab_render_test.dart'
+        if (-not $pyElig -and -not $intElig -and -not $labElig) {
+            Write-Output "NON_DART_AND_ENV_INELIGIBLE"
+        } else {
+            Write-Error "Expected python/integration/lab tests to be ineligible!"
+        }
+        """
+        proc = self._run_ps_evidence_cmd(script)
+        self.assertEqual(proc.returncode, 0, f"Error: {proc.stderr}")
+        self.assertIn("NON_DART_AND_ENV_INELIGIBLE", proc.stdout)
+
+    def test_registry_regeneration_preserves_ineligibility_and_config_hash(self):
+        """Build-TestRegistry keeps ineligible tests ineligible and Get-VerificationConfigHash is stable across refresh."""
+        script = """
+        Import-Module './tools/dev/modules/Registry.psm1' -Force -DisableNameChecking
+        $hashBefore = Get-VerificationConfigHash
+        $built = Build-TestRegistry
+        $rt = $built.Tests | Where-Object { $_.Path -eq 'test/runtime_workflow_journey_test.dart' }
+        $lab = $built.Tests | Where-Object { $_.Path -eq 'test/lab_render_test.dart' }
+        $hashAfter = Get-VerificationConfigHash
+        if ($rt.EvidenceReuse -eq 'Ineligible' -and $lab.EvidenceReuse -eq 'Ineligible' -and $hashBefore -eq $hashAfter) {
+            Write-Output "REGISTRY_STABILITY_OK"
+        } else {
+            Write-Error "Registry regeneration reset eligibility or altered config hash!"
+        }
+        """
+        proc = self._run_ps_evidence_cmd(script)
+        self.assertEqual(proc.returncode, 0, f"Error: {proc.stderr}")
+        self.assertIn("REGISTRY_STABILITY_OK", proc.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

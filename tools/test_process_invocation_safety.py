@@ -31,6 +31,13 @@ class ProcessInvocationSafetyTest(unittest.TestCase):
         verify_ps1 = (ROOT / 'tools/dev/verify.ps1').read_text(encoding='utf-8')
         self.assertIn('-NonInteractive', verify_ps1, "Add-ScriptStep in verify.ps1 must pass -NonInteractive")
 
+    def test_doctor_avoids_bare_flutter_or_dart_calls(self):
+        """Verify Doctor.psm1 invokes flutter/dart via Resolve-TodorbitTool rather than bare commands."""
+        doctor_psm1 = (ROOT / 'tools/dev/modules/Doctor.psm1').read_text(encoding='utf-8')
+        self.assertNotRegex(doctor_psm1, r'&\s+(?:flutter|dart)\b',
+                            "Doctor.psm1 must not invoke bare '& flutter' or '& dart' without Resolve-TodorbitTool")
+
+    @unittest.skipUnless(os.name == 'nt' and SHELL is not None, 'Windows PowerShell required for Windows .bat/.exe resolution test')
     def test_tool_resolution_strictly_avoids_extensionless_files(self):
         """Verify Resolve-TodorbitTool strictly returns .bat or .exe on Windows."""
         ps_command = """

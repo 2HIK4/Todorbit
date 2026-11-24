@@ -1,7 +1,9 @@
 // runtime_workflow_journey_test.dart
-// Native Windows runtime automation journey test exercising application readiness,
-// synthetic task creation, editing, scheduling, completion, calendar interactions,
-// application restart, and persistence verification in an isolated profile.
+// Flutter test-harness isolated profile persistence check exercising
+// synthetic task creation, editing, completion, calendar event creation,
+// database close, and SQLite file reopen verification in a disposable profile.
+// NOTE: This is a Dart/SQLite test-harness check; it does not launch
+// Todorbit.exe, interact with live desktop UI, or restart an OS process.
 
 import 'dart:io';
 
@@ -70,7 +72,11 @@ void main() {
         deadlineDate: deadlineStr,
       ),
     );
-    expect(await databaseFile.exists(), isTrue, reason: 'Database file must exist after first write operation');
+    expect(
+      await databaseFile.exists(),
+      isTrue,
+      reason: 'Database file must exist after first write operation',
+    );
     expect(createdTask.id, isNotEmpty);
     expect(createdTask.title, equals('Verify Native Windows Runtime Workflow'));
     expect(createdTask.priority, equals(2));
@@ -106,7 +112,9 @@ void main() {
     );
 
     final tasksAfterCompletion = await repo.tasks();
-    final completedTask = tasksAfterCompletion.firstWhere((t) => t.id == createdTask.id);
+    final completedTask = tasksAfterCompletion.firstWhere(
+      (t) => t.id == createdTask.id,
+    );
     expect(completedTask.status, equals(TaskStatus.completed));
     expect(completedTask.completedAt, isNotNull);
 
@@ -136,7 +144,11 @@ void main() {
         'SELECT id, title, status, notes FROM tasks WHERE id = ?',
         [completedTask.id],
       );
-      expect(taskRows.length, equals(1), reason: 'Completed task must persist across restart');
+      expect(
+        taskRows.length,
+        equals(1),
+        reason: 'Completed task must persist across restart',
+      );
       final row = taskRows.first;
       expect(row['title'], equals('Updated Native Windows Runtime Workflow'));
       expect(row['status'], equals('completed'));
@@ -146,11 +158,15 @@ void main() {
         'SELECT id, title, location FROM fixed_events WHERE id = ?',
         [createdEvent.id],
       );
-      expect(eventRows.length, equals(1), reason: 'Calendar event must persist across restart');
+      expect(
+        eventRows.length,
+        equals(1),
+        reason: 'Calendar event must persist across restart',
+      );
       expect(eventRows.first['title'], equals('Sprint Planning Sync'));
       expect(eventRows.first['location'], equals('Virtual Conference'));
     } finally {
-      verifySqlite.dispose();
+      verifySqlite.close();
     }
 
     // 8. Second session restart: Initialize fresh Flutter database connection
@@ -160,7 +176,10 @@ void main() {
       final allTasks = await restartedRepo.tasks();
       final loadedTask = allTasks.firstWhere((t) => t.id == completedTask.id);
       expect(loadedTask.status, equals(TaskStatus.completed));
-      expect(loadedTask.title, equals('Updated Native Windows Runtime Workflow'));
+      expect(
+        loadedTask.title,
+        equals('Updated Native Windows Runtime Workflow'),
+      );
     } finally {
       await restartedDb.close();
     }

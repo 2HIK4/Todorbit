@@ -41,7 +41,8 @@ void main() {
             expect(
               currentDate.compareTo(previousDate) > 0,
               isTrue,
-              reason: 'Rule ${rule.kind} violated monotonicity at ordinal $i: $currentDate <= $previousDate',
+              reason:
+                  'Rule ${rule.kind} violated monotonicity at ordinal $i: $currentDate <= $previousDate',
             );
           }
           previousDate = currentDate;

@@ -143,15 +143,24 @@ function Get-RepositoryMap {
         try { $reg = Get-Content -LiteralPath $registryPath -Raw | ConvertFrom-Json } catch {}
     }
 
+    $featuresPath = Join-Path $repoRoot 'tools\dev\features.json'
+    $featureCount = 0
+    if (Test-Path -LiteralPath $featuresPath) {
+        try {
+            $featObj = Get-Content -LiteralPath $featuresPath -Raw | ConvertFrom-Json
+            $featureCount = @($featObj.PSObject.Properties).Count
+        } catch {}
+    }
+
     $metrics = [pscustomobject]@{
         DartSourceFiles = $dartFiles.Count
         TotalExecutableSuites = if ($reg -and $reg.Metrics) { $reg.Metrics.TotalExecutableSuites } else { $testFiles.Count }
         DartUnitAndWidgetSuites = if ($reg -and $reg.Metrics) { $reg.Metrics.DartUnitAndWidgetSuites } else { $testFiles.Count }
         IntegrationSuites = if ($reg -and $reg.Metrics) { $reg.Metrics.IntegrationSuites } else { 3 }
-        ToolTestSuites = if ($reg -and $reg.Metrics) { $reg.Metrics.ToolTestSuites } else { 10 }
+        ToolTestSuites = if ($reg -and $reg.Metrics) { $reg.Metrics.ToolTestSuites } else { 11 }
         SupportHelperFiles = if ($reg -and $reg.Metrics) { $reg.Metrics.SupportHelperFiles } else { 14 }
         EstimatedIndividualTestCases = if ($reg -and $reg.Metrics) { $reg.Metrics.EstimatedIndividualTestCases } else { 1100 }
-        TotalRegisteredFeatures = 20
+        TotalRegisteredFeatures = if ($featureCount -gt 0) { $featureCount } else { 23 }
     }
 
     $topology = [pscustomobject]@{
@@ -257,7 +266,7 @@ function New-AgentHandoff {
     $dirty = [bool]$statusLines
 
     $impact = if (Get-Command 'Invoke-ImpactAnalysis' -ErrorAction SilentlyContinue) {
-        Invoke-ImpactAnalysis
+        (Invoke-ImpactAnalysis -Json | ConvertFrom-Json)
     } else { $null }
 
     $evidenceDir = Join-Path $repoRoot '.buildlog\evidence'
@@ -285,8 +294,8 @@ function New-AgentHandoff {
     $jsonStr = $checkpoint | ConvertTo-Json -Depth 5
     $latestPath = Join-Path $handoffDir 'latest.json'
     $timestampPath = Join-Path $handoffDir "handoff-$((Get-Date).ToString('yyyyMMdd-HHmmss')).json"
-    [IO.File]::WriteAllText($latestPath, $jsonStr, [Text.Encoding]::UTF8)
-    [IO.File]::WriteAllText($timestampPath, $jsonStr, [Text.Encoding]::UTF8)
+    [IO.File]::WriteAllText($latestPath, $jsonStr, [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText($timestampPath, $jsonStr, [Text.UTF8Encoding]::new($false))
 
     if ($Json) { return $jsonStr }
 

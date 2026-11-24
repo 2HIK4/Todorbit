@@ -37,12 +37,16 @@ void main() {
     final now = DateTime.now();
 
     final cat = await controller.repository.addCategory('Core Work');
-    final proj = await controller.repository.addProject(cat.id, 'Launch Sprint');
+    final proj = await controller.repository.addProject(
+      cat.id,
+      'Launch Sprint',
+    );
 
     await controller.repository.addTask(
       TaskDraft(
         title: 'Review Layout Responsive Breakpoints',
-        notes: 'Verifying 320dp mobile and 1080p desktop layouts without overflow',
+        notes:
+            'Verifying 320dp mobile and 1080p desktop layouts without overflow',
         status: TaskStatus.inProgress,
         priority: 3,
         categoryId: cat.id,
@@ -78,7 +82,10 @@ void main() {
     Brightness brightness = Brightness.light,
   }) async {
     const activation = MethodChannel('life_manager/activation');
-    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(activation, (_) async => null);
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      activation,
+      (_) async => null,
+    );
 
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = size;
@@ -98,13 +105,12 @@ void main() {
         child: MaterialApp(
           theme: buildAppTheme(
             brightness,
-            brightness == Brightness.light ? ThemePalette.light : ThemePalette.dark,
+            brightness == Brightness.light
+                ? ThemePalette.light
+                : ThemePalette.dark,
           ),
           home: Scaffold(
-            body: RepaintBoundary(
-              key: reviewCaptureKey,
-              child: child,
-            ),
+            body: RepaintBoundary(key: reviewCaptureKey, child: child),
           ),
         ),
       ),
@@ -113,14 +119,20 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify zero RenderFlex overflows or unhandled render tree errors
-    expect(tester.takeException(), isNull, reason: 'Layout overflow or exception occurred in scenario: $name');
+    expect(
+      tester.takeException(),
+      isNull,
+      reason: 'Layout overflow or exception occurred in scenario: $name',
+    );
 
     // If capture directory is configured, export offscreen screenshot PNG and JSON metadata
     await captureReview(tester, name);
   }
 
   group('Headless Offscreen Layout & Responsive Viewport Lab', () {
-    testWidgets('workspace-desktop-1080p: Desktop 1080p light theme', (tester) async {
+    testWidgets('workspace-desktop-1080p: Desktop 1080p light theme', (
+      tester,
+    ) async {
       await renderScenario(
         tester: tester,
         name: 'workspace-desktop-1080p',
@@ -130,7 +142,9 @@ void main() {
       );
     });
 
-    testWidgets('workspace-desktop-720p: Desktop 720p light theme', (tester) async {
+    testWidgets('workspace-desktop-720p: Desktop 720p light theme', (
+      tester,
+    ) async {
       await renderScenario(
         tester: tester,
         name: 'workspace-desktop-720p',
@@ -140,7 +154,9 @@ void main() {
       );
     });
 
-    testWidgets('workspace-compact-800x600: Compact window layout', (tester) async {
+    testWidgets('workspace-compact-800x600: Compact window layout', (
+      tester,
+    ) async {
       await renderScenario(
         tester: tester,
         name: 'workspace-compact-800x600',
@@ -150,7 +166,9 @@ void main() {
       );
     });
 
-    testWidgets('workspace-mobile-320dp: Narrow mobile 320dp viewport', (tester) async {
+    testWidgets('workspace-mobile-320dp: Narrow mobile 320dp viewport', (
+      tester,
+    ) async {
       await renderScenario(
         tester: tester,
         name: 'workspace-mobile-320dp',
@@ -160,18 +178,23 @@ void main() {
       );
     });
 
-    testWidgets('workspace-mobile-320dp-large-text: 320dp with 150% text scaling', (tester) async {
-      await renderScenario(
-        tester: tester,
-        name: 'workspace-mobile-320dp-large-text',
-        child: MobileWorkspace(preferenceStore: mobileStore),
-        size: const Size(320, 800),
-        textScale: 1.5,
-        brightness: Brightness.dark,
-      );
-    });
+    testWidgets(
+      'workspace-mobile-320dp-large-text: 320dp with 150% text scaling',
+      (tester) async {
+        await renderScenario(
+          tester: tester,
+          name: 'workspace-mobile-320dp-large-text',
+          child: MobileWorkspace(preferenceStore: mobileStore),
+          size: const Size(320, 800),
+          textScale: 1.5,
+          brightness: Brightness.dark,
+        );
+      },
+    );
 
-    testWidgets('calendar-week-desktop: Calendar week view on desktop', (tester) async {
+    testWidgets('calendar-week-desktop: Calendar week view on desktop', (
+      tester,
+    ) async {
       await renderScenario(
         tester: tester,
         name: 'calendar-week-desktop',
@@ -185,25 +208,28 @@ void main() {
       );
     });
 
-    testWidgets('calendar-agenda-mobile: Calendar agenda on mobile', (tester) async {
+    testWidgets('calendar-agenda-mobile: Calendar agenda on mobile', (
+      tester,
+    ) async {
       await renderScenario(
         tester: tester,
         name: 'calendar-agenda-mobile',
-        child: MobileCalendar(
-          openTask: (_) {},
-          addTask: (_) {},
-        ),
+        child: MobileCalendar(openTask: (_) {}, addTask: (_) {}),
         size: const Size(360, 800),
         brightness: Brightness.light,
       );
     });
 
-    testWidgets('settings-hub-dark: Settings hub dialog in dark theme', (tester) async {
+    testWidgets('settings-hub-dark: Settings hub dialog in dark theme', (
+      tester,
+    ) async {
       await renderScenario(
         tester: tester,
         name: 'settings-hub-dark',
         child: SettingsHubDialog(
-          nativeWidget: NativeWidgetService(widgetExecutable: 'unavailable.exe'),
+          nativeWidget: NativeWidgetService(
+            widgetExecutable: 'unavailable.exe',
+          ),
           showDataProfile: () {},
         ),
         size: const Size(1000, 700),
@@ -211,89 +237,109 @@ void main() {
       );
     });
 
-    testWidgets('task-row-dense-complex-state: Dense task row with tags and long title', (tester) async {
-      final task = (await controller.repository.tasks()).first;
-      await renderScenario(
-        tester: tester,
-        name: 'task-row-dense-complex-state',
-        child: ListView(
-          children: [
-            AppTaskRow(
-              task: task,
-              categoryName: 'Core Work',
-              projectName: 'Launch Sprint',
-              checklistProgress: const TaskProgress(completed: 4, total: 5),
-              subtaskProgress: const TaskProgress(completed: 2, total: 3),
-              hasAlarm: true,
-              variant: AppTaskRowVariant.desktop,
-            ),
-          ],
-        ),
-        size: const Size(600, 400),
-        textScale: 1.5,
-        brightness: Brightness.light,
-      );
-    });
-
-    testWidgets('modal-shell-scroll-reachability: Modal shell with scrollable content and reachable actions', (tester) async {
-      await renderScenario(
-        tester: tester,
-        name: 'modal-shell-scroll-reachability',
-        child: AppModalShell(
-          maxWidth: 600,
-          maxHeight: 500,
-          child: Column(
+    testWidgets(
+      'task-row-dense-complex-state: Dense task row with tags and long title',
+      (tester) async {
+        final task = (await controller.repository.tasks()).first;
+        await renderScenario(
+          tester: tester,
+          name: 'task-row-dense-complex-state',
+          child: ListView(
             children: [
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text('Modal Header Title', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: 40,
-                  itemBuilder: (context, index) => ListTile(
-                    title: Text('List item index #$index in scrollable dialog body'),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(onPressed: () {}, child: const Text('Cancel')),
-                    const SizedBox(width: 8),
-                    FilledButton(onPressed: () {}, child: const Text('Save Changes')),
-                  ],
-                ),
+              AppTaskRow(
+                task: task,
+                categoryName: 'Core Work',
+                projectName: 'Launch Sprint',
+                checklistProgress: const TaskProgress(completed: 4, total: 5),
+                subtaskProgress: const TaskProgress(completed: 2, total: 3),
+                hasAlarm: true,
+                variant: AppTaskRowVariant.desktop,
               ),
             ],
           ),
-        ),
-        size: const Size(1000, 700),
-        brightness: Brightness.dark,
-      );
+          size: const Size(600, 400),
+          textScale: 1.5,
+          brightness: Brightness.light,
+        );
+      },
+    );
 
-      expect(find.text('Modal Header Title'), findsOneWidget);
-      expect(find.text('Save Changes'), findsOneWidget);
-    });
+    testWidgets(
+      'modal-shell-scroll-reachability: Modal shell with scrollable content and reachable actions',
+      (tester) async {
+        await renderScenario(
+          tester: tester,
+          name: 'modal-shell-scroll-reachability',
+          child: AppModalShell(
+            maxWidth: 600,
+            maxHeight: 500,
+            child: Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text(
+                    'Modal Header Title',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: 40,
+                    itemBuilder: (context, index) => ListTile(
+                      title: Text(
+                        'List item index #$index in scrollable dialog body',
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(onPressed: () {}, child: const Text('Cancel')),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: () {},
+                        child: const Text('Save Changes'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          size: const Size(1000, 700),
+          brightness: Brightness.dark,
+        );
 
-    testWidgets('accessibility-semantics-inspection: Semantic labels and tooltips presence', (tester) async {
-      final task = (await controller.repository.tasks()).first;
-      await renderScenario(
-        tester: tester,
-        name: 'accessibility-semantics-inspection',
-        child: AppTaskRow(
-          task: task,
-          categoryName: 'Core Work',
-          projectName: 'Launch Sprint',
-          onToggleComplete: (_) {},
-        ),
-        size: const Size(800, 100),
-        brightness: Brightness.light,
-      );
+        expect(find.text('Modal Header Title'), findsOneWidget);
+        expect(find.text('Save Changes'), findsOneWidget);
+      },
+    );
 
-      expect(find.text('Review Layout Responsive Breakpoints'), findsOneWidget);
-    });
+    testWidgets(
+      'accessibility-semantics-inspection: Semantic labels and tooltips presence',
+      (tester) async {
+        final task = (await controller.repository.tasks()).first;
+        await renderScenario(
+          tester: tester,
+          name: 'accessibility-semantics-inspection',
+          child: AppTaskRow(
+            task: task,
+            categoryName: 'Core Work',
+            projectName: 'Launch Sprint',
+            onToggleComplete: (_) {},
+          ),
+          size: const Size(800, 100),
+          brightness: Brightness.light,
+        );
+
+        expect(
+          find.text('Review Layout Responsive Breakpoints'),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }

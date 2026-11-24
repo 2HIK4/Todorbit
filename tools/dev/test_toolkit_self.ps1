@@ -93,7 +93,7 @@ Assert-Test "Deterministic AI feature context pack generator" {
 Assert-Test "Repository architecture map (topology and layer metrics)" {
     $mapJson = Get-RepositoryMap -Json
     $map = $mapJson | ConvertFrom-Json
-    ($map.Metrics.DartSourceFiles -ge 200) -and ($map.Metrics.TotalExecutableSuites -ge 220)
+    ($map.Metrics.DartSourceFiles -ge 200) -and ($map.Metrics.TotalExecutableSuites -ge 220) -and ($map.Metrics.TotalRegisteredFeatures -ge 23)
 }
 
 # 8. Synthetic Fixture Generation
@@ -149,6 +149,14 @@ Assert-Test "Agent engineering handoff checkpoint and drift-aware resumption" {
     $cp = New-AgentHandoff -Note 'Self-test handoff validation' -Json | ConvertFrom-Json
     $res = Resume-AgentHandoff -Json | ConvertFrom-Json
     $res.CommitMatches -and ($res.RecordedBranch -eq $cp.Branch)
+}
+
+# 16. Cross-Platform Registry Sync & Ineligibility Enforcement
+Assert-Test "Cross-platform registry sync and cache-ineligibility validation" {
+    $pythonExe = (Get-Command 'python').Source
+    $regSyncScript = Join-Path $repoRoot 'tools\test_registry_sync.py'
+    $proc = Start-Process -FilePath $pythonExe -ArgumentList $regSyncScript -NoNewWindow -PassThru -Wait
+    $proc.ExitCode -eq 0
 }
 
 Write-Host "=================================================================" -ForegroundColor Cyan

@@ -45,6 +45,12 @@ function Ensure-TodorbitEnvironment {
             $env:ANDROID_SDK_ROOT = $sdkCandidate
         }
     }
+    if ($env:ANDROID_HOME -and (Test-Path -LiteralPath (Join-Path $env:ANDROID_HOME 'platform-tools\adb.exe'))) {
+        $platformTools = Join-Path $env:ANDROID_HOME 'platform-tools'
+        if (-not (($env:Path -split ';') -contains $platformTools)) {
+            $env:Path = "$platformTools;" + $env:Path
+        }
+    }
 }
 
 function Resolve-TodorbitTool {
@@ -87,6 +93,17 @@ function Resolve-TodorbitTool {
             if ($cand) { return $cand.Source }
             return 'git'
         }
+        'adb' {
+            $cand = Get-Command 'adb.exe' -ErrorAction SilentlyContinue
+            if ($cand) { return $cand.Source }
+            if ($env:ANDROID_HOME) {
+                $sdkAdb = Join-Path $env:ANDROID_HOME 'platform-tools\adb.exe'
+                if (Test-Path -LiteralPath $sdkAdb) { return $sdkAdb }
+            }
+            $defaultAdb = 'C:\Users\User\AppData\Local\Android\sdk\platform-tools\adb.exe'
+            if (Test-Path -LiteralPath $defaultAdb) { return $defaultAdb }
+            throw "Unable to locate adb.exe on PATH or under ANDROID_HOME."
+        }
         Default {
             $cmd = Get-Command $ToolName -ErrorAction SilentlyContinue
             if ($cmd -and $cmd.Extension -in @('.exe', '.bat', '.cmd', '.ps1')) {
@@ -115,12 +132,14 @@ function Invoke-TodorbitDoctor {
     $warnings = [Collections.Generic.List[string]]::new()
     $errors = [Collections.Generic.List[string]]::new()
 
-    # 1. Flutter & Dart Check
-    $flutterCmd = Get-Command 'flutter' -ErrorAction SilentlyContinue
-    $dartCmd = Get-Command 'dart' -ErrorAction SilentlyContinue
-    if ($flutterCmd -and $dartCmd) {
-        $flutterVer = & flutter --version 2>$null | Select-Object -First 1
-        $dartVer = & dart --version 2>&1 | Select-Object -First 1
+    # 1. Flutter & Dart Check (always resolve explicit .bat / .exe)
+    $flutterExe = $null
+    $dartExe = $null
+    try { $flutterExe = Resolve-TodorbitTool 'flutter' } catch {}
+    try { $dartExe = Resolve-TodorbitTool 'dart' } catch {}
+    if ($flutterExe -and $dartExe) {
+        $flutterVer = & $flutterExe --version 2>$null | Select-Object -First 1
+        $dartVer = & $dartExe --version 2>&1 | Select-Object -First 1
         $checks.Add([pscustomobject]@{
             Category = 'Flutter'
             Name = 'Flutter and Dart SDK'
@@ -148,21 +167,30 @@ function Invoke-TodorbitDoctor {
             $vsDetail = "Visual Studio C++ detected at: $vsInstall"
         }
     }
-    if ($hasVs) {
-        $checks.Add([pscustomobject]@{
-            Category = 'Windows'
-            Name = 'Visual Studio C++ Toolchain'
-            Status = 'OK'
-            Detail = $vsDetail
-        })
-    } else {
-        $checks.Add([pscustomobject]@{
-            Category = 'Windows'
-            Name = 'Visual Studio C++ Toolchain'
-            Status = 'WARNING'
-            Detail = 'Visual Studio C++ x86/x64 tools not detected via vswhere.'
-        })
+    $checks.Add([pscustomobject]@{
+        Category = 'Windows'
+        Name = 'Visual Studio C++ Toolchain'
+        Status = if ($hasVs) { 'OK' } else { 'WARNING' }
+        Detail = $vsDetail
+    })
+    if (-not $hasVs) {
         $warnings.Add('Visual Studio C++ tools needed for Windows native release builds.')
+    }
+
+    # 2b. Windows Developer Mode (symlink support required by Flutter Windows plugin builds)
+    $devMode = $false
+    try {
+        $unlock = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock' -ErrorAction SilentlyContinue
+        if ($unlock -and $unlock.AllowDevelopmentWithoutDevLicense -eq 1) { $devMode = $true }
+    } catch {}
+    $checks.Add([pscustomobject]@{
+        Category = 'Windows'
+        Name = 'Windows Developer Mode (Symlink Support)'
+        Status = if ($devMode) { 'OK' } else { 'WARNING' }
+        Detail = if ($devMode) { 'Developer Mode enabled (AllowDevelopmentWithoutDevLicense=1).' } else { 'Developer Mode disabled; local flutter build/drive on Windows with plugins is blocked unless prebuilt binary or CI is used.' }
+    })
+    if (-not $devMode) {
+        $warnings.Add('Windows Developer Mode disabled: local Windows Flutter builds/flutter drive require symlink support.')
     }
 
     # 3. Android Toolchain
@@ -259,7 +287,7 @@ function Invoke-TodorbitDoctor {
         $prepScript = Join-Path $repoRoot 'tools\dev\prepare-windows-plugins.ps1'
         if (Test-Path -LiteralPath $prepScript) {
             try {
-                & powershell -NoProfile -ExecutionPolicy Bypass -File $prepScript | Out-Null
+                & powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $prepScript | Out-Null
                 $checks.Add([pscustomobject]@{
                     Category = 'Repair'
                     Name = 'Windows Plugin Junctions'

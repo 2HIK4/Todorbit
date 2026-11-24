@@ -22,7 +22,7 @@ param(
     [switch]$Json,
     [switch]$Repair,
     [switch]$Force,
-    [switch]$DryRun,
+    [Alias('dry-run')][switch]$DryRun,
     [switch]$Plan,
     [switch]$Refresh,
     [switch]$Validate,
@@ -34,8 +34,12 @@ param(
     [string]$Scenario,
     [string]$Fixture,
     [string]$FailureId,
-    [string]$BaselineRef,
-    [switch]$Shadow
+    [Alias('baseline-ref')][string]$BaselineRef,
+    [switch]$Shadow,
+    [Alias('shadow-scope')][ValidateSet('Critical', 'Sample', 'Full')][string]$ShadowScope = 'Critical',
+    [Alias('shadow-limit')][int]$ShadowLimit = 0,
+    [Alias('live-app')][switch]$LiveApp,
+    [Alias('build-live-app')][switch]$BuildLiveApp
 )
 
 $ErrorActionPreference = 'Stop'
@@ -102,8 +106,7 @@ function Show-Help {
     Write-Host "Laboratory & Diagnostics:" -ForegroundColor Yellow
     Write-Host "  dev fixture <name>                     Generate synthetic workspace (empty, small, typical, large)." -ForegroundColor Gray
     Write-Host "  dev screenshot <scenario>              Capture offscreen UI layout / theme render." -ForegroundColor Gray
-    Write-Host "  dev runtime <windows|android>          Execute isolated native runtime automation." -ForegroundColor Gray
-    Write-Host "  dev scenario <workflow>                Execute automated application workflow." -ForegroundColor Gray
+    Write-Host "  dev runtime <windows|android>          Execute isolated runtime verification." -ForegroundColor Gray
     Write-Host "  dev diagnose last                      Extract diagnostics and logs for last test failure." -ForegroundColor Gray
     Write-Host "  dev reproduce <failure-id>             Generate self-contained reproduction script." -ForegroundColor Gray
     Write-Host "  dev benchmark <scenario>               Measure startup, memory, and calendar performance." -ForegroundColor Gray
@@ -124,7 +127,8 @@ try {
         Show-Help
     }
     'doctor' {
-        Invoke-TodorbitDoctor -Json:$Json -Repair:$Repair
+        if ($Json) { Invoke-TodorbitDoctor -Json -Repair:$Repair }
+        else { $null = Invoke-TodorbitDoctor -Repair:$Repair }
     }
     'status' {
         Ensure-TodorbitEnvironment
@@ -199,24 +203,27 @@ try {
     'verify' {
         Ensure-TodorbitEnvironment
         $verifyScript = Join-Path $PSScriptRoot 'verify.ps1'
-        $passArgs = @()
         $sub = if ($Subcommand) { $Subcommand.ToLowerInvariant() } else { 'quick' }
         $targetMode = switch ($sub) {
             'quick' { 'Quick' }
             'feature' { 'Feature' }
             'full' { 'Full' }
+            'release' { 'Full' }
             'changed' { 'Quick' }
+            'platform' { 'Full' }
             Default { 'Quick' }
         }
+        if ($sub -eq 'release' -and $Platform -eq 'None') {
+            $Platform = 'Windows'
+        }
 
-        # If verify changed is requested, use impact analysis and evidence reuse
+        # If verify changed is requested, use impact analysis, real evidence reuse/save, and optional shadow execution
         if ($sub -eq 'changed') {
             if (-not (Get-Command 'Invoke-ImpactAnalysis' -ErrorAction SilentlyContinue)) {
                 throw "Impact analyzer module not loaded. Run 'dev verify quick -ChangedPaths ... -Tests ...' instead."
             }
             $impactArgs = @{}
             if ($BaselineRef) { $impactArgs['BaselineRef'] = $BaselineRef }
-            if ($Shadow) { $impactArgs['Shadow'] = $true }
             $impact = Invoke-ImpactAnalysis @impactArgs
             if ($impact.SelectedTests.Count -eq 0) {
                 Write-Host "No affected tests detected by impact analysis." -ForegroundColor Green
@@ -227,32 +234,141 @@ try {
 
             $selected = @($impact.SelectedTests)
             $changed = @($impact.ChangedFiles)
-            $testsToRun = [Collections.Generic.List[string]]::new()
+            $existingChanged = @($changed | Where-Object { Test-Path -LiteralPath (Join-Path $repoRoot ($_.Replace('/', '\'))) })
+            $nonDocChanged = @($existingChanged | Where-Object { $_ -notmatch '\.md$' -and $_ -notmatch '^docs/' })
+            $execArgsString = '--no-pub --concurrency=1 --reporter=expanded'
+
+            $dartTestsToRun = [Collections.Generic.List[string]]::new()
+            $pythonTestsToRun = [Collections.Generic.List[string]]::new()
             $reusedTests = [Collections.Generic.List[string]]::new()
+            $preRunFingerprints = @{}
 
             # Check evidence reuse for each selected test
             foreach ($t in $selected) {
-                $fp = Get-TestCompositeFingerprint -TestPath $t -SourcePaths $changed
-                $cached = Get-EvidenceRecord -Fingerprint $fp.CompositeFingerprint
+                if ($t.EndsWith('.py', [StringComparison]::OrdinalIgnoreCase)) {
+                    $pythonTestsToRun.Add($t)
+                    continue
+                }
+                $fp = Get-TestCompositeFingerprint -TestPath $t -SourcePaths $nonDocChanged -Arguments $execArgsString
+                $cached = Get-EvidenceRecord -Fingerprint $fp.CompositeFingerprint -ForceFresh:$Force
                 if ($cached -and -not $Force) {
                     $reusedTests.Add($t)
                     Write-Host " [REUSED] $t (Saved $([math]::Round($cached.DurationSeconds, 1))s from cached evidence: $($fp.CompositeFingerprint.Substring(0,8)))" -ForegroundColor Cyan
                 } else {
-                    $testsToRun.Add($t)
+                    $preRunFingerprints[$t] = $fp.CompositeFingerprint
+                    $dartTestsToRun.Add($t)
                 }
             }
 
-            if ($testsToRun.Count -eq 0 -and $reusedTests.Count -gt 0) {
+            $executedChecks = [Collections.Generic.List[string]]::new()
+            $failedChecks = [Collections.Generic.List[string]]::new()
+            $totalSw = [Diagnostics.Stopwatch]::StartNew()
+
+            if ($dartTestsToRun.Count -eq 0 -and $pythonTestsToRun.Count -eq 0 -and $reusedTests.Count -gt 0) {
                 Write-Host ""
                 Write-Host "All $($reusedTests.Count) required verification check(s) matched valid evidence. No execution needed." -ForegroundColor Green
-                $receipt = New-VerificationReceipt -Scope 'Changed' -RequiredChecks $selected -ReusedChecks $reusedTests.ToArray() -SelectionRationale 'All tests matched 4-fingerprint evidence'
-                if ($Json) { $receipt | ConvertTo-Json -Depth 4 }
-                return
+            } else {
+                Write-Host "Impact analysis: $($reusedTests.Count) reused, $($dartTestsToRun.Count) Dart suite(s) + $($pythonTestsToRun.Count) Python check(s) to execute." -ForegroundColor White
             }
 
-            Write-Host "Impact analysis: $($reusedTests.Count) test(s) reused, $($testsToRun.Count) test(s) require fresh execution." -ForegroundColor White
-            $ChangedPaths = $changed
-            $Tests = @($testsToRun.ToArray())
+            # Run Python checks first (fast static/tooling gates)
+            if ($pythonTestsToRun.Count -gt 0 -and -not $Plan) {
+                $pyExe = Resolve-TodorbitTool 'python'
+                foreach ($pyTest in $pythonTestsToRun) {
+                    $sw = [Diagnostics.Stopwatch]::StartNew()
+                    Write-Host "Running Python check: $pyTest" -ForegroundColor Cyan
+                    $pyOutput = ''
+                    $pyCode = 0
+                    Push-Location $repoRoot
+                    try {
+                        $ErrorActionPreference = 'Continue'
+                        if ($pyTest -match 'check-docs\.py$') {
+                            $pyOutput = ((& $pyExe $pyTest 2>&1 | ForEach-Object { $_.ToString() }) -join "`n")
+                        } else {
+                            $pyDir = Split-Path -Parent $pyTest
+                            $pyName = Split-Path -Leaf $pyTest
+                            $pyOutput = ((& $pyExe -m unittest discover -s $pyDir -p $pyName 2>&1 | ForEach-Object { $_.ToString() }) -join "`n")
+                        }
+                        $pyCode = $LASTEXITCODE
+                    } finally {
+                        $ErrorActionPreference = 'Stop'
+                        Pop-Location
+                    }
+                    $sw.Stop()
+                    $executedChecks.Add($pyTest)
+                    if ($pyCode -ne 0) {
+                        $failedChecks.Add($pyTest)
+                        Write-Host $pyOutput -ForegroundColor Red
+                        if (Get-Command 'Save-FailureRecord' -ErrorAction SilentlyContinue) {
+                            $null = Save-FailureRecord -TestPath $pyTest -Command "python $pyTest" -RawLog $pyOutput
+                        }
+                        throw "Python verification failed for $pyTest (exit $pyCode)."
+                    }
+                }
+            }
+
+            # Run Dart checks via verify.ps1 and persist passing receipts
+            if ($dartTestsToRun.Count -gt 0) {
+                $existingDartChanged = @($existingChanged | Where-Object { $_ -match '\.dart$' })
+                $verifyChangedPaths = if ($existingDartChanged.Count -gt 0) { $existingDartChanged } else { @($dartTestsToRun.ToArray()) }
+                $verifyArgs = @{
+                    Mode = 'Quick'
+                    ChangedPaths = $verifyChangedPaths
+                    Tests = @($dartTestsToRun.ToArray())
+                    Platform = $Platform
+                }
+                if ($Plan) { $verifyArgs['Plan'] = $true }
+                $dartSw = [Diagnostics.Stopwatch]::StartNew()
+                try {
+                    & $verifyScript @verifyArgs
+                } catch {
+                    $dartSw.Stop()
+                    foreach ($dt in $dartTestsToRun) { $failedChecks.Add($dt) }
+                    $verifyDir = Join-Path $repoRoot '.buildlog\verify'
+                    $latestLogDir = Get-ChildItem -LiteralPath $verifyDir -Directory -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+                    $logContent = if ($latestLogDir) {
+                        (Get-ChildItem -LiteralPath $latestLogDir.FullName -Filter '*.log' -File | Sort-Object Name | Select-Object -Last 1 | Get-Content -Raw -ErrorAction SilentlyContinue)
+                    } else { $_.Exception.Message }
+                    if (Get-Command 'Save-FailureRecord' -ErrorAction SilentlyContinue) {
+                        $null = Save-FailureRecord -TestPath ($dartTestsToRun -join ' ') -Command "flutter test $execArgsString $($dartTestsToRun -join ' ')" -RawLog $logContent
+                    }
+                    throw
+                }
+                $dartSw.Stop()
+
+                if (-not $Plan) {
+                    $perTestDur = if ($dartTestsToRun.Count -gt 0) { [math]::Round($dartSw.Elapsed.TotalSeconds / $dartTestsToRun.Count, 2) } else { 0.0 }
+                    foreach ($dt in $dartTestsToRun) {
+                        $executedChecks.Add($dt)
+                        $savedRec = Save-EvidenceRecord -TestPath $dt -SourcePaths $nonDocChanged -Outcome 'PASS' -DurationSeconds $perTestDur -Arguments $execArgsString -PreRunFingerprint $preRunFingerprints[$dt] -ForceFresh:$Force
+                        if ($savedRec.CacheSkippedReason) {
+                            Write-Host " [CACHE SKIPPED] $dt ($($savedRec.CacheSkippedReason))" -ForegroundColor Yellow
+                        } else {
+                            Write-Host " [CACHED] $dt ($($savedRec.Fingerprint.Substring(0,8)))" -ForegroundColor DarkCyan
+                        }
+                    }
+                }
+            }
+
+            # Optional real shadow verification (only when explicitly requested via -Shadow)
+            if ($Shadow -and -not $Plan) {
+                Write-Host ""
+                Write-Host "Running Verification Shadow Execution (Scope: $ShadowScope)..." -ForegroundColor Magenta
+                $shadowExec = Invoke-ShadowVerification -SelectedTests $selected -ChangedFiles $changed -Execute -ShadowScope $ShadowScope -ShadowLimit $ShadowLimit
+                Write-Host "Shadow Execution: $($shadowExec.ExecutedShadowTestsCount) omitted suite(s) checked | Missed failures: $($shadowExec.MissedFailures.Count)" -ForegroundColor $(if ($shadowExec.ShadowPassed) { 'Green' } else { 'Red' })
+                Write-Host "Shadow Report: $($shadowExec.ReportPath)" -ForegroundColor Gray
+                if (-not $shadowExec.ShadowPassed) {
+                    foreach ($mf in $shadowExec.MissedFailures) {
+                        Write-Host " [MISSED FAILURE] $($mf.TestPath) (exit $($mf.ExitCode))" -ForegroundColor Red
+                    }
+                    throw "Shadow verification detected $($shadowExec.MissedFailures.Count) failure(s) missed by impact selection. See $($shadowExec.ReportPath)"
+                }
+            }
+
+            $totalSw.Stop()
+            $receipt = New-VerificationReceipt -Scope 'Changed' -RequiredChecks $selected -ExecutedChecks $executedChecks.ToArray() -ReusedChecks $reusedTests.ToArray() -FailedChecks $failedChecks.ToArray() -TotalDurationSeconds $totalSw.Elapsed.TotalSeconds -SelectionRationale 'Impact analysis with 4-fingerprint evidence verification'
+            if ($Json) { $receipt | ConvertTo-Json -Depth 4 }
+            return
         }
 
         $verifyArgs = @{
@@ -333,8 +449,11 @@ try {
             $impactArgs = @{}
             if ($BaselineRef) { $impactArgs['BaselineRef'] = $BaselineRef }
             if ($Shadow) { $impactArgs['Shadow'] = $true }
-            if ($Json) { $impactArgs['Json'] = $true }
-            Invoke-ImpactAnalysis @impactArgs
+            if ($Json) {
+                Invoke-ImpactAnalysis @impactArgs -Json
+            } else {
+                $null = Invoke-ImpactAnalysis @impactArgs
+            }
         } else {
             throw "Impact module not loaded."
         }
@@ -368,13 +487,15 @@ try {
         $targetPlatform = if ($Platform -and $Platform -ne 'None') { $Platform } elseif ($Subcommand) { $Subcommand } else { 'windows' }
         if ($targetPlatform.ToLowerInvariant() -match 'android') {
             if (Get-Command 'Invoke-AndroidRuntimeAutomation' -ErrorAction SilentlyContinue) {
-                Invoke-AndroidRuntimeAutomation -Json:$Json
+                if ($Json) { Invoke-AndroidRuntimeAutomation -Json }
+                else { $null = Invoke-AndroidRuntimeAutomation }
             } else {
                 throw "Runtime module not loaded."
             }
         } else {
             if (Get-Command 'Invoke-WindowsRuntimeAutomation' -ErrorAction SilentlyContinue) {
-                Invoke-WindowsRuntimeAutomation -Json:$Json
+                if ($Json) { Invoke-WindowsRuntimeAutomation -LiveApp:$LiveApp -BuildLiveApp:$BuildLiveApp -Json }
+                else { $null = Invoke-WindowsRuntimeAutomation -LiveApp:$LiveApp -BuildLiveApp:$BuildLiveApp }
             } else {
                 throw "Runtime module not loaded."
             }
@@ -391,13 +512,15 @@ try {
     'handoff' {
         if ($Subcommand -eq 'resume' -or $Resume) {
             if (Get-Command 'Resume-AgentHandoff' -ErrorAction SilentlyContinue) {
-                Resume-AgentHandoff -Json:$Json
+                if ($Json) { Resume-AgentHandoff -Json }
+                else { $null = Resume-AgentHandoff }
             } else {
                 throw "Harness module not loaded."
             }
         } else {
             if (Get-Command 'New-AgentHandoff' -ErrorAction SilentlyContinue) {
-                New-AgentHandoff -Note $Subcommand -Json:$Json
+                if ($Json) { New-AgentHandoff -Note $Subcommand -Json }
+                else { $null = New-AgentHandoff -Note $Subcommand }
             } else {
                 throw "Harness module not loaded."
             }
@@ -407,7 +530,7 @@ try {
         Write-Host "Running Developer Automation Toolkit self-tests..." -ForegroundColor Cyan
         $selfTestScript = Join-Path $PSScriptRoot 'test_toolkit_self.ps1'
         if (Test-Path -LiteralPath $selfTestScript) {
-            & powershell -NoProfile -ExecutionPolicy Bypass -File $selfTestScript
+            & powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $selfTestScript
         } else {
             # Run inline core self-tests
             $docResult = Invoke-TodorbitDoctor -Json
