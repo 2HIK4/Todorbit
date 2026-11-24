@@ -39,10 +39,7 @@ void main() {
       expect(find.textContaining('milestones and a deadline'), findsOneWidget);
       await tester.tap(find.byTooltip('About this view'));
       await tester.pumpAndSettle();
-      expect(
-        find.text('No goals yet. Create one to track progress.'),
-        findsOneWidget,
-      );
+      expect(find.text('No goals yet'), findsOneWidget);
       await tester.tap(find.text('New goal'));
       await tester.pumpAndSettle();
       await tester.enterText(
@@ -155,7 +152,7 @@ void main() {
       await controller.refresh();
       await tester.pumpAndSettle();
       expect((await repository.goals()).single.progress.tasks, 1);
-      expect(find.textContaining('tasks 1.0'), findsOneWidget);
+      expect(find.textContaining('Tasks 1.0'), findsOneWidget);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
       await database.close();

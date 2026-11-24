@@ -601,6 +601,16 @@ void main() {
         await open(tester, size: const Size(320, 640), scale: 1.5);
         controller.navigate(view);
         await tester.pumpAndSettle();
+        if (view == WorkspaceView.habits || view == WorkspaceView.goals) {
+          expect(find.byType(FloatingActionButton), findsNothing);
+          await tester.tap(find.byTooltip('Workspace actions'));
+          await tester.pumpAndSettle();
+          final add = find.text('New task');
+          expect(add.hitTestable(), findsOneWidget);
+          await tester.tap(add);
+          await tester.pumpAndSettle();
+          expect(find.byKey(const ValueKey('task-title-field')), findsOneWidget);
+        }
         expect(tester.takeException(), isNull);
       } finally {
         await tester.pumpWidget(const SizedBox.shrink());

@@ -17,6 +17,7 @@
 - Use the [Batch 1 presentation rules](docs/UI_DESIGN_SYSTEM.md#batch-1-presentation-rules) when changing task dates, editor layout, or task action labels. Follow the [task-list presentation rules](docs/UI_DESIGN_SYSTEM.md#batch-2-task-list-presentation) for list states, grouping, and control clearance.
 - Calendar changes must cover the affected Windows interactive view and Android touch agenda separately. Preserve the time-grid geometry and interaction controller contract when changing Calendar visuals. Exercise a draft through the Windows editor breakpoint and check Android keyboard clearance when editing shared EventEditor layout.
 - Theme JSON is validated data only. Keep light/dark and native widget tokens synchronized; imported metadata never changes the official contributor registry.
+- Keep Focus ticks local to the timer widgets. When changing Habits or Goals, verify the selected check-in date, typed draft and named progress remain readable at Android 320 dp and 150% text. Keep temporary keyboard insets clear of save and cancel actions.
 - Keep Windows runner, native widget and packaged behavior compatible. `experiments/widget-shell-probe/` is production companion source despite its name.
 
 ## Efficient workflow and verification

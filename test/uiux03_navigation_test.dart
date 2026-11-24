@@ -80,7 +80,7 @@ void main() {
         await tester.tap(find.text('Mobile journey edited').first);
         await tester.pumpAndSettle();
         expect(identical(session, c.focusSessions[task.id]), isTrue);
-        expect(find.text('COUNTING DOWN'), findsOneWidget);
+        expect(find.text('Counting down'), findsOneWidget);
         await tester.tap(find.text('Pomodoro'));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);

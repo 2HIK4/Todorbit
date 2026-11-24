@@ -31,6 +31,12 @@ and viewport auto-scrolling are primary quality criteria alongside visual aesthe
 > times in Flutter renders. Check the Android agenda with its navigation bar
 > and the event form with the keyboard inset at 320 dp and 150% text.
 
+For Focus, Habits and Goals, follow the
+[Batch 4 presentation rules](../../../docs/UI_DESIGN_SYSTEM.md#batch-4-focus-habits-and-goals).
+Check timer state and its primary action in the first phone viewport.
+Inspect the last list action above navigation and an in-progress editor draft
+with a simulated keyboard inset.
+
 ## Start and choose scope
 
 1. Read project instructions, the [Todorbit design system](../../../docs/UI_DESIGN_SYSTEM.md),

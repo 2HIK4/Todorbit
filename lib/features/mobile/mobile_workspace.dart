@@ -418,6 +418,8 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
             (preferences.destinations.length + 1) *
                 (AppLayout.minTapTarget + AppSpacing.gap) *
                 MediaQuery.textScalerOf(context).scale(1);
+    final addTaskInMenu =
+        c.view == WorkspaceView.habits || c.view == WorkspaceView.goals;
     final compactAdd =
         compactChrome &&
         switch (c.view) {
@@ -436,8 +438,8 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
         addTask: (d) => task(null, d),
         onEditorClosed: deliverLink,
       ),
-      WorkspaceView.habits => const HabitsView(),
-      WorkspaceView.goals => const GoalsView(),
+      WorkspaceView.habits => const HabitsView(showTitle: false),
+      WorkspaceView.goals => const GoalsView(showTitle: false),
       WorkspaceView.reports => const ReportsView(),
       WorkspaceView.contributors => const ContributorsView(),
       _ => taskList(c, floatingAdd: !compactAdd),
@@ -518,6 +520,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
         PopupMenuButton<String>(
           tooltip: 'Workspace actions',
           onSelected: (value) {
+            if (value == 'new-task') task();
             if (value == 'filters') dialog(const AdvancedSearchDialog());
             if (value == 'reschedule') {
               dialog(
@@ -535,6 +538,8 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
             }
           },
           itemBuilder: (_) => [
+            if (addTaskInMenu)
+              const PopupMenuItem(value: 'new-task', child: Text('New task')),
             const PopupMenuItem(
               value: 'filters',
               child: Text('Filters and saved views'),
@@ -702,7 +707,8 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                 ],
               ),
             ),
-      floatingActionButton: compactAdd || c.view == WorkspaceView.calendar
+      floatingActionButton:
+          compactAdd || c.view == WorkspaceView.calendar || addTaskInMenu
           ? null
           : FloatingActionButton(
               tooltip: 'New task',
@@ -950,10 +956,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                 filtered: c.activeFilter.isActive || searching,
               );
             }
-            return AppSectionHeading(
-              'Tasks',
-              detail: '${tasks.length}',
-            );
+            return AppSectionHeading('Tasks', detail: '${tasks.length}');
           }
           final group = groups[index - taskStart];
           return TaskListGroupView(

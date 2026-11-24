@@ -39,10 +39,7 @@ void main() {
       );
       await tester.tap(find.byTooltip('About this view'));
       await tester.pumpAndSettle();
-      expect(
-        find.text('No habits yet. Create one to track daily progress.'),
-        findsOneWidget,
-      );
+      expect(find.text('No habits yet'), findsOneWidget);
       await tester.tap(find.text('New habit'));
       await tester.pumpAndSettle();
       await tester.enterText(

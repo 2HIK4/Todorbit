@@ -1,3 +1,6 @@
+import '../shared/app_spacing.dart';
+import '../shared/app_section_heading.dart';
+import '../shared/task_date_label.dart';
 import '../shared/scroll_edge_fade.dart';
 import '../shared/app_motion.dart';
 
@@ -12,7 +15,9 @@ import '../shared/numeric_entry_dialog.dart';
 import 'goal_dialogs.dart';
 
 class GoalsView extends ConsumerStatefulWidget {
-  const GoalsView({super.key});
+  const GoalsView({super.key, this.showTitle = true});
+
+  final bool showTitle;
   @override
   ConsumerState<GoalsView> createState() => _GoalsViewState();
 }
@@ -75,7 +80,15 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
       context: context,
       animationStyle: AppMotion.style(context),
       builder: (context) => AlertDialog(
-        title: Text('${goal.title} progress'),
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Progress history'),
+            const SizedBox(height: AppSpacing.small),
+            Text(goal.title, style: Theme.of(context).textTheme.bodyMedium),
+          ],
+        ),
         content: SizedBox(
           width: 490,
           height: 380,
@@ -94,7 +107,7 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
                   dense: true,
                   title: Text(item.label),
                   subtitle: Text(
-                    '${item.localDate} · +${item.units} ${goal.unit}',
+                    '${taskDateLabel(context, item.localDate)} · +${item.units} ${goal.unit}',
                   ),
                 ),
               const Divider(),
@@ -107,7 +120,9 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
                     '${item.delta > 0 ? '+' : ''}${item.delta} ${goal.unit}',
                   ),
                   subtitle: Text(
-                    '${item.createdAt.toLocal()}${item.notes.isEmpty ? '' : ' · ${item.notes}'}',
+                    '${MaterialLocalizations.of(context).formatShortDate(item.createdAt.toLocal())} · '
+                    '${TimeOfDay.fromDateTime(item.createdAt.toLocal()).format(context)}'
+                    '${item.notes.isEmpty ? '' : ' · ${item.notes}'}',
                   ),
                 ),
             ],
@@ -190,54 +205,72 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
     final goals = controller.goals
         .where((item) => item.archived == showArchived)
         .toList();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(
-                'Goals',
-                style: Theme.of(context).textTheme.headlineMedium
-                    ?.copyWith(fontWeight: FontWeight.w600),
-              ),
-              const AboutViewButton(
-                description: 'Plan longer-term outcomes with milestones and a deadline. Track progress, complete milestones, and archive goals when they are no longer active.',
-              ),
-              FilledButton.icon(
-                onPressed: () => _edit(null),
-                icon: const Icon(Icons.add),
-                label: const Text('New goal'),
-              ),
-              FilterChip(
-                label: const Text('Archived'),
-                selected: showArchived,
-                onSelected: (value) => setState(() => showArchived = value),
-              ),
-            ],
-          ),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: AppLayout.workspaceMaxWidth,
         ),
-        Expanded(
-          child: goals.isEmpty
-              ? Center(
-                  child: Text(
-                    showArchived
-                        ? 'No archived goals.'
-                        : 'No goals yet. Create one to track progress.',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: AppLayout.pageInsets,
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (widget.showTitle)
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        'Goals',
+                        style: Theme.of(context).textTheme.headlineLarge,
+                      ),
+                    ),
+                  const AboutViewButton(
+                    description: 'Plan longer-term outcomes with milestones and a deadline. Track progress, complete milestones, and archive goals when they are no longer active.',
                   ),
-                )
-              : FadingListView.builder(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                  itemCount: goals.length,
-                  itemBuilder: (context, index) =>
-                      _card(context, controller, goals[index]),
-                ),
+                  FilledButton.icon(
+                    onPressed: () => _edit(null),
+                    icon: const Icon(Icons.add),
+                    label: const Text('New goal'),
+                  ),
+                  FilterChip(
+                    label: const Text('Archived'),
+                    selected: showArchived,
+                    onSelected: (value) => setState(() => showArchived = value),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: goals.isEmpty
+                  ? Center(
+                      child: AppEmptyState(
+                        title: showArchived
+                            ? 'No archived goals'
+                            : 'No goals yet',
+                        message: showArchived
+                            ? null
+                            : 'Use New goal to get started.',
+                      ),
+                    )
+                  : FadingListView.builder(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.content,
+                        0,
+                        AppSpacing.content,
+                        AppSpacing.section,
+                      ),
+                      itemCount: goals.length,
+                      itemBuilder: (context, index) =>
+                          _card(context, controller, goals[index]),
+                    ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -250,19 +283,39 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
     final milestones = controller.goalMilestones
         .where((item) => item.goalId == goal.id)
         .toList();
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+    final compact =
+        MediaQuery.sizeOf(context).width < AppLayout.breakpointCompact;
+    final canEdit = !goal.archived && !busy;
+    void linkWork() => showDialog<bool>(
+      context: context,
+      animationStyle: AppMotion.style(context),
+      builder: (_) => GoalLinksDialog(goal: goal),
+    );
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+        ),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.content,
+          horizontal: AppSpacing.small,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    goal.title,
-                    style: Theme.of(context).textTheme.titleMedium,
+                  child: Semantics(
+                    header: true,
+                    child: Text(
+                      goal.title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                   ),
                 ),
                 IconButton(
@@ -284,16 +337,22 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
             if (goal.description.isNotEmpty) Text(goal.description),
             if (goal.deadlineDate != null)
               Text(
-                'Deadline: ${goal.deadlineDate}${overdue ? ' · Overdue' : ''}',
+                'Deadline: ${taskDateLabel(context, goal.deadlineDate!)}${overdue ? ' · Overdue' : ''}',
               ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(value: goal.fraction),
-            const SizedBox(height: 6),
-            Text(
-              '${goal.progress.total} / ${goal.target} ${goal.unit} · '
-              'Manual ${goal.progress.manual}, tasks ${goal.progress.tasks}, '
-              'habits ${goal.progress.habits}${goal.completed ? ' · Completed' : ''}',
+            AppSectionHeading(
+              goal.completed ? 'Completed' : 'Progress',
+              detail: '${goal.progress.total} / ${goal.target} ${goal.unit}',
             ),
+            LinearProgressIndicator(
+              value: goal.fraction,
+              semanticsLabel: 'Goal progress',
+            ),
+            const SizedBox(height: AppSpacing.gap),
+            Text(
+              'Manual ${goal.progress.manual} · Tasks ${goal.progress.tasks} · Habits ${goal.progress.habits}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            if (milestones.isNotEmpty) const AppSectionHeading('Milestones'),
             for (final milestone in milestones)
               CheckboxListTile(
                 dense: true,
@@ -321,34 +380,53 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
                   '${goal.progress.total >= milestone.threshold ? ' · reached' : ''}',
                 ),
               ),
+            const SizedBox(height: AppSpacing.gap),
             Wrap(
-              spacing: 8,
-              runSpacing: 4,
+              spacing: AppSpacing.gap,
+              runSpacing: AppSpacing.small,
               children: [
                 OutlinedButton(
                   onPressed: goal.archived || busy ? null : () => _manual(goal),
                   child: const Text('Adjust progress'),
                 ),
-                OutlinedButton(
-                  onPressed: goal.archived || busy
-                      ? null
-                      : () => showDialog<bool>(
-                          context: context,
-                          animationStyle: AppMotion.style(context),
-                          builder: (_) => GoalLinksDialog(goal: goal),
-                        ),
-                  child: const Text('Link work'),
-                ),
-                OutlinedButton(
-                  onPressed: goal.archived || busy
-                      ? null
-                      : () => _milestone(goal),
-                  child: const Text('Add milestone'),
-                ),
-                TextButton(
-                  onPressed: () => _history(goal),
-                  child: const Text('Progress history'),
-                ),
+                if (compact)
+                  PopupMenuButton<String>(
+                    tooltip: 'More goal actions',
+                    itemBuilder: (_) => [
+                      PopupMenuItem(
+                        enabled: canEdit,
+                        onTap: linkWork,
+                        child: const Text('Link work'),
+                      ),
+                      PopupMenuItem(
+                        enabled: canEdit,
+                        onTap: () => _milestone(goal),
+                        child: const Text('Add milestone'),
+                      ),
+                      PopupMenuItem(
+                        onTap: () => _history(goal),
+                        child: const Text('Progress history'),
+                      ),
+                    ],
+                    child: const Padding(
+                      padding: EdgeInsets.all(AppSpacing.related),
+                      child: Text('More actions'),
+                    ),
+                  )
+                else ...[
+                  OutlinedButton(
+                    onPressed: canEdit ? linkWork : null,
+                    child: const Text('Link work'),
+                  ),
+                  OutlinedButton(
+                    onPressed: canEdit ? () => _milestone(goal) : null,
+                    child: const Text('Add milestone'),
+                  ),
+                  TextButton(
+                    onPressed: () => _history(goal),
+                    child: const Text('Progress history'),
+                  ),
+                ],
                 TextButton(
                   onPressed: goal.archived || busy
                       ? null

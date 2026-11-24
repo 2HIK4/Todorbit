@@ -83,14 +83,23 @@ class _CompactTaskTimerState extends ConsumerState<CompactTaskTimer> {
     );
     return ListTile(
       contentPadding: const EdgeInsetsDirectional.only(start: 12, end: 4),
-      title: Text(
-        '${formatWorkClock(elapsed)} · ${review
-            ? 'Review timer'
-            : running
-            ? 'Running'
-            : 'Paused'}',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+      title: Wrap(
+        spacing: 8,
+        children: [
+          Text(
+            review
+                ? 'Review timer'
+                : running
+                ? 'Running'
+                : 'Paused',
+          ),
+          Text(
+            formatWorkClock(elapsed),
+            style: const TextStyle(
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
       ),
       subtitle: Text(
         taskTitle ?? 'Unavailable task',

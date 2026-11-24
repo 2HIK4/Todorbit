@@ -1,3 +1,6 @@
+import '../shared/app_spacing.dart';
+import '../shared/app_section_heading.dart';
+import '../shared/task_date_label.dart';
 import '../shared/scroll_edge_fade.dart';
 import '../shared/app_motion.dart';
 
@@ -13,7 +16,9 @@ import '../shared/numeric_entry_dialog.dart';
 import 'habit_editor.dart';
 
 class HabitsView extends ConsumerStatefulWidget {
-  const HabitsView({super.key});
+  const HabitsView({super.key, this.showTitle = true});
+
+  final bool showTitle;
 
   @override
   ConsumerState<HabitsView> createState() => _HabitsViewState();
@@ -148,100 +153,132 @@ class _HabitsViewState extends ConsumerState<HabitsView> {
               : habit.archivedAt == null,
         )
         .toList();
-    return ScrollEdgeFade(
-      child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
-                  child: Wrap(
-                    spacing: 12,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Text(
-                        'Habits',
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                      const AboutViewButton(
-                        description: 'Track repeated routines by day. Record progress toward a target, use rest days without counting a miss, and archive habits you no longer follow.',
-                      ),
-                      FilledButton.icon(
-                        onPressed: () => _edit(null),
-                        icon: const Icon(Icons.add),
-                        label: const Text('New habit'),
-                      ),
-                      FilterChip(
-                        label: const Text('Archived'),
-                        selected: showArchived,
-                        onSelected: (value) =>
-                            setState(() => showArchived = value),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 10),
-                  child: Wrap(
-                    spacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      IconButton(
-                        tooltip: 'Previous day',
-                        onPressed: () => setState(
-                          () => day = RecurrenceRule.shiftDate(day, -1),
-                        ),
-                        icon: const Icon(Icons.chevron_left),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: _pickDay,
-                        icon: const Icon(Icons.calendar_today_outlined),
-                        label: Text(day),
-                      ),
-                      IconButton(
-                        tooltip: 'Next day',
-                        onPressed: day.compareTo(today) >= 0
-                            ? null
-                            : () => setState(
-                                () => day = RecurrenceRule.shiftDate(day, 1),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: AppLayout.workspaceMaxWidth,
+        ),
+        child: ScrollEdgeFade(
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: AppLayout.pageInsets,
+                      child: Wrap(
+                        spacing: 12,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          if (widget.showTitle)
+                            Semantics(
+                              header: true,
+                              child: Text(
+                                'Habits',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineLarge,
                               ),
-                        icon: const Icon(Icons.chevron_right),
+                            ),
+                          const AboutViewButton(
+                            description: 'Track repeated routines by day. Record progress toward a target, use rest days without counting a miss, and archive habits you no longer follow.',
+                          ),
+                          FilledButton.icon(
+                            onPressed: () => _edit(null),
+                            icon: const Icon(Icons.add),
+                            label: const Text('New habit'),
+                          ),
+                          FilterChip(
+                            label: const Text('Archived'),
+                            selected: showArchived,
+                            onSelected: (value) =>
+                                setState(() => showArchived = value),
+                          ),
+                        ],
                       ),
-                      Text(
-                        'Rest days do not count as misses.',
-                        style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: 'Previous day',
+                                onPressed: () => setState(
+                                  () => day = RecurrenceRule.shiftDate(day, -1),
+                                ),
+                                icon: const Icon(Icons.chevron_left),
+                              ),
+                              Flexible(
+                                child: OutlinedButton(
+                                  onPressed: _pickDay,
+                                  child: Text(
+                                    taskDateLabel(context, day),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: 'Next day',
+                                onPressed: day.compareTo(today) >= 0
+                                    ? null
+                                    : () => setState(
+                                        () => day = RecurrenceRule.shiftDate(
+                                          day,
+                                          1,
+                                        ),
+                                      ),
+                                icon: const Icon(Icons.chevron_right),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.small),
+                          Text(
+                            'Rest days do not count as misses.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+              if (habits.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: AppEmptyState(
+                      title: showArchived
+                          ? 'No archived habits'
+                          : 'No habits yet',
+                      message: showArchived
+                          ? null
+                          : 'Use New habit to get started.',
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.content,
+                    0,
+                    AppSpacing.content,
+                    AppSpacing.section,
+                  ),
+                  sliver: SliverList.builder(
+                    itemCount: habits.length,
+                    itemBuilder: (context, index) =>
+                        _card(context, controller, habits[index], today),
                   ),
                 ),
-              ],
-            ),
+            ],
           ),
-          if (habits.isEmpty)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(
-                child: Text(
-                  showArchived
-                      ? 'No archived habits.'
-                      : 'No habits yet. Create one to track daily progress.',
-                ),
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-              sliver: SliverList.builder(
-                itemCount: habits.length,
-                itemBuilder: (context, index) =>
-                    _card(context, controller, habits[index], today),
-              ),
-            ),
-        ],
+        ),
       ),
     );
   }
@@ -296,19 +333,31 @@ class _HabitsViewState extends ConsumerState<HabitsView> {
         : habit.succeeds(entry.value)
         ? 'Target met'
         : 'Target missed';
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+        ),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.content,
+          horizontal: AppSpacing.small,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    habit.title,
-                    style: Theme.of(context).textTheme.titleMedium,
+                  child: Semantics(
+                    header: true,
+                    child: Text(
+                      habit.title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                   ),
                 ),
                 IconButton(
@@ -332,25 +381,18 @@ class _HabitsViewState extends ConsumerState<HabitsView> {
               ],
             ),
             if (habit.notes.isNotEmpty) Text(habit.notes),
-            Text(
-              '$day · $status${entry == null ? '' : ' · ${entry.value}${habit.unit.isEmpty ? '' : ' ${habit.unit}'}'}',
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                Chip(label: Text('${year.streak} day streak')),
-                Chip(label: Text(_progress('Week', week))),
-                Chip(label: Text(_progress('Month', month))),
-                Chip(label: Text(_progress('Year', year))),
-              ],
+            AppSectionHeading(
+              status,
+              detail: entry == null || habit.kind == HabitKind.binary
+                  ? null
+                  : '${entry.value}${habit.unit.isEmpty ? '' : ' ${habit.unit}'}',
             ),
             Wrap(
-              spacing: 8,
+              spacing: AppSpacing.gap,
+              runSpacing: AppSpacing.small,
               children: [
                 if (habit.kind == HabitKind.binary && scheduled && rest == null)
-                  OutlinedButton(
+                  FilledButton.tonal(
                     onPressed: canLog
                         ? () => _run(
                             () => controller.recordHabitDay(
@@ -402,6 +444,23 @@ class _HabitsViewState extends ConsumerState<HabitsView> {
                       rest == null ? 'Mark rest day' : 'Remove rest day',
                     ),
                   ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.gap),
+            Wrap(
+              spacing: AppSpacing.related,
+              runSpacing: AppSpacing.small,
+              children: [
+                Text(
+                  '${year.streak} day streak',
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
+                for (final label in [
+                  _progress('Week', week),
+                  _progress('Month', month),
+                  _progress('Year', year),
+                ])
+                  Text(label, style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
           ],

@@ -17,6 +17,12 @@ Calendar uses `MobileCalendar` with a date selector and agenda. Both use
 Presentation has no ownership over recurrence, timeline placement or writes.
 See the [Calendar guide](INTERACTIVE_CALENDAR.md).
 
+Focus routes from both workspace shells into the shared `FocusWorkspace`.
+Its display tick and the compact timer tick rebuild their own surfaces.
+`AppController` and the time repository continue to own lifecycle, recovery
+and work accounting. Shared Habits and Goals views project the existing
+recurrence and progress owners through `AppController`.
+
 Android widget completion uses a one-use native capability carrying the task
 UUID, expected revision and desired state. The mobile shell waits for unlock
 and active editors before applying it through the shared controller/repository.

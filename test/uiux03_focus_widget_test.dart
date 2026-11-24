@@ -36,7 +36,7 @@ void main() {
       await tester.tap(find.text('Start'));
       await tester.pumpAndSettle();
       expect(c.activeTimer?.state, TimerState.running);
-      await tester.tap(find.byTooltip('Reset timer'));
+      await tester.tap(find.text('Reset timer'));
       await tester.pumpAndSettle();
       expect(c.activeTimer?.state, TimerState.paused);
       // Pumping time while paused should not throw and should remain stable

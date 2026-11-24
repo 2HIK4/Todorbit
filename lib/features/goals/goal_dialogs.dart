@@ -1,11 +1,14 @@
+import '../shared/app_modal_shell.dart';
+import '../shared/app_spacing.dart';
+import '../shared/task_date_label.dart';
 import '../shared/app_motion.dart';
 import '../shared/settings_section.dart';
 import '../shared/scroll_edge_fade.dart';
 
 import 'dart:convert';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../shared/dialog_action_bar.dart';
@@ -141,142 +144,149 @@ class _GoalEditorDialogState extends ConsumerState<GoalEditorDialog> {
     dirty: snapshot != baseline,
     busy: busy,
     onClose: () => Navigator.pop(context, saved),
-    child: Dialog(
-      child: SizedBox(
-        width: math.min(MediaQuery.sizeOf(context).width - 48, 520),
-        height: math.min(MediaQuery.sizeOf(context).height - 48, 440),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                widget.goal == null ? 'New goal' : 'Edit goal',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: FadingListView(
-                  key: const ValueKey('goal-editor-form-list'),
-                  padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
-                  children: [
-                    TextField(
-                      enabled: !busy,
-                      key: const ValueKey('goal-editor-title'),
-                      controller: title,
-                      decoration: const InputDecoration(labelText: 'Title *'),
-                    ),
-                    const SizedBox(height: 12),
-                    SettingsSection(
-                      title: 'Description',
-                      initiallyExpanded: description.text.isNotEmpty,
-                      children: [
-                        TextField(
-                          enabled: !busy,
-                          controller: description,
-                          maxLines: 2,
-                          decoration: const InputDecoration(
-                            labelText: 'Description',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            enabled: !busy,
-                            key: const ValueKey('goal-editor-target'),
-                            controller: target,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            decoration: const InputDecoration(
-                              labelText: 'Target *',
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            enabled: !busy,
-                            controller: unit,
-                            decoration: const InputDecoration(
-                              labelText: 'Unit',
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    OutlinedButton(
-                      onPressed: busy ? null : () => _pick(start: true),
-                      child: Text('Start day: $startDate'),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: busy ? null : () => _pick(start: false),
-                            child: Text('Deadline: ${deadlineDate ?? 'None'}'),
-                          ),
-                        ),
-                        if (deadlineDate != null)
-                          IconButton(
-                            tooltip: 'Clear deadline',
-                            icon: const Icon(Icons.close),
-                            onPressed: busy
-                                ? null
-                                : () => setState(() => deadlineDate = null),
-                          ),
-                      ],
-                    ),
-                    if (widget.goal == null)
-                      TextButton.icon(
-                        icon: const Icon(Icons.link),
-                        label: Text(
-                          'Link tasks, projects or habits (${draftLinks.taskIds.length + draftLinks.projectIds.length + draftLinks.habitIds.length})',
-                        ),
-                        onPressed: busy
-                            ? null
-                            : () => showDialog<void>(
-                                context: context,
-                                animationStyle: AppMotion.style(context),
-                                builder: (_) => GoalLinksDialog(
-                                  initialLinks: draftLinks,
-                                  onSelected: (links) =>
-                                      setState(() => draftLinks = links),
-                                ),
-                              ),
-                      ),
-                    if (error != null)
-                      Text(
-                        error!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              DialogActionBar(
+    child: AppModalShell(
+      maxHeight: AppLayout.dialogMaxHeight,
+      child: Padding(
+        padding: AppLayout.pageInsets,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              widget.goal == null ? 'New goal' : 'Edit goal',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const Divider(height: AppSpacing.content),
+            Expanded(
+              child: FadingListView(
+                key: const ValueKey('goal-editor-form-list'),
+                padding: AppSpacing.editorScrollPadding(context),
                 children: [
-                  TextButton(
-                    onPressed: busy ? null : () => guard.currentState?.close(),
-                    child: const Text('Cancel'),
+                  TextField(
+                    enabled: !busy,
+                    key: const ValueKey('goal-editor-title'),
+                    controller: title,
+                    minLines: 1,
+                    maxLines: 3,
+                    keyboardType: TextInputType.text,
+                    textInputAction: TextInputAction.done,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.singleLineFormatter,
+                    ],
+                    decoration: const InputDecoration(labelText: 'Title *'),
                   ),
-                  FilledButton(
-                    onPressed: busy ? null : _save,
+                  const SizedBox(height: 12),
+                  SettingsSection(
+                    title: 'Description',
+                    initiallyExpanded: description.text.isNotEmpty,
+                    children: [
+                      TextField(
+                        enabled: !busy,
+                        controller: description,
+                        maxLines: 2,
+                        decoration: const InputDecoration(
+                          labelText: 'Description',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          enabled: !busy,
+                          key: const ValueKey('goal-editor-target'),
+                          controller: target,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'Target *',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          enabled: !busy,
+                          controller: unit,
+                          decoration: const InputDecoration(labelText: 'Unit'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: busy ? null : () => _pick(start: true),
                     child: Text(
-                      widget.goal == null ? 'Create goal' : 'Save goal',
+                      'Start day: ${taskDateLabel(context, startDate)}',
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: busy ? null : () => _pick(start: false),
+                          child: Text(
+                            'Deadline: ${deadlineDate == null ? 'None' : taskDateLabel(context, deadlineDate!)}',
+                          ),
+                        ),
+                      ),
+                      if (deadlineDate != null)
+                        IconButton(
+                          tooltip: 'Clear deadline',
+                          icon: const Icon(Icons.close),
+                          onPressed: busy
+                              ? null
+                              : () => setState(() => deadlineDate = null),
+                        ),
+                    ],
+                  ),
+                  if (widget.goal == null)
+                    TextButton.icon(
+                      icon: const Icon(Icons.link),
+                      label: Text(
+                        'Link tasks, projects or habits (${draftLinks.taskIds.length + draftLinks.projectIds.length + draftLinks.habitIds.length})',
+                      ),
+                      onPressed: busy
+                          ? null
+                          : () => showDialog<void>(
+                              context: context,
+                              animationStyle: AppMotion.style(context),
+                              builder: (_) => GoalLinksDialog(
+                                initialLinks: draftLinks,
+                                onSelected: (links) =>
+                                    setState(() => draftLinks = links),
+                              ),
+                            ),
+                    ),
+                  if (error != null)
+                    Text(
+                      error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
                 ],
               ),
-            ],
-          ),
+            ),
+            const Divider(height: AppSpacing.content),
+            DialogActionBar(
+              children: [
+                TextButton(
+                  onPressed: busy ? null : () => guard.currentState?.close(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: busy ? null : _save,
+                  child: Text(
+                    widget.goal == null ? 'Create goal' : 'Save goal',
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     ),
@@ -570,96 +580,90 @@ class _GoalLinksDialogState extends ConsumerState<GoalLinksDialog> {
       dirty: loaded && snapshot != baseline,
       busy: busy,
       onClose: () => Navigator.pop(context, saved),
-      child: Dialog(
-        child: SizedBox(
-          width: math.min(MediaQuery.sizeOf(context).width - 48, 600),
-          height: math.min(MediaQuery.sizeOf(context).height - 48, 650),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Linked progress',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                Expanded(
-                  child: loading
-                      ? const Center(child: CircularProgressIndicator())
-                      : FadingListView(
-                          children: [
-                            const Text(
-                              'Each completed task and successful Yes/No habit day adds one unit. Tasks linked through a project count only once.',
+      child: AppModalShell(
+        maxWidth: AppLayout.dialogWideWidth,
+        maxHeight: AppLayout.dialogMaxHeight,
+        child: Padding(
+          padding: AppLayout.pageInsets,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Linked progress',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              Expanded(
+                child: loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : FadingListView(
+                        children: [
+                          const Text(
+                            'Each completed task and successful Yes/No habit day adds one unit. Tasks linked through a project count only once.',
+                          ),
+                          if (!loaded) ...[
+                            Text(
+                              error ?? 'Links could not be loaded.',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
                             ),
-                            if (!loaded) ...[
+                            TextButton(
+                              onPressed: _load,
+                              child: const Text('Retry'),
+                            ),
+                          ] else ...[
+                            TextField(
+                              enabled: !busy,
+                              decoration: const InputDecoration(
+                                labelText: 'Filter tasks, projects, and habits',
+                                prefixIcon: Icon(Icons.search),
+                              ),
+                              onChanged: (value) =>
+                                  setState(() => filter = value.toLowerCase()),
+                            ),
+                            if (options.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                child: Text('No matching work.'),
+                              ),
+                            for (final item in options)
+                              CheckboxListTile(
+                                dense: true,
+                                value: item.$4.contains(item.$2),
+                                title: Text(item.$3),
+                                subtitle: Text(item.$1),
+                                onChanged: busy
+                                    ? null
+                                    : (selected) => setState(() {
+                                        selected == true
+                                            ? item.$4.add(item.$2)
+                                            : item.$4.remove(item.$2);
+                                      }),
+                              ),
+                            if (error != null)
                               Text(
-                                error ?? 'Links could not be loaded.',
+                                error!,
                                 style: TextStyle(
                                   color: Theme.of(context).colorScheme.error,
                                 ),
                               ),
-                              TextButton(
-                                onPressed: _load,
-                                child: const Text('Retry'),
-                              ),
-                            ] else ...[
-                              TextField(
-                                enabled: !busy,
-                                decoration: const InputDecoration(
-                                  labelText:
-                                      'Filter tasks, projects, and habits',
-                                  prefixIcon: Icon(Icons.search),
-                                ),
-                                onChanged: (value) => setState(
-                                  () => filter = value.toLowerCase(),
-                                ),
-                              ),
-                              if (options.isEmpty)
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 16),
-                                  child: Text('No matching work.'),
-                                ),
-                              for (final item in options)
-                                CheckboxListTile(
-                                  dense: true,
-                                  value: item.$4.contains(item.$2),
-                                  title: Text(item.$3),
-                                  subtitle: Text(item.$1),
-                                  onChanged: busy
-                                      ? null
-                                      : (selected) => setState(() {
-                                          selected == true
-                                              ? item.$4.add(item.$2)
-                                              : item.$4.remove(item.$2);
-                                        }),
-                                ),
-                              if (error != null)
-                                Text(
-                                  error!,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.error,
-                                  ),
-                                ),
-                            ],
                           ],
-                        ),
-                ),
-                DialogActionBar(
-                  children: [
-                    TextButton(
-                      onPressed: busy
-                          ? null
-                          : () => guard.currentState?.close(),
-                      child: const Text('Cancel'),
-                    ),
-                    FilledButton(
-                      onPressed: busy || loading || !loaded ? null : _save,
-                      child: const Text('Save links'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                        ],
+                      ),
+              ),
+              DialogActionBar(
+                children: [
+                  TextButton(
+                    onPressed: busy ? null : () => guard.currentState?.close(),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: busy || loading || !loaded ? null : _save,
+                    child: const Text('Save links'),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),

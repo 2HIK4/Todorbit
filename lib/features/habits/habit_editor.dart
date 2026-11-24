@@ -1,12 +1,15 @@
+import '../shared/app_modal_shell.dart';
+import '../shared/app_spacing.dart';
+import '../shared/task_date_label.dart';
 import '../shared/settings_section.dart';
 import '../shared/scroll_edge_fade.dart';
 
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 
 import 'dart:convert';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
@@ -166,223 +169,225 @@ class _HabitEditorDialogState extends ConsumerState<HabitEditorDialog> {
     dirty: snapshot != baseline,
     busy: busy,
     onClose: () => Navigator.pop(context, saved),
-    child: Dialog(
-      child: SizedBox(
-        width: math.min(MediaQuery.sizeOf(context).width - 48, 560),
-        height: math.min(
-          MediaQuery.sizeOf(context).height - 48,
-          widget.habit == null ? 550 : 580,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                widget.habit == null ? 'New habit' : 'Edit habit',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              if (widget.habit != null)
-                const Text(
-                  'Changing the schedule preserves earlier logs and rest days.',
-                ),
-              const SizedBox(height: 10),
-              Expanded(
-                child: FadingListView(
-                  key: const ValueKey('habit-editor-form-list'),
-                  padding: const EdgeInsets.fromLTRB(0, 8, 14, 12),
-                  children: [
-                    TextField(
-                      enabled: !busy,
-                      key: const ValueKey('habit-editor-title'),
-                      controller: title,
-                      decoration: const InputDecoration(labelText: 'Title *'),
-                    ),
-                    const SizedBox(height: 12),
-                    SettingsSection(
-                      title: 'Notes',
-                      initiallyExpanded: notes.text.isNotEmpty,
-                      children: [
-                        TextField(
-                          enabled: !busy,
-                          controller: notes,
-                          maxLines: 2,
-                          decoration: const InputDecoration(labelText: 'Notes'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    AnchoredSelectField<HabitKind>(
-                      isExpanded: true,
-                      initialValue: kind,
-                      decoration: const InputDecoration(
-                        labelText: 'Measurement',
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: HabitKind.binary,
-                          child: Text('Yes / No'),
-                        ),
-                        DropdownMenuItem(
-                          value: HabitKind.minimum,
-                          child: Text('At least a target'),
-                        ),
-                        DropdownMenuItem(
-                          value: HabitKind.maximum,
-                          child: Text('At most a limit'),
-                        ),
-                      ],
-                      onChanged: busy
-                          ? null
-                          : (value) {
-                              if (value != null) setState(() => kind = value);
-                            },
-                    ),
-                    if (kind != HabitKind.binary) ...[
-                      const SizedBox(height: 12),
-                      TextField(
-                        enabled: !busy,
-                        controller: target,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        decoration: const InputDecoration(
-                          labelText: 'Target *',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        enabled: !busy,
-                        controller: unit,
-                        decoration: const InputDecoration(
-                          labelText: 'Unit (optional)',
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    AnchoredSelectField<RecurrenceKind>(
-                      isExpanded: true,
-                      key: ValueKey(scheduleKind),
-                      initialValue: scheduleKind,
-                      decoration: const InputDecoration(labelText: 'Schedule'),
-                      items: const [
-                        DropdownMenuItem(
-                          value: RecurrenceKind.daily,
-                          child: Text('Daily'),
-                        ),
-                        DropdownMenuItem(
-                          value: RecurrenceKind.weekly,
-                          child: Text('Weekly'),
-                        ),
-                        DropdownMenuItem(
-                          value: RecurrenceKind.weekdays,
-                          child: Text('Selected weekdays'),
-                        ),
-                        DropdownMenuItem(
-                          value: RecurrenceKind.monthly,
-                          child: Text('Monthly'),
-                        ),
-                        DropdownMenuItem(
-                          value: RecurrenceKind.yearly,
-                          child: Text('Yearly'),
-                        ),
-                      ],
-                      onChanged: busy
-                          ? null
-                          : (value) {
-                              if (value == null) return;
-                              setState(() {
-                                scheduleKind = value;
-                                if (value == RecurrenceKind.weekdays &&
-                                    weekdays.isEmpty) {
-                                  weekdays.add(
-                                    DateTime.parse(startDate).weekday,
-                                  );
-                                }
-                              });
-                            },
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      enabled: !busy,
-                      controller: interval,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Repeat interval',
-                        helperText: 'Days, weeks, months or years, matching the schedule.',
-                      ),
-                    ),
-                    if (scheduleKind == RecurrenceKind.weekdays) ...[
-                      const SizedBox(height: 12),
-                      WeekdayPickerRow(
-                        firstWeekday: ref
-                            .watch(appControllerProvider)
-                            .firstWeekday,
-                        selected: weekdays,
-                        onSelected: (day, selected) {
-                          if (busy) return;
-                          setState(() {
-                            if (selected) {
-                              weekdays.add(day);
-                            } else {
-                              weekdays.remove(day);
-                            }
-                          });
-                        },
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    OutlinedButton(
-                      onPressed: busy ? null : () => _pickDate(start: true),
-                      child: Text('First scheduled day: $startDate'),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: busy
-                                ? null
-                                : () => _pickDate(start: false),
-                            child: Text('End day: ${endDate ?? 'None'}'),
-                          ),
-                        ),
-                        if (endDate != null)
-                          IconButton(
-                            tooltip: 'Clear end day',
-                            onPressed: busy
-                                ? null
-                                : () => setState(() => endDate = null),
-                            icon: const Icon(Icons.close),
-                          ),
-                      ],
-                    ),
-                    if (error != null)
-                      Text(
-                        error!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              DialogActionBar(
+    child: AppModalShell(
+      maxHeight: AppLayout.dialogMaxHeight,
+      child: Padding(
+        padding: AppLayout.pageInsets,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              widget.habit == null ? 'New habit' : 'Edit habit',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const Divider(height: AppSpacing.content),
+            Expanded(
+              child: FadingListView(
+                key: const ValueKey('habit-editor-form-list'),
+                padding: AppSpacing.editorScrollPadding(context),
                 children: [
-                  TextButton(
-                    onPressed: busy ? null : () => guard.currentState?.close(),
-                    child: const Text('Cancel'),
+                  TextField(
+                    enabled: !busy,
+                    key: const ValueKey('habit-editor-title'),
+                    controller: title,
+                    minLines: 1,
+                    maxLines: 3,
+                    keyboardType: TextInputType.text,
+                    textInputAction: TextInputAction.done,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.singleLineFormatter,
+                    ],
+                    decoration: const InputDecoration(labelText: 'Title *'),
                   ),
-                  FilledButton(
-                    onPressed: busy ? null : _save,
-                    child: Text(
-                      widget.habit == null ? 'Create habit' : 'Save habit',
+                  if (widget.habit != null) ...[
+                    const SizedBox(height: AppSpacing.gap),
+                    const SettingsHelperText(
+                      'Changing the schedule preserves earlier logs and rest days.',
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  SettingsSection(
+                    title: 'Notes',
+                    initiallyExpanded: notes.text.isNotEmpty,
+                    children: [
+                      TextField(
+                        enabled: !busy,
+                        controller: notes,
+                        maxLines: 2,
+                        decoration: const InputDecoration(labelText: 'Notes'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  AnchoredSelectField<HabitKind>(
+                    isExpanded: true,
+                    initialValue: kind,
+                    decoration: const InputDecoration(labelText: 'Measurement'),
+                    items: const [
+                      DropdownMenuItem(
+                        value: HabitKind.binary,
+                        child: Text('Yes / No'),
+                      ),
+                      DropdownMenuItem(
+                        value: HabitKind.minimum,
+                        child: Text('At least a target'),
+                      ),
+                      DropdownMenuItem(
+                        value: HabitKind.maximum,
+                        child: Text('At most a limit'),
+                      ),
+                    ],
+                    onChanged: busy
+                        ? null
+                        : (value) {
+                            if (value != null) setState(() => kind = value);
+                          },
+                  ),
+                  if (kind != HabitKind.binary) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      enabled: !busy,
+                      controller: target,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(labelText: 'Target *'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      enabled: !busy,
+                      controller: unit,
+                      decoration: const InputDecoration(
+                        labelText: 'Unit (optional)',
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  AnchoredSelectField<RecurrenceKind>(
+                    isExpanded: true,
+                    key: ValueKey(scheduleKind),
+                    initialValue: scheduleKind,
+                    decoration: const InputDecoration(labelText: 'Schedule'),
+                    items: const [
+                      DropdownMenuItem(
+                        value: RecurrenceKind.daily,
+                        child: Text('Daily'),
+                      ),
+                      DropdownMenuItem(
+                        value: RecurrenceKind.weekly,
+                        child: Text('Weekly'),
+                      ),
+                      DropdownMenuItem(
+                        value: RecurrenceKind.weekdays,
+                        child: Text('Selected weekdays'),
+                      ),
+                      DropdownMenuItem(
+                        value: RecurrenceKind.monthly,
+                        child: Text('Monthly'),
+                      ),
+                      DropdownMenuItem(
+                        value: RecurrenceKind.yearly,
+                        child: Text('Yearly'),
+                      ),
+                    ],
+                    onChanged: busy
+                        ? null
+                        : (value) {
+                            if (value == null) return;
+                            setState(() {
+                              scheduleKind = value;
+                              if (value == RecurrenceKind.weekdays &&
+                                  weekdays.isEmpty) {
+                                weekdays.add(DateTime.parse(startDate).weekday);
+                              }
+                            });
+                          },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    enabled: !busy,
+                    controller: interval,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Repeat interval',
+                      helperText: 'Days, weeks, months or years, matching the schedule.',
                     ),
                   ),
+                  if (scheduleKind == RecurrenceKind.weekdays) ...[
+                    const SizedBox(height: 12),
+                    WeekdayPickerRow(
+                      firstWeekday: ref
+                          .watch(appControllerProvider)
+                          .firstWeekday,
+                      selected: weekdays,
+                      onSelected: (day, selected) {
+                        if (busy) return;
+                        setState(() {
+                          if (selected) {
+                            weekdays.add(day);
+                          } else {
+                            weekdays.remove(day);
+                          }
+                        });
+                      },
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: busy ? null : () => _pickDate(start: true),
+                    child: Text(
+                      'First scheduled day: ${taskDateLabel(context, startDate)}',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: busy
+                              ? null
+                              : () => _pickDate(start: false),
+                          child: Text(
+                            'End day: ${endDate == null ? 'None' : taskDateLabel(context, endDate!)}',
+                          ),
+                        ),
+                      ),
+                      if (endDate != null)
+                        IconButton(
+                          tooltip: 'Clear end day',
+                          onPressed: busy
+                              ? null
+                              : () => setState(() => endDate = null),
+                          icon: const Icon(Icons.close),
+                        ),
+                    ],
+                  ),
+                  if (error != null)
+                    Text(
+                      error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
                 ],
               ),
-            ],
-          ),
+            ),
+            const Divider(height: AppSpacing.content),
+            DialogActionBar(
+              children: [
+                TextButton(
+                  onPressed: busy ? null : () => guard.currentState?.close(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: busy ? null : _save,
+                  child: Text(
+                    widget.habit == null ? 'Create habit' : 'Save habit',
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     ),

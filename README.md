@@ -17,7 +17,8 @@ Todorbit is an offline Windows productivity app with an Android beta for tasks, 
   to move or resize timed events, and the Android agenda to open events for
   editing. Preview Smart Reschedule before applying it.
   [Calendar guide](docs/INTERACTIVE_CALENDAR.md).
-- Track habits and goals, and review reports.
+- Check in on habits, review streaks, and track goal progress, linked work
+  and milestones. Focus supports stopwatch, countdown and Pomodoro modes.
 - Use a native Windows desktop widget for Quick Add, task editing, and completion.
 - Keep data local, with managed backups, reviewed restore, and SQLite import/export.
 - Customize light and dark color palettes with a color wheel and share validated JSON themes through Settings → Appearance → Customize Theme.

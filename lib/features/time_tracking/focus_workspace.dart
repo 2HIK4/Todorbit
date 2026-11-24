@@ -1,3 +1,5 @@
+import '../shared/app_spacing.dart';
+import '../shared/app_section_heading.dart';
 import '../../domain/focus_session.dart';
 import 'time_tracking_dialog.dart';
 import 'task_timer_intent.dart';
@@ -165,7 +167,6 @@ class _FocusWorkspaceState extends ConsumerState<FocusWorkspace> {
           : (isCurrentTaskTimer && activeRun?.state == TimerState.paused
                 ? 'PAUSED'
                 : 'STOPPED');
-      progress = (stopwatchDuration.inSeconds % 3600) / 3600.0;
     } else if (_mode == FocusMode.countdown) {
       displayTime = _formatSeconds(_countdownRemainingSeconds);
       stateLabel = _countdownRunning ? 'COUNTING DOWN' : 'PAUSED';
@@ -190,404 +191,211 @@ class _FocusWorkspaceState extends ConsumerState<FocusWorkspace> {
           : 0.0;
     }
 
-    const deepBackground = Color(0xFF161320);
-    const purpleAccent = Color(0xFF8B5CF6);
-    const breakAccent = Color(0xFF38BDF8);
+    final theme = Theme.of(context);
+    final playing = _isPlaying(isTimerRunning);
+    final paused =
+        !playing &&
+        (isCurrentTaskTimer && activeRun?.state == TimerState.paused ||
+            _mode != FocusMode.stopwatch && progress > 0);
+    final state = switch (stateLabel) {
+      'RUNNING' => 'Running',
+      'COUNTING DOWN' => 'Counting down',
+      'FOCUS' => 'Focus interval',
+      'SHORT BREAK' => playing ? 'Short break' : 'Short break · paused',
+      'LONG BREAK' => playing ? 'Long break' : 'Long break · paused',
+      _ => paused ? 'Paused' : 'Ready',
+    };
 
-    final activeAccent =
-        (_mode == FocusMode.pomodoro && _pomodoroPhase != PomodoroPhase.work)
-        ? breakAccent
-        : purpleAccent;
-
-    return Theme(
-      data: Theme.of(context).copyWith(
-        scaffoldBackgroundColor: deepBackground,
-        colorScheme: Theme.of(context).colorScheme
-            .copyWith(surface: deepBackground, primary: activeAccent),
-      ),
-      child: Scaffold(
-        backgroundColor: deepBackground,
-        appBar: AppBar(
-          backgroundColor: deepBackground,
-          elevation: 0,
-          leading: IconButton(
-            tooltip: 'Return to tasks',
-            icon: const Icon(Icons.arrow_back, color: Colors.white70),
-            onPressed: widget.onBack,
-          ),
-          title: Text(
-            task?.title ?? 'Focus Session',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          actions: [
-            IconButton(
-              tooltip: 'Timer settings',
-              icon: const Icon(Icons.settings_outlined, color: Colors.white70),
-              onPressed: _busy || _session.running
-                  ? null
-                  : () => _showSettingsDialog(context),
-            ),
-          ],
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: 'Return to tasks',
+          icon: const BackButtonIcon(),
+          onPressed: widget.onBack,
         ),
-        body: FadingListView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          children: [
-            // Mode Selector Pills
-            Center(
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF221E33),
-                  borderRadius: BorderRadius.circular(24),
+        title: const Text('Focus'),
+        actions: [
+          IconButton(
+            tooltip: 'Timer settings',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: _busy || _session.running
+                ? null
+                : () => _showSettingsDialog(context),
+          ),
+        ],
+      ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: AppLayout.editorPageMaxWidth,
+          ),
+          child: FadingListView(
+            padding: AppLayout.pageInsets,
+            children: [
+              Semantics(
+                header: true,
+                child: Tooltip(
+                  message: task?.title ?? 'Unavailable task',
+                  excludeFromSemantics: true,
+                  child: Text(
+                    task?.title ?? 'Unavailable task',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleLarge,
+                  ),
                 ),
-                child: Wrap(
-                  alignment: WrapAlignment.center,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: AppSpacing.section,
+                ),
+                child: Column(
                   children: [
-                    _modeButton('Stopwatch', FocusMode.stopwatch, purpleAccent),
-                    _modeButton('Countdown', FocusMode.countdown, purpleAccent),
-                    _modeButton('Pomodoro', FocusMode.pomodoro, purpleAccent),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Pomodoro phase selector (when in Pomodoro mode)
-            if (_mode == FocusMode.pomodoro) ...[
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1C182B),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Wrap(
-                    alignment: WrapAlignment.center,
-                    children: [
-                      _phaseButton(
-                        'Focus (${_pomodoroWorkMinutes}m)',
-                        PomodoroPhase.work,
-                        purpleAccent,
-                      ),
-                      _phaseButton(
-                        'Short Break (${_pomodoroShortBreakMinutes}m)',
-                        PomodoroPhase.shortBreak,
-                        breakAccent,
-                      ),
-                      _phaseButton(
-                        'Long Break (${_pomodoroLongBreakMinutes}m)',
-                        PomodoroPhase.longBreak,
-                        breakAccent,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-
-            // Subtask Progress (if subtasks exist)
-            if (subtasks.isNotEmpty) ...[
-              Center(
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF221E33),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Subtask progress',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 13,
-                            ),
-                          ),
-                          Text(
-                            '$completedSubtasks of ${subtasks.length} done',
-                            style: const TextStyle(
-                              color: purpleAccent,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: subtasks.isEmpty
-                              ? 0
-                              : completedSubtasks / subtasks.length,
-                          backgroundColor: const Color(0xFF332D4C),
-                          valueColor: const AlwaysStoppedAnimation(
-                            purpleAccent,
-                          ),
-                          minHeight: 6,
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        state,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: theme.colorScheme.primary,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // Circular Timer Widget matching reference designs
-            Center(
-              child: SizedBox(
-                width: 280,
-                height: 280,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Outer background disc
-                    Container(
-                      width: 270,
-                      height: 270,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFF1D192C),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 20,
-                            spreadRadius: 2,
-                          ),
-                        ],
+                    ),
+                    const SizedBox(height: AppSpacing.small),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        displayTime,
+                        style: theme.textTheme.displayLarge?.copyWith(
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                        semanticsLabel:
+                            '${_mode == FocusMode.stopwatch ? 'Elapsed' : 'Remaining'} time, $displayTime',
                       ),
                     ),
-                    // Progress ring
-                    SizedBox(
-                      width: 220,
-                      height: 220,
-                      child: CircularProgressIndicator(
+                    if (_mode != FocusMode.stopwatch) ...[
+                      const SizedBox(height: AppSpacing.related),
+                      LinearProgressIndicator(
                         value: progress.clamp(0.0, 1.0),
-                        strokeWidth: 9,
-                        strokeCap: StrokeCap.round,
-                        backgroundColor: const Color(0xFF2B2540),
-                        valueColor: AlwaysStoppedAnimation(activeAccent),
+                        semanticsLabel: 'Interval progress',
                       ),
-                    ),
-                    // Digital Time Readout and state
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    ],
+                    if (_mode == FocusMode.pomodoro) ...[
+                      const SizedBox(height: AppSpacing.gap),
+                      Text(
+                        _pomodoroPhase == PomodoroPhase.work
+                            ? 'Up next: $_pomodoroShortBreakMinutes min short break'
+                            : 'Up next: $_pomodoroWorkMinutes min focus',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.content),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: AppSpacing.gap,
+                      runSpacing: AppSpacing.gap,
                       children: [
-                        Text(
-                          displayTime,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 44,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: -1,
+                        FilledButton.icon(
+                          onPressed: _busy
+                              ? null
+                              : () => _togglePlayPause(controller, activeRun),
+                          icon: Icon(playing ? Icons.pause : Icons.play_arrow),
+                          label: Text(
+                            playing
+                                ? 'Pause'
+                                : paused && _mode == FocusMode.stopwatch
+                                ? 'Resume'
+                                : 'Start',
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          stateLabel,
-                          style: TextStyle(
-                            color: activeAccent,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 2.0,
+                        if (_mode != FocusMode.stopwatch)
+                          OutlinedButton(
+                            onPressed: _busy
+                                ? null
+                                : () => _runAction(() async {
+                                    await controller.pauseFocus(widget.taskId);
+                                    _session.reset();
+                                  }),
+                            child: const Text('Reset timer'),
                           ),
-                        ),
+                        if (_mode == FocusMode.pomodoro)
+                          OutlinedButton(
+                            onPressed: _busy
+                                ? null
+                                : () => _runAction(() async {
+                                    await controller.pauseFocus(widget.taskId);
+                                    _session.finish();
+                                  }),
+                            child: const Text('Next interval'),
+                          )
+                        else if (isCurrentTaskTimer)
+                          OutlinedButton(
+                            onPressed: _busy
+                                ? null
+                                : () =>
+                                      _runAction(() => controller.stopTimer()),
+                            child: const Text('Stop & commit session'),
+                          ),
                       ],
                     ),
                   ],
                 ),
               ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // "Up next" preview in Pomodoro mode
-            if (_mode == FocusMode.pomodoro)
-              Center(
-                child: Text(
-                  _pomodoroPhase == PomodoroPhase.work
-                      ? 'Up next: ${_pomodoroShortBreakMinutes.toString().padLeft(2, '0')}:00 Short Break'
-                      : 'Up next: ${_pomodoroWorkMinutes.toString().padLeft(2, '0')}:00 Focus',
-                  style: const TextStyle(color: Colors.white54, fontSize: 13),
-                ),
-              ),
-
-            const SizedBox(height: 20),
-
-            // Primary Control Buttons (Play/Pause, Reset, Skip, Stop)
-            Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+              const AppSectionHeading('Timer mode'),
+              Wrap(
+                spacing: AppSpacing.gap,
+                runSpacing: AppSpacing.small,
                 children: [
-                  // Reset Button
-                  IconButton.filledTonal(
-                    tooltip: 'Reset timer',
-                    onPressed: _busy || _mode == FocusMode.stopwatch
-                        ? null
-                        : () => _runAction(() async {
-                            await controller.pauseFocus(widget.taskId);
-                            _session.reset();
-                          }),
-                    style: IconButton.styleFrom(
-                      backgroundColor: const Color(0xFF29243E),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.all(14),
-                    ),
-                    icon: const Icon(Icons.refresh, size: 22),
-                  ),
-
-                  const SizedBox(width: 16),
-
-                  // Main Play / Pause Button
-                  FilledButton(
-                    onPressed: _busy
-                        ? null
-                        : () => _togglePlayPause(controller, activeRun),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: activeAccent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 16,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          _isPlaying(isTimerRunning)
-                              ? Icons.pause
-                              : Icons.play_arrow,
-                          size: 26,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _isPlaying(isTimerRunning) ? 'Pause' : 'Start',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(width: 16),
-
-                  // Skip / Next Button (or Stop)
-                  if (_mode == FocusMode.pomodoro)
-                    IconButton.filledTonal(
-                      tooltip: 'Next interval',
-                      onPressed: _busy
-                          ? null
-                          : () => _runAction(() async {
-                              await controller.pauseFocus(widget.taskId);
-                              _session.finish();
-                            }),
-                      style: IconButton.styleFrom(
-                        backgroundColor: const Color(0xFF29243E),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.all(14),
-                      ),
-                      icon: const Icon(Icons.skip_next, size: 22),
-                    )
-                  else
-                    IconButton.filledTonal(
-                      tooltip: 'Stop & commit session',
-                      onPressed: isCurrentTaskTimer
-                          ? () => _runAction(() => controller.stopTimer())
-                          : null,
-                      style: IconButton.styleFrom(
-                        backgroundColor: const Color(0xFF29243E),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.all(14),
-                      ),
-                      icon: const Icon(Icons.stop, size: 22),
-                    ),
+                  _modeButton('Stopwatch', FocusMode.stopwatch),
+                  _modeButton('Countdown', FocusMode.countdown),
+                  _modeButton('Pomodoro', FocusMode.pomodoro),
                 ],
               ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Total time recorded today banner
-            Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF201B31),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFF322B4A)),
-                ),
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  crossAxisAlignment: WrapCrossAlignment.center,
+              if (_mode == FocusMode.pomodoro) ...[
+                const AppSectionHeading('Interval'),
+                Wrap(
+                  spacing: AppSpacing.gap,
+                  runSpacing: AppSpacing.small,
                   children: [
-                    const Icon(
-                      Icons.timer_outlined,
-                      size: 16,
-                      color: purpleAccent,
+                    _phaseButton(
+                      'Focus (${_pomodoroWorkMinutes}m)',
+                      PomodoroPhase.work,
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Total recorded: ${formatWorkClock(totalDuration)}',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                      ),
+                    _phaseButton(
+                      'Short break (${_pomodoroShortBreakMinutes}m)',
+                      PomodoroPhase.shortBreak,
+                    ),
+                    _phaseButton(
+                      'Long break (${_pomodoroLongBreakMinutes}m)',
+                      PomodoroPhase.longBreak,
                     ),
                   ],
                 ),
+              ],
+              const SizedBox(height: AppSpacing.content),
+              if (subtasks.isNotEmpty) ...[
+                AppSectionHeading(
+                  'Subtask progress',
+                  detail: '$completedSubtasks of ${subtasks.length} done',
+                ),
+                LinearProgressIndicator(
+                  value: completedSubtasks / subtasks.length,
+                  semanticsLabel: 'Subtasks complete',
+                ),
+                const SizedBox(height: AppSpacing.content),
+              ],
+              const Divider(),
+              AppSectionHeading(
+                'Work recorded',
+                detail: formatWorkClock(totalDuration),
               ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Collapsible Work Log (Collapsed by default per Requirement 16)
-            Card(
-              margin: EdgeInsets.zero,
-              color: const Color(0xFF1E1A2E),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: const BorderSide(color: Color(0xFF2F2948)),
-              ),
-              child: ExpansionTile(
+              ExpansionTile(
                 initiallyExpanded: _workLogExpanded,
                 onExpansionChanged: (exp) =>
                     setState(() => _workLogExpanded = exp),
-                title: const Text(
-                  'Work Log',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
+                title: const Text('Work Log'),
                 subtitle: Text(
                   '${entries.length} recorded session${entries.length == 1 ? '' : 's'}',
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
                 ),
                 children: [
                   Padding(
@@ -601,10 +409,6 @@ class _FocusWorkspaceState extends ConsumerState<FocusWorkspace> {
                             child: Center(
                               child: Text(
                                 'No work recorded yet. Time will appear here as sessions finish.',
-                                style: TextStyle(
-                                  color: Colors.white38,
-                                  fontSize: 12,
-                                ),
                               ),
                             ),
                           )
@@ -618,7 +422,6 @@ class _FocusWorkspaceState extends ConsumerState<FocusWorkspace> {
                                     ? Icons.timer_outlined
                                     : Icons.edit_note_outlined,
                                 size: 18,
-                                color: purpleAccent,
                               ),
                               title: Text(
                                 entry.endsAt == null
@@ -631,19 +434,11 @@ class _FocusWorkspaceState extends ConsumerState<FocusWorkspace> {
                                     : formatWorkClock(
                                         entry.durationAt(DateTime.now()),
                                       ),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
                               ),
                               subtitle: Text(
                                 '${entry.source == TimeEntrySource.timer ? 'Timer' : 'Manual'} · '
-                                '${entry.startsAt.toLocal().toString().split('.').first}'
-                                '${entry.endsAt != null ? ' – ${entry.endsAt!.toLocal().toString().split('.').first}' : ' (ongoing)'}',
-                                style: const TextStyle(
-                                  color: Colors.white54,
-                                  fontSize: 11,
-                                ),
+                                '${_entryDate(context, entry.startsAt)}'
+                                '${entry.endsAt != null ? ' – ${_entryDate(context, entry.endsAt!)}' : ' (ongoing)'}',
                               ),
                               trailing: entry.source == TimeEntrySource.manual
                                   ? IconButton(
@@ -651,7 +446,6 @@ class _FocusWorkspaceState extends ConsumerState<FocusWorkspace> {
                                       icon: const Icon(
                                         Icons.delete_outline,
                                         size: 16,
-                                        color: Colors.white54,
                                       ),
                                       onPressed: () => _runAction(
                                         () => controller.clearManualTime(entry),
@@ -664,13 +458,17 @@ class _FocusWorkspaceState extends ConsumerState<FocusWorkspace> {
                   ),
                 ],
               ),
-            ),
-
-            const SizedBox(height: 32),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  String _entryDate(BuildContext context, DateTime instant) {
+    final local = instant.toLocal();
+    final date = MaterialLocalizations.of(context).formatShortDate(local);
+    return '$date · ${TimeOfDay.fromDateTime(local).format(context)}';
   }
 
   bool _isPlaying(bool isTimerRunning) {
@@ -707,209 +505,175 @@ class _FocusWorkspaceState extends ConsumerState<FocusWorkspace> {
     }
   });
 
-  Widget _modeButton(String label, FocusMode mode, Color accent) {
-    final selected = _mode == mode;
-    return GestureDetector(
-      onTap: _busy || selected
-          ? null
-          : () => _runAction(
-              () => ref
-                  .read(appControllerProvider)
-                  .changeFocusPhase(
-                    widget.taskId,
-                    mode: mode,
-                    phase: PomodoroPhase.work,
-                  ),
-            ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? accent : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : Colors.white60,
-            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-            fontSize: 13,
-          ),
-        ),
-      ),
-    );
-  }
+  Widget _modeButton(String label, FocusMode mode) => ChoiceChip(
+    label: Text(label),
+    selected: _mode == mode,
+    onSelected: _busy
+        ? null
+        : (selected) {
+            if (selected && _mode != mode) {
+              _runAction(
+                () => ref
+                    .read(appControllerProvider)
+                    .changeFocusPhase(
+                      widget.taskId,
+                      mode: mode,
+                      phase: PomodoroPhase.work,
+                    ),
+              );
+            }
+          },
+  );
 
-  Widget _phaseButton(String label, PomodoroPhase phase, Color accent) {
-    final selected = _pomodoroPhase == phase;
-    return GestureDetector(
-      onTap: _busy ? null : () => _setPomodoroPhase(phase),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected ? accent.withValues(alpha: 0.25) : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          border: selected ? Border.all(color: accent, width: 1) : null,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? accent : Colors.white60,
-            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-            fontSize: 12,
-          ),
-        ),
-      ),
-    );
-  }
+  Widget _phaseButton(String label, PomodoroPhase phase) => ChoiceChip(
+    label: Text(label),
+    selected: _pomodoroPhase == phase,
+    onSelected: _busy ? null : (_) => _setPomodoroPhase(phase),
+  );
 
   void _showSettingsDialog(BuildContext context) {
     showDialog<void>(
       context: context,
       animationStyle: AppMotion.style(context),
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF221E33),
-        title: const Text(
-          'Timer Settings',
-          style: TextStyle(color: Colors.white),
-        ),
+        scrollable: true,
+        title: const Text('Timer Settings'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              title: const Text(
-                'Countdown Duration',
-                style: TextStyle(color: Colors.white),
-              ),
-              trailing: DropdownButton<int>(
-                dropdownColor: const Color(0xFF2A253F),
-                value: _countdownMinutes,
-                style: const TextStyle(color: Colors.white),
-                items: [5, 10, 15, 20, 25, 30, 45, 60]
-                    .map(
-                      (m) => DropdownMenuItem(value: m, child: Text('${m}m')),
-                    )
-                    .toList(),
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() {
-                      _countdownMinutes = val;
-                      if (_mode == FocusMode.countdown && !_countdownRunning) {
-                        _countdownRemainingSeconds = val * 60;
-                      }
-                    });
-                    Navigator.pop(ctx);
-                  }
-                },
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Countdown Duration'),
+                DropdownButton<int>(
+                  isExpanded: true,
+                  value: _countdownMinutes,
+                  items: [5, 10, 15, 20, 25, 30, 45, 60]
+                      .map(
+                        (m) => DropdownMenuItem(value: m, child: Text('${m}m')),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _countdownMinutes = val;
+                        if (_mode == FocusMode.countdown &&
+                            !_countdownRunning) {
+                          _countdownRemainingSeconds = val * 60;
+                        }
+                      });
+                      Navigator.pop(ctx);
+                    }
+                  },
+                ),
+              ],
             ),
-            ListTile(
-              title: const Text(
-                'Pomodoro Focus Duration',
-                style: TextStyle(color: Colors.white),
-              ),
-              trailing: DropdownButton<int>(
-                dropdownColor: const Color(0xFF2A253F),
-                value: _pomodoroWorkMinutes,
-                style: const TextStyle(color: Colors.white),
-                items: [15, 20, 25, 30, 45, 50, 60]
-                    .map(
-                      (m) => DropdownMenuItem(value: m, child: Text('${m}m')),
-                    )
-                    .toList(),
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() {
-                      _pomodoroWorkMinutes = val;
-                      if (_mode == FocusMode.pomodoro &&
-                          _pomodoroPhase == PomodoroPhase.work) {
-                        _countdownRemainingSeconds = val * 60;
-                      }
-                    });
-                    Navigator.pop(ctx);
-                  }
-                },
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Pomodoro Focus Duration'),
+                DropdownButton<int>(
+                  isExpanded: true,
+                  value: _pomodoroWorkMinutes,
+                  items: [15, 20, 25, 30, 45, 50, 60]
+                      .map(
+                        (m) => DropdownMenuItem(value: m, child: Text('${m}m')),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _pomodoroWorkMinutes = val;
+                        if (_mode == FocusMode.pomodoro &&
+                            _pomodoroPhase == PomodoroPhase.work) {
+                          _countdownRemainingSeconds = val * 60;
+                        }
+                      });
+                      Navigator.pop(ctx);
+                    }
+                  },
+                ),
+              ],
             ),
-            ListTile(
-              title: const Text(
-                'Short Break Duration',
-                style: TextStyle(color: Colors.white),
-              ),
-              trailing: DropdownButton<int>(
-                dropdownColor: const Color(0xFF2A253F),
-                value: _pomodoroShortBreakMinutes,
-                style: const TextStyle(color: Colors.white),
-                items: [3, 5, 10, 15]
-                    .map(
-                      (m) => DropdownMenuItem(value: m, child: Text('${m}m')),
-                    )
-                    .toList(),
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() {
-                      _pomodoroShortBreakMinutes = val;
-                      if (_mode == FocusMode.pomodoro &&
-                          _pomodoroPhase == PomodoroPhase.shortBreak) {
-                        _countdownRemainingSeconds = val * 60;
-                      }
-                    });
-                    Navigator.pop(ctx);
-                  }
-                },
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Short Break Duration'),
+                DropdownButton<int>(
+                  isExpanded: true,
+                  value: _pomodoroShortBreakMinutes,
+                  items: [3, 5, 10, 15]
+                      .map(
+                        (m) => DropdownMenuItem(value: m, child: Text('${m}m')),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _pomodoroShortBreakMinutes = val;
+                        if (_mode == FocusMode.pomodoro &&
+                            _pomodoroPhase == PomodoroPhase.shortBreak) {
+                          _countdownRemainingSeconds = val * 60;
+                        }
+                      });
+                      Navigator.pop(ctx);
+                    }
+                  },
+                ),
+              ],
             ),
-            ListTile(
-              title: const Text(
-                'Long Break Duration',
-                style: TextStyle(color: Colors.white),
-              ),
-              trailing: DropdownButton<int>(
-                dropdownColor: const Color(0xFF2A253F),
-                value: _pomodoroLongBreakMinutes,
-                style: const TextStyle(color: Colors.white),
-                items: [10, 15, 20, 30]
-                    .map(
-                      (m) => DropdownMenuItem(value: m, child: Text('${m}m')),
-                    )
-                    .toList(),
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() {
-                      _pomodoroLongBreakMinutes = val;
-                      if (_mode == FocusMode.pomodoro &&
-                          _pomodoroPhase == PomodoroPhase.longBreak) {
-                        _countdownRemainingSeconds = val * 60;
-                      }
-                    });
-                    Navigator.pop(ctx);
-                  }
-                },
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Long Break Duration'),
+                DropdownButton<int>(
+                  isExpanded: true,
+                  value: _pomodoroLongBreakMinutes,
+                  items: [10, 15, 20, 30]
+                      .map(
+                        (m) => DropdownMenuItem(value: m, child: Text('${m}m')),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _pomodoroLongBreakMinutes = val;
+                        if (_mode == FocusMode.pomodoro &&
+                            _pomodoroPhase == PomodoroPhase.longBreak) {
+                          _countdownRemainingSeconds = val * 60;
+                        }
+                      });
+                      Navigator.pop(ctx);
+                    }
+                  },
+                ),
+              ],
             ),
-            ListTile(
-              title: const Text(
-                'Long Break After',
-                style: TextStyle(color: Colors.white),
-              ),
-              trailing: DropdownButton<int>(
-                dropdownColor: const Color(0xFF2A253F),
-                value: _pomodoroLongBreakInterval,
-                style: const TextStyle(color: Colors.white),
-                items: [2, 3, 4, 5, 6]
-                    .map(
-                      (m) =>
-                          DropdownMenuItem(value: m, child: Text('$m cycles')),
-                    )
-                    .toList(),
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() {
-                      _pomodoroLongBreakInterval = val;
-                    });
-                    Navigator.pop(ctx);
-                  }
-                },
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Long Break After'),
+                DropdownButton<int>(
+                  isExpanded: true,
+                  value: _pomodoroLongBreakInterval,
+                  items: [2, 3, 4, 5, 6]
+                      .map(
+                        (m) => DropdownMenuItem(
+                          value: m,
+                          child: Text('$m cycles'),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _pomodoroLongBreakInterval = val;
+                      });
+                      Navigator.pop(ctx);
+                    }
+                  },
+                ),
+              ],
             ),
           ],
         ),

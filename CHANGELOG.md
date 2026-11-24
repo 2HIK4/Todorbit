@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Updated Focus with a more readable clock, explicit session state and
+  accessible timer controls in both themes.
+- Updated Habits and Goals with clearer check-in and progress, and kept
+  editor actions reachable above the keyboard on compact Android screens.
+
 - Updated Calendar navigation, date labels and overlap previews on Windows
   and grouped Android agenda items. Windows Week shows all-day events,
   planned tasks and deadlines above the time grid.

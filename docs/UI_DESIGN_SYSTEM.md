@@ -110,6 +110,23 @@ Todorbit retains its own schedule, timer and navigation contracts.
   value. Keep Close and Save reachable with an IME. The Windows side panel
   uses a focused presentation when narrow without remounting the draft.
 
+## Batch 4 Focus, Habits and Goals
+
+- Keep the Focus clock and primary action visible before mode settings at
+  compact widths. Use tabular digits and a text state for running, paused
+  and break intervals. Use labeled controls and retain the separate timer
+  review path. Keep ticking local to the Focus and compact timer widgets.
+- Use the bounded content column for Habits and Goals. Keep habit date
+  arrows adjacent and connect check-in to the selected date. Present the
+  result, units and streaks as text. Keep goal completion separate from
+  measured progress and show linked contributions beneath the total.
+- Keep New habit and New goal in their own toolbars. Android retains New
+  task in Workspace actions, keeping the agenda and list actions clear.
+  Compact goals group linking, milestones and history in More actions.
+- Use the keyboard-aware modal shell, scrollable form and fixed action bar
+  for habit and goal editing. Verify Create/Edit with a live draft at
+  320 dp and 150% text and with simulated keyboard insets.
+
 ## Customization and compatibility
 
 Settings → Appearance retains System, Light and Dark, two editable palettes,
@@ -138,6 +155,5 @@ Flutter renders where practical alongside targeted behavior tests. Record
 Windows and Android coverage separately, including narrow layouts and 150%
 text. Use the [testing policy](TESTING.md) for evidence.
 
-Focus, Habits and Goals follow Calendar and event editing. Settings, sync
-feedback and native widgets follow those surfaces. Review each batch in
+Settings, sync feedback and native widgets follow Focus, Habits and Goals. Review each batch in
 light and dark before expanding.
