@@ -13,6 +13,7 @@ import 'package:life_manager/data/mobile_preference_store.dart';
 import 'package:life_manager/data/profile_paths.dart';
 import 'package:life_manager/domain/models.dart';
 import 'package:life_manager/domain/notifications.dart';
+import 'package:life_manager/features/mobile/mobile_calendar.dart';
 import 'package:life_manager/features/mobile/mobile_workspace.dart';
 
 void main() {
@@ -111,8 +112,17 @@ void main() {
         );
         controller.navigate(WorkspaceView.calendar);
         await tester.pumpAndSettle();
-        await tester.ensureVisible(find.text('Android integration event'));
-        await tester.tap(find.text('Android integration event'));
+        final eventTitle = find.text('Android integration event').hitTestable();
+        // Scroll the agenda, which contains the non-scrollable month grid.
+        final agenda = find
+            .descendant(
+              of: find.byType(MobileCalendar),
+              matching: find.byType(Scrollable),
+            )
+            .first;
+        await tester.scrollUntilVisible(eventTitle, 120, scrollable: agenda);
+        await tester.pumpAndSettle();
+        await tester.tap(eventTitle);
         await tester.pumpAndSettle();
         expect(find.text('Title *'), findsOneWidget);
         // Closing an unchanged event uses the shared event editor.
