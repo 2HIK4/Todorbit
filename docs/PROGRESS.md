@@ -1,5 +1,21 @@
 # Progress
 
+## Developer Automation Toolkit (TDAT) & AI Engineering Harness (2026-11-24)
+
+Source on `feature/todorbit-developer-toolkit` branched from verified baseline `7ede889`. Concurrent Codex development on `feature/todorbit-ui-redesign-2` is strictly isolated and preserved.
+Designed, implemented, verified, and delivered the complete Todorbit Developer Automation Toolkit (TDAT):
+- Unified cross-shell CLI (`dev`, `tools/dev/dev.ps1`) with commands for doctor, status, context, repomap, impact, verify, fixture, screenshot, package, diagnose, reproduce, benchmark, cleanup, and self-test.
+- Centralized, validated test registry indexing 234 test suites with 0 unmapped or missing files.
+- Conservative impact analysis resolving modified files, Dart dependencies, critical schema gates, and shared UI boundaries.
+- Fast content-addressed 4-fingerprint test caching (`.buildlog/evidence/`) returning instant `REUSED` receipts on unchanged files.
+- Deterministic AI feature context pack generator (`dev context <feature>`) and compact topology map (`dev repomap`).
+- Deterministic synthetic SQLite fixture generators (`empty`, `small`, `typical`, `large`, `calendar-stress`, `sync-conflict`, `migration`) in `.buildlog/fixtures/` using fixed seeds.
+- Application laboratory (`dev screenshot <scenario>`) executing headless offscreen Flutter rendering and verifying zero RenderFlex overflows across 1080p, compact, 320dp mobile, and 150% text scaling viewports.
+- Release artifact audit (`dev package`) verifying Windows 64-bit x64 PE headers, CRT DLL imports, Inno Setup script configuration, and Android 16 KiB ELF alignment tooling.
+- Windows taskbar "Pick an app" (`OpenWith.exe`) root cause resolved, non-interactive execution enforced, and verified by `tools/test_process_invocation_safety.py`.
+- Comprehensive 11-point toolkit self-test suite (`dev self-test`) passing 11/11 checks.
+- Codified permanent automation-first policy in [AGENTS.md](../AGENTS.md) and documented in [Developer Automation Toolkit](DEVELOPER_AUTOMATION_TOOLKIT.md).
+
 ## UI Redesign 2.0 final integration (2026-11-24)
 
 Final source `90768ef` on `feature/todorbit-ui-redesign-2`. All 67
