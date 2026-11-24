@@ -171,7 +171,10 @@ void main() {
         expect(find.byTooltip('Quick Search (Ctrl+K)'), findsOneWidget);
         expect(find.byTooltip('Advanced search & filters'), findsOneWidget);
 
-        final searchFieldFinder = find.widgetWithText(TextField, 'Search tasks & events...');
+        final searchFieldFinder = find.descendant(
+          of: find.byType(Workspace),
+          matching: find.widgetWithText(TextField, 'Search'),
+        );
         expect(searchFieldFinder, findsOneWidget);
 
         // Typing a query displays the clear button

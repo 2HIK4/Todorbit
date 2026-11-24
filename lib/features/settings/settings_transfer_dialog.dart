@@ -1,3 +1,4 @@
+import '../shared/app_spacing.dart';
 import '../shared/scroll_edge_fade.dart';
 import '../shared/app_motion.dart';
 
@@ -215,6 +216,13 @@ class _SettingsTransferDialogState
     final available =
         imported?.categories.keys.toSet() ?? SettingsCategory.values.toSet();
     return AlertDialog(
+      insetPadding:
+          MediaQuery.sizeOf(context).width < AppLayout.breakpointCompact
+          ? const EdgeInsets.symmetric(
+              horizontal: AppSpacing.content,
+              vertical: AppSpacing.section,
+            )
+          : null,
       title: Text(
         widget.initialTransfer != null
             ? 'Restore cloud settings'

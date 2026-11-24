@@ -76,8 +76,7 @@ void main() {
             matching: find.byWidgetPredicate(
               (widget) =>
                   widget is TextField &&
-                  widget.decoration?.labelText ==
-                      'Words in title, notes, category, or project',
+                  widget.decoration?.labelText == 'Search tasks',
             ),
           );
           await tester.enterText(search, second.title);

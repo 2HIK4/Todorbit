@@ -6,6 +6,7 @@ import 'package:life_manager/app/app_controller.dart';
 import 'package:life_manager/data/app_database.dart';
 import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/domain/models.dart';
+import 'package:life_manager/domain/saved_views.dart';
 import 'package:life_manager/features/search/advanced_search_dialog.dart';
 
 void main() {
@@ -76,6 +77,61 @@ void main() {
     },
   );
 
+  testWidgets('Reset clears inherited filters and keeps the custom view icon', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final repository = LifeRepository(database);
+    await repository.addTask(
+      const TaskDraft(title: 'Existing task', scheduledDate: '2089-12-31'),
+    );
+    final saved = await repository.addSavedView(
+      'Future plan',
+      const TaskFilter(
+        fromDate: '2090-01-01',
+        throughDate: '2090-01-07',
+        nonRecurringOnly: true,
+        iconKey: 'star',
+      ),
+    );
+    final controller = AppController(repository);
+    await controller.refresh();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appControllerProvider.overrideWith((ref) => controller)],
+        child: MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => AdvancedSearchDialog(savedView: saved),
+                ),
+                child: const Text('Edit saved view'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Edit saved view'));
+    await tester.pumpAndSettle();
+    expect(find.text('0 matching tasks'), findsOneWidget);
+    await tester.tap(find.text('Reset'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 matching tasks'), findsOneWidget);
+    expect(find.text('Reset'), findsNothing);
+    expect(controller.savedViews.single.filter.fromDate, '2090-01-01');
+    await tester.tap(find.widgetWithText(FilledButton, 'Update Custom View'));
+    await tester.pumpAndSettle();
+    final updated = controller.savedViews.single.filter;
+    expect(updated.isActive, isFalse);
+    expect(updated.iconKey, 'star');
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('advanced filters preview results and save a live view', (
     tester,
   ) async {
@@ -108,10 +164,7 @@ void main() {
       await tester.tap(find.text('Open search'));
       await tester.pumpAndSettle();
       await tester.enterText(
-        find.widgetWithText(
-          TextField,
-          'Words in title, notes, category, or project',
-        ),
+        find.widgetWithText(TextField, 'Search tasks'),
         'chapter',
       );
       await tester.pumpAndSettle();

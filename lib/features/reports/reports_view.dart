@@ -10,6 +10,7 @@ import '../../domain/models.dart';
 import '../../domain/recurrence.dart';
 import '../shared/about_view_button.dart';
 import '../shared/anchored_select_field.dart';
+import '../shared/task_date_label.dart';
 
 enum _Period { week, month, quarter, custom }
 
@@ -125,13 +126,20 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
           spacing: 16,
           runSpacing: 8,
           children: [
-            Text(
-              'Statistics and reports',
-              style: Theme.of(context).textTheme.headlineMedium
-                  ?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const AboutViewButton(
-              description: 'Review completed tasks and work over a selected date range. Choose a recent period or a custom range to compare daily activity.',
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    'Statistics and reports',
+                    style: Theme.of(context).textTheme.headlineMedium
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const AboutViewButton(
+                  description: 'Review completed tasks and work over a selected date range. Choose a recent period or a custom range to compare daily activity.',
+                ),
+              ],
             ),
             SizedBox(
               width: 170 * textScale,
@@ -164,7 +172,8 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
           ],
         ),
         Text(
-          '$from to $through · Local calendar days',
+          '${taskDateLabel(context, from)} – ${taskDateLabel(context, through)}'
+          ' · Local calendar days',
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 18),
@@ -235,6 +244,7 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
                     );
                     final summary =
                         '${day.completed} done · ${_duration(day.work)}';
+                    final date = taskDateLabel(context, day.date);
                     if (bounds.maxWidth < 420 || textScale > 1.3) {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -242,7 +252,7 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
                           Wrap(
                             alignment: WrapAlignment.spaceBetween,
                             spacing: 12,
-                            children: [Text(day.date), Text(summary)],
+                            children: [Text(date), Text(summary)],
                           ),
                           const SizedBox(height: 6),
                           bar,
@@ -251,7 +261,7 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
                     }
                     return Row(
                       children: [
-                        SizedBox(width: 96, child: Text(day.date)),
+                        SizedBox(width: 96, child: Text(date)),
                         Expanded(child: bar),
                         const SizedBox(width: 10),
                         SizedBox(

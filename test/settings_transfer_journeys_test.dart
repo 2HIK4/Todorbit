@@ -18,18 +18,31 @@ void main() {
     (tester) async {
       final root = Directory.systemTemp.createTempSync('todorbit-b5-transfer-');
       final file = File('${root.path}/settings.json');
-      final appearance = AppearancePreferenceStore(
-        File('${root.path}/appearance.json'),
-      );
-      final database = AppDatabase(NativeDatabase.memory());
-      final controller = AppController(
-        LifeRepository(database),
-        appearanceStore: appearance,
-      );
+      final appearanceFile = File('${root.path}/appearance.json');
+      final databaseFile = File('${root.path}/test.sqlite');
+      AppDatabase? openDatabase;
+      late AppController controller;
+      Future<void> closeDatabase() async {
+        await openDatabase?.close();
+        openDatabase = null;
+      }
+
+      addTearDown(() => root.delete(recursive: true));
+      addTearDown(closeDatabase);
+
+      // Drift and the preference store create futures during construction.
+      // Create and initialize them in the same real-async zone.
       await tester.runAsync(() async {
-        await controller.initialize();
+        final database = AppDatabase(NativeDatabase(databaseFile));
+        openDatabase = database;
+        controller = AppController(
+          LifeRepository(database),
+          appearanceStore: AppearancePreferenceStore(appearanceFile),
+        );
+        await controller.initialize().timeout(const Duration(seconds: 15));
         await controller.setTheme(ThemeModePreference.dark);
         await controller.setFirstWeekday(1);
+        await controller.setTaskPanelWidth(440);
       });
       Future<void> mount() => tester.pumpWidget(
         ProviderScope(
@@ -53,10 +66,16 @@ void main() {
           final button = find.widgetWithText(TextButton, 'Import JSON');
           if (button.evaluate().isNotEmpty &&
               tester.widget<TextButton>(button).onPressed != null) {
-            break;
+            await tester.pumpAndSettle();
+            return;
           }
         }
-        await tester.pumpAndSettle();
+        final status = tester
+            .widgetList<Text>(find.byType(Text))
+            .map((text) => text.data)
+            .whereType<String>()
+            .join(' | ');
+        fail('Settings transfer did not finish. Visible text: $status');
       }
 
       try {
@@ -64,12 +83,15 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text('Export JSON'));
         await finishIo();
+        expect(find.textContaining('Settings exported to'), findsOneWidget);
         expect(file.existsSync(), isTrue);
         final decoded = await tester.runAsync(
           () => SettingsTransfer.read(file),
         );
         expect(decoded!.categories.keys, contains(SettingsCategory.calendar));
-        expect(file.readAsStringSync(), isNot(contains('life_manager.sqlite')));
+        final contents = file.readAsStringSync();
+        expect(contents, isNot(contains('life_manager.sqlite')));
+        expect(contents, isNot(contains('taskPanelWidth')));
         await tester.runAsync(() async {
           await controller.setTheme(ThemeModePreference.light);
           await controller.setFirstWeekday(7);
@@ -96,24 +118,33 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text('Apply settings'));
         await finishIo();
+        expect(find.text('Selected settings applied.'), findsOneWidget);
         expect(controller.firstWeekday, 1);
         expect(controller.theme, ThemeModePreference.light);
-        final reopened = AppController(
-          LifeRepository(database),
-          appearanceStore: AppearancePreferenceStore(appearance.file),
-        );
-        try {
-          await tester.runAsync(() => reopened.initialize());
-          expect(reopened.firstWeekday, 1);
-          expect(reopened.theme, ThemeModePreference.light);
-        } finally {
-          reopened.dispose();
-        }
+        await tester.pumpWidget(const SizedBox.shrink());
+        final persisted = await tester.runAsync(() async {
+          await closeDatabase();
+          final reopenedDatabase = AppDatabase(NativeDatabase(databaseFile));
+          final reopened = AppController(
+            LifeRepository(reopenedDatabase),
+            appearanceStore: AppearancePreferenceStore(appearanceFile),
+          );
+          try {
+            await reopened.initialize().timeout(const Duration(seconds: 15));
+            return (
+              reopened.firstWeekday,
+              reopened.theme,
+              reopened.taskPanelWidth,
+            );
+          } finally {
+            reopened.dispose();
+            await reopenedDatabase.close();
+          }
+        });
+        expect(persisted, (1, ThemeModePreference.light, 440));
         expect(tester.takeException(), isNull);
       } finally {
         await tester.pumpWidget(const SizedBox.shrink());
-        await database.close();
-        root.deleteSync(recursive: true);
       }
     },
   );

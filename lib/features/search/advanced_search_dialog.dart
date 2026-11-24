@@ -64,9 +64,9 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
       widget.savedView?.filter.scheduled ?? ScheduledFilter.any;
   late DeadlineFilter deadline =
       widget.savedView?.filter.deadline ?? DeadlineFilter.any;
-  late final String? fromDate = widget.savedView?.filter.fromDate;
-  late final String? throughDate = widget.savedView?.filter.throughDate;
-  late final bool nonRecurringOnly =
+  late String? fromDate = widget.savedView?.filter.fromDate;
+  late String? throughDate = widget.savedView?.filter.throughDate;
+  late bool nonRecurringOnly =
       widget.savedView?.filter.nonRecurringOnly ?? false;
   late bool recurringOnly = widget.savedView?.filter.recurringOnly ?? false;
   late bool blockedOnly = widget.savedView?.filter.blockedOnly ?? false;
@@ -82,17 +82,6 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
     super.dispose();
   }
 
-  bool get _hasActiveFilters =>
-      text.text.trim().isNotEmpty ||
-      statuses.isNotEmpty ||
-      categoryIds.isNotEmpty ||
-      projectIds.isNotEmpty ||
-      priorities.isNotEmpty ||
-      scheduled != ScheduledFilter.any ||
-      deadline != DeadlineFilter.any ||
-      recurringOnly ||
-      blockedOnly;
-
   void _resetFilters() {
     setState(() {
       text.clear();
@@ -102,6 +91,9 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
       priorities.clear();
       scheduled = ScheduledFilter.any;
       deadline = DeadlineFilter.any;
+      fromDate = null;
+      throughDate = null;
+      nonRecurringOnly = false;
       recurringOnly = false;
       blockedOnly = false;
       sort = SavedViewSort.scheduled;
@@ -186,7 +178,8 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(appControllerProvider);
-    final matches = controller.searchTasks(filter);
+    final currentFilter = filter;
+    final matches = controller.searchTasks(currentFilter);
     final relevantProjects = categoryIds.isEmpty
         ? controller.projects
         : controller.projects.where((p) => categoryIds.contains(p.categoryId));
@@ -235,11 +228,11 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                           : 'Edit ${widget.savedView!.name}',
                       style: Theme.of(context).textTheme.titleMedium
                           ?.copyWith(fontWeight: FontWeight.bold),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (_hasActiveFilters)
+                  if (currentFilter.isActive)
                     TextButton(
                       style: TextButton.styleFrom(
                         visualDensity: VisualDensity.compact,
@@ -273,39 +266,6 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                 controller: _scrollController,
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
                 children: [
-                  // Lightweight One-Time Explanation
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: scheme.surfaceContainerHighest.withValues(
-                        alpha: 0.6,
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          size: 15,
-                          color: scheme.primary,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Filters combine with AND; options within each filter combine with OR.',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                   if (widget.creatingSavedView || widget.savedView != null) ...[
                     Row(
                       children: [
@@ -348,7 +308,9 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                     decoration: InputDecoration(
                       isDense: true,
                       prefixIcon: const Icon(Icons.search, size: 20),
-                      labelText: 'Words in title, notes, category, or project',
+                      labelText: 'Search tasks',
+                      helperText: 'Title, notes, category or project',
+                      helperMaxLines: 2,
                       suffixIcon: text.text.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.clear, size: 18),
@@ -364,6 +326,39 @@ class _AdvancedSearchDialogState extends ConsumerState<AdvancedSearchDialog> {
                   ),
                   const SizedBox(height: 8),
 
+                  // Lightweight One-Time Explanation
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHighest.withValues(
+                        alpha: 0.6,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 15,
+                          color: scheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Filters combine with AND; options within each filter combine with OR.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   // Collapsible Group 1: Status
                   _CollapsibleFilterGroup(
                     title: 'Status',
