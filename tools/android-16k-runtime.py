@@ -67,6 +67,18 @@ def no_crashes(name):
     assert not crash or crash == '--------- beginning of crash', f'Crash buffer not empty: {name}.log'
 
 
+def launch(label):
+    output = adb('shell', 'am', 'start', '-W', '-n', PACKAGE + '/.MainActivity')
+    (ROOT / f'{label}-launch.log').write_text(output + '\n', encoding='utf-8')
+    values = dict(line.split(': ', 1) for line in output.splitlines() if ': ' in line)
+    assert values.get('Status') == 'ok', f'Android startup failed: {label}'
+    return {
+        'state': values.get('LaunchState'),
+        'totalMs': int(values['TotalTime']) if 'TotalTime' in values else None,
+        'waitMs': int(values['WaitTime']),
+    }
+
+
 def main():
     ROOT.mkdir(parents=True, exist_ok=True)
     assert adb('shell', 'getprop', 'ro.kernel.qemu') == '1', 'Disposable emulator required'
@@ -90,7 +102,7 @@ def main():
     previous_code = None
     if previous.exists():
         previous_code = int(re.search(r'versionCode=(\d+)', adb('shell', 'dumpsys', 'package', PACKAGE))[1])
-    adb('shell', 'am', 'start', '-n', PACKAGE + '/.MainActivity')
+    initial_start = launch('initial')
     tap(find('New task', 'home', timeout=60))
     title = 'Beta2 sixteen KiB acceptance'
     tree = screen('task-editor')
@@ -113,8 +125,11 @@ def main():
     if task_tab is not None:
         tap(task_tab)
     find(title, 'persisted-task')
+    adb('shell', 'input', 'keyevent', 'KEYCODE_HOME')
+    foreground_return = launch('foreground-return')
+    find(title, 'foreground-retained-task')
     adb('shell', 'am', 'force-stop', PACKAGE)
-    adb('shell', 'am', 'start', '-n', PACKAGE + '/.MainActivity')
+    reopen_start = launch('reopen')
     time.sleep(3)
     tree = screen('cold-reopen')
     tab = next((n for n in tree.iter('node') if n.get('content-desc', '').startswith('Tasks\n')), None)
@@ -122,6 +137,7 @@ def main():
         tap(tab)
     find(title, 'sqlite-reopen')
     upgraded_code = None
+    upgrade_start = None
     if previous.exists():
         adb('shell', 'am', 'force-stop', PACKAGE)
         # The package manager must accept the actual production-signed update.
@@ -129,7 +145,7 @@ def main():
         adb('install', '-r', str(package))
         upgraded_code = int(re.search(r'versionCode=(\d+)', adb('shell', 'dumpsys', 'package', PACKAGE))[1])
         assert upgraded_code > previous_code, 'Upgrade code must increase'
-        adb('shell', 'am', 'start', '-n', PACKAGE + '/.MainActivity')
+        upgrade_start = launch('candidate-upgrade')
         time.sleep(3)
         tree = screen('upgraded-home')
         tab = next((n for n in tree.iter('node') if n.get('content-desc', '').startswith('Tasks\n')), None)
@@ -141,7 +157,7 @@ def main():
     time.sleep(2)
     snapshot('completed')
     adb('shell', 'am', 'force-stop', PACKAGE)
-    adb('shell', 'am', 'start', '-n', PACKAGE + '/.MainActivity')
+    completed_reopen_start = launch('completed-reopen')
     time.sleep(3)
     snapshot('completed-reopen')
     no_crashes('post-app-crashes')
@@ -152,6 +168,15 @@ def main():
         'apkSha256': digest, 'pageSize': 16384, 'systemImage': adb('shell', 'getprop', 'ro.build.fingerprint'),
         'noAppBaselineSeconds': 40, 'systemStableWithoutApp': True,
         'flutterRendered': True, 'taskCreatedAndRetainedAfterRestart': True,
+        'foregroundRetainedTask': True,
+        'releaseStartup': {
+            'initialIsPrevious': previous.exists(),
+            'initial': initial_start,
+            'foregroundReturn': foreground_return,
+            'reopen': reopen_start,
+            'candidateUpgrade': upgrade_start,
+            'completedReopen': completed_reopen_start,
+        },
         'taskCompletionInteraction': True, 'noCrashOrAnrObserved': True,
         'previousApkSha256': previous_digest,
         'previousVersionCode': previous_code, 'upgradedVersionCode': upgraded_code,

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.0.19-beta.27+50
+
+- Matched the Android launch screen to the neutral Todorbit palette and kept
+  the orbit mark inside the platform mask at different display densities.
+
 - Kept Advanced Search readable at larger text sizes and fixed Reset for
   custom views with inherited date or recurrence filters.
 - Matched report dates to the app's localized dates and gave portable

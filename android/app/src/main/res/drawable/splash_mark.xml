@@ -1,0 +1,22 @@
+<!-- Outline geometry from assets/todorbit_window_icon.svg. The extra viewport
+     keeps the complete mark inside Android's circular splash mask. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="42"
+    android:viewportHeight="42">
+    <group android:translateX="9" android:translateY="9">
+        <path
+            android:pathData="M20.341,6.484 A10,10 0,0 1,10.266,21.85 M3.659,17.516 A10,10 0,0 1,13.74,2.152 M9,12 a3,3 0,1 0,6,0 a3,3 0,1 0,-6,0 M17,5 a2,2 0,1 0,4,0 a2,2 0,1 0,-4,0 M3,19 a2,2 0,1 0,4,0 a2,2 0,1 0,-4,0"
+            android:strokeColor="#050505"
+            android:strokeWidth="3.5"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <path
+            android:pathData="M20.341,6.484 A10,10 0,0 1,10.266,21.85 M3.659,17.516 A10,10 0,0 1,13.74,2.152 M9,12 a3,3 0,1 0,6,0 a3,3 0,1 0,-6,0 M17,5 a2,2 0,1 0,4,0 a2,2 0,1 0,-4,0 M3,19 a2,2 0,1 0,4,0 a2,2 0,1 0,-4,0"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="2"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+    </group>
+</vector>

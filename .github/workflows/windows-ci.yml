@@ -52,6 +52,10 @@ jobs:
           New-Item -ItemType Directory -Force .buildlog/verification | Out-Null
           python -m unittest discover -s tools -p test_dev_verify.py 2>&1 | Tee-Object .buildlog/verification/windows-developer-tools.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m unittest discover -s tools -p test_architecture_boundaries.py 2>&1 | Tee-Object .buildlog/verification/windows-architecture.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/dev/check-docs.py 2>&1 | Tee-Object .buildlog/verification/windows-docs.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m unittest discover -s tools -p test_background_sync_schema.py 2>&1 | Tee-Object .buildlog/verification/windows-background-schema.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Check public OAuth configuration and packaging gates
