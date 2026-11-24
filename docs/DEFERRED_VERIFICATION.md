@@ -1,5 +1,14 @@
 # Deferred Verification Backlog
 
+## Batch 3 calendar native acceptance (2026-11-24)
+
+The [Batch 3 receipt](TEST_RUN_LEDGER.md#batch-3-calendar-and-event-editing-2026-11-24)
+records widget and offscreen acceptance at `0741dd2`. Windows still
+needs physical mouse, trackpad, keyboard, assistive input and DPI checks
+for the timeline and editor. Android still needs physical touch, TalkBack,
+system Back, IME and native alarm observations. Packaged Windows and Android
+release acceptance remains due for the release candidate.
+
 ## Batch 2 task-list native acceptance (2026-11-23)
 
 The [Batch 2 receipt](TEST_RUN_LEDGER.md#batch-2-inbox-and-task-lists-2026-11-23)

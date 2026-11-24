@@ -1,5 +1,20 @@
 # Progress
 
+## Batch 3 Calendar and event editing (2026-11-24)
+
+Windows Month, Week and Day use compact date controls and clearer timeline
+labels. Week exposes all-day events and date-only tasks from the existing
+projection. Android groups events, sessions and planned tasks in the
+selected-day agenda. The EventEditor uses shared controls and maintains a
+draft across the Windows side-panel breakpoint. Android keeps Save within
+reach above a simulated IME.
+
+Batch 3 is accepted as the visual baseline for Batch 4. Physical and
+packaged acceptance remain pending.
+
+[Design rules](UI_DESIGN_SYSTEM.md#batch-3-calendar-and-event-editing) ·
+[Verification and captures](TEST_RUN_LEDGER.md#batch-3-calendar-and-event-editing-2026-11-24)
+
 ## Batch 2 Inbox and task lists (2026-11-23)
 
 Both workspace shells now use the Batch 1 visual rules for Inbox and the

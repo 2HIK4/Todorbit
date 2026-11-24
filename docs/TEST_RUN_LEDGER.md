@@ -1,5 +1,48 @@
 # Persistent test run ledger
 
+## Batch 3 Calendar and event editing (2026-11-24)
+
+Baseline `a2f71af`. Verified application source `0741dd2`. Tests ran
+on Windows with Flutter 3.47.7 and Dart 3.13.5, in-memory records and
+disposable APPDATA and LOCALAPPDATA.
+
+| Check | Evidence |
+|---|---|
+| Focused Flutter run | 129 tests and 15 render scenarios passed. Covered move and recurrence, cross-midnight and viewport resize, pointer cancellation, zoom and reduced motion, undo/redo, alarm migration, persistence, contrast, filter and date following, form layout and draft safety. `batch3-checkpoint-tests.log`. |
+| Final Month overflow refinement | Ten focused tests and four refreshed render scenarios passed in `batch3-month-final.log`. The render check reaches the compact overflow action at 800 dp and 150% text. |
+| Static and developer checks | Analysis of 17 changed Dart paths passed, and the final Month file passed follow-up analysis. All 39 architecture checks passed. Developer links, map, feature catalog and `git diff --check` passed. The `calendar-ui` verification plan resolves. |
+
+Logs and the production-widget render harness are under
+`.buildlog/ui-redesign/`. The baseline Week reproducer
+(`batch3-week-baseline.log`) found no actionable all-day row even though
+the event was in the day projection. The interactive Week now opens that
+event and exposes the planned task in its date-only row. The first renders
+also exposed unlabeled narrow overlaps, missing carry-over labels after
+scrolling, and a clipped Month overflow action at 150% text. The final
+renders show abbreviated lane labels with full hover/semantic details,
+a continuation label anchored within its visible card and a compact
+overflow count with a descriptive tooltip.
+
+The 20 PNGs are in `C:/Users/User/Documents/Codex/Todorbit-batch3-renders/`.
+The harness uses production Flutter widget trees, synthetic data and
+platform-specific fonts.
+
+| Surface | Final files |
+|---|---|
+| Windows Month | `windows-month-light.png`, `windows-month-narrow-light-150.png`, `windows-month-narrow-overflow-light-150.png` |
+| Windows Week | `windows-week-dark.png`, `windows-week-narrow-dark-150.png` |
+| Windows Day and gestures | `windows-day-light.png`, `windows-legacy-day-dark.png`, `windows-day-drag-light.png`, `windows-day-resize-light.png` |
+| Windows Event Create/Edit | `windows-event-create-light.png`, `windows-event-edit-narrow-dark-150.png` |
+| Android Calendar | `android-month-light.png`, `android-week-dark.png`, `android-day-dark.png`, `android-day-empty-light.png`, `android-month-narrow-dark-150.png`, `android-month-narrow-agenda-dark-150.png` |
+| Android Event Create/Edit | `android-event-create-narrow-light-150.png`, `android-event-create-ime-light-150.png`, `android-event-edit-dark.png` |
+
+The move and resize captures were taken with the pointer held and a
+proposal active. Both gestures were canceled and all persisted event
+intervals matched their starting values. The Android IME capture uses a
+simulated inset. Batch 3 is ready as the visual baseline for Batch 4.
+[Physical and release verification](DEFERRED_VERIFICATION.md#batch-3-calendar-native-acceptance-2026-11-24)
+remains pending.
+
 ## Batch 2 Inbox and task lists (2026-11-23)
 
 Baseline `9921686`, verified source `2bf025f`. Flutter 3.47.7 and Dart 3.13.5
