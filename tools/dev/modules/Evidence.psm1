@@ -102,21 +102,24 @@ function Get-DartImports([string]$FilePath, [string]$RepoRoot) {
 
     foreach ($line in $lines) {
         $trimmed = $line.Trim()
-        if ($trimmed -match "^(?:import|export|part)\s+['""]([^'""]+)['""]") {
-            $uri = $matches[1]
-            if ($uri.StartsWith('package:life_manager/')) {
-                $rel = 'lib/' + $uri.Substring('package:life_manager/'.Length)
-                $abs = Join-Path $RepoRoot ($rel.Replace('/', '\'))
-                if (Test-Path -LiteralPath $abs) {
-                    $resolved.Add($abs) | Out-Null
-                }
-            } elseif ($uri -notmatch '^dart:' -and $uri -notmatch '^package:') {
-                try {
-                    $abs = [IO.Path]::GetFullPath((Join-Path $fileDir $uri))
-                    if ($abs.StartsWith($RepoRoot, [StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $abs)) {
+        if ($trimmed -match "^(?:import|export|part)\b") {
+            $quoteMatches = [regex]::Matches($trimmed, "['""]([^'""]+)['""]")
+            foreach ($m in $quoteMatches) {
+                $uri = $m.Groups[1].Value
+                if ($uri.StartsWith('package:life_manager/')) {
+                    $rel = 'lib/' + $uri.Substring('package:life_manager/'.Length)
+                    $abs = Join-Path $RepoRoot ($rel.Replace('/', '\'))
+                    if (Test-Path -LiteralPath $abs) {
                         $resolved.Add($abs) | Out-Null
                     }
-                } catch {}
+                } elseif ($uri -notmatch '^dart:' -and $uri -notmatch '^package:') {
+                    try {
+                        $abs = [IO.Path]::GetFullPath((Join-Path $fileDir $uri))
+                        if ($abs.StartsWith($RepoRoot, [StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $abs)) {
+                            $resolved.Add($abs) | Out-Null
+                        }
+                    } catch {}
+                }
             }
         }
     }
@@ -346,7 +349,7 @@ function Save-EvidenceRecord {
             $tempFile = Join-Path $evidenceDir "$fingerprint.tmp.$([Guid]::NewGuid().ToString('N'))"
             $json = $record | ConvertTo-Json -Depth 6
             # Atomic write to prevent partially-written corrupted files
-            [IO.File]::WriteAllText($tempFile, $json, [Text.Encoding]::UTF8)
+            [IO.File]::WriteAllText($tempFile, $json, [Text.UTF8Encoding]::new($false))
             Move-Item -LiteralPath $tempFile -Destination $evidenceFile -Force
         }
     }
@@ -371,4 +374,4 @@ function Clear-StaleEvidence {
     return $count
 }
 
-Export-ModuleMember -Function Get-TestCompositeFingerprint, Get-EvidenceRecord, Save-EvidenceRecord, Clear-StaleEvidence, Get-DartImports, Resolve-AllTransitiveDependencies, Test-IsTestEligibleForReuse, Get-RepoRoot, Get-EvidenceDir
+Export-ModuleMember -Function Get-TestCompositeFingerprint, Get-EvidenceRecord, Save-EvidenceRecord, Clear-StaleEvidence, Get-DartImports, Resolve-AllTransitiveDependencies, Test-IsTestEligibleForReuse, Get-RepoRoot, Get-EvidenceDir, Get-VerificationConfigHash, Get-ToolchainHash

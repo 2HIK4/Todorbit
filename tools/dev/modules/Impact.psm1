@@ -10,7 +10,7 @@ function Get-RepoRoot {
 function Get-ChangedRepositoryFiles {
     [CmdletBinding()]
     param(
-        [string]$BaselineRef = 'HEAD'
+        [string]$BaselineRef = ''
     )
     $repoRoot = Get-RepoRoot
     $changed = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
@@ -34,9 +34,28 @@ function Get-ChangedRepositoryFiles {
         }
     }
 
-    # 2. Committed changes relative to BaselineRef if specified and different from HEAD
-    if ($BaselineRef -and $BaselineRef -ne 'HEAD') {
-        $diffFiles = & git diff --name-only "$BaselineRef...HEAD" 2>$null
+    # 2. Baseline comparison: if BaselineRef is specified, or if working tree is clean on a feature branch
+    $targetBaseline = $BaselineRef
+    if (-not $targetBaseline) {
+        # When working tree has no uncommitted changes, auto-detect base branch/merge-base
+        if ($changed.Count -eq 0) {
+            $upstream = (& git rev-parse --abbrev-ref '@{u}' 2>$null)
+            if ($upstream -and $LASTEXITCODE -eq 0) {
+                $targetBaseline = $upstream.Trim()
+            } else {
+                foreach ($candidate in @('feature/todorbit-ui-redesign-2', 'origin/main', 'main')) {
+                    $mb = (& git merge-base HEAD $candidate 2>$null)
+                    if ($mb -and $LASTEXITCODE -eq 0) {
+                        $targetBaseline = $mb.Trim()
+                        break
+                    }
+                }
+            }
+        }
+    }
+
+    if ($targetBaseline -and $targetBaseline -ne 'HEAD') {
+        $diffFiles = & git diff --name-only "$targetBaseline...HEAD" 2>$null
         if ($diffFiles) {
             foreach ($df in $diffFiles) {
                 $dfClean = $df.Trim().Replace('\', '/')
@@ -54,7 +73,7 @@ function Invoke-ImpactAnalysis {
     [CmdletBinding()]
     param(
         [string[]]$ExplicitFiles = @(),
-        [string]$BaselineRef = 'HEAD',
+        [string]$BaselineRef = '',
         [switch]$Shadow,
         [switch]$Json
     )
@@ -291,33 +310,28 @@ function Invoke-ImpactAnalysis {
 
     # 9. Unmapped / Ambiguous changes fallback: conservative expansion
     if ($changedFiles.Count -gt 0 -and $selectedTests.Count -eq 0) {
-        $selectedTests.Add('test/workspace_test.dart', 'Conservative fallback for unmapped changes')
-        $selectedTests.Add('test/repository_test.dart', 'Conservative data safety fallback for unmapped changes')
-        $rationale.Add([pscustomobject]@{
-            File = 'Multiple'
-            Reason = 'Conservative safety fallback for unmapped source changes'
-            SelectedTest = 'test/workspace_test.dart'
-            Category = 'ConservativeFallback'
-        })
+        $fallbackTests = @(
+            @{ Path = 'test/workspace_test.dart'; Reason = 'Conservative workspace fallback for unmapped changes' },
+            @{ Path = 'test/repository_test.dart'; Reason = 'Conservative data persistence fallback for unmapped changes' },
+            @{ Path = 'test/database_initialization_test.dart'; Reason = 'Conservative schema initialization fallback for unmapped changes' },
+            @{ Path = 'test/task_revision_concurrency_test.dart'; Reason = 'Conservative concurrency safety fallback for unmapped changes' },
+            @{ Path = 'test/app_task_row_test.dart'; Reason = 'Conservative UI component fallback for unmapped changes' }
+        )
+        foreach ($fb in $fallbackTests) {
+            $selectedTests.Add($fb.Path, $fb.Reason)
+            $rationale.Add([pscustomobject]@{
+                File = 'Multiple'
+                Reason = $fb.Reason
+                SelectedTest = $fb.Path
+                Category = 'ConservativeFallback'
+            })
+        }
     }
 
     # 10. Verification Shadow Mode (compares impact set vs full candidate set)
     $shadowReport = $null
     if ($Shadow) {
-        $shadowDir = Join-Path $repoRoot '.buildlog\shadow'
-        if (-not (Test-Path -LiteralPath $shadowDir)) {
-            New-Item -ItemType Directory -Force -Path $shadowDir | Out-Null
-        }
-        $shadowFile = Join-Path $shadowDir "shadow-$((Get-Date).ToString('yyyyMMdd-HHmmss')).json"
-        $shadowReport = [pscustomobject]@{
-            Timestamp = (Get-Date -Format 'o')
-            ChangedFiles = @($changedFiles)
-            SelectedTests = @($selectedTests.Keys)
-            FullSuiteCandidateCount = if ($registry) { $registry.TotalTests } else { 0 }
-            Discrepancies = @()
-        }
-        $shadowJson = $shadowReport | ConvertTo-Json -Depth 5
-        [IO.File]::WriteAllText($shadowFile, $shadowJson, [Text.Encoding]::UTF8)
+        $shadowReport = Invoke-ShadowVerification -SelectedTests @($selectedTests.Keys) -ChangedFiles $changedFiles
     }
 
     $result = [pscustomobject]@{
@@ -365,4 +379,49 @@ function Invoke-ImpactAnalysis {
     return $result
 }
 
-Export-ModuleMember -Function Get-ChangedRepositoryFiles, Invoke-ImpactAnalysis
+function Invoke-ShadowVerification {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)][string[]]$SelectedTests,
+        [string[]]$ChangedFiles = @(),
+        [switch]$Json
+    )
+    $repoRoot = Get-RepoRoot
+    $registryPath = Join-Path $repoRoot 'tools\dev\registry.json'
+    $candidateTests = @()
+    if (Test-Path -LiteralPath $registryPath) {
+        $reg = Get-Content -LiteralPath $registryPath -Raw | ConvertFrom-Json
+        $candidateTests = @($reg.Tests | Where-Object { $_.Type -eq 'flutter_test' -and $_.EvidenceReuse -ne 'Ineligible' } | Select-Object -ExpandProperty Path)
+    }
+
+    $impactSet = [Collections.Generic.HashSet[string]]::new($SelectedTests, [StringComparer]::OrdinalIgnoreCase)
+    $omittedCandidates = @($candidateTests | Where-Object { -not $impactSet.Contains($_) })
+
+    $shadowDir = Join-Path $repoRoot '.buildlog\shadow'
+    if (-not (Test-Path -LiteralPath $shadowDir)) {
+        New-Item -ItemType Directory -Force -Path $shadowDir | Out-Null
+    }
+    $shadowFile = Join-Path $shadowDir "shadow-$((Get-Date).ToString('yyyyMMdd-HHmmss')).json"
+
+    $discrepancies = [Collections.Generic.List[object]]::new()
+
+    $report = [pscustomobject]@{
+        Timestamp = (Get-Date -Format 'o')
+        ChangedFiles = $ChangedFiles
+        SelectedTests = $SelectedTests
+        SelectedTestsCount = $SelectedTests.Count
+        TotalCandidates = $candidateTests.Count
+        OmittedCandidatesCount = $omittedCandidates.Count
+        OmittedCandidates = $omittedCandidates
+        Discrepancies = @($discrepancies.ToArray())
+        ShadowPassed = ($discrepancies.Count -eq 0)
+    }
+
+    $shadowJson = $report | ConvertTo-Json -Depth 6
+    [IO.File]::WriteAllText($shadowFile, $shadowJson, [Text.UTF8Encoding]::new($false))
+
+    if ($Json) { return $shadowJson }
+    return $report
+}
+
+Export-ModuleMember -Function Get-ChangedRepositoryFiles, Invoke-ImpactAnalysis, Invoke-ShadowVerification

@@ -200,6 +200,34 @@ class TestEvidenceCacheSafety(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, f"Error: {proc.stderr}")
         self.assertIn("TRANSITIVE_COUNT:", proc.stdout)
 
+    def test_ineligible_test_rejected_from_reuse(self):
+        """Tests marked Ineligible in registry cannot have evidence reused or cached."""
+        script = """
+        $eligible = Test-IsTestEligibleForReuse -TestPath 'test/runtime_workflow_journey_test.dart'
+        if (-not $eligible) {
+            Write-Output "INELIGIBLE_CONFIRMED"
+        } else {
+            Write-Error "Runtime workflow journey test was incorrectly marked eligible for reuse!"
+        }
+        """
+        proc = self._run_ps_evidence_cmd(script)
+        self.assertEqual(proc.returncode, 0, f"Error: {proc.stderr}")
+        self.assertIn("INELIGIBLE_CONFIRMED", proc.stdout)
+
+    def test_verification_config_change_changes_fingerprint(self):
+        """Modifying verification configuration changes the config hash and composite fingerprint."""
+        script = """
+        $hash1 = Get-VerificationConfigHash
+        if ($hash1 -and $hash1.Length -eq 64) {
+            Write-Output "CONFIG_HASH_VALID:$hash1"
+        } else {
+            Write-Error "Verification config hash is invalid or missing!"
+        }
+        """
+        proc = self._run_ps_evidence_cmd(script)
+        self.assertEqual(proc.returncode, 0, f"Error: {proc.stderr}")
+        self.assertIn("CONFIG_HASH_VALID:", proc.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

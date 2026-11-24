@@ -33,7 +33,9 @@ param(
     [string]$Platform = 'None',
     [string]$Scenario,
     [string]$Fixture,
-    [string]$FailureId
+    [string]$FailureId,
+    [string]$BaselineRef,
+    [switch]$Shadow
 )
 
 $ErrorActionPreference = 'Stop'
@@ -212,7 +214,10 @@ try {
             if (-not (Get-Command 'Invoke-ImpactAnalysis' -ErrorAction SilentlyContinue)) {
                 throw "Impact analyzer module not loaded. Run 'dev verify quick -ChangedPaths ... -Tests ...' instead."
             }
-            $impact = Invoke-ImpactAnalysis
+            $impactArgs = @{}
+            if ($BaselineRef) { $impactArgs['BaselineRef'] = $BaselineRef }
+            if ($Shadow) { $impactArgs['Shadow'] = $true }
+            $impact = Invoke-ImpactAnalysis @impactArgs
             if ($impact.SelectedTests.Count -eq 0) {
                 Write-Host "No affected tests detected by impact analysis." -ForegroundColor Green
                 $receipt = New-VerificationReceipt -Scope 'Changed' -SelectionRationale 'No source changes detected'
@@ -325,7 +330,11 @@ try {
     }
     'impact' {
         if (Get-Command 'Invoke-ImpactAnalysis' -ErrorAction SilentlyContinue) {
-            Invoke-ImpactAnalysis -Json:$Json
+            $impactArgs = @{}
+            if ($BaselineRef) { $impactArgs['BaselineRef'] = $BaselineRef }
+            if ($Shadow) { $impactArgs['Shadow'] = $true }
+            if ($Json) { $impactArgs['Json'] = $true }
+            Invoke-ImpactAnalysis @impactArgs
         } else {
             throw "Impact module not loaded."
         }

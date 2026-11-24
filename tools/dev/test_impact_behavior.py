@@ -98,19 +98,33 @@ class TestImpactBehavior(unittest.TestCase):
         self.assertIn("tools/test_process_invocation_safety.py", res["SelectedTests"])
 
     def test_unrecognized_source_fallback(self):
-        """Unmapped or ambiguous paths trigger conservative safety fallback."""
+        """Unmapped or ambiguous paths trigger conservative safety fallback with data and UI baselines."""
         res = self._run_impact(explicit_files=["some_unknown/random_file.txt"])
         self.assertIn("test/workspace_test.dart", res["SelectedTests"])
         self.assertIn("test/repository_test.dart", res["SelectedTests"])
+        self.assertIn("test/database_initialization_test.dart", res["SelectedTests"])
+        self.assertIn("test/task_revision_concurrency_test.dart", res["SelectedTests"])
+        self.assertIn("test/app_task_row_test.dart", res["SelectedTests"])
+        self.assertGreaterEqual(res["SelectedTestsCount"], 5)
+
+    def test_auto_branch_baseline_detection(self):
+        """When explicit files are not provided, impact analysis detects modified files on feature branch."""
+        res = self._run_impact()
+        self.assertGreater(res["ChangedFilesCount"], 0, "Should detect branch or working tree changes")
+        self.assertGreater(res["SelectedTestsCount"], 0, "Should select affected tests")
 
     def test_verification_shadow_mode(self):
-        """Specifying -Shadow generates shadow comparison output."""
+        """Specifying -Shadow generates shadow comparison output with candidate metrics."""
         res = self._run_impact(explicit_files=["lib/features/shared/app_task_row.dart"], extra_flags=["-Shadow"])
         self.assertTrue(res["ShadowMode"])
         shadow_dir = REPO_ROOT / ".buildlog" / "shadow"
         self.assertTrue(shadow_dir.exists())
-        shadow_files = list(shadow_dir.glob("shadow-*.json"))
+        shadow_files = sorted(shadow_dir.glob("shadow-*.json"), key=os.path.getmtime, reverse=True)
         self.assertGreater(len(shadow_files), 0, "Shadow record file was created")
+        latest_record = json.loads(shadow_files[0].read_text(encoding="utf-8-sig"))
+        self.assertIn("TotalCandidates", latest_record)
+        self.assertIn("OmittedCandidatesCount", latest_record)
+        self.assertGreater(latest_record["TotalCandidates"], 0)
 
 
 if __name__ == "__main__":

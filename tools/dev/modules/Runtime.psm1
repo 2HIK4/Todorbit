@@ -75,7 +75,7 @@ function Invoke-WindowsRuntimeAutomation {
         }
 
         $resultJson = $result | ConvertTo-Json -Depth 5
-        [IO.File]::WriteAllText((Join-Path $receiptRoot 'result.json'), $resultJson, [Text.Encoding]::UTF8)
+        [IO.File]::WriteAllText((Join-Path $receiptRoot 'result.json'), $resultJson, [Text.UTF8Encoding]::new($false))
 
         if ($Json) {
             return $resultJson

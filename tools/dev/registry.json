@@ -1485,7 +1485,7 @@
                                         "Windows",
                                         "Android"
                                     ],
-                      "EvidenceReuse":  "Eligible",
+                      "EvidenceReuse":  "Ineligible",
                       "Description":  "Automated Flutter test suite: lab_render_test",
                       "Prerequisites":  [
                                             "flutter_sdk",
@@ -2348,7 +2348,7 @@
                                         "Windows",
                                         "Android"
                                     ],
-                      "EvidenceReuse":  "Eligible",
+                      "EvidenceReuse":  "Ineligible",
                       "Description":  "Automated Flutter test suite: runtime_workflow_journey_test",
                       "Prerequisites":  [
                                             "flutter_sdk",
@@ -4257,7 +4257,7 @@
                       "Platforms":  [
                                         "Android"
                                     ],
-                      "EvidenceReuse":  "Eligible",
+                      "EvidenceReuse":  "Ineligible",
                       "Description":  "Integration workflow test: android_drive_updates_test",
                       "Prerequisites":  [
                                             "flutter_sdk",
@@ -4277,7 +4277,7 @@
                       "Platforms":  [
                                         "Android"
                                     ],
-                      "EvidenceReuse":  "Eligible",
+                      "EvidenceReuse":  "Ineligible",
                       "Description":  "Integration workflow test: android_update_verification_test",
                       "Prerequisites":  [
                                             "flutter_sdk",
@@ -4297,7 +4297,7 @@
                       "Platforms":  [
                                         "Android"
                                     ],
-                      "EvidenceReuse":  "Eligible",
+                      "EvidenceReuse":  "Ineligible",
                       "Description":  "Integration workflow test: android_workflow_test",
                       "Prerequisites":  [
                                             "flutter_sdk",
