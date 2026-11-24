@@ -24,6 +24,9 @@ param(
     [switch]$Force,
     [switch]$DryRun,
     [switch]$Plan,
+    [switch]$Refresh,
+    [switch]$Validate,
+    [switch]$Resume,
     [string]$Feature,
     [string[]]$ChangedPaths = @(),
     [string[]]$Tests = @(),
@@ -68,6 +71,9 @@ if (Test-Path -LiteralPath $benchmarksModule) { Import-Module $benchmarksModule 
 $reliabilityModule = Join-Path $scriptDir 'modules\Reliability.psm1'
 if (Test-Path -LiteralPath $reliabilityModule) { Import-Module $reliabilityModule -Global -DisableNameChecking -Force }
 
+$runtimeModule = Join-Path $scriptDir 'modules\Runtime.psm1'
+if (Test-Path -LiteralPath $runtimeModule) { Import-Module $runtimeModule -Global -DisableNameChecking -Force }
+
 function Show-Help {
     Write-Host "=================================================================" -ForegroundColor Cyan
     Write-Host "     TODORBIT DEVELOPER AUTOMATION TOOLKIT (TDAT) - CLI         " -ForegroundColor Cyan
@@ -94,10 +100,12 @@ function Show-Help {
     Write-Host "Laboratory & Diagnostics:" -ForegroundColor Yellow
     Write-Host "  dev fixture <name>                     Generate synthetic workspace (empty, small, typical, large)." -ForegroundColor Gray
     Write-Host "  dev screenshot <scenario>              Capture offscreen UI layout / theme render." -ForegroundColor Gray
+    Write-Host "  dev runtime <windows|android>          Execute isolated native runtime automation." -ForegroundColor Gray
     Write-Host "  dev scenario <workflow>                Execute automated application workflow." -ForegroundColor Gray
     Write-Host "  dev diagnose last                      Extract diagnostics and logs for last test failure." -ForegroundColor Gray
     Write-Host "  dev reproduce <failure-id>             Generate self-contained reproduction script." -ForegroundColor Gray
     Write-Host "  dev benchmark <scenario>               Measure startup, memory, and calendar performance." -ForegroundColor Gray
+    Write-Host "  dev handoff [--resume]                 Create or resume durable engineering handoff." -ForegroundColor Gray
     Write-Host "  dev self-test                          Run comprehensive developer toolkit self-tests." -ForegroundColor Gray
     Write-Host "=================================================================" -ForegroundColor Cyan
 }
@@ -144,7 +152,7 @@ try {
         }
     }
     'registry' {
-        if ($Subcommand -eq 'validate' -or $Plan) {
+        if ($Subcommand -eq 'validate' -or $Validate -or $Plan) {
             $val = Test-TestRegistry
             if ($Json) { $val | ConvertTo-Json -Depth 4 }
             else {
@@ -157,7 +165,7 @@ try {
                     foreach ($i in $val.Issues) { Write-Host " - $i" -ForegroundColor Red }
                 }
             }
-        } elseif ($Subcommand -eq 'refresh') {
+        } elseif ($Subcommand -eq 'refresh' -or $Refresh) {
             $reg = Save-TestRegistry
             Write-Host "Registry refreshed: $($reg.TotalTests) tests registered." -ForegroundColor Green
         } else {
@@ -346,12 +354,44 @@ try {
             throw "Lab module not loaded."
         }
     }
+    'runtime' {
+        Ensure-TodorbitEnvironment
+        $targetPlatform = if ($Platform -and $Platform -ne 'None') { $Platform } elseif ($Subcommand) { $Subcommand } else { 'windows' }
+        if ($targetPlatform.ToLowerInvariant() -match 'android') {
+            if (Get-Command 'Invoke-AndroidRuntimeAutomation' -ErrorAction SilentlyContinue) {
+                Invoke-AndroidRuntimeAutomation -Json:$Json
+            } else {
+                throw "Runtime module not loaded."
+            }
+        } else {
+            if (Get-Command 'Invoke-WindowsRuntimeAutomation' -ErrorAction SilentlyContinue) {
+                Invoke-WindowsRuntimeAutomation -Json:$Json
+            } else {
+                throw "Runtime module not loaded."
+            }
+        }
+    }
     'package' {
         if (Get-Command 'Invoke-PackageVerification' -ErrorAction SilentlyContinue) {
             $targetPlatform = if ($Platform -and $Platform -ne 'None') { $Platform } elseif ($Subcommand) { $Subcommand } else { 'All' }
             Invoke-PackageVerification -Platform $targetPlatform -Json:$Json
         } else {
             throw "Reliability module not loaded."
+        }
+    }
+    'handoff' {
+        if ($Subcommand -eq 'resume' -or $Resume) {
+            if (Get-Command 'Resume-AgentHandoff' -ErrorAction SilentlyContinue) {
+                Resume-AgentHandoff -Json:$Json
+            } else {
+                throw "Harness module not loaded."
+            }
+        } else {
+            if (Get-Command 'New-AgentHandoff' -ErrorAction SilentlyContinue) {
+                New-AgentHandoff -Note $Subcommand -Json:$Json
+            } else {
+                throw "Harness module not loaded."
+            }
         }
     }
     'self-test' {

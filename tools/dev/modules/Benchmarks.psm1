@@ -76,6 +76,21 @@ function Invoke-Benchmark {
         $metrics['BenchmarkSuiteDurationMs'] = $sw.ElapsedMilliseconds
         $metrics['BenchmarkSuiteExitCode'] = $exitCode
         $metrics['BenchmarkPassed'] = ($exitCode -eq 0)
+
+        # Parse detailed empirical timing and memory metrics
+        if ($output) {
+            foreach ($line in $output) {
+                if ($line -match 'TIMING:\s+([^=]+)\s+=\s+([0-9\.]+)\s+ms') {
+                    $name = $matches[1].Trim()
+                    $val = [double]$matches[2]
+                    $metrics[$name] = "${val} ms"
+                } elseif ($line -match 'MEMORY:\s+([^=]+)\s+=\s+([0-9\.]+)\s+MB') {
+                    $name = $matches[1].Trim()
+                    $val = [double]$matches[2]
+                    $metrics[$name] = "${val} MB"
+                }
+            }
+        }
     }
 
     $receipt = [pscustomobject]@{

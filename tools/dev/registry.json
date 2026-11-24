@@ -1,7 +1,31 @@
 ﻿{
-    "Version":  "1.0.0",
-    "GeneratedAt":  "2026-11-24T17:28:56.7733668+03:00",
-    "TotalTests":  234,
+    "Version":  "2.0.0",
+    "GeneratedAt":  "2026-11-24T20:34:43.7109493+03:00",
+    "TotalTests":  224,
+    "Metrics":  {
+                    "TotalExecutableSuites":  224,
+                    "DartUnitAndWidgetSuites":  210,
+                    "IntegrationSuites":  3,
+                    "ToolTestSuites":  11,
+                    "SupportHelperFiles":  14,
+                    "EstimatedIndividualTestCases":  1214
+                },
+    "SupportHelpers":  [
+                           "test/seed_isolated_calendar_profile.dart",
+                           "test/test_privacy.dart",
+                           "test/cloud/cloud_test_fakes.dart",
+                           "test/fixtures/update_download_worker.dart",
+                           "test/support/database_startup_worker.dart",
+                           "test/support/editor_disclosure.dart",
+                           "test/support/initialization_database.dart",
+                           "test/support/legacy_sync_fixture.dart",
+                           "test/support/mock_sync_drive.dart",
+                           "test/support/profile_journey_environment.dart",
+                           "test/support/sync_apply_crash_worker.dart",
+                           "test/support/sync_crash_barrier.dart",
+                           "test/support/sync_crash_worker.dart",
+                           "test/support/uiux_review_capture.dart"
+                       ],
     "Tests":  [
                   {
                       "Id":  "test:advanced_productivity_ui_test",
@@ -2312,6 +2336,26 @@
                                         ]
                   },
                   {
+                      "Id":  "test:runtime_workflow_journey_test",
+                      "Type":  "flutter_test",
+                      "Path":  "test/runtime_workflow_journey_test.dart",
+                      "Command":  "flutter test --no-pub --reporter=expanded test/runtime_workflow_journey_test.dart",
+                      "Tier":  "Level1_Fast",
+                      "Features":  [
+                                       "shared"
+                                   ],
+                      "Platforms":  [
+                                        "Windows",
+                                        "Android"
+                                    ],
+                      "EvidenceReuse":  "Eligible",
+                      "Description":  "Automated Flutter test suite: runtime_workflow_journey_test",
+                      "Prerequisites":  [
+                                            "flutter_sdk",
+                                            "pub_get"
+                                        ]
+                  },
+                  {
                       "Id":  "test:saved_views_test",
                       "Type":  "flutter_test",
                       "Path":  "test/saved_views_test.dart",
@@ -2406,26 +2450,6 @@
                                     ],
                       "EvidenceReuse":  "Eligible",
                       "Description":  "Automated Flutter test suite: secondary_surface_quality_test",
-                      "Prerequisites":  [
-                                            "flutter_sdk",
-                                            "pub_get"
-                                        ]
-                  },
-                  {
-                      "Id":  "test:seed_isolated_calendar_profile",
-                      "Type":  "flutter_test",
-                      "Path":  "test/seed_isolated_calendar_profile.dart",
-                      "Command":  "flutter test --no-pub --reporter=expanded test/seed_isolated_calendar_profile.dart",
-                      "Tier":  "Level1_Fast",
-                      "Features":  [
-                                       "calendar"
-                                   ],
-                      "Platforms":  [
-                                        "Windows",
-                                        "Android"
-                                    ],
-                      "EvidenceReuse":  "Eligible",
-                      "Description":  "Automated Flutter test suite: seed_isolated_calendar_profile",
                       "Prerequisites":  [
                                             "flutter_sdk",
                                             "pub_get"
@@ -3377,26 +3401,6 @@
                                         ]
                   },
                   {
-                      "Id":  "test:test_privacy",
-                      "Type":  "flutter_test",
-                      "Path":  "test/test_privacy.dart",
-                      "Command":  "flutter test --no-pub --reporter=expanded test/test_privacy.dart",
-                      "Tier":  "Level1_Fast",
-                      "Features":  [
-                                       "shared"
-                                   ],
-                      "Platforms":  [
-                                        "Windows",
-                                        "Android"
-                                    ],
-                      "EvidenceReuse":  "Eligible",
-                      "Description":  "Automated Flutter test suite: test_privacy",
-                      "Prerequisites":  [
-                                            "flutter_sdk",
-                                            "pub_get"
-                                        ]
-                  },
-                  {
                       "Id":  "test:theme_customization_test",
                       "Type":  "flutter_test",
                       "Path":  "test/theme_customization_test.dart",
@@ -3981,26 +3985,6 @@
                                         ]
                   },
                   {
-                      "Id":  "test:cloud_test_fakes",
-                      "Type":  "flutter_test",
-                      "Path":  "test/cloud/cloud_test_fakes.dart",
-                      "Command":  "flutter test --no-pub --reporter=expanded test/cloud/cloud_test_fakes.dart",
-                      "Tier":  "Level1_Fast",
-                      "Features":  [
-                                       "shared"
-                                   ],
-                      "Platforms":  [
-                                        "Windows",
-                                        "Android"
-                                    ],
-                      "EvidenceReuse":  "Eligible",
-                      "Description":  "Automated Flutter test suite: cloud_test_fakes",
-                      "Prerequisites":  [
-                                            "flutter_sdk",
-                                            "pub_get"
-                                        ]
-                  },
-                  {
                       "Id":  "test:cloud_transfer_history_test",
                       "Type":  "flutter_test",
                       "Path":  "test/cloud/cloud_transfer_history_test.dart",
@@ -4261,226 +4245,6 @@
                                         ]
                   },
                   {
-                      "Id":  "test:update_download_worker",
-                      "Type":  "flutter_test",
-                      "Path":  "test/fixtures/update_download_worker.dart",
-                      "Command":  "flutter test --no-pub --reporter=expanded test/fixtures/update_download_worker.dart",
-                      "Tier":  "Level1_Fast",
-                      "Features":  [
-                                       "windows-updates"
-                                   ],
-                      "Platforms":  [
-                                        "Windows",
-                                        "Android"
-                                    ],
-                      "EvidenceReuse":  "Eligible",
-                      "Description":  "Automated Flutter test suite: update_download_worker",
-                      "Prerequisites":  [
-                                            "flutter_sdk",
-                                            "pub_get"
-                                        ]
-                  },
-                  {
-                      "Id":  "test:database_startup_worker",
-                      "Type":  "flutter_test",
-                      "Path":  "test/support/database_startup_worker.dart",
-                      "Command":  "flutter test --no-pub --reporter=expanded test/support/database_startup_worker.dart",
-                      "Tier":  "Level2_Critical",
-                      "Features":  [
-                                       "database"
-                                   ],
-                      "Platforms":  [
-                                        "Windows",
-                                        "Android"
-                                    ],
-                      "EvidenceReuse":  "Eligible",
-                      "Description":  "Automated Flutter test suite: database_startup_worker",
-                      "Prerequisites":  [
-                                            "flutter_sdk",
-                                            "pub_get"
-                                        ]
-                  },
-                  {
-                      "Id":  "test:editor_disclosure",
-                      "Type":  "flutter_test",
-                      "Path":  "test/support/editor_disclosure.dart",
-                      "Command":  "flutter test --no-pub --reporter=expanded test/support/editor_disclosure.dart",
-                      "Tier":  "Level1_Fast",
-                      "Features":  [
-                                       "shared"
-                                   ],
-                      "Platforms":  [
-                                        "Windows",
-                                        "Android"
-                                    ],
-                      "EvidenceReuse":  "Eligible",
-                      "Description":  "Automated Flutter test suite: editor_disclosure",
-                      "Prerequisites":  [
-                                            "flutter_sdk",
-                                            "pub_get"
-                                        ]
-                  },
-                  {
-                      "Id":  "test:initialization_database",
-                      "Type":  "flutter_test",
-                      "Path":  "test/support/initialization_database.dart",
-                      "Command":  "flutter test --no-pub --reporter=expanded test/support/initialization_database.dart",
-                      "Tier":  "Level2_Critical",
-                      "Features":  [
-                                       "database"
-                                   ],
-                      "Platforms":  [
-                                        "Windows",
-                                        "Android"
-                                    ],
-                      "EvidenceReuse":  "Eligible",
-                      "Description":  "Automated Flutter test suite: initialization_database",
-                      "Prerequisites":  [
-                                            "flutter_sdk",
-                                            "pub_get"
-                                        ]
-                  },
-                  {
-                      "Id":  "test:legacy_sync_fixture",
-                      "Type":  "flutter_test",
-                      "Path":  "test/support/legacy_sync_fixture.dart",
-                      "Command":  "flutter test --no-pub --reporter=expanded test/support/legacy_sync_fixture.dart",
-                      "Tier":  "Level1_Fast",
-                      "Features":  [
-                                       "sync"
-                                   ],
-                      "Platforms":  [
-                                        "Windows",
-                                        "Android"
-                                    ],
-                      "EvidenceReuse":  "Eligible",
-                      "Description":  "Automated Flutter test suite: legacy_sync_fixture",
-                      "Prerequisites":  [
-                                            "flutter_sdk",
-                                            "pub_get"
-                                        ]
-                  },
-                  {
-                      "Id":  "test:mock_sync_drive",
-                      "Type":  "flutter_test",
-                      "Path":  "test/support/mock_sync_drive.dart",
-                      "Command":  "flutter test --no-pub --reporter=expanded test/support/mock_sync_drive.dart",
-                      "Tier":  "Level1_Fast",
-                      "Features":  [
-                                       "sync"
-                                   ],
-                      "Platforms":  [
-                                        "Windows",
-                                        "Android"
-                                    ],
-                      "EvidenceReuse":  "Eligible",
-                      "Description":  "Automated Flutter test suite: mock_sync_drive",
-                      "Prerequisites":  [
-                                            "flutter_sdk",
-                                            "pub_get"
-                                        ]
-                  },
-                  {
-                      "Id":  "test:profile_journey_environment",
-                      "Type":  "flutter_test",
-                      "Path":  "test/support/profile_journey_environment.dart",
-                      "Command":  "flutter test --no-pub --reporter=expanded test/support/profile_journey_environment.dart",
-                      "Tier":  "Level1_Fast",
-                      "Features":  [
-                                       "shared"
-                                   ],
-                      "Platforms":  [
-                                        "Windows",
-                                        "Android"
-                                    ],
-                      "EvidenceReuse":  "Eligible",
-                      "Description":  "Automated Flutter test suite: profile_journey_environment",
-                      "Prerequisites":  [
-                                            "flutter_sdk",
-                                            "pub_get"
-                                        ]
-                  },
-                  {
-                      "Id":  "test:sync_apply_crash_worker",
-                      "Type":  "flutter_test",
-                      "Path":  "test/support/sync_apply_crash_worker.dart",
-                      "Command":  "flutter test --no-pub --reporter=expanded test/support/sync_apply_crash_worker.dart",
-                      "Tier":  "Level2_Critical",
-                      "Features":  [
-                                       "sync"
-                                   ],
-                      "Platforms":  [
-                                        "Windows",
-                                        "Android"
-                                    ],
-                      "EvidenceReuse":  "Eligible",
-                      "Description":  "Automated Flutter test suite: sync_apply_crash_worker",
-                      "Prerequisites":  [
-                                            "flutter_sdk",
-                                            "pub_get"
-                                        ]
-                  },
-                  {
-                      "Id":  "test:sync_crash_barrier",
-                      "Type":  "flutter_test",
-                      "Path":  "test/support/sync_crash_barrier.dart",
-                      "Command":  "flutter test --no-pub --reporter=expanded test/support/sync_crash_barrier.dart",
-                      "Tier":  "Level1_Fast",
-                      "Features":  [
-                                       "sync"
-                                   ],
-                      "Platforms":  [
-                                        "Windows",
-                                        "Android"
-                                    ],
-                      "EvidenceReuse":  "Eligible",
-                      "Description":  "Automated Flutter test suite: sync_crash_barrier",
-                      "Prerequisites":  [
-                                            "flutter_sdk",
-                                            "pub_get"
-                                        ]
-                  },
-                  {
-                      "Id":  "test:sync_crash_worker",
-                      "Type":  "flutter_test",
-                      "Path":  "test/support/sync_crash_worker.dart",
-                      "Command":  "flutter test --no-pub --reporter=expanded test/support/sync_crash_worker.dart",
-                      "Tier":  "Level1_Fast",
-                      "Features":  [
-                                       "sync"
-                                   ],
-                      "Platforms":  [
-                                        "Windows",
-                                        "Android"
-                                    ],
-                      "EvidenceReuse":  "Eligible",
-                      "Description":  "Automated Flutter test suite: sync_crash_worker",
-                      "Prerequisites":  [
-                                            "flutter_sdk",
-                                            "pub_get"
-                                        ]
-                  },
-                  {
-                      "Id":  "test:uiux_review_capture",
-                      "Type":  "flutter_test",
-                      "Path":  "test/support/uiux_review_capture.dart",
-                      "Command":  "flutter test --no-pub --reporter=expanded test/support/uiux_review_capture.dart",
-                      "Tier":  "Level1_Fast",
-                      "Features":  [
-                                       "shared"
-                                   ],
-                      "Platforms":  [
-                                        "Windows",
-                                        "Android"
-                                    ],
-                      "EvidenceReuse":  "Eligible",
-                      "Description":  "Automated Flutter test suite: uiux_review_capture",
-                      "Prerequisites":  [
-                                            "flutter_sdk",
-                                            "pub_get"
-                                        ]
-                  },
-                  {
                       "Id":  "integration:android_drive_updates_test",
                       "Type":  "integration_test",
                       "Path":  "integration_test/android_drive_updates_test.dart",
@@ -4645,7 +4409,7 @@
                       "Type":  "python_test",
                       "Path":  "tools/test_process_invocation_safety.py",
                       "Command":  "python -m unittest discover -s tools -p test_process_invocation_safety.py",
-                      "Tier":  "Level1_Fast",
+                      "Tier":  "Level2_Critical",
                       "Features":  [
                                        "architecture",
                                        "dev-tools"
@@ -4676,6 +4440,66 @@
                                     ],
                       "EvidenceReuse":  "Eligible",
                       "Description":  "Developer tool/architecture test: test_windows_sandbox_prepare",
+                      "Prerequisites":  [
+                                            "python"
+                                        ]
+                  },
+                  {
+                      "Id":  "tool:test_evidence_cache_safety",
+                      "Type":  "python_test",
+                      "Path":  "tools/dev/test_evidence_cache_safety.py",
+                      "Command":  "python -m unittest discover -s tools -p test_evidence_cache_safety.py",
+                      "Tier":  "Level2_Critical",
+                      "Features":  [
+                                       "architecture",
+                                       "dev-tools"
+                                   ],
+                      "Platforms":  [
+                                        "Windows",
+                                        "Host"
+                                    ],
+                      "EvidenceReuse":  "Eligible",
+                      "Description":  "Developer tool/architecture test: test_evidence_cache_safety",
+                      "Prerequisites":  [
+                                            "python"
+                                        ]
+                  },
+                  {
+                      "Id":  "tool:test_impact_behavior",
+                      "Type":  "python_test",
+                      "Path":  "tools/dev/test_impact_behavior.py",
+                      "Command":  "python -m unittest discover -s tools -p test_impact_behavior.py",
+                      "Tier":  "Level1_Fast",
+                      "Features":  [
+                                       "architecture",
+                                       "dev-tools"
+                                   ],
+                      "Platforms":  [
+                                        "Windows",
+                                        "Host"
+                                    ],
+                      "EvidenceReuse":  "Eligible",
+                      "Description":  "Developer tool/architecture test: test_impact_behavior",
+                      "Prerequisites":  [
+                                            "python"
+                                        ]
+                  },
+                  {
+                      "Id":  "tool:test_session_locking_safety",
+                      "Type":  "python_test",
+                      "Path":  "tools/dev/test_session_locking_safety.py",
+                      "Command":  "python -m unittest discover -s tools -p test_session_locking_safety.py",
+                      "Tier":  "Level2_Critical",
+                      "Features":  [
+                                       "architecture",
+                                       "dev-tools"
+                                   ],
+                      "Platforms":  [
+                                        "Windows",
+                                        "Host"
+                                    ],
+                      "EvidenceReuse":  "Eligible",
+                      "Description":  "Developer tool/architecture test: test_session_locking_safety",
                       "Prerequisites":  [
                                             "python"
                                         ]

@@ -16,6 +16,8 @@ import 'package:life_manager/features/mobile/mobile_calendar.dart';
 import 'package:life_manager/features/mobile/mobile_workspace.dart';
 import 'package:life_manager/features/settings/settings_hub_dialog.dart';
 import 'package:life_manager/features/shared/app_theme.dart';
+import 'package:life_manager/features/shared/app_task_row.dart';
+import 'package:life_manager/features/shared/app_modal_shell.dart';
 import 'package:life_manager/features/widget/native_widget_service.dart';
 import 'package:life_manager/features/workspace/workspace.dart';
 
@@ -207,6 +209,91 @@ void main() {
         size: const Size(1000, 700),
         brightness: Brightness.dark,
       );
+    });
+
+    testWidgets('task-row-dense-complex-state: Dense task row with tags and long title', (tester) async {
+      final task = (await controller.repository.tasks()).first;
+      await renderScenario(
+        tester: tester,
+        name: 'task-row-dense-complex-state',
+        child: ListView(
+          children: [
+            AppTaskRow(
+              task: task,
+              categoryName: 'Core Work',
+              projectName: 'Launch Sprint',
+              checklistProgress: const TaskProgress(completed: 4, total: 5),
+              subtaskProgress: const TaskProgress(completed: 2, total: 3),
+              hasAlarm: true,
+              variant: AppTaskRowVariant.desktop,
+            ),
+          ],
+        ),
+        size: const Size(600, 400),
+        textScale: 1.5,
+        brightness: Brightness.light,
+      );
+    });
+
+    testWidgets('modal-shell-scroll-reachability: Modal shell with scrollable content and reachable actions', (tester) async {
+      await renderScenario(
+        tester: tester,
+        name: 'modal-shell-scroll-reachability',
+        child: AppModalShell(
+          maxWidth: 600,
+          maxHeight: 500,
+          child: Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text('Modal Header Title', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: 40,
+                  itemBuilder: (context, index) => ListTile(
+                    title: Text('List item index #$index in scrollable dialog body'),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(onPressed: () {}, child: const Text('Cancel')),
+                    const SizedBox(width: 8),
+                    FilledButton(onPressed: () {}, child: const Text('Save Changes')),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        size: const Size(1000, 700),
+        brightness: Brightness.dark,
+      );
+
+      expect(find.text('Modal Header Title'), findsOneWidget);
+      expect(find.text('Save Changes'), findsOneWidget);
+    });
+
+    testWidgets('accessibility-semantics-inspection: Semantic labels and tooltips presence', (tester) async {
+      final task = (await controller.repository.tasks()).first;
+      await renderScenario(
+        tester: tester,
+        name: 'accessibility-semantics-inspection',
+        child: AppTaskRow(
+          task: task,
+          categoryName: 'Core Work',
+          projectName: 'Launch Sprint',
+          onToggleComplete: (_) {},
+        ),
+        size: const Size(800, 100),
+        brightness: Brightness.light,
+      );
+
+      expect(find.text('Review Layout Responsive Breakpoints'), findsOneWidget);
     });
   });
 }

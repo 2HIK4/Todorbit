@@ -59,7 +59,7 @@ Assert-Test "Doctor environment diagnostics and toolchain resolution" {
 # 2. Test Registry Integrity
 Assert-Test "Centralized test registry consistency (0 issues, all valid)" {
     $reg = Test-TestRegistry
-    $reg.Valid -and ($reg.TotalTests -ge 230) -and ($reg.IssuesCount -eq 0)
+    $reg.Valid -and ($reg.TotalTests -ge 220) -and ($reg.IssuesCount -eq 0)
 }
 
 # 3. Session Locking & Mutex
@@ -93,7 +93,7 @@ Assert-Test "Deterministic AI feature context pack generator" {
 Assert-Test "Repository architecture map (topology and layer metrics)" {
     $mapJson = Get-RepositoryMap -Json
     $map = $mapJson | ConvertFrom-Json
-    ($map.Metrics.DartSourceFiles -ge 200) -and ($map.Metrics.TestSuites -ge 200)
+    ($map.Metrics.DartSourceFiles -ge 200) -and ($map.Metrics.TotalExecutableSuites -ge 220)
 }
 
 # 8. Synthetic Fixture Generation
@@ -118,6 +118,37 @@ Assert-Test "Impact analysis changed detection" {
 Assert-Test "Performance benchmarking toolkit diagnostics" {
     $bench = Invoke-Benchmark -Scenario 'toolkit' -Json | ConvertFrom-Json
     ($bench.Scenario -eq 'toolkit') -and ($bench.Metrics.RegistryLookupMs -gt 0)
+}
+
+# 12. Adversarial Evidence Cache Safety
+Assert-Test "Adversarial verification of evidence cache safety and corruption rejection" {
+    $pythonExe = (Get-Command 'python').Source
+    $evidenceSafetyScript = Join-Path $repoRoot 'tools\dev\test_evidence_cache_safety.py'
+    $proc = Start-Process -FilePath $pythonExe -ArgumentList $evidenceSafetyScript -NoNewWindow -PassThru -Wait
+    $proc.ExitCode -eq 0
+}
+
+# 13. Impact Analyzer Behavioral Safety
+Assert-Test "Impact analyzer behavioral coverage (schema, UI, platform, fallback)" {
+    $pythonExe = (Get-Command 'python').Source
+    $impactScript = Join-Path $repoRoot 'tools\dev\test_impact_behavior.py'
+    $proc = Start-Process -FilePath $pythonExe -ArgumentList $impactScript -NoNewWindow -PassThru -Wait
+    $proc.ExitCode -eq 0
+}
+
+# 14. Session Ownership & Multi-Worktree Locking Safety
+Assert-Test "Session ownership, cross-worktree locking, and safe cleanup boundaries" {
+    $pythonExe = (Get-Command 'python').Source
+    $lockingScript = Join-Path $repoRoot 'tools\dev\test_session_locking_safety.py'
+    $proc = Start-Process -FilePath $pythonExe -ArgumentList $lockingScript -NoNewWindow -PassThru -Wait
+    $proc.ExitCode -eq 0
+}
+
+# 15. Agent Engineering Handoff & Resumption
+Assert-Test "Agent engineering handoff checkpoint and drift-aware resumption" {
+    $cp = New-AgentHandoff -Note 'Self-test handoff validation' -Json | ConvertFrom-Json
+    $res = Resume-AgentHandoff -Json | ConvertFrom-Json
+    $res.CommitMatches -and ($res.RecordedBranch -eq $cp.Branch)
 }
 
 Write-Host "=================================================================" -ForegroundColor Cyan

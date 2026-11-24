@@ -16,20 +16,28 @@ function Get-RepoRoot {
     return (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 }
 
+function Get-LockDirectory([switch]$Global) {
+    if ($Global) {
+        $dir = Join-Path ([IO.Path]::GetTempPath()) 'todorbit_global_locks'
+    } else {
+        $dir = Join-Path (Get-RepoRoot) '.buildlog\locks'
+    }
+    if (-not (Test-Path -LiteralPath $dir)) {
+        New-Item -ItemType Directory -Force -Path $dir | Out-Null
+    }
+    return $dir
+}
+
 function Acquire-ResourceLock {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)][string]$ResourceName,
         [int]$TimeoutSeconds = 10,
-        [int]$LockTtlSeconds = 1800
+        [int]$LockTtlSeconds = 1800,
+        [switch]$Global
     )
 
-    $repoRoot = Get-RepoRoot
-    $lockDir = Join-Path $repoRoot '.buildlog\locks'
-    if (-not (Test-Path -LiteralPath $lockDir)) {
-        New-Item -ItemType Directory -Force -Path $lockDir | Out-Null
-    }
-
+    $lockDir = Get-LockDirectory -Global:$Global
     $lockFile = Join-Path $lockDir "$ResourceName.lock"
     $sessionId = Get-TodorbitSessionId
     $watch = [Diagnostics.Stopwatch]::StartNew()
@@ -55,7 +63,7 @@ function Acquire-ResourceLock {
                     Write-Verbose "Reclaiming stale lock on $ResourceName (PID: $lockPid dead=$(-not $procRunning), age=$([int]$ageSeconds)s)"
                     Remove-Item -LiteralPath $lockFile -Force -ErrorAction SilentlyContinue
                 } else {
-                    Start-Sleep -Milliseconds 500
+                    Start-Sleep -Milliseconds 250
                     continue
                 }
             } catch {
@@ -72,6 +80,8 @@ function Acquire-ResourceLock {
                 PID = $PID
                 Timestamp = (Get-Date -Format 'o')
                 User = $env:USERNAME
+                Worktree = (Get-RepoRoot)
+                Global = [bool]$Global
             } | ConvertTo-Json -Depth 3
 
             # Create file with exclusive write
@@ -87,9 +97,10 @@ function Acquire-ResourceLock {
                 Resource = $ResourceName
                 LockFile = $lockFile
                 SessionId = $sessionId
+                Global = [bool]$Global
             }
         } catch {
-            Start-Sleep -Milliseconds 500
+            Start-Sleep -Milliseconds 250
         }
     }
 
@@ -97,6 +108,7 @@ function Acquire-ResourceLock {
         Acquired = $false
         Resource = $ResourceName
         LockFile = $lockFile
+        Global = [bool]$Global
         Error = "Timed out after $TimeoutSeconds seconds waiting for lock on $ResourceName."
     }
 }
@@ -104,10 +116,11 @@ function Acquire-ResourceLock {
 function Release-ResourceLock {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory=$true)][string]$ResourceName
+        [Parameter(Mandatory=$true)][string]$ResourceName,
+        [switch]$Global
     )
-    $repoRoot = Get-RepoRoot
-    $lockFile = Join-Path $repoRoot ".buildlog\locks\$ResourceName.lock"
+    $lockDir = Get-LockDirectory -Global:$Global
+    $lockFile = Join-Path $lockDir "$ResourceName.lock"
     if (Test-Path -LiteralPath $lockFile) {
         try {
             $content = Get-Content -LiteralPath $lockFile -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json
@@ -124,10 +137,11 @@ function Release-ResourceLock {
 function Test-ResourceLock {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory=$true)][string]$ResourceName
+        [Parameter(Mandatory=$true)][string]$ResourceName,
+        [switch]$Global
     )
-    $repoRoot = Get-RepoRoot
-    $lockFile = Join-Path $repoRoot ".buildlog\locks\$ResourceName.lock"
+    $lockDir = Get-LockDirectory -Global:$Global
+    $lockFile = Join-Path $lockDir "$ResourceName.lock"
     if (Test-Path -LiteralPath $lockFile) {
         try {
             $content = Get-Content -LiteralPath $lockFile -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json
@@ -137,11 +151,32 @@ function Test-ResourceLock {
                     OwnerPID = $content.PID
                     SessionId = $content.SessionId
                     Timestamp = $content.Timestamp
+                    Worktree = $content.Worktree
+                    Global = [bool]$Global
                 }
             }
         } catch {}
     }
     return [pscustomobject]@{ IsLocked = $false }
+}
+
+function Get-HostResourceStatus {
+    [CmdletBinding()]
+    param()
+
+    $os = Get-CimInstance -ClassName Win32_OperatingSystem
+    $totalRamMB = [math]::Round($os.TotalVisibleMemorySize / 1024, 0)
+    $freeRamMB = [math]::Round($os.FreePhysicalMemory / 1024, 0)
+    $isLowMemory = ($freeRamMB -lt 1500)
+    $concurrencyLimit = if ($isLowMemory) { 1 } else { [math]::Min(4, [Environment]::ProcessorCount) }
+
+    return [pscustomobject]@{
+        TotalRamMB = $totalRamMB
+        FreeRamMB = $freeRamMB
+        IsLowMemory = $isLowMemory
+        RecommendedConcurrency = $concurrencyLimit
+        ProcessorCount = [Environment]::ProcessorCount
+    }
 }
 
 function Invoke-SafeCleanup {
@@ -291,4 +326,4 @@ function Invoke-SafeCleanup {
     return $report
 }
 
-Export-ModuleMember -Function Get-TodorbitSessionId, Acquire-ResourceLock, Release-ResourceLock, Test-ResourceLock, Invoke-SafeCleanup
+Export-ModuleMember -Function Get-TodorbitSessionId, Acquire-ResourceLock, Release-ResourceLock, Test-ResourceLock, Get-HostResourceStatus, Invoke-SafeCleanup, Get-RepoRoot, Get-LockDirectory

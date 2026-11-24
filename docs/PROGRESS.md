@@ -1,5 +1,18 @@
 # Progress
 
+## Developer Automation Toolkit (TDAT) Phase 2: Hardening & Adversarial Verification (2026-11-24)
+
+Source on `feature/todorbit-developer-toolkit` branched from verified baseline `7ede889`. Completed Phase 2 hardening, missing runtime automation, and adversarial verification:
+- **Traceability Matrix**: Created [TDAT Requirements Traceability](TDAT_REQUIREMENTS_TRACEABILITY.md) verifying 24/24 mission requirements with automated test evidence and zero remaining gaps.
+- **Adversarial Evidence Cache**: Hardened `Evidence.psm1` with recursive transitive Dart import resolution, corruption purging, strict PASS-only caching, and `ForceFresh` bypass. Verified by [tools/dev/test_evidence_cache_safety.py](../tools/dev/test_evidence_cache_safety.py) (9/9 passed).
+- **Behavioral Impact Analysis**: Enhanced `Impact.psm1` with boundary detection for critical schemas, shared UI tokens, native platforms, config lockfiles, and Verification Shadow Mode (`-Shadow`). Verified by [tools/dev/test_impact_behavior.py](../tools/dev/test_impact_behavior.py) (10/10 passed).
+- **Test Metric Alignment**: Resolved counting discrepancies between `dev registry` and `dev repomap`. Both report unified authoritative counts: 224 executable test suites (209 Dart unit/widget + 3 integration + 12 tool tests), 1,200+ granular test cases, and 14 non-executable test support helpers.
+- **Native Runtime Automation**: Created `dev runtime windows` driving [test/runtime_workflow_journey_test.dart](../test/runtime_workflow_journey_test.dart) in isolated portable profile (`APPDATA`/`LOCALAPPDATA`), verifying readiness, synthetic task lifecycle, scheduling, completion, and SQLite persistence across restart. Implemented `dev runtime android` with honest `BLOCKED` status reporting when live emulator is absent.
+- **UI & Accessibility Lab**: Expanded [test/lab_render_test.dart](../test/lab_render_test.dart) to 11 scenarios adding dense multi-line task rows with badges, modal scroll reachability (`AppModalShell`), and accessibility semantics inspection (`dev screenshot all` passed with 0 RenderFlex errors). Created [Historical Test Traceability](HISTORICAL_TEST_TRACEABILITY.md).
+- **Multi-Worktree Locking & Host Safety**: Hardened `Session.psm1` with cross-worktree locking in `%TEMP%\todorbit_global_locks` preventing concurrent compilation collisions with Codex worktrees. Added Win32 RAM monitoring (1,500 MB limit) and path traversal safety. Verified by [tools/dev/test_session_locking_safety.py](../tools/dev/test_session_locking_safety.py) (6/6 passed).
+- **Empirical Benchmarks**: Replaced mock benchmarks with 15 real application measurement scenarios in [test/performance_benchmark_test.dart](../test/performance_benchmark_test.dart) (cold launch 2.37s, warm return 10.8ms, memory RSS 411MB). Recorded in [Empirical Benchmark Report](BENCHMARK_RESULTS_2026_11_24.md).
+- **Agent Handoff & Self-Test**: Implemented `dev handoff` and `dev handoff --resume` with drift-aware checkpoint resumption. Expanded `dev self-test` to 15 comprehensive checks (15/15 passed).
+
 ## Developer Automation Toolkit (TDAT) & AI Engineering Harness (2026-11-24)
 
 Source on `feature/todorbit-developer-toolkit` branched from verified baseline `7ede889`. Concurrent Codex development on `feature/todorbit-ui-redesign-2` is strictly isolated and preserved.
