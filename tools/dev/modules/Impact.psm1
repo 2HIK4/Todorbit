@@ -39,16 +39,22 @@ function Get-ChangedRepositoryFiles {
     if (-not $targetBaseline) {
         # When working tree has no uncommitted changes, auto-detect base branch/merge-base
         if ($changed.Count -eq 0) {
-            $upstream = (& git rev-parse --abbrev-ref '@{u}' 2>$null)
-            if ($upstream -and $LASTEXITCODE -eq 0) {
-                $targetBaseline = $upstream.Trim()
-            } else {
+            try {
+                $upstream = (& git rev-parse --abbrev-ref '@{u}' 2>$null)
+                if ($upstream -and $LASTEXITCODE -eq 0) {
+                    $targetBaseline = $upstream.Trim()
+                }
+            } catch {}
+
+            if (-not $targetBaseline) {
                 foreach ($candidate in @('feature/todorbit-ui-redesign-2', 'origin/main', 'main')) {
-                    $mb = (& git merge-base HEAD $candidate 2>$null)
-                    if ($mb -and $LASTEXITCODE -eq 0) {
-                        $targetBaseline = $mb.Trim()
-                        break
-                    }
+                    try {
+                        $mb = (& git merge-base HEAD $candidate 2>$null)
+                        if ($mb -and $LASTEXITCODE -eq 0) {
+                            $targetBaseline = $mb.Trim()
+                            break
+                        }
+                    } catch {}
                 }
             }
         }
