@@ -1,5 +1,13 @@
 # Progress
 
+## Developer Automation Toolkit (TDAT) Final Safety Gate (2026-11-25)
+
+Source on `feature/todorbit-developer-toolkit` (checkpoint from `93dc02e`). Completed final safety hardening, CI enforcement, and fresh-agent evaluation:
+- **Conservative Impact Analysis & Real Shadow Mode**: Updated `tools/dev/modules/Impact.psm1` to handle committed, staged, unstaged, deleted, renamed, and untracked changes (`-uall`), trace reverse transitive Dart imports, expand unmapped/core fallbacks across sync/security/backup/platform/UI, avoid scheduling deleted test files, and execute real omitted shadow suites (`dev verify changed -Shadow`) with rule-gap suggestions in `.buildlog/shadow/rule-gaps.json`.
+- **Evidence Cache End-to-End Integration**: Wired `dev verify changed` in `tools/dev/dev.ps1` and `tools/dev/verify.ps1` to save passing Dart receipts, enforce `PreRunFingerprint` mid-execution mutation rejection, include environment/config/arguments hashes, keep `Get-VerificationConfigHash` stable across `dev registry --refresh`, and enforce `Ineligible` rules inside `Registry.psm1` and `Evidence.psm1`.
+- **Runtime Classification & Live Windows Driver**: Separated Flutter test-harness SQLite persistence (`dev runtime windows`) from real Windows `Todorbit.exe` process launch, UI interaction, and restart (`test_driver/windows_runtime_workflow_test.dart`, `dev runtime windows -LiveApp`); local `-BuildLiveApp` reports `BLOCKED` cleanly when Windows Developer Mode is disabled (`Building with plugins requires symlink support`), and `dev runtime android` resolves `adb.exe` and reports `BLOCKED` without a 16 KiB emulator and candidate APK.
+- **CI Enforcement & Documentation Corrections**: Added `tools/test_registry_sync.py` to `.github/workflows/ci.yml` (alongside `test_process_invocation_safety.py`) and TDAT safety suites to `.github/workflows/windows-ci.yml`; corrected overclaimed statements on leak proof, visual diffing, accessibility, and Windows native runtime in `docs/TDAT_REQUIREMENTS_TRACEABILITY.md`, `docs/BENCHMARK_RESULTS_2026_11_24.md`, and `docs/HISTORICAL_TEST_TRACEABILITY.md`.
+
 ## Developer Automation Toolkit (TDAT) Phase 2: Hardening & Adversarial Verification (2026-11-24)
 
 Source on `feature/todorbit-developer-toolkit` branched from verified baseline `7ede889`. Completed Phase 2 hardening, missing runtime automation, and adversarial verification:

@@ -54,12 +54,12 @@ Install Flutter with Windows desktop support, Visual Studio C++ desktop tools, a
 
 ```powershell
 flutter pub get
-flutter analyze
-flutter test
+.\dev doctor
+.\dev verify full
 ./tools/build-windows-release.ps1
 ```
 
-The Release bundle is `build\windows\x64\runner\Release`. See [Development](docs/DEVELOPMENT.md) for toolchain/profile setup, [Architecture](docs/ARCHITECTURE.md) for subsystem locations, and [Testing](docs/TESTING.md) for focused checks during development. The commands above are a full source-build baseline.
+The Release bundle is `build\windows\x64\runner\Release`. Todorbit uses the **Todorbit Developer Automation Toolkit (`dev` / `tools/dev/dev.ps1`)** for environment diagnostics (`dev doctor`), AI feature context packs (`dev context <feature>`), conservative impact-driven checks (`dev verify changed`), test registry validation (`dev registry --validate`), and isolated layout/runtime verification. See [Developer Automation Toolkit](docs/DEVELOPER_AUTOMATION_TOOLKIT.md), [Development](docs/DEVELOPMENT.md) for toolchain/profile setup, [Architecture](docs/ARCHITECTURE.md) for subsystem locations, and [Testing](docs/TESTING.md) for focused checks during development.
 
 If a moved portable copy looks empty, check Settings > Data profile and reopen the original extracted path or import its verified backup. Keep the full application bundle together. See [installation troubleshooting](docs/INSTALLATION.md) for recovery steps.
 

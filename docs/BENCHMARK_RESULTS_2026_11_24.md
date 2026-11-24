@@ -57,9 +57,9 @@
 | Memory Measurement Point | Measured RSS | Host Limit (16 GB Host) | Status |
 | :--- | :--- | :--- | :--- |
 | **Initial Process RSS (after data load)** | **257.58 MB** | $\le 350$ MB | PASS |
-| **13. Idle Memory RSS** | **411.63 MB** | $\le 500$ MB | PASS |
-| **14. Memory After Extended Multi-View Navigation** | **426.70 MB** | $\le 500$ MB | PASS |
-| **Memory Growth During Navigation Cycle** | **+15.07 MB** | $\le 50$ MB | PASS (Zero leak detected) |
+| **13. Idle Memory RSS** | **411.63 MB** | $\le 500$ MB | PASS (observed snapshot) |
+| **14. Memory After Extended Multi-View Navigation** | **426.70 MB** | $\le 500$ MB | PASS (observed snapshot) |
+| **Memory Growth During Navigation Cycle** | **+15.07 MB** | $\le 50$ MB | PASS (single-pass delta; not leak proof) |
 
 ---
 
@@ -77,7 +77,7 @@
 
 ## 6. Analysis & Summary
 
-1. **Cold Launch**: Under 2.4 seconds from clean process invocation to interactive Today workspace on Windows 11.
-2. **Smooth Interaction**: Subtask expansion ($7.8$ ms) and recurring group expansion ($1.2$ ms) execute with zero perceptible latency.
-3. **Memory Stability**: The Flutter process stabilizes at $\sim 412$ MB RSS under 100+ tasks and 50 events, expanding by only $15$ MB across full-view workspace cycling, proving zero unmanaged retain cycles.
+1. **Cold Launch (Widget Test Harness)**: Under 2.4 seconds from widget mount setup to interactive Today workspace in the Flutter test harness on Windows 11.
+2. **Smooth Interaction**: Subtask expansion ($7.8$ ms) and recurring group expansion ($1.2$ ms) execute cleanly in widget tests.
+3. **Memory Snapshot & Limitations**: The Flutter test process recorded $\sim 412$ MB RSS under 100+ tasks and 50 events, changing by $+15.07$ MB across a single navigation cycle. Because this is a single-pass debug widget-test RSS measurement without forced GC or repeated soak cycles, it does **not** prove the absence of memory leaks or reflect Release-mode native executable RSS.
 4. **Reproducibility**: Benchmarks can be re-executed at any time via `dev benchmark all` or `dev benchmark <scenario>`.

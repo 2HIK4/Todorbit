@@ -1,5 +1,15 @@
 # AI Review Queue
 
+## TDAT-SAFETY-GATE-01 — TDAT Final Safety Gate, CI Enforcement, and Runtime Reclassification (2026-11-25)
+
+- **Scope & Addressed Requirements**:
+  - Hardened `Impact.psm1` (committed/staged/unstaged/deleted/renamed/untracked handling, reverse Dart dependency graph, broad conservative fallback, real `-Execute` shadow verification + rule-gap logging).
+  - Hardened `Evidence.psm1`, `Registry.psm1`, `verify.ps1`, and `dev.ps1` so `dev verify changed` saves/reuses passing receipts, rejects mid-execution source mutations, preserves `Ineligible` status across `dev registry --refresh`, and routes Python checks separately from `flutter test`.
+  - Fixed `Doctor.psm1` bare `flutter`/`dart` calls, added `ANDROID_HOME\platform-tools` to PATH, added Windows Developer Mode check, and completed `time-tracking` in `feature_contexts.json` (23/23 features).
+  - Reclassified `dev runtime windows` honestly as Flutter test-harness SQLite persistence, added `test_driver/windows_runtime_workflow_test.dart` for `-LiveApp` two-process UI restart, and verified `BLOCKED` reporting for disabled Developer Mode and missing Android 16 KiB emulator/APK.
+  - Enforced `tools/test_registry_sync.py` and `tools/test_process_invocation_safety.py` in `.github/workflows/ci.yml`, plus full TDAT safety suites in `.github/workflows/windows-ci.yml`.
+- **Status**: Implemented and locally verified on `feature/todorbit-developer-toolkit`; queued for Codex review.
+
 ## UI-SETTINGS-UPDATE-SYNC-03 — Settings Hub, Software Updates, and Sync Progressive Disclosure (2026-11-20)
 
 - **Scope & Addressed Requirements**:

@@ -70,13 +70,14 @@ Do not load all documentation into context. Activate only the reference matching
   - **Rule**: When adding shared capabilities, explicitly identify both platform entry points and record parity or intentional mobile exclusions.
 
 ### 3. Developer Tooling & Verification Policy
-- Before executing any verification, consult `docs/TEST_RUN_LEDGER.md` and `docs/TESTING.md`.
+- Before executing any verification, consult `docs/TEST_RUN_LEDGER.md` and `docs/TESTING.md`, and prefer TDAT (`.\dev doctor`, `.\dev context <feature>`, `.\dev impact`, `.\dev verify changed`).
+- Whenever adding, moving, or deleting tests or feature source paths, update `tools/dev/features.json` and `tools/dev/feature_contexts.json`, then run `.\dev registry --refresh` and `.\dev registry --validate` (enforced by CI via `tools/test_registry_sync.py`).
 - Choose the smallest risk-based check:
   - **Quick**: Text/layout edits -> relevant analysis / single widget test.
   - **Feature**: Functional edits -> targeted feature test suite (preview via `tools/dev/verify.ps1 -Feature <name> -Mode Feature -Plan`).
-  - **Critical**: Schema, persistence, sync, alarms, encryption -> isolation fixtures, migration roundtrips, atomic CAS CAS checks.
+  - **Critical**: Schema, persistence, sync, alarms, encryption -> isolation fixtures, migration roundtrips, atomic CAS checks.
   - **Release**: Packaging, Inno Setup, APK alignment, signed update manifests.
-- **No Test Invention**: Never claim tests passed if they were not run or were skipped. Record historical reuse accurately by referencing commit SHA and receipt.
+- **No Test Invention & Honest Runtime Classification**: Never claim tests passed if they were not run or were skipped. Distinguish Flutter test-harness SQLite checks (`dev runtime windows`) from real `Todorbit.exe` process launch/UI/restart (`dev runtime windows -LiveApp`) and real Android 16 KiB emulator checks (`dev runtime android`). Record historical reuse accurately by referencing commit SHA and receipt.
 
 ### 4. Domain Invariant Protection & Test Expectation Integrity
 - **Identify Domain Invariants First**: Before writing or altering code, identify the inviolable domain invariants (e.g. event duration invariance under a move gesture, task deadline independence from scheduled date).

@@ -1,5 +1,17 @@
 # Persistent test run ledger
 
+## TDAT Final Safety Gate Verification (2026-11-25)
+
+Branch `feature/todorbit-developer-toolkit` (from `93dc02e`), Flutter 3.47.7, Dart 3.13.5, Windows 11 x64.
+
+| Invocation / purpose | Source / artifact | Result | Notes / limits |
+| --- | --- | --- | --- |
+| `dev self-test` (16 checks: doctor, registry, locks, cleanup, process safety, context, repomap, fixture, package, impact, benchmark, evidence safety 14, impact behavior 15, locking safety 6, handoff, registry sync 3) | `tools/dev/test_toolkit_self.ps1` | Passed (16/16) | Fresh run after TDAT module edits |
+| `dev runtime windows` | `test/startup_recovery_journeys_test.dart`, `test/resource_journeys_test.dart`, `test/runtime_workflow_journey_test.dart` | Passed (55.53s) | Flutter test-harness SQLite persistence in isolated `.buildlog` profile; NOT live `Todorbit.exe` UI/restart |
+| `dev runtime windows -LiveApp -BuildLiveApp` | `test_driver/windows_runtime_workflow_test.dart` | Blocked | Host Windows Developer Mode disabled (`Building with plugins requires symlink support`) |
+| `dev runtime android` | `tools/android-16k-runtime.py` | Blocked | Missing authorized 16 KiB emulator (`PAGE_SIZE=16384`), `.buildlog/16k-runtime/candidate.apk`, `APK_SHA256` |
+| `python tools/dev/check-docs.py`, `test_dev_verify.py` (9), `test_ci_workflows.py` (5, 1 bash skip), `test_architecture_boundaries.py` (39) | Working tree | Passed | Cross-platform Python & CI contract checks |
+
 ## UI Redesign 2.0 final integration (2026-11-24)
 
 Initial integrated source `f17b6f8441363b71f9e142f9190059aea223681e`.

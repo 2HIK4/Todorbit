@@ -6,11 +6,12 @@ The **Todorbit Developer Automation Toolkit (TDAT)** and **AI Engineering Harnes
 
 ### Core Objectives:
 - **Token and Context Efficiency:** Eliminate repetitive multi-turn file searches and manual architecture inquiries by generating deterministic AI feature context packs (`dev context <feature>`) and compact topology maps (`dev repomap`).
-- **Conservative Impact Analysis:** Select the minimum sufficient verification scope (`Quick`, `Changed`, `Feature`, `Platform`, `Full`, `Release`) based on actual Git diffs, Dart import dependencies, critical schema gates, and shared UI boundaries.
-- **Evidence-Backed Verification Reuse:** Fast 4-fingerprint caching (source hash, test hash, dependency lockfile, toolchain hash) returns instant `REUSED` receipts on unchanged files, drastically cutting verification time and machine cycles.
-- **Automated Quality & Reliability Labs:** Deterministic synthetic workspace generation (`dev fixture <name>`) and headless offscreen layout verification (`dev screenshot <scenario>`) catch layout overflows and data errors before release.
+- **Conservative Impact Analysis & Shadow Mode:** Select the minimum sufficient verification scope (`Quick`, `Changed`, `Feature`, `Platform`, `Full`, `Release`) based on actual Git diffs (committed, staged, unstaged, deleted, renamed, untracked), reverse transitive Dart imports, critical schema/security gates, shared UI boundaries, and broad unmapped fallbacks, with optional real shadow execution (`dev verify changed -Shadow`).
+- **Evidence-Backed Verification Reuse:** Content-addressed caching (source/transitive imports, test hash, dependency lockfile, toolchain hash, environment, config, arguments) saves passing receipts during `dev verify changed` and rejects mid-execution mutations, registry tampering, and non-cacheable/env-gated checks.
+- **Automated Quality & Reliability Labs:** Deterministic synthetic workspace generation (`dev fixture <name>`) and headless offscreen layout verification (`dev screenshot <scenario>`) catch RenderFlex overflows and data errors (note: `dev screenshot` does not perform automated pixel-diff comparisons).
+- **Honest Runtime Verification:** `dev runtime windows` runs isolated Flutter test-harness SQLite persistence checks; `dev runtime windows -LiveApp -BuildLiveApp` runs real `Todorbit.exe` process launch, `FlutterDriver` UI interaction, and process restart; `dev runtime android` enforces 16 KiB emulator and candidate APK checks or reports `BLOCKED`.
 - **Process Invocation Safety:** Strictly non-interactive process execution with explicit `.bat` and `.exe` resolution, preventing Windows OpenWith dialog triggers and hanging processes.
-- **Repository Isolation:** Concurrently protect isolated worktrees (such as Codex release preparation on `feature/todorbit-ui-redesign-2`) from conflicting background processes and unauthorized changes.
+- **Repository Isolation:** Concurrently protect isolated worktrees (such as Codex release/refinement branches) from conflicting background processes and unauthorized changes.
 
 ---
 
@@ -69,11 +70,12 @@ dev self-test
 | `dev repomap` | `[--json]` | Generates compact repository topology map and layer summary without vector indexing or hallucinations. |
 | `dev impact` | `[--json]` | Inspects staged/unstaged changes, resolves dependencies, and computes conservative test selection. |
 | `dev verify` | `quick -ChangedPaths .. -Tests ..` | Executes fast Level 1 verification on explicitly specified files. |
-| `dev verify` | `changed` | Automatically detects changes, analyzes impact, reuses valid evidence, and runs required checks. |
+| `dev verify` | `changed [-Shadow]` | Automatically detects changes, analyzes impact, reuses/saves valid evidence, runs required checks, and optionally executes omitted shadow suites. |
 | `dev verify` | `feature <name>` | Runs all automated tests mapped to the named feature in `features.json`. |
 | `dev verify` | `platform <Windows\|Android\|All>` | Runs platform-scoped checks and platform channel verification. |
 | `dev verify` | `full` | Executes full repository verification (analyze, unit/widget suites, architecture boundaries, docs). |
 | `dev verify` | `release` | Runs mandatory release acceptance checks (Levels 1-4). |
+| `dev runtime` | `<windows\|android> [-LiveApp] [-BuildLiveApp]` | Runs isolated test-harness SQLite checks (`windows`), live `Todorbit.exe` UI/restart (`-LiveApp`), or Android 16 KiB acceptance (`BLOCKED` if prerequisites missing). |
 | `dev fixture` | `<name> [--json]` | Generates deterministic synthetic SQLite database (`empty`, `small`, `typical`, `large`, `calendar-stress`, `sync-conflict`, `migration`). |
 | `dev screenshot`| `<scenario> [--json]` | Renders headless offscreen Flutter viewports, verifies zero RenderFlex overflows, and exports PNG screenshots. |
 | `dev package` | `[Windows\|Android\|All] [--json]`| Audits release artifacts: 64-bit x64 PE headers, CRT DLL imports, Inno Setup script, and Android 16 KiB ELF alignment. |
@@ -81,8 +83,8 @@ dev self-test
 | `dev reproduce`| `<failure-id>` | Outputs self-contained command to reproduce a recorded failure. |
 | `dev benchmark`| `<startup\|calendar\|search\|toolkit\|all>` | Measures cold/warm startup, memory consumption, calendar render latency, or toolkit hashing efficiency. |
 | `dev cleanup` | `[--dry-run] [--force]` | Cleans old logs, ephemeral test profiles, and lock files with path-traversal and junction protection. |
-| `dev registry`| `[--validate\|--refresh]` | Indexes repository tests into `registry.json` and verifies consistency. |
-| `dev self-test`| | Runs comprehensive 11-point toolkit self-test suite. |
+| `dev registry`| `[--validate\|--refresh]` | Indexes repository tests into `registry.json` and enforces completeness/cache-ineligibility invariants. |
+| `dev self-test`| | Runs comprehensive 16-point toolkit self-test suite. |
 
 ---
 
