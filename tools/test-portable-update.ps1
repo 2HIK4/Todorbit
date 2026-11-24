@@ -1,4 +1,4 @@
-param([string]$Package = '', [switch]$ExpectFailure)
+param([string]$Package = '', [switch]$ExpectFailure, [string]$PreviousPackage = '')
 
 $ErrorActionPreference = 'Stop'
 $versionText = Get-Content -Raw 'pubspec.yaml'
@@ -9,6 +9,8 @@ $version = $Matches[1]
 $packageVersion = ($version -split '-')[0]
 if (-not $Package) { $Package = "release\Todorbit-$packageVersion-win-x64-portable.zip" }
 $zip = (Resolve-Path -LiteralPath $Package).Path
+$previousZip = $zip
+if ($PreviousPackage) { $previousZip = (Resolve-Path -LiteralPath $PreviousPackage).Path }
 $script = (Resolve-Path -LiteralPath 'tools\update-helper.ps1').Path
 $root = Join-Path $env:TEMP ('todorbit-portable-update-' + [guid]::NewGuid().ToString('N'))
 $roaming = Join-Path $root 'Roaming'
@@ -34,10 +36,15 @@ function Start-Isolated([string]$file, [string]$arguments) {
 }
 
 try {
-  Expand-Archive -LiteralPath $zip -DestinationPath $initial
+  Expand-Archive -LiteralPath $previousZip -DestinationPath $initial
   Expand-Archive -LiteralPath $zip -DestinationPath $next
   $target = Join-Path $initial 'Todorbit'
   $stage = Join-Path $initial 'Staged-Todorbit'
+  foreach ($bundle in @($target, (Join-Path $next 'Todorbit'))) {
+    if (-not (Test-Path -LiteralPath (Join-Path $bundle 'PORTABLE-MODE') -PathType Leaf)) {
+      throw 'The update test requires portable bundles.'
+    }
+  }
   $safeRoot = [IO.Path]::GetFullPath($root).TrimEnd('\') + '\'
   foreach ($movePath in @((Join-Path $next 'Todorbit'), $stage)) {
     if (-not [IO.Path]::GetFullPath($movePath).StartsWith(
@@ -55,7 +62,11 @@ try {
   $profile = Join-Path $roaming "TodoPilot\portable-$suffix"
   New-Item -ItemType Directory -Path $profile -Force | Out-Null
   $settings = Join-Path $profile 'widget-settings.json'
-  Set-Content -LiteralPath $settings -Value '{"launchAtSignIn":false}'
+  # A launch-at-sign-in preference makes the Release app write HKCU on startup.
+  # Keep this fixture local to disk even when running in a regular session.
+  $updateSettings = Join-Path $profile 'update-settings.json'
+  Set-Content -LiteralPath $updateSettings -Value '{"version":1,"automaticChecks":false,"channel":"stable"}'
+  $updateSettingsHash = (Get-FileHash -LiteralPath $updateSettings -Algorithm SHA256).Hash
   $widgetConfigurations = @('tasks', 'calendar') | ForEach-Object {
     $path = Join-Path $profile "widget-$_-configuration.json"
     Set-Content -LiteralPath $path -Value '{"version":1,"enabled":true,"layoutLocked":true,"surfaces":{"shell":{"opacity":65}},"navigationOrder":["upcoming","today","all","inbox"]}'
@@ -123,6 +134,11 @@ db.close()
     throw 'The disposable widget did not accept the exit command.'
   }
   $widget.Dispose()
+  if (Test-Path -LiteralPath $settings) {
+    $widgetSettings = Get-Content -LiteralPath $settings -Raw | ConvertFrom-Json
+    $widgetSettings.PSObject.Properties.Remove('launchAtSignIn')
+    $widgetSettings | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $settings
+  }
   [void]$app.CloseMainWindow()
   if (-not $app.WaitForExit(15000)) { throw 'Disposable main app did not close.' }
   if (-not $helper.WaitForExit(120000)) { throw 'Helper did not finish.' }
@@ -135,8 +151,7 @@ db.close()
       $receipt -notmatch ('Update installed: ' + [regex]::Escape($version))) {
     throw "Helper did not record a successful update: $receipt"
   }
-  $widgetSettings = Get-Content -LiteralPath $settings -Raw | ConvertFrom-Json
-  if ($widgetSettings.launchAtSignIn -ne $false -or
+  if ((Get-FileHash -LiteralPath $updateSettings -Algorithm SHA256).Hash -ne $updateSettingsHash -or
       (Get-FileHash -LiteralPath $sentinel -Algorithm SHA256).Hash -ne $sentinelHash -or
       -not (Test-Path -LiteralPath $database)) {
     throw 'The disposable profile changed or disappeared.'

@@ -33,6 +33,13 @@ release reason, not an ordinary UI edit. Record unexecuted Level 3 and Level 4 g
 [Deferred verification](DEFERRED_VERIFICATION.md). Diagnose a failed environment before
 retrying it; change one relevant condition or collect new diagnostic evidence.
 
+### Signed Android update and preference verification
+
+The official API 36 16 KiB artifact gate uses the signed x64 candidate and
+previous published APK. Its disposable profile exercises task persistence
+and the Calendar Month preference across the in-place update. Supply asset
+IDs and expected SHA-256 values to the workflow.
+
 ### Profile Calendar and capture the workspace
 
 Build a test binary with `flutter build windows --profile --no-pub --target test_driver/driver_main.dart`.
@@ -147,6 +154,15 @@ scoped workflow-file push bootstrap uses the explicit `[16k-runtime]` commit
 marker. Draft-asset retrieval requires push visibility; the job has no signing
 keys and makes no repository/release write calls. Keep candidate-source CI
 evidence distinct from these test-harness commits.
+
+After publication, the opt-in test `test/published_update_discovery_test.dart`
+queries anonymous GitHub endpoints through both production updater services.
+It checks Windows setup and portable, Android ARM64 and x64, and Stable
+exclusion. Pass `--dart-define=TODORBIT_RELEASE_TAG=<tag>`,
+`--dart-define=TODORBIT_RELEASE_CODE=<code>`,
+`--dart-define=TODORBIT_PREVIOUS_VERSION=<version>` and
+`--dart-define=TODORBIT_PREVIOUS_CODE=<code>` to `flutter test --no-pub`.
+The test reads public metadata only and skips by default.
 
 | Change | Focused checks and constraints |
 | --- | --- |
@@ -298,6 +314,10 @@ Release binaries/packages):
 Replace `X.Y.Z` with the candidate version. Installer execution belongs in a
 disposable Windows user/VM, not the owner's normal account. Redirecting APPDATA
 alone does not isolate Windows Credential Manager or installer registration.
+For a cross-version portable upgrade, pass the previous published ZIP as
+`-PreviousPackage` after independently verifying its public SHA-256. The
+harness stages the candidate and checks task, SQLite and widget settings
+retention using redirected application data on both sides of the swap.
 
 ## Continuous integration and GitHub Actions
 

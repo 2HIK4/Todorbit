@@ -1,12 +1,55 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:life_manager/app/app_controller.dart';
+import 'package:life_manager/data/app_database.dart';
 import 'package:life_manager/data/appearance_preference_store.dart';
+import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/domain/appearance.dart';
+import 'package:life_manager/features/settings/theme_dialog.dart';
 
 void main() {
+  testWidgets(
+    'palette reset selects Silver and preserves density and presets',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      final controller = AppController(LifeRepository(database));
+      final savedPalette = ThemePalette.graphiteViolet;
+      await controller.saveCustomization(
+        ThemeCustomization(
+          light: ThemePalette.ocean,
+          dark: savedPalette,
+          compact: true,
+          presets: {'Saved violet': savedPalette},
+        ),
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appControllerProvider.overrideWith((ref) => controller)],
+          child: const MaterialApp(home: Scaffold(body: ThemeDialog())),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Reset both palettes'));
+      await tester.pumpAndSettle();
+      expect(controller.customization.dark, savedPalette);
+      await tester.tap(find.text('Save changes'));
+      await tester.pumpAndSettle();
+      final applied = controller.customization;
+      expect(applied.light, ThemePalette.light);
+      expect(applied.dark, ThemePalette.graphiteSilver);
+      expect(applied.compact, isTrue);
+      expect(applied.presets['Saved violet'], savedPalette);
+    },
+  );
+
   test('separate palettes and theme mode survive restart', () async {
     final directory = await Directory.systemTemp.createTemp('todopilot-theme-');
     addTearDown(() => directory.delete(recursive: true));

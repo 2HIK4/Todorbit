@@ -39,6 +39,7 @@
 - Calendar performance fixes need comparable Profile or Release traces using the same isolated populated fixture. Report UI and raster timings separately and preserve recurrence window, gesture and write contracts.
 - Native painting, shell attachment, input, DPI or menu changes require native Release/self-test plus the relevant [manual widget checklist](docs/windows-widget.md). Automated tests do not prove physical Windows behavior; report unobserved behavior accurately.
 - Review diffs and run `git diff --check`. Do not commit builds, caches, secrets, credentials or machine-specific settings.
+- Reuse the existing maintainer-approved Android signer for updates. Verify the certificate against the prior published APK, and run the official 16 KiB gate on the actual candidate with synthetic data and preferences.
 - Do not publish a release unless explicitly requested. Preserve version synchronization, CI, installer, updater and checksum gates in [release preparation](docs/RELEASE.md). Documentation-only work needs no version bump or package rebuild.
 
 ## Skills and documentation routing

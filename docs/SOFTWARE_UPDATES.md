@@ -1,9 +1,9 @@
 # Windows software updates
 
-> Current release navigation (2026-10-28): [v1.0.18 publication](TODORBIT_1_0_18_PUBLICATION.md)
-> records the latest published candidate and verification limits. Earlier dated
-> release status below is historical. [Release](RELEASE.md) owns the current
-> preparation sequence; no historical receipt authorizes future publication.
+> [Beta 28](TODORBIT_BETA_28_CANDIDATE.md) records the current Experimental
+> prerelease, installed and portable discovery, and upgrade verification limits.
+> [Release](RELEASE.md) owns the current preparation sequence. The earlier dated
+> results below apply to their recorded packages.
 
 > **2026-10-26 release update:** enabled v1.0.13 is now published as an
 > owner-approved **experimental pre-release**, merged to main with website

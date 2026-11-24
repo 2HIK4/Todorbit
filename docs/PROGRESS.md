@@ -1,5 +1,15 @@
 # Progress
 
+## Beta 28 experimental publication
+
+Build 51 is published as an Experimental Windows x64 and Android update on
+Schema 29. Graphite Neutral Silver is the default dark palette. Saved palettes
+and density keep their values. The
+[Beta 28 verification record](TODORBIT_BETA_28_CANDIDATE.md) links the release,
+exact-source CI and both upgrade receipts, and tracks outstanding physical
+and registered-install acceptance. The release commit remains on
+`feature/todorbit-beta27-refinement`.
+
 ## Beta 27 independent polish and Calendar rendering (2026-11-24)
 
 The [independent review](BETA_27_POLISH_CRITIQUE.md) and

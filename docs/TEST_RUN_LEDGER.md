@@ -1,5 +1,21 @@
 # Persistent test run ledger
 
+## Beta 28 release candidate
+
+Exact candidate `21bae9a3407d6e23b82408f36a6e75b286187d64`, Flutter 3.47.7.
+The [candidate receipt](TODORBIT_BETA_28_CANDIDATE.md) links exact Windows CI
+(1,243 Flutter passes and nine skips), exact Android CI (76 Flutter, 14
+packaging and two API 35 emulator passes), and both production distributions.
+Nine local appearance tests passed, including the follow-up widget reset
+assertion. Analyzer passed on the two follow-up Dart test files. The official
+API 36 16 KiB signed build 50 → 51 upgrade retained a synthetic task and the
+selected Calendar mode. The three APKs match Beta 27's signing certificate.
+The isolated Windows portable handoff kept the seeded task, application
+preferences and widget configuration and passed SQLite integrity. The live
+publication smoke passed both Experimental discovery and Stable exclusion
+on Windows and Android. Eleven anonymous assets matched the
+[publication manifest](TODORBIT_BETA_28_PUBLICATION_ASSETS.json).
+
 ## Beta 27 independent polish (2026-11-24)
 
 Baseline `05ada82` and pinned Flutter 3.47.7. The

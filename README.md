@@ -27,20 +27,34 @@ Settings keeps Sync status and queued changes alongside the last successful
 sync. Backups provide point-in-time recovery. Windows and Android native
 widgets use the selected palette when available.
 
-## Desktop refinement in development
+## Desktop refinement
 
 The [Beta 27 refinement receipt](docs/BETA_27_REFINEMENT.md) records the desktop
 task-list layout, graphite appearance, and isolated Calendar comparison.
 The [follow-up polish](docs/BETA_27_POLISH_IMPLEMENTATION.md) adds dark palette
-choices and depth to the Calendar frame measurements.
+choices and depth to the Calendar frame measurements. Beta 28 uses the
+approved Graphite Neutral Silver dark default. Existing saved colors stay
+available through Appearance. See the [Beta 28 notes](docs/TODORBIT_BETA_28_RELEASE_NOTES.md).
 
 ## Android beta installation
 
-The production-signed [Android 1.0.19-beta.12 pre-release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.12) supports Android 8.0+ with a universal ARM64/x86-64 APK, resumable updates, Tasks/Calendar widgets and incremental Sync with Standard or optional private encryption. Download the APK and verify its published SHA-256. Real Drive cross-device acceptance remains unverified. Back up existing data and start with disposable profiles. Before replacing a debug-signed app, verify an external backup and recovery first. See [phone signing and backup testing](docs/ANDROID_BETA_2_PHONE_TESTING.md), [sync setup](docs/GOOGLE_DRIVE_SYNC.md) and [publication evidence and test skips](docs/UI_QUALITY_BETA_12_PUBLICATION.md).
+The production-signed Android Beta 28 supports Android 8.0+ with universal,
+ARM64 and x86-64 APKs. Existing production-signed Beta 27 users can select
+Experimental in Settings → Software Updates. For a manual download, verify
+the published SHA-256. Back up existing data before changing builds. See the
+[Beta 28 downloads](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.28),
+[phone signing and backup testing](docs/ANDROID_BETA_2_PHONE_TESTING.md),
+[sync setup](docs/GOOGLE_DRIVE_SYNC.md) and the
+[Beta 28 verification record](docs/TODORBIT_BETA_28_CANDIDATE.md).
 
 ## Windows installation
 
-Todorbit v1.0.19-beta.12 is a free, MIT-licensed Windows x64 pre-release. Windows 11 is the main development and test platform; Windows 10 acceptance is limited. Download the unsigned installer or portable ZIP from [GitHub Releases](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.12) and compare it with the published SHA-256 checksum. Run the installer or extract the portable ZIP and run `Todorbit.exe`. Keep the full extracted folder together, including `TodorbitWidget.exe`, DLLs, and the `data` folder. Neither package requires Flutter or Visual Studio on the user's computer.
+Todorbit Beta 28 is an Experimental Windows x64 release. Windows 11 is the main
+test platform. Windows 10 acceptance is limited. Download the unsigned installer
+or portable ZIP and compare it with the published SHA-256. Run the installer or
+extract the whole portable ZIP and run `Todorbit.exe`. Keep the executable,
+companion, DLLs and `data` folder together. The packages require neither Flutter
+nor Visual Studio. [Beta 28 downloads](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.28)
 
 The portable ZIP does **not** store data beside the executable. Each extracted portable location uses its own `%APPDATA%\TodoPilot\portable-<location-id>` profile; copying or moving the extracted folder selects a new empty profile. An installer fresh profile uses `%APPDATA%\TodoPilot\life_manager.sqlite`. This legacy path remains stable through the rename. An older `%APPDATA%\Life Manager` database is never selected just because it exists; on first launch Todorbit offers a reviewed, explicit import. Upgrading an installed TodoPilot retains its existing profile and settings. Export/import data through Settings > Backups & Cloud before moving a portable folder, and do not delete either profile folder.
 

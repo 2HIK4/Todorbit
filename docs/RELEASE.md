@@ -2,7 +2,17 @@
 
 ## Current status
 
-The latest published experimental release verified on 2026-11-15 is
+**[v1.0.19-beta.28](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.28)**
+is the Windows x64 and Android experimental prerelease, build 51, Schema 29.
+Its tag points to `21bae9a3407d6e23b82408f36a6e75b286187d64`. See the
+[Beta 28 verification record](TODORBIT_BETA_28_CANDIDATE.md) for exact-source
+CI, package identity, signed 16 KiB and Windows portable upgrades, and the
+remaining manual acceptance steps. Stable and earlier releases retain their
+classification and assets.
+
+## Historical Beta 22 checkpoint
+
+The experimental release verified on 2026-11-15 was
 **[v1.0.19-beta.22](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.22)**,
 version `1.0.19-beta.22+45`, schema29, source/tag `1a5560a5352b928c3800103cc426c3adcb02e340`.
 [Publication receipt](UIUX03_BETA_22_PUBLICATION.md) and

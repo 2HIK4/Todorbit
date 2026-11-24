@@ -1,5 +1,15 @@
 # Deferred Verification Backlog
 
+## Beta 28 experimental acceptance
+
+The [Beta 28 candidate receipt](TODORBIT_BETA_28_CANDIDATE.md) closes the
+automated Windows and Android packaging gates, local portable handoff and
+official API 36 16 KiB signed upgrade for build 51. It lists the exact remaining
+manual steps for a registered Windows upgrade, physical DPI/input and
+accessibility, Android installation UI and OEM behavior, and separately
+authorized two-client Drive testing. Use a separate test installation for
+registered Windows acceptance. The owner's current installation is excluded.
+
 ## Beta 27 polish follow-through (2026-11-24)
 
 The [polish receipt](BETA_27_POLISH_IMPLEMENTATION.md) shows dense-scroll
