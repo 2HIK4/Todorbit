@@ -41,7 +41,10 @@ void main() {
         ProviderScope(
           overrides: [appControllerProvider.overrideWith((ref) => controller)],
           child: MaterialApp(
-            theme: buildAppTheme(Brightness.light, ThemePalette.light),
+            theme: buildAppTheme(
+              Brightness.light,
+              ThemePalette.light,
+            ).copyWith(platform: TargetPlatform.windows),
             builder: (context, child) => MediaQuery(
               data: MediaQuery.of(context)
                   .copyWith(textScaler: const TextScaler.linear(1.5)),

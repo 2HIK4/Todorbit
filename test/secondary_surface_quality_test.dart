@@ -314,8 +314,11 @@ void main() {
           scrollable: find.byType(Scrollable).first,
         );
         await tester.pumpAndSettle();
+        final local = MaterialLocalizations.of(
+          tester.element(find.byType(ReportsView)),
+        );
         final day = tester.renderObject<RenderParagraph>(
-          find.text(localDate(DateTime.now())),
+          find.text(local.formatShortDate(DateTime.now())),
         );
         expect(
           day.size.width,

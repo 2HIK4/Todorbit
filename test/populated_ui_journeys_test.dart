@@ -49,6 +49,7 @@ void main() {
     Size size = const Size(390, 700),
     double scale = 2,
     bool dialog = false,
+    TargetPlatform platform = TargetPlatform.windows,
   }) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = size;
@@ -68,7 +69,10 @@ void main() {
         child: RepaintBoundary(
           key: const ValueKey('populated-capture'),
           child: MaterialApp(
-            theme: buildAppTheme(Brightness.dark, ThemePalette.dark),
+            theme: buildAppTheme(
+              Brightness.dark,
+              ThemePalette.dark,
+            ).copyWith(platform: platform),
             builder: (context, widget) => MediaQuery(
               data: MediaQuery.of(context)
                   .copyWith(textScaler: TextScaler.linear(scale)),
@@ -166,8 +170,10 @@ void main() {
       await open(tester, calendar(), size: const Size(800, 700));
       await tester.tap(find.text('Week'));
       await tester.pumpAndSettle();
-      final day = find.text('Wed 2026-11-04');
-      await capture(tester, 'dense-week-before-or-after');
+      final local = MaterialLocalizations.of(
+        tester.element(find.byType(CalendarView)),
+      );
+      final day = find.text(local.formatMediumDate(DateTime(2026, 11, 4)));
       expect(
         day,
         findsOneWidget,
@@ -179,6 +185,9 @@ void main() {
         scrollable: find.byType(Scrollable).last,
       );
       await tester.pumpAndSettle();
+      expect(day.hitTestable(), findsOneWidget);
+      expect(find.text('Overlapping project review 0'), findsOneWidget);
+      await capture(tester, 'dense-week');
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },
@@ -215,6 +224,7 @@ void main() {
         openTask: (_) {},
         addTask: (_) {},
       ),
+      platform: TargetPlatform.android,
     );
     await tester.tap(find.text('Day'));
     await tester.pumpAndSettle();

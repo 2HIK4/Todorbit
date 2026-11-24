@@ -530,6 +530,7 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                           child: Semantics(
                             label:
                                 '${item.kind == CalendarItemKind.event ? 'Event' : 'Work session'}, ${item.title}, ${_formatTime(item.startsAt!)} – ${_formatTime(item.endsAt!)}'
+                                '${isCancelled ? ', Cancelled' : ''}'
                                 '${hasAlarm ? ', Alarm set' : ''}'
                                 '${placement.hasConflict ? ', Overlaps ${placement.conflictCount} items' : ''}',
                             button: true,

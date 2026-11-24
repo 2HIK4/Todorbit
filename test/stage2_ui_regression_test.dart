@@ -541,13 +541,20 @@ void main() {
       of: find.widgetWithText(ListTile, 'Inherited event'),
       matching: find.byIcon(Icons.event_outlined),
     );
-    expect(tester.widget<Icon>(icon).color, Colors.white);
+    final foreground = tester.widget<Icon>(icon).color!;
     final backing = tester.widget<DecoratedBox>(
       find.ancestor(of: icon, matching: find.byType(DecoratedBox)).first,
     );
-    final background = (backing.decoration as BoxDecoration).color!;
+    final decoration = backing.decoration as BoxDecoration;
+    final outline = (decoration.border as Border).top.color;
+    expect(outline.withValues(alpha: 1), Colors.white);
+    final background = decoration.color!;
+    final luminances = [
+      foreground.computeLuminance(),
+      background.computeLuminance(),
+    ]..sort();
     expect(
-      1.05 / (background.computeLuminance() + .05),
+      (luminances.last + .05) / (luminances.first + .05),
       greaterThanOrEqualTo(3),
     );
     await tester.pumpWidget(const SizedBox.shrink());

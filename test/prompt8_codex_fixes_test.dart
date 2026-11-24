@@ -579,9 +579,10 @@ void main() {
         // Subtask is expanded by default
         expect(find.text('Subtask 1'), findsOneWidget);
 
-        // Expander pill is rendered and hit testable
-        final pill = find.widgetWithText(InkWell, '1');
-        expect(pill, findsOneWidget);
+        final pill = find.widgetWithText(TextButton, '1 subtask');
+        expect(pill.hitTestable(), findsOneWidget);
+        final parentRow = find.byKey(ValueKey('row-${parentTask.id}'));
+        expect(tester.getRect(pill).top, greaterThanOrEqualTo(tester.getRect(parentRow).bottom));
 
         // Tap to collapse
         await tester.tap(pill);

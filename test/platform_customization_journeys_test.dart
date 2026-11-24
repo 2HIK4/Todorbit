@@ -24,14 +24,20 @@ void main() {
     tester,
   ) async {
     final root = Directory.systemTemp.createTempSync('todorbit-theme-journey-');
-    final store = AppearancePreferenceStore(
-      File('${root.path}/appearance.json'),
-    );
-    final database = AppDatabase(NativeDatabase.memory());
-    final controller = AppController(
-      LifeRepository(database),
-      appearanceStore: store,
-    );
+    final appearanceFile = File('${root.path}/appearance.json');
+    late final AppearancePreferenceStore store;
+    late final AppController controller;
+    addTearDown(() => root.delete(recursive: true));
+    await tester.runAsync(() async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      store = AppearancePreferenceStore(appearanceFile);
+      controller = AppController(
+        LifeRepository(database),
+        appearanceStore: store,
+      );
+      await controller.initialize().timeout(const Duration(seconds: 15));
+    });
     final imported = ThemeCustomization(
       light: ThemePalette.ocean,
       dark: ThemePalette.dusk,
@@ -43,7 +49,6 @@ void main() {
     final invalid = File('${root.path}/invalid.json')
       ..writeAsStringSync(jsonEncode({...imported.toJson(), 'version': 999}));
     final output = File('${root.path}/export.json');
-    await tester.runAsync(() => controller.initialize());
     final original = controller.customization.toJson();
 
     Future<void> finishWhen(bool Function() done) async {
@@ -158,7 +163,9 @@ void main() {
       await finishWhen(() => find.byType(ThemeDialog).evaluate().isEmpty);
       expect(controller.customization.toJson(), imported.toJson());
       expect(
-        (await tester.runAsync(store.loadCustomization))!.toJson(),
+        (await tester.runAsync(
+          AppearancePreferenceStore(appearanceFile).loadCustomization,
+        ))!.toJson(),
         imported.toJson(),
       );
       await open();
@@ -199,8 +206,6 @@ void main() {
       expect(tester.takeException(), isNull);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
-      await database.close();
-      await tester.runAsync(() => root.delete(recursive: true));
     }
   });
 

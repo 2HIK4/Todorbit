@@ -310,9 +310,15 @@ object AndroidSurfaces {
         }
         val scale=context.resources.configuration.fontScale
         val compact = height < 250
+        val compactEmpty = compact || (scale > 1.3f && height < 330)
+        val horizontalInset = when {
+            width >= 200 || scale <= 1.3f -> 12
+            scale >= 1.8f -> 4
+            else -> 8
+        }
         remote.setViewVisibility(R.id.widget_context,if(compact && scale>1.3f) View.GONE else View.VISIBLE)
-        remote.setInt(R.id.widget_empty,"setMaxLines",if(compact) 1 else 3)
-        if(compact) {
+        remote.setInt(R.id.widget_empty,"setMaxLines",if(compactEmpty) 1 else 3)
+        if(compactEmpty) {
             val padding=(4*context.resources.displayMetrics.density).toInt()
             remote.setViewPadding(R.id.widget_empty,0,padding,0,padding)
         }
@@ -320,6 +326,10 @@ object AndroidSurfaces {
         // every row. Extra height can then show actual content at each font size.
         val density=context.resources.displayMetrics.density
         fun dp(value: Int)=Math.round(value*density)
+        if (horizontalInset != 12) {
+            remote.setViewPadding(R.id.widget_content, dp(horizontalInset), dp(12), dp(horizontalInset), dp(12))
+        }
+        val contentWidth = width - 2 * horizontalInset
         fun textHeight(text: String, sp: Float, lines: Int, bold: Boolean, widthDp: Int): Int {
             val paint=android.text.TextPaint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                 textSize=android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,sp,context.resources.displayMetrics)
@@ -328,16 +338,16 @@ object AndroidSurfaces {
             return android.text.StaticLayout.Builder.obtain(text,0,text.length,paint,dp(widthDp).coerceAtLeast(1))
                 .setIncludePad(true).setMaxLines(lines).setEllipsize(android.text.TextUtils.TruncateAt.END).build().height
         }
-        val headerWidth=(width-72).coerceAtLeast(1)
+        val headerWidth=(contentWidth-48).coerceAtLeast(1)
         // XML rounds each edge of the content padding independently.
         val headerHeight=2*dp(12)+maxOf(dp(48),textHeight("Ag",18f,1,true,headerWidth)+
             if(compact && scale>1.3f) 0 else textHeight("Ag",12f,1,false,headerWidth))
         val compactDates=height<250 && (calendar || filter=="today")
         remote.setViewVisibility(R.id.widget_footer,if(compactDates) View.GONE else View.VISIBLE)
-        val footerHeight=if(compactDates) 0 else maxOf(dp(48),textHeight("${items.size} more \u00b7 Open ${if(calendar) "calendar" else "tasks"}",12f,2,false,width-24))
+        val footerHeight=if(compactDates) 0 else maxOf(dp(48),textHeight("${items.size} more \u00b7 Open ${if(calendar) "calendar" else "tasks"}",12f,2,false,contentWidth))
         var used=headerHeight+footerHeight+(if(calendar || filter=="today") dp(48) else 0)+(if(expanded) dp(64) else 0)
         var capacity=0
-        val bodyWidth=width-24-if(calendar) 15 else 48
+        val bodyWidth=contentWidth-if(calendar) 15 else 48
         for(item in items.take(16)) {
             val rowHeight=maxOf(dp(60),dp(16)+textHeight(item.getString("title"),15f,if(compact) 1 else 2,true,bodyWidth)+
                 textHeight(rowDetail(context,item,calendar,today),12f,if(compact) 1 else 2,false,bodyWidth))
@@ -394,7 +404,7 @@ object AndroidSurfaces {
         }
         remote.setViewVisibility(R.id.widget_empty,if(items.isEmpty() || capacity==0) View.VISIBLE else View.GONE)
         remote.setTextColor(R.id.widget_empty,secondary)
-        remote.setTextViewText(R.id.widget_empty,if(hidden) if(compact) "Locked" else "Details hidden by app lock. Open Todorbit to unlock." else if(capacity==0 && items.isNotEmpty()) "Resize" else if(truncated) "Open Todorbit for the full list" else if(calendar) if(compact) "No events" else "No upcoming events. Make room for what matters." else if(compact) "All clear." else "All clear here. Add a task when you are ready.")
+        remote.setTextViewText(R.id.widget_empty,if(hidden) if(compactEmpty) "Locked" else "Details hidden by app lock. Open Todorbit to unlock." else if(capacity==0 && items.isNotEmpty()) "Resize" else if(truncated) "Open Todorbit for the full list" else if(calendar) if(compactEmpty) "No events" else "No upcoming events. Make room for what matters." else if(compactEmpty) "All clear." else "All clear here. Add a task when you are ready.")
         remote.setTextColor(R.id.widget_footer,accent)
         remote.setTextViewText(R.id.widget_footer,if(hidden) "Open Todorbit" else if(truncated) "Full list in Todorbit" else if(items.isEmpty()) if(calendar) "Add event  +" else "Add task  +" else if(items.size>capacity) "${items.size-capacity} more \u00b7 Open ${if(calendar) "calendar" else "tasks"}" else "Open ${if(calendar) "calendar" else "tasks"}  \u203a")
         remote.setOnClickPendingIntent(R.id.widget_footer,open(context,if(!hidden && !truncated && items.isEmpty()) link(if(calendar) "add-event" else "add") else destination))

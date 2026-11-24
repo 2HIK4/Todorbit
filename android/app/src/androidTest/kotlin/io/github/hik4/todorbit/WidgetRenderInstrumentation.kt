@@ -94,7 +94,7 @@ class WidgetRenderInstrumentation : Instrumentation() {
                         .putString("filter-$id", "all").putInt("opacity-$id", 40).commit())
                     val actions = actionsMethod.invoke(AndroidSurfaces, targetContext, id, calendar) as JSONObject
                     val remote = viewMethod.invoke(AndroidSurfaces, renderContext, id, calendar, width, height, actions) as RemoteViews
-                    runOnMainSync {
+                    checkOnMainThread {
                         val window = FrameLayout(activity).apply {
                             setBackgroundColor(0xFF808080.toInt())
                             // This edge-to-edge test window has a native action bar.
@@ -108,7 +108,7 @@ class WidgetRenderInstrumentation : Instrumentation() {
                     }
                     waitForIdleSync()
                     SystemClock.sleep(150)
-                    runOnMainSync {
+                    checkOnMainThread {
                         val root = activity.findViewById<View>(R.id.widget_root)
                         val footer = activity.findViewById<TextView>(R.id.widget_footer)
                         val content = activity.findViewById<View>(R.id.widget_content)
@@ -126,7 +126,7 @@ class WidgetRenderInstrumentation : Instrumentation() {
                             if (scale > 1.3f && width < 250) {
                                 val layout = today.layout ?: error("Date label is not laid out")
                                 check(layout.lineCount == 1 && layout.getEllipsisCount(0) == 0) {
-                                    "Compact date action is truncated at $width dp and $scale text"
+                                    "Compact date action '${today.text}' is truncated at $width dp, $scale text, $densityDpi dpi (available ${today.width}px)"
                                 }
                             }
                             val dates = activity.findViewById<View>(R.id.widget_dates)
@@ -198,6 +198,18 @@ class WidgetRenderInstrumentation : Instrumentation() {
             activity?.let { runOnMainSync { it.finish() } }
         }
         finish(if (result.containsKey("failure")) 1 else -1, result)
+    }
+
+    private fun checkOnMainThread(checkLayout: () -> Unit) {
+        var failure: Throwable? = null
+        runOnMainSync {
+            try {
+                checkLayout()
+            } catch (error: Throwable) {
+                failure = error
+            }
+        }
+        failure?.let { throw it }
     }
 
     private fun fixture(count: Int): JSONObject {

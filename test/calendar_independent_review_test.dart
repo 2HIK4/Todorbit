@@ -155,6 +155,7 @@ void main() {
       var opens = 0;
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(platform: TargetPlatform.windows),
           home: Scaffold(
             body: StatefulBuilder(
               builder: (context, setState) {

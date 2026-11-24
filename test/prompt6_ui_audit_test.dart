@@ -1,9 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:life_manager/data/shared_inbox_store.dart';
 import 'package:life_manager/domain/appearance.dart';
 import 'package:life_manager/domain/models.dart';
 import 'package:life_manager/domain/task_list_projection.dart';
+import 'package:life_manager/features/shared/app_spacing.dart';
 import 'package:life_manager/features/shared/app_theme.dart';
 import 'package:life_manager/features/shared/pointer_cancellation_scope.dart';
 import 'package:life_manager/features/shared/task_list_group.dart';
@@ -29,7 +33,10 @@ void main() {
       // Verify list tile rounded corners eliminate square hover boxes
       expect(theme.listTileTheme.shape, isA<RoundedRectangleBorder>());
       final shape = theme.listTileTheme.shape! as RoundedRectangleBorder;
-      expect(shape.borderRadius, equals(BorderRadius.circular(10)));
+      expect(
+        shape.borderRadius,
+        equals(BorderRadius.circular(AppRadius.control)),
+      );
     });
 
     testWidgets('Normal vs recurring task row widths are identical', (
@@ -106,16 +113,10 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      final normalCard = tester.getSize(find.byKey(const ValueKey('card-t1')));
-      final recurringCard = tester.getSize(
-        find.ancestor(
-          of: find.byType(ExpansionTile),
-          matching: find.byType(Card),
-        ),
-      );
-
-      // Widths MUST be identical (no 8px narrowing of recurring tasks)
-      expect(recurringCard.width, equals(normalCard.width));
+      final ordinary = tester.getRect(find.byKey(const ValueKey('card-t1')));
+      final recurring = tester.getRect(find.byType(ExpansionTile));
+      expect(recurring.left, ordinary.left);
+      expect(recurring.right, ordinary.right);
     });
 
     testWidgets('Subtasks render with hierarchy connector and no outer card', (
@@ -202,24 +203,32 @@ void main() {
         findsNothing,
       );
 
-      // Verify connector line decorated box exists
-      expect(find.byType(DecoratedBox), findsWidgets);
+      final connector = find.ancestor(
+        of: find.byKey(const ValueKey('subtask-row-sub_1')),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is DecoratedBox &&
+              widget.decoration is BoxDecoration &&
+              (widget.decoration as BoxDecoration).border is BorderDirectional,
+        ),
+      );
+      expect(connector, findsOneWidget);
 
       // Subtask checkbox operates correctly
       await tester.tap(find.byType(Checkbox));
       await tester.pumpAndSettle();
       expect(subtaskCompleted, isTrue);
 
-      // Subtask count toggle badge exists and allows collapsing
-      final togglePill = find.byTooltip('Collapse 1 subtask');
-      expect(togglePill, findsOneWidget);
-
-      await tester.tap(togglePill);
+      final toggle = find.widgetWithText(TextButton, '1 subtask');
+      expect(toggle.hitTestable(), findsOneWidget);
+      await tester.tap(toggle);
       await tester.pumpAndSettle();
 
       // Subtask is collapsed
       expect(find.byKey(const ValueKey('subtask-row-sub_1')), findsNothing);
-      expect(find.byTooltip('Expand 1 subtask'), findsOneWidget);
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('subtask-row-sub_1')), findsOneWidget);
     });
 
     testWidgets('PointerCancellationScope handles deactivation and resume', (
@@ -323,18 +332,28 @@ void main() {
     testWidgets(
       'Shared Files screen displays on-device local storage clarity',
       (tester) async {
+        final root = Directory.systemTemp.createTempSync('shared-files-audit-');
+        addTearDown(() => root.delete(recursive: true));
         await tester.pumpWidget(
           MaterialApp(
             theme: buildAppTheme(Brightness.dark, ThemePalette.dark),
-            home: const SharedInboxScreen(),
+            home: SharedInboxScreen(store: SharedInboxStore(root)),
           ),
         );
-
-        await tester.pumpAndSettle();
-
-        // Empty view explains local storage and cloud sync exclusion
+        final empty = find.text('No shared files yet');
+        for (
+          var attempt = 0;
+          attempt < 100 && empty.evaluate().isEmpty;
+          attempt++
+        ) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 20)),
+          );
+          await tester.pump();
+        }
+        expect(empty, findsOneWidget);
         expect(
-          find.textContaining('Files remain local to this device'),
+          find.textContaining('Files stay on this device until attached.'),
           findsOneWidget,
         );
       },

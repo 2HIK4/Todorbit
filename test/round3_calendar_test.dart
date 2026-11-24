@@ -120,7 +120,7 @@ void main() {
   });
 
   testWidgets('event color selection persists', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(900, 800));
+    await tester.binding.setSurfaceSize(const Size(900, 900));
     final db = AppDatabase(NativeDatabase.memory());
     final controller = AppController(LifeRepository(db));
     await controller.refresh();
@@ -129,11 +129,12 @@ void main() {
         ProviderScope(
           overrides: [appControllerProvider.overrideWith((ref) => controller)],
           child: MaterialApp(
+            theme: ThemeData(platform: TargetPlatform.windows),
             home: Scaffold(
               body: Center(
                 child: SizedBox(
                   width: 460,
-                  height: 650,
+                  height: 760,
                   child: EventEditor(
                     initialDay: DateTime.now(),
                     onClose: () {},
@@ -148,6 +149,7 @@ void main() {
         find.widgetWithText(TextField, 'Title *'),
         'Ocean event',
       );
+      await tester.pumpAndSettle();
       await expandEditorSection(
         tester,
         'Organization and appearance',
