@@ -23,6 +23,12 @@ Its display tick and the compact timer tick rebuild their own surfaces.
 and work accounting. Shared Habits and Goals views project the existing
 recurrence and progress owners through `AppController`.
 
+Settings uses the Windows hub and the Android settings route with shared forms.
+Sync status presents the controller snapshot. The repository's resolution
+projection owns both the conflict count and the review contents. The
+Windows widget and Android RemoteViews render their published palettes,
+with native fallbacks before profile colors arrive.
+
 Android widget completion uses a one-use native capability carrying the task
 UUID, expected revision and desired state. The mobile shell waits for unlock
 and active editors before applying it through the shared controller/repository.

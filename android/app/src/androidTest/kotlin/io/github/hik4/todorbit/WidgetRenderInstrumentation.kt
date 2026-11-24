@@ -21,11 +21,13 @@ import java.time.ZoneId
 
 /** Opt-in native rendering acceptance. Never opens or changes SQLite. */
 class WidgetRenderInstrumentation : Instrumentation() {
+    private var representative = false
     private var isolated = false
     private var checkSharedInbox = false
     override fun onCreate(arguments: Bundle?) {
         super.onCreate(arguments)
         isolated = arguments?.getString("isolated") == "true"
+        representative = arguments?.getString("representative") == "true"
         checkSharedInbox = arguments?.getString("sharedInbox") == "true"
         start()
     }
@@ -72,13 +74,18 @@ class WidgetRenderInstrumentation : Instrumentation() {
                 Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, JSONObject::class.java).apply { isAccessible = true }
             var captures = 0
             val bounds = JSONArray()
-            for (densityDpi in listOf(420, 560)) for (scale in listOf(1f, 2f)) for (dark in listOf(false, true)) for (calendar in listOf(false, true)) {
+            val densities = if (representative) listOf(420) else listOf(420, 560)
+            val scales = if (representative) listOf(1f, 1.5f) else listOf(1f, 2f)
+            val sizes = if (representative) listOf(180 to 180, 380 to 540)
+                        else listOf(180 to 180, 280 to 280, 380 to 540, 280 to 180)
+            val counts = if (representative) listOf(0, 1) else listOf(0, 1, 12)
+            for (densityDpi in densities) for (scale in scales) for (dark in listOf(false, true)) for (calendar in listOf(false, true)) {
                 val configuration = android.content.res.Configuration(targetContext.resources.configuration).apply {
                     fontScale = scale
                     this.densityDpi = densityDpi
                 }
                 val renderContext = targetContext.createConfigurationContext(configuration)
-                for (count in listOf(0, 1, 12)) for ((width, height) in listOf(180 to 180, 280 to 280, 380 to 540, 280 to 180)) {
+                for (count in counts) for ((width, height) in sizes) {
                     val id = if (dark) ids[1] else ids[0]
                     val source = fixture(count)
                     changed = true
@@ -110,25 +117,43 @@ class WidgetRenderInstrumentation : Instrumentation() {
                         }
                         val rootLocation = IntArray(2).also { root.getLocationOnScreen(it) }
                         val footerLocation = IntArray(2).also { footer.getLocationOnScreen(it) }
-                        val left = footerLocation[0] - rootLocation[0]
-                        val top = footerLocation[1] - rootLocation[1]
-                        check(left >= content.paddingLeft && left + footer.width <= root.width - content.paddingRight)
-                        check(top >= 0 && top + footer.height <= root.height - content.paddingBottom)
-                        check(footer.height >= 48 * renderContext.resources.displayMetrics.density - 1 && footer.hasOnClickListeners())
-                        check(footer.importantForAccessibility != View.IMPORTANT_FOR_ACCESSIBILITY_NO && footer.text.isNotBlank())
-                        val layout = footer.layout ?: error("Footer text is not laid out")
-                        val textWidth = footer.width - footer.compoundPaddingLeft - footer.compoundPaddingRight
-                        for (line in 0 until layout.lineCount) {
-                            check(layout.getLineLeft(line) >= -1f && layout.getLineRight(line) <= textWidth + 1f && layout.getEllipsisCount(line) == 0) {
-                                "Clipped footer glyphs: ${footer.text}, line=$line, $width x $height, font=$scale, density=$densityDpi"
+                        if (footer.visibility == View.GONE) {
+                            check(calendar && height < 250)
+                            val heading = activity.findViewById<View>(R.id.widget_heading)
+                            val today = activity.findViewById<TextView>(R.id.widget_today)
+                            check(heading.hasOnClickListeners() && today.hasOnClickListeners())
+                            check(today.height >= 48 * renderContext.resources.displayMetrics.density - 1)
+                            if (scale > 1.3f && width < 250) {
+                                val layout = today.layout ?: error("Date label is not laid out")
+                                check(layout.lineCount == 1 && layout.getEllipsisCount(0) == 0) {
+                                    "Compact date action is truncated at $width dp and $scale text"
+                                }
                             }
+                            val dates = activity.findViewById<View>(R.id.widget_dates)
+                            check(dates.bottom <= content.height - content.paddingBottom)
+                        } else {
+                            val left = footerLocation[0] - rootLocation[0]
+                            val top = footerLocation[1] - rootLocation[1]
+                            check(left >= content.paddingLeft && left + footer.width <= root.width - content.paddingRight)
+                            check(top >= 0 && top + footer.height <= root.height - content.paddingBottom)
+                            check(footer.height >= 48 * renderContext.resources.displayMetrics.density - 1 && footer.hasOnClickListeners()) {
+                                "Footer touch target below 48 dp: measured=${footer.height}px, $width x $height, count=$count, calendar=$calendar, font=$scale"
+                            }
+                            check(footer.importantForAccessibility != View.IMPORTANT_FOR_ACCESSIBILITY_NO && footer.text.isNotBlank())
+                            val layout = footer.layout ?: error("Footer text is not laid out")
+                            val textWidth = footer.width - footer.compoundPaddingLeft - footer.compoundPaddingRight
+                            for (line in 0 until layout.lineCount) {
+                                check(layout.getLineLeft(line) >= -1f && layout.getLineRight(line) <= textWidth + 1f && layout.getEllipsisCount(line) == 0) {
+                                    "Clipped footer glyphs: ${footer.text}, line=$line, $width x $height, font=$scale, density=$densityDpi"
+                                }
+                            }
+                            val visible = Rect()
+                            footer.getGlobalVisibleRect(visible)
+                            bounds.put(JSONObject().put("kind", if(calendar) "calendar" else "tasks").put("width", width).put("height", height)
+                                .put("count", count).put("font", scale).put("density", densityDpi).put("text", footer.text.toString())
+                                .put("rootX",rootLocation[0]).put("rootY",rootLocation[1]).put("footerLeft",left).put("footerTop",top)
+                                .put("footerWidth",footer.width).put("footerHeight",footer.height).put("globalVisible",visible.toShortString()))
                         }
-                        val visible = Rect()
-                        footer.getGlobalVisibleRect(visible)
-                        bounds.put(JSONObject().put("kind", if(calendar) "calendar" else "tasks").put("width", width).put("height", height)
-                            .put("count", count).put("font", scale).put("density", densityDpi).put("text", footer.text.toString())
-                            .put("rootX",rootLocation[0]).put("rootY",rootLocation[1]).put("footerLeft",left).put("footerTop",top)
-                            .put("footerWidth",footer.width).put("footerHeight",footer.height).put("globalVisible",visible.toShortString()))
                         // Widget-local render avoids mistaking a test-window/screen crop for product clipping.
                         val local = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888)
                         root.draw(Canvas(local))

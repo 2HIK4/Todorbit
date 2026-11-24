@@ -181,6 +181,7 @@ class _PrivacyDialogState extends ConsumerState<PrivacyDialog> {
     final settings = manager.settings;
     return AlertDialog(
       title: const Text('Privacy and app lock'),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       content: SizedBox(
         width: 480,
         child: FadingScrollView(
@@ -189,12 +190,17 @@ class _PrivacyDialogState extends ConsumerState<PrivacyDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SettingsHelperText(
-                Platform.isAndroid
+                Theme.of(context).platform == TargetPlatform.android
                     ? 'App lock hides Todorbit content in the app and home-screen widgets. It does not encrypt the local database. Keep a recoverable backup and remember your PIN.'
                     : 'App lock hides Todorbit content in the app and native widget. It does not encrypt the SQLite database or protect files from someone with access to your Windows account.',
               ),
               const SizedBox(height: 12),
-              Text(settings.enabled ? 'App lock enabled' : 'App lock disabled'),
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  settings.enabled ? 'App lock enabled' : 'App lock disabled',
+                ),
+              ),
               const SizedBox(height: 12),
               if (settings.enabled) ...[
                 TextField(
@@ -205,15 +211,16 @@ class _PrivacyDialogState extends ConsumerState<PrivacyDialog> {
                 ),
                 const SizedBox(height: 12),
               ],
+              const SettingsHelperText('Use 6–12 digits.'),
+              const SizedBox(height: 8),
               TextField(
                 controller: newPin,
                 obscureText: true,
                 keyboardType: TextInputType.number,
                 maxLength: 12,
                 decoration: InputDecoration(
-                  labelText: settings.enabled
-                      ? 'New PIN'
-                      : 'Set PIN (6–12 digits)',
+                  labelText: settings.enabled ? 'New PIN' : 'PIN',
+                  counterText: '',
                 ),
               ),
               const SizedBox(height: 12),
@@ -222,7 +229,10 @@ class _PrivacyDialogState extends ConsumerState<PrivacyDialog> {
                 obscureText: true,
                 keyboardType: TextInputType.number,
                 maxLength: 12,
-                decoration: const InputDecoration(labelText: 'Confirm new PIN'),
+                decoration: const InputDecoration(
+                  labelText: 'Confirm PIN',
+                  counterText: '',
+                ),
               ),
               const SizedBox(height: 8),
               if (!settings.enabled)
@@ -352,7 +362,7 @@ class _PrivacyDialogState extends ConsumerState<PrivacyDialog> {
               if (message != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text(message!),
+                  child: Semantics(liveRegion: true, child: Text(message!)),
                 ),
             ],
           ),

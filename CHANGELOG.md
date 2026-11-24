@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Adapted Settings navigation to larger text and made current Sync state,
+  pending changes and last successful sync easier to find.
+- Improved compact Shared Files and Archive/Trash presentation. Native
+  widget fallback palettes match Todorbit, and Android reserves the footer
+  touch target when a row sits on a pixel boundary.
+
 - Updated Focus with a more readable clock, explicit session state and
   accessible timer controls in both themes.
 - Updated Habits and Goals with clearer check-in and progress, and kept

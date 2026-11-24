@@ -41,7 +41,7 @@ void main() {
   testWidgets('narrow Settings switches categories without clipping', (
     tester,
   ) async {
-    await tester.binding.setSurfaceSize(const Size(600, 700));
+    await tester.binding.setSurfaceSize(const Size(800, 700));
     final database = AppDatabase(NativeDatabase.memory());
     final controller = AppController(LifeRepository(database));
     await controller.refresh();
@@ -56,7 +56,10 @@ void main() {
                   onPressed: () => showDialog<void>(
                     context: context,
                     builder: (_) => MediaQuery(
-                      data: const MediaQueryData(size: Size(600, 700)),
+                      data: const MediaQueryData(
+                        size: Size(800, 700),
+                        textScaler: TextScaler.linear(1.5),
+                      ),
                       child: SettingsHubDialog(
                         nativeWidget: NativeWidgetService(
                           widgetExecutable: 'unavailable.exe',
@@ -79,7 +82,7 @@ void main() {
       final sectionPicker = find.byKey(
         const ValueKey('settings-section-picker'),
       );
-      expect(sectionPicker, findsOneWidget);
+      expect(sectionPicker.hitTestable(), findsOneWidget);
       await tester.tap(sectionPicker);
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(MenuItemButton, 'Task Preferences'));

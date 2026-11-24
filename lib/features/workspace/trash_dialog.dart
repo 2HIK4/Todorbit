@@ -1,3 +1,5 @@
+import '../shared/app_modal_shell.dart';
+import '../shared/app_spacing.dart';
 import '../../data/life_repository.dart';
 import '../shared/scroll_edge_fade.dart';
 import '../shared/app_motion.dart';
@@ -7,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/trash.dart';
+import '../../domain/models.dart' show TaskStatus;
 
 class ArchiveTrashDialog extends ConsumerStatefulWidget {
   const ArchiveTrashDialog({super.key});
@@ -222,6 +225,7 @@ class _ArchiveTrashDialogState extends ConsumerState<ArchiveTrashDialog>
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(appControllerProvider);
+    final colors = Theme.of(context).colorScheme;
     final isArchiveTab = _tabController.index == 0;
     final totalArchive =
         controller.archivedSeries.length + controller.archivedTasks.length;
@@ -234,408 +238,247 @@ class _ArchiveTrashDialogState extends ConsumerState<ArchiveTrashDialog>
         totalArchive > 0 && selectedArchiveCount == totalArchive;
     final allTrashSelected = totalTrash > 0 && selectedTrashCount == totalTrash;
 
-    return Dialog(
-      child: SizedBox(
-        width: 720,
-        height: 600,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 16, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
+    return AppModalShell(
+      maxWidth: 720,
+      maxHeight: 600,
+      child: Column(
+        children: [
+          Padding(
+            padding: AppLayout.pageInsets,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Semantics(
+                        header: true,
                         child: Text(
                           'Archive and Trash',
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                       ),
-                      IconButton(
-                        tooltip: 'Close',
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close),
+                    ),
+                    IconButton(
+                      tooltip: 'Close',
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    if (!selecting) ...[
+                      TextButton.icon(
+                        onPressed: () => setState(() => selecting = true),
+                        icon: const Icon(Icons.checklist, size: 18),
+                        label: const Text('Select'),
+                      ),
+                      if (!isArchiveTab && totalTrash > 0)
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            foregroundColor: Theme.of(context)
+                                .colorScheme
+                                .error,
+                          ),
+                          onPressed: busy
+                              ? null
+                              : () => _confirmEmptyTrash(controller),
+                          icon: const Icon(
+                            Icons.delete_sweep_outlined,
+                            size: 18,
+                          ),
+                          label: const Text('Empty Trash'),
+                        ),
+                    ] else ...[
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            selecting = false;
+                            _clearSelection();
+                          });
+                        },
+                        child: const Text('Cancel'),
                       ),
                     ],
-                  ),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: [
-                      if (!selecting) ...[
-                        TextButton.icon(
-                          onPressed: () => setState(() => selecting = true),
-                          icon: const Icon(Icons.checklist, size: 18),
-                          label: const Text('Select'),
-                        ),
-                        if (!isArchiveTab && totalTrash > 0)
-                          TextButton.icon(
-                            style: TextButton.styleFrom(
-                              foregroundColor: Theme.of(context)
-                                  .colorScheme
-                                  .error,
-                            ),
-                            onPressed: busy
-                                ? null
-                                : () => _confirmEmptyTrash(controller),
-                            icon: const Icon(
-                              Icons.delete_sweep_outlined,
-                              size: 18,
-                            ),
-                            label: const Text('Empty Trash'),
-                          ),
-                      ] else ...[
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              selecting = false;
-                              _clearSelection();
-                            });
-                          },
-                          child: const Text('Cancel'),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            TabBar(
-              controller: _tabController,
-              tabs: [
-                Tab(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('Archive'),
-                      if (totalArchive > 0) ...[
-                        const SizedBox(width: 6),
-                        Badge.count(count: totalArchive),
-                      ],
-                    ],
-                  ),
-                ),
-                Tab(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('Trash'),
-                      if (totalTrash > 0) ...[
-                        const SizedBox(width: 6),
-                        Badge.count(count: totalTrash),
-                      ],
-                    ],
-                  ),
+                  ],
                 ),
               ],
             ),
-            if (selecting)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
+          ),
+          TabBar(
+            controller: _tabController,
+            tabs: [
+              Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Checkbox(
-                      value: isArchiveTab
-                          ? allArchiveSelected
-                          : allTrashSelected,
-                      tristate: isArchiveTab
-                          ? (selectedArchiveCount > 0 && !allArchiveSelected)
-                          : (selectedTrashCount > 0 && !allTrashSelected),
-                      onChanged: (val) {
-                        setState(() {
-                          if (isArchiveTab) {
-                            if (allArchiveSelected) {
-                              _selectedArchiveSeries.clear();
-                              _selectedArchiveTasks.clear();
-                            } else {
-                              _selectedArchiveSeries.addAll(
-                                controller.archivedSeries.map(
-                                  (s) => s.familyId,
-                                ),
-                              );
-                              _selectedArchiveTasks.addAll(
-                                controller.archivedTasks.map((t) => t.id),
-                              );
-                            }
-                          } else {
-                            if (allTrashSelected) {
-                              _selectedTrash.clear();
-                            } else {
-                              _selectedTrash.addAll(
-                                controller.trashItems.map((item) => item.id),
-                              );
-                            }
-                          }
-                        });
-                      },
-                    ),
-                    Text(
-                      isArchiveTab
-                          ? '$selectedArchiveCount of $totalArchive selected'
-                          : '$selectedTrashCount of $totalTrash selected',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    if (isArchiveTab && selectedArchiveCount > 0)
-                      FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Theme.of(context)
-                              .colorScheme
-                              .errorContainer,
-                          foregroundColor: Theme.of(context)
-                              .colorScheme
-                              .onErrorContainer,
-                        ),
-                        onPressed: busy
-                            ? null
-                            : () => _deleteSelectedArchive(controller),
-                        icon: const Icon(Icons.delete_outline, size: 18),
-                        label: Text('Move to Trash ($selectedArchiveCount)'),
+                    const Text('Archive'),
+                    if (totalArchive > 0) ...[
+                      const SizedBox(width: 6),
+                      Badge.count(
+                        count: totalArchive,
+                        backgroundColor: colors.secondaryContainer,
+                        textColor: colors.onSecondaryContainer,
                       ),
-                    if (!isArchiveTab && selectedTrashCount > 0)
-                      FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.error,
-                          foregroundColor: Theme.of(context)
-                              .colorScheme
-                              .onError,
-                        ),
-                        onPressed: busy
-                            ? null
-                            : () => _deleteSelectedTrash(controller),
-                        icon: const Icon(
-                          Icons.delete_forever_outlined,
-                          size: 18,
-                        ),
-                        label: Text('Permanently delete ($selectedTrashCount)'),
-                      ),
+                    ],
                   ],
                 ),
               ),
-            if (error != null)
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text(
-                  error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+              Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Trash'),
+                    if (totalTrash > 0) ...[
+                      const SizedBox(width: 6),
+                      Badge.count(
+                        count: totalTrash,
+                        backgroundColor: colors.secondaryContainer,
+                        textColor: colors.onSecondaryContainer,
+                      ),
+                    ],
+                  ],
                 ),
               ),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
+            ],
+          ),
+          if (selecting)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  controller.archivedTasks.isEmpty &&
-                          controller.archivedSeries.isEmpty
-                      ? const Center(child: Text('Archive is empty'))
-                      : FadingListView(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          children: [
-                            for (final series in controller.archivedSeries)
-                              ListTile(
-                                leading: selecting
-                                    ? Checkbox(
-                                        value: _selectedArchiveSeries.contains(
-                                          series.familyId,
-                                        ),
-                                        onChanged: (checked) {
-                                          setState(() {
-                                            if (checked == true) {
-                                              _selectedArchiveSeries.add(
-                                                series.familyId,
-                                              );
-                                            } else {
-                                              _selectedArchiveSeries.remove(
-                                                series.familyId,
-                                              );
-                                            }
-                                          });
-                                        },
-                                      )
-                                    : const Icon(Icons.repeat_outlined),
-                                title: Text(series.title),
-                                subtitle: Text(
-                                  'Entire series - ${series.occurrences} occurrences',
-                                ),
-                                onTap: selecting
-                                    ? () {
-                                        setState(() {
-                                          if (_selectedArchiveSeries.contains(
-                                            series.familyId,
-                                          )) {
-                                            _selectedArchiveSeries.remove(
-                                              series.familyId,
-                                            );
-                                          } else {
-                                            _selectedArchiveSeries.add(
-                                              series.familyId,
-                                            );
-                                          }
-                                        });
-                                      }
-                                    : null,
-                                trailing: selecting
-                                    ? null
-                                    : Wrap(
-                                        spacing: 4,
-                                        children: [
-                                          OutlinedButton(
-                                            onPressed: busy
-                                                ? null
-                                                : () => _run(
-                                                    () => controller
-                                                        .restoreArchivedSeries(
-                                                          series,
-                                                        ),
-                                                  ),
-                                            child: const Text('Restore'),
-                                          ),
-                                          IconButton(
-                                            tooltip: 'Move to Trash',
-                                            onPressed: busy
-                                                ? null
-                                                : () => _run(
-                                                    () => controller
-                                                        .deleteArchivedSeries(
-                                                          series,
-                                                        ),
-                                                  ),
-                                            icon: const Icon(
-                                              Icons.delete_outline,
-                                              size: 20,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                              ),
-                            for (final task in controller.archivedTasks)
-                              ListTile(
-                                leading: selecting
-                                    ? Checkbox(
-                                        value: _selectedArchiveTasks.contains(
-                                          task.id,
-                                        ),
-                                        onChanged: (checked) {
-                                          setState(() {
-                                            if (checked == true) {
-                                              _selectedArchiveTasks.add(
-                                                task.id,
-                                              );
-                                            } else {
-                                              _selectedArchiveTasks.remove(
-                                                task.id,
-                                              );
-                                            }
-                                          });
-                                        },
-                                      )
-                                    : const Icon(Icons.archive_outlined),
-                                title: Text(task.title),
-                                subtitle: Text(
-                                  task.recurrenceSeriesId == null
-                                      ? task.status.name
-                                      : 'Occurrence - ${task.status.name}',
-                                ),
-                                onTap: selecting
-                                    ? () {
-                                        setState(() {
-                                          if (_selectedArchiveTasks.contains(
-                                            task.id,
-                                          )) {
-                                            _selectedArchiveTasks.remove(
-                                              task.id,
-                                            );
-                                          } else {
-                                            _selectedArchiveTasks.add(task.id);
-                                          }
-                                        });
-                                      }
-                                    : null,
-                                trailing: selecting
-                                    ? null
-                                    : Wrap(
-                                        spacing: 4,
-                                        children: [
-                                          OutlinedButton(
-                                            onPressed: busy
-                                                ? null
-                                                : () => _run(
-                                                    () => controller
-                                                        .restoreArchivedTask(
-                                                          task,
-                                                        ),
-                                                  ),
-                                            child: const Text('Restore'),
-                                          ),
-                                          IconButton(
-                                            tooltip: 'Move to Trash',
-                                            onPressed: busy
-                                                ? null
-                                                : () => _run(
-                                                    () => controller
-                                                        .deleteArchivedTask(
-                                                          task,
-                                                        ),
-                                                  ),
-                                            icon: const Icon(
-                                              Icons.delete_outline,
-                                              size: 20,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                              ),
-                          ],
-                        ),
-                  controller.trashItems.isEmpty
-                      ? const Center(child: Text('Trash is empty'))
-                      : FadingListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          itemCount: controller.trashItems.length,
-                          itemBuilder: (context, index) {
-                            final item = controller.trashItems[index];
-                            final children =
-                                item.kind == TrashKind.project ||
-                                    item.kind == TrashKind.category ||
-                                    item.kind == TrashKind.series
-                                ? ' - ${item.affectedTasks} task${item.affectedTasks == 1 ? '' : 's'} in this ${item.kind.name}'
-                                : '';
-                            final isSelected = _selectedTrash.contains(item.id);
-                            return ListTile(
+                  Checkbox(
+                    value: isArchiveTab ? allArchiveSelected : allTrashSelected,
+                    tristate: isArchiveTab
+                        ? (selectedArchiveCount > 0 && !allArchiveSelected)
+                        : (selectedTrashCount > 0 && !allTrashSelected),
+                    onChanged: (val) {
+                      setState(() {
+                        if (isArchiveTab) {
+                          if (allArchiveSelected) {
+                            _selectedArchiveSeries.clear();
+                            _selectedArchiveTasks.clear();
+                          } else {
+                            _selectedArchiveSeries.addAll(
+                              controller.archivedSeries.map((s) => s.familyId),
+                            );
+                            _selectedArchiveTasks.addAll(
+                              controller.archivedTasks.map((t) => t.id),
+                            );
+                          }
+                        } else {
+                          if (allTrashSelected) {
+                            _selectedTrash.clear();
+                          } else {
+                            _selectedTrash.addAll(
+                              controller.trashItems.map((item) => item.id),
+                            );
+                          }
+                        }
+                      });
+                    },
+                  ),
+                  Text(
+                    isArchiveTab
+                        ? '$selectedArchiveCount of $totalArchive selected'
+                        : '$selectedTrashCount of $totalTrash selected',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  if (isArchiveTab && selectedArchiveCount > 0)
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Theme.of(context)
+                            .colorScheme
+                            .errorContainer,
+                        foregroundColor: Theme.of(context)
+                            .colorScheme
+                            .onErrorContainer,
+                      ),
+                      onPressed: busy
+                          ? null
+                          : () => _deleteSelectedArchive(controller),
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      label: Text('Move to Trash ($selectedArchiveCount)'),
+                    ),
+                  if (!isArchiveTab && selectedTrashCount > 0)
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.error,
+                        foregroundColor: Theme.of(context).colorScheme.onError,
+                      ),
+                      onPressed: busy
+                          ? null
+                          : () => _deleteSelectedTrash(controller),
+                      icon: const Icon(Icons.delete_forever_outlined, size: 18),
+                      label: Text('Permanently delete ($selectedTrashCount)'),
+                    ),
+                ],
+              ),
+            ),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                controller.archivedTasks.isEmpty &&
+                        controller.archivedSeries.isEmpty
+                    ? const Center(child: Text('Archive is empty'))
+                    : FadingListView(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        children: [
+                          for (final series in controller.archivedSeries)
+                            ListTile(
                               leading: selecting
                                   ? Checkbox(
-                                      value: isSelected,
+                                      value: _selectedArchiveSeries.contains(
+                                        series.familyId,
+                                      ),
                                       onChanged: (checked) {
                                         setState(() {
                                           if (checked == true) {
-                                            _selectedTrash.add(item.id);
+                                            _selectedArchiveSeries.add(
+                                              series.familyId,
+                                            );
                                           } else {
-                                            _selectedTrash.remove(item.id);
+                                            _selectedArchiveSeries.remove(
+                                              series.familyId,
+                                            );
                                           }
                                         });
                                       },
                                     )
-                                  : const Icon(Icons.delete_outline),
-                              title: Text(item.name),
+                                  : const Icon(Icons.repeat_outlined),
+                              title: Text(series.title),
                               subtitle: Text(
-                                '${item.kind.name} - Deleted ${item.deletedAt.toLocal().toString().split('.').first}'
-                                '$children - Retain until at least ${item.retentionEndsAt.toLocal().toString().split(' ').first}',
+                                'Entire series - ${series.occurrences} occurrences',
                               ),
-                              isThreeLine: true,
                               onTap: selecting
                                   ? () {
                                       setState(() {
-                                        if (isSelected) {
-                                          _selectedTrash.remove(item.id);
+                                        if (_selectedArchiveSeries.contains(
+                                          series.familyId,
+                                        )) {
+                                          _selectedArchiveSeries.remove(
+                                            series.familyId,
+                                          );
                                         } else {
-                                          _selectedTrash.add(item.id);
+                                          _selectedArchiveSeries.add(
+                                            series.familyId,
+                                          );
                                         }
                                       });
                                     }
@@ -645,46 +488,205 @@ class _ArchiveTrashDialogState extends ConsumerState<ArchiveTrashDialog>
                                   : Wrap(
                                       spacing: 4,
                                       children: [
-                                        TextButton(
+                                        OutlinedButton(
                                           onPressed: busy
                                               ? null
                                               : () => _run(
                                                   () => controller
-                                                      .restoreTrashItem(item),
+                                                      .restoreArchivedSeries(
+                                                        series,
+                                                      ),
                                                 ),
                                           child: const Text('Restore'),
                                         ),
                                         IconButton(
-                                          tooltip: 'Permanently delete',
+                                          tooltip: 'Move to Trash',
                                           onPressed: busy
                                               ? null
-                                              : () async {
-                                                  if (await _confirmPurge(
-                                                    item,
-                                                  )) {
-                                                    await _run(
-                                                      () => controller
-                                                          .permanentlyDelete(
-                                                            item,
-                                                          ),
-                                                    );
-                                                  }
-                                                },
+                                              : () => _run(
+                                                  () => controller
+                                                      .deleteArchivedSeries(
+                                                        series,
+                                                      ),
+                                                ),
                                           icon: const Icon(
-                                            Icons.delete_forever_outlined,
+                                            Icons.delete_outline,
+                                            size: 20,
                                           ),
                                         ),
                                       ],
                                     ),
-                            );
-                          },
-                        ),
-                ],
-              ),
+                            ),
+                          for (final task in controller.archivedTasks)
+                            ListTile(
+                              leading: selecting
+                                  ? Checkbox(
+                                      value: _selectedArchiveTasks.contains(
+                                        task.id,
+                                      ),
+                                      onChanged: (checked) {
+                                        setState(() {
+                                          if (checked == true) {
+                                            _selectedArchiveTasks.add(task.id);
+                                          } else {
+                                            _selectedArchiveTasks.remove(
+                                              task.id,
+                                            );
+                                          }
+                                        });
+                                      },
+                                    )
+                                  : const Icon(Icons.archive_outlined),
+                              title: Text(task.title),
+                              subtitle: Text(
+                                task.recurrenceSeriesId == null
+                                    ? _statusLabel(task.status)
+                                    : 'Occurrence - ${_statusLabel(task.status)}',
+                              ),
+                              onTap: selecting
+                                  ? () {
+                                      setState(() {
+                                        if (_selectedArchiveTasks.contains(
+                                          task.id,
+                                        )) {
+                                          _selectedArchiveTasks.remove(task.id);
+                                        } else {
+                                          _selectedArchiveTasks.add(task.id);
+                                        }
+                                      });
+                                    }
+                                  : null,
+                              trailing: selecting
+                                  ? null
+                                  : Wrap(
+                                      spacing: 4,
+                                      children: [
+                                        OutlinedButton(
+                                          onPressed: busy
+                                              ? null
+                                              : () => _run(
+                                                  () => controller
+                                                      .restoreArchivedTask(
+                                                        task,
+                                                      ),
+                                                ),
+                                          child: const Text('Restore'),
+                                        ),
+                                        IconButton(
+                                          tooltip: 'Move to Trash',
+                                          onPressed: busy
+                                              ? null
+                                              : () => _run(
+                                                  () => controller
+                                                      .deleteArchivedTask(task),
+                                                ),
+                                          icon: const Icon(
+                                            Icons.delete_outline,
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                            ),
+                        ],
+                      ),
+                controller.trashItems.isEmpty
+                    ? const Center(child: Text('Trash is empty'))
+                    : FadingListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        itemCount: controller.trashItems.length,
+                        itemBuilder: (context, index) {
+                          final item = controller.trashItems[index];
+                          final children =
+                              item.kind == TrashKind.project ||
+                                  item.kind == TrashKind.category ||
+                                  item.kind == TrashKind.series
+                              ? ' - ${item.affectedTasks} task${item.affectedTasks == 1 ? '' : 's'} in this ${item.kind.name}'
+                              : '';
+                          final isSelected = _selectedTrash.contains(item.id);
+                          return ListTile(
+                            leading: selecting
+                                ? Checkbox(
+                                    value: isSelected,
+                                    onChanged: (checked) {
+                                      setState(() {
+                                        if (checked == true) {
+                                          _selectedTrash.add(item.id);
+                                        } else {
+                                          _selectedTrash.remove(item.id);
+                                        }
+                                      });
+                                    },
+                                  )
+                                : const Icon(Icons.delete_outline),
+                            title: Text(item.name),
+                            subtitle: Text(
+                              '${item.kind.name} - Deleted ${item.deletedAt.toLocal().toString().split('.').first}'
+                              '$children - Retain until at least ${item.retentionEndsAt.toLocal().toString().split(' ').first}',
+                            ),
+                            isThreeLine: true,
+                            onTap: selecting
+                                ? () {
+                                    setState(() {
+                                      if (isSelected) {
+                                        _selectedTrash.remove(item.id);
+                                      } else {
+                                        _selectedTrash.add(item.id);
+                                      }
+                                    });
+                                  }
+                                : null,
+                            trailing: selecting
+                                ? null
+                                : Wrap(
+                                    spacing: 4,
+                                    children: [
+                                      TextButton(
+                                        onPressed: busy
+                                            ? null
+                                            : () => _run(
+                                                () => controller
+                                                    .restoreTrashItem(item),
+                                              ),
+                                        child: const Text('Restore'),
+                                      ),
+                                      IconButton(
+                                        tooltip: 'Permanently delete',
+                                        onPressed: busy
+                                            ? null
+                                            : () async {
+                                                if (await _confirmPurge(item)) {
+                                                  await _run(
+                                                    () => controller
+                                                        .permanentlyDelete(
+                                                          item,
+                                                        ),
+                                                  );
+                                                }
+                                              },
+                                        icon: const Icon(
+                                          Icons.delete_forever_outlined,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          );
+                        },
+                      ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
+
+String _statusLabel(TaskStatus status) => switch (status) {
+  TaskStatus.notStarted => 'Not started',
+  TaskStatus.inProgress => 'In progress',
+  TaskStatus.waiting => 'Waiting',
+  TaskStatus.onHold => 'On hold',
+  TaskStatus.completed => 'Completed',
+  TaskStatus.cancelled => 'Cancelled',
+};

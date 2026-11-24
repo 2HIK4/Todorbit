@@ -127,6 +127,23 @@ Todorbit retains its own schedule, timer and navigation contracts.
   for habit and goal editing. Verify Create/Edit with a live draft at
   320 dp and 150% text and with simulated keyboard insets.
 
+## Batch 5 Settings, Sync and native widgets
+
+- Keep Settings category navigation next to content at regular desktop
+  widths. Switch to a labeled section picker when available width and
+  text scale leave insufficient reading space. Use divider disclosure
+  sections on Android and keep advanced options available on demand.
+- Show the current Sync state, last confirmed success and pending change
+  count together. Announce status changes and label busy progress.
+  Keep recovery explanations and conflict decisions tied to their owners.
+- Use normal emphasis for archive counts and error emphasis for destructive
+  actions. Shared Files names and metadata wrap at phone widths. Make
+  category-empty feedback distinct from an empty library.
+- Match fallback native widget roles to the Flutter defaults. Published
+  palettes take precedence. Android measures rows using the pixel rounding
+  of the native layout and preserves access to the heading and date
+  controls in compact Calendar widgets.
+
 ## Customization and compatibility
 
 Settings → Appearance retains System, Light and Dark, two editable palettes,
@@ -155,5 +172,5 @@ Flutter renders where practical alongside targeted behavior tests. Record
 Windows and Android coverage separately, including narrow layouts and 150%
 text. Use the [testing policy](TESTING.md) for evidence.
 
-Settings, sync feedback and native widgets follow Focus, Habits and Goals. Review each batch in
-light and dark before expanding.
+Final integration reviews the five implementation batches together, including
+real native input, physical device accessibility and packaged behavior.

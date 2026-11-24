@@ -441,17 +441,18 @@ internal sealed record WidgetPalette(
       return fallback;
     }
   }
+  // Fallbacks mirror ThemePalette when no custom colors have been published.
   internal static WidgetPalette Dark { get; } = new(
-    Color.FromArgb(23, 20, 32), Color.FromArgb(244, 240, 252),
-    Color.FromArgb(200, 192, 213), Color.FromArgb(37, 33, 49),
-    Color.FromArgb(37, 33, 49), Color.FromArgb(185, 164, 244),
-    Color.FromArgb(185, 164, 244), Color.FromArgb(76, 67, 92),
+    Color.FromArgb(21, 25, 28), Color.FromArgb(240, 244, 244),
+    Color.FromArgb(189, 202, 204), Color.FromArgb(32, 38, 42),
+    Color.FromArgb(32, 38, 42), Color.FromArgb(112, 218, 206),
+    Color.FromArgb(112, 218, 206), Color.FromArgb(59, 71, 77),
     Color.FromArgb(255, 155, 176));
 
   internal static WidgetPalette Light { get; } = new(
-    Color.FromArgb(248, 247, 252), Color.FromArgb(33, 27, 53),
-    Color.FromArgb(102, 95, 120), Color.White,
-    Color.White, Color.FromArgb(109, 86, 189),
-    Color.FromArgb(109, 86, 189), Color.FromArgb(220, 215, 233),
+    Color.FromArgb(246, 248, 249), Color.FromArgb(32, 39, 43),
+    Color.FromArgb(80, 94, 101), Color.White,
+    Color.White, Color.FromArgb(0, 106, 102),
+    Color.FromArgb(0, 106, 102), Color.FromArgb(214, 223, 226),
     Color.FromArgb(182, 59, 83));
 }

@@ -1,3 +1,4 @@
+import '../shared/app_spacing.dart';
 import '../shared/app_motion.dart';
 
 import 'dart:async';
@@ -297,61 +298,49 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
     final notice =
         controller.message ??
         (controller.needsRecoveryCode ? null : controller.status.notice);
+    final state = busy
+        ? controller.resetStage ?? 'Synchronizing'
+        : controller.label;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(top: 2),
-              child: Icon(Icons.cloud_outlined),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Google Drive', style: theme.textTheme.titleSmall),
-                  const SizedBox(height: 4),
-                  SettingsHelperText(
-                    controller.auth.account?.label ??
-                        'Connect to sync across your devices',
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
+        SettingsHelperText(controller.auth.account?.label ?? 'Google Drive'),
+        const SizedBox(height: AppSpacing.small),
         Semantics(
           liveRegion: true,
           child: Text(
-            busy
-                ? (controller.resetStage ?? 'Synchronizing')
-                : controller.label,
-            style: theme.textTheme.titleMedium,
+            state,
+            key: const ValueKey('sync-state-heading'),
+            style: theme.textTheme.titleLarge,
           ),
         ),
         if (busy) ...[
-          const SizedBox(height: 8),
-          const LinearProgressIndicator(),
+          const SizedBox(height: AppSpacing.gap),
+          LinearProgressIndicator(semanticsLabel: state),
         ],
         if (paired) ...[
-          const SizedBox(height: 6),
-          SettingsHelperText(
-            last == null
-                ? 'No successful sync yet'
-                : 'Last synced ${MaterialLocalizations.of(context).formatMediumDate(last.toLocal())} · ${TimeOfDay.fromDateTime(last.toLocal()).format(context)}',
+          const SizedBox(height: AppSpacing.gap),
+          Wrap(
+            spacing: AppSpacing.content,
+            runSpacing: AppSpacing.small,
+            children: [
+              SettingsHelperText(
+                last == null
+                    ? 'No successful sync yet'
+                    : 'Last successful sync · ${MaterialLocalizations.of(context).formatShortDate(last.toLocal())} · ${TimeOfDay.fromDateTime(last.toLocal()).format(context)}',
+              ),
+              SettingsHelperText(
+                'Pending changes: ${controller.status.pending}',
+              ),
+            ],
           ),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.content),
         if (connected && !paired && !unlockRequired) ...[
           const StatusNotice(
             title: 'Standard Sync ready',
-            message:
-                'Google Drive is connected. Default setup uses Standard Sync (no extra password required). To use client-side encryption instead, expand Encryption options below.',
+            message: 'Google Drive is connected. Default setup uses Standard Sync (no extra password required). To use client-side encryption instead, expand Encryption options below.',
             icon: Icons.cloud_done_outlined,
           ),
           const SizedBox(height: 12),
@@ -376,7 +365,8 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
                   ? problem!.explanation
                   : 'An existing Private Encrypted Sync workspace was found in your Google Drive. Enter the Private Sync passphrase created on your other device, or switch to your recovery code (do not enter your Google account password).',
               icon: Icons.lock_outline,
-              error: problem?.action == SyncProblemAction.unlock &&
+              error:
+                  problem?.action == SyncProblemAction.unlock &&
                   problem!.title.contains('could not'),
             ),
             const SizedBox(height: 12),
@@ -407,10 +397,10 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
             decoration: InputDecoration(
               labelText:
                   !restored &&
-                          controller.pairing.passwordAvailable &&
-                          !useRecoveryCode
-                      ? 'Private Sync passphrase'
-                      : 'Recovery code',
+                      controller.pairing.passwordAvailable &&
+                      !useRecoveryCode
+                  ? 'Private Sync passphrase'
+                  : 'Recovery code',
               suffixIcon: IconButton(
                 tooltip: showCredential ? 'Hide credential' : 'Show credential',
                 onPressed: () =>
@@ -483,8 +473,9 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
               error: true,
             ),
             OutlinedButton(
-              onPressed:
-                  busy ? null : () => _problemAction(controller, problem),
+              onPressed: busy
+                  ? null
+                  : () => _problemAction(controller, problem),
               child: Text(problem.actionLabel),
             ),
           ],
@@ -497,10 +488,11 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
             ],
           ),
         ],
-        if (notice != null && problem == null) ...[
-          const SizedBox(height: 12),
-          Text(notice, style: theme.textTheme.bodyMedium),
-        ],
+        if (notice != null && problem == null)
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.related),
+            child: Semantics(liveRegion: true, child: Text(notice)),
+          ),
         if (notice == null && !connected && !controller.auth.canConnect)
           const Padding(
             padding: EdgeInsets.only(top: 12),
@@ -616,10 +608,6 @@ class _SyncSettingsPageState extends ConsumerState<SyncSettingsPage>
               ),
               const SettingsHelperText(
                 'Sync keeps current data consistent, including deletions. Backups remain separate recovery snapshots.',
-              ),
-              const SizedBox(height: 8),
-              SettingsHelperText(
-                'Pending changes: ${controller.status.pending}',
               ),
               const SizedBox(height: 12),
             ],

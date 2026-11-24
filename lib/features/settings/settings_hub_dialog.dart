@@ -1,3 +1,4 @@
+import '../shared/app_spacing.dart';
 import '../shared/app_motion.dart';
 import '../shared/scroll_edge_fade.dart';
 
@@ -107,7 +108,8 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
     final media = MediaQuery.of(context);
     final size = media.size;
     final insets = media.viewInsets;
-    final narrow = size.width < 650;
+    final scale = media.textScaler.scale(14) / 14;
+    final narrow = size.width - 48 < 650 * scale;
     final availableHeight = math.max(0.0, size.height - insets.bottom - 48);
     final availableWidth = math.max(0.0, size.width - 48);
     return Dialog(
@@ -179,7 +181,9 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
                                       .colorScheme
                                       .primaryContainer,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(9),
+                                    borderRadius: BorderRadius.circular(
+                                      AppRadius.control,
+                                    ),
                                   ),
                                   leading: Icon(item.icon, size: 20),
                                   title: Text(item.title),
@@ -202,10 +206,14 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
   Widget _content(AppController controller) => FadingListView(
     padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
     children: [
-      Text(page.title, style: Theme.of(context).textTheme.titleLarge),
-      const SizedBox(height: 10),
+      Semantics(
+        header: true,
+        child: Text(page.title, style: Theme.of(context).textTheme.titleLarge),
+      ),
+      const SizedBox(height: AppSpacing.related),
       switch (page) {
         _SettingsPage.appearance => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SegmentedButton<ThemeModePreference>(
               showSelectedIcon: false,
@@ -266,8 +274,7 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
                 initialValue: controller.taskViewPreferences.detailPresentation,
                 decoration: const InputDecoration(
                   labelText: 'Task & event presentation',
-                  helperText:
-                      'Choose side panel (default) or full window/page presentation',
+                  helperText: 'Choose side panel (default) or full window/page presentation',
                 ),
                 items: const [
                   DropdownMenuItem(

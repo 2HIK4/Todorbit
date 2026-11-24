@@ -1,3 +1,6 @@
+import '../shared/app_spacing.dart';
+import '../shared/app_section_heading.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -402,10 +405,11 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
               child: TextField(
                 controller: searchController,
                 decoration: InputDecoration(
-                  hintText: 'Search shared files...',
+                  hintText: 'Search files',
                   prefixIcon: const Icon(Icons.search, size: 20),
                   suffixIcon: searchController.text.isNotEmpty
                       ? IconButton(
+                          tooltip: 'Clear shared file search',
                           icon: const Icon(Icons.clear, size: 18),
                           onPressed: () {
                             searchController.clear();
@@ -457,7 +461,10 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
           if (allEntries.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Row(
+              child: Wrap(
+                spacing: AppSpacing.related,
+                runSpacing: AppSpacing.small,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Text(
                     '${allEntries.length} file${allEntries.length == 1 ? '' : 's'} • ${_formatSize(totalBytes)}',
@@ -465,24 +472,23 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const Spacer(),
                   Tooltip(
                     message:
                         'Files in the Shared Inbox are stored locally on this device. '
                         'They are not included in cloud sync or database backups until attached to a task.',
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                    child: Wrap(
+                      spacing: AppSpacing.small,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Icon(
                           Icons.cloud_off_outlined,
                           size: 13,
-                          color: theme.colorScheme.outline,
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
-                        const SizedBox(width: 4),
                         Text(
                           'On-device only · Not synced',
                           style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.outline,
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -570,46 +576,13 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
   }
 
   Widget _emptyView(BuildContext context) {
-    final theme = Theme.of(context);
-    final isFiltered =
-        allEntries.isNotEmpty && searchController.text.isNotEmpty;
-
+    final isFiltered = allEntries.isNotEmpty;
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isFiltered
-                  ? Icons.search_off_outlined
-                  : Icons.folder_shared_outlined,
-              size: 56,
-              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              isFiltered ? 'No matching shared files' : 'No shared files yet',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              isFiltered
-                  ? 'Try adjusting your search query or category filter.'
-                  : 'Files and PDFs shared to Todorbit from other Android apps '
-                        'will appear here so you can attach them to tasks later.\n\n'
-                        'Sharing files does not automatically create tasks.\n\n'
-                        'Files remain local to this device and are excluded from '
-                        'cloud sync and backups until attached to a task.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
+      child: AppEmptyState(
+        title: isFiltered ? 'No matching shared files' : 'No shared files yet',
+        message: isFiltered
+            ? 'Try adjusting your search query or category filter.'
+            : 'Share files from another Android app to attach them later. Sharing files does not automatically create tasks. Files stay on this device until attached.',
       ),
     );
   }
@@ -680,7 +653,7 @@ class _SharedInboxScreenState extends State<SharedInboxScreen> {
                   children: [
                     Text(
                       entry.displayName,
-                      maxLines: 2,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,

@@ -23,6 +23,10 @@ Todorbit is an offline Windows productivity app with an Android beta for tasks, 
 - Keep data local, with managed backups, reviewed restore, and SQLite import/export.
 - Customize light and dark color palettes with a color wheel and share validated JSON themes through Settings → Appearance → Customize Theme.
 
+Settings keeps Sync status and queued changes alongside the last successful
+sync. Backups provide point-in-time recovery. Windows and Android native
+widgets use the selected palette when available.
+
 ## Android beta installation
 
 The production-signed [Android 1.0.19-beta.12 pre-release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.12) supports Android 8.0+ with a universal ARM64/x86-64 APK, resumable updates, Tasks/Calendar widgets and incremental Sync with Standard or optional private encryption. Download the APK and verify its published SHA-256. Real Drive cross-device acceptance remains unverified. Back up existing data and start with disposable profiles. Before replacing a debug-signed app, verify an external backup and recovery first. See [phone signing and backup testing](docs/ANDROID_BETA_2_PHONE_TESTING.md), [sync setup](docs/GOOGLE_DRIVE_SYNC.md) and [publication evidence and test skips](docs/UI_QUALITY_BETA_12_PUBLICATION.md).

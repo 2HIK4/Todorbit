@@ -36,10 +36,7 @@ void main() {
 
   Widget createSubject() {
     return MaterialApp(
-      home: SharedInboxScreen(
-        store: store,
-        resourceDialog: fakeDialog,
-      ),
+      home: SharedInboxScreen(store: store, resourceDialog: fakeDialog),
     );
   }
 
@@ -62,20 +59,75 @@ void main() {
     );
   });
 
-  testWidgets('displays list of shared files with names, sizes, and categories', (tester) async {
-    await tester.runAsync(() async {
-      await store.addBytes([1, 2, 3, 4], displayName: 'Contract.pdf', mimeType: 'application/pdf');
-      await store.addBytes(List.filled(2048, 7), displayName: 'Receipt.png', mimeType: 'image/png');
-    });
+  testWidgets(
+    'displays list of shared files with names, sizes, and categories',
+    (tester) async {
+      await tester.runAsync(() async {
+        await store.addBytes(
+          [1, 2, 3, 4],
+          displayName: 'Contract.pdf',
+          mimeType: 'application/pdf',
+        );
+        await store.addBytes(
+          List.filled(2048, 7),
+          displayName: 'Receipt.png',
+          mimeType: 'image/png',
+        );
+      });
 
-    await pumpSubject(tester);
+      await pumpSubject(tester);
 
-    expect(find.text('Contract.pdf'), findsOneWidget);
-    expect(find.text('Receipt.png'), findsOneWidget);
-    expect(find.textContaining('2 file'), findsOneWidget);
-    expect(find.text('PDFs'), findsOneWidget);
-    expect(find.text('Images'), findsOneWidget);
-  });
+      expect(find.text('Contract.pdf'), findsOneWidget);
+      expect(find.text('Receipt.png'), findsOneWidget);
+      expect(find.textContaining('2 file'), findsOneWidget);
+      expect(find.text('PDFs'), findsOneWidget);
+      expect(find.text('Images'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'compact file metadata wraps and category empty state is accurate',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(320, 720));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.runAsync(
+        () => store.addBytes(
+          [1, 2, 3],
+          displayName: 'Quarterly planning notes for the entire team.pdf',
+          mimeType: 'application/pdf',
+        ),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(platform: TargetPlatform.android),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: TextScaler.linear(1.5)),
+            child: child!,
+          ),
+          home: SharedInboxScreen(store: store, resourceDialog: fakeDialog),
+        ),
+      );
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.text('On-device only · Not synced').hitTestable(),
+        findsOneWidget,
+      );
+      final images = find.widgetWithText(FilterChip, 'Images');
+      await tester.ensureVisible(images);
+      await tester.pumpAndSettle();
+      await tester.tap(images);
+      await tester.pumpAndSettle();
+      expect(
+        find.text('No matching shared files').hitTestable(),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('search filters files by displayName', (tester) async {
     await tester.runAsync(() async {
@@ -97,8 +149,16 @@ void main() {
 
   testWidgets('filter chips filter by category', (tester) async {
     await tester.runAsync(() async {
-      await store.addBytes([1, 2], displayName: 'Doc.pdf', mimeType: 'application/pdf');
-      await store.addBytes([3, 4], displayName: 'Pic.jpg', mimeType: 'image/jpeg');
+      await store.addBytes(
+        [1, 2],
+        displayName: 'Doc.pdf',
+        mimeType: 'application/pdf',
+      );
+      await store.addBytes(
+        [3, 4],
+        displayName: 'Pic.jpg',
+        mimeType: 'image/jpeg',
+      );
     });
 
     await pumpSubject(tester);
@@ -135,42 +195,49 @@ void main() {
     expect(fakeDialog.openedTarget, entry.fileIn(tempDir).path);
   });
 
-  testWidgets('single file deletion shows confirmation dialog and removes item', (tester) async {
-    await tester.runAsync(() async {
-      await store.addBytes([1, 2], displayName: 'Obsolete.pdf');
-    });
+  testWidgets(
+    'single file deletion shows confirmation dialog and removes item',
+    (tester) async {
+      await tester.runAsync(() async {
+        await store.addBytes([1, 2], displayName: 'Obsolete.pdf');
+      });
 
-    await pumpSubject(tester);
+      await pumpSubject(tester);
 
-    expect(find.text('Obsolete.pdf'), findsOneWidget);
+      expect(find.text('Obsolete.pdf'), findsOneWidget);
 
-    // Open popup menu
-    await tester.tap(find.byTooltip('File actions'));
-    await tester.pumpAndSettle();
+      // Open popup menu
+      await tester.tap(find.byTooltip('File actions'));
+      await tester.pumpAndSettle();
 
-    // Tap delete
-    await tester.tap(find.text('Delete'));
-    await tester.pumpAndSettle();
+      // Tap delete
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
 
-    // Verify confirmation dialog
-    expect(find.text('Delete from Shared Inbox?'), findsOneWidget);
-    expect(
-      find.textContaining('Any copies already attached to tasks will remain intact.'),
-      findsOneWidget,
-    );
+      // Verify confirmation dialog
+      expect(find.text('Delete from Shared Inbox?'), findsOneWidget);
+      expect(
+        find.textContaining(
+          'Any copies already attached to tasks will remain intact.',
+        ),
+        findsOneWidget,
+      );
 
-    // Confirm delete
-    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
-    await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    });
-    await tester.pumpAndSettle();
+      // Confirm delete
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      });
+      await tester.pumpAndSettle();
 
-    expect(find.text('Obsolete.pdf'), findsNothing);
-    expect(find.text('No shared files yet'), findsOneWidget);
-  });
+      expect(find.text('Obsolete.pdf'), findsNothing);
+      expect(find.text('No shared files yet'), findsOneWidget);
+    },
+  );
 
-  testWidgets('selection mode supports batch selection and deletion', (tester) async {
+  testWidgets('selection mode supports batch selection and deletion', (
+    tester,
+  ) async {
     await tester.runAsync(() async {
       await store.addBytes([1], displayName: 'FileA.pdf');
       await store.addBytes([2], displayName: 'FileB.pdf');

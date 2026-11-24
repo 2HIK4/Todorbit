@@ -25,6 +25,12 @@ break and interrupted review states through the existing entry points. Check
 habit and goal editor action geometry with an Android keyboard inset. Reuse
 repository and duration evidence when those owners are unchanged.
 
+For Settings and Sync presentation, check the narrow section picker, long
+account labels, last success, pending work and the conflict review entry point.
+Android native widget geometry can use the 180 and 380 dp representative
+matrix at 100% and 150% text. Track physical launcher and Windows shell
+checks separately.
+
 For SQLite, recurrence, and profile changes, include focused migration/round-trip or isolated in-memory/disposable-profile tests as appropriate. Preserve production data; never open or migrate the personal profile to test a change. For native IPC or widget rendering/input changes, build the native Release target, run `TodorbitWidget.exe --self-test`, then follow the relevant manual checks in `docs/windows-widget.md` on an isolated profile. For update/installer changes, use `docs/SOFTWARE_UPDATES.md` and `docs/ACCEPTANCE.md`; verify package identity, helper failure paths, and disposable upgrade behavior before release claims.
 
 At integration or release checkpoints run `flutter analyze --no-pub`, relevant `flutter test` coverage (full serial suite when broad behavior changed), native and Windows Release builds, and packaged self-test as applicable. The exact build commands and profile setup are in `docs/DEVELOPMENT.md`. Run GUI checks in an isolated Windows profile when available, and distinguish live debug GUI, Release GUI, offscreen render, widget test, and manual native checks in the report. Record failures and unverified items explicitly; update `docs/PROGRESS.md` after meaningful work.

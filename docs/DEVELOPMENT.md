@@ -4,6 +4,12 @@ Todorbit is a Windows-first Flutter app. Flutter UI lives in `lib/features/`, do
 
 Install Flutter, Visual Studio Windows C++ desktop tools, and .NET 10 SDK. Run `flutter pub get` first. Use [Testing](TESTING.md) to select checks for the changed boundary; a small edit does not require all build/test commands. Distribution builds use `./tools/build-windows-release.ps1` after dependencies are resolved.
 
+For widget palette and geometry work, run the isolated companion
+`--self-test` and `--capture-widgets` on Windows. On a disposable
+Android emulator, `WidgetRenderInstrumentation` accepts
+`-e representative true` for compact and expanded renders at 100% and 150%
+text. The full matrix remains available through `tools/test-android-widgets.ps1`.
+
 For Flutter presentation work, start with the [Todorbit design system](UI_DESIGN_SYSTEM.md)
 and reuse its shared controls in the Windows and Android entry points.
 For Inbox, scoped lists, grouping, and row presentation, see the

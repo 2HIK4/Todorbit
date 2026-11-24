@@ -232,7 +232,8 @@ object AndroidSurfaces {
         val dark = theme == "dark" || theme == "system" && (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         val palette = data.optJSONObject("palettes")?.optJSONObject(if(dark) "dark" else "light")
         fun color(key: String, fallback: String) = try { Color.parseColor(palette?.optString(key,fallback) ?: fallback) } catch (_: Exception) { Color.parseColor(fallback) }
-        val surface = color("surface",if(dark) "#252131" else "#FFFFFF")
+        // Match ThemePalette until Flutter publishes the profile colors.
+        val surface = color("surface",if(dark) "#20262A" else "#FFFFFF")
         fun contrastText(candidate: Int): Int {
             fun light(c: Int): Double {
                 fun channel(v: Int): Double { val n=v/255.0; return if(n<=0.04045) n/12.92 else Math.pow((n+0.055)/1.055,2.4) }
@@ -241,9 +242,9 @@ object AndroidSurfaces {
             val a=light(surface); val b=light(candidate)
             return if((maxOf(a,b)+.05)/(minOf(a,b)+.05)>=4.5) candidate else if(a>.179) Color.BLACK else Color.WHITE
         }
-        val foreground = contrastText(color("primaryText",if(dark) "#F4F0FC" else "#211B35"))
-        val secondary = contrastText(color("secondaryText",if(dark) "#C8C0D5" else "#665F78"))
-        val accent = contrastText(color("accent",if(dark) "#B9A4F4" else "#6D56BD"))
+        val foreground = contrastText(color("primaryText",if(dark) "#F0F4F4" else "#20272B"))
+        val secondary = contrastText(color("secondaryText",if(dark) "#BDCACC" else "#505E65"))
+        val accent = contrastText(color("accent",if(dark) "#70DACE" else "#006A66"))
         val opacity = prefs.getInt("opacity-$id",95).coerceIn(40,100)
         val remote = RemoteViews(context.packageName,R.layout.todorbit_widget)
         // Opacity belongs to the outer shell; opaque content surfaces keep text
@@ -318,7 +319,7 @@ object AndroidSurfaces {
         // Measure bounded text layouts rather than reserving two lines for
         // every row. Extra height can then show actual content at each font size.
         val density=context.resources.displayMetrics.density
-        fun dp(value: Int)=(value*density).toInt()
+        fun dp(value: Int)=Math.round(value*density)
         fun textHeight(text: String, sp: Float, lines: Int, bold: Boolean, widthDp: Int): Int {
             val paint=android.text.TextPaint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                 textSize=android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,sp,context.resources.displayMetrics)
@@ -328,7 +329,8 @@ object AndroidSurfaces {
                 .setIncludePad(true).setMaxLines(lines).setEllipsize(android.text.TextUtils.TruncateAt.END).build().height
         }
         val headerWidth=(width-72).coerceAtLeast(1)
-        val headerHeight=dp(24)+maxOf(dp(48),textHeight("Ag",18f,1,true,headerWidth)+
+        // XML rounds each edge of the content padding independently.
+        val headerHeight=2*dp(12)+maxOf(dp(48),textHeight("Ag",18f,1,true,headerWidth)+
             if(compact && scale>1.3f) 0 else textHeight("Ag",12f,1,false,headerWidth))
         val compactDates=height<250 && (calendar || filter=="today")
         remote.setViewVisibility(R.id.widget_footer,if(compactDates) View.GONE else View.VISIBLE)
@@ -344,10 +346,11 @@ object AndroidSurfaces {
             capacity++
         }
         remote.setViewVisibility(R.id.widget_dates,if(calendar || filter=="today") View.VISIBLE else View.GONE)
-        val todayLabel = if(isFollowingToday) {
-            "Today, " + today.format(DateTimeFormatter.ofPattern("MMM d"))
-        } else {
-            selectedDay.format(DateTimeFormatter.ofPattern("MMM d")) + " \u2022 Back to today"
+        val todayLabel = when {
+            width < 250 && scale > 1.3f -> if (isFollowingToday) "Today"
+                else selectedDay.format(DateTimeFormatter.ofPattern("M/d"))
+            isFollowingToday -> "Today, " + today.format(DateTimeFormatter.ofPattern("MMM d"))
+            else -> selectedDay.format(DateTimeFormatter.ofPattern("MMM d")) + " \u2022 Back to today"
         }
         remote.setTextViewText(R.id.widget_today, todayLabel)
         remote.setContentDescription(R.id.widget_today, if(isFollowingToday) {
