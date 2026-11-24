@@ -2,7 +2,7 @@
 
 Todorbit is a Windows-first Flutter app. Flutter UI lives in `lib/features/`, domain types in `lib/domain/`, and SQLite access in `lib/data/`. The native .NET widget is in `experiments/widget-shell-probe/`; despite the historical directory name, it is the packaged widget companion. `windows/runner/` holds the Flutter Windows runner and file-opening channels. Internal identifiers still use `life_manager` where renaming would add migration risk.
 
-Install Flutter, Visual Studio Windows C++ desktop tools, and .NET 10 SDK. Run `flutter pub get` first. Use [Testing](TESTING.md) to select checks for the changed boundary; a small edit does not require all build/test commands. Distribution builds use `./tools/build-windows-release.ps1` after dependencies are resolved.
+Install Flutter, Visual Studio Windows C++ desktop tools, and .NET 10 SDK. Run `flutter pub get` first, then run `.\dev doctor` to verify SDK paths, RAM, and lock contention. Use [Developer Automation Toolkit](DEVELOPER_AUTOMATION_TOOLKIT.md) (`.\dev context <feature>`, `.\dev verify changed`, `.\dev registry --validate`) and [Testing](TESTING.md) to select checks for the changed boundary; a small edit does not require all build/test commands. Distribution builds use `./tools/build-windows-release.ps1` after dependencies are resolved.
 
 For widget palette and geometry work, run the isolated companion
 `--self-test` and `--capture-widgets` on Windows. On a disposable

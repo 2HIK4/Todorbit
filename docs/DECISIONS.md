@@ -1,5 +1,20 @@
 # Decisions
 
+## 2026-11-24: Todorbit Developer Automation Toolkit (TDAT) & AI Engineering Harness
+
+Codify a permanent, automation-first developer tooling architecture:
+- Unified cross-platform CLI (`dev` / `tools/dev/dev.ps1`) built on modular PowerShell and Python components rather than heavy daemons or external web services.
+- Process safety: Enforce strictly non-interactive execution (`-NonInteractive`, explicit `.bat`/`.exe` resolution) to eliminate Windows "Pick an app" (`OpenWith.exe`) dialog triggers on extensionless commands.
+- Centralized test registry indexing 100% of repository tests (`registry.json`) with automated filesystem validation and CI enforcement (`tools/test_registry_sync.py`).
+- Conservative impact analysis resolving committed/staged/unstaged/deleted/renamed/untracked changes, reverse transitive Dart imports, critical schema/security gates, shared UI boundaries, and broad unmapped fallbacks, plus optional real shadow execution (`dev verify changed -Shadow`).
+- Content-addressed evidence caching (`.buildlog/evidence/`) integrated into `dev verify changed`, refusing mid-execution source mutations, non-Dart/env-gated checks, and registry tampering.
+- Deterministic AI context generation (`dev context <feature>`) providing verified entry points, design tokens, tests, and historical invariants for all 23 features without vector databases.
+- Honest runtime classification: separating Flutter test-harness SQLite persistence (`dev runtime windows`) from real `Todorbit.exe` process launch/UI/restart (`dev runtime windows -LiveApp`), and reporting Android 16 KiB emulator checks as `BLOCKED` when hardware/artifacts are absent.
+- Deterministic synthetic SQLite fixtures (`empty`, `small`, `typical`, `large`, `calendar-stress`, `sync-conflict`, `migration`) generated in `.buildlog/fixtures/` using fixed seeds.
+- Application laboratory (`dev screenshot <scenario>`) executing headless offscreen Flutter rendering and verifying zero RenderFlex overflows across 1080p, compact, 320dp mobile, and 150% text scaling viewports.
+- Release artifact audit (`dev package`) auditing Windows 64-bit x64 PE headers, CRT DLL imports, Inno Setup script configuration, and Android 16 KiB ELF alignment tooling.
+See [Developer Automation Toolkit](DEVELOPER_AUTOMATION_TOOLKIT.md) and [Audit](DEVELOPER_TOOLKIT_AUDIT_2026_11_24.md).
+
 ## 2026-11-18 legacy Sync settings, Android Shared Inbox & Beta 24 publication gate
 
 Preserve captured revisions and staged Sync envelopes when retiring a portable

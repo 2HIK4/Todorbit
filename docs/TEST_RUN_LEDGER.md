@@ -1,5 +1,31 @@
 # Persistent test run ledger
 
+## TDAT & Beta 28 Integration Verification (2026-11-25)
+
+Integration branch `integration/tdat-beta28` combining `feature/todorbit-beta27-refinement` (`b600ea7`) and `feature/todorbit-developer-toolkit` (`1035bf4`). Fresh integration-scoped checks run in disposable worktree `D:/AI_Projects/life_manager_tdat_integration` without reusing prior branch receipts:
+
+| Invocation / purpose | Source / artifact | Result | Notes / limits |
+| --- | --- | --- | --- |
+| `flutter pub get --enforce-lockfile` + `.\dev doctor --repair` + `.\dev registry --refresh` + `.\dev registry --validate` | Combined source (`b600ea7` + `1035bf4`) | Passed (227 suites) | Repaired Windows plugin junctions without enabling Developer Mode |
+| `.\dev self-test` (16 checks), `check-docs.py` (defaults + `DEFERRED_VERIFICATION.md`), `test_dev_verify.py` (9), `test_ci_workflows.py` (5, 1 skip), `test_architecture_boundaries.py` (39) | Combined source | Passed | Fresh run on merged tree |
+| `flutter analyze --no-pub` | Full integrated workspace | Passed (0 issues) | 38.1s |
+| 12 combined Flutter regression suites (`refinement_visual_test.dart`, `app_task_row_test.dart`, `calendar_interactions_regression_test.dart`, `calendar_zoom_animation_test.dart`, `mobile_calendar_date_following_test.dart`, `theme_customization_test.dart`, `workspace_toolbar_test.dart`, `published_update_discovery_test.dart`, `calendar_recurrence_invariants_test.dart`, `database_migration_recovery_test.dart`, `lab_render_test.dart`, `sync_simulated_transport_test.dart`) | Combined source | Passed (+64, ~1 opt-in skip) | `published_update_discovery_test.dart` skipped cleanly without `TODORBIT_RELEASE_TAG` `--dart-define` |
+| `.\dev runtime windows` | `startup_recovery_journeys_test.dart`, `resource_journeys_test.dart`, `runtime_workflow_journey_test.dart` | Passed (33.79s) | Flutter test-harness SQLite persistence only; `-LiveApp -BuildLiveApp` blocked locally (Developer Mode disabled) |
+| `.\dev runtime android` | `tools/android-16k-runtime.py` | Blocked | Missing authorized API 36 16 KiB emulator and candidate APK |
+| `.\dev verify changed -BaselineRef b600ea7` (x2) | Combined source | Passed (Run 1: 9 Py + 7 Dart; Run 2: 4 `[REUSED]`, 3 ineligible Dart + 9 Py fresh) | Confirms fresh execution, cache persistence, `[REUSED]` hits, and `IneligibleForReuse` enforcement |
+
+## TDAT Final Safety Gate Verification (2026-11-25)
+
+Branch `feature/todorbit-developer-toolkit` (from `93dc02e`), Flutter 3.47.7, Dart 3.13.5, Windows 11 x64.
+
+| Invocation / purpose | Source / artifact | Result | Notes / limits |
+| --- | --- | --- | --- |
+| `dev self-test` (16 checks: doctor, registry, locks, cleanup, process safety, context, repomap, fixture, package, impact, benchmark, evidence safety 14, impact behavior 15, locking safety 6, handoff, registry sync 3) | `tools/dev/test_toolkit_self.ps1` | Passed (16/16) | Fresh run after TDAT module edits |
+| `dev runtime windows` | `test/startup_recovery_journeys_test.dart`, `test/resource_journeys_test.dart`, `test/runtime_workflow_journey_test.dart` | Passed (55.53s) | Flutter test-harness SQLite persistence in isolated `.buildlog` profile; NOT live `Todorbit.exe` UI/restart |
+| `dev runtime windows -LiveApp -BuildLiveApp` | `test_driver/windows_runtime_workflow_test.dart` | Blocked | Host Windows Developer Mode disabled (`Building with plugins requires symlink support`) |
+| `dev runtime android` | `tools/android-16k-runtime.py` | Blocked | Missing authorized 16 KiB emulator (`PAGE_SIZE=16384`), `.buildlog/16k-runtime/candidate.apk`, `APK_SHA256` |
+| `python tools/dev/check-docs.py`, `test_dev_verify.py` (9), `test_ci_workflows.py` (5, 1 bash skip), `test_architecture_boundaries.py` (39) | Working tree | Passed | Cross-platform Python & CI contract checks |
+
 ## Beta 28 release candidate
 
 Exact candidate `21bae9a3407d6e23b82408f36a6e75b286187d64`, Flutter 3.47.7.

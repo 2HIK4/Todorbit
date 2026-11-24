@@ -23,6 +23,15 @@
 
 ## Efficient workflow and verification
 
+- **Developer Automation Toolkit (TDAT)**: The unified CLI `dev` (`tools/dev/dev.ps1`) is the authoritative developer interface. Future AI agents MUST use, maintain, and extend TDAT rather than bypassing it with ad-hoc full-repo exploration or unvalidated test selection. Follow [Developer Automation Toolkit](docs/DEVELOPER_AUTOMATION_TOOLKIT.md).
+  - Run `dev doctor` before major operations to verify toolchain health, RAM limits, and lock contention.
+  - Run `dev context <feature>` before exploring files; it deterministically returns requirements, verified entry points, design tokens, tests, and critical historical invariants without wasting AI context.
+  - Run `dev impact` and `dev verify changed` to analyze changes and execute minimal, evidence-reusing verification (use `dev verify changed -Shadow` periodically or on risky changes to audit impact selection against omitted suites).
+  - Whenever adding, moving, or deleting tests or feature source paths, update `tools/dev/features.json` / `tools/dev/feature_contexts.json` and run `dev registry --refresh` + `dev registry --validate` (enforced by CI via `tools/test_registry_sync.py`).
+  - Distinguish runtime verification levels honestly: `dev runtime windows` runs isolated Flutter test-harness SQLite persistence checks, whereas `dev runtime windows -LiveApp` exercises real `Todorbit.exe` process launch, `FlutterDriver` UI interaction, and process restart; `dev runtime android` reports `BLOCKED` unless an authorized 16 KiB emulator and candidate APK are present.
+  - Run `dev screenshot <scenario>` for offscreen UI layout checks across viewports (1080p, compact, 320dp mobile, 150% text scale).
+  - Run `dev cleanup --dry-run` to inspect and clean disposable profiles and ephemeral logs safely.
+- **Automation and non-interactive process safety**: Automated CLI operations, test runners, and developer scripts MUST remain strictly non-interactive. Never invoke extensionless scripts (e.g. `flutter`, `dart` on Windows) via shell execution; always resolve explicit Windows extensions (`flutter.bat`, `dart.exe`). Automated PowerShell processes must pass `-NonInteractive` alongside `-NoProfile`. Never invoke `Process.Start` or `Start-Process` with `UseShellExecute = true` or trigger unassociated Windows file handlers that open "Pick an app" (`OpenWith.exe`) dialogs. Enforce explicit execution timeouts and bounded retries (max 2) with fail-closed diagnostics.
 - Start with `git status --short` and the smallest relevant `rg` search. Exclude generated, build and dependency directories. Read only task-relevant documentation.
 - Preserve unrelated uncommitted work; use a focused branch. Never reset another task's changes or move release tags. See [Codex workflow](docs/CODEX_WORKFLOW.md).
 - Find the feature in [Architecture map](docs/ARCHITECTURE_MAP.md) before searching broadly. `tools/dev/verify.ps1` selects explicit Quick/Feature/Full checks; `-Plan` previews them. Never guess tests for an uncertain dependency.

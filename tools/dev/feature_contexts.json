@@ -1,0 +1,877 @@
+{
+  "calendar": {
+    "summary": "Interactive calendar with day, week, month, and agenda views, time-grid event placement, drag-and-drop rescheduling, multi-event recurrence, and safe event drafting.",
+    "primaryRequirements": [
+      "Preserve time-grid geometry and interaction controller contract on Windows desktop.",
+      "Preserve Android touch agenda view and date-following scroll behavior separately.",
+      "Safe draft retention: never discard uncommitted event/session text on focus change.",
+      "Accurate recurrence calculation (leap years, month-end date clamping, exceptions).",
+      "Readability at 320 dp viewport and 150% font scale without clipped times."
+    ],
+    "entryPoints": {
+      "windowsPresentation": ["lib/features/calendar/calendar_view.dart", "lib/features/calendar/calendar_presentation.dart"],
+      "androidPresentation": ["lib/features/mobile/mobile_calendar.dart"],
+      "sharedPresentation": ["lib/features/calendar/event_editor.dart", "lib/features/calendar/session_editor.dart"],
+      "logicAndPersistence": ["lib/data/event_repository.dart", "lib/domain/recurrence.dart", "lib/domain/scheduling_engine.dart"]
+    },
+    "architectureBoundaries": [
+      "Calendar views observe AppController and call EventRepository through LifeRepository.",
+      "Pure recurrence math in lib/domain/recurrence.dart must remain pure with zero UI imports.",
+      "All event mutations require stable UUIDs and UTC timestamps in SQLite.",
+      "Never auto-complete or silently reschedule events or tasks."
+    ],
+    "designSystemTokens": [
+      "Batch 1 presentation rules (date presentation, action labels, editor layout).",
+      "AppLayout breakpoints (desktop vs compact), AppSpacing, AppModalShell for dialogs.",
+      "TodorbitThemeTokens for event category chips and contrast in both light and dark themes."
+    ],
+    "tests": [
+      "test/calendar_test.dart",
+      "test/interactive_calendar_redesign_test.dart",
+      "test/event_recurrence_test.dart",
+      "test/calendar_interactions_regression_test.dart",
+      "test/calendar_layout_engine_test.dart",
+      "test/calendar_undo_redo_test.dart",
+      "test/calendar_safety_and_persistence_test.dart",
+      "test/calendar_card_contrast_test.dart",
+      "test/mobile_calendar_date_following_test.dart"
+    ],
+    "historicalInvariants": [
+      "Time-grid zoom and scroll must not cause NaN or infinite layout bounds.",
+      "Android date agenda must follow the selected calendar date without lag or jump.",
+      "Draft editor must retain typed title/notes if dialog loses focus or device rotates."
+    ],
+    "applicableSkills": [
+      ".agents/skills/ultimate-ui-ux/SKILL.md",
+      ".agents/skills/todorbit-engineering-quality/SKILL.md",
+      ".agents/skills/todorbit-regression/SKILL.md"
+    ],
+    "documentation": [
+      "docs/INTERACTIVE_CALENDAR.md",
+      "docs/UI_DESIGN_SYSTEM.md",
+      "docs/ARCHITECTURE_MAP.md"
+    ],
+    "fixtures": ["calendar-stress", "typical"]
+  },
+  "calendar-ui": {
+    "summary": "Calendar presentation components, card styling, color contrast, and event editor layout.",
+    "primaryRequirements": [
+      "Accessible color contrast for all event cards across light and dark themes.",
+      "Event editor layout responsive to desktop breakpoint and mobile keyboard clearance.",
+      "Clear visual distinction between fixed events, planned sessions, and task deadlines."
+    ],
+    "entryPoints": {
+      "windowsPresentation": ["lib/features/calendar/calendar_presentation.dart", "lib/features/calendar/calendar_view.dart"],
+      "androidPresentation": ["lib/features/mobile/mobile_calendar.dart"],
+      "sharedPresentation": ["lib/features/calendar/event_editor.dart"],
+      "logicAndPersistence": ["lib/data/event_repository.dart"]
+    },
+    "architectureBoundaries": [
+      "Calendar presentation components must not bypass EventRepository for mutations.",
+      "Shared editors must adapt between modal dialogs (Windows) and bottom sheets / full screen (Android)."
+    ],
+    "designSystemTokens": [
+      "Fluent-inspired calendar styling and high-contrast event chips.",
+      "AppSpacing, AppModalShell, AppTheme tokens for event cards."
+    ],
+    "tests": [
+      "test/calendar_card_contrast_test.dart",
+      "test/calendar_eval_visual_verification_test.dart",
+      "test/event_editor_layout_test.dart",
+      "test/mobile_calendar_date_following_test.dart"
+    ],
+    "historicalInvariants": [
+      "Event editor fields must not overflow when on-screen keyboard appears on Android.",
+      "Card title text must remain readable under custom category colors."
+    ],
+    "applicableSkills": [
+      ".agents/skills/ultimate-ui-ux/SKILL.md"
+    ],
+    "documentation": [
+      "docs/UI_DESIGN_SYSTEM.md",
+      "docs/INTERACTIVE_CALENDAR.md"
+    ],
+    "fixtures": ["typical"]
+  },
+  "sync": {
+    "summary": "Incremental Google Drive synchronization with journal-based delta exchanges, CAS concurrency tokens, tombstone retention, device pairing, and optional end-to-end encryption.",
+    "primaryRequirements": [
+      "Zero data loss: never overwrite or delete local data on conflict or failure.",
+      "Offline-first: all local modifications commit immediately to SQLite and sync journal.",
+      "CAS (Compare-And-Swap) token concurrency for atomic remote generation updates.",
+      "Crash resilience: transactional rollback if network or app terminates during batch apply.",
+      "Preserve distinction between Standard Sync and optional Encrypted Sync."
+    ],
+    "entryPoints": {
+      "presentation": [
+        "lib/features/shared/sync_status_button.dart",
+        "lib/features/settings/sync_settings_page.dart",
+        "lib/features/settings/sync_conflicts_dialog.dart",
+        "lib/features/settings/sync_encryption_setup_dialog.dart",
+        "lib/features/settings/sync_reset_dialog.dart"
+      ],
+      "coordination": [
+        "lib/app/sync_controller.dart",
+        "lib/app/sync_runtime.dart",
+        "lib/app/sync_background.dart"
+      ],
+      "logicAndPersistence": [
+        "lib/data/sync_repository.dart",
+        "lib/data/sync_apply_repository.dart",
+        "lib/data/sync_resolution_repository.dart",
+        "lib/data/sync_restore_repository.dart",
+        "lib/data/sync_exchange_repository.dart",
+        "lib/data/cloud/sync_engine.dart",
+        "lib/data/cloud/sync_pairing_service.dart",
+        "lib/data/cloud/sync_batch_codec.dart",
+        "lib/data/cloud/sync_workspace_format.dart",
+        "lib/data/cloud/sync_generation.dart"
+      ]
+    },
+    "architectureBoundaries": [
+      "Local writes go through LifeRepository parts; Sync reads journal and writes applied deltas.",
+      "Sync exchange models are versioned and separate from Drift SQLite entity classes.",
+      "Zero unreviewed cloud providers: Google Drive application data folder is the sole remote.",
+      "Encryption keys remain local and are never logged or exported in plain text."
+    ],
+    "designSystemTokens": [
+      "SyncStatusButton with distinct states: idle, in-progress, offline, warning, conflict.",
+      "AppModalShell for conflict resolution and encryption setup dialogs."
+    ],
+    "tests": [
+      "test/sync_journal_test.dart",
+      "test/sync_exchange_schema_test.dart",
+      "test/sync_visibility_schema_test.dart",
+      "test/sync_exchange_repository_test.dart",
+      "test/sync_incoming_repository_test.dart",
+      "test/sync_crash_recovery_test.dart",
+      "test/sync_apply_repository_test.dart",
+      "test/sync_apply_crash_recovery_test.dart",
+      "test/cloud/sync_engine_test.dart",
+      "test/cloud/sync_standard_mode_test.dart",
+      "test/cloud/sync_pairing_service_test.dart",
+      "test/sync_controller_test.dart"
+    ],
+    "historicalInvariants": [
+      "CAS generation mismatch must abort push and trigger pull to prevent overwrite.",
+      "Deleted items must produce tombstones so remote devices do not resurrect them.",
+      "Interrupted batch apply must safely roll back SQLite transaction leaving state clean."
+    ],
+    "applicableSkills": [
+      ".agents/skills/todorbit-engineering-quality/SKILL.md",
+      ".agents/skills/todorbit-regression/SKILL.md"
+    ],
+    "documentation": [
+      "docs/GOOGLE_DRIVE_SYNC.md",
+      "docs/DRIVE_SYNC_RECOVERY_CHECKPOINT.md",
+      "docs/ARCHITECTURE.md"
+    ],
+    "fixtures": ["sync-conflict", "typical"]
+  },
+  "task-lists": {
+    "summary": "Task list views, custom filters, saved views, group headers, drag reordering, and responsive layout.",
+    "primaryRequirements": [
+      "Fast rendering of large task collections with lazy list view projection.",
+      "Preserve task grouping, completed section collapse, and sort order.",
+      "Adhere to Batch 2 task-list presentation rules (clearance, row actions, hover states)."
+    ],
+    "entryPoints": {
+      "windowsPresentation": ["lib/features/workspace/workspace.dart", "lib/features/shared/task_list_group.dart"],
+      "androidPresentation": ["lib/features/mobile/mobile_workspace.dart"],
+      "sharedPresentation": ["lib/features/shared/app_task_row.dart", "lib/features/shared/task_list_presentation.dart"],
+      "logicAndPersistence": ["lib/domain/task_list_projection.dart", "lib/app/app_controller.dart"]
+    },
+    "architectureBoundaries": [
+      "Presentation renders TaskListProjection derived from AppController state.",
+      "Row actions trigger AppController methods; row never writes to LifeRepository directly."
+    ],
+    "designSystemTokens": [
+      "AppTaskRow component, AppSpacing.rowGap, priority badges, completion checkbox.",
+      "Batch 2 presentation rules: grouping, visual hierarchy, mobile swipe actions."
+    ],
+    "tests": [
+      "test/mobile_workspace_test.dart",
+      "test/app_task_row_test.dart",
+      "test/saved_views_test.dart",
+      "test/workspace_toolbar_test.dart",
+      "test/today_workspace_redesign_test.dart"
+    ],
+    "historicalInvariants": [
+      "Completed tasks section must not shift row layout unexpectedly.",
+      "Checkboxes must have at least 44x44 touch target clearance on mobile devices."
+    ],
+    "applicableSkills": [
+      ".agents/skills/ultimate-ui-ux/SKILL.md"
+    ],
+    "documentation": [
+      "docs/UI_DESIGN_SYSTEM.md",
+      "docs/ARCHITECTURE_MAP.md"
+    ],
+    "fixtures": ["typical", "large"]
+  },
+  "tasks": {
+    "summary": "Task CRUD, task detail editor, subtasks/checklists, priority, recurrence, deadlines, and planned sessions.",
+    "primaryRequirements": [
+      "Safe multi-field editing with draft preservation.",
+      "Strict separation between planned dates, deadlines, sessions, actual work, and fixed events.",
+      "Revision counter tokens to detect and prevent concurrency collisions."
+    ],
+    "entryPoints": {
+      "presentation": ["lib/features/workspace/task_editor.dart"],
+      "logicAndPersistence": ["lib/app/app_controller.dart", "lib/data/life_repository.dart", "lib/domain/models.dart"]
+    },
+    "architectureBoundaries": [
+      "All task writes go through LifeRepository parts in transactions.",
+      "Never auto-complete or silently reschedule tasks."
+    ],
+    "designSystemTokens": [
+      "Batch 1 presentation rules (task dates, editor layout, action labels).",
+      "AppSpacing, AppModalShell, TodorbitThemeTokens."
+    ],
+    "tests": [
+      "test/repository_test.dart",
+      "test/task_revision_concurrency_test.dart",
+      "test/workspace_test.dart",
+      "test/task_editor_schedule_layout_test.dart"
+    ],
+    "historicalInvariants": [
+      "Concurrent edits on different devices or tabs must be resolved via revision counter.",
+      "Task editor must not drop checklist progress on rapid close."
+    ],
+    "applicableSkills": [
+      ".agents/skills/ultimate-ui-ux/SKILL.md",
+      ".agents/skills/todorbit-engineering-quality/SKILL.md"
+    ],
+    "documentation": [
+      "docs/UI_DESIGN_SYSTEM.md",
+      "docs/ARCHITECTURE.md"
+    ],
+    "fixtures": ["typical"]
+  },
+  "database": {
+    "summary": "Local SQLite database management via Drift, forward schema migrations, integrity validation, and crash-safe transactions.",
+    "primaryRequirements": [
+      "Forward-only migrations; never drop or reset data as an error fallback.",
+      "All schema changes increment schemaVersion and add explicit migration step-up.",
+      "Native Windows and Android companion processes must never run migrations."
+    ],
+    "entryPoints": {
+      "core": ["lib/data/app_database.dart", "lib/data/life_repository.dart", "lib/data/migration_gate.dart"],
+      "syncSchema": ["lib/data/sync_schema.dart", "lib/data/sync_exchange_schema.dart"]
+    },
+    "architectureBoundaries": [
+      "Drift database layer is wrapped by LifeRepository.",
+      "Foreign keys and WAL mode enabled.",
+      "Transactions required for all multi-record operations."
+    ],
+    "designSystemTokens": [],
+    "tests": [
+      "test/database_initialization_test.dart",
+      "test/migration_gate_test.dart",
+      "test/repository_test.dart",
+      "test/backup_service_test.dart",
+      "test/cross_platform_backup_test.dart"
+    ],
+    "historicalInvariants": [
+      "Schema upgrade from 27 -> 28 -> 29 must retain all existing tasks, events, and sync journals.",
+      "Database corruption fallback must preserve backup before any recovery attempt."
+    ],
+    "applicableSkills": [
+      ".agents/skills/todorbit-engineering-quality/SKILL.md"
+    ],
+    "documentation": [
+      "docs/ARCHITECTURE.md"
+    ],
+    "fixtures": ["empty", "typical"]
+  },
+  "alarms": {
+    "summary": "Cross-platform alarm scheduling, reminders, notifications, and background Doze wakeups.",
+    "primaryRequirements": [
+      "Reliable alarm delivery across Windows and Android.",
+      "Support exact alarms and battery optimization handling on modern Android versions.",
+      "Alarm settings UI with sound, vibration, and advance warning configuration."
+    ],
+    "entryPoints": {
+      "presentation": ["lib/features/shared/alarm_field.dart", "lib/features/settings/alarm_settings_dialog.dart"],
+      "domain": ["lib/domain/alarms.dart", "lib/domain/alarm_plan.dart"],
+      "persistence": ["lib/data/alarm_repository.dart", "lib/data/alarm_device_store.dart"],
+      "native": ["android/app/src/main/kotlin/io/github/hik4/todorbit/AlarmDelivery.kt"]
+    },
+    "architectureBoundaries": [
+      "Dart computes AlarmPlan; native OS handles actual background alarm dispatch.",
+      "Device-specific alarm configuration stored in AlarmDeviceStore."
+    ],
+    "designSystemTokens": [
+      "AlarmField widget, AppModalShell, Fluent toggle controls."
+    ],
+    "tests": [
+      "test/alarm_test.dart",
+      "test/alarm_field_test.dart",
+      "test/alarm_migration_test.dart",
+      "test/alarm_sync_codec_test.dart"
+    ],
+    "historicalInvariants": [
+      "Alarms must survive device reboots via persistent alarm store and boot receiver."
+    ],
+    "applicableSkills": [
+      ".agents/skills/todorbit-engineering-quality/SKILL.md"
+    ],
+    "documentation": [
+      "docs/ALARM_BETA_2026_11_08.md",
+      "docs/ARCHITECTURE_MAP.md"
+    ],
+    "fixtures": ["typical"]
+  },
+  "task-timers": {
+    "summary": "Focus sessions, Pomodoro timers, active session management, and productivity time tracking.",
+    "primaryRequirements": [
+      "Focus timer ticks stay local to widget; never write per-second updates to SQLite.",
+      "Completed focus sessions persist with accurate UTC start and end times.",
+      "Compact floating/docked timer presentation on desktop and mobile."
+    ],
+    "entryPoints": {
+      "presentation": ["lib/features/time_tracking/focus_workspace.dart", "lib/features/time_tracking/compact_task_timer.dart"],
+      "logicAndPersistence": ["lib/data/time_repository.dart", "lib/domain/time_tracking.dart", "lib/app/app_controller.dart"]
+    },
+    "architectureBoundaries": [
+      "AppController coordinates active FocusSession state in memory.",
+      "TimeRepository writes final session records to SQLite."
+    ],
+    "designSystemTokens": [
+      "Timer display typography, start/pause/stop button states, progress ring.",
+      "AppLayout compact breakpoints."
+    ],
+    "tests": [
+      "test/prompt2_task_timer_test.dart",
+      "test/time_tracking_repository_test.dart",
+      "test/time_tracking_widget_test.dart",
+      "test/focus_session_test.dart",
+      "test/focus_quick_start_test.dart"
+    ],
+    "historicalInvariants": [
+      "Session pause/resume must accurately account for elapsed time without drifting."
+    ],
+    "applicableSkills": [
+      ".agents/skills/ultimate-ui-ux/SKILL.md",
+      ".agents/skills/todorbit-engineering-quality/SKILL.md"
+    ],
+    "documentation": [
+      "docs/ARCHITECTURE_MAP.md"
+    ],
+    "fixtures": ["typical"]
+  },
+  "habits": {
+    "summary": "Habit tracking, recurrence schedules, streak calculations, check-in history, and performance statistics.",
+    "primaryRequirements": [
+      "Daily and weekly habit recurrence tracking.",
+      "Streak calculation honoring custom recurrence days.",
+      "Habit check-in date and progress readable at 320 dp and 150% text scale."
+    ],
+    "entryPoints": {
+      "presentation": ["lib/features/habits/habits_view.dart", "lib/features/habits/habit_editor.dart"],
+      "logicAndPersistence": ["lib/data/habit_repository.dart", "lib/domain/habits.dart"]
+    },
+    "architectureBoundaries": [
+      "Habit calculations in lib/domain/habits.dart with zero UI imports.",
+      "Habit check-ins saved to SQLite through LifeRepository."
+    ],
+    "designSystemTokens": [
+      "Habit progress rings, streak counters, AppSpacing, AppModalShell."
+    ],
+    "tests": [
+      "test/habits_repository_test.dart",
+      "test/habits_widget_test.dart",
+      "test/habit_goal_editor_layout_test.dart"
+    ],
+    "historicalInvariants": [
+      "Streak calculation must handle timezones without skipping valid check-ins."
+    ],
+    "applicableSkills": [
+      ".agents/skills/ultimate-ui-ux/SKILL.md",
+      ".agents/skills/todorbit-engineering-quality/SKILL.md"
+    ],
+    "documentation": [
+      "docs/ARCHITECTURE_MAP.md"
+    ],
+    "fixtures": ["typical"]
+  },
+  "goals": {
+    "summary": "Long-term goal setting, milestone tracking, linked tasks, and target date projections.",
+    "primaryRequirements": [
+      "Goal progress tracking calculated from linked tasks or manual milestone check-ins.",
+      "Responsive layout for goal editor at compact viewport widths."
+    ],
+    "entryPoints": {
+      "presentation": ["lib/features/goals/goals_view.dart", "lib/features/goals/goal_dialogs.dart"],
+      "logicAndPersistence": ["lib/data/goal_repository.dart", "lib/domain/goals.dart"]
+    },
+    "architectureBoundaries": [
+      "Goal entity management through GoalRepository.",
+      "Domain calculations in lib/domain/goals.dart."
+    ],
+    "designSystemTokens": [
+      "Milestone progress bars, target date tags, AppModalShell."
+    ],
+    "tests": [
+      "test/goals_repository_test.dart",
+      "test/goals_widget_test.dart",
+      "test/habit_goal_editor_layout_test.dart"
+    ],
+    "historicalInvariants": [
+      "Completed goals must retain historical milestone data when viewed in archive."
+    ],
+    "applicableSkills": [
+      ".agents/skills/ultimate-ui-ux/SKILL.md",
+      ".agents/skills/todorbit-engineering-quality/SKILL.md"
+    ],
+    "documentation": [
+      "docs/ARCHITECTURE_MAP.md"
+    ],
+    "fixtures": ["typical"]
+  },
+  "windows-updates": {
+    "summary": "Windows desktop application updates, resumable downloads, hash verification, and updater helper launch.",
+    "primaryRequirements": [
+      "Resumable byte-range HTTP download with checksum validation.",
+      "Non-blocking background download with progress presentation.",
+      "Clean handoff to update-helper.ps1 with process termination and replacement."
+    ],
+    "entryPoints": {
+      "presentation": ["lib/features/settings/software_updates_page.dart"],
+      "logicAndPersistence": ["lib/data/software_update_service.dart", "lib/data/update_helper_launcher.dart", "lib/data/resumable_update_download.dart"]
+    },
+    "architectureBoundaries": [
+      "Update service runs asynchronously without blocking main thread.",
+      "External helper process handles file replacement after Flutter app exit."
+    ],
+    "designSystemTokens": [
+      "Download progress bar, version comparison card, download size badge."
+    ],
+    "tests": [
+      "test/software_update_service_test.dart",
+      "test/software_updates_page_test.dart",
+      "test/update_helper_launcher_test.dart",
+      "test/resumable_update_download_test.dart",
+      "test/download_size_test.dart"
+    ],
+    "historicalInvariants": [
+      "Corrupted or partially downloaded update binaries must be discarded and re-downloaded."
+    ],
+    "applicableSkills": [
+      ".agents/skills/todorbit-engineering-quality/SKILL.md"
+    ],
+    "documentation": [
+      "docs/SOFTWARE_UPDATES.md",
+      "docs/UPDATE_DOWNLOAD_RECOVERY.md"
+    ],
+    "fixtures": ["typical"]
+  },
+  "android-updates": {
+    "summary": "Android application update checking, GitHub release APK download, signature check, and package installer intent.",
+    "primaryRequirements": [
+      "Resumable download of GitHub release APK.",
+      "Package installer intent trigger on Android GitHub build flavor; Play Store redirect on Play flavor."
+    ],
+    "entryPoints": {
+      "presentation": ["lib/features/settings/android_software_updates_page.dart"],
+      "logicAndPersistence": ["lib/platform/android/android_update_service.dart", "lib/data/resumable_update_download.dart"]
+    },
+    "architectureBoundaries": [
+      "Platform flavor separation (GitHub APK installer vs Google Play Store flow)."
+    ],
+    "designSystemTokens": [
+      "Mobile update card, progress percentage, release notes viewer."
+    ],
+    "tests": [
+      "test/android_update_service_test.dart",
+      "test/android_software_updates_page_test.dart",
+      "test/resumable_update_download_test.dart",
+      "test/download_size_test.dart"
+    ],
+    "historicalInvariants": [
+      "Download resume must verify server Accept-Ranges header before issuing Range requests."
+    ],
+    "applicableSkills": [
+      ".agents/skills/todorbit-engineering-quality/SKILL.md"
+    ],
+    "documentation": [
+      "docs/SOFTWARE_UPDATES.md",
+      "docs/ANDROID.md"
+    ],
+    "fixtures": ["typical"]
+  },
+  "widgets": {
+    "summary": "Desktop Windows native companion widget and Android home screen widgets.",
+    "primaryRequirements": [
+      "Narrow SQLite read/write companion that never runs schema migrations.",
+      "IPC communication between main app and companion widget.",
+      "Lightweight resource usage and low memory footprint."
+    ],
+    "entryPoints": {
+      "flutterPresentation": ["lib/features/widget/native_widget_service.dart", "lib/features/settings/widget_settings_page.dart"],
+      "persistence": ["lib/data/widget_configuration_store.dart"],
+      "nativeCompanion": ["experiments/widget-shell-probe/Program.cs", "experiments/widget-shell-probe/LifeManagerWidget.cs"]
+    },
+    "architectureBoundaries": [
+      "Companion process connects to SQLite with read-only or narrow transaction scope.",
+      "Companion must never alter database schema or run Drift migrations."
+    ],
+    "designSystemTokens": [
+      "Synchronized theme tokens between Flutter and native C# widget renderers."
+    ],
+    "tests": [
+      "test/widget_configuration_test.dart",
+      "test/widget_edit_session_test.dart",
+      "test/native_widget_service_test.dart",
+      "test/widget_settings_page_test.dart"
+    ],
+    "historicalInvariants": [
+      "Main app restart must not leave orphan widget processes hanging.",
+      "Widget configuration changes in main app must synchronize immediately to native host."
+    ],
+    "applicableSkills": [
+      ".agents/skills/todorbit-engineering-quality/SKILL.md"
+    ],
+    "documentation": [
+      "docs/windows-widget.md",
+      "docs/ARCHITECTURE.md"
+    ],
+    "fixtures": ["typical"]
+  },
+  "mobile": {
+    "summary": "Android responsive layouts, navigation bars, bottom sheets, mobile-specific touch interactions.",
+    "primaryRequirements": [
+      "320 dp minimum width support without clipping or horizontal overflow.",
+      "150% font scaling readability across all screens and forms.",
+      "Preserve parity with Windows desktop features."
+    ],
+    "entryPoints": {
+      "presentation": ["lib/features/mobile/mobile_workspace.dart", "lib/features/mobile/mobile_calendar.dart", "lib/features/mobile/mobile_settings.dart"],
+      "platform": ["lib/platform/android/android_platform.dart", "lib/platform/android/android_surfaces.dart"]
+    },
+    "architectureBoundaries": [
+      "Mobile features reuse shared AppController and repositories; no separate mobile data layer."
+    ],
+    "designSystemTokens": [
+      "Bottom navigation bar, mobile floating action button, 44x44 dp minimum touch targets.",
+      "AppSpacing, AppModalShell adapted as bottom sheet."
+    ],
+    "tests": [
+      "test/mobile_workspace_test.dart",
+      "test/mobile_editors_test.dart",
+      "test/android_platform_test.dart",
+      "test/android_widget_action_test.dart"
+    ],
+    "historicalInvariants": [
+      "Back button / gesture must dismiss bottom sheet or dialog without exiting app unexpectedly.",
+      "Keyboard opening must not push primary action buttons offscreen."
+    ],
+    "applicableSkills": [
+      ".agents/skills/ultimate-ui-ux/SKILL.md"
+    ],
+    "documentation": [
+      "docs/ANDROID.md",
+      "docs/UI_DESIGN_SYSTEM.md"
+    ],
+    "fixtures": ["typical"]
+  },
+  "drive": {
+    "summary": "Google Drive full snapshot backup/restore, archive export/import, and OAuth authentication.",
+    "primaryRequirements": [
+      "Atomic full snapshot backup creation and restore.",
+      "Strict separation from incremental Google Drive Sync.",
+      "Never overwrite or delete local data as a fallback."
+    ],
+    "entryPoints": {
+      "presentation": ["lib/features/settings/backups_cloud_page.dart"],
+      "logicAndPersistence": ["lib/data/cloud/cloud_backup_service.dart", "lib/data/backup_service.dart", "lib/platform/android/android_google_drive_auth.dart"]
+    },
+    "architectureBoundaries": [
+      "Full database export to encrypted/unencrypted snapshot zip archive.",
+      "Restore creates a safety backup of existing local state before applying snapshot."
+    ],
+    "designSystemTokens": [
+      "Backup history list, restore confirmation modal, Google account profile header."
+    ],
+    "tests": [
+      "test/cross_platform_backup_test.dart",
+      "test/backup_service_test.dart",
+      "test/android_google_drive_auth_test.dart"
+    ],
+    "historicalInvariants": [
+      "Restore operation must create pre-restore snapshot before modifying current SQLite database."
+    ],
+    "applicableSkills": [
+      ".agents/skills/todorbit-engineering-quality/SKILL.md"
+    ],
+    "documentation": [
+      "docs/GOOGLE_DRIVE_SYNC.md",
+      "docs/ARCHITECTURE.md"
+    ],
+    "fixtures": ["typical"]
+  },
+  "settings": {
+    "summary": "Application preferences, profile transfer, appearance settings, and isolation.",
+    "primaryRequirements": [
+      "Profile JSON stores device-specific settings without polluting shared database.",
+      "Portable settings export and import.",
+      "Strict profile isolation ensuring test executions never touch production profile."
+    ],
+    "entryPoints": {
+      "presentation": ["lib/features/settings/settings_hub_dialog.dart", "lib/features/settings/settings_transfer.dart"],
+      "persistence": ["lib/data/profile_paths.dart", "lib/data/profile_fingerprint.dart", "lib/data/appearance_preference_store.dart"]
+    },
+    "architectureBoundaries": [
+      "Preferences stored in JSON files in active profile directory.",
+      "SettingsTransfer coordinates bundle packaging."
+    ],
+    "designSystemTokens": [
+      "SettingsSection component, Fluent toggle switches, slider controls."
+    ],
+    "tests": [
+      "test/settings_hub_test.dart",
+      "test/settings_transfer_test.dart",
+      "test/profile_isolation_test.dart",
+      "test/appearance_preference_store_test.dart"
+    ],
+    "historicalInvariants": [
+      "Switching profiles must cleanly release SQLite file locks."
+    ],
+    "applicableSkills": [
+      ".agents/skills/ultimate-ui-ux/SKILL.md",
+      ".agents/skills/todorbit-engineering-quality/SKILL.md"
+    ],
+    "documentation": [
+      "docs/ARCHITECTURE.md"
+    ],
+    "fixtures": ["typical"]
+  },
+  "settings-ui": {
+    "summary": "Settings hub modal dialog, navigation sidebar, sub-pages, and responsive settings presentation.",
+    "primaryRequirements": [
+      "Fluent navigation sidebar with icon + label layout.",
+      "Settings sub-page responsive to compact widths."
+    ],
+    "entryPoints": {
+      "presentation": ["lib/features/settings/settings_hub_dialog.dart", "lib/features/settings/sync_settings_page.dart", "lib/features/mobile/mobile_settings.dart"],
+      "logicAndPersistence": ["lib/app/app_controller.dart"]
+    },
+    "architectureBoundaries": [
+      "Presentation delegates actions to AppController and respective service controllers."
+    ],
+    "designSystemTokens": [
+      "SettingsSection, AppModalShell, Fluent styled navigation list."
+    ],
+    "tests": [
+      "test/settings_hub_test.dart",
+      "test/settings_ui_quality_test.dart",
+      "test/sync_conflicts_dialog_test.dart"
+    ],
+    "historicalInvariants": [
+      "Dialog close must safely flush dirty preference drafts."
+    ],
+    "applicableSkills": [
+      ".agents/skills/ultimate-ui-ux/SKILL.md"
+    ],
+    "documentation": [
+      "docs/UI_DESIGN_SYSTEM.md"
+    ],
+    "fixtures": ["typical"]
+  },
+  "notifications": {
+    "summary": "Android system notifications and reminder refresh jobs.",
+    "primaryRequirements": [
+      "Timely local notification dispatch.",
+      "Notification channel management and icon assets."
+    ],
+    "entryPoints": {
+      "platform": ["lib/platform/android/android_surfaces.dart"],
+      "persistence": ["lib/data/notification_repository.dart"]
+    },
+    "architectureBoundaries": [
+      "Dart projection feeds native Android notification manager."
+    ],
+    "designSystemTokens": [],
+    "tests": [
+      "test/android_platform_test.dart",
+      "test/notification_repository_test.dart"
+    ],
+    "historicalInvariants": [
+      "Notification clicks must route to correct task or event without crashing."
+    ],
+    "applicableSkills": [
+      ".agents/skills/todorbit-engineering-quality/SKILL.md"
+    ],
+    "documentation": [
+      "docs/ANDROID.md"
+    ],
+    "fixtures": ["typical"]
+  },
+  "reports": {
+    "summary": "Productivity reports, completed tasks statistics, time tracking summaries, and charts.",
+    "primaryRequirements": [
+      "Accurate date range filtering and aggregation.",
+      "Clear visual charts and exportable summary data."
+    ],
+    "entryPoints": {
+      "presentation": ["lib/features/reports/reports_view.dart"],
+      "logicAndPersistence": ["lib/data/reports_repository.dart", "lib/domain/reports.dart"]
+    },
+    "architectureBoundaries": [
+      "Reports logic aggregates data from TaskRepository, EventRepository, and TimeRepository."
+    ],
+    "designSystemTokens": [
+      "Data charts, summary stat cards, AppSpacing."
+    ],
+    "tests": [
+      "test/reports_test.dart",
+      "test/reports_widget_test.dart"
+    ],
+    "historicalInvariants": [
+      "Reports calculation must handle empty periods gracefully without division by zero."
+    ],
+    "applicableSkills": [
+      ".agents/skills/ultimate-ui-ux/SKILL.md"
+    ],
+    "documentation": [
+      "docs/ARCHITECTURE_MAP.md"
+    ],
+    "fixtures": ["typical"]
+  },
+  "templates": {
+    "summary": "Task templates, checklist templates, and recurring workflow instantiation.",
+    "primaryRequirements": [
+      "Save task structure as reusable template.",
+      "Instantiate new tasks with calculated relative due dates from template."
+    ],
+    "entryPoints": {
+      "presentation": ["lib/features/templates/templates_dialog.dart"],
+      "logicAndPersistence": ["lib/data/template_repository.dart", "lib/domain/templates.dart"]
+    },
+    "architectureBoundaries": [
+      "Templates stored in dedicated SQLite tables; instantiation creates new independent task records."
+    ],
+    "designSystemTokens": [
+      "Template card, variable placeholders, AppModalShell."
+    ],
+    "tests": [
+      "test/template_repository_test.dart",
+      "test/templates_widget_test.dart",
+      "test/template_journeys_test.dart"
+    ],
+    "historicalInvariants": [
+      "Template instantiation must generate unique UUIDs for all child checklist items."
+    ],
+    "applicableSkills": [
+      ".agents/skills/ultimate-ui-ux/SKILL.md",
+      ".agents/skills/todorbit-engineering-quality/SKILL.md"
+    ],
+    "documentation": [
+      "docs/ARCHITECTURE_MAP.md"
+    ],
+    "fixtures": ["typical"]
+  },
+  "scheduling": {
+    "summary": "Smart rescheduling, auto-scheduling engine, and task slot placement.",
+    "primaryRequirements": [
+      "Conflict-free automatic task scheduling into open calendar slots.",
+      "Respect task deadlines, priority, and estimated duration."
+    ],
+    "entryPoints": {
+      "presentation": ["lib/features/scheduling/smart_reschedule.dart", "lib/features/scheduling/schedule_preview_details.dart", "lib/features/scheduling/schedule_task_list.dart"],
+      "logicAndPersistence": ["lib/domain/scheduling_engine.dart", "lib/domain/scheduling_models.dart", "lib/data/life_repository.dart"]
+    },
+    "architectureBoundaries": [
+      "Pure scheduling algorithm in lib/domain/scheduling_engine.dart.",
+      "AppController applies suggested schedule upon user confirmation."
+    ],
+    "designSystemTokens": [
+      "Slot preview card, conflict indicators, AppModalShell."
+    ],
+    "tests": [
+      "test/scheduling_repository_test.dart",
+      "test/scheduling_engine_test.dart",
+      "test/prompt4_smart_reschedule_test.dart",
+      "test/smart_reschedule_widget_test.dart"
+    ],
+    "historicalInvariants": [
+      "Smart rescheduling must never move fixed calendar events."
+    ],
+    "applicableSkills": [
+      ".agents/skills/todorbit-engineering-quality/SKILL.md"
+    ],
+    "documentation": [
+      "docs/ARCHITECTURE_MAP.md"
+    ],
+    "fixtures": ["typical"]
+  },
+  "trash": {
+    "summary": "Deleted tasks/events recovery bin, restoration, and permanent purge.",
+    "primaryRequirements": [
+      "Soft-deleted item retention.",
+      "Restore items with original relationships intact.",
+      "Permanent deletion cleanup."
+    ],
+    "entryPoints": {
+      "presentation": ["lib/features/workspace/trash_dialog.dart"],
+      "logicAndPersistence": ["lib/data/trash_repository.dart", "lib/domain/trash.dart"]
+    },
+    "architectureBoundaries": [
+      "Soft deletion updates deleted_at timestamp in SQLite.",
+      "Purge removes records and journals deletion tombstones for Sync."
+    ],
+    "designSystemTokens": [
+      "Trash item list, restore action button, permanent delete warning dialog."
+    ],
+    "tests": [
+      "test/trash_repository_test.dart",
+      "test/trash_widget_test.dart"
+    ],
+    "historicalInvariants": [
+      "Restoring a task with a deleted parent checklist must safely reattach or make root."
+    ],
+    "applicableSkills": [
+      ".agents/skills/ultimate-ui-ux/SKILL.md"
+    ],
+    "documentation": [
+      "docs/ARCHITECTURE_MAP.md"
+    ],
+    "fixtures": ["typical"]
+  },
+  "time-tracking": {
+    "summary": "Focus timers (stopwatch, countdown, Pomodoro), session logging, and time tracking summaries linked to tasks.",
+    "primaryRequirements": [
+      "Keep timer ticks local to timer widgets without global workspace rebuilds.",
+      "Derive elapsed durations monotonically from UTC timestamps.",
+      "Persist completed/interrupted focus sessions accurately via TimeRepository."
+    ],
+    "entryPoints": {
+      "presentation": ["lib/features/time_tracking"],
+      "logicAndPersistence": ["lib/data/time_repository.dart", "lib/domain/time_tracking.dart"]
+    },
+    "architectureBoundaries": [
+      "Timer ticks remain local to timer widgets; persistence routes through TimeRepository."
+    ],
+    "designSystemTokens": [
+      "Focus clock state tokens and accessible timer controls."
+    ],
+    "tests": [
+      "test/time_tracking_repository_test.dart",
+      "test/time_tracking_widget_test.dart",
+      "test/focus_session_test.dart",
+      "test/focus_quick_start_test.dart"
+    ],
+    "historicalInvariants": [
+      "Starting a timer multiple times must never spawn parallel ticking loops."
+    ],
+    "applicableSkills": [
+      ".agents/skills/todorbit-engineering-quality/SKILL.md",
+      ".agents/skills/ultimate-ui-ux/SKILL.md"
+    ],
+    "documentation": [
+      "docs/ARCHITECTURE_MAP.md",
+      "docs/TESTING.md"
+    ],
+    "fixtures": ["typical"]
+  }
+}

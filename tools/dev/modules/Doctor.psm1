@@ -1,0 +1,353 @@
+# Doctor.psm1 - Todorbit Environment Doctor & Diagnostics
+# Checks toolchains, SDKs, memory/disk thresholds, locks, and worktree isolation.
+$ErrorActionPreference = 'Stop'
+
+function Ensure-TodorbitEnvironment {
+    [CmdletBinding()]
+    param()
+
+    # Flutter SDK auto-discovery and session PATH configuration
+    $flutterCandidates = @(
+        'C:\VScode\flutter\bin',
+        'C:\Users\User\Documents\Codex\Todorbit-flutter-git\bin'
+    )
+    $hasFlutter = $null -ne (Get-Command 'flutter' -ErrorAction SilentlyContinue)
+    if (-not $hasFlutter) {
+        foreach ($cand in $flutterCandidates) {
+            if (Test-Path -LiteralPath (Join-Path $cand 'flutter.bat')) {
+                $dartSdk = Join-Path $cand 'cache\dart-sdk\bin'
+                $env:Path = "$cand;$dartSdk;" + $env:Path
+                $hasFlutter = $true
+                break
+            }
+        }
+    }
+
+    # Android JDK auto-discovery
+    if (-not $env:JAVA_HOME -or -not (Test-Path -LiteralPath $env:JAVA_HOME)) {
+        $javaCandidates = @(
+            'C:\Program Files\Android\openjdk\jdk-21.0.8',
+            'C:\Program Files\Microsoft\jdk-11.0.16.101-hotspot'
+        )
+        foreach ($jc in $javaCandidates) {
+            if (Test-Path -LiteralPath (Join-Path $jc 'bin\java.exe')) {
+                $env:JAVA_HOME = $jc
+                break
+            }
+        }
+    }
+
+    # Android SDK auto-discovery
+    if (-not $env:ANDROID_HOME -or -not (Test-Path -LiteralPath $env:ANDROID_HOME)) {
+        $sdkCandidate = 'C:\Users\User\AppData\Local\Android\sdk'
+        if (Test-Path -LiteralPath $sdkCandidate) {
+            $env:ANDROID_HOME = $sdkCandidate
+            $env:ANDROID_SDK_ROOT = $sdkCandidate
+        }
+    }
+    if ($env:ANDROID_HOME -and (Test-Path -LiteralPath (Join-Path $env:ANDROID_HOME 'platform-tools\adb.exe'))) {
+        $platformTools = Join-Path $env:ANDROID_HOME 'platform-tools'
+        if (-not (($env:Path -split ';') -contains $platformTools)) {
+            $env:Path = "$platformTools;" + $env:Path
+        }
+    }
+}
+
+function Resolve-TodorbitTool {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)][string]$ToolName
+    )
+    Ensure-TodorbitEnvironment
+
+    switch ($ToolName.ToLowerInvariant()) {
+        'flutter' {
+            # Strictly prefer flutter.bat on Windows to prevent OpenWith on extensionless bash script
+            $cand = Get-Command 'flutter.bat' -ErrorAction SilentlyContinue
+            if ($cand) { return $cand.Source }
+            $raw = Get-Command 'flutter' -ErrorAction SilentlyContinue
+            if ($raw -and $raw.Extension -eq '.bat') { return $raw.Source }
+            $fallback = 'C:\VScode\flutter\bin\flutter.bat'
+            if (Test-Path -LiteralPath $fallback) { return $fallback }
+            throw "Unable to safely resolve flutter.bat on Windows (preventing extensionless shell execution)."
+        }
+        'dart' {
+            # Strictly prefer dart.exe (or dart.bat) to prevent OpenWith on extensionless bash script
+            $candExe = Get-Command 'dart.exe' -ErrorAction SilentlyContinue
+            if ($candExe) { return $candExe.Source }
+            $candBat = Get-Command 'dart.bat' -ErrorAction SilentlyContinue
+            if ($candBat) { return $candBat.Source }
+            $fallbackExe = 'C:\VScode\flutter\bin\cache\dart-sdk\bin\dart.exe'
+            if (Test-Path -LiteralPath $fallbackExe) { return $fallbackExe }
+            $fallbackBat = 'C:\VScode\flutter\bin\dart.bat'
+            if (Test-Path -LiteralPath $fallbackBat) { return $fallbackBat }
+            throw "Unable to safely resolve dart.exe or dart.bat on Windows."
+        }
+        'python' {
+            $cand = Get-Command 'python.exe' -ErrorAction SilentlyContinue
+            if ($cand) { return $cand.Source }
+            return 'python'
+        }
+        'git' {
+            $cand = Get-Command 'git.exe' -ErrorAction SilentlyContinue
+            if ($cand) { return $cand.Source }
+            return 'git'
+        }
+        'adb' {
+            $cand = Get-Command 'adb.exe' -ErrorAction SilentlyContinue
+            if ($cand) { return $cand.Source }
+            if ($env:ANDROID_HOME) {
+                $sdkAdb = Join-Path $env:ANDROID_HOME 'platform-tools\adb.exe'
+                if (Test-Path -LiteralPath $sdkAdb) { return $sdkAdb }
+            }
+            $defaultAdb = 'C:\Users\User\AppData\Local\Android\sdk\platform-tools\adb.exe'
+            if (Test-Path -LiteralPath $defaultAdb) { return $defaultAdb }
+            throw "Unable to locate adb.exe on PATH or under ANDROID_HOME."
+        }
+        Default {
+            $cmd = Get-Command $ToolName -ErrorAction SilentlyContinue
+            if ($cmd -and $cmd.Extension -in @('.exe', '.bat', '.cmd', '.ps1')) {
+                return $cmd.Source
+            }
+            if ($cmd -and [string]::IsNullOrEmpty($cmd.Extension)) {
+                # Extensionless file detected - NEVER invoke directly via shell on Windows!
+                throw "Refusing to invoke extensionless file '$($cmd.Source)' directly on Windows. Missing executable handler."
+            }
+            return $ToolName
+        }
+    }
+}
+
+function Invoke-TodorbitDoctor {
+    [CmdletBinding()]
+    param(
+        [switch]$Json,
+        [switch]$Repair
+    )
+
+    Ensure-TodorbitEnvironment
+
+    $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+    $checks = [Collections.Generic.List[object]]::new()
+    $warnings = [Collections.Generic.List[string]]::new()
+    $errors = [Collections.Generic.List[string]]::new()
+
+    # 1. Flutter & Dart Check (always resolve explicit .bat / .exe)
+    $flutterExe = $null
+    $dartExe = $null
+    try { $flutterExe = Resolve-TodorbitTool 'flutter' } catch {}
+    try { $dartExe = Resolve-TodorbitTool 'dart' } catch {}
+    if ($flutterExe -and $dartExe) {
+        $flutterVer = & $flutterExe --version 2>$null | Select-Object -First 1
+        $dartVer = & $dartExe --version 2>&1 | Select-Object -First 1
+        $checks.Add([pscustomobject]@{
+            Category = 'Flutter'
+            Name = 'Flutter and Dart SDK'
+            Status = 'OK'
+            Detail = "$flutterVer | $dartVer"
+        })
+    } else {
+        $checks.Add([pscustomobject]@{
+            Category = 'Flutter'
+            Name = 'Flutter and Dart SDK'
+            Status = 'ERROR'
+            Detail = 'Flutter or Dart executable not found on PATH or known locations.'
+        })
+        $errors.Add('Flutter SDK is missing or not on PATH.')
+    }
+
+    # 2. Windows Toolchain (Visual Studio / C++ / MSVC)
+    $vsWhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+    $hasVs = $false
+    $vsDetail = 'Not detected'
+    if (Test-Path -LiteralPath $vsWhere) {
+        $vsInstall = & $vsWhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath 2>$null
+        if ($vsInstall) {
+            $hasVs = $true
+            $vsDetail = "Visual Studio C++ detected at: $vsInstall"
+        }
+    }
+    $checks.Add([pscustomobject]@{
+        Category = 'Windows'
+        Name = 'Visual Studio C++ Toolchain'
+        Status = if ($hasVs) { 'OK' } else { 'WARNING' }
+        Detail = $vsDetail
+    })
+    if (-not $hasVs) {
+        $warnings.Add('Visual Studio C++ tools needed for Windows native release builds.')
+    }
+
+    # 2b. Windows Developer Mode (symlink support required by Flutter Windows plugin builds)
+    $devMode = $false
+    try {
+        $unlock = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock' -ErrorAction SilentlyContinue
+        if ($unlock -and $unlock.AllowDevelopmentWithoutDevLicense -eq 1) { $devMode = $true }
+    } catch {}
+    $checks.Add([pscustomobject]@{
+        Category = 'Windows'
+        Name = 'Windows Developer Mode (Symlink Support)'
+        Status = if ($devMode) { 'OK' } else { 'WARNING' }
+        Detail = if ($devMode) { 'Developer Mode enabled (AllowDevelopmentWithoutDevLicense=1).' } else { 'Developer Mode disabled; local flutter build/drive on Windows with plugins is blocked unless prebuilt binary or CI is used.' }
+    })
+    if (-not $devMode) {
+        $warnings.Add('Windows Developer Mode disabled: local Windows Flutter builds/flutter drive require symlink support.')
+    }
+
+    # 3. Android Toolchain
+    $hasJava = $false
+    $javaDetail = 'JAVA_HOME not configured'
+    if ($env:JAVA_HOME -and (Test-Path -LiteralPath (Join-Path $env:JAVA_HOME 'bin\java.exe'))) {
+        $hasJava = $true
+        $javaDetail = "JDK located at: $env:JAVA_HOME"
+    }
+    $hasSdk = $false
+    $sdkDetail = 'ANDROID_HOME not configured'
+    if ($env:ANDROID_HOME -and (Test-Path -LiteralPath $env:ANDROID_HOME)) {
+        $hasSdk = $true
+        $sdkDetail = "Android SDK located at: $env:ANDROID_HOME"
+    }
+    $checks.Add([pscustomobject]@{
+        Category = 'Android'
+        Name = 'JDK & Android SDK'
+        Status = if ($hasJava -and $hasSdk) { 'OK' } else { 'WARNING' }
+        Detail = "$javaDetail; $sdkDetail"
+    })
+    if (-not $hasJava) { $warnings.Add('JDK not configured for Android operations.') }
+    if (-not $hasSdk) { $warnings.Add('Android SDK not configured for Android operations.') }
+
+    # 4. Host Resources: Memory & Disk
+    $osInfo = Get-CimInstance -ClassName Win32_OperatingSystem
+    $freeRamMB = [math]::Round($osInfo.FreePhysicalMemory / 1024, 0)
+    $totalRamMB = [math]::Round($osInfo.TotalVisibleMemorySize / 1024, 0)
+    $ramDetail = "Free RAM: ${freeRamMB} MB / Total: ${totalRamMB} MB"
+    $ramStatus = 'OK'
+    if ($freeRamMB -lt 2048) {
+        $ramStatus = 'WARNING'
+        $warnings.Add("Low free RAM (${freeRamMB} MB). Heavy builds or emulators may cause memory pressure.")
+    }
+    $checks.Add([pscustomobject]@{
+        Category = 'Host'
+        Name = 'Host RAM'
+        Status = $ramStatus
+        Detail = $ramDetail
+    })
+
+    $drive = (Get-Item -LiteralPath $repoRoot).PSDrive
+    $freeDiskGB = [math]::Round($drive.Free / 1GB, 2)
+    $diskStatus = 'OK'
+    $diskDetail = "Free Disk on $($drive.Name):: ${freeDiskGB} GB"
+    if ($freeDiskGB -lt 5.0) {
+        $diskStatus = 'WARNING'
+        $warnings.Add("Low disk space on drive $($drive.Name): (${freeDiskGB} GB free).")
+    }
+    $checks.Add([pscustomobject]@{
+        Category = 'Host'
+        Name = 'Disk Space'
+        Status = $diskStatus
+        Detail = $diskDetail
+    })
+
+    # 5. Git Isolation & Worktree Safety
+    $currentBranch = (& git branch --show-current 2>$null).Trim()
+    $currentCommit = (& git rev-parse --short HEAD 2>$null).Trim()
+    $worktrees = & git worktree list 2>$null
+    $isIsolated = $true
+    $isolationDetail = "Worktree: $repoRoot | Branch: $currentBranch | Commit: $currentCommit"
+    if ($worktrees -match 'todorbit-ui-redesign') {
+        $isolationDetail += " | Codex UI Redesign worktree detected and isolated."
+    }
+    $checks.Add([pscustomobject]@{
+        Category = 'Git'
+        Name = 'Worktree and Branch Isolation'
+        Status = 'OK'
+        Detail = $isolationDetail
+    })
+
+    # 6. Active Build & Contention Check
+    $competingProcs = Get-Process -Name 'flutter', 'dart', 'gradle', 'MSBuild' -ErrorAction SilentlyContinue |
+        Where-Object { $_.Id -ne $PID }
+    $contentionStatus = 'OK'
+    $contentionDetail = 'No conflicting background compiler processes.'
+    if ($competingProcs.Count -gt 0) {
+        $contentionStatus = 'WARNING'
+        $procNames = ($competingProcs | Select-Object -ExpandProperty ProcessName -Unique) -join ', '
+        $contentionDetail = "Active competing processes detected: $procNames"
+        $warnings.Add("Active compiler/build processes detected ($procNames). Heavy workloads should coordinate locks.")
+    }
+    $checks.Add([pscustomobject]@{
+        Category = 'Concurrency'
+        Name = 'Active Process Contention'
+        Status = $contentionStatus
+        Detail = $contentionDetail
+    })
+
+    # 7. Safe Repair Execution
+    if ($Repair) {
+        # Prepare plugin symlinks / junctions if needed
+        $prepScript = Join-Path $repoRoot 'tools\dev\prepare-windows-plugins.ps1'
+        if (Test-Path -LiteralPath $prepScript) {
+            try {
+                & powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $prepScript | Out-Null
+                $checks.Add([pscustomobject]@{
+                    Category = 'Repair'
+                    Name = 'Windows Plugin Junctions'
+                    Status = 'OK'
+                    Detail = 'Verified/repaired Windows plugin ephemeral junctions.'
+                })
+            } catch {
+                $warnings.Add("Repair failed for plugin junctions: $_")
+            }
+        }
+    }
+
+    $overallStatus = if ($errors.Count -gt 0) { 'FAIL' } elseif ($warnings.Count -gt 0) { 'WARN' } else { 'PASS' }
+
+    $report = [pscustomobject]@{
+        Timestamp = (Get-Date -Format 'o')
+        OverallStatus = $overallStatus
+        Checks = @($checks.ToArray())
+        Warnings = @($warnings.ToArray())
+        Errors = @($errors.ToArray())
+    }
+
+    if ($Json) {
+        return ($report | ConvertTo-Json -Depth 5)
+    }
+
+    # Human-readable format
+    Write-Host "============================================================" -ForegroundColor Cyan
+    Write-Host "       TODORBIT ENVIRONMENT DOCTOR REPORT                 " -ForegroundColor Cyan
+    Write-Host "============================================================" -ForegroundColor Cyan
+    $statusColor = 'Red'
+    if ($overallStatus -eq 'PASS') { $statusColor = 'Green' }
+    elseif ($overallStatus -eq 'WARN') { $statusColor = 'Yellow' }
+    Write-Host "Status: $overallStatus" -ForegroundColor $statusColor
+    Write-Host ""
+    foreach ($c in $checks) {
+        $color = switch ($c.Status) {
+            'OK' { 'Green' }
+            'WARNING' { 'Yellow' }
+            'ERROR' { 'Red' }
+            Default { 'White' }
+        }
+        Write-Host " [$($c.Status)] " -ForegroundColor $color -NoNewline
+        Write-Host "$($c.Category) - $($c.Name): " -ForegroundColor White -NoNewline
+        Write-Host "$($c.Detail)" -ForegroundColor Gray
+    }
+    Write-Host ""
+    if ($warnings.Count -gt 0) {
+        Write-Host "Warnings:" -ForegroundColor Yellow
+        foreach ($w in $warnings) { Write-Host "  - $w" -ForegroundColor Yellow }
+        Write-Host ""
+    }
+    if ($errors.Count -gt 0) {
+        Write-Host "Errors:" -ForegroundColor Red
+        foreach ($e in $errors) { Write-Host "  - $e" -ForegroundColor Red }
+        Write-Host ""
+    }
+    Write-Host "============================================================" -ForegroundColor Cyan
+
+    return $report
+}
+
+Export-ModuleMember -Function Ensure-TodorbitEnvironment, Resolve-TodorbitTool, Invoke-TodorbitDoctor

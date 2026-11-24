@@ -198,7 +198,7 @@ for sync tests that start and forcibly terminate a Dart worker. It serializes
 workers that share JIT native assets, since Windows holds the SQLite DLL open
 until the worker exits.
 
-The optional helper preserves these commands and CI as the authority:
+The optional helper and TDAT (`.\dev`) preserve these commands and CI as the authority. For routine work, prefer `.\dev impact` and `.\dev verify changed` (with `.\dev verify changed -Shadow` to audit omitted suites); when adding, moving, or deleting tests, update `tools/dev/features.json` and run `.\dev registry --refresh` + `.\dev registry --validate` (enforced by CI via `tools/test_registry_sync.py`):
 
 ```powershell
 # Preview only; explicit test groups are in tools/dev/features.json.
