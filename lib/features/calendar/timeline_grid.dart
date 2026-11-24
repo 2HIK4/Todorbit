@@ -3,6 +3,8 @@ import '../shared/app_spacing.dart';
 
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:typed_data';
+import 'dart:ui' show PointMode;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
@@ -237,57 +239,54 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                   SizedBox(
                     height: gridHeight,
                     width: availableWidth,
-                    child: Column(
-                      children: [
-                        for (
-                          var hour = config.startHour;
-                          hour < config.endHour;
-                          hour++
-                        )
-                          GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onSecondaryTapDown: (details) {
-                              final slotTime = DateTime(
-                                widget.dayDate.year,
-                                widget.dayDate.month,
-                                widget.dayDate.day,
-                                hour,
-                                0,
-                              );
-                              widget.onSlotSecondaryTap(
-                                slotTime,
-                                details.globalPosition,
-                              );
-                            },
-                            onLongPressStart: (details) {
-                              // Touch alternative for Android
-                              final slotTime = DateTime(
-                                widget.dayDate.year,
-                                widget.dayDate.month,
-                                widget.dayDate.day,
-                                hour,
-                                0,
-                              );
-                              widget.onSlotSecondaryTap(
-                                slotTime,
-                                details.globalPosition,
-                              );
-                            },
-                            child: Container(
-                              height: config.hourHeight,
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  top: BorderSide(
-                                    color: scheme.outlineVariant.withValues(
-                                      alpha: hour % 3 == 0 ? 0.90 : 0.60,
-                                    ),
-                                    width: 1,
-                                  ),
-                                ),
-                              ),
+                    child: CustomPaint(
+                      painter: _TimelineHourLines(
+                        startHour: config.startHour,
+                        endHour: config.endHour,
+                        hourHeight: config.hourHeight,
+                        color: scheme.outlineVariant,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (
+                            var hour = config.startHour;
+                            hour < config.endHour;
+                            hour++
+                          )
+                            GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onSecondaryTapDown: (details) {
+                                final slotTime = DateTime(
+                                  widget.dayDate.year,
+                                  widget.dayDate.month,
+                                  widget.dayDate.day,
+                                  hour,
+                                  0,
+                                );
+                                widget.onSlotSecondaryTap(
+                                  slotTime,
+                                  details.globalPosition,
+                                );
+                              },
+                              onLongPressStart: (details) {
+                                // Touch alternative for Android
+                                final slotTime = DateTime(
+                                  widget.dayDate.year,
+                                  widget.dayDate.month,
+                                  widget.dayDate.day,
+                                  hour,
+                                  0,
+                                );
+                                widget.onSlotSecondaryTap(
+                                  slotTime,
+                                  details.globalPosition,
+                                );
+                              },
+                              child: SizedBox(height: config.hourHeight),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
 
@@ -1145,4 +1144,43 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
 
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
+}
+
+/// Batch static lines by color without changing individual slot hit targets.
+class _TimelineHourLines extends CustomPainter {
+  const _TimelineHourLines({
+    required this.startHour,
+    required this.endHour,
+    required this.hourHeight,
+    required this.color,
+  });
+
+  final int startHour;
+  final int endHour;
+  final double hourHeight;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final major = <double>[];
+    final minor = <double>[];
+    for (var hour = startHour; hour < endHour; hour++) {
+      final y = (hour - startHour) * hourHeight + 0.5;
+      (hour % 3 == 0 ? major : minor).addAll([0, y, size.width, y]);
+    }
+    final paint = Paint()
+      ..strokeWidth = 1
+      ..isAntiAlias = false;
+    paint.color = color.withValues(alpha: 0.9);
+    canvas.drawRawPoints(PointMode.lines, Float32List.fromList(major), paint);
+    paint.color = color.withValues(alpha: 0.6);
+    canvas.drawRawPoints(PointMode.lines, Float32List.fromList(minor), paint);
+  }
+
+  @override
+  bool shouldRepaint(_TimelineHourLines oldDelegate) =>
+      startHour != oldDelegate.startHour ||
+      endHour != oldDelegate.endHour ||
+      hourHeight != oldDelegate.hourHeight ||
+      color != oldDelegate.color;
 }

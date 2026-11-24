@@ -27,7 +27,8 @@ void main() {
       final messenger = tester.binding.defaultBinaryMessenger;
       messenger.setMockMethodCallHandler(activation, (_) async => null);
       addTearDown(() => messenger.setMockMethodCallHandler(activation, null));
-      if (Platform.environment['UIUX_CAPTURE_DIR'] != null) {
+      final capturing = Platform.environment['UIUX_CAPTURE_DIR'] != null;
+      if (capturing) {
         await loadReviewFonts();
       }
       final database = AppDatabase(NativeDatabase.memory());
@@ -102,6 +103,22 @@ void main() {
         size: desktop,
       );
 
+      if (capturing) {
+        for (final (label, palette) in [
+          (
+            'graphite-neutral-silver',
+            graphite.withColor('accent', const Color(0xFFC8CDD2)),
+          ),
+          (
+            'graphite-sage',
+            graphite.withColor('accent', const Color(0xFFB0C3AB)),
+          ),
+          ('beta27-teal', ThemePalette.beta27Dark),
+        ]) {
+          await render(palette, name: '$label-upcoming', size: desktop);
+        }
+      }
+
       final context = tester.element(find.byType(Scaffold).first);
       final tomorrow = DateTime.now().add(const Duration(days: 1));
       final label = MaterialLocalizations.of(context).formatFullDate(tomorrow);
@@ -122,6 +139,32 @@ void main() {
         size: const Size(800, 740),
         scale: 1.5,
       );
+
+      if (capturing) {
+        final category = controller.categories.single;
+        final project = controller.projects.first;
+        for (final (label, view, id) in [
+          ('today', WorkspaceView.today, null),
+          ('inbox', WorkspaceView.inbox, null),
+          ('category', WorkspaceView.category, category.id),
+          ('project', WorkspaceView.project, project.id),
+        ]) {
+          controller.navigate(view, id: id);
+          await render(
+            ThemePalette.dark,
+            name: 'desktop-$label-dark',
+            size: desktop,
+          );
+        }
+        controller.navigate(WorkspaceView.calendar);
+        await render(
+          ThemePalette.light,
+          name: 'android-calendar-393-100-light',
+          size: const Size(393, 852),
+          brightness: Brightness.light,
+          android: true,
+        );
+      }
 
       controller.navigate(WorkspaceView.calendar);
       await render(

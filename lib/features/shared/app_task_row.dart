@@ -36,6 +36,7 @@ class AppTaskRow extends StatelessWidget {
     this.iconKey,
     this.categoryName,
     this.projectName,
+    this.showPlannedDate = true,
     this.subtaskProgress,
     this.checklistProgress,
     this.unmetPrerequisitesCount = 0,
@@ -55,6 +56,7 @@ class AppTaskRow extends StatelessWidget {
   final String? iconKey;
   final String? categoryName;
   final String? projectName;
+  final bool showPlannedDate;
   final TaskProgress? subtaskProgress;
   final TaskProgress? checklistProgress;
   final int unmetPrerequisitesCount;
@@ -142,6 +144,10 @@ class AppTaskRow extends StatelessWidget {
                     children: [
                       Text(
                         task.title,
+                        semanticsLabel:
+                            !showPlannedDate && task.scheduledDate != null
+                            ? '${task.title}, Planned ${taskDateLabel(context, task.scheduledDate!)}'
+                            : null,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyMedium?.copyWith(
@@ -191,7 +197,7 @@ class AppTaskRow extends StatelessWidget {
   }
 
   bool get _hasDesktopBadges {
-    return task.scheduledDate != null ||
+    return (showPlannedDate && task.scheduledDate != null) ||
         task.deadlineDate != null ||
         task.status == TaskStatus.inProgress ||
         _isTimerActive ||
@@ -246,7 +252,7 @@ class AppTaskRow extends StatelessWidget {
       );
     }
 
-    if (task.scheduledDate != null) {
+    if (showPlannedDate && task.scheduledDate != null) {
       badges.add(
         Text(
           'Planned ${taskDateLabel(context, task.scheduledDate!)}',

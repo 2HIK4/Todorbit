@@ -1,5 +1,14 @@
 # Deferred Verification Backlog
 
+## Beta 27 polish follow-through (2026-11-24)
+
+The [polish receipt](BETA_27_POLISH_IMPLEMENTATION.md) shows dense-scroll
+raster improvement and remaining 120 Hz budget misses. High-load mode
+latency is mixed. A long physical-device run, assistive output and installed
+shell/DPI acceptance remain open. The user owns the default accent choice.
+Beta 28 preparation needs its own release candidate and applicable CI,
+production signing, packaging, update and official 16 KiB gates.
+
 ## Beta 27 refinement follow-through (2026-11-24)
 
 The [refinement receipt](BETA_27_REFINEMENT.md) records Windows Profile

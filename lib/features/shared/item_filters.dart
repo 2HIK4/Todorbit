@@ -12,6 +12,21 @@ import 'scroll_edge_fade.dart';
 class ItemFilters extends ConsumerWidget {
   const ItemFilters({super.key});
 
+  static Future<void> open(
+    BuildContext context,
+    AppController controller,
+  ) async {
+    final selected = await showDialog<TaskFilter>(
+      context: context,
+      animationStyle: AppMotion.style(context),
+      builder: (_) => _FilterDialog(
+        controller: controller,
+        initial: controller.activeFilter,
+      ),
+    );
+    if (selected != null) controller.setFilter(selected);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = ref.watch(appControllerProvider);
@@ -49,14 +64,7 @@ class ItemFilters extends ConsumerWidget {
         OutlinedButton.icon(
           icon: Icon(f.isActive ? Icons.filter_alt : Icons.filter_alt_outlined),
           label: Text(f.isActive ? 'Filters active' : 'Filters'),
-          onPressed: () async {
-            final selected = await showDialog<TaskFilter>(
-              context: context,
-              animationStyle: AppMotion.style(context),
-              builder: (_) => _FilterDialog(controller: c, initial: f),
-            );
-            if (selected != null) c.setFilter(selected);
-          },
+          onPressed: () => open(context, c),
         ),
         for (final (label, changes) in chips)
           InputChip(

@@ -106,6 +106,17 @@ loads only relevant sections for small changes. Full audits use the skill's
 reachable-surface inventory and coverage ledger, including separate untested and
 tooling/environment-blocked rows. See [integration and upgrade evidence](UI_SKILL_INTEGRATION.md).
 
+For significant UI changes, assign a read-only visual critic and a Flutter
+implementer when independent agents are available and the scope warrants it.
+The critic reviews complete, fixture-matched Flutter captures and may challenge
+the design rules. Record prioritized issues, alternatives, and observable
+acceptance criteria. The implementer records what was applied and how it was
+verified. The critic independently re-reviews the same scenes after the
+change. Make one focused correction pass unless a serious regression needs
+more. Leave major aesthetic choices, including a new default accent, with the
+user. When only one agent is available, keep a written handoff and label the
+review accordingly. Apply the smaller scoped workflow to isolated fixes.
+
 1. Read the canonical skill once per session (reload if changed/context missing)
    and task-relevant references. Choose Build, Audit, Fix,
    Polish or Ship review; scope the inventory, issue-catalog checks, test matrix

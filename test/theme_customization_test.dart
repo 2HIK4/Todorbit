@@ -48,6 +48,40 @@ void main() {
     expect(restored.compact, isTrue);
   });
 
+  test('built-in dark choices keep text and controls readable on surfaces', () {
+    expect(const ThemeCustomization().dark, ThemePalette.dark);
+    expect(ThemePalette.darkPresets['Graphite Violet'], ThemePalette.dark);
+    for (final entry in ThemePalette.darkPresets.entries) {
+      final palette = entry.value;
+      for (final background in ['background', 'surface']) {
+        for (final foreground in [
+          'primaryText',
+          'secondaryText',
+          'accent',
+          'warning',
+          'error',
+        ]) {
+          expect(
+            palette.contrast(foreground, background),
+            greaterThanOrEqualTo(4.5),
+            reason: '${entry.key}: $foreground on $background',
+          );
+        }
+      }
+      final label = palette['primaryText'].computeLuminance();
+      final selection = Color.lerp(
+        palette['surface'],
+        palette['accent'],
+        .24,
+      )!.computeLuminance();
+      expect(
+        (label + .05) / (selection + .05),
+        greaterThanOrEqualTo(4.5),
+        reason: '${entry.key}: selected label',
+      );
+    }
+  });
+
   test('theme import rejects malformed and unsupported content', () {
     final value = const ThemeCustomization().toJson();
     expect(

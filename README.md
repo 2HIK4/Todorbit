@@ -31,6 +31,8 @@ widgets use the selected palette when available.
 
 The [Beta 27 refinement receipt](docs/BETA_27_REFINEMENT.md) records the desktop
 task-list layout, graphite appearance, and isolated Calendar comparison.
+The [follow-up polish](docs/BETA_27_POLISH_IMPLEMENTATION.md) adds dark palette
+choices and depth to the Calendar frame measurements.
 
 ## Android beta installation
 

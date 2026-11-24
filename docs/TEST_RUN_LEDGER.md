@@ -1,5 +1,18 @@
 # Persistent test run ledger
 
+## Beta 27 independent polish (2026-11-24)
+
+Baseline `05ada82` and pinned Flutter 3.47.7. The
+[polish engineering evidence](BETA_27_POLISH_IMPLEMENTATION.md) records
+fixture-matched Profile latency and frame distributions at the traced
+display budget. Focused testing covers date suppression and due-date
+visibility, narrow Android filter application and clearing, palette
+contrast, timed slot interaction, recurrence, resize and undo. The
+[independent critic](BETA_27_POLISH_CRITIQUE.md) owns visual disposition.
+73 distinct focused tests passed after a test-only context correction.
+Matched Flutter renders, API 35 disposable Android runtime and changed-file
+analysis passed. All 39 architecture tests and docs/catalog checks passed.
+
 ## Beta 27 UI and Calendar refinement (2026-11-24)
 
 Baseline `7ede889`, Windows 11, Flutter 3.47.7 and Dart 3.13.5.

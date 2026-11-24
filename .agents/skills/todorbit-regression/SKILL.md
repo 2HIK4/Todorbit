@@ -15,7 +15,10 @@ controls reachable. Use the [task-list presentation rules](../../../docs/UI_DESI
 
 For desktop Calendar performance, use the isolated Profile driver in
 `docs/TESTING.md`. Reuse the populated fixture and report driver latency, UI
-and raster times, sampled stacks and repeated-open heap separately.
+and raster times, sampled stacks and repeated-open heap separately. Capture
+median, p95, p99, worst and missed-frame rates using the recorded refresh
+budget. Keep automated layout checks alongside the independent visual review
+for material polish.
 
 For Calendar, use the `calendar-ui` selector to cover both Flutter shells.
 For timeline renderer changes, exercise overlap, pointer cancellation, resize

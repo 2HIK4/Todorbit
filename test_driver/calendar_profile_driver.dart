@@ -37,11 +37,32 @@ Future<void> main() async {
     final end = (await service.getVMTimelineMicros()).timestamp!;
     final samples = await service.getCpuSamples(isolateId, start, end - start);
     final summary = TimelineSummary.summarize(trace);
+    final metrics = summary.countFrames() > 0 ? summary.summaryJson : null;
+    final budgets = <int>[];
+    for (final event in trace.events ?? const <TimelineEvent>[]) {
+      if (event.name != 'VsyncProcessCallback' || event.phase != 'B') continue;
+      final start = int.tryParse('${event.arguments?['StartTime']}');
+      final target = int.tryParse('${event.arguments?['TargetTime']}');
+      if (start != null && target != null && target > start) {
+        budgets.add(target - start);
+      }
+    }
+    budgets.sort();
+    final budgetMs = budgets.isEmpty ? null : _quantile(budgets, 0.5) / 1e6;
     stats[name] = {
       'driverElapsedMs': elapsed.inMilliseconds,
       'cpuSamples': samples.sampleCount,
       'frames': summary.countFrames(),
-      if (summary.countFrames() > 0) 'timeline': summary.summaryJson,
+      if (budgetMs != null) 'refreshHz': 1000 / budgetMs,
+      'frameBudgetMs': ?budgetMs,
+      if (metrics != null) ...{
+        'ui': _frameStats(metrics['frame_build_times'] as List<int>, budgetMs),
+        'raster': _frameStats(
+          metrics['frame_rasterizer_times'] as List<int>,
+          budgetMs,
+        ),
+        'timeline': metrics,
+      },
     };
     for (final (label, value) in [
       ('trace', trace.json),
@@ -112,11 +133,51 @@ Future<void> main() async {
     await capture('all-tasks-light');
     await text('Calendar');
     await capture('calendar-week-light');
+    await text('Inbox');
+    await capture('inbox-light');
+    final categories = find.text('Categories (1)');
+    try {
+      await driver.waitFor(
+        find.text('Product studio'),
+        timeout: const Duration(milliseconds: 350),
+      );
+    } on DriverError {
+      await tap(categories);
+    }
+    await text('Product studio');
+    await capture('category-light');
+    await tap(find.byTooltip('Autumn release'));
+    await capture('project-light');
+    await tap(find.byTooltip('Today'));
+    await capture('today-light');
   } finally {
     await File(path.join(directory.path, 'summary.json'))
         .writeAsString(const JsonEncoder.withIndent('  ').convert(stats));
     await driver.close();
   }
+}
+
+double _quantile(List<int> sorted, double fraction) {
+  final index = fraction * (sorted.length - 1);
+  final low = index.floor();
+  return sorted[low] + (index - low) * (sorted[index.ceil()] - sorted[low]);
+}
+
+Map<String, Object> _frameStats(List<int> microseconds, double? budgetMs) {
+  final sorted = microseconds.toList()..sort();
+  if (sorted.isEmpty) return {'samples': 0};
+  return {
+    'samples': sorted.length,
+    'medianMs': _quantile(sorted, 0.5) / 1000,
+    'p95Ms': _quantile(sorted, 0.95) / 1000,
+    'p99Ms': _quantile(sorted, 0.99) / 1000,
+    'worstMs': sorted.last / 1000,
+    if (budgetMs != null)
+      'overBudgetPercent':
+          100 *
+          sorted.where((us) => us / 1000 > budgetMs).length /
+          sorted.length,
+  };
 }
 
 Future<void> _maximizeTestWindow() async {

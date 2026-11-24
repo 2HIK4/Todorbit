@@ -70,6 +70,25 @@ class ThemePalette {
 
   Color operator [](String key) => colors[key]!;
 
+  static final graphiteSilver = dark.withColor(
+    'accent',
+    const Color(0xFFC8CDD2),
+  );
+  static final graphiteAmber = dark.withColor(
+    'accent',
+    const Color(0xFFDBB27A),
+  );
+  static final graphiteSage = dark.withColor('accent', const Color(0xFFB0C3AB));
+
+  static final darkPresets = Map<String, ThemePalette>.unmodifiable({
+    'Graphite Violet': dark,
+    'Graphite Neutral Silver': graphiteSilver,
+    'Graphite Amber': graphiteAmber,
+    'Graphite Sage': graphiteSage,
+    'Beta 27 Teal': beta27Dark,
+    'Dusk': dusk,
+  });
+
   ThemePalette withColor(String key, Color value) {
     if (!keys.contains(key)) throw FormatException('Unknown color: $key');
     return ThemePalette({...colors, key: value});

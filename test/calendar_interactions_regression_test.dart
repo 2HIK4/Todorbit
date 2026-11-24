@@ -15,6 +15,7 @@ import 'package:life_manager/features/calendar/calendar_models.dart';
 import 'package:life_manager/features/calendar/calendar_month_view.dart';
 import 'package:life_manager/features/calendar/calendar_view.dart';
 import 'package:life_manager/features/calendar/calendar_week_view.dart';
+import 'package:life_manager/features/calendar/timeline_grid.dart';
 
 void main() {
   const config = CalendarAppearanceConfiguration(
@@ -43,6 +44,47 @@ void main() {
     tearDown(() async {
       await db.close();
     });
+
+    testWidgets(
+      'Empty timeline slots keep mouse and touch hit targets',
+      (tester) async {
+        final day = DateTime(2026, 11, 10);
+        const slots = CalendarAppearanceConfiguration(startHour: 9, endHour: 12);
+        final interaction = CalendarInteractionController(config: slots);
+        addTearDown(interaction.dispose);
+        final picked = <DateTime>[];
+        final grid = find.byType(TimelineDayColumn);
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: SizedBox(
+                  width: 420,
+                  height: slots.totalGridHeight,
+                  child: TimelineDayColumn(
+                    dayDate: day,
+                    items: const [],
+                    config: slots,
+                    interactionController: interaction,
+                    onItemTap: (_) {},
+                    onSlotSecondaryTap: (time, _) => picked.add(time),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        final topLeft = tester.getTopLeft(grid);
+        await tester.tapAt(
+          topLeft + const Offset(200, 89),
+          buttons: kSecondaryButton,
+          kind: PointerDeviceKind.mouse,
+        );
+        await tester.longPressAt(topLeft + const Offset(200, 150));
+        expect(picked, [DateTime(2026, 11, 10, 10), DateTime(2026, 11, 10, 11)]);
+        await tester.pumpWidget(const SizedBox.shrink());
+      },
+    );
 
     testWidgets('A. Dragging Day-view event does NOT cause unexpected scrolling', (tester) async {
       await tester.binding.setSurfaceSize(const Size(1000, 700));

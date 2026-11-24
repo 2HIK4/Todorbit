@@ -35,12 +35,14 @@ class MobileCalendar extends ConsumerStatefulWidget {
     this.initialDay,
     this.onEditorClosed,
     this.clock = DateTime.now,
+    this.showFilters = true,
   });
   final ValueChanged<LifeTask> openTask;
   final ValueChanged<DateTime> addTask;
   final DateTime? initialDay;
   final Future<void> Function()? onEditorClosed;
   final DateTime Function() clock;
+  final bool showFilters;
   @override
   ConsumerState<MobileCalendar> createState() => _MobileCalendarState();
 }
@@ -245,11 +247,13 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar>
         AppSpacing.section,
       ),
       children: [
-        const Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: ItemFilters(),
-        ),
-        const SizedBox(height: AppSpacing.gap),
+        if (widget.showFilters) ...[
+          const Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: ItemFilters(),
+          ),
+          const SizedBox(height: AppSpacing.gap),
+        ],
         LayoutBuilder(
           builder: (context, constraints) {
             if (constraints.maxWidth <

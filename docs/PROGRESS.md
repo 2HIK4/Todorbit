@@ -1,5 +1,15 @@
 # Progress
 
+## Beta 27 independent polish and Calendar rendering (2026-11-24)
+
+The [independent review](BETA_27_POLISH_CRITIQUE.md) and
+[engineering evidence](BETA_27_POLISH_IMPLEMENTATION.md) cover contextual
+Upcoming dates, compact Calendar filters, selectable palette previews, and
+batched Calendar hour rules. The paired Profile traces improved dense Day
+scroll raster cost and still show 120 Hz budget misses. The default accent
+remains for the user's decision before Beta 28. This is a development
+checkpoint.
+
 ## Beta 27 UI and Calendar refinement (2026-11-24)
 
 Published Beta 27 is the baseline for `feature/todorbit-beta27-refinement`.

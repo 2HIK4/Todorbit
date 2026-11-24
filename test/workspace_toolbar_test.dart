@@ -11,9 +11,67 @@ import 'package:life_manager/app/app_controller.dart';
 import 'package:life_manager/data/app_database.dart';
 import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/domain/appearance.dart';
+import 'package:life_manager/domain/models.dart';
+import 'package:life_manager/features/shared/task_date_label.dart';
 import 'package:life_manager/main.dart';
 
 void main() {
+  testWidgets('Upcoming day context removes only matching planned labels', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final database = AppDatabase(NativeDatabase.memory());
+    final repository = LifeRepository(database);
+    final controller = AppController(repository);
+    final next = DateTime.now().add(const Duration(days: 1));
+    final date = localDate(next);
+    await repository.addTask(
+      TaskDraft(
+        title: 'First handoff',
+        scheduledDate: date,
+        deadlineDate: date,
+      ),
+    );
+    await repository.addTask(
+      TaskDraft(title: 'Second handoff', scheduledDate: date),
+    );
+    await controller.refresh();
+    controller.navigate(WorkspaceView.upcoming);
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appControllerProvider.overrideWith((ref) => controller),
+            privacyOverride,
+          ],
+          child: const LifeManagerApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final first = find.text('First handoff');
+      final second = find.text('Second handoff');
+      final context = tester.element(first);
+      final label = 'Planned ${taskDateLabel(context, date)}';
+      final due = 'Due ${taskDateLabel(context, date)}';
+      final heading = MaterialLocalizations.of(context).formatFullDate(next);
+      expect(find.text(heading), findsOneWidget);
+      expect(find.text(label), findsNothing);
+      expect(find.text(due), findsOneWidget);
+      expect(tester.widget<Text>(first).semanticsLabel, contains(label));
+      expect(tester.widget<Text>(second).semanticsLabel, contains(label));
+
+      controller.setSort(TaskSort.title);
+      await tester.pumpAndSettle();
+      expect(find.text(heading), findsNothing);
+      expect(find.text(label), findsNWidgets(2));
+      expect(find.text(due), findsOneWidget);
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await database.close();
+      await tester.binding.setSurfaceSize(null);
+    }
+  });
+
   testWidgets(
     'Schedule History toolbar action has a visible themed icon and opens history',
     (tester) async {

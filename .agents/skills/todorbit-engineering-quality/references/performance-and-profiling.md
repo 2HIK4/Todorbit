@@ -7,6 +7,7 @@ This reference defines engineering rules for CPU, memory, rendering, and disk I/
 ## 1. Evidence-Based Performance Policy
 
 - **No Speculative Optimization**: Do not add caching layers, object pools, parallel workers, or complicated data structures without profiler evidence demonstrating an actual bottleneck.
+- **Frame budget**: Compare Profile traces from the same fixture and viewport. Keep UI and raster medians, p95, p99, worst and missed-frame rates separate. Calculate misses from the captured display/engine refresh rate and note a mismatch or unavailable rate. Preserve raw traces for reproduction.
 - **Hypothesis vs Measurement**: In audit reports and commit messages, clearly distinguish between:
   - *Measured Bottlenecks*: Backed by DevTools CPU flame charts, heap snapshots, or wall-clock benchmark numbers.
   - *Theoretical Observations*: Labeled as code inspection hypotheses or theoretical edge cases.

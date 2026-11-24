@@ -25,6 +25,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/app_controller.dart';
 import '../../data/mobile_preference_store.dart';
 import '../../domain/models.dart';
+import '../../domain/saved_views.dart';
 import '../../data/life_repository.dart';
 import '../../platform/android/android_platform.dart';
 import '../../platform/android/android_widget_action.dart';
@@ -420,6 +421,10 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                 MediaQuery.textScalerOf(context).scale(1);
     final addTaskInMenu =
         c.view == WorkspaceView.habits || c.view == WorkspaceView.goals;
+    final compactCalendarFilters =
+        compactChrome && c.view == WorkspaceView.calendar && !searching;
+    final calendarFiltersActive =
+        compactCalendarFilters && c.activeFilter.isActive;
     final compactAdd =
         compactChrome &&
         switch (c.view) {
@@ -437,6 +442,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
         openTask: (t) => task(t),
         addTask: (d) => task(null, d),
         onEditorClosed: deliverLink,
+        showFilters: !compactCalendarFilters,
       ),
       WorkspaceView.habits => const HabitsView(showTitle: false),
       WorkspaceView.goals => const GoalsView(showTitle: false),
@@ -518,10 +524,20 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
       ),
       if (!searching)
         PopupMenuButton<String>(
-          tooltip: 'Workspace actions',
+          tooltip: calendarFiltersActive
+              ? 'Workspace actions, calendar filters active'
+              : 'Workspace actions',
+          icon: Badge(
+            isLabelVisible: calendarFiltersActive,
+            child: const Icon(Icons.more_vert),
+          ),
           onSelected: (value) {
             if (value == 'new-task') task();
             if (value == 'filters') dialog(const AdvancedSearchDialog());
+            if (value == 'calendar-filters') ItemFilters.open(context, c);
+            if (value == 'calendar-clear-filters') {
+              c.setFilter(const TaskFilter());
+            }
             if (value == 'reschedule') {
               dialog(
                 SmartRescheduleDialog(
@@ -540,6 +556,20 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
           itemBuilder: (_) => [
             if (addTaskInMenu)
               const PopupMenuItem(value: 'new-task', child: Text('New task')),
+            if (compactCalendarFilters)
+              PopupMenuItem(
+                value: 'calendar-filters',
+                child: Text(
+                  calendarFiltersActive
+                      ? 'Calendar filters active'
+                      : 'Calendar filters',
+                ),
+              ),
+            if (calendarFiltersActive)
+              const PopupMenuItem(
+                value: 'calendar-clear-filters',
+                child: Text('Clear calendar filters'),
+              ),
             const PopupMenuItem(
               value: 'filters',
               child: Text('Filters and saved views'),

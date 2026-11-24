@@ -316,6 +316,70 @@ void main() {
   });
 
   testWidgets(
+    'Compact Calendar applies and clears filters through workspace actions',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(320, 740);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final category = await controller.repository.addCategory('Studio');
+      await controller.refresh();
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: reviewContainer,
+          child: MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: const TextScaler.linear(1.5)),
+              child: child!,
+            ),
+            theme: buildAppTheme(
+              Brightness.light,
+              ThemePalette.light,
+              android: true,
+            ),
+            home: MobileWorkspace(
+              preferenceStore: _CalendarStartStore(
+                File('${tempDir.path}/mobile.json'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(controller.view, WorkspaceView.calendar);
+      expect(find.text('Filters'), findsNothing);
+      final actions = find.byTooltip('Workspace actions');
+      expect(tester.getSize(actions).shortestSide, greaterThanOrEqualTo(48));
+      await tester.tap(actions);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Calendar filters'));
+      await tester.pumpAndSettle();
+      expect(find.text('Filter tasks and events'), findsOneWidget);
+      final all = find.text('All categories');
+      await tester.ensureVisible(all);
+      await tester.tap(all);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Studio').hitTestable());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Apply'));
+      await tester.pumpAndSettle();
+      expect(controller.activeFilter.categoryId, category.id);
+
+      await tester.tap(
+        find.byTooltip('Workspace actions, calendar filters active'),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Clear calendar filters'));
+      await tester.pumpAndSettle();
+      expect(controller.activeFilter.isActive, isFalse);
+      expect(actions, findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
     'Bottom nav navigation to calendar clears stale deep-linked day',
     (tester) async {
       final pastDay = '2026-11-01';
@@ -370,4 +434,12 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+}
+
+class _CalendarStartStore extends MobilePreferenceStore {
+  _CalendarStartStore(super.file);
+
+  @override
+  Future<MobilePreferences> load() async =>
+      const MobilePreferences(start: WorkspaceView.calendar);
 }

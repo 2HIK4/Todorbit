@@ -28,8 +28,10 @@ Todorbit retains its own schedule, timer and navigation contracts.
 
 - Default light uses #F6F8F9 canvas, #FFFFFF surface and #006A66 accent.
   Dark uses #181819 canvas, #232325 surface and #B4ABEE accent.
-  Beta 27 Teal remains a palette choice. Explicit saved colors keep their
-  existing values.
+  Graphite Violet is the current default. Neutral Silver, Amber, Sage, and
+  Beta 27 Teal are choices for the user. Explicit saved colors keep their
+  existing values. Compare complete screens with identical fixtures before
+  changing a default, and keep that choice with the user.
   ColorScheme assigns foregrounds, surfaces and interaction states.
   TodorbitThemeTokens owns status and priority roles.
 - Use ThemeData typography with the platform font. Today uses a 32 sp page
@@ -82,7 +84,10 @@ Todorbit retains its own schedule, timer and navigation contracts.
   Windows and a scrollable list with the existing app bar on Android.
   Keep header, filters, section labels and rows on the same leading inset.
   In Upcoming, start each contiguous planned day with its heading when
-  Schedule sort is active. Preserve selected sort, series and subtask rules.
+  Schedule sort is active. Let the heading carry the visual Planned date
+  for its matching rows. Keep the semantic date, visible deadlines and
+  explicit Planned value when row and group dates differ or sort changes.
+  Preserve selected sort, series and subtask rules.
 - Use shared sort labels and show a specific empty message for search or
   filter results. In scoped views, give events their own heading and keep
   task completion controls in the task section.
@@ -109,6 +114,9 @@ Todorbit retains its own schedule, timer and navigation contracts.
   in view while scrolling and position drag time badges from the proposal.
   Preserve the engine's geometry, resize hit areas and commit boundaries.
 - Keep Android date navigation and grouped agenda in the touch shell.
+  Use an inline filter at ordinary widths and the existing Workspace
+  actions menu when the compact Calendar header needs the space. Keep
+  filtered state named and clearable, with 48 dp action targets.
   Verify the final agenda row and all actions above the navigation bar.
 - Use the shared modal shell, date/time buttons, disclosure sections and
   action bar for events. Keep editable titles wrapped with a single-line

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Keep Upcoming's matching planned date in the group heading and accessible
+  row context. Deadlines remain visible.
+- Move compact Android Calendar filters into workspace actions with active
+  status and a clear action. Add selectable graphite dark palettes.
+- Batch timed Calendar hour-rule painting and report Profile frame tails
+  against the display cadence.
+
 - Align Windows task workspaces with the sidebar, widen their content and
   group schedule-sorted Upcoming tasks by planned day.
 - Use graphite and muted violet for the default dark palette. Keep Beta 27

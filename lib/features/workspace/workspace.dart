@@ -2450,15 +2450,14 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   final previousDay = index == 0
                       ? null
                       : roots[index - 1].tasks.first.scheduledDate;
-                  final sectionDate =
-                      plannedDay == null || plannedDay == previousDay
+                  final sectionDate = plannedDay == null
                       ? null
                       : DateTime.tryParse(plannedDay);
                   return Column(
                     key: ValueKey(group.key),
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (sectionDate != null)
+                      if (sectionDate != null && plannedDay != previousDay)
                         Padding(
                           padding: const EdgeInsets.only(
                             top: AppSpacing.related,
@@ -2477,6 +2476,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                           controller,
                           task,
                           wide,
+                          showPlannedDate:
+                              sectionDate == null ||
+                              task.scheduledDate != plannedDay,
                           categoryName:
                               controller.view == WorkspaceView.category
                               ? null
@@ -2512,6 +2514,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
     bool wide, {
     String? categoryName,
     String? projectName,
+    bool showPlannedDate = true,
   }) {
     final childCount = controller.taskParents.values
         .where((id) => id == task.id)
@@ -2556,6 +2559,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       variant: AppTaskRowVariant.desktop,
       categoryName: categoryName,
       projectName: projectName,
+      showPlannedDate: showPlannedDate,
       isSelected: controller.selectedTaskId == task.id,
       timerState: timerState,
       hasAlarm: hasAlarm,

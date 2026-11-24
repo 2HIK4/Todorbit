@@ -48,7 +48,11 @@ The seeder validates these paths before writing the profile.
 Run `tools/dev/profile-calendar.ps1 -Run baseline` with the baseline Profile
 binary and a new run name for the candidate. Each run clones the same seeded
 profile and records CPU samples, frame traces, settled driver latency, memory
-and screenshots in its report folder. The driver maximizes only the selected
+and screenshots in its report folder. The updated driver derives the frame
+budget from Flutter Vsync cadence and writes UI and raster median, p95, p99,
+worst and over-budget rates. Keep the mode-switch, dense scroll, zoom,
+adjacent month and repeated-open scenarios with the fixture for later toolkit
+registration. The driver maximizes only the selected
 test executable. See the [Beta 27 refinement receipt](BETA_27_REFINEMENT.md).
 
 ### Module test matrix

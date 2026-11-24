@@ -6,6 +6,7 @@ import '../shared/scroll_edge_fade.dart';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter/material.dart';
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -257,24 +258,42 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
                   padding: const EdgeInsets.only(top: 8, right: 8, bottom: 16),
                   children: [
                     const AppSectionHeading('Palettes'),
+                    if (dark)
+                      AnchoredSelectField<ThemePalette>(
+                        decoration: const InputDecoration(
+                          labelText: 'Dark palette preset',
+                        ),
+                        isExpanded: true,
+                        initialValue: ThemePalette.darkPresets.values
+                            .where(
+                              (candidate) =>
+                                  mapEquals(candidate.colors, palette.colors),
+                            )
+                            .firstOrNull,
+                        onChanged: (candidate) {
+                          if (candidate != null) update(candidate);
+                        },
+                        items: [
+                          for (final entry in ThemePalette.darkPresets.entries)
+                            DropdownMenuItem(
+                              value: entry.value,
+                              child: Text(entry.key),
+                            ),
+                        ],
+                      ),
                     Wrap(
                       spacing: AppSpacing.gap,
                       children: [
-                        TextButton(
-                          onPressed: () => update(defaults),
-                          child: const Text('Use Todorbit'),
-                        ),
-                        TextButton(
-                          onPressed: () => update(
-                            dark ? ThemePalette.dusk : ThemePalette.ocean,
-                          ),
-                          child: Text(dark ? 'Use Dusk' : 'Use Ocean'),
-                        ),
-                        if (dark)
+                        if (!dark) ...[
                           TextButton(
-                            onPressed: () => update(ThemePalette.beta27Dark),
-                            child: const Text('Use Beta 27 Teal'),
+                            onPressed: () => update(defaults),
+                            child: const Text('Use Todorbit'),
                           ),
+                          TextButton(
+                            onPressed: () => update(ThemePalette.ocean),
+                            child: const Text('Use Ocean'),
+                          ),
+                        ],
                         TextButton(
                           onPressed: () => setState(() {
                             draft = draft.copyWith(

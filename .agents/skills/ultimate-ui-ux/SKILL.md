@@ -100,6 +100,18 @@ with a simulated keyboard inset.
   during navigation, retries and destructive actions; success requires confirmed
   underlying state. Never invent content, progress or metrics.
 
+## Independent critique for significant UI changes
+
+Use independent roles when available and justified. The reviewer inspects
+complete baseline screens and may challenge the design system itself.
+Classify must-fix issues, bounded improvements and subjective choices, set
+observable criteria, and hand off the findings before implementation.
+Compare fixture-matched Flutter captures in the independent re-review.
+Record each disposition and apply one focused correction pass unless a
+serious regression needs more. Ask the user to decide major subjective
+defaults. A visual assertion supports behavioral coverage and cannot replace
+this review. Use a single-agent scoped check for isolated fixes.
+
 ## Verify and deliver
 
 1. Define an observable correction and affected regression scope before testing.
