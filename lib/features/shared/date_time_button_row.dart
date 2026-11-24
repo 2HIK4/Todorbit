@@ -8,6 +8,7 @@ class DateTimeButtonRow extends StatelessWidget {
     required this.dateLabel,
     required this.onDatePressed,
     this.dateKey,
+    this.fieldLabel,
     this.timeLabel,
     this.onTimePressed,
     this.timeKey,
@@ -16,23 +17,34 @@ class DateTimeButtonRow extends StatelessWidget {
   final String dateLabel;
   final VoidCallback onDatePressed;
   final Key? dateKey;
+  final String? fieldLabel;
   final String? timeLabel;
   final VoidCallback? onTimePressed;
   final Key? timeKey;
 
+  Widget _withTooltip(String part, Widget child) => fieldLabel == null
+      ? child
+      : Tooltip(message: 'Change $fieldLabel $part', child: child);
+
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, bounds) {
-      final date = OutlinedButton(
-        key: dateKey,
-        onPressed: onDatePressed,
-        child: Text(dateLabel),
+      final date = _withTooltip(
+        'date',
+        OutlinedButton(
+          key: dateKey,
+          onPressed: onDatePressed,
+          child: Text(dateLabel),
+        ),
       );
       if (timeLabel == null) return date;
-      final time = OutlinedButton(
-        key: timeKey,
-        onPressed: onTimePressed,
-        child: Text(timeLabel!),
+      final time = _withTooltip(
+        'time',
+        OutlinedButton(
+          key: timeKey,
+          onPressed: onTimePressed,
+          child: Text(timeLabel!),
+        ),
       );
       final minimum = 150 * MediaQuery.textScalerOf(context).scale(14) / 14;
       if ((bounds.maxWidth - AppSpacing.related) / 2 < minimum) {

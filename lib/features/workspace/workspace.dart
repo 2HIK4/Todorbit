@@ -958,10 +958,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   (hasTaskSelected || hasEventSelected) &&
                   _focusWorkspaceTaskId == null;
               final inlineEditor = editor;
-              final taskPage =
-                  inlineEditor && hasTaskSelected && !hasEventSelected && !wide;
+              final focusedEditor = inlineEditor && !wide;
               final showSidebar =
-                  !taskPage &&
+                  !focusedEditor &&
                   (!inlineEditor || width >= AppLayout.breakpointCompact);
               final canResize = wide && hasTaskSelected && !hasEventSelected;
               final preferredPanelWidth =
@@ -1091,7 +1090,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                         color: Theme.of(context).colorScheme.surface,
                         child: Padding(
                           padding: EdgeInsets.symmetric(
-                            horizontal: taskPage
+                            horizontal: focusedEditor
                                 ? math.max(
                                     0,
                                     (panelWidth -

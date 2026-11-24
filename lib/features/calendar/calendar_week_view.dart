@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 
 import '../../domain/alarms.dart';
 import '../shared/weekdays.dart';
+import '../shared/app_spacing.dart';
+import '../shared/icon_picker.dart';
+import 'calendar_presentation.dart';
 import 'calendar_config.dart';
 import 'calendar_interaction_controller.dart';
 import 'calendar_models.dart';
@@ -15,6 +18,7 @@ class CalendarWeekView extends StatefulWidget {
   const CalendarWeekView({
     super.key,
     required this.weekStart,
+    this.selectedDate,
     required this.itemsByDay,
     required this.config,
     required this.interactionController,
@@ -28,6 +32,7 @@ class CalendarWeekView extends StatefulWidget {
   });
 
   final DateTime weekStart;
+  final DateTime? selectedDate;
   final Map<DateTime, List<CalendarItem>> itemsByDay;
   final CalendarAppearanceConfiguration config;
   final CalendarInteractionController interactionController;
@@ -277,6 +282,21 @@ class _CalendarWeekViewState extends State<CalendarWeekView> {
     final config = widget.config;
     final days = _weekDays;
     final today = DateTime.now();
+    final untimedByDay = {
+      for (final day in days)
+        day: [
+          for (final item in widget.itemsByDay[day] ?? const <CalendarItem>[])
+            if (!item.isTimed) item,
+        ],
+    };
+    final previewLines = untimedByDay.values.fold<int>(
+      0,
+      (visible, items) => math.max(visible, math.min(items.length, 2)),
+    );
+    final lineHeight = math.max(
+      AppLayout.minTapTarget / 2,
+      MediaQuery.textScalerOf(context).scale(14) + AppSpacing.gap,
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -311,7 +331,26 @@ class _CalendarWeekViewState extends State<CalendarWeekView> {
                           for (final dayDate in days)
                             SizedBox(
                               width: columnWidth,
-                              child: _buildDayHeader(dayDate, today, scheme),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _buildDayHeader(dayDate, today, scheme),
+                                  if (previewLines != 0)
+                                    SizedBox(
+                                      height:
+                                          lineHeight * previewLines +
+                                          AppSpacing.small,
+                                      child: ColoredBox(
+                                        color: scheme.surfaceContainerLow,
+                                        child: _buildUntimedPreview(
+                                          dayDate,
+                                          untimedByDay[dayDate]!,
+                                          lineHeight,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
                         ],
                       ),
@@ -343,18 +382,11 @@ class _CalendarWeekViewState extends State<CalendarWeekView> {
                             Positioned(
                               top:
                                   (hour - config.startHour) *
-                                      config.hourHeight -
-                                  8,
+                                      config.hourHeight +
+                                  AppSpacing.small,
                               left: 4,
                               right: 6,
-                              child: Text(
-                                '${hour.toString().padLeft(2, '0')}:00',
-                                textAlign: TextAlign.right,
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: scheme.outline,
-                                  fontSize: 10,
-                                ),
-                              ),
+                              child: CalendarHourLabel(hour),
                             ),
                         ],
                       ),
@@ -533,51 +565,138 @@ class _CalendarWeekViewState extends State<CalendarWeekView> {
 
   Widget _buildDayHeader(DateTime dayDate, DateTime today, ColorScheme scheme) {
     final isToday = _isSameDay(dayDate, today);
-    final weekdayName = weekdayNames[dayDate.weekday - 1];
-
-    return InkWell(
-      onTap: () => widget.onDayHeaderTap(dayDate),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-        decoration: BoxDecoration(
-          color: isToday
-              ? scheme.primaryContainer.withValues(alpha: 0.55)
-              : null,
-          border: Border(
-            right: BorderSide(
-              color: scheme.outlineVariant.withValues(alpha: 0.35),
+    final selected = DateUtils.isSameDay(dayDate, widget.selectedDate);
+    final dateLabel = MaterialLocalizations.of(context).formatFullDate(dayDate);
+    final theme = Theme.of(context).textTheme;
+    return Semantics(
+      selected: selected,
+      label: '${isToday ? 'Today, ' : ''}$dateLabel',
+      child: InkWell(
+        onTap: () => widget.onDayHeaderTap(dayDate),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            vertical: AppSpacing.gap,
+            horizontal: AppSpacing.small,
+          ),
+          decoration: BoxDecoration(
+            color: isToday || selected ? scheme.primaryContainer : null,
+            border: Border(right: BorderSide(color: scheme.outlineVariant)),
+          ),
+          child: ExcludeSemantics(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  weekdayNames[dayDate.weekday - 1],
+                  style: theme.labelMedium?.copyWith(
+                    color: isToday || selected
+                        ? scheme.onPrimaryContainer
+                        : scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.small),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.gap,
+                  ),
+                  decoration: isToday
+                      ? BoxDecoration(
+                          color: scheme.primary,
+                          borderRadius: BorderRadius.circular(
+                            AppRadius.control,
+                          ),
+                        )
+                      : null,
+                  child: Text(
+                    '${dayDate.day}',
+                    style: theme.titleSmall?.copyWith(
+                      color: isToday ? scheme.onPrimary : null,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              weekdayName,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
-                color: isToday ? scheme.primary : scheme.outline,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: isToday
-                  ? BoxDecoration(color: scheme.primary, shape: BoxShape.circle)
-                  : null,
-              child: Text(
-                '${dayDate.day}',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isToday ? scheme.onPrimary : scheme.onSurface,
+      ),
+    );
+  }
+
+  Widget _buildUntimedPreview(
+    DateTime day,
+    List<CalendarItem> items,
+    double lineHeight,
+  ) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final visible = items.length > 2 ? items.take(1) : items;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final item in visible)
+          SizedBox(
+            height: lineHeight,
+            child: Tooltip(
+              message:
+                  '${item.allDay ? 'All day' : item.subtitle ?? 'Planned task'} · ${item.title}',
+              child: InkWell(
+                onTap: () => widget.onItemTap(item),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.small,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        item.allDay
+                            ? iconForKey(item.iconName, Icons.event_outlined)
+                            : item.subtitle == 'Deadline'
+                            ? Icons.flag_outlined
+                            : Icons.task_alt_outlined,
+                        size: 14,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: AppSpacing.small),
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            decoration: item.isCancelled
+                                ? TextDecoration.lineThrough
+                                : null,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+        if (items.length > 2)
+          SizedBox(
+            height: lineHeight,
+            child: InkWell(
+              onTap: () => widget.onDayHeaderTap(day),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gap),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    '+${items.length - 1} more',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: scheme.primary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 

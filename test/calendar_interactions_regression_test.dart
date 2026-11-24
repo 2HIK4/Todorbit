@@ -956,6 +956,7 @@ void main() {
       CalendarItem? tappedItem;
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(platform: TargetPlatform.windows),
           home: Scaffold(
             body: CalendarDayView(
               dayDate: today,
@@ -986,6 +987,12 @@ void main() {
       semanticsWidget.properties.onTap!();
       expect(tappedItem?.id, item.id);
 
+      tappedItem = null;
+      Focus.of(tester.element(find.text(item.title))).requestFocus();
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      expect(tappedItem?.id, item.id);
+
       // Tooltips for resize handles and current-time line
       expect(find.byTooltip('Drag to adjust start time'), findsOneWidget);
       expect(find.byTooltip('Drag to adjust end time'), findsOneWidget);
@@ -997,6 +1004,7 @@ void main() {
       // 2. Verify Month View Rich Tooltip
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(platform: TargetPlatform.windows),
           home: Scaffold(
             body: CalendarMonthView(
               selectedDate: today,

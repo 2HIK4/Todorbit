@@ -9,7 +9,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/app_controller.dart';
 import '../../domain/models.dart';
+import '../calendar/calendar_presentation.dart';
 import '../calendar/event_editor.dart';
+import '../shared/app_section_heading.dart';
 import '../calendar/session_editor.dart';
 import '../shared/app_spacing.dart';
 import '../shared/icon_picker.dart';
@@ -236,9 +238,18 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar>
     final showTasks = controller.calendarContent != CalendarContent.eventsOnly;
     final showEvents = controller.calendarContent != CalendarContent.tasksOnly;
     return FadingListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.content,
+        AppSpacing.gap,
+        AppSpacing.content,
+        AppSpacing.section,
+      ),
       children: [
-        const ItemFilters(),
+        const Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: ItemFilters(),
+        ),
+        const SizedBox(height: AppSpacing.gap),
         LayoutBuilder(
           builder: (context, constraints) {
             if (constraints.maxWidth <
@@ -261,6 +272,7 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar>
               );
             }
             return SegmentedButton<String>(
+              showSelectedIcon: false,
               segments: const [
                 ButtonSegment(value: 'day', label: Text('Day')),
                 ButtonSegment(value: 'week', label: Text('Week')),
@@ -274,11 +286,23 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar>
         const SizedBox(height: 8),
         LayoutBuilder(
           builder: (context, constraints) {
-            final title = TextButton(
-              onPressed: pickDay,
-              child: Text(
-                local.formatMonthYear(selected),
-                textAlign: TextAlign.center,
+            final date = calendarPeriodLabel(
+              local,
+              selected,
+              weekStart: mode == 'week' ? first : null,
+              month: mode == 'month',
+            );
+            final title = Tooltip(
+              message: 'Choose date',
+              child: TextButton(
+                onPressed: pickDay,
+                child: Text(
+                  mode == 'day' && DateUtils.isSameDay(selected, widget.clock())
+                      ? 'Today · $date'
+                      : date,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
               ),
             );
             final previous = IconButton(
@@ -311,7 +335,7 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar>
                   title,
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: [previous, today, next],
+                    children: [previous, next, today],
                   ),
                 ],
               );
@@ -327,6 +351,7 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar>
           },
         ),
         if (mode != 'day') ...[
+          const Divider(height: AppSpacing.related),
           Row(
             children: List.generate(
               7,
@@ -344,9 +369,11 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar>
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: cells,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 7,
-              mainAxisExtent: 54,
+              mainAxisExtent:
+                  (MediaQuery.textScalerOf(context).scale(25) + AppSpacing.gap)
+                      .clamp(AppLayout.minTapTarget, double.infinity),
             ),
             itemBuilder: (context, i) {
               final date = DateTime(
@@ -380,7 +407,7 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar>
                 label:
                     '${isToday ? 'Today, ' : ''}${local.formatFullDate(date)}, $eventCount events, $taskCount planned tasks, ${daySessions.length} sessions',
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(AppRadius.control),
                   onTap: () => setState(() {
                     selected = date;
                     followingToday = isToday;
@@ -388,7 +415,7 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar>
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: isSelected ? scheme.primaryContainer : null,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(AppRadius.control),
                       border: isToday
                           ? Border.all(color: scheme.primary, width: 1.5)
                           : null,
@@ -400,16 +427,17 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar>
                           '${date.day}',
                           maxLines: 1,
                           softWrap: false,
-                          style: TextStyle(
-                            fontWeight: isToday || isSelected
-                                ? FontWeight.bold
-                                : null,
-                            color: isSelected
-                                ? scheme.onPrimaryContainer
-                                : date.month != selected.month
-                                ? scheme.onSurfaceVariant
-                                : null,
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                fontWeight: isToday || isSelected
+                                    ? FontWeight.bold
+                                    : null,
+                                color: isSelected
+                                    ? scheme.onPrimaryContainer
+                                    : date.month != selected.month
+                                    ? scheme.onSurfaceVariant
+                                    : null,
+                              ),
                         ),
                         const SizedBox(height: 3),
                         if (count > 0)
@@ -438,40 +466,47 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar>
             },
           ),
         ],
-        const SizedBox(height: 20),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final isToday = DateUtils.isSameDay(selected, widget.clock());
-            final title = Text(
-              isToday
-                  ? 'Today \u00b7 ${local.formatFullDate(selected)}'
-                  : local.formatFullDate(selected),
-              style: Theme.of(context).textTheme.titleMedium,
-            );
-            if (isToday) return title;
-            final back = TextButton.icon(
-              icon: const Icon(Icons.today, size: 16),
-              label: const Text('Back to today'),
-              onPressed: returnToToday,
-            );
-            if (constraints.maxWidth <
-                350 * MediaQuery.textScalerOf(context).scale(1)) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+        const Divider(height: AppSpacing.section),
+        if (mode != 'day')
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isToday = DateUtils.isSameDay(selected, widget.clock());
+              final title = Semantics(
+                header: true,
+                child: Text(
+                  isToday
+                      ? 'Today \u00b7 ${local.formatFullDate(selected)}'
+                      : local.formatFullDate(selected),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              );
+              if (isToday) return title;
+              final back = TextButton.icon(
+                icon: const Icon(Icons.today, size: 16),
+                label: const Text('Back to today'),
+                onPressed: returnToToday,
+              );
+              if (constraints.maxWidth <
+                  350 * MediaQuery.textScalerOf(context).scale(1)) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    title,
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: back,
+                    ),
+                  ],
+                );
+              }
+              return Row(
                 children: [
-                  title,
-                  Align(alignment: AlignmentDirectional.centerEnd, child: back),
+                  Expanded(child: title),
+                  back,
                 ],
               );
-            }
-            return Row(
-              children: [
-                Expanded(child: title),
-                back,
-              ],
-            );
-          },
-        ),
+            },
+          ),
         const SizedBox(height: 8),
         Wrap(
           spacing: AppSpacing.gap,
@@ -526,48 +561,41 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar>
               ),
             ),
           ),
-        if (showEvents)
+        if (showEvents && events.isNotEmpty) ...[
+          const AppSectionHeading('Events'),
           for (final e in events)
-            Card(
-              clipBehavior: Clip.antiAlias,
-              margin: const EdgeInsets.symmetric(vertical: AppSpacing.small),
-              child: ListTile(
-                leading: _eventIcon(e, controller),
-                title: Text(e.title),
-                subtitle: Text(_eventTimeLabel(e)),
-                onTap: () => event(e),
-              ),
+            ListTile(
+              leading: _eventIcon(e, controller),
+              title: Text(e.title),
+              subtitle: Text(_eventTimeLabel(e)),
+              onTap: () => event(e),
             ),
-        if (showTasks) ...[
+        ],
+        if (showTasks && sessions.isNotEmpty) ...[
+          const AppSectionHeading('Work sessions'),
           for (final s in sessions)
-            Card(
-              clipBehavior: Clip.antiAlias,
-              margin: const EdgeInsets.symmetric(vertical: AppSpacing.small),
-              child: ListTile(
-                leading: const Icon(Icons.schedule),
-                title: Text(
-                  controller.filteredTasks
-                          .where((t) => t.id == s.taskId)
-                          .firstOrNull
-                          ?.title ??
-                      'Work session',
-                ),
-                subtitle: Text(
-                  '${TimeOfDay.fromDateTime(s.startsAt.toLocal()).format(context)} · ${s.outcome.name}',
-                ),
-                onTap: () => session(s),
+            ListTile(
+              leading: const Icon(Icons.schedule),
+              title: Text(
+                controller.filteredTasks
+                        .where((t) => t.id == s.taskId)
+                        .firstOrNull
+                        ?.title ??
+                    'Work session',
               ),
+              subtitle: Text(
+                '${calendarTimeLabel(context, s.startsAt.toLocal())} · ${s.outcome.name}',
+              ),
+              onTap: () => session(s),
             ),
+        ],
+        if (showTasks && tasks.isNotEmpty) ...[
+          const AppSectionHeading('Planned tasks'),
           for (final t in tasks)
-            Card(
-              clipBehavior: Clip.antiAlias,
-              margin: const EdgeInsets.symmetric(vertical: AppSpacing.small),
-              child: ListTile(
-                leading: const Icon(Icons.task_alt_outlined),
-                title: Text(t.title),
-                subtitle: const Text('Planned task'),
-                onTap: () => widget.openTask(t),
-              ),
+            ListTile(
+              leading: const Icon(Icons.task_alt_outlined),
+              title: Text(t.title),
+              onTap: () => widget.openTask(t),
             ),
         ],
       ],
@@ -579,10 +607,10 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar>
     final start = event.startsAt.toLocal(), end = event.endsAt.toLocal();
     if (start.isBefore(DateUtils.dateOnly(selected))) {
       return localDate(end) == localDate(selected)
-          ? 'Continues until ${TimeOfDay.fromDateTime(end).format(context)}'
+          ? 'Continues until ${calendarTimeLabel(context, end)}'
           : 'Continues';
     }
-    return '${TimeOfDay.fromDateTime(start).format(context)} – ${TimeOfDay.fromDateTime(end).format(context)}';
+    return '${calendarTimeLabel(context, start)} – ${calendarTimeLabel(context, end)}';
   }
 
   Widget _eventIcon(FixedEvent event, AppController controller) {
@@ -590,29 +618,26 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar>
     final color = Color(
       controller.effectiveEventColor(event) ?? scheme.primary.toARGB32(),
     );
-    final surface = scheme.surfaceContainerHigh;
+    final surface = scheme.surfaceContainerLow;
     final luminance = color.computeLuminance();
     final backgroundLuminance = surface.computeLuminance();
     final contrast = (luminance > backgroundLuminance)
         ? (luminance + .05) / (backgroundLuminance + .05)
         : (backgroundLuminance + .05) / (luminance + .05);
-    // Keep the configured icon color even when it is white on a light theme
-    // (or black on a dark theme). A contrasting backing preserves readability.
-    final backing = contrast >= 3
-        ? surface
-        : ((luminance + .05) / .05 >= 1.05 / (luminance + .05)
-              ? Colors.black
-              : Colors.white);
+    // Keep the configured accent visible while giving low-contrast icons a
+    // legible foreground on the agenda surface.
+    final foreground = contrast >= 3 ? color : scheme.onSurfaceVariant;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: backing,
-        borderRadius: BorderRadius.circular(10),
+        color: surface,
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+        borderRadius: BorderRadius.circular(AppRadius.control),
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.gap),
         child: Icon(
           iconForKey(event.iconName, Icons.event_outlined),
-          color: color,
+          color: foreground,
         ),
       ),
     );

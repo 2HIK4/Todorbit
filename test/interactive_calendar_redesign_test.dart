@@ -47,6 +47,7 @@ void main() {
             privacyOverride,
           ],
           child: MaterialApp(
+            theme: ThemeData(platform: TargetPlatform.windows),
             home: Scaffold(
               body: CalendarView(
                 initialDate: today,
@@ -125,7 +126,7 @@ void main() {
       await tester.tap(find.text('Day'));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('All-day & Planned (2)'), findsOneWidget);
+      expect(find.text('All day and planned'), findsOneWidget);
       expect(find.text('Public Holiday'), findsOneWidget);
       expect(find.text('Plan · Submit Tax Forms'), findsOneWidget);
     } finally {

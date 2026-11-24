@@ -596,6 +596,54 @@ void main() {
     },
   );
 
+  testWidgets('event draft survives side panel and focused layout changes', (
+    tester,
+  ) async {
+    final now = DateTime.now();
+    final event = await controller.repository.addEvent(
+      EventDraft(
+        title: 'Edit during resize',
+        startsAt: DateTime(now.year, now.month, now.day, 9),
+        endsAt: DateTime(now.year, now.month, now.day, 10),
+      ),
+    );
+    await controller.refresh();
+    await controller.setLastCalendarMode('day');
+    await open(tester);
+    controller.navigate(WorkspaceView.calendar);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(event.title).hitTestable());
+    await tester.pumpAndSettle();
+    final editor = find.byType(EventEditor);
+    final state = tester.state(editor);
+    final title = find.widgetWithText(TextField, 'Title *');
+    await tester.enterText(title, 'Event draft after resize');
+    await tester.pumpAndSettle();
+
+    tester.view.physicalSize = const Size(800, 720);
+    await tester.pumpAndSettle();
+    expect(tester.state(editor), same(state));
+    expect(tester.getSize(editor).width, greaterThanOrEqualTo(680));
+    expect(find.text('Save event').hitTestable(), findsOneWidget);
+    expect((await controller.repository.events()).single.title, event.title);
+
+    tester.view.physicalSize = const Size(1280, 800);
+    await tester.pumpAndSettle();
+    expect(tester.state(editor), same(state));
+    expect(
+      tester.widget<TextField>(title).controller!.text,
+      'Event draft after resize',
+    );
+    await tester.tap(find.text('Save event'));
+    await tester.pumpAndSettle();
+    expect(
+      (await controller.repository.events()).single.title,
+      'Event draft after resize',
+    );
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets(
     'search opens without discarding a draft and guards result navigation',
     (tester) async {

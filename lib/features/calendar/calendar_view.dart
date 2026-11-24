@@ -1,3 +1,8 @@
+import 'calendar_presentation.dart';
+import '../shared/app_modal_shell.dart';
+import '../shared/app_section_heading.dart';
+import '../shared/app_spacing.dart';
+
 import 'dart:async';
 
 import '../../domain/alarm_plan.dart';
@@ -315,26 +320,15 @@ class _CalendarViewState extends ConsumerState<CalendarView>
       widget.onEventTap!(event);
       return;
     }
-    await showDialog<void>(
+    await showAppModal<void>(
       context: context,
-      animationStyle: AppMotion.style(context),
-      builder: (context) {
-        final media = MediaQuery.of(context);
-        final availableHeight =
-            media.size.height - media.viewInsets.bottom - 48;
-        return Dialog(
-          child: SizedBox(
-            width: 500,
-            height: availableHeight.clamp(240.0, 650.0),
-            child: EventEditor(
-              protectUnsavedEdits: true,
-              event: event,
-              initialDay: initialDate ?? day,
-              onClose: () => Navigator.pop(context),
-            ),
-          ),
-        );
-      },
+      maxHeight: AppLayout.dialogMaxHeight,
+      builder: (context) => EventEditor(
+        protectUnsavedEdits: true,
+        event: event,
+        initialDay: initialDate ?? day,
+        onClose: () => Navigator.pop(context),
+      ),
     );
     if (mounted) await _loadSelectedMonth();
   }
@@ -995,224 +989,305 @@ class _CalendarViewState extends ConsumerState<CalendarView>
         },
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 22, 24, 14),
-              child: Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  Text(
+            LayoutBuilder(
+              builder: (context, bounds) {
+                final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
+                final compact = bounds.maxWidth < 650 * scale;
+                final heading = Semantics(
+                  header: true,
+                  child: Text(
                     'Calendar',
-                    style: Theme.of(context).textTheme.headlineMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
+                    style: Theme.of(context).textTheme.headlineLarge,
                   ),
-                  const AboutViewButton(
-                    description: 'See planned tasks, fixed events, and work sessions by day, week, or month. Move between dates and open an item to inspect or edit it.',
-                  ),
-                  OutlinedButton(
-                    onPressed: () {
-                      setState(() => _setSelected(DateTime.now()));
-                      _loadSelectedMonth();
-                    },
-                    child: const Text('Today'),
-                  ),
-                  const ItemFilters(),
-                  IconButton(
-                    tooltip: 'Previous period',
-                    onPressed: () => _move(-1),
-                    icon: const Icon(Icons.chevron_left),
-                  ),
-                  IconButton(
-                    tooltip: 'Next period',
-                    onPressed: () => _move(1),
-                    icon: const Icon(Icons.chevron_right),
-                  ),
-                  SizedBox(
-                    width:
-                        240 * MediaQuery.textScalerOf(context).scale(16) / 16,
-                    child: Text(
-                      key: const ValueKey('calendar-period-label'),
-                      _periodLabel(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium,
+                );
+                final period = Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: AppSpacing.gap,
+                  runSpacing: AppSpacing.small,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Previous period',
+                          onPressed: () => _move(-1),
+                          icon: const Icon(Icons.chevron_left),
+                        ),
+                        IconButton(
+                          tooltip: 'Next period',
+                          onPressed: () => _move(1),
+                          icon: const Icon(Icons.chevron_right),
+                        ),
+                      ],
                     ),
-                  ),
-                  SegmentedButton<CalendarMode>(
-                    showSelectedIcon: false,
-                    segments: [
-                      ButtonSegment(
-                        value: CalendarMode.day,
-                        label: ConstrainedBox(
-                          constraints: const BoxConstraints(minWidth: 48),
-                          child: const Center(child: Text('Day')),
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        key: const ValueKey('calendar-period-label'),
+                        calendarPeriodLabel(
+                          MaterialLocalizations.of(context),
+                          day,
+                          weekStart: mode == CalendarMode.week
+                              ? weekStart
+                              : null,
+                          month: mode == CalendarMode.month,
                         ),
+                        style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      ButtonSegment(
-                        value: CalendarMode.week,
-                        label: ConstrainedBox(
-                          constraints: const BoxConstraints(minWidth: 48),
-                          child: const Center(child: Text('Week')),
-                        ),
-                      ),
-                      ButtonSegment(
-                        value: CalendarMode.month,
-                        label: ConstrainedBox(
-                          constraints: const BoxConstraints(minWidth: 48),
-                          child: const Center(child: Text('Month')),
-                        ),
-                      ),
-                    ],
-                    selected: {mode},
-                    onSelectionChanged: (value) => _setMode(value.first),
-                  ),
-                  SegmentedButton<CalendarContent>(
-                    showSelectedIcon: false,
-                    segments: const [
-                      ButtonSegment(
-                        value: CalendarContent.both,
-                        label: Text('Both'),
-                      ),
-                      ButtonSegment(
-                        value: CalendarContent.eventsOnly,
-                        label: Text('Events only'),
-                      ),
-                      ButtonSegment(
-                        value: CalendarContent.tasksOnly,
-                        label: Text('Tasks only'),
-                      ),
-                    ],
-                    selected: {controller.calendarContent},
-                    onSelectionChanged: (value) async {
-                      try {
-                        await controller.setCalendarContent(value.first);
-                      } catch (error) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Could not save calendar filter: $error',
-                              ),
-                            ),
-                          );
-                        }
-                      }
-                    },
-                  ),
-                  FilledButton.icon(
-                    onPressed: () => _editEvent(),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Event'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: controller.tasks.any((task) => task.isOpen)
-                        ? () => _editSession()
-                        : null,
-                    icon: const Icon(Icons.schedule),
-                    label: const Text('Work session'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: controller.sessions.isEmpty
-                        ? null
-                        : widget.onSmartReschedule,
-                    icon: const Icon(Icons.auto_fix_high),
-                    label: const Text('Reschedule'),
-                  ),
-                  // Calendar history and presentation controls grouped atomically
-                  ListenableBuilder(
-                    listenable: _interactionController,
-                    builder: (context, _) {
-                      final scheme = Theme.of(context).colorScheme;
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: scheme.surfaceContainerHighest.withValues(
-                            alpha: 0.35,
+                    ),
+                    OutlinedButton(
+                      onPressed: () {
+                        setState(() => _setSelected(DateTime.now()));
+                        _loadSelectedMonth();
+                      },
+                      child: const Text('Today'),
+                    ),
+                  ],
+                );
+                final newEvent = FilledButton.icon(
+                  onPressed: () => _editEvent(),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Event'),
+                );
+                final canAddSession = controller.tasks.any(
+                  (task) => task.isOpen,
+                );
+                final canReschedule = controller.sessions.isNotEmpty;
+                return Padding(
+                  padding: AppLayout.pageInsets,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          if (compact)
+                            Expanded(child: heading)
+                          else ...[
+                            heading,
+                            const SizedBox(width: AppSpacing.section),
+                            Expanded(child: period),
+                          ],
+                          const AboutViewButton(
+                            description: 'See planned tasks, fixed events, and work sessions by day, week, or month. Move between dates and open an item to inspect or edit it.',
                           ),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: scheme.outlineVariant.withValues(
-                              alpha: 0.35,
-                            ),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              tooltip: 'Undo calendar change (Ctrl+Z)',
-                              visualDensity: VisualDensity.compact,
-                              iconSize: 18,
-                              onPressed: _interactionController.canUndo
-                                  ? _undo
-                                  : null,
-                              icon: const Icon(Icons.undo),
-                            ),
-                            IconButton(
-                              tooltip:
-                                  'Redo calendar change (Ctrl+Shift+Z, Ctrl+Y)',
-                              visualDensity: VisualDensity.compact,
-                              iconSize: 18,
-                              onPressed: _interactionController.canRedo
-                                  ? _redo
-                                  : null,
-                              icon: const Icon(Icons.redo),
-                            ),
-                            Container(
-                              width: 1,
-                              height: 18,
-                              color: scheme.outlineVariant.withValues(
-                                alpha: 0.4,
+                          newEvent,
+                        ],
+                      ),
+                      if (compact) period,
+                      const SizedBox(height: AppSpacing.gap),
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: AppSpacing.gap,
+                        runSpacing: AppSpacing.gap,
+                        children: [
+                          SegmentedButton<CalendarMode>(
+                            showSelectedIcon: false,
+                            segments: [
+                              ButtonSegment(
+                                value: CalendarMode.day,
+                                label: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    minWidth: 48,
+                                  ),
+                                  child: const Center(child: Text('Day')),
+                                ),
                               ),
-                            ),
-                            if (!_useLegacy && mode != CalendarMode.month) ...[
-                              IconButton(
-                                tooltip: 'Zoom out time slots',
-                                visualDensity: VisualDensity.compact,
-                                iconSize: 18,
-                                onPressed:
-                                    _targetSlotHeight <= 30 ||
-                                        _interactionController.gestureKind !=
-                                            CalendarGestureKind.none
-                                    ? null
-                                    : () => _zoomTime(-15),
-                                icon: const Icon(Icons.zoom_out),
+                              ButtonSegment(
+                                value: CalendarMode.week,
+                                label: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    minWidth: 48,
+                                  ),
+                                  child: const Center(child: Text('Week')),
+                                ),
                               ),
-                              IconButton(
-                                tooltip: 'Zoom in time slots',
-                                visualDensity: VisualDensity.compact,
-                                iconSize: 18,
-                                onPressed:
-                                    _targetSlotHeight >= 120 ||
-                                        _interactionController.gestureKind !=
-                                            CalendarGestureKind.none
-                                    ? null
-                                    : () => _zoomTime(15),
-                                icon: const Icon(Icons.zoom_in),
+                              ButtonSegment(
+                                value: CalendarMode.month,
+                                label: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    minWidth: 48,
+                                  ),
+                                  child: const Center(child: Text('Month')),
+                                ),
                               ),
                             ],
-                            IconButton(
-                              tooltip: _useLegacy
-                                  ? 'Switch to interactive timeline'
-                                  : 'Switch to legacy calendar presentation',
-                              visualDensity: VisualDensity.compact,
-                              iconSize: 18,
-                              icon: Icon(
-                                _useLegacy
-                                    ? Icons.view_timeline
-                                    : Icons.view_timeline_outlined,
+                            selected: {mode},
+                            onSelectionChanged: (value) =>
+                                _setMode(value.first),
+                          ),
+                          if (compact)
+                            PopupMenuButton<CalendarContent>(
+                              tooltip: 'Calendar content',
+                              initialValue: controller.calendarContent,
+                              onSelected: (value) =>
+                                  _setCalendarContent(controller, value),
+                              itemBuilder: (_) => [
+                                for (final content in CalendarContent.values)
+                                  PopupMenuItem(
+                                    value: content,
+                                    child: Text(_contentLabel(content)),
+                                  ),
+                              ],
+                              child: Padding(
+                                padding: const EdgeInsets.all(AppSpacing.gap),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      _contentLabel(controller.calendarContent),
+                                    ),
+                                    const Icon(Icons.arrow_drop_down),
+                                  ],
+                                ),
                               ),
-                              onPressed: () =>
-                                  setState(() => _useLegacy = !_useLegacy),
+                            )
+                          else
+                            SegmentedButton<CalendarContent>(
+                              showSelectedIcon: false,
+                              segments: [
+                                for (final content in CalendarContent.values)
+                                  ButtonSegment(
+                                    value: content,
+                                    label: Text(_contentLabel(content)),
+                                  ),
+                              ],
+                              selected: {controller.calendarContent},
+                              onSelectionChanged: (value) =>
+                                  _setCalendarContent(controller, value.first),
+                            ),
+                          const ItemFilters(),
+                          if (compact)
+                            PopupMenuButton<String>(
+                              tooltip: 'More calendar actions',
+                              itemBuilder: (_) => [
+                                PopupMenuItem(
+                                  enabled: canAddSession,
+                                  onTap: _editSession,
+                                  child: const Text('Work session'),
+                                ),
+                                PopupMenuItem(
+                                  enabled: canReschedule,
+                                  onTap: widget.onSmartReschedule,
+                                  child: const Text('Reschedule'),
+                                ),
+                              ],
+                            )
+                          else ...[
+                            OutlinedButton.icon(
+                              onPressed: canAddSession
+                                  ? () => _editSession()
+                                  : null,
+                              icon: const Icon(Icons.schedule),
+                              label: const Text('Work session'),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: canReschedule
+                                  ? widget.onSmartReschedule
+                                  : null,
+                              icon: const Icon(Icons.auto_fix_high),
+                              label: const Text('Reschedule'),
                             ),
                           ],
-                        ),
-                      );
-                    },
+                          // Calendar history and presentation controls grouped atomically
+                          ListenableBuilder(
+                            listenable: _interactionController,
+                            builder: (context, _) {
+                              final scheme = Theme.of(context).colorScheme;
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: scheme.surfaceContainerHighest
+                                      .withValues(alpha: 0.35),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: scheme.outlineVariant.withValues(
+                                      alpha: 0.35,
+                                    ),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      tooltip: 'Undo calendar change (Ctrl+Z)',
+                                      visualDensity: VisualDensity.compact,
+                                      iconSize: 18,
+                                      onPressed: _interactionController.canUndo
+                                          ? _undo
+                                          : null,
+                                      icon: const Icon(Icons.undo),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'Redo calendar change (Ctrl+Shift+Z, Ctrl+Y)',
+                                      visualDensity: VisualDensity.compact,
+                                      iconSize: 18,
+                                      onPressed: _interactionController.canRedo
+                                          ? _redo
+                                          : null,
+                                      icon: const Icon(Icons.redo),
+                                    ),
+                                    Container(
+                                      width: 1,
+                                      height: 18,
+                                      color: scheme.outlineVariant.withValues(
+                                        alpha: 0.4,
+                                      ),
+                                    ),
+                                    if (!_useLegacy &&
+                                        mode != CalendarMode.month) ...[
+                                      IconButton(
+                                        tooltip: 'Zoom out time slots',
+                                        visualDensity: VisualDensity.compact,
+                                        iconSize: 18,
+                                        onPressed:
+                                            _targetSlotHeight <= 30 ||
+                                                _interactionController
+                                                        .gestureKind !=
+                                                    CalendarGestureKind.none
+                                            ? null
+                                            : () => _zoomTime(-15),
+                                        icon: const Icon(Icons.zoom_out),
+                                      ),
+                                      IconButton(
+                                        tooltip: 'Zoom in time slots',
+                                        visualDensity: VisualDensity.compact,
+                                        iconSize: 18,
+                                        onPressed:
+                                            _targetSlotHeight >= 120 ||
+                                                _interactionController
+                                                        .gestureKind !=
+                                                    CalendarGestureKind.none
+                                            ? null
+                                            : () => _zoomTime(15),
+                                        icon: const Icon(Icons.zoom_in),
+                                      ),
+                                    ],
+                                    IconButton(
+                                      tooltip: _useLegacy
+                                          ? 'Switch to interactive timeline'
+                                          : 'Switch to legacy calendar presentation',
+                                      visualDensity: VisualDensity.compact,
+                                      iconSize: 18,
+                                      icon: Icon(
+                                        _useLegacy
+                                            ? Icons.view_timeline
+                                            : Icons.view_timeline_outlined,
+                                      ),
+                                      onPressed: () => setState(
+                                        () => _useLegacy = !_useLegacy,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
             const Divider(height: 1),
             Expanded(
@@ -1367,6 +1442,7 @@ class _CalendarViewState extends ConsumerState<CalendarView>
                                       }
                                       return CalendarWeekView(
                                         weekStart: weekStart,
+                                        selectedDate: day,
                                         itemsByDay: _buildWeekItemsByDay(
                                           controller,
                                         ),
@@ -1447,12 +1523,25 @@ class _CalendarViewState extends ConsumerState<CalendarView>
     );
   }
 
-  String _periodLabel() {
-    if (mode == CalendarMode.day) return localDate(day);
-    if (mode == CalendarMode.week) {
-      return '${localDate(weekStart)} – ${localDate(DateTime(weekStart.year, weekStart.month, weekStart.day + 6))}';
+  static String _contentLabel(CalendarContent content) => switch (content) {
+    CalendarContent.both => 'Both',
+    CalendarContent.eventsOnly => 'Events only',
+    CalendarContent.tasksOnly => 'Tasks only',
+  };
+
+  Future<void> _setCalendarContent(
+    AppController controller,
+    CalendarContent value,
+  ) async {
+    try {
+      await controller.setCalendarContent(value);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not save calendar filter: $error')),
+        );
+      }
     }
-    return '${_months[day.month - 1]} ${day.year}';
   }
 
   Widget _dayList(AppController controller, DateTime date) {
@@ -1461,13 +1550,11 @@ class _CalendarViewState extends ConsumerState<CalendarView>
       padding: const EdgeInsets.all(20),
       children: [
         if (entries.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(12),
-            child: Text('No planned tasks, deadlines, or events on this day.'),
+          const AppEmptyState(
+            title: 'No planned tasks, deadlines, or events on this day.',
           ),
         ...entries.map((entry) => _entryTile(entry)),
-        const SizedBox(height: 12),
-        Text('Time slots', style: Theme.of(context).textTheme.titleSmall),
+        const AppSectionHeading('Time slots'),
         for (var hour = 7; hour <= 22; hour++)
           GestureDetector(
             onSecondaryTapDown: (details) => _showCreateMenu(
@@ -1514,10 +1601,15 @@ class _CalendarViewState extends ConsumerState<CalendarView>
                   child: InkWell(
                     onTap: () => _showDayPreview(date),
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
-                      child: Text(
-                        '${weekdayNames[date.weekday - 1]} ${localDate(date)}',
-                        style: Theme.of(context).textTheme.titleSmall,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.content,
+                      ),
+                      child: AppSectionHeading(
+                        MaterialLocalizations.of(context)
+                            .formatMediumDate(date),
+                        detail: DateUtils.isSameDay(date, DateTime.now())
+                            ? 'Today'
+                            : null,
                       ),
                     ),
                   ),
@@ -2118,18 +2210,3 @@ class _CalendarEntry {
   final String? parentTitle;
   final String timeLabel;
 }
-
-const _months = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];

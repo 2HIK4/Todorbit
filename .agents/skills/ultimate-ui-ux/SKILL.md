@@ -26,6 +26,10 @@ and viewport auto-scrolling are primary quality criteria alongside visual aesthe
 >
 > **Shared Component & Token Reuse Mandate**: Always inspect `lib/features/shared/` before creating UI elements or dialogs.
 > Reuse `AppLayout` (breakpoints & sizing), `AppSpacing` (rhythm), `AppModalShell` / `showAppModal` (responsive dialogs), `SettingsSection` (card grouping), and `TodorbitThemeTokens` (semantic status/priority tokens). Never introduce parallel implementations or hard-coded dimensions when shared components exist.
+> Apply the [Calendar and event form rules](../../../docs/UI_DESIGN_SYSTEM.md#batch-3-calendar-and-event-editing).
+> Inspect the overlap labels, all-day strip, compact agenda and visible drag
+> times in Flutter renders. Check the Android agenda with its navigation bar
+> and the event form with the keyboard inset at 320 dp and 150% text.
 
 ## Start and choose scope
 

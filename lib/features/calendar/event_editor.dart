@@ -1,3 +1,5 @@
+import 'calendar_presentation.dart';
+import '../shared/app_section_heading.dart';
 import '../shared/text_prompt_dialog.dart';
 import '../../data/alarm_device_store.dart';
 import '../../domain/alarms.dart';
@@ -538,6 +540,12 @@ class _EventEditorState extends ConsumerState<EventEditor> {
       final time = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.fromDateTime(current),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(alwaysUse24HourFormat: calendarUses24HourClock(context)),
+          child: child!,
+        ),
       );
       if (time != null) {
         next = DateTime(
@@ -929,18 +937,21 @@ class _EventEditorState extends ConsumerState<EventEditor> {
       onClose: widget.onClose,
       onSave: () => _save(close: false),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: AppLayout.pageInsets,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    widget.event == null
-                        ? 'New calendar event'
-                        : 'Edit calendar event',
-                    style: Theme.of(context).textTheme.titleLarge,
+                  child: Semantics(
+                    header: true,
+                    child: Text(
+                      widget.event == null
+                          ? 'New calendar event'
+                          : 'Edit calendar event',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
                   ),
                 ),
                 IconButton(
@@ -950,38 +961,47 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const Divider(height: AppSpacing.content),
             Expanded(
               child: FadingListView(
                 key: const ValueKey('event-editor-form-list'),
                 padding: AppSpacing.editorScrollPadding(context),
                 children: [
                   if (widget.event?.nominalDate != null) ...[
-                    SegmentedButton<_EventEditScope>(
-                      direction: MediaQuery.sizeOf(context).width < 520
-                          ? Axis.vertical
-                          : Axis.horizontal,
-                      showSelectedIcon: false,
-                      segments: const [
-                        ButtonSegment(
-                          value: _EventEditScope.occurrence,
-                          label: Text('This date'),
-                        ),
-                        ButtonSegment(
-                          value: _EventEditScope.future,
-                          label: Text('This + future'),
-                        ),
-                        ButtonSegment(
-                          value: _EventEditScope.series,
-                          label: Text('Remaining series'),
-                        ),
-                      ],
-                      selected: {editScope},
-                      onSelectionChanged: busy
-                          ? null
-                          : (value) => _chooseScope(value.first),
+                    const AppSectionHeading('Edit recurring event'),
+                    LayoutBuilder(
+                      builder: (context, constraints) =>
+                          SegmentedButton<_EventEditScope>(
+                            direction:
+                                constraints.maxWidth <
+                                    480 *
+                                        MediaQuery.textScalerOf(context)
+                                            .scale(14) /
+                                        14
+                                ? Axis.vertical
+                                : Axis.horizontal,
+                            showSelectedIcon: false,
+                            segments: const [
+                              ButtonSegment(
+                                value: _EventEditScope.occurrence,
+                                label: Text('This date'),
+                              ),
+                              ButtonSegment(
+                                value: _EventEditScope.future,
+                                label: Text('This + future'),
+                              ),
+                              ButtonSegment(
+                                value: _EventEditScope.series,
+                                label: Text('Remaining series'),
+                              ),
+                            ],
+                            selected: {editScope},
+                            onSelectionChanged: busy
+                                ? null
+                                : (value) => _chooseScope(value.first),
+                          ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: AppSpacing.content),
                   ],
                   Row(
                     children: [
@@ -989,6 +1009,13 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                         child: TextField(
                           controller: title,
                           autofocus: widget.event == null,
+                          minLines: 1,
+                          maxLines: 3,
+                          keyboardType: TextInputType.text,
+                          textInputAction: TextInputAction.done,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.singleLineFormatter,
+                          ],
                           decoration: const InputDecoration(
                             labelText: 'Title *',
                           ),
@@ -1010,7 +1037,8 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.related),
+                  const AppSectionHeading('Date and time'),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('All day'),
@@ -1025,7 +1053,7 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                       }
                     }),
                   ),
-                  const SizedBox(height: AppSpacing.content),
+                  const SizedBox(height: AppSpacing.small),
                   Text('Start', style: Theme.of(context).textTheme.titleSmall),
                   _dateTimeRow(start, true),
                   const SizedBox(height: 12),
@@ -1056,6 +1084,7 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                   const SizedBox(height: 14),
                   SettingsSection(
                     title: 'Details',
+                    divider: true,
                     initiallyExpanded:
                         notes.text.isNotEmpty || details.isNotEmpty,
                     children: [
@@ -1071,6 +1100,7 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                   ),
                   SettingsSection(
                     title: 'Organization and appearance',
+                    divider: true,
                     initiallyExpanded: categoryId != null || projectId != null,
                     children: [
                       Builder(
@@ -1451,8 +1481,11 @@ class _EventEditorState extends ConsumerState<EventEditor> {
                 ],
               ),
             ),
+            const Divider(height: AppSpacing.content),
             DialogActionBar(
-              alignment: MainAxisAlignment.spaceBetween,
+              alignment: widget.event == null
+                  ? MainAxisAlignment.end
+                  : MainAxisAlignment.spaceBetween,
               children: [
                 if (widget.event != null)
                   PopupMenuButton<String>(
@@ -1522,24 +1555,13 @@ class _EventEditorState extends ConsumerState<EventEditor> {
     child: DateTimeButtonRow(
       dateKey: ValueKey('event-${isStart ? 'start' : 'end'}-date'),
       onDatePressed: () => _pick(isStart, true),
-      dateLabel: Platform.isAndroid
-          ? MaterialLocalizations.of(context).formatMediumDate(
-              allDay && !isStart
-                  ? value.subtract(const Duration(days: 1))
-                  : value,
-            )
-          : localDate(
-              allDay && !isStart
-                  ? value.subtract(const Duration(days: 1))
-                  : value,
-            ),
+      fieldLabel: isStart ? 'start' : 'end',
+      dateLabel: MaterialLocalizations.of(context).formatShortDate(
+        allDay && !isStart ? value.subtract(const Duration(days: 1)) : value,
+      ),
       timeKey: ValueKey('event-${isStart ? 'start' : 'end'}-time'),
       onTimePressed: () => _pick(isStart, false),
-      timeLabel: allDay
-          ? null
-          : Platform.isAndroid
-          ? TimeOfDay.fromDateTime(value).format(context)
-          : '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}',
+      timeLabel: allDay ? null : calendarTimeLabel(context, value),
     ),
   );
 }

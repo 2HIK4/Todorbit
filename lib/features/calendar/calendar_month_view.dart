@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+
 import '../shared/weekdays.dart';
+import '../shared/app_spacing.dart';
+import '../shared/icon_picker.dart';
 import 'calendar_config.dart';
 import 'calendar_models.dart';
+import 'calendar_presentation.dart';
 import 'calendar_contracts.dart';
 
 /// Interactive Month view supporting drag-and-drop between date cells and extended context actions.
@@ -29,7 +33,8 @@ class CalendarMonthView extends StatefulWidget {
   final CalendarAppearanceConfiguration config;
   final void Function(CalendarItem item) onItemTap;
   final void Function(DateTime date) onDayTap;
-  final void Function(CalendarItem item, DateTime targetDate) onItemDroppedOnDate;
+  final void Function(CalendarItem item, DateTime targetDate)
+  onItemDroppedOnDate;
   final void Function(DateTime date) onShowDay;
   final void Function(DateTime date) onShowWeek;
   final void Function(DateTime date) onAddEvent;
@@ -88,6 +93,7 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final local = MaterialLocalizations.of(context);
     final day = widget.selectedDate;
 
     final first = DateTime(day.year, day.month);
@@ -98,15 +104,19 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
 
     return LayoutBuilder(
       builder: (context, bounds) {
-        final rawCellHeight = (bounds.maxHeight - 40) / rowCount;
-        final cellHeight = rawCellHeight.clamp(90.0, double.infinity);
-        final isOverflowing = (cellHeight * rowCount) > (bounds.maxHeight - 40);
-        final cellWidth = ((bounds.maxWidth - 20) / 7).clamp(30.0, double.infinity);
         final textScale = MediaQuery.textScalerOf(context).scale(1);
-        final previewCount = monthEntryCapacity(
-          cellHeight,
-          textScale,
+        // Keep the date, one preview and its overflow action in the cell.
+        final minCellHeight =
+            90 + AppSpacing.section * (textScale - 1).clamp(0.0, 1.0);
+        final rawCellHeight = (bounds.maxHeight - 40) / rowCount;
+        final cellHeight = rawCellHeight.clamp(minCellHeight, double.infinity);
+        final isOverflowing = (cellHeight * rowCount) > (bounds.maxHeight - 40);
+        final cellWidth = ((bounds.maxWidth - 20) / 7).clamp(
+          30.0,
+          double.infinity,
         );
+        final previewCount = monthEntryCapacity(cellHeight, textScale);
+        final compactOverflow = cellWidth < 75 * textScale;
 
         return Column(
           children: [
@@ -121,7 +131,7 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
                         weekdayNames[weekday - 1],
                         textAlign: TextAlign.center,
                         style: theme.textTheme.labelMedium?.copyWith(
-                          color: scheme.outline,
+                          color: scheme.onSurfaceVariant,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -133,7 +143,10 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
             // 7xN Calendar grid
             Expanded(
               child: GridView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 physics: isOverflowing
                     ? const ClampingScrollPhysics()
                     : const NeverScrollableScrollPhysics(),
@@ -151,7 +164,9 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
                   final inMonth = date.month == day.month;
                   final isToday = _isSameDay(date, DateTime.now());
                   final isSelected = _isSameDay(date, widget.selectedDate);
-                  final isHoverTarget = _dragHoverDate != null && _isSameDay(date, _dragHoverDate!);
+                  final isHoverTarget =
+                      _dragHoverDate != null &&
+                      _isSameDay(date, _dragHoverDate!);
                   final items = widget.itemsByDay[date] ?? const [];
 
                   return DragTarget<CalendarItem>(
@@ -172,95 +187,123 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
                             _showContextMenu(date, details.globalPosition),
                         onLongPressStart: (details) =>
                             _showContextMenu(date, details.globalPosition),
-                        child: InkWell(
-                          onTap: () => widget.onDayTap(date),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 150),
-                            margin: const EdgeInsets.all(2),
-                            padding: const EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              color: isHoverTarget
-                                  ? scheme.primaryContainer.withValues(alpha: 0.45)
-                                  : isToday
-                                  ? scheme.primaryContainer.withValues(alpha: 0.3)
-                                  : scheme.surfaceContainerLow,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
+                        child: Semantics(
+                          selected: isSelected,
+                          label:
+                              '${isToday ? 'Today, ' : ''}${local.formatFullDate(date)}',
+                          child: InkWell(
+                            onTap: () => widget.onDayTap(date),
+                            child: AnimatedContainer(
+                              duration: MediaQuery.disableAnimationsOf(context)
+                                  ? Duration.zero
+                                  : const Duration(milliseconds: 150),
+                              margin: const EdgeInsets.all(2),
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
                                 color: isHoverTarget
-                                    ? scheme.primary
-                                    : isSelected
-                                    ? scheme.primary
-                                    : scheme.outlineVariant.withValues(alpha: 0.25),
-                                width: (isHoverTarget || isSelected) ? 1.5 : 1.0,
-                              ),
-                            ),
-                            child: Builder(
-                              builder: (context) {
-                                final visibleLimit = previewCount.clamp(1, 30);
-                                final showOverflow = items.length > visibleLimit;
-                                final visibleCount = showOverflow
-                                    ? (visibleLimit > 1 ? visibleLimit - 1 : 1)
-                                    : items.length;
-                                final overflowCount = items.length - visibleCount;
-
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Text(
-                                          '${date.day}',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: inMonth
-                                                ? (isToday ? scheme.primary : scheme.onSurface)
-                                                : scheme.outline,
-                                          ),
+                                    ? scheme.primaryContainer.withValues(
+                                        alpha: 0.45,
+                                      )
+                                    : isToday || isSelected
+                                    ? scheme.primaryContainer.withValues(
+                                        alpha: 0.37,
+                                      )
+                                    : inMonth
+                                    ? scheme.surface
+                                    : scheme.surfaceContainerLow,
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.control,
+                                ),
+                                border: Border.all(
+                                  color: isHoverTarget
+                                      ? scheme.primary
+                                      : isSelected
+                                      ? scheme.primary
+                                      : scheme.outlineVariant.withValues(
+                                          alpha: 0.55,
                                         ),
-                                        if (isToday)
-                                          Container(
-                                            margin: const EdgeInsets.only(left: 4),
-                                            width: 5,
-                                            height: 5,
-                                            decoration: BoxDecoration(
-                                              color: scheme.primary,
-                                              shape: BoxShape.circle,
+                                  width: (isHoverTarget || isSelected)
+                                      ? 1.5
+                                      : 1.0,
+                                ),
+                              ),
+                              child: Builder(
+                                builder: (context) {
+                                  final visibleLimit = previewCount.clamp(
+                                    1,
+                                    30,
+                                  );
+                                  final showOverflow =
+                                      items.length > visibleLimit;
+                                  final visibleCount = showOverflow
+                                      ? (visibleLimit > 1
+                                            ? visibleLimit - 1
+                                            : 1)
+                                      : items.length;
+                                  final overflowCount =
+                                      items.length - visibleCount;
+
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Text(
+                                            '${date.day}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: inMonth
+                                                  ? (isToday
+                                                        ? scheme.primary
+                                                        : scheme.onSurface)
+                                                  : scheme.onSurfaceVariant,
                                             ),
                                           ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Expanded(
-                                      child: ListView(
-                                        physics: const NeverScrollableScrollPhysics(),
-                                        children: [
-                                          for (final item in items.take(visibleCount))
-                                            _buildMonthItem(item, scheme, date, cellWidth),
-                                          if (showOverflow && overflowCount > 0)
-                                            InkWell(
-                                              onTap: () => widget.onDayTap(date),
-                                              borderRadius: BorderRadius.circular(4),
-                                              child: Padding(
-                                                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
-                                                child: Text(
-                                                  cellWidth < 75 ? '+$overflowCount' : '+$overflowCount more',
-                                                  style: TextStyle(
-                                                    fontSize: cellWidth < 75 ? 9.5 : 10.0,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: scheme.primary,
-                                                  ),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
+                                          if (isToday)
+                                            Container(
+                                              margin: const EdgeInsets.only(
+                                                left: 4,
+                                              ),
+                                              width: 5,
+                                              height: 5,
+                                              decoration: BoxDecoration(
+                                                color: scheme.primary,
+                                                shape: BoxShape.circle,
                                               ),
                                             ),
                                         ],
                                       ),
-                                    ),
-                                  ],
-                                );
-                              },
+                                      const SizedBox(height: 2),
+                                      Expanded(
+                                        child: ListView(
+                                          physics:
+                                              const NeverScrollableScrollPhysics(),
+                                          children: [
+                                            for (final item in items.take(
+                                              visibleCount,
+                                            ))
+                                              _buildMonthItem(
+                                                item,
+                                                scheme,
+                                                date,
+                                                cellWidth,
+                                              ),
+                                            if (showOverflow &&
+                                                overflowCount > 0)
+                                              _buildOverflowAction(
+                                                date,
+                                                overflowCount,
+                                                compact: compactOverflow,
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
                             ),
                           ),
                         ),
@@ -273,6 +316,30 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildOverflowAction(
+    DateTime date,
+    int count, {
+    required bool compact,
+  }) {
+    return Tooltip(
+      message: '$count more items',
+      child: InkWell(
+        onTap: () => widget.onDayTap(date),
+        borderRadius: BorderRadius.circular(AppRadius.control),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+          child: Text(
+            compact ? '+$count' : '+$count more',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall
+                ?.copyWith(color: Theme.of(context).colorScheme.primary),
+          ),
+        ),
+      ),
     );
   }
 
@@ -290,87 +357,92 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
     final textScale = MediaQuery.textScalerOf(context).scale(1);
     final isNarrow = cellWidth < 85;
     final isVeryNarrow = cellWidth < 68;
-    final cardHeight = (hasParent && !isNarrow ? 34.0 : 26.0) * textScale.clamp(1.0, 1.4);
+    final cardHeight =
+        (hasParent && !isNarrow ? 34.0 : 26.0) * textScale.clamp(1.0, 1.4);
 
-    final itemWidget = Tooltip(
-      message: '${item.title}${item.parentTitle != null ? ' (${item.parentTitle})' : ''}',
-      waitDuration: const Duration(milliseconds: 400),
-      child: Container(
-        width: double.infinity,
-        height: cardHeight,
-        margin: const EdgeInsets.only(bottom: 2),
-        padding: EdgeInsets.symmetric(
-          horizontal: isNarrow ? 3 : 6,
-          vertical: 1.5,
+    final itemWidget = Container(
+      width: double.infinity,
+      height: cardHeight,
+      margin: const EdgeInsets.only(bottom: 2),
+      padding: EdgeInsets.symmetric(
+        horizontal: isNarrow ? 3 : 6,
+        vertical: 1.5,
+      ),
+      decoration: BoxDecoration(
+        color: Color.lerp(
+          scheme.surface,
+          accent,
+          item.isCancelled ? 0.08 : 0.13,
         ),
-        decoration: BoxDecoration(
-          color: Color.lerp(scheme.surface, accent, item.isCancelled ? 0.12 : 0.18),
-          border: Border(
-            left: BorderSide(
-              color: accent,
-              width: isNarrow ? 2.5 : 3.0,
-            ),
-          ),
-          borderRadius: BorderRadius.circular(4),
+        border: Border(
+          left: BorderSide(color: accent, width: isNarrow ? 2.5 : 3.0),
         ),
-        child: Row(
-          children: [
-            if (!isVeryNarrow) ...[
-              Icon(
-                item.kind == CalendarItemKind.event
-                    ? Icons.event_outlined
-                    : item.kind == CalendarItemKind.session
-                    ? Icons.schedule_outlined
-                    : Icons.task_alt_outlined,
-                size: isNarrow ? 10 : 12,
-                color: scheme.onSurfaceVariant,
-              ),
-              SizedBox(width: isNarrow ? 2 : 4),
-            ],
-            Expanded(
-              child: hasParent && !isNarrow
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          item.parentTitle!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          item.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Text(
-                      item.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: isNarrow ? 10 : 11,
-                        fontWeight: FontWeight.w500,
-                        color: item.isCancelled ? scheme.outline : scheme.onSurface,
-                        decoration: item.isCancelled ? TextDecoration.lineThrough : null,
-                      ),
-                    ),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        children: [
+          if (!isVeryNarrow) ...[
+            Icon(
+              item.kind == CalendarItemKind.event
+                  ? iconForKey(item.iconName, Icons.event_outlined)
+                  : item.kind == CalendarItemKind.session
+                  ? Icons.schedule_outlined
+                  : item.subtitle == 'Deadline'
+                  ? Icons.flag_outlined
+                  : Icons.task_alt_outlined,
+              size: isNarrow ? 10 : 12,
+              color: scheme.onSurfaceVariant,
             ),
+            SizedBox(width: isNarrow ? 2 : 4),
           ],
-        ),
+          Expanded(
+            child: hasParent && !isNarrow
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        item.parentTitle!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        item.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  )
+                : Text(
+                    item.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: isNarrow ? 10 : 11,
+                      fontWeight: FontWeight.w500,
+                      color: item.isCancelled
+                          ? scheme.onSurfaceVariant
+                          : scheme.onSurface,
+                      decoration: item.isCancelled
+                          ? TextDecoration.lineThrough
+                          : null,
+                    ),
+                  ),
+          ),
+        ],
       ),
     );
 
-    final isMobile = Theme.of(context).platform == TargetPlatform.android ||
+    final isMobile =
+        Theme.of(context).platform == TargetPlatform.android ||
         Theme.of(context).platform == TargetPlatform.iOS;
 
     final feedbackWidget = Material(
@@ -402,8 +474,7 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
       ),
     );
 
-    final childWidget = GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    final childWidget = InkWell(
       onTap: () => widget.onItemTap(item),
       onSecondaryTapDown: (details) =>
           _showContextMenu(item.startsAt ?? date, details.globalPosition),
@@ -418,10 +489,7 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
             hitTestBehavior: HitTestBehavior.opaque,
             dragAnchorStrategy: pointerDragAnchorStrategy,
             feedback: feedbackWidget,
-            childWhenDragging: Opacity(
-              opacity: 0.3,
-              child: itemWidget,
-            ),
+            childWhenDragging: Opacity(opacity: 0.3, child: itemWidget),
             child: childWidget,
           )
         : Draggable<CalendarItem>(
@@ -429,17 +497,11 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
             hitTestBehavior: HitTestBehavior.opaque,
             dragAnchorStrategy: pointerDragAnchorStrategy,
             feedback: feedbackWidget,
-            childWhenDragging: Opacity(
-              opacity: 0.3,
-              child: itemWidget,
-            ),
+            childWhenDragging: Opacity(opacity: 0.3, child: itemWidget),
             child: childWidget,
           );
 
-    return Tooltip(
-      message: _buildTooltipMessage(item),
-      child: draggableWidget,
-    );
+    return Tooltip(message: _buildTooltipMessage(item), child: draggableWidget);
   }
 
   String _buildTooltipMessage(CalendarItem item) {
@@ -453,6 +515,8 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
       final startStr = _formatTime(item.startsAt!);
       final endStr = _formatTime(item.endsAt!);
       buffer.write('\n$startStr – $endStr');
+    } else if (item.allDay) {
+      buffer.write('\nAll day');
     } else if (item.subtitle != null && item.subtitle!.isNotEmpty) {
       buffer.write('\n${item.subtitle}');
     }
@@ -462,11 +526,7 @@ class _CalendarMonthViewState extends State<CalendarMonthView> {
     return buffer.toString();
   }
 
-  String _formatTime(DateTime dt) {
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    return '$h:$m';
-  }
+  String _formatTime(DateTime dt) => calendarTimeLabel(context, dt);
 
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;

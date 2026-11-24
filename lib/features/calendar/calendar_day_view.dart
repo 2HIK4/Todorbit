@@ -1,3 +1,7 @@
+import 'calendar_presentation.dart';
+import '../shared/app_section_heading.dart';
+import '../shared/app_spacing.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -244,17 +248,11 @@ class _CalendarDayViewState extends State<CalendarDayView> {
                       )
                         Positioned(
                           top:
-                              (hour - config.startHour) * config.hourHeight - 8,
+                              (hour - config.startHour) * config.hourHeight +
+                              AppSpacing.small,
                           left: 8,
                           right: 8,
-                          child: Text(
-                            '${hour.toString().padLeft(2, '0')}:00',
-                            textAlign: TextAlign.right,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: scheme.outline,
-                              fontSize: 10,
-                            ),
-                          ),
+                          child: CalendarHourLabel(hour),
                         ),
                     ],
                   ),
@@ -398,21 +396,7 @@ class _CalendarDayViewState extends State<CalendarDayView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              Icon(Icons.event_note, size: 14, color: scheme.primary),
-              const SizedBox(width: 6),
-              Text(
-                'All-day & Planned (${items.length})',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
+          const AppSectionHeading('All day and planned'),
           Wrap(
             spacing: 6,
             runSpacing: 4,
@@ -459,8 +443,10 @@ class _CalendarDayViewState extends State<CalendarDayView> {
             Icon(
               item.kind == CalendarItemKind.event
                   ? iconForKey(item.iconName, Icons.event_outlined)
+                  : item.subtitle == 'Deadline'
+                  ? Icons.flag_outlined
                   : Icons.task_alt_outlined,
-              size: 12,
+              size: 14,
               color: accent,
             ),
             const SizedBox(width: 4),

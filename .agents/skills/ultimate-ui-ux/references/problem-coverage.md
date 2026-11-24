@@ -58,7 +58,7 @@ provide deeper diagnosis without another competing coverage taxonomy.
 | 31. Selection, bulk operations and drag-and-drop | Reorder/filter selected records; cancel drag; inspect bulk scope | Stable IDs, preview counts/consequences and non-drag alternative | Only intended records change; stale selections rejected safely |
 | 32. Search, filtering and sorting | Compare indicators/query/results through zero matches and navigation | One query owner, reset route and stable sort semantics | Visible results/order match query; identity and saved view persist |
 | 33. Lists, tables, trees and collections | Insert/reorder while scrolled; test empty/one/many/long items | Stable keys, lazy rendering and responsive columns/disclosure | Selection, traversal, row identity and final action remain correct |
-| 34. Calendars, timelines and scheduling interfaces | Inspect day/week/month boundaries, overlap, today/selected and recurrence | Content-aware geometry; distinct task/event/session states and dates | Same occurrence opens; dense/large-text data stays accessible |
+| 34. Calendars, timelines and scheduling interfaces | Inspect day/week/month, date-only strips, overlaps, carry-over labels, today/selected and recurrence | Shared date and time labels; accessible item names; live proposal feedback inside unchanged time geometry | Same occurrence opens; Windows and Android compact layouts, draft and action reachability verified |
 | 35. Task management and productivity workflows | Create/edit/subtask/recur/complete while timer or plan exists | Preserve independent dates, work, dependencies and explicit completion | Submitted/reopened task, recurrence and related records remain intended |
 
 ## Accessibility and platforms: 36–46

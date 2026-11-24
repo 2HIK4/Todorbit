@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Updated Calendar navigation, date labels and overlap previews on Windows
+  and grouped Android agenda items. Windows Week shows all-day events,
+  planned tasks and deadlines above the time grid.
+- Matched Event Create/Edit to the task form layout. Narrow Windows editors
+  preserve the draft across resizes, and Android keeps Save reachable above
+  the keyboard.
+
 - Unified Inbox and task list layouts on Windows and Android, including
   recurring groups, scoped events and empty states. Compact Android lists
   keep New task in the toolbar so row actions stay clear.

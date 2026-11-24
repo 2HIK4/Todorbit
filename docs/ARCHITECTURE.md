@@ -11,6 +11,12 @@ The native Android surfaces consume bounded projections; they never write or
 migrate SQLite. [Android parity, setup and acceptance](ANDROID.md) tracks device
 evidence separately from Windows and widget-test results.
 
+Windows Calendar uses `CalendarView` with interactive time columns. Android
+Calendar uses `MobileCalendar` with a date selector and agenda. Both use
+`EventEditor` and display formatters in `calendar_presentation.dart`.
+Presentation has no ownership over recurrence, timeline placement or writes.
+See the [Calendar guide](INTERACTIVE_CALENDAR.md).
+
 Android widget completion uses a one-use native capability carrying the task
 UUID, expected revision and desired state. The mobile shell waits for unlock
 and active editors before applying it through the shared controller/repository.

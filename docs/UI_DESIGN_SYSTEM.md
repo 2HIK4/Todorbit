@@ -90,6 +90,26 @@ Todorbit retains its own schedule, timer and navigation contracts.
   the last row can scroll above it. Check the editor's final explanatory
   text and actions against its fixed Save bar at 320 dp and 150% text.
 
+## Batch 3 calendar and event editing
+
+- Use shared display date and time formatting. Show the year in period
+  headings or editor date values. Preserve the preferred first weekday,
+  saved view, item filters and date-only keys. Android follows its clock
+  setting and Windows retains the 24-hour timeline.
+- Use today and selection treatments independently. Show date-only items
+  above the time grid. Keep planned tasks, deadlines, all-day events and
+  work sessions distinguishable by label or icon and accessible name.
+- Keep title and start time visible where overlap lanes permit. Provide the
+  full title and range through hover and semantics. Keep continuation labels
+  in view while scrolling and position drag time badges from the proposal.
+  Preserve the engine's geometry, resize hit areas and commit boundaries.
+- Keep Android date navigation and grouped agenda in the touch shell.
+  Verify the final agenda row and all actions above the navigation bar.
+- Use the shared modal shell, date/time buttons, disclosure sections and
+  action bar for events. Keep editable titles wrapped with a single-line
+  value. Keep Close and Save reachable with an IME. The Windows side panel
+  uses a focused presentation when narrow without remounting the draft.
+
 ## Customization and compatibility
 
 Settings → Appearance retains System, Light and Dark, two editable palettes,
@@ -118,6 +138,6 @@ Flutter renders where practical alongside targeted behavior tests. Record
 Windows and Android coverage separately, including narrow layouts and 150%
 text. Use the [testing policy](TESTING.md) for evidence.
 
-The next batch covers Calendar and event editing. Focus, Habits and Goals
-follow, then Settings, sync feedback and native widgets. Review each batch in
+Focus, Habits and Goals follow Calendar and event editing. Settings, sync
+feedback and native widgets follow those surfaces. Review each batch in
 light and dark before expanding.

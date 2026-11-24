@@ -62,7 +62,10 @@ void main() {
           'Organization and appearance',
           editor: EventEditor,
         );
-        final trigger = find.widgetWithText(AnchoredSelectField<String?>, 'Category');
+        final trigger = find.widgetWithText(
+          AnchoredSelectField<String?>,
+          'Category',
+        );
         await tester.ensureVisible(trigger);
         await tester.pumpAndSettle();
         await tester.tap(trigger);
@@ -96,6 +99,59 @@ void main() {
       }
     },
   );
+
+  testWidgets('compact Android form keeps close and save above the IME', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 740);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetViewInsets);
+    final db = AppDatabase(NativeDatabase.memory());
+    final controller = AppController(LifeRepository(db));
+    await controller.refresh();
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appControllerProvider.overrideWith((ref) => controller)],
+          child: MaterialApp(
+            theme: ThemeData(platform: TargetPlatform.android),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: TextScaler.linear(1.5)),
+              child: child!,
+            ),
+            home: Scaffold(
+              body: EventEditor(
+                initialDay: DateTime(2026, 11, 24, 9),
+                protectUnsavedEdits: true,
+                onClose: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final title = find.widgetWithText(TextField, 'Title *');
+      await tester.enterText(title, 'Event draft with the keyboard open');
+      tester.view.viewInsets = const FakeViewPadding(bottom: 280);
+      await tester.pumpAndSettle();
+
+      expect(find.byTooltip('Close').hitTestable(), findsOneWidget);
+      expect(find.text('Save event').hitTestable(), findsOneWidget);
+      expect(tester.getBottomLeft(find.text('Save event')).dy, lessThan(460));
+      expect(
+        tester.widget<TextField>(title).controller!.text,
+        'Event draft with the keyboard open',
+      );
+      expect(controller.events, isEmpty);
+      expect(tester.takeException(), isNull);
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await db.close();
+    }
+  });
 
   testWidgets('weekday selector fits seven equal controls in a narrow row', (
     tester,

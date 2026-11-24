@@ -6,6 +6,21 @@ This document describes the modular architecture of the redesigned Todorbit inte
 
 ## 1. Modular Architecture Overview
 
+Windows uses the interactive Month, Week and Day views through
+`Workspace → CalendarView`. Week uses a stacked agenda when the available
+width and text scale cannot support the time grid. Android uses the touch
+Month and Week selectors and a selected-day agenda through
+`MobileWorkspace → MobileCalendar`. Both routes use `EventEditor`.
+Windows offers a side panel or a full-page editor according to the existing
+detail preference. The side panel uses the full workspace when narrow.
+
+Use **Today** to return to the current date, the arrows to move by period,
+and **Filters** to narrow visible items. Windows also offers a calendar
+content selector. The Week strip surfaces all-day events, due items and
+planned tasks above the time grid. Open **+N more** to see the corresponding
+day. On Android, tap the period label to pick a date and tap an agenda row
+to edit the item.
+
 The calendar is divided into single-responsibility, independently testable components:
 
 | Component | File | Responsibility |
@@ -16,10 +31,11 @@ The calendar is divided into single-responsibility, independently testable compo
 | **CalendarInteractionController** | [`lib/features/calendar/calendar_interaction_controller.dart`](../lib/features/calendar/calendar_interaction_controller.dart) | Move, top-edge resize, bottom-edge resize, date-drag, boundary validation, cancellation, and Undo stack. |
 | **CalendarZoomController** | [`lib/features/calendar/calendar_zoom_controller.dart`](../lib/features/calendar/calendar_zoom_controller.dart) | View transitions (Month ↔ Week ↔ Day), wheel delta accumulation, and anchor date resolution. |
 | **TimelineDayColumn** | [`lib/features/calendar/timeline_grid.dart`](../lib/features/calendar/timeline_grid.dart) | Shared vertical timeline renderer for a day column, ghost previews, live time chips, and auto-scroll. |
-| **CalendarDayView** | [`lib/features/calendar/calendar_day_view.dart`](../lib/features/calendar/calendar_day_view.dart) | Day layout with an "All-day & Planned" header and the primary vertical timeline. |
-| **CalendarWeekView** | [`lib/features/calendar/calendar_week_view.dart`](../lib/features/calendar/calendar_week_view.dart) | 7 synchronized day columns with cross-day dragging and responsive horizontal scroll. |
+| **CalendarDayView** | [`lib/features/calendar/calendar_day_view.dart`](../lib/features/calendar/calendar_day_view.dart) | Day layout with date-only items and the primary vertical timeline. |
+| **CalendarWeekView** | [`lib/features/calendar/calendar_week_view.dart`](../lib/features/calendar/calendar_week_view.dart) | Seven synchronized date-only previews and timed columns with cross-day dragging. |
 | **CalendarMonthView** | [`lib/features/calendar/calendar_month_view.dart`](../lib/features/calendar/calendar_month_view.dart) | Compact month grid with drag-and-drop between date cells and extended right-click/long-press context actions. |
-| **CalendarView** | [`lib/features/calendar/calendar_view.dart`](../lib/features/calendar/calendar_view.dart) | Top-level coordinator: toolbar, keyboard shortcuts, undo toast, and legacy fallback switch. |
+| **CalendarView** | [`lib/features/calendar/calendar_view.dart`](../lib/features/calendar/calendar_view.dart) | Toolbar, shortcuts, date projection, undo feedback and legacy fallback switch. |
+| **Calendar presentation** | [`lib/features/calendar/calendar_presentation.dart`](../lib/features/calendar/calendar_presentation.dart) | Flutter display dates, clock labels and hour gutter typography for Calendar and EventEditor. |
 
 ---
 
@@ -47,7 +63,7 @@ All key parameters are centralized in `CalendarAppearanceConfiguration` in [`cal
   - `enableCrossDayMove`: dragging across day columns in Week view
 - **"Switch between redesigned timeline and legacy calendar"**:
   - In code: set `useLegacyCalendar: true`.
-  - In UI: Click the legacy/timeline toggle icon button next to the Reschedule button in the calendar toolbar.
+  - In UI: Click the legacy/timeline toggle icon button in the calendar toolbar. Compact layouts put Work session and Reschedule in More calendar actions.
 
 ---
 

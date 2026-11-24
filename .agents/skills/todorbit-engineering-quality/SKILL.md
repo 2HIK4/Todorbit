@@ -61,6 +61,9 @@ Do not load all documentation into context. Activate only the reference matching
   Desktop mounts `CalendarView` via `lib/features/workspace/workspace.dart`.
   Android unconditionally mounts `MobileWorkspace` via `lib/main.dart`, which renders `MobileCalendar`.
   - **Rule**: Changes to `CalendarView` do NOT automatically reach production Android users.
+  - Keep shared date/time presentation display-only. Resize, move, snapping,
+    recurrence, alarms, and writes stay with their existing owners. A timed
+    clip or compact agenda may hide geometry without changing persisted times.
   - **Rule**: Testing a desktop widget wrapped in `ThemeData(platform: TargetPlatform.android)` proves widget layout behavior under mobile styling, but does NOT prove Android production UI exposes that widget.
   - **Rule**: When adding shared capabilities, explicitly identify both platform entry points and record parity or intentional mobile exclusions.
 

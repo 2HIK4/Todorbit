@@ -239,7 +239,11 @@ void main() {
 
         // Project selector is now enabled; select 'Mobile Redesign'
         final projField = find.widgetWithText(AnchoredSelectField<String?>, 'Project');
-        await tester.ensureVisible(projField);
+        await Scrollable.ensureVisible(
+          tester.element(projField),
+          alignment: 0.5,
+        );
+        await tester.pumpAndSettle();
         await tester.tap(projField);
         await tester.pumpAndSettle();
         await tester.tap(find.text('Mobile Redesign').last);
@@ -329,7 +333,11 @@ void main() {
 
         // Tap Project dropdown -> select "+ New Project"
         final projField = find.widgetWithText(AnchoredSelectField<String?>, 'Project');
-        await tester.ensureVisible(projField);
+        await Scrollable.ensureVisible(
+          tester.element(projField),
+          alignment: 0.5,
+        );
+        await tester.pumpAndSettle();
         await tester.tap(projField);
         await tester.pumpAndSettle();
         await tester.tap(find.text('+ New Project'));

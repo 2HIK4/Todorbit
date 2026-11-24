@@ -224,7 +224,7 @@ void main() {
       var now = DateTime(2026, 11, 15);
       await tester.pumpWidget(buildCalendarTestApp(clock: () => now));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('November 2026'));
+      await tester.tap(find.byTooltip('Choose date'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('20').last);
       await tester.tap(find.text('OK'));
@@ -289,13 +289,13 @@ void main() {
     },
   );
 
-  testWidgets('Cards inside MobileCalendar have antiAlias clipBehavior', (
+  testWidgets('Agenda gives events a named section and an actionable row', (
     tester,
   ) async {
     final now = DateTime.now();
     await controller.repository.addEvent(
       EventDraft(
-        title: 'Clipped Event',
+        title: 'Field visit',
         startsAt: now,
         endsAt: now.add(const Duration(hours: 1)),
       ),
@@ -305,11 +305,13 @@ void main() {
     await tester.pumpWidget(buildCalendarTestApp());
     await tester.pumpAndSettle();
 
-    final cardFinder = find.byType(Card);
-    expect(cardFinder, findsAtLeastNWidgets(1));
-    for (final element in tester.widgetList<Card>(cardFinder)) {
-      expect(element.clipBehavior, Clip.antiAlias);
-    }
+    expect(find.text('Events'), findsOneWidget);
+    final row = find.widgetWithText(ListTile, 'Field visit');
+    await tester.ensureVisible(row);
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+    expect(find.text('Edit calendar event'), findsOneWidget);
+    expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
 
@@ -361,10 +363,10 @@ void main() {
 
       // The calendar should now open with Today selected, not the stale pastDay
       final now = DateUtils.dateOnly(DateTime.now());
-      final currentMonthYear = MaterialLocalizations.of(
+      final today = MaterialLocalizations.of(
         tester.element(find.byType(MobileCalendar)),
-      ).formatMonthYear(now);
-      expect(find.text(currentMonthYear), findsOneWidget);
+      ).formatFullDate(now);
+      expect(find.text('Today · $today'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     },
   );

@@ -20,6 +20,18 @@ void main() {
   Future<AppController> createControllerWithSyntheticData(AppDatabase db) async {
     final repo = LifeRepository(db);
 
+    await repo.addEvent(
+      EventDraft(
+        title: 'Office closure',
+        startsAt: testDate,
+        endsAt: DateTime(2026, 11, 11),
+        allDay: true,
+      ),
+    );
+    await repo.addTask(
+      TaskDraft(title: 'Planned review', scheduledDate: '2026-11-11'),
+    );
+
     // 1. Morning Standup
     await repo.addEvent(
       EventDraft(
@@ -193,6 +205,14 @@ void main() {
 
         expect(find.byType(CalendarWeekView), findsOneWidget);
         expect(find.byType(TimelineDayColumn), findsNWidgets(7));
+
+        // Date-only items projected into the week stay accessible.
+        final allDayEvent = find.text('Office closure');
+        expect(allDayEvent.hitTestable(), findsOneWidget);
+        expect(find.text('Planned review').hitTestable(), findsOneWidget);
+        await tester.tap(allDayEvent);
+        await tester.pumpAndSettle();
+        expect(find.text('Edit calendar event'), findsOneWidget);
 
         // Verify no Flutter render overflow errors
         expect(tester.takeException(), isNull);

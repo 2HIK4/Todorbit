@@ -1,8 +1,12 @@
+import 'calendar_presentation.dart';
+import '../shared/app_spacing.dart';
+
 import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 
 import '../../domain/alarm_plan.dart';
 import '../../domain/alarms.dart';
@@ -77,6 +81,7 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
   Timer? _autoScrollTimer;
   Offset? _lastGlobalPointerPosition;
   int _autoScrollDirection = 0;
+  String? _keyboardFocusedItemId;
 
   @override
   void initState() {
@@ -274,7 +279,7 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                                 border: Border(
                                   top: BorderSide(
                                     color: scheme.outlineVariant.withValues(
-                                      alpha: 0.45,
+                                      alpha: hour % 3 == 0 ? 0.90 : 0.60,
                                     ),
                                     width: 1,
                                   ),
@@ -286,10 +291,6 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                     ),
                   ),
 
-                  // 2. Current time indicator line if today
-                  if (isToday)
-                    _buildCurrentTimeLine(engine, scheme, availableWidth),
-
                   // 3. Timed item placements
                   for (final placement in placements)
                     _buildPlacedItem(
@@ -300,6 +301,9 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                           isDraggingActive &&
                           activeItem.id == placement.item.id,
                     ),
+
+                  if (isToday)
+                    _buildCurrentTimeLine(engine, scheme, availableWidth),
 
                   // 4. Ghost preview when dragging into or within this column
                   if (isDraggingActive &&
@@ -398,7 +402,7 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
 
     final isCancelled = item.isCancelled;
     final cardBg = Color.alphaBlend(
-      Color.lerp(scheme.surface, accent, isCancelled ? 0.12 : 0.22)!,
+      Color.lerp(scheme.surface, accent, isCancelled ? 0.08 : 0.17)!,
       scheme.surface,
     );
     final hasAlarm =
@@ -421,10 +425,12 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
             margin: const EdgeInsets.symmetric(vertical: 1),
             decoration: BoxDecoration(
               color: cardBg,
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(AppRadius.control),
               border: Border.all(
-                color: accent.withValues(alpha: isCancelled ? 0.35 : 0.7),
-                width: 1,
+                color: _keyboardFocusedItemId == item.id
+                    ? scheme.primary
+                    : accent.withValues(alpha: isCancelled ? 0.35 : 0.55),
+                width: _keyboardFocusedItemId == item.id ? 2 : 1,
               ),
             ),
             child: ClipRRect(
@@ -443,76 +449,113 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                   // Center body (handles click to open and center drag to move)
                   Positioned.fill(
                     left: 5,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => widget.onItemTap(item),
-                      onPanStart: (details) {
-                        _lastGlobalPointerPosition = details.globalPosition;
-                        final renderBox =
-                            context.findRenderObject() as RenderBox?;
-                        final timelineY = renderBox != null && renderBox.hasSize
-                            ? renderBox.globalToLocal(details.globalPosition).dy
-                            : null;
-                        widget.interactionController.startMove(
-                          item: item,
-                          dayDate: widget.dayDate,
-                          pointerLocal: details.globalPosition,
-                          pointerTimelineY: timelineY,
+                    child: FocusableActionDetector(
+                      onShowFocusHighlight: (visible) {
+                        if (!mounted ||
+                            !visible && _keyboardFocusedItemId != item.id) {
+                          return;
+                        }
+                        setState(
+                          () =>
+                              _keyboardFocusedItemId = visible ? item.id : null,
                         );
                       },
-                      onPanUpdate: (details) {
-                        _lastGlobalPointerPosition = details.globalPosition;
-                        final renderBox =
-                            context.findRenderObject() as RenderBox?;
-                        final targetDay = widget.resolveDayAt != null
-                            ? widget.resolveDayAt!(details.globalPosition)
-                            : widget.dayDate;
-                        final timelineY = _resolveTimelineY(
-                          renderBox,
-                          details.globalPosition,
-                          targetDay,
-                        );
-                        widget.interactionController.updatePointer(
-                          details.globalPosition,
-                          targetDay,
-                          timelineY,
-                        );
-                        _checkAutoScroll(details.globalPosition);
+                      shortcuts: const {
+                        SingleActivator(LogicalKeyboardKey.enter):
+                            ActivateIntent(),
+                        SingleActivator(LogicalKeyboardKey.space):
+                            ActivateIntent(),
                       },
-                      onPanEnd: (_) async {
-                        _autoScrollTimer?.cancel();
-                        _lastGlobalPointerPosition = null;
-                        await widget.onInteractionFinished?.call();
+                      actions: {
+                        ActivateIntent: CallbackAction<ActivateIntent>(
+                          onInvoke: (_) {
+                            widget.onItemTap(item);
+                            return null;
+                          },
+                        ),
                       },
-                      onPanCancel: () {
-                        _autoScrollTimer?.cancel();
-                        _lastGlobalPointerPosition = null;
-                        widget.interactionController.cancelFromRecognizer();
-                      },
-                      child: Semantics(
-                        label:
-                            '${item.title}, ${_formatTime(item.startsAt!)} – ${_formatTime(item.endsAt!)}'
-                            '${hasAlarm ? ', Alarm set' : ''}'
-                            '${placement.hasConflict ? ', Overlaps ${placement.conflictCount} items' : ''}',
-                        button: true,
-                        enabled: true,
-                        excludeSemantics: true,
-                        onTap: () => widget.onItemTap(item),
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: isCompact ? 2 : 4,
-                            vertical: isCompact ? 1 : 3,
-                          ),
-                          child: ClipRect(
-                            child: _buildItemContent(
+                      child: Tooltip(
+                        excludeFromSemantics: true,
+                        message:
+                            '${item.title}\n${_formatTime(item.startsAt!)} – ${_formatTime(item.endsAt!)}',
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => widget.onItemTap(item),
+                          onPanStart: (details) {
+                            _lastGlobalPointerPosition = details.globalPosition;
+                            final renderBox =
+                                context.findRenderObject() as RenderBox?;
+                            final timelineY =
+                                renderBox != null && renderBox.hasSize
+                                ? renderBox
+                                      .globalToLocal(details.globalPosition)
+                                      .dy
+                                : null;
+                            widget.interactionController.startMove(
                               item: item,
-                              placement: placement,
-                              accent: accent,
-                              scheme: scheme,
-                              isCompact: isCompact,
-                              hasAlarm: hasAlarm,
-                              itemWidth: itemWidth,
-                              cardBackground: cardBg,
+                              dayDate: widget.dayDate,
+                              pointerLocal: details.globalPosition,
+                              pointerTimelineY: timelineY,
+                            );
+                          },
+                          onPanUpdate: (details) {
+                            _lastGlobalPointerPosition = details.globalPosition;
+                            final renderBox =
+                                context.findRenderObject() as RenderBox?;
+                            final targetDay = widget.resolveDayAt != null
+                                ? widget.resolveDayAt!(details.globalPosition)
+                                : widget.dayDate;
+                            final timelineY = _resolveTimelineY(
+                              renderBox,
+                              details.globalPosition,
+                              targetDay,
+                            );
+                            widget.interactionController.updatePointer(
+                              details.globalPosition,
+                              targetDay,
+                              timelineY,
+                            );
+                            _checkAutoScroll(details.globalPosition);
+                          },
+                          onPanEnd: (_) async {
+                            _autoScrollTimer?.cancel();
+                            _lastGlobalPointerPosition = null;
+                            await widget.onInteractionFinished?.call();
+                          },
+                          onPanCancel: () {
+                            _autoScrollTimer?.cancel();
+                            _lastGlobalPointerPosition = null;
+                            widget.interactionController.cancelFromRecognizer();
+                          },
+                          child: Semantics(
+                            label:
+                                '${item.kind == CalendarItemKind.event ? 'Event' : 'Work session'}, ${item.title}, ${_formatTime(item.startsAt!)} – ${_formatTime(item.endsAt!)}'
+                                '${hasAlarm ? ', Alarm set' : ''}'
+                                '${placement.hasConflict ? ', Overlaps ${placement.conflictCount} items' : ''}',
+                            button: true,
+                            enabled: true,
+                            excludeSemantics: true,
+                            onTap: () => widget.onItemTap(item),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: isCompact ? 2 : 4,
+                                vertical: isCompact ? 1 : 3,
+                              ),
+                              child: ClipRect(
+                                child: _keepContinuationReadable(
+                                  placement,
+                                  _buildItemContent(
+                                    item: item,
+                                    placement: placement,
+                                    accent: accent,
+                                    scheme: scheme,
+                                    isCompact: isCompact,
+                                    hasAlarm: hasAlarm,
+                                    itemWidth: itemWidth,
+                                    cardBackground: cardBg,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -686,6 +729,35 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
     child: child,
   );
 
+  Widget _keepContinuationReadable(
+    CalendarPlacement placement,
+    Widget content,
+  ) {
+    final scroll = widget.scrollController;
+    if (scroll == null ||
+        !placement.item.startsAt!.isBefore(
+          DateUtils.dateOnly(widget.dayDate),
+        )) {
+      return content;
+    }
+    final labelHeight = MediaQuery.textScalerOf(context).scale(32);
+    return ListenableBuilder(
+      listenable: scroll,
+      child: content,
+      builder: (context, child) => Padding(
+        padding: EdgeInsets.only(
+          top: scroll.hasClients
+              ? (scroll.offset - placement.top).clamp(
+                  0.0,
+                  math.max(0.0, placement.height - labelHeight),
+                )
+              : 0.0,
+        ),
+        child: child,
+      ),
+    );
+  }
+
   Widget _buildItemContent({
     required CalendarItem item,
     required CalendarPlacement placement,
@@ -730,10 +802,37 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
     );
 
     if (isCompact) {
-      if (itemWidth < 44) {
-        return Tooltip(
-          message: '${item.title}\n$timeRangeStr',
-          child: const SizedBox.expand(),
+      final showTime =
+          placement.height >= MediaQuery.textScalerOf(context).scale(30);
+      if (itemWidth < 60) {
+        final shortTime = isContinuation ? '←' : startTimeStr;
+        return SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: primaryTextColor,
+                  decoration: item.isCancelled
+                      ? TextDecoration.lineThrough
+                      : null,
+                ),
+              ),
+              if (showTime)
+                Text(
+                  shortTime,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 9, color: secondaryTextColor),
+                ),
+            ],
+          ),
         );
       }
       return ClipRect(
@@ -751,7 +850,7 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
             ],
             Expanded(
               child: Text(
-                '${item.title} ($timeRangeStr)',
+                item.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -808,8 +907,7 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                     item.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: primaryTextColor,
                       decoration: item.isCancelled
@@ -839,11 +937,8 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                 timeRangeStr,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                  color: secondaryTextColor,
-                ),
+                style: Theme.of(context).textTheme.labelSmall
+                    ?.copyWith(color: secondaryTextColor),
               ),
             ],
             if (placement.height >= 58 &&
@@ -918,7 +1013,7 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
         child: Container(
           decoration: BoxDecoration(
             color: background,
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(AppRadius.control),
             border: Border.all(color: scheme.primary, width: 1.5),
           ),
           child: Stack(
@@ -940,6 +1035,7 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                     ),
                     child: Text(
                       startStr,
+                      maxLines: 1,
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -1002,6 +1098,7 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
                     ),
                     child: Text(
                       endStr,
+                      maxLines: 1,
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -1040,26 +1137,10 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
     );
   }
 
-  String _formatTime(DateTime dt) {
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    return '$h:$m';
-  }
+  String _formatTime(DateTime dt) => calendarTimeLabel(context, dt);
 
-  static const _weekdayShortNames = [
-    'Mon',
-    'Tue',
-    'Wed',
-    'Thu',
-    'Fri',
-    'Sat',
-    'Sun',
-  ];
-
-  String _formatDateBadge(DateTime dt) {
-    final w = _weekdayShortNames[dt.weekday - 1];
-    return '$w ${dt.month}/${dt.day}';
-  }
+  String _formatDateBadge(DateTime dt) =>
+      MaterialLocalizations.of(context).formatShortMonthDay(dt);
 
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
