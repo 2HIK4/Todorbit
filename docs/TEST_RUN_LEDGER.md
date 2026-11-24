@@ -25,8 +25,14 @@ The Release startup APK came from `50f5652`, with the same packaged inputs,
 an existing disposable signing fixture and Drive disabled. On API 35 with
 4 KiB pages, Android drew after 20.637 s on first launch and 3.254–6.356 s
 on three cold reopens. A foreground return took 0.722 s. Timing logs and
-actual renders are linked from the candidate receipt. Production signing
-and official 16 KiB runtime verification are still open.
+actual renders are linked from the candidate receipt.
+
+All three production APKs matched the published Beta 25 certificate and passed
+version, ABI, alignment and private-file checks. The [official runtime](https://github.com/2HIK4/Todorbit/actions/runs/45428380209)
+passed at 16,384-byte pages with signed upgrade from 48 to 50 and the synthetic
+task retained. The production candidate drew in 3.263 s after upgrade and
+1.517 s on cold reopen. All 11 final assets matched GitHub's public digests
+and passed anonymous link verification.
 
 ## UI Redesign 2.0 final integration (2026-11-24)
 

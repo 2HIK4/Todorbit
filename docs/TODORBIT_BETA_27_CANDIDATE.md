@@ -1,9 +1,10 @@
 # Todorbit Beta 27 candidate acceptance
 
 `1.0.19-beta.27+50`, SQLite Schema 29, on `feature/todorbit-ui-redesign-2`.
-The candidate is unpublished. Stable and previous release assets retain their
-existing versions. The [release notes](TODORBIT_BETA_27_RELEASE_NOTES.md) describe
-the redesign, customization and supported install paths.
+Published on 2026-11-24 at 18:49 Amman time as the
+[Beta 27 experimental prerelease](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.27).
+GitHub release ID `456964711`. Stable and previous release assets retain their
+existing versions. See the [release notes](TODORBIT_BETA_27_RELEASE_NOTES.md).
 
 ## Exact source and package gates
 
@@ -17,9 +18,9 @@ snapshot-restore assertions remain in the journey.
 | --- | --- |
 | Windows full validation and packaging | **Passed.** The [exact candidate](https://github.com/2HIK4/Todorbit/actions/runs/45388886278) passed full analysis, 1,238 tests with 9 opt-in skips, 39 architecture checks, documentation checks, OAuth configuration checks, CRT checks, native writer, hidden background barriers, packaged widget self-test and Inno Setup compilation. |
 | Android analysis, platform checks and emulator integration | **Passed.** Analysis, 76 focused tests, development APK integrity and both emulator integrations, including native update and backup/restore, passed on the [exact candidate](https://github.com/2HIK4/Todorbit/actions/runs/45388885387). The [first run](https://github.com/2HIK4/Todorbit/actions/runs/45385900187) hit the bottom navigation because the Calendar event row was below the viewport. |
-| Production Android signing | **Blocked.** The production JKS exists. Its ignored `android/key.properties` was absent from the original checkout, this worktree and the accessible prior release worktrees and local release directories. The protected signing workflow could not be dispatched. |
-| Official API 36 16 KiB runtime and packaged Android upgrade | **Blocked on production signing.** Stage the actual candidate and previous production-signed APK by asset ID and checksum. Verify page size, in-place upgrade, profile and task persistence, reopen, foreground return and native integration. |
-| Experimental updater discovery and anonymous asset verification | **Pending publication.** Exact-candidate tests passed for Stable and Experimental channel selection, version and platform compatibility, download integrity and updater handoff. The previous published Beta 25 APK matches its update metadata digest. |
+| Production Android signing | **Passed.** The owner restored the ignored signing configuration. The universal, ARM64 and x64 APKs match the published Beta 25 certificate. Package ID, build code 50, minimum SDK 26, ABIs and 16 KiB static alignment passed. |
+| Official API 36 16 KiB runtime and packaged Android upgrade | **Passed.** The [exact-source runtime](https://github.com/2HIK4/Todorbit/actions/runs/45428380209) confirmed 16,384-byte pages and an in-place upgrade from the published Beta 25 APK (code 48) to the production Beta 27 x64 APK (code 50). The task survived foreground return, process restart and update. Completion interaction passed with no crash or ANR observed. |
+| Experimental updater discovery and anonymous asset verification | **Passed.** The tag resolves to the exact candidate, all 11 anonymous download URLs responded and GitHub publishes each expected SHA-256 and size. The public feed exposes Beta 27 as the newest prerelease and excludes it from Stable. The downloaded Android update manifest matches its verified local file and all of its APK entries match the published asset digests. |
 
 ### Verified Windows downloads
 
@@ -39,17 +40,26 @@ The ZIP also contains the companion and required CRT DLLs. PE resources on
 the runner, companion and installer report numeric version `1.0.19.50`.
 The Windows installer remains unsigned under the existing policy.
 
-### Android signing handoff
+### Production Android packages
 
 The previous published APK has certificate SHA-256
 `00226dad75ac907ac51c86df2c5011f0b6e2ce8291994103975f11a8eb574a99`.
-Restore the approved ignored `android/key.properties` in the release worktree
-with `storeFile` pointing at the existing production JKS, `keyAlias=todorbit`
-and the owner-provisioned `storePassword` and `keyPassword`. Follow the local
-configuration example and package checks in [Android release](ANDROID_RELEASE.md).
-Compare every candidate APK certificate with the published fingerprint before
-staging. Keep the keystore and signing properties local. Do not uninstall the
-previous beta to work around a certificate mismatch.
+All three production APKs match this fingerprint. The Release build enabled
+Android Drive and used the local production signer. APK inspection found no
+signing properties, keystore files, logs or databases. The release verifier
+checked the code against published Android metadata and generated the update
+manifest and checksums. Keep signing properties local and update in place.
+
+| APK | SHA-256 |
+| --- | --- |
+| Universal | `acb1ac962a82b3a1da4b969c1eb1f62344485691fd98e2ebef5fce00985e9c29` |
+| ARM64 | `9c3e8ac5ab8928b35e5723bb6e9f80392790260069aeefc22338a2f3a6419fea` |
+| x64 | `b90ce00cdce4b1e3569fe5f26ff764143fe3274ff49ff91b735298cf7e5f9c10` |
+
+On the official emulator Beta 25 drew in 3.873 s on first launch and 2.005 s
+on cold reopen. Its foreground return waiter took 0.157 s. The Beta 27
+upgrade launch drew in 3.263 s and the subsequent cold reopen in 1.517 s.
+The retained runtime receipt binds those timings to both APK digests.
 
 ## Android Release startup and visuals
 
@@ -103,8 +113,8 @@ installer journey with the established AppId. Windows Sandbox is excluded.
    installation, restart, and verify the same records, preference, widget
    and installed update target. Test the portable ZIP separately with its own
    disposable profile and verify that its updater selects the portable ZIP.
-2. Once production packages are available, update the prior Android beta in
-   place. Check existing tasks, preferences and the launcher widget. Create
+2. Update the prior Android beta in place. Check existing tasks, preferences
+   and the launcher widget. Create
    and edit a task at enlarged font size, put it on Calendar, resume a Focus
    timer after returning from Home and verify reopen. Try the widget on the
    phone's launcher and confirm notifications as permitted by device settings.
@@ -114,6 +124,5 @@ installer journey with the established AppId. Windows Sandbox is excluded.
    assistive acceptance. Use separate synthetic accounts for any two-client
    Drive recovery test with explicit authorization.
 
-Real-device input, assistive output and two-client Drive testing have separate
-acceptance records. The production signer, exact candidate CI, production
-packages and official 16 KiB runtime remain mandatory publication gates.
+Real-device input, registered Windows setup and updater interaction, assistive
+output, and separately authorized two-client Drive recovery remain manual.

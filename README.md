@@ -30,9 +30,10 @@ widgets use the selected palette when available.
 ## Experimental beta downloads
 
 Current Windows and Android builds are listed on [GitHub Releases](https://github.com/2HIK4/Todorbit/releases).
-The unpublished Beta 27 redesign candidate includes the new Today workspace,
-larger-text layouts, shared editors and appearance controls.
-See the [Beta 27 notes](docs/TODORBIT_BETA_27_RELEASE_NOTES.md).
+The Beta 27 redesign includes the new Today workspace, larger-text layouts,
+shared editors and appearance controls.
+See the [Beta 27 release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.27)
+and [release notes](docs/TODORBIT_BETA_27_RELEASE_NOTES.md).
 
 ## Earlier Android beta installation
 

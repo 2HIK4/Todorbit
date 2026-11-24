@@ -2,12 +2,9 @@
 
 ## Beta 27 publication gates (2026-11-24)
 
-See the [Beta 27 candidate receipt](TODORBIT_BETA_27_CANDIDATE.md) for
-exact source, package results and manual steps. Provision the existing
-production Android signer locally, verify candidate APKs against the published
-certificate, and run the official API 36 16 KiB upgrade and reopen gate before
-publication. Public discovery, downloads and checksums are verified after
-publication. The registered Windows upgrade needs an isolated test account or
+The [Beta 27 receipt](TODORBIT_BETA_27_CANDIDATE.md) records the completed
+production signing, official API 36 16 KiB upgrade and public discovery,
+downloads and checksums. The registered Windows upgrade needs an isolated test account or
 machine. Physical input, assistive output and separately authorized real Drive
 recovery remain manual checks. Windows Sandbox is excluded from this review.
 

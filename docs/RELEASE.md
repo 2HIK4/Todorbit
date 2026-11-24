@@ -6,10 +6,10 @@ redesign source, gate results and remaining install acceptance.
 ## Current status
 
 As of 2026-11-24, the latest published experimental release is
-[Beta 25](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.25),
-version `1.0.19-beta.25+48`. Beta 26 remains a draft. The redesign's Beta 27
-candidate has green Windows and Android CI. The production Android signer
-and official 16 KiB acceptance are still pending.
+[Beta 27](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.27),
+version `1.0.19-beta.27+50`. Exact-candidate Windows and Android CI,
+production signing and the official 16 KiB in-place upgrade passed.
+All 11 assets were verified anonymously. Beta 26 remains a draft.
 
 ## Earlier release evidence
 

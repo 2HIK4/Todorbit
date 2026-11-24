@@ -5,8 +5,9 @@
 Version `1.0.19-beta.27+50` on `feature/todorbit-ui-redesign-2`. The
 Release-mode Android renders confirm the neutral launch screen and real
 Calendar and Trash glyphs. Exact-candidate Windows and Android CI passed.
-The production Android signing configuration and official 16 KiB
-candidate run remain release gates. Beta 27 is unpublished.
+The restored production signer matches Beta 25. Official 16 KiB passed,
+including signed update from code 48 to 50 with data retained. Beta 27 is
+published as an experimental prerelease with 11 verified public assets.
 
 [Candidate evidence, gates and manual steps](TODORBIT_BETA_27_CANDIDATE.md) ·
 [Release notes](TODORBIT_BETA_27_RELEASE_NOTES.md)
