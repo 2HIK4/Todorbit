@@ -18,10 +18,7 @@ class TaskProgress {
 }
 
 /// Visual presentation variant for [AppTaskRow].
-enum AppTaskRowVariant {
-  desktop,
-  mobile,
-}
+enum AppTaskRowVariant { desktop, mobile }
 
 /// A canonical, reusable task list row component for desktop and mobile surfaces.
 ///
@@ -73,7 +70,8 @@ class AppTaskRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveVariant = variant ??
+    final effectiveVariant =
+        variant ??
         (Theme.of(context).platform == TargetPlatform.android
             ? AppTaskRowVariant.mobile
             : AppTaskRowVariant.desktop);
@@ -86,13 +84,15 @@ class AppTaskRow extends StatelessWidget {
 
   Widget _buildDesktop(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final tokens = Theme.of(context).extension<TodorbitThemeTokens>() ??
+    final tokens =
+        Theme.of(context).extension<TodorbitThemeTokens>() ??
         (Theme.of(context).brightness == Brightness.dark
             ? TodorbitThemeTokens.dark()
             : TodorbitThemeTokens.light());
     final done = task.status == TaskStatus.completed;
     final today = localDate(DateTime.now());
-    final overdue = task.isOpen &&
+    final overdue =
+        task.isOpen &&
         task.deadlineDate != null &&
         task.deadlineDate!.compareTo(today) < 0;
 
@@ -127,7 +127,7 @@ class AppTaskRow extends StatelessWidget {
                 if (iconKey != null)
                   Icon(
                     iconForKey(iconKey, Icons.task_alt_outlined),
-                    size: 19,
+                    size: AppIconSize.navigation,
                     color: scheme.onSurfaceVariant,
                   ),
                 if (task.isOpen && hasAlarm)
@@ -145,7 +145,10 @@ class AppTaskRow extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
+                          fontSize: compact ? 14 : 15,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.w500,
                           decoration: done ? TextDecoration.lineThrough : null,
                           color: done
                               ? scheme.onSurfaceVariant
@@ -172,8 +175,8 @@ class AppTaskRow extends StatelessWidget {
                   Tooltip(
                     message: 'Priority ${task.priority}',
                     child: Icon(
-                      Icons.flag_outlined,
-                      size: 18,
+                      task.priority >= 3 ? Icons.flag : Icons.flag_outlined,
+                      size: AppIconSize.inline,
                       color: tokens.colorForPriority(task.priority),
                     ),
                   ),
@@ -275,7 +278,8 @@ class AppTaskRow extends StatelessWidget {
     if (unmetPrerequisitesCount > 0) {
       badges.add(
         Tooltip(
-          message: unmetPrerequisitesSummary ??
+          message:
+              unmetPrerequisitesSummary ??
               'Blocked by $unmetPrerequisitesCount prerequisite(s)',
           child: Text(
             'Blocked by $unmetPrerequisitesCount',
@@ -296,7 +300,8 @@ class AppTaskRow extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final done = task.status == TaskStatus.completed;
     final today = localDate(DateTime.now());
-    final overdue = task.isOpen &&
+    final overdue =
+        task.isOpen &&
         task.deadlineDate != null &&
         task.deadlineDate!.compareTo(today) < 0;
 
@@ -340,10 +345,7 @@ class AppTaskRow extends StatelessWidget {
         TextSpan(
           text: overdue ? 'Overdue · Due $formatted' : 'Due $formatted',
           style: overdue
-              ? TextStyle(
-                  color: scheme.error,
-                  fontWeight: FontWeight.w600,
-                )
+              ? TextStyle(color: scheme.error, fontWeight: FontWeight.w600)
               : null,
         ),
       );

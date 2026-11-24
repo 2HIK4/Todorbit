@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 
 /// The outlined orbit used for in-app Todorbit branding.
 class BrandMark extends StatelessWidget {
-  const BrandMark({super.key, this.size = 24});
+  const BrandMark({super.key, this.size = 27});
 
   static const asset = 'assets/todorbit_brand_mark.png';
 

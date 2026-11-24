@@ -760,57 +760,65 @@ class _CalendarViewState extends ConsumerState<CalendarView>
     }
   }
 
-  List<CalendarItem> _buildCalendarItems(
+  Map<DateTime, List<CalendarItem>> _projectCalendarDays(
     AppController controller,
-    DateTime date,
+    List<DateTime> days,
   ) {
-    final key = localDate(date);
-    final items = <CalendarItem>[];
+    final result = {for (final day in days) day: <CalendarItem>[]};
+    final buckets = {for (final day in days) localDate(day): result[day]!};
+    final ranges = [
+      for (final day in days)
+        (day: day, end: DateTime(day.year, day.month, day.day + 1)),
+    ];
+
+    void addTimedItem(
+      DateTime start,
+      DateTime end,
+      CalendarItem Function() build,
+    ) {
+      CalendarItem? item;
+      for (final range in ranges) {
+        if (start.isBefore(range.end) && end.isAfter(range.day)) {
+          result[range.day]!.add(item ??= build());
+        }
+      }
+    }
 
     if (controller.calendarContent != CalendarContent.tasksOnly) {
       for (final event in controller.filteredEvents) {
         final start = event.startsAt.toLocal();
         final end = event.endsAt.toLocal();
-        final dayStart = DateTime(date.year, date.month, date.day);
-        final dayEnd = DateTime(date.year, date.month, date.day + 1);
-
-        if (start.isBefore(dayEnd) && end.isAfter(dayStart)) {
-          final detailsStr = event.details.isNotEmpty
+        addTimedItem(start, end, () {
+          final details = event.details.isNotEmpty
               ? event.details.map((d) => '${d.label}: ${d.value}').join(' · ')
               : (event.location.isNotEmpty ? event.location : null);
-          items.add(
-            CalendarItem(
-              id: event.id,
-              title: event.title,
-              kind: CalendarItemKind.event,
-              startsAt: start,
-              endsAt: end,
-              allDay: event.allDay,
-              event: event,
-              colorValue: controller.effectiveEventColor(event),
-              iconName: event.iconName,
-              isCancelled: event.cancelled,
-              detailsText: detailsStr,
-            ),
+          return CalendarItem(
+            id: event.id,
+            title: event.title,
+            kind: CalendarItemKind.event,
+            startsAt: start,
+            endsAt: end,
+            allDay: event.allDay,
+            event: event,
+            colorValue: controller.effectiveEventColor(event),
+            iconName: event.iconName,
+            isCancelled: event.cancelled,
+            detailsText: details,
           );
-        }
+        });
       }
     }
 
     if (controller.calendarContent != CalendarContent.eventsOnly) {
+      final tasksById = {for (final task in controller.tasks) task.id: task};
       for (final task in controller.filteredTasks) {
-        final parentId = controller.taskParents[task.id];
-        final parent = controller.tasks
-            .where((item) => item.id == parentId)
-            .firstOrNull;
-        final parentTitle = parent?.title;
-
-        if (task.scheduledDate == key) {
+        final planned = buckets[task.scheduledDate];
+        final deadline = buckets[task.deadlineDate];
+        if (planned == null && deadline == null) continue;
+        final parentTitle = tasksById[controller.taskParents[task.id]]?.title;
+        if (planned != null) {
           final activity = controller.progressiveAssignments[task.id]?.title;
-          final detailsText = activity != null
-              ? 'Current step: $activity'
-              : null;
-          items.add(
+          planned.add(
             CalendarItem(
               id: task.id,
               title: task.title,
@@ -818,12 +826,12 @@ class _CalendarViewState extends ConsumerState<CalendarView>
               task: task,
               parentTitle: parentTitle,
               subtitle: 'Plan',
-              detailsText: detailsText,
+              detailsText: activity == null ? null : 'Current step: $activity',
             ),
           );
         }
-        if (task.deadlineDate == key && task.scheduledDate != key) {
-          items.add(
+        if (deadline != null && task.deadlineDate != task.scheduledDate) {
+          deadline.add(
             CalendarItem(
               id: task.id,
               title: task.title,
@@ -839,29 +847,22 @@ class _CalendarViewState extends ConsumerState<CalendarView>
       for (final session in controller.filteredSessions) {
         final start = session.startsAt.toLocal();
         final end = session.endsAt.toLocal();
-        final dayStart = DateTime(date.year, date.month, date.day);
-        final dayEnd = DateTime(date.year, date.month, date.day + 1);
-
-        if (start.isBefore(dayEnd) && end.isAfter(dayStart)) {
-          final task = controller.tasks
-              .where((item) => item.id == session.taskId)
-              .firstOrNull;
-          items.add(
-            CalendarItem(
-              id: session.id,
-              title: task?.title ?? 'Work session',
-              kind: CalendarItemKind.session,
-              startsAt: start,
-              endsAt: end,
-              session: session,
-              subtitle: session.outcome.name,
-            ),
-          );
-        }
+        addTimedItem(
+          start,
+          end,
+          () => CalendarItem(
+            id: session.id,
+            title: tasksById[session.taskId]?.title ?? 'Work session',
+            kind: CalendarItemKind.session,
+            startsAt: start,
+            endsAt: end,
+            session: session,
+            subtitle: session.outcome.name,
+          ),
+        );
       }
     }
-
-    return items;
+    return result;
   }
 
   Map<DateTime, List<CalendarItem>> _buildWeekItemsByDay(
@@ -871,13 +872,13 @@ class _CalendarViewState extends ConsumerState<CalendarView>
     if (_cachedWeekKey == key && _cachedWeekMap != null) {
       return _cachedWeekMap!;
     }
-    final map = <DateTime, List<CalendarItem>>{};
-    for (var i = 0; i < 7; i++) {
-      final d = DateTime(weekStart.year, weekStart.month, weekStart.day + i);
-      map[d] = _buildCalendarItems(controller, d);
-    }
+    final start = weekStart;
+    final projected = _projectCalendarDays(controller, [
+      for (var i = 0; i < 7; i++)
+        DateTime(start.year, start.month, start.day + i),
+    ]);
     _cachedWeekKey = key;
-    return _cachedWeekMap = map;
+    return _cachedWeekMap = projected;
   }
 
   Map<DateTime, List<CalendarItem>> _buildMonthItemsByDay(
@@ -887,19 +888,18 @@ class _CalendarViewState extends ConsumerState<CalendarView>
     if (_cachedMonthKey == key && _cachedMonthMap != null) {
       return _cachedMonthMap!;
     }
-    final map = <DateTime, List<CalendarItem>>{};
     final first = DateTime(day.year, day.month);
     final offset =
         (first.weekday - ref.read(appControllerProvider).firstWeekday + 7) % 7;
     final daysInMonth = DateUtils.getDaysInMonth(day.year, day.month);
     final cellCount = ((offset + daysInMonth + 6) ~/ 7) * 7;
 
-    for (var i = 0; i < cellCount; i++) {
-      final d = DateTime(first.year, first.month, first.day + i - offset);
-      map[d] = _buildCalendarItems(controller, d);
-    }
+    final projected = _projectCalendarDays(controller, [
+      for (var i = 0; i < cellCount; i++)
+        DateTime(first.year, first.month, 1 + i - offset),
+    ]);
     _cachedMonthKey = key;
-    return _cachedMonthMap = map;
+    return _cachedMonthMap = projected;
   }
 
   DateTime _resolveAnchorDate(Offset localPosition, Size viewSize) {
@@ -926,9 +926,6 @@ class _CalendarViewState extends ConsumerState<CalendarView>
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(appControllerProvider);
-    final reducedMotion =
-        controller.customization.reducedMotion ||
-        MediaQuery.disableAnimationsOf(context);
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.digit1, control: true): () =>
@@ -1362,155 +1359,119 @@ class _CalendarViewState extends ConsumerState<CalendarView>
                     },
                     child: ScrollConfiguration(
                       behavior: const CalendarScrollBehavior(),
-                      child: AnimatedSwitcher(
-                        duration: reducedMotion
-                            ? Duration.zero
-                            : const Duration(milliseconds: 200),
-                        switchInCurve: Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeInCubic,
-                        layoutBuilder: (currentChild, previousChildren) {
-                          return Stack(
-                            fit: StackFit.expand,
-                            alignment: Alignment.topLeft,
-                            children: [
-                              for (final child in previousChildren)
-                                ExcludeFocus(
-                                  child: IgnorePointer(child: child),
+                      child: KeyedSubtree(
+                        key: ValueKey(mode),
+                        child: _useLegacy
+                            ? switch (mode) {
+                                CalendarMode.day => _dayList(controller, day),
+                                CalendarMode.week => _weekGrid(controller),
+                                CalendarMode.month => Column(
+                                  children: [
+                                    if (_isLoadingMonth)
+                                      const LinearProgressIndicator(
+                                        minHeight: 2,
+                                      ),
+                                    Expanded(child: _monthGrid(controller)),
+                                  ],
                                 ),
-                              ?currentChild,
-                            ],
-                          );
-                        },
-                        transitionBuilder: (child, animation) {
-                          return FadeTransition(
-                            opacity: animation,
-                            child: ScaleTransition(
-                              scale: Tween<double>(begin: 0.98, end: 1.0)
-                                  .animate(
-                                    CurvedAnimation(
-                                      parent: animation,
-                                      curve: Curves.easeOutCubic,
-                                      reverseCurve: Curves.easeInCubic,
-                                    ),
-                                  ),
-                              child: child,
-                            ),
-                          );
-                        },
-                        child: KeyedSubtree(
-                          key: ValueKey(mode),
-                          child: _useLegacy
-                              ? switch (mode) {
-                                  CalendarMode.day => _dayList(controller, day),
-                                  CalendarMode.week => _weekGrid(controller),
-                                  CalendarMode.month => Column(
-                                    children: [
-                                      if (_isLoadingMonth)
-                                        const LinearProgressIndicator(
-                                          minHeight: 2,
-                                        ),
-                                      Expanded(child: _monthGrid(controller)),
-                                    ],
-                                  ),
-                                }
-                              : switch (mode) {
-                                  CalendarMode.day => CalendarDayView(
-                                    dayDate: day,
-                                    items: _buildCalendarItems(controller, day),
-                                    config: _config,
-                                    interactionController:
-                                        _interactionController,
-                                    onItemTap: _handleCalendarItemTap,
-                                    onSlotSecondaryTap: _showCreateMenu,
-                                    alarmRules: controller.alarmRules,
-                                    onInteractionFinished:
-                                        _handleInteractionFinished,
-                                    onNavigateDay: (dir) =>
-                                        _navigateDuringInteraction(
-                                          dir,
-                                          isWeek: false,
-                                        ),
-                                  ),
-                                  CalendarMode.week => LayoutBuilder(
-                                    builder: (context, bounds) {
-                                      if (bounds.maxWidth <
-                                          650 *
-                                              MediaQuery.textScalerOf(context)
-                                                  .scale(14) /
-                                              14) {
-                                        return _weekGrid(controller);
-                                      }
-                                      return CalendarWeekView(
-                                        weekStart: weekStart,
+                              }
+                            : switch (mode) {
+                                CalendarMode.day => CalendarDayView(
+                                  dayDate: day,
+                                  items: _projectCalendarDays(controller, [
+                                    day,
+                                  ])[day]!,
+                                  config: _config,
+                                  interactionController: _interactionController,
+                                  onItemTap: _handleCalendarItemTap,
+                                  onSlotSecondaryTap: _showCreateMenu,
+                                  alarmRules: controller.alarmRules,
+                                  onInteractionFinished:
+                                      _handleInteractionFinished,
+                                  onNavigateDay: (dir) =>
+                                      _navigateDuringInteraction(
+                                        dir,
+                                        isWeek: false,
+                                      ),
+                                ),
+                                CalendarMode.week => LayoutBuilder(
+                                  builder: (context, bounds) {
+                                    if (bounds.maxWidth <
+                                        650 *
+                                            MediaQuery.textScalerOf(context)
+                                                .scale(14) /
+                                            14) {
+                                      return _weekGrid(controller);
+                                    }
+                                    return CalendarWeekView(
+                                      weekStart: weekStart,
+                                      selectedDate: day,
+                                      itemsByDay: _buildWeekItemsByDay(
+                                        controller,
+                                      ),
+                                      config: _config,
+                                      interactionController:
+                                          _interactionController,
+                                      onItemTap: _handleCalendarItemTap,
+                                      onSlotSecondaryTap: _showCreateMenu,
+                                      onDayHeaderTap: (date) {
+                                        _setMode(CalendarMode.day);
+                                        setState(() {
+                                          _setSelected(date);
+                                        });
+                                      },
+                                      alarmRules: controller.alarmRules,
+                                      onInteractionFinished:
+                                          _handleInteractionFinished,
+                                      onNavigateWeek: (dir) =>
+                                          _navigateDuringInteraction(
+                                            dir,
+                                            isWeek: true,
+                                          ),
+                                    );
+                                  },
+                                ),
+                                CalendarMode.month => Column(
+                                  children: [
+                                    if (_isLoadingMonth)
+                                      const LinearProgressIndicator(
+                                        minHeight: 2,
+                                      ),
+                                    Expanded(
+                                      child: CalendarMonthView(
                                         selectedDate: day,
-                                        itemsByDay: _buildWeekItemsByDay(
+                                        firstWeekday: ref
+                                            .read(appControllerProvider)
+                                            .firstWeekday,
+                                        itemsByDay: _buildMonthItemsByDay(
                                           controller,
                                         ),
                                         config: _config,
-                                        interactionController:
-                                            _interactionController,
                                         onItemTap: _handleCalendarItemTap,
-                                        onSlotSecondaryTap: _showCreateMenu,
-                                        onDayHeaderTap: (date) {
+                                        onDayTap: _showDayPreview,
+                                        onItemDroppedOnDate:
+                                            _handleMonthItemDropped,
+                                        onShowDay: (date) {
                                           _setMode(CalendarMode.day);
                                           setState(() {
                                             _setSelected(date);
                                           });
                                         },
-                                        alarmRules: controller.alarmRules,
-                                        onInteractionFinished:
-                                            _handleInteractionFinished,
-                                        onNavigateWeek: (dir) =>
-                                            _navigateDuringInteraction(
-                                              dir,
-                                              isWeek: true,
-                                            ),
-                                      );
-                                    },
-                                  ),
-                                  CalendarMode.month => Column(
-                                    children: [
-                                      if (_isLoadingMonth)
-                                        const LinearProgressIndicator(
-                                          minHeight: 2,
-                                        ),
-                                      Expanded(
-                                        child: CalendarMonthView(
-                                          selectedDate: day,
-                                          firstWeekday: ref
-                                              .read(appControllerProvider)
-                                              .firstWeekday,
-                                          itemsByDay: _buildMonthItemsByDay(
-                                            controller,
-                                          ),
-                                          config: _config,
-                                          onItemTap: _handleCalendarItemTap,
-                                          onDayTap: _showDayPreview,
-                                          onItemDroppedOnDate:
-                                              _handleMonthItemDropped,
-                                          onShowDay: (date) {
-                                            _setMode(CalendarMode.day);
-                                            setState(() {
-                                              _setSelected(date);
-                                            });
-                                          },
-                                          onShowWeek: (date) {
-                                            _setMode(CalendarMode.week);
-                                            setState(() {
-                                              _setSelected(date);
-                                            });
-                                          },
-                                          onAddEvent: (date) =>
-                                              _editEvent(null, date),
-                                          onAddTask: widget.onAddTask,
-                                          onAddSession: (date) =>
-                                              _editSession(),
-                                        ),
+                                        onShowWeek: (date) {
+                                          _setMode(CalendarMode.week);
+                                          setState(() {
+                                            _setSelected(date);
+                                          });
+                                        },
+                                        onAddEvent: (date) =>
+                                            _editEvent(null, date),
+                                        onAddTask: widget.onAddTask,
+                                        onAddSession: (date) => _editSession(),
                                       ),
-                                    ],
-                                  ),
-                                },
-                        ),
+                                    ),
+                                  ],
+                                ),
+                              },
                       ),
                     ),
                   );

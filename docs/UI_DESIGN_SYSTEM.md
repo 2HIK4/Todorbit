@@ -27,7 +27,9 @@ Todorbit retains its own schedule, timer and navigation contracts.
 ## Tokens and controls
 
 - Default light uses #F6F8F9 canvas, #FFFFFF surface and #006A66 accent.
-  Dark uses #15191C canvas, #20262A surface and #70DACE accent.
+  Dark uses #181819 canvas, #232325 surface and #B4ABEE accent.
+  Beta 27 Teal remains a palette choice. Explicit saved colors keep their
+  existing values.
   ColorScheme assigns foregrounds, surfaces and interaction states.
   TodorbitThemeTokens owns status and priority roles.
 - Use ThemeData typography with the platform font. Today uses a 32 sp page
@@ -53,7 +55,7 @@ Todorbit retains its own schedule, timer and navigation contracts.
 
 ## Batch 1 presentation rules
 
-- Limit desktop Today to an 800 dp content column. Keep calendar commitments
+- Use the shared desktop task-list bounds for Today. Keep calendar commitments
   and planned tasks in separate groups. Only reserve space for schedule
   shortcuts when an actionable summary exists.
 - Use localized, abbreviated dates with the year. Task rows and details use
@@ -76,8 +78,11 @@ Todorbit retains its own schedule, timer and navigation contracts.
 ## Batch 2 task-list presentation
 
 - Inbox, All tasks, date and status views, categories, projects and saved
-  views share the task list presentation. Use the bounded Today column on
+  views share the task list presentation. Use a start-aligned, bounded 1120 dp content area on
   Windows and a scrollable list with the existing app bar on Android.
+  Keep header, filters, section labels and rows on the same leading inset.
+  In Upcoming, start each contiguous planned day with its heading when
+  Schedule sort is active. Preserve selected sort, series and subtask rules.
 - Use shared sort labels and show a specific empty message for search or
   filter results. In scoped views, give events their own heading and keep
   task completion controls in the task section.
@@ -109,6 +114,21 @@ Todorbit retains its own schedule, timer and navigation contracts.
   action bar for events. Keep editable titles wrapped with a single-line
   value. Keep Close and Save reachable with an IME. The Windows side panel
   uses a focused presentation when narrow without remounting the draft.
+
+- Segment related choices on a low-emphasis surface. Use a distinct
+  selected fill, readable text and visible focus, hover and press states.
+  Keep Material semantics and sizing. The Android compact fallback can
+  wrap single-choice chips when the labels no longer fit one row.
+- Use one live Calendar canvas when changing granularity. Preserve
+  gesture cancellation, date navigation, scroll and zoom behavior.
+
+## Iconography
+
+Use Material glyphs for task and navigation controls. Align 20 dp navigation
+and action icons to one optical rail. Use 16 dp inline status glyphs with
+a label or tooltip. The filled high-priority flag adds a shape cue. Keep the
+Todorbit orbit recognizable with its existing geometry and strengthen its
+light inner stroke at native 16–24 px title-bar sizes.
 
 ## Batch 4 Focus, Habits and Goals
 

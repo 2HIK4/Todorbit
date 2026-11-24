@@ -443,10 +443,10 @@ internal sealed record WidgetPalette(
   }
   // Fallbacks mirror ThemePalette when no custom colors have been published.
   internal static WidgetPalette Dark { get; } = new(
-    Color.FromArgb(21, 25, 28), Color.FromArgb(240, 244, 244),
-    Color.FromArgb(189, 202, 204), Color.FromArgb(32, 38, 42),
-    Color.FromArgb(32, 38, 42), Color.FromArgb(112, 218, 206),
-    Color.FromArgb(112, 218, 206), Color.FromArgb(59, 71, 77),
+    Color.FromArgb(24, 24, 25), Color.FromArgb(241, 241, 242),
+    Color.FromArgb(189, 189, 194), Color.FromArgb(35, 35, 37),
+    Color.FromArgb(35, 35, 37), Color.FromArgb(180, 171, 238),
+    Color.FromArgb(180, 171, 238), Color.FromArgb(65, 65, 69),
     Color.FromArgb(255, 155, 176));
 
   internal static WidgetPalette Light { get; } = new(

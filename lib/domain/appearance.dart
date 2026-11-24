@@ -24,6 +24,17 @@ class ThemePalette {
     'error': Color(0xFFB63B53),
   });
   static const dark = ThemePalette({
+    'background': Color(0xFF181819),
+    'surface': Color(0xFF232325),
+    'accent': Color(0xFFB4ABEE),
+    'primaryText': Color(0xFFF1F1F2),
+    'secondaryText': Color(0xFFBDBDC2),
+    'border': Color(0xFF414145),
+    'success': Color(0xFF80D4AC),
+    'warning': Color(0xFFF3C37C),
+    'error': Color(0xFFFF9BB0),
+  });
+  static const beta27Dark = ThemePalette({
     'background': Color(0xFF15191C),
     'surface': Color(0xFF20262A),
     'accent': Color(0xFF70DACE),
@@ -196,7 +207,8 @@ class ThemeCustomization {
       calendarDefaultView: value['calendarDefaultView'] as String,
       reducedMotion: value['reducedMotion'] as bool,
       widgetOpacity: value['widgetOpacity'] as int,
-      detailPresentation: (value['detailPresentation'] as String?) ?? 'sidePanel',
+      detailPresentation:
+          (value['detailPresentation'] as String?) ?? 'sidePanel',
     );
   }
 }

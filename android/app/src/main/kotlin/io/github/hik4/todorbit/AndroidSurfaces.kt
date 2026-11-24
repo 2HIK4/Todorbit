@@ -233,7 +233,7 @@ object AndroidSurfaces {
         val palette = data.optJSONObject("palettes")?.optJSONObject(if(dark) "dark" else "light")
         fun color(key: String, fallback: String) = try { Color.parseColor(palette?.optString(key,fallback) ?: fallback) } catch (_: Exception) { Color.parseColor(fallback) }
         // Match ThemePalette until Flutter publishes the profile colors.
-        val surface = color("surface",if(dark) "#20262A" else "#FFFFFF")
+        val surface = color("surface",if(dark) "#232325" else "#FFFFFF")
         fun contrastText(candidate: Int): Int {
             fun light(c: Int): Double {
                 fun channel(v: Int): Double { val n=v/255.0; return if(n<=0.04045) n/12.92 else Math.pow((n+0.055)/1.055,2.4) }
@@ -242,9 +242,9 @@ object AndroidSurfaces {
             val a=light(surface); val b=light(candidate)
             return if((maxOf(a,b)+.05)/(minOf(a,b)+.05)>=4.5) candidate else if(a>.179) Color.BLACK else Color.WHITE
         }
-        val foreground = contrastText(color("primaryText",if(dark) "#F0F4F4" else "#20272B"))
-        val secondary = contrastText(color("secondaryText",if(dark) "#BDCACC" else "#505E65"))
-        val accent = contrastText(color("accent",if(dark) "#70DACE" else "#006A66"))
+        val foreground = contrastText(color("primaryText",if(dark) "#F1F1F2" else "#20272B"))
+        val secondary = contrastText(color("secondaryText",if(dark) "#BDBDC2" else "#505E65"))
+        val accent = contrastText(color("accent",if(dark) "#B4ABEE" else "#006A66"))
         val opacity = prefs.getInt("opacity-$id",95).coerceIn(40,100)
         val remote = RemoteViews(context.packageName,R.layout.todorbit_widget)
         // Opacity belongs to the outer shell; opaque content surfaces keep text

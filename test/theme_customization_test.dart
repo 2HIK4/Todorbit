@@ -37,6 +37,17 @@ void main() {
     );
   });
 
+  test('the stored Beta 27 dark palette retains its explicit colors', () {
+    const prior = ThemeCustomization(
+      dark: ThemePalette.beta27Dark,
+      compact: true,
+    );
+    final restored = ThemeCustomization.fromJson(prior.toJson());
+    expect(restored.dark.toJson(), ThemePalette.beta27Dark.toJson());
+    expect(restored.dark.toJson(), isNot(ThemePalette.dark.toJson()));
+    expect(restored.compact, isTrue);
+  });
+
   test('theme import rejects malformed and unsupported content', () {
     final value = const ThemeCustomization().toJson();
     expect(

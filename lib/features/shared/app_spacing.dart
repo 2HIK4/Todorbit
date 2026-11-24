@@ -45,6 +45,7 @@ abstract final class AppLayout {
   static const double panelResizeHandle = 16;
   static const double workspaceMinWidth = 420;
   static const double workspaceMaxWidth = 800;
+  static const double taskListMaxWidth = 1120;
   // Standard FAB, its edge gap, and clearance for the final row.
   static const double taskListFabClearance =
       56 + AppSpacing.content * 2 + AppSpacing.related;
@@ -67,4 +68,11 @@ abstract final class AppRadius {
   static const double control = 8;
   static const double surface = 10;
   static const double dialog = 14;
+}
+
+/// Sizes for Todorbit's Material glyphs. Interactive targets size separately.
+abstract final class AppIconSize {
+  static const double inline = 16;
+  static const double navigation = 20;
+  static const double action = 20;
 }

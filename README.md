@@ -27,6 +27,11 @@ Settings keeps Sync status and queued changes alongside the last successful
 sync. Backups provide point-in-time recovery. Windows and Android native
 widgets use the selected palette when available.
 
+## Desktop refinement in development
+
+The [Beta 27 refinement receipt](docs/BETA_27_REFINEMENT.md) records the desktop
+task-list layout, graphite appearance, and isolated Calendar comparison.
+
 ## Android beta installation
 
 The production-signed [Android 1.0.19-beta.12 pre-release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.12) supports Android 8.0+ with a universal ARM64/x86-64 APK, resumable updates, Tasks/Calendar widgets and incremental Sync with Standard or optional private encryption. Download the APK and verify its published SHA-256. Real Drive cross-device acceptance remains unverified. Back up existing data and start with disposable profiles. Before replacing a debug-signed app, verify an external backup and recovery first. See [phone signing and backup testing](docs/ANDROID_BETA_2_PHONE_TESTING.md), [sync setup](docs/GOOGLE_DRIVE_SYNC.md) and [publication evidence and test skips](docs/UI_QUALITY_BETA_12_PUBLICATION.md).

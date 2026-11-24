@@ -1,5 +1,17 @@
 # Progress
 
+## Beta 27 UI and Calendar refinement (2026-11-24)
+
+Published Beta 27 is the baseline for `feature/todorbit-beta27-refinement`.
+Windows task lists align with navigation, Upcoming adds planned-day headings
+and the shared Calendar segments use a tonal fill. Graphite with muted violet
+becomes the default dark palette. Existing saved colors are preserved.
+
+The dense Windows Profile comparison found repeated date projection and
+crossfade compositing. The worst UI frame for Month fell from 513 to 71 ms.
+Dense scrolling still has raster budget misses. The version and Schema 29
+remain the same. [Refinement evidence](BETA_27_REFINEMENT.md)
+
 ## UI Redesign 2.0 final integration (2026-11-24)
 
 Final source `90768ef` on `feature/todorbit-ui-redesign-2`. All 67

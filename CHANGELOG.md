@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Align Windows task workspaces with the sidebar, widen their content and
+  group schedule-sorted Upcoming tasks by planned day.
+- Use graphite and muted violet for the default dark palette. Keep Beta 27
+  Teal as an appearance choice and preserve saved palettes.
+- Restyle segmented controls and refine small navigation, priority and
+  orbit glyphs.
+- Project Calendar items once per displayed date range and switch dense
+  Calendar views without overlapping canvases.
+
 ## 1.0.19-beta.27+50
 
 - Matched the Android launch screen to the neutral Todorbit palette and kept

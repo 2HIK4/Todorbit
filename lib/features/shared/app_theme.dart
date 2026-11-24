@@ -146,6 +146,57 @@ ThemeData buildAppTheme(
         ),
       ),
     ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        side: const WidgetStatePropertyAll(BorderSide.none),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.control),
+          ),
+        ),
+        minimumSize: WidgetStatePropertyAll(
+          Size(0, android ? AppLayout.minTapTarget : 36),
+        ),
+        backgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) {
+            return scheme.onSurface.withValues(alpha: 0.05);
+          }
+          return states.contains(WidgetState.selected)
+              ? Color.lerp(surface, accent, 0.24)
+              : scheme.surfaceContainerHigh;
+        }),
+        foregroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) {
+            return scheme.onSurface.withValues(alpha: 0.38);
+          }
+          final selected = states.contains(WidgetState.selected);
+          final background = selected
+              ? Color.lerp(surface, accent, 0.24)!
+              : scheme.surfaceContainerHigh;
+          final preferred = selected
+              ? scheme.onSurface
+              : scheme.onSurfaceVariant;
+          final high = preferred.computeLuminance();
+          final low = background.computeLuminance();
+          final contrast =
+              (high > low ? high + 0.05 : low + 0.05) /
+              (high > low ? low + 0.05 : high + 0.05);
+          return contrast >= 4.5 ? preferred : foregroundOn(background);
+        }),
+        overlayColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.focused)) {
+            return scheme.onSurface.withValues(alpha: 0.20);
+          }
+          if (states.contains(WidgetState.pressed)) {
+            return scheme.onSurface.withValues(alpha: 0.14);
+          }
+          if (states.contains(WidgetState.hovered)) {
+            return scheme.onSurface.withValues(alpha: 0.08);
+          }
+          return null;
+        }),
+      ),
+    ),
     tooltipTheme: desktopTooltipTheme(scheme),
     scaffoldBackgroundColor: palette['background'],
     floatingActionButtonTheme: FloatingActionButtonThemeData(

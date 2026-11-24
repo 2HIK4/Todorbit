@@ -1,5 +1,14 @@
 # Deferred Verification Backlog
 
+## Beta 27 refinement follow-through (2026-11-24)
+
+The [refinement receipt](BETA_27_REFINEMENT.md) records Windows Profile
+measurements, palette and layout comparisons and manual limits. The dense
+Day scroll still has raster budget misses on the development host. A long
+real-device run and installed Windows shell/widget DPI checks remain open.
+Run signing, packaging, upgrade and official 16 KiB acceptance with a future
+release candidate. This branch did not create or publish a release.
+
 ## UI Redesign 2.0 release acceptance (2026-11-24)
 
 The [final integration review](UI_REDESIGN_FINAL_ACCEPTANCE.md#remaining-acceptance-and-decision)

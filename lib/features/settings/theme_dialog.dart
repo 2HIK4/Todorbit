@@ -270,6 +270,11 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
                           ),
                           child: Text(dark ? 'Use Dusk' : 'Use Ocean'),
                         ),
+                        if (dark)
+                          TextButton(
+                            onPressed: () => update(ThemePalette.beta27Dark),
+                            child: const Text('Use Beta 27 Teal'),
+                          ),
                         TextButton(
                           onPressed: () => setState(() {
                             draft = draft.copyWith(

@@ -266,6 +266,9 @@ class _MobileCalendarState extends ConsumerState<MobileCalendar>
                     ChoiceChip(
                       label: Text(label),
                       selected: mode == value,
+                      side: BorderSide.none,
+                      backgroundColor: scheme.surfaceContainerHigh,
+                      selectedColor: scheme.primaryContainer,
                       onSelected: (_) => changeMode(value),
                     ),
                 ],

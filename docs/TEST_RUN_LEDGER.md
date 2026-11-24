@@ -1,5 +1,28 @@
 # Persistent test run ledger
 
+## Beta 27 UI and Calendar refinement (2026-11-24)
+
+Baseline `7ede889`, Windows 11, Flutter 3.47.7 and Dart 3.13.5.
+Actual Windows Profile comparisons used the same seeded SQLite fixture in
+disposable APPDATA and LOCALAPPDATA directories. The
+[refinement receipt](BETA_27_REFINEMENT.md) links the screenshots, driver,
+timing table and raw trace paths.
+
+- 68 final focused tests passed, including one-canvas mode switches, reduced
+  motion zoom, planned-date grouping, theme round trip, series integrity,
+  multi-day resize, saved views and task/event draft safety. The earlier
+  focused run passed the move, undo/redo, Calendar persistence, Android
+  navigation and desktop hover cases. Its three stale visual assertions
+  were replaced by the intended priority and transition behavior checks.
+- Changed-file Dart analysis passed. All 39 architecture checks and the
+  developer docs/catalog check passed.
+- Windows native x64 Release compiled and passed the isolated companion
+  self-test. No registered install or update was performed.
+- API 35 Debug emulator ran the populated Calendar and task views at 320 dp
+  and 150% text. System UI startup instability required a recovery before
+  the capture. Offscreen Flutter covers the equivalent viewport and the
+  narrow Windows layout independently.
+
 ## UI Redesign 2.0 final integration (2026-11-24)
 
 Initial integrated source `f17b6f8441363b71f9e142f9190059aea223681e`.

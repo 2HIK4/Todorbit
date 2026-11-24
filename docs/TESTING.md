@@ -24,7 +24,7 @@ artifacts or repeat local full suites merely to refresh a receipt.
 | **Level 1: Fast** | Small text, cosmetic, layout or UI edits; focused unit/widget tests; relevant static analysis (`flutter analyze --no-pub <paths>`) | Run immediately after relevant edits during coding. |
 | **Level 2: Critical** | Data safety, SQLite persistence, schema migrations, CAS revision tokens, sync exchange/journals, encryption, backup/restore, recurrence math, alarms, and undo/redo stacks | Run the smallest tests covering the changed critical boundary immediately; **never deferred**. Reuse matching valid passes; unrelated UI/docs changes do not require every critical suite. Unverified critical code cannot be marked complete. |
 | **Level 3: Deferred Regression** | Broad serial Flutter test suites, multi-module integration, cross-platform host regression, and release tooling unit tests | Batched periodically or triggered on-demand; record requirements in [Deferred verification](DEFERRED_VERIFICATION.md). |
-| **Level 4: Release Acceptance** | Packaging (Release C++ build, Inno Setup installer, signed APK), isolated Windows Sandbox upgrades, physical display DPI checks, Android 16 KiB runtime, and real Google OAuth | Mandatory before publication; record requirements in [Deferred verification](DEFERRED_VERIFICATION.md). Never treat Levels 1â€“3 as release readiness. |
+| **Level 4: Release Acceptance** | Packaging (Release C++ build, Inno Setup installer, signed APK), isolated registered Windows upgrades, physical display DPI checks, Android 16 KiB runtime, and real Google OAuth | Mandatory before publication; record requirements in [Deferred verification](DEFERRED_VERIFICATION.md). Never treat Levels 1â€“3 as release readiness. |
 
 These correspond to risk tiers. The local helper modes remain Quick/Feature/Full.
 Critical selects explicit affected checks; Release adds the required CI, artifact
@@ -32,6 +32,24 @@ and platform acceptance gates. Full Flutter suites need a concrete integration o
 release reason, not an ordinary UI edit. Record unexecuted Level 3 and Level 4 gates in
 [Deferred verification](DEFERRED_VERIFICATION.md). Diagnose a failed environment before
 retrying it; change one relevant condition or collect new diagnostic evidence.
+
+### Profile Calendar and capture the workspace
+
+Build a test binary with `flutter build windows --profile --no-pub --target test_driver/driver_main.dart`.
+Use the generated plugin junction helper if the host cannot create Flutter
+plugin symlinks.
+
+Set `TODORBIT_REFINEMENT_PROFILE` to the absolute ignored
+`.buildlog/refinement/fixture-v1` path. In that shell set `APPDATA` and
+`LOCALAPPDATA` to its `Roaming` and `Local` folders. Use a fresh fixture and
+run `flutter test --no-pub test/seed_isolated_calendar_profile.dart` once.
+The seeder validates these paths before writing the profile.
+
+Run `tools/dev/profile-calendar.ps1 -Run baseline` with the baseline Profile
+binary and a new run name for the candidate. Each run clones the same seeded
+profile and records CPU samples, frame traces, settled driver latency, memory
+and screenshots in its report folder. The driver maximizes only the selected
+test executable. See the [Beta 27 refinement receipt](BETA_27_REFINEMENT.md).
 
 ### Module test matrix
 

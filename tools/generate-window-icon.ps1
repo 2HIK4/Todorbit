@@ -11,7 +11,9 @@ foreach ($size in $sizes) {
   $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
   $graphics.Clear([System.Drawing.Color]::Transparent)
   $graphics.ScaleTransform($size / 24.0, $size / 24.0)
-  foreach ($layer in @(@('#050505', 3.5), @('#FFFFFF', 2.0))) {
+  # The same orbit needs a slightly stronger inner stroke at title-bar sizes.
+  $innerStroke = if ($size -le 24) { 2.4 } else { 2.0 }
+  foreach ($layer in @(@('#050505', 3.5), @('#FFFFFF', $innerStroke))) {
     $pen = [System.Drawing.Pen]::new(
       [System.Drawing.ColorTranslator]::FromHtml($layer[0]), [float]$layer[1])
     $pen.StartCap = $pen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round

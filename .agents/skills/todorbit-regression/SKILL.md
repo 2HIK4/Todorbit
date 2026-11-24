@@ -13,6 +13,10 @@ For task lists, exercise the final row with the floating Add button and
 compact toolbar. Verify the fixed editor footer leaves scrollable help and
 controls reachable. Use the [task-list presentation rules](../../../docs/UI_DESIGN_SYSTEM.md#batch-2-task-list-presentation).
 
+For desktop Calendar performance, use the isolated Profile driver in
+`docs/TESTING.md`. Reuse the populated fixture and report driver latency, UI
+and raster times, sampled stacks and repeated-open heap separately.
+
 For Calendar, use the `calendar-ui` selector to cover both Flutter shells.
 For timeline renderer changes, exercise overlap, pointer cancellation, resize
 and undo in the affected layout. Confirm a drag or resize screenshot shows a

@@ -1,13 +1,42 @@
 // ignore_for_file: avoid_print
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_manager/data/app_database.dart';
 import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/data/profile_paths.dart';
 import 'package:life_manager/domain/models.dart';
+import 'package:path/path.dart' as path;
+
+import 'support/refinement_fixture.dart';
 
 void main() {
-  test('seed isolated calendar profile with representative synthetic data', () async {
+  test('seed an isolated Calendar profile', () async {
+    final refinementRoot = Platform.environment['TODORBIT_REFINEMENT_PROFILE'];
+    if (refinementRoot != null) {
+      final roaming = path.join(refinementRoot, 'Roaming');
+      if (!path.isAbsolute(refinementRoot) ||
+          !path.equals(Platform.environment['APPDATA'] ?? '', roaming) ||
+          !path.equals(
+            Platform.environment['LOCALAPPDATA'] ?? '',
+            path.join(refinementRoot, 'Local'),
+          )) {
+        throw StateError(
+          'The refinement fixture requires fresh isolated app data',
+        );
+      }
+    }
     final profileDir = ProfilePaths.activeDirectory();
+    if (refinementRoot != null &&
+        (!path.equals(
+              profileDir.path,
+              path.join(refinementRoot, 'Roaming', 'TodoPilot'),
+            ) ||
+            await profileDir.exists())) {
+      throw StateError(
+        'The refinement fixture requires a fresh profile directory',
+      );
+    }
     print('Seeding database in: ${profileDir.path}');
     await profileDir.create(recursive: true);
 
@@ -127,8 +156,20 @@ void main() {
       await repo.addEvent(
         EventDraft(
           title: 'Client Demo & Feedback',
-          startsAt: DateTime(yesterday.year, yesterday.month, yesterday.day, 11, 0),
-          endsAt: DateTime(yesterday.year, yesterday.month, yesterday.day, 12, 0),
+          startsAt: DateTime(
+            yesterday.year,
+            yesterday.month,
+            yesterday.day,
+            11,
+            0,
+          ),
+          endsAt: DateTime(
+            yesterday.year,
+            yesterday.month,
+            yesterday.day,
+            12,
+            0,
+          ),
           colorValue: 0xFF2563EB,
         ),
       );
@@ -137,7 +178,13 @@ void main() {
       await repo.addEvent(
         EventDraft(
           title: '1-on-1 with Tech Lead',
-          startsAt: DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 14, 0),
+          startsAt: DateTime(
+            tomorrow.year,
+            tomorrow.month,
+            tomorrow.day,
+            14,
+            0,
+          ),
           endsAt: DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 15, 0),
           colorValue: 0xFF0D9488,
         ),
@@ -147,13 +194,30 @@ void main() {
       await repo.addEvent(
         EventDraft(
           title: 'Weekly Retrospective',
-          startsAt: DateTime(twoDaysLater.year, twoDaysLater.month, twoDaysLater.day, 15, 0),
-          endsAt: DateTime(twoDaysLater.year, twoDaysLater.month, twoDaysLater.day, 16, 30),
+          startsAt: DateTime(
+            twoDaysLater.year,
+            twoDaysLater.month,
+            twoDaysLater.day,
+            15,
+            0,
+          ),
+          endsAt: DateTime(
+            twoDaysLater.year,
+            twoDaysLater.month,
+            twoDaysLater.day,
+            16,
+            30,
+          ),
           colorValue: 0xFF7C3AED,
         ),
       );
 
-      print('Successfully seeded synthetic calendar data into isolated profile.');
+      if (refinementRoot != null) {
+        await seedRefinementRows(repo, today);
+      }
+      print(
+        'Successfully seeded synthetic calendar data into isolated profile.',
+      );
     } finally {
       await db.close();
     }

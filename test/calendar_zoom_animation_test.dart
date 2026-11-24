@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:life_manager/app/app_controller.dart';
 import 'package:life_manager/data/app_database.dart';
 import 'package:life_manager/data/life_repository.dart';
+import 'package:life_manager/features/calendar/calendar_day_view.dart';
 import 'package:life_manager/features/calendar/calendar_view.dart';
 
 void main() {
@@ -24,101 +25,52 @@ void main() {
       await db.close();
     });
 
-    testWidgets('AnimatedSwitcher is present with 200ms easeOutCubic transition', (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1200, 800));
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            appControllerProvider.overrideWith((ref) => controller),
-          ],
-          child: MaterialApp(
-            home: Scaffold(
-              body: CalendarView(
-                onTaskTap: (_) {},
-                onSmartReschedule: () {},
-                onAddTask: (_) {},
+    for (final reducedMotion in [false, true]) {
+      testWidgets(
+        'mode changes use one canvas and zoom honors reduced motion=$reducedMotion',
+        (tester) async {
+          await tester.binding.setSurfaceSize(const Size(1200, 800));
+          addTearDown(() => tester.binding.setSurfaceSize(null));
+          await controller.saveCustomization(
+            controller.customization.copyWith(reducedMotion: reducedMotion),
+          );
+          await tester.pumpWidget(
+            ProviderScope(
+              overrides: [
+                appControllerProvider.overrideWith((ref) => controller),
+              ],
+              child: MaterialApp(
+                home: Scaffold(
+                  body: CalendarView(
+                    onTaskTap: (_) {},
+                    onSmartReschedule: () {},
+                    onAddTask: (_) {},
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
+          );
+          await tester.pumpAndSettle();
+
+          expect(find.byKey(const ValueKey(CalendarMode.week)), findsOneWidget);
+          await tester.tap(find.text('Day'));
+          await tester.pump();
+          expect(find.byKey(const ValueKey(CalendarMode.day)), findsOneWidget);
+          expect(find.byKey(const ValueKey(CalendarMode.week)), findsNothing);
+
+          double height() => tester
+              .widget<CalendarDayView>(find.byType(CalendarDayView))
+              .config
+              .hourHeight;
+          final before = height();
+          await tester.tap(find.byTooltip('Zoom in time slots'));
+          await tester.pump();
+          final first = height();
+          await tester.pumpAndSettle();
+          expect(height(), greaterThan(before));
+          expect(first, reducedMotion ? height() : before);
+        },
       );
-      await tester.pumpAndSettle();
-
-      final animatedSwitcherFinder = find.byType(AnimatedSwitcher);
-      expect(animatedSwitcherFinder, findsOneWidget);
-
-      final switcher = tester.widget<AnimatedSwitcher>(animatedSwitcherFinder);
-      expect(switcher.duration, const Duration(milliseconds: 200));
-      expect(switcher.switchInCurve, Curves.easeOutCubic);
-      expect(switcher.switchOutCurve, Curves.easeInCubic);
-    });
-
-    testWidgets('Reduced motion bypasses animation duration (Duration.zero)', (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1200, 800));
-
-      // Enable reduced motion in customization
-      await controller.saveCustomization(
-        controller.customization.copyWith(reducedMotion: true),
-      );
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            appControllerProvider.overrideWith((ref) => controller),
-          ],
-          child: MaterialApp(
-            home: Scaffold(
-              body: CalendarView(
-                onTaskTap: (_) {},
-                onSmartReschedule: () {},
-                onAddTask: (_) {},
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      final switcher = tester.widget<AnimatedSwitcher>(find.byType(AnimatedSwitcher));
-      expect(switcher.duration, Duration.zero);
-    });
-
-    testWidgets('Mode change smoothly cross-fades between view modes', (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1200, 800));
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            appControllerProvider.overrideWith((ref) => controller),
-          ],
-          child: MaterialApp(
-            home: Scaffold(
-              body: CalendarView(
-                onTaskTap: (_) {},
-                onSmartReschedule: () {},
-                onAddTask: (_) {},
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // Initially on Week mode
-      expect(find.byKey(const ValueKey(CalendarMode.week)), findsOneWidget);
-
-      // Switch to Day mode by tapping "Day"
-      await tester.tap(find.text('Day'));
-      await tester.pump(); // Start transition
-
-      // During animation, both incoming Day and outgoing Week exist in the stack
-      expect(find.byKey(const ValueKey(CalendarMode.day)), findsOneWidget);
-
-      // Settle animation (200ms)
-      await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey(CalendarMode.day)), findsOneWidget);
-      expect(find.byKey(const ValueKey(CalendarMode.week)), findsNothing);
-    });
+    }
   });
 }

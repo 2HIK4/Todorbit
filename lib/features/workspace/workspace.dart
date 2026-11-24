@@ -1940,7 +1940,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       ),
       selectedTileColor: scheme.primaryContainer,
       selectedColor: scheme.onPrimaryContainer,
-      leading: Icon(icon, size: 19),
+      leading: Icon(icon, size: AppIconSize.navigation),
       title: Tooltip(
         message: title,
         excludeFromSemantics: true,
@@ -2051,6 +2051,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
           ? controller.tasks
           : const [],
     );
+    final groupByPlannedDay =
+        controller.view == WorkspaceView.upcoming &&
+        controller.sort == TaskSort.schedule;
     final scopedEvents =
         {
           WorkspaceView.project,
@@ -2191,8 +2194,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                             onSelected: controller.setSort,
                             itemBuilder: (_) => [
                               for (final sort in TaskSort.values)
-                                PopupMenuItem(
+                                CheckedPopupMenuItem(
                                   value: sort,
+                                  checked: sort == controller.sort,
                                   child: Text(taskSortLabel(sort)),
                                 ),
                             ],
@@ -2439,23 +2443,52 @@ class _WorkspaceState extends ConsumerState<Workspace> {
               sliver: SliverList.builder(
                 itemCount: roots.length,
                 itemBuilder: (context, index) {
-                  return TaskListGroupView(
-                    key: ValueKey(roots[index].key),
-                    group: roots[index],
-                    items: items,
-                    parents: controller.taskParents,
-                    row: (task) => _taskRow(
-                      controller,
-                      task,
-                      wide,
-                      categoryName: controller.view == WorkspaceView.category
-                          ? null
-                          : categories[task.categoryId],
-                      projectName: controller.view == WorkspaceView.project
-                          ? null
-                          : projects[task.projectId],
-                    ),
-                    subtaskRow: (task) => _subtaskRow(controller, task, wide),
+                  final group = roots[index];
+                  final plannedDay = groupByPlannedDay
+                      ? group.tasks.first.scheduledDate
+                      : null;
+                  final previousDay = index == 0
+                      ? null
+                      : roots[index - 1].tasks.first.scheduledDate;
+                  final sectionDate =
+                      plannedDay == null || plannedDay == previousDay
+                      ? null
+                      : DateTime.tryParse(plannedDay);
+                  return Column(
+                    key: ValueKey(group.key),
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (sectionDate != null)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            top: AppSpacing.related,
+                          ),
+                          child: AppSectionHeading(
+                            MaterialLocalizations.of(context)
+                                .formatFullDate(sectionDate),
+                          ),
+                        ),
+                      TaskListGroupView(
+                        key: ValueKey(group.key),
+                        group: group,
+                        items: items,
+                        parents: controller.taskParents,
+                        row: (task) => _taskRow(
+                          controller,
+                          task,
+                          wide,
+                          categoryName:
+                              controller.view == WorkspaceView.category
+                              ? null
+                              : categories[task.categoryId],
+                          projectName: controller.view == WorkspaceView.project
+                              ? null
+                              : projects[task.projectId],
+                        ),
+                        subtaskRow: (task) =>
+                            _subtaskRow(controller, task, wide),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -2465,11 +2498,9 @@ class _WorkspaceState extends ConsumerState<Workspace> {
       ),
     );
     return Align(
-      alignment: Alignment.topCenter,
+      alignment: AlignmentDirectional.topStart,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: AppLayout.workspaceMaxWidth,
-        ),
+        constraints: const BoxConstraints(maxWidth: AppLayout.taskListMaxWidth),
         child: content,
       ),
     );

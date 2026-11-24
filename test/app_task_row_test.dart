@@ -123,7 +123,8 @@ void main() {
         expect(find.text('Subtasks 2/4'), findsOneWidget);
         expect(find.text('Checklist 1/3'), findsOneWidget);
         expect(find.text('Blocked by 2'), findsOneWidget);
-        expect(find.byIcon(Icons.flag_outlined), findsOneWidget);
+        expect(find.byTooltip('Priority 3'), findsOneWidget);
+        expect(find.byIcon(Icons.flag), findsOneWidget);
       },
     );
 
