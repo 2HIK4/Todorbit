@@ -65,6 +65,9 @@ if (Test-Path -LiteralPath $labModule) { Import-Module $labModule -Global -Disab
 $benchmarksModule = Join-Path $scriptDir 'modules\Benchmarks.psm1'
 if (Test-Path -LiteralPath $benchmarksModule) { Import-Module $benchmarksModule -Global -DisableNameChecking -Force }
 
+$reliabilityModule = Join-Path $scriptDir 'modules\Reliability.psm1'
+if (Test-Path -LiteralPath $reliabilityModule) { Import-Module $reliabilityModule -Global -DisableNameChecking -Force }
+
 function Show-Help {
     Write-Host "=================================================================" -ForegroundColor Cyan
     Write-Host "     TODORBIT DEVELOPER AUTOMATION TOOLKIT (TDAT) - CLI         " -ForegroundColor Cyan
@@ -341,6 +344,14 @@ try {
             Invoke-ScreenshotCapture -Scenario $targetScenario -Json:$Json
         } else {
             throw "Lab module not loaded."
+        }
+    }
+    'package' {
+        if (Get-Command 'Invoke-PackageVerification' -ErrorAction SilentlyContinue) {
+            $targetPlatform = if ($Platform -and $Platform -ne 'None') { $Platform } elseif ($Subcommand) { $Subcommand } else { 'All' }
+            Invoke-PackageVerification -Platform $targetPlatform -Json:$Json
+        } else {
+            throw "Reliability module not loaded."
         }
     }
     'self-test' {
