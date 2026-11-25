@@ -178,16 +178,11 @@ def verify_portable_archive(zip_path):
 def main():
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     iss_path = os.path.join(repo_root, "installer", "life_manager.iss")
-    
-    report = {
-        "inno_setup": verify_inno_setup_script(iss_path, repo_root),
-        "binaries_audited": [],
-        "overall_passed": True
-    }
-    
-    if not report["inno_setup"]["passed"]:
-        report["overall_passed"] = False
-    
+
+    inno_setup = verify_inno_setup_script(iss_path, repo_root)
+    config_passed = bool(inno_setup.get("passed", False))
+    binaries_audited = []
+
     # Check any compiled release binaries if present
     release_dir = os.path.join(repo_root, "build", "windows", "x64", "runner", "Release")
     if os.path.exists(release_dir):
@@ -196,12 +191,33 @@ def main():
                 if file.lower().endswith((".exe", ".dll")):
                     p = os.path.join(root, file)
                     res = parse_pe_info(p)
-                    report["binaries_audited"].append(res)
-                    if not res.get("passed", False):
-                        report["overall_passed"] = False
-    
+                    binaries_audited.append(res)
+
+    artifacts_inspected = len(binaries_audited)
+    artifacts_passed = artifacts_inspected > 0 and all(
+        r.get("passed", False) for r in binaries_audited
+    )
+    if not config_passed or (artifacts_inspected > 0 and not artifacts_passed):
+        artifact_status = "FAILED"
+    elif artifacts_inspected == 0:
+        artifact_status = "MISSING_ARTIFACTS"
+    else:
+        artifact_status = "VERIFIED"
+
+    overall_passed = config_passed and artifacts_passed
+
+    report = {
+        "inno_setup": inno_setup,
+        "binaries_audited": binaries_audited,
+        "config_passed": config_passed,
+        "artifacts_inspected": artifacts_inspected,
+        "artifacts_passed": artifacts_passed,
+        "artifact_status": artifact_status,
+        "overall_passed": overall_passed,
+    }
+
     print(json.dumps(report, indent=2))
-    sys.exit(0 if report["overall_passed"] else 1)
+    sys.exit(0 if config_passed and (artifacts_inspected == 0 or artifacts_passed) else 1)
 
 if __name__ == "__main__":
     main()

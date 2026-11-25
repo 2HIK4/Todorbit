@@ -5,16 +5,54 @@ Covers localized feature changes, shared UI, database migrations, platform files
 dependency configs, test infrastructure, unrecognized paths, empty diffs, and shadow mode.
 """
 
+import base64
 import json
 import os
 import subprocess
 import unittest
+import uuid
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class TestImpactBehavior(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        bootstrap = (
+            "$ErrorActionPreference = 'Stop'; "
+            f"Import-Module '{REPO_ROOT}/tools/dev/modules/Impact.psm1' -Force -DisableNameChecking; "
+            "while ($null -ne ($line = [Console]::In.ReadLine())) { "
+            "if ($line -eq '__EXIT__') { break } "
+            "$sep = $line.IndexOf(':'); "
+            "$tag = $line.Substring(0, $sep); "
+            "$code = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($line.Substring($sep + 1))); "
+            "$ok = 0; "
+            "try { Invoke-Expression $code } catch { $ok = 1; [Console]::Out.WriteLine('__ERR__:' + $_.Exception.Message) } "
+            "[Console]::Out.WriteLine('__END_' + $tag + '__:' + $ok); "
+            "[Console]::Out.Flush() "
+            "}"
+        )
+        cls.ps_proc = subprocess.Popen(
+            ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", bootstrap],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            cwd=str(REPO_ROOT),
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        if getattr(cls, "ps_proc", None) and cls.ps_proc.poll() is None:
+            try:
+                cls.ps_proc.stdin.write("__EXIT__\n")
+                cls.ps_proc.stdin.flush()
+                cls.ps_proc.wait(timeout=5)
+            except Exception:
+                cls.ps_proc.kill()
+
     def _run_impact(self, explicit_files: list[str] = None, extra_flags: list[str] = None) -> dict:
         files_arg = ""
         if explicit_files is not None:
@@ -22,24 +60,26 @@ class TestImpactBehavior(unittest.TestCase):
             files_arg = f"-ExplicitFiles @({quoted_files})"
         flags_arg = " ".join(extra_flags) if extra_flags else ""
 
-        script = f"""
-        $ErrorActionPreference = 'Stop'
-        Import-Module '{REPO_ROOT}/tools/dev/modules/Impact.psm1' -Force -DisableNameChecking
-        $res = Invoke-ImpactAnalysis {files_arg} {flags_arg} -Json
-        Write-Output $res
-        """
-        cmd = [
-            "powershell",
-            "-NoProfile",
-            "-NonInteractive",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            script,
-        ]
-        proc = subprocess.run(cmd, capture_output=True, text=True, cwd=str(REPO_ROOT))
-        self.assertEqual(proc.returncode, 0, f"Error running impact: {proc.stderr}")
-        return json.loads(proc.stdout.strip())
+        script = f"$res = Invoke-ImpactAnalysis {files_arg} {flags_arg} -Json; Write-Output $res"
+        tag = uuid.uuid4().hex[:12]
+        encoded = base64.b64encode(script.encode("utf-8")).decode("ascii")
+        self.ps_proc.stdin.write(f"{tag}:{encoded}\n")
+        self.ps_proc.stdin.flush()
+        out_lines = []
+        rc = 1
+        end_prefix = f"__END_{tag}__:"
+        while True:
+            line = self.ps_proc.stdout.readline()
+            if not line:
+                break
+            stripped = line.rstrip("\r\n")
+            if stripped.startswith(end_prefix):
+                rc = int(stripped[len(end_prefix):])
+                break
+            out_lines.append(stripped)
+        stdout = "\n".join(out_lines)
+        self.assertEqual(rc, 0, f"Error running impact: {stdout}")
+        return json.loads(stdout.strip())
 
     def test_empty_diff_returns_zero_selected_tests(self):
         """Empty diff selects 0 tests and reports no affected features."""

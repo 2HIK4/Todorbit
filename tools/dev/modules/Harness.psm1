@@ -25,6 +25,10 @@ function Get-FeatureContextPack {
     }
 
     $allContexts = Get-Content -LiteralPath $contextsPath -Raw -Encoding utf8 | ConvertFrom-Json
+    $featuresPath = Join-Path $scriptDir '..\features.json'
+    $allFeatures = if (Test-Path -LiteralPath $featuresPath) {
+        Get-Content -LiteralPath $featuresPath -Raw -Encoding utf8 | ConvertFrom-Json
+    } else { $null }
 
     $normalizedFeature = $Feature.ToLowerInvariant().Trim()
     $featureProp = $allContexts.PSObject.Properties[$normalizedFeature]
@@ -42,6 +46,11 @@ function Get-FeatureContextPack {
     }
 
     $ctx = $featureProp.Value
+    $authoritativeTests = if ($allFeatures -and $allFeatures.PSObject.Properties[$normalizedFeature]) {
+        @($allFeatures.$normalizedFeature.tests)
+    } else {
+        @($ctx.tests)
+    }
 
     $pack = [pscustomobject]@{
         Feature = $normalizedFeature
@@ -50,7 +59,7 @@ function Get-FeatureContextPack {
         EntryPoints = $ctx.entryPoints
         ArchitectureBoundaries = @($ctx.architectureBoundaries)
         DesignSystemTokens = @($ctx.designSystemTokens)
-        Tests = @($ctx.tests)
+        Tests = $authoritativeTests
         HistoricalInvariants = @($ctx.historicalInvariants)
         ApplicableSkills = @($ctx.applicableSkills)
         Documentation = @($ctx.documentation)

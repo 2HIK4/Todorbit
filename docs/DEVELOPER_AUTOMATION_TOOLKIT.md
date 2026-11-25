@@ -64,7 +64,7 @@ dev self-test
 | Command | Subcommand / Options | Description |
 | :--- | :--- | :--- |
 | `dev help` | | Displays discoverable command help and syntax examples. |
-| `dev doctor` | `[--repair] [--json]` | Audits Flutter 3.47.7, Dart 3.13.5, MSVC Community 2022, Windows 10 SDK, Android SDK, JDK 21, RAM/disk limits, lock contention, and runs safe repair (e.g. plugin junctions). |
+| `dev doctor` | `[--repair] [--json]` | Audits Flutter 3.47.7, Dart 3.13.5, MSVC Community 2022, Windows 10 SDK, Android SDK, JDK 21, `.dart_tool/package_config.json` bootstrap, RAM/disk limits, lock contention, and runs safe repair (`flutter.bat pub get --enforce-lockfile` + plugin junctions). |
 | `dev status` | `[--json]` | Displays active Git branch, commit, dirty status, free RAM, free disk, and active session ID. |
 | `dev context` | `<feature> [--json]` | Generates concise, deterministic feature context pack (summary, requirements, entry points, architecture boundaries, design tokens, tests, invariants, skills, fixtures). |
 | `dev repomap` | `[--json]` | Generates compact repository topology map and layer summary without vector indexing or hallucinations. |
@@ -78,7 +78,7 @@ dev self-test
 | `dev runtime` | `<windows\|android> [-LiveApp] [-BuildLiveApp]` | Runs isolated test-harness SQLite checks (`windows`), live `Todorbit.exe` UI/restart (`-LiveApp`), or Android 16 KiB acceptance (`BLOCKED` if prerequisites missing). |
 | `dev fixture` | `<name> [--json]` | Generates deterministic synthetic SQLite database (`empty`, `small`, `typical`, `large`, `calendar-stress`, `sync-conflict`, `migration`). |
 | `dev screenshot`| `<scenario> [--json]` | Renders headless offscreen Flutter viewports, verifies zero RenderFlex overflows, and exports PNG screenshots. |
-| `dev package` | `[Windows\|Android\|All] [--json]`| Audits release artifacts: 64-bit x64 PE headers, CRT DLL imports, Inno Setup script, and Android 16 KiB ELF alignment. |
+| `dev package` | `[Windows\|Android\|All] [-ConfigOnly] [--json]`| Separately validates release configuration (Inno Setup, AndroidManifest, 16 KiB tooling) and audits actual built binaries/APKs (failing closed as `MISSING_ARTIFACTS` when 0 artifacts exist unless `-ConfigOnly`). |
 | `dev diagnose`| `last [--json]` | Extracts structured failure diagnostics, stack traces, and reproduction commands from the last test run. |
 | `dev reproduce`| `<failure-id>` | Outputs self-contained command to reproduce a recorded failure. |
 | `dev benchmark`| `<startup\|calendar\|search\|toolkit\|all>` | Measures cold/warm startup, memory consumption, calendar render latency, or toolkit hashing efficiency. |
@@ -96,7 +96,7 @@ The toolkit is organized into modular PowerShell and Python components under `to
 tools/dev/
   ├── dev.ps1                   # Unified CLI entrypoint and command router
   ├── features.json             # Feature-to-file and feature-to-test mapping
-  ├── feature_contexts.json     # Curated AI feature context packs (20 features)
+  ├── feature_contexts.json     # Curated AI feature context packs (23 features; tests derived from features.json)
   ├── registry.json             # Centralized test registry (234 test suites)
   ├── generate_fixture.py       # Deterministic SQLite fixture generator
   ├── check-docs.py             # Documentation link and cross-reference validator

@@ -56,6 +56,21 @@ Assert-Test "Doctor environment diagnostics and toolchain resolution" {
     ($doc.OverallStatus -in @('PASS', 'WARN')) -and ($doc.Errors.Count -eq 0) -and ($doc.Checks.Count -gt 0)
 }
 
+# 1b. Doctor unprepared worktree detection (temp repo without .dart_tool/package_config.json)
+Assert-Test "Doctor detects unprepared worktree missing package_config.json" {
+    $tmpDir = Join-Path ([IO.Path]::GetTempPath()) ("todorbit-doc-unprep-" + [Guid]::NewGuid().ToString('N').Substring(0,8))
+    New-Item -ItemType Directory -Path (Join-Path $tmpDir 'tools\dev\modules') -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $scriptDir 'modules\Doctor.psm1') -Destination (Join-Path $tmpDir 'tools\dev\modules\Doctor.psm1') -Force
+    try {
+        $subOut = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "Import-Module '$tmpDir\tools\dev\modules\Doctor.psm1' -Force -DisableNameChecking; Invoke-TodorbitDoctor -Json"
+        $subDoc = $subOut | ConvertFrom-Json
+        $pkgCheck = $subDoc.Checks | Where-Object { $_.Name -eq 'Dart Package Configuration' }
+        ($subDoc.OverallStatus -eq 'FAIL') -and ($pkgCheck.Status -eq 'ERROR') -and ($pkgCheck.Detail -match 'package_config\.json')
+    } finally {
+        Remove-Item -LiteralPath $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 # 2. Test Registry Integrity
 Assert-Test "Centralized test registry consistency (0 issues, all valid)" {
     $reg = Test-TestRegistry
@@ -83,10 +98,11 @@ Assert-Test "Process invocation safety (explicit .bat/.exe, non-interactive, no 
 }
 
 # 6. AI Feature Context Pack Generation
-Assert-Test "Deterministic AI feature context pack generator" {
+Assert-Test "Deterministic AI feature context pack generator (derives tests from features.json)" {
     $packJson = Get-FeatureContextPack -Feature 'calendar' -Json
     $pack = $packJson | ConvertFrom-Json
-    ($pack.Feature -eq 'calendar') -and ($pack.Tests.Count -ge 5) -and ($pack.PrimaryRequirements.Count -gt 0)
+    $features = Get-Content -LiteralPath (Join-Path $scriptDir 'features.json') -Raw | ConvertFrom-Json
+    ($pack.Feature -eq 'calendar') -and ($pack.Tests.Count -eq $features.calendar.tests.Count) -and ($pack.PrimaryRequirements.Count -gt 0)
 }
 
 # 7. Repository Architecture Map Generation
@@ -102,10 +118,24 @@ Assert-Test "Synthetic fixture generator (empty workspace)" {
     ($fix.Fixture -eq 'empty') -and ($fix.TaskCount -eq 0) -and (Test-Path -LiteralPath $fix.DatabasePath)
 }
 
-# 9. Release Package and Architecture Verification
-Assert-Test "Windows x64 PE and Inno Setup package verification" {
+# 9. Release Package and Architecture Verification (never passes when 0 artifacts exist)
+Assert-Test "Package verification separates config validation from missing artifacts" {
     $pkg = Invoke-PackageVerification -Platform Windows -Json | ConvertFrom-Json
-    $pkg.OverallPassed -and $pkg.Details.Windows.inno_setup.passed
+    $pkgConfigOnly = Invoke-PackageVerification -Platform Windows -ConfigOnly -Json | ConvertFrom-Json
+    $hasZeroArtifacts = ($pkg.ArtifactsInspected -eq 0)
+    if ($hasZeroArtifacts) {
+        $pkg.ConfigPassed -and (-not $pkg.OverallPassed) -and ($pkg.OverallStatus -eq 'MISSING_ARTIFACTS') -and $pkgConfigOnly.OverallPassed
+    } else {
+        $pkg.ConfigPassed -and $pkg.OverallPassed -and ($pkg.OverallStatus -eq 'PASS')
+    }
+}
+
+# 9b. CLI dev verify feature positional syntax and -Feature compatibility
+Assert-Test "CLI dev verify feature accepts positional and -Feature syntax" {
+    $devScript = Join-Path $scriptDir 'dev.ps1'
+    $posPlan = (& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $devScript verify feature settings-ui -Plan) | ConvertFrom-Json
+    $namedPlan = (& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $devScript verify feature -Feature settings-ui -Plan) | ConvertFrom-Json
+    ($posPlan.Count -eq $namedPlan.Count) -and (($posPlan | ConvertTo-Json -Compress) -eq ($namedPlan | ConvertTo-Json -Compress))
 }
 
 # 10. Conservative Impact Analysis

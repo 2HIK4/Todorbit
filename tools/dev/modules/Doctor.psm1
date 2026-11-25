@@ -156,6 +156,67 @@ function Invoke-TodorbitDoctor {
         $errors.Add('Flutter SDK is missing or not on PATH.')
     }
 
+    # 1b. Worktree Bootstrap & Package Configuration Check
+    $packageConfigPath = Join-Path $repoRoot '.dart_tool\package_config.json'
+    $pubspecLockPath = Join-Path $repoRoot 'pubspec.lock'
+    $pluginsDepsPath = Join-Path $repoRoot '.flutter-plugins-dependencies'
+    $needsPubGet = -not (Test-Path -LiteralPath $packageConfigPath)
+    if (-not $needsPubGet -and (Test-Path -LiteralPath $pubspecLockPath)) {
+        $lockTime = (Get-Item -LiteralPath $pubspecLockPath).LastWriteTimeUtc
+        $pkgTime = (Get-Item -LiteralPath $packageConfigPath).LastWriteTimeUtc
+        if ($lockTime -gt $pkgTime) {
+            $needsPubGet = $true
+        }
+    }
+    if ($needsPubGet -and $Repair -and $flutterExe) {
+        Push-Location $repoRoot
+        try {
+            $ErrorActionPreference = 'Continue'
+            & $flutterExe pub get --enforce-lockfile 2>&1 | Out-Null
+            $pubExit = $LASTEXITCODE
+        } finally {
+            $ErrorActionPreference = 'Stop'
+            Pop-Location
+        }
+        $needsPubGet = ($pubExit -ne 0) -or -not (Test-Path -LiteralPath $packageConfigPath)
+    }
+    if ($needsPubGet) {
+        $checks.Add([pscustomobject]@{
+            Category = 'Workspace'
+            Name = 'Dart Package Configuration'
+            Status = 'ERROR'
+            Detail = "Missing or stale .dart_tool/package_config.json (unprepared worktree). Run '.\dev doctor --repair' or 'flutter.bat pub get --enforce-lockfile'."
+        })
+        $errors.Add("Worktree package configuration missing or stale. Run '.\dev doctor --repair' before running --no-pub verification or screenshots.")
+    } else {
+        $checks.Add([pscustomobject]@{
+            Category = 'Workspace'
+            Name = 'Dart Package Configuration'
+            Status = 'OK'
+            Detail = 'Worktree dependencies resolved (.dart_tool/package_config.json present).'
+        })
+    }
+
+    if ((Test-Path -LiteralPath $pluginsDepsPath) -and (-not $Repair)) {
+        try {
+            $pluginManifest = Get-Content -LiteralPath $pluginsDepsPath -Raw | ConvertFrom-Json
+            $winPlugins = @($pluginManifest.plugins.windows)
+            $symlinkDir = Join-Path $repoRoot 'windows\flutter\ephemeral\.plugin_symlinks'
+            $missingLinks = @($winPlugins | Where-Object {
+                -not (Test-Path -LiteralPath (Join-Path $symlinkDir $_.name))
+            } | Select-Object -ExpandProperty name)
+            if ($missingLinks.Count -gt 0) {
+                $checks.Add([pscustomobject]@{
+                    Category = 'Workspace'
+                    Name = 'Windows Plugin Junctions'
+                    Status = 'WARNING'
+                    Detail = "Missing ephemeral Windows plugin links: $($missingLinks -join ', '). Run '.\dev doctor --repair'."
+                })
+                $warnings.Add("Missing Windows plugin links ($($missingLinks -join ', ')). Run '.\dev doctor --repair'.")
+            }
+        } catch {}
+    }
+
     # 2. Windows Toolchain (Visual Studio / C++ / MSVC)
     $vsWhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
     $hasVs = $false
