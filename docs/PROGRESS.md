@@ -1,5 +1,12 @@
 # Progress
 
+## Independent UI Review & First Real-World TDAT Evaluation (2026-11-25)
+
+- **Baseline & Worktree**: Reviewed `feature/todorbit-beta27-refinement` (`8fc25a5`) in isolated review worktree `D:\AI_Projects\life_manager_ui_review` (`review/ui-tdat-eval-2026-11-25`). Zero production code modified; no visual baselines approved; no merges or releases performed.
+- **UI & Architecture Findings**: Confirmed cohesive core layout and Graphite Neutral Silver palette across primary desktop lists and mobile Calendar, while identifying 10 objective defects/regression risks (including hardcoded `#8B5CF6` in `TaskDetailsView`, missing Android `Upcoming` grouping/`showPlannedDate` handling in `AppTaskRow._buildMobile`, fixed `560x560` `AlertDialog` in `ThemeDialog`, `<48 dp` `VisualDensity.compact` subtask buttons on Android, Graphite Silver priority flag token drift in desktop `_subtaskRow`, narrow sidebar bottom clipping, and `20 dp` vs `28 dp` inset drift) plus 5 subjective UX recommendations.
+- **TDAT Evaluation**: Measured real execution timings across `doctor`, `context` (`~0.88s`), `repomap` (`0.99s`), `screenshot` (`69.6s`), `benchmark` (`36.8s`), `verify feature` (`83.7s`), `self-test` (`114.4s`), `runtime windows` (`40.2s`), and consecutive `verify changed` runs (`257.1s -> 188.3s` with `5/8` Dart suites `[REUSED]`). Identified concrete TDAT gaps: `dev verify feature <name>` positional parameter error, `lab_render_test.dart` missing `loadReviewFonts()` (Ahem blocks), `dev doctor` missing `.dart_tool/package_config.json` check, `11/23` `feature_contexts.json` vs `features.json` test-list drift, and `dev package` `PASS` with `0` binaries audited.
+- **Report**: [UI & TDAT Independent Review](UI_TDAT_INDEPENDENT_REVIEW_2026_11_25.md) and [Test run ledger](TEST_RUN_LEDGER.md).
+
 ## TDAT & Beta 28 Integration Candidate (2026-11-25)
 
 Combined `feature/todorbit-beta27-refinement` (`b600ea7`, Beta 28 experimental publication + Beta 27 UI/Calendar refinement) with `feature/todorbit-developer-toolkit` (`1035bf4`, TDAT & safety gate) on `integration/tdat-beta28`. Centralized test registry refreshed and validated across combined test suites (`227` suites); integration verification ledger and remaining deferred/blocked runtime gates recorded below.

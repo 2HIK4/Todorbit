@@ -1,5 +1,20 @@
 # Persistent test run ledger
 
+## Independent UI Review & TDAT Evaluation (2026-11-25)
+
+Review-only pass on isolated worktree `D:\AI_Projects\life_manager_ui_review` (`review/ui-tdat-eval-2026-11-25` at `8fc25a5`), Flutter 3.47.7, Dart 3.13.5, Windows 11 x64. Detailed findings in [Independent UI & TDAT Review](UI_TDAT_INDEPENDENT_REVIEW_2026_11_25.md).
+
+| Invocation / purpose | Source / artifact | Result | Notes / limits |
+| --- | --- | --- | --- |
+| `.\dev.ps1 doctor` / `status` / `repomap` / `registry --validate` / `impact` | `8fc25a5` | PASS (`4.6s` / `1.7s` / `1.0s` / `1.1s` / `5.1s`) | Doctor warned on Developer Mode disabled & low free RAM (`1392 MB`); missed missing `.dart_tool/package_config.json` before manual `pub get` (`8.8s`) |
+| `.\dev.ps1 screenshot all` | `test/lab_render_test.dart` (`8fc25a5`) | Pre-pub FAIL (`3.3s`); Post-pub PASS (`69.6s`, 11 PNGs) | Zero `RenderFlex` overflows, but rendered Ahem tofu blocks (`loadReviewFonts()` omitted in `lab_render_test.dart`) |
+| `.\dev.ps1 benchmark all` | `test/performance_benchmark_test.dart` (`8fc25a5`) | PASS (`36.8s`; Dart suite `26.1s`) | Widget-test harness metrics only (`.buildlog/benchmarks/20261125_211526_all.json`); not Windows Profile GPU/raster frames |
+| `.\dev.ps1 verify feature -Feature settings-ui` | `settings-ui` (`8fc25a5`) | PASS (`83.7s`; 66/66 tests) | Positional `verify feature settings-ui` failed with `PositionalParameterNotFound` (`0.47s`) |
+| `.\dev.ps1 self-test` | `tools/dev/test_toolkit_self.ps1` (`8fc25a5`) | PASS (`114.4s`; 16/16 checks) | Fresh run in review worktree |
+| `.\dev.ps1 runtime windows` / `runtime android` | `8fc25a5` | Windows PASS (`40.2s`); Android BLOCKED (`1.2s`) | Windows ran Flutter test-harness SQLite persistence only; `-LiveApp` blocked (Developer Mode off); Android blocked (no 16 KiB emulator/APK) |
+| `.\dev.ps1 verify changed -BaselineRef b600ea7` (x2) | `b600ea7..8fc25a5` | Run 1 PASS (`257.1s`, 8 Dart + 9 Py); Run 2 PASS (`188.3s`, 5 `[REUSED]` + 3 Dart + 9 Py) | Confirms `[REUSED]` saved `59.5s` in `flutter test`; Python checks & `flutter analyze` re-executed |
+| `.\dev.ps1 package`, `check-docs.py`, `test_architecture_boundaries.py` | `8fc25a5` | PASS (`1.1s`, `0.17s`, `0.78s`, 39/39) | `dev package` reported `PASS` with `Binaries Audited: 0` |
+
 ## TDAT & Beta 28 Integration Verification (2026-11-25)
 
 Integration branch `integration/tdat-beta28` combining `feature/todorbit-beta27-refinement` (`b600ea7`) and `feature/todorbit-developer-toolkit` (`1035bf4`). Fresh integration-scoped checks run in disposable worktree `D:/AI_Projects/life_manager_tdat_integration` without reusing prior branch receipts:
