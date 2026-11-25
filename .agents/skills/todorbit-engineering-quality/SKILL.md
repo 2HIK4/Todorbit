@@ -17,6 +17,7 @@ Treat rules by their strict level of authority:
 
 1. **Mandatory Safety Rules (Non-Negotiable)**:
    - **Zero Data Loss**: Never wipe, reset, drop, or overwrite SQLite tables, profile JSON files, user backups, or widget settings as an error recovery fallback.
+   - **Automation & Non-Interactive Safety**: All automated CLI operations, test harnesses, and scripts MUST execute non-interactively (`-NonInteractive` on PowerShell). Never invoke extensionless scripts (e.g. `flutter`, `dart` on Windows) via shell execution; strictly resolve explicit executables (`flutter.bat`, `dart.exe`). Never invoke `Process.Start` or `Start-Process` with `UseShellExecute = true` or trigger unassociated file handlers that spawn Windows "Pick an app" (`OpenWith.exe`) dialogs. Enforce explicit execution timeouts and bounded retries (max 2) with fail-closed diagnostics.
    - **Domain Invariants & Test Expectation Integrity**: Identify authoritative domain invariants before changing behavior. Never create or trust tests that merely encode existing implementation bugs. Differentiate visual display constraints from persistence constraints (display clipping must never truncate persisted timestamps or user data). Verify fixes against legitimate edge cases (overnight spans, multi-day durations, recurrence). Always prove fixes with focused regression tests that fail on the defect and pass strictly after correction.
    - **Forward-Compatible Migrations**: Schema alterations MUST be forward-migrated through explicit Drift migrations and verified in `MigrationGate`.
    - **CAS Task Concurrency**: All task writes MUST advance `updated_at` beyond the predecessor timestamp and check revision concurrency tokens via SQL compare-and-swap (CAS).
@@ -44,6 +45,7 @@ Do not load all documentation into context. Activate only the reference matching
 | **SQLite, Sync, Backup, Alarms** | [Data Safety & Persistence](references/data-safety-and-persistence.md) | Drift schema 28, migrations, CAS tokens, AES-GCM sync batches, Before Restore backups |
 | **Windows & Android Native Integration** | [Cross-Platform Architecture](references/cross-platform-architecture.md) | Windows runner & .NET 10 companion (`WidgetDateNavigation`), Android shell (`MobileWorkspace` vs `Workspace`), lifecycle, Doze, alarms, calendar parity |
 | **Profiling, Memory & 16GB RAM Limits** | [Performance & Profiling](references/performance-and-profiling.md) | Memory leak avoidance, 16GB RAM resource budgeting, build thrashing prevention, rendering efficiency |
+| **Developer Toolkit & Verification** | [Developer Automation Toolkit](../../../docs/DEVELOPER_AUTOMATION_TOOLKIT.md) | Unified `dev` CLI, `dev doctor`, `dev context <feature>`, `dev impact`, `dev verify changed`, `dev fixture`, and `dev screenshot` |
 | **Agent Efficiency, Search & Ledgers** | [Agent Workflow Efficiency](references/agent-workflow-efficiency.md) | Bounded search, test ledger policy, minimal context consumption, atomic Git checkpoints |
 
 ---
@@ -68,13 +70,14 @@ Do not load all documentation into context. Activate only the reference matching
   - **Rule**: When adding shared capabilities, explicitly identify both platform entry points and record parity or intentional mobile exclusions.
 
 ### 3. Developer Tooling & Verification Policy
-- Before executing any verification, consult `docs/TEST_RUN_LEDGER.md` and `docs/TESTING.md`.
+- Before executing any verification, consult `docs/TEST_RUN_LEDGER.md` and `docs/TESTING.md`, and prefer TDAT (`.\dev doctor`, `.\dev context <feature>`, `.\dev impact`, `.\dev verify changed`).
+- Whenever adding, moving, or deleting tests or feature source paths, update `tools/dev/features.json` and `tools/dev/feature_contexts.json`, then run `.\dev registry --refresh` and `.\dev registry --validate` (enforced by CI via `tools/test_registry_sync.py`).
 - Choose the smallest risk-based check:
   - **Quick**: Text/layout edits -> relevant analysis / single widget test.
   - **Feature**: Functional edits -> targeted feature test suite (preview via `tools/dev/verify.ps1 -Feature <name> -Mode Feature -Plan`).
-  - **Critical**: Schema, persistence, sync, alarms, encryption -> isolation fixtures, migration roundtrips, atomic CAS CAS checks.
+  - **Critical**: Schema, persistence, sync, alarms, encryption -> isolation fixtures, migration roundtrips, atomic CAS checks.
   - **Release**: Packaging, Inno Setup, APK alignment, signed update manifests.
-- **No Test Invention**: Never claim tests passed if they were not run or were skipped. Record historical reuse accurately by referencing commit SHA and receipt.
+- **No Test Invention & Honest Runtime Classification**: Never claim tests passed if they were not run or were skipped. Distinguish Flutter test-harness SQLite checks (`dev runtime windows`) from real `Todorbit.exe` process launch/UI/restart (`dev runtime windows -LiveApp`) and real Android 16 KiB emulator checks (`dev runtime android`). Record historical reuse accurately by referencing commit SHA and receipt.
 
 ### 4. Domain Invariant Protection & Test Expectation Integrity
 - **Identify Domain Invariants First**: Before writing or altering code, identify the inviolable domain invariants (e.g. event duration invariance under a move gesture, task deadline independence from scheduled date).

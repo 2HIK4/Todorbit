@@ -1,5 +1,12 @@
 # Deferred Verification Backlog
 
+## TDAT Safety Gate & Host-Blocked Runtime Checks (2026-11-25)
+
+- **Windows live application process launch/UI/restart (`dev runtime windows -LiveApp -BuildLiveApp`)**: `BLOCKED` on this local Windows 11 host because Windows Developer Mode (symlink support) is disabled (`Building with plugins requires symlink support`). Run on a Developer-Mode-enabled Windows machine or supply a prebuilt driver-enabled `Todorbit.exe`.
+- **Android 16 KiB emulator runtime (`dev runtime android`)**: `BLOCKED` locally; requires an authorized API 36 16 KiB emulator (`PAGE_SIZE=16384`), `.buildlog/16k-runtime/candidate.apk`, and `APK_SHA256`.
+- **Full shadow verification (`dev verify changed -Shadow`)**: Optional omitted-suite shadow execution against the full Dart test suite remains deferred from ordinary development runs.
+- *(Note: GitHub Actions cloud execution for `Lightweight CI` (`45661321438`), `Android validation` (`45661321128`), and `Windows checks` (`45661320360`) completed with `success` on integration candidate `db1db0a`.)*
+
 ## Beta 28 experimental acceptance
 
 The [Beta 28 candidate receipt](TODORBIT_BETA_28_CANDIDATE.md) closes the

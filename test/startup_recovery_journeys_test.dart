@@ -39,8 +39,9 @@ void main() {
         if (await profile.exists()) await profile.delete(recursive: true);
         return;
       } on FileSystemException catch (failure) {
-        // Retry only transient Windows sharing violations after SQLite closes.
-        if (failure.osError?.errorCode != 32 || attempt == 9) rethrow;
+        // Retry transient Windows sharing violations (32) or pending-delete directory locks (145) after SQLite closes.
+        final code = failure.osError?.errorCode;
+        if ((code != 32 && code != 145) || attempt == 9) rethrow;
         await Future<void>.delayed(const Duration(milliseconds: 50));
       }
     }

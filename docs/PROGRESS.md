@@ -1,5 +1,18 @@
 # Progress
 
+## TDAT & Beta 28 Integration Candidate (2026-11-25)
+
+Combined `feature/todorbit-beta27-refinement` (`b600ea7`, Beta 28 experimental publication + Beta 27 UI/Calendar refinement) with `feature/todorbit-developer-toolkit` (`1035bf4`, TDAT & safety gate) on `integration/tdat-beta28`. Centralized test registry refreshed and validated across combined test suites (`227` suites); integration verification ledger and remaining deferred/blocked runtime gates recorded below.
+- Fixed CI shallow-clone test portability in `tools/dev/test_impact_behavior.py` (`853af4f`), diagnosed and fixed the lone `Windows checks` (`45655135608`) date-rollover failure in `test/event_editor_layout_test.dart` (`db1db0a`), reinforced permanent TDAT adoption rules in `AGENTS.md` and `CONTRIBUTING.md`, and passed all three GitHub Actions workflows on exact candidate `db1db0a`: `Lightweight CI` (`45661321438`), `Android validation` (`45661321128`), and `Windows checks` (`45661320360`), clearing PR #4 for history-preserving integration into `feature/todorbit-beta27-refinement`.
+
+## Developer Automation Toolkit (TDAT) Final Safety Gate (2026-11-25)
+
+Source on `feature/todorbit-developer-toolkit` (checkpoint from `93dc02e`). Completed final safety hardening, CI enforcement, and fresh-agent evaluation:
+- **Conservative Impact Analysis & Real Shadow Mode**: Updated `tools/dev/modules/Impact.psm1` to handle committed, staged, unstaged, deleted, renamed, and untracked changes (`-uall`), trace reverse transitive Dart imports, expand unmapped/core fallbacks across sync/security/backup/platform/UI, avoid scheduling deleted test files, and execute real omitted shadow suites (`dev verify changed -Shadow`) with rule-gap suggestions in `.buildlog/shadow/rule-gaps.json`.
+- **Evidence Cache End-to-End Integration**: Wired `dev verify changed` in `tools/dev/dev.ps1` and `tools/dev/verify.ps1` to save passing Dart receipts, enforce `PreRunFingerprint` mid-execution mutation rejection, include environment/config/arguments hashes, keep `Get-VerificationConfigHash` stable across `dev registry --refresh`, and enforce `Ineligible` rules inside `Registry.psm1` and `Evidence.psm1`.
+- **Runtime Classification & Live Windows Driver**: Separated Flutter test-harness SQLite persistence (`dev runtime windows`) from real Windows `Todorbit.exe` process launch, UI interaction, and restart (`test_driver/windows_runtime_workflow_test.dart`, `dev runtime windows -LiveApp`); local `-BuildLiveApp` reports `BLOCKED` cleanly when Windows Developer Mode is disabled (`Building with plugins requires symlink support`), and `dev runtime android` resolves `adb.exe` and reports `BLOCKED` without a 16 KiB emulator and candidate APK.
+- **CI Enforcement & Documentation Corrections**: Added `tools/test_registry_sync.py` to `.github/workflows/ci.yml` (alongside `test_process_invocation_safety.py`) and TDAT safety suites to `.github/workflows/windows-ci.yml`; corrected overclaimed statements on leak proof, visual diffing, accessibility, and Windows native runtime in `docs/TDAT_REQUIREMENTS_TRACEABILITY.md`, `docs/BENCHMARK_RESULTS_2026_11_24.md`, and `docs/HISTORICAL_TEST_TRACEABILITY.md`.
+
 ## Beta 28 experimental publication
 
 Build 51 is published as an Experimental Windows x64 and Android update on
@@ -31,6 +44,35 @@ The dense Windows Profile comparison found repeated date projection and
 crossfade compositing. The worst UI frame for Month fell from 513 to 71 ms.
 Dense scrolling still has raster budget misses. The version and Schema 29
 remain the same. [Refinement evidence](BETA_27_REFINEMENT.md)
+
+## Developer Automation Toolkit (TDAT) Phase 2: Hardening & Adversarial Verification (2026-11-24)
+
+Source on `feature/todorbit-developer-toolkit` branched from verified baseline `7ede889`. Completed Phase 2 hardening, missing runtime automation, and adversarial verification:
+- **Traceability Matrix**: Created [TDAT Requirements Traceability](TDAT_REQUIREMENTS_TRACEABILITY.md) verifying 24/24 mission requirements with automated test evidence and zero remaining gaps.
+- **Adversarial Evidence Cache**: Hardened `Evidence.psm1` with recursive transitive Dart import resolution, corruption purging, strict PASS-only caching, and `ForceFresh` bypass. Verified by [tools/dev/test_evidence_cache_safety.py](../tools/dev/test_evidence_cache_safety.py) (9/9 passed).
+- **Behavioral Impact Analysis**: Enhanced `Impact.psm1` with boundary detection for critical schemas, shared UI tokens, native platforms, config lockfiles, and Verification Shadow Mode (`-Shadow`). Verified by [tools/dev/test_impact_behavior.py](../tools/dev/test_impact_behavior.py) (10/10 passed).
+- **Test Metric Alignment**: Resolved counting discrepancies between `dev registry` and `dev repomap`. Both report unified authoritative counts: 224 executable test suites (209 Dart unit/widget + 3 integration + 12 tool tests), 1,200+ granular test cases, and 14 non-executable test support helpers.
+- **Native Runtime Automation**: Created `dev runtime windows` driving [test/runtime_workflow_journey_test.dart](../test/runtime_workflow_journey_test.dart) in isolated portable profile (`APPDATA`/`LOCALAPPDATA`), verifying readiness, synthetic task lifecycle, scheduling, completion, and SQLite persistence across restart. Implemented `dev runtime android` with honest `BLOCKED` status reporting when live emulator is absent.
+- **UI & Accessibility Lab**: Expanded [test/lab_render_test.dart](../test/lab_render_test.dart) to 11 scenarios adding dense multi-line task rows with badges, modal scroll reachability (`AppModalShell`), and accessibility semantics inspection (`dev screenshot all` passed with 0 RenderFlex errors). Created [Historical Test Traceability](HISTORICAL_TEST_TRACEABILITY.md).
+- **Multi-Worktree Locking & Host Safety**: Hardened `Session.psm1` with cross-worktree locking in `%TEMP%\todorbit_global_locks` preventing concurrent compilation collisions with Codex worktrees. Added Win32 RAM monitoring (1,500 MB limit) and path traversal safety. Verified by [tools/dev/test_session_locking_safety.py](../tools/dev/test_session_locking_safety.py) (6/6 passed).
+- **Empirical Benchmarks**: Replaced mock benchmarks with 15 real application measurement scenarios in [test/performance_benchmark_test.dart](../test/performance_benchmark_test.dart) (cold launch 2.37s, warm return 10.8ms, memory RSS 411MB). Recorded in [Empirical Benchmark Report](BENCHMARK_RESULTS_2026_11_24.md).
+- **Agent Handoff & Self-Test**: Implemented `dev handoff` and `dev handoff --resume` with drift-aware checkpoint resumption. Expanded `dev self-test` to 15 comprehensive checks (15/15 passed).
+
+## Developer Automation Toolkit (TDAT) & AI Engineering Harness (2026-11-24)
+
+Source on `feature/todorbit-developer-toolkit` branched from verified baseline `7ede889`. Concurrent Codex development on `feature/todorbit-ui-redesign-2` is strictly isolated and preserved.
+Designed, implemented, verified, and delivered the complete Todorbit Developer Automation Toolkit (TDAT):
+- Unified cross-shell CLI (`dev`, `tools/dev/dev.ps1`) with commands for doctor, status, context, repomap, impact, verify, fixture, screenshot, package, diagnose, reproduce, benchmark, cleanup, and self-test.
+- Centralized, validated test registry indexing 234 test suites with 0 unmapped or missing files.
+- Conservative impact analysis resolving modified files, Dart dependencies, critical schema gates, and shared UI boundaries.
+- Fast content-addressed 4-fingerprint test caching (`.buildlog/evidence/`) returning instant `REUSED` receipts on unchanged files.
+- Deterministic AI feature context pack generator (`dev context <feature>`) and compact topology map (`dev repomap`).
+- Deterministic synthetic SQLite fixture generators (`empty`, `small`, `typical`, `large`, `calendar-stress`, `sync-conflict`, `migration`) in `.buildlog/fixtures/` using fixed seeds.
+- Application laboratory (`dev screenshot <scenario>`) executing headless offscreen Flutter rendering and verifying zero RenderFlex overflows across 1080p, compact, 320dp mobile, and 150% text scaling viewports.
+- Release artifact audit (`dev package`) verifying Windows 64-bit x64 PE headers, CRT DLL imports, Inno Setup script configuration, and Android 16 KiB ELF alignment tooling.
+- Windows taskbar "Pick an app" (`OpenWith.exe`) root cause resolved, non-interactive execution enforced, and verified by `tools/test_process_invocation_safety.py`.
+- Comprehensive 11-point toolkit self-test suite (`dev self-test`) passing 11/11 checks.
+- Codified permanent automation-first policy in [AGENTS.md](../AGENTS.md) and documented in [Developer Automation Toolkit](DEVELOPER_AUTOMATION_TOOLKIT.md).
 
 ## UI Redesign 2.0 final integration (2026-11-24)
 
