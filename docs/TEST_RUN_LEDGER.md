@@ -13,6 +13,8 @@ Integration branch `integration/tdat-beta28` combining `feature/todorbit-beta27-
 | `.\dev runtime windows` | `startup_recovery_journeys_test.dart`, `resource_journeys_test.dart`, `runtime_workflow_journey_test.dart` | Passed (33.79s) | Flutter test-harness SQLite persistence only; `-LiveApp -BuildLiveApp` blocked locally (Developer Mode disabled) |
 | `.\dev runtime android` | `tools/android-16k-runtime.py` | Blocked | Missing authorized API 36 16 KiB emulator and candidate APK |
 | `.\dev verify changed -BaselineRef b600ea7` (x2) | Combined source | Passed (Run 1: 9 Py + 7 Dart; Run 2: 4 `[REUSED]`, 3 ineligible Dart + 9 Py fresh) | Confirms fresh execution, cache persistence, `[REUSED]` hits, and `IneligibleForReuse` enforcement |
+| Remote CI (`853af4f` on PR #4): `Lightweight CI` (`45655142273`), `Android validation` (`45655141952`), `Windows checks` (`45655135608`) | `integration/tdat-beta28` (`853af4f`) | Lightweight PASS, Android PASS, Windows FAIL (`1266` pass, `1` fail, `11` skip) | Single failure in `test/event_editor_layout_test.dart:93` caused by hardcoded `DateTime(2026, 10, 25)` expiring outside `AppController.eventWindowFrom` (`-30` days) on `2026-11-25` |
+| `.\dev verify quick -ChangedPaths test/event_editor_layout_test.dart -Tests test/event_editor_layout_test.dart` + `check-docs.py` + `test_registry_sync.py` | Relative-date fix in `test/event_editor_layout_test.dart` + adoption docs | Passed (`dart format` 0 changed, `flutter analyze` 0 issues, 4/4 Flutter tests, `check-docs.py` 0 errors, `test_registry_sync.py` 3/3) | Fixes date-rollover flake permanently without modifying production code |
 
 ## TDAT Final Safety Gate Verification (2026-11-25)
 

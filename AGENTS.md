@@ -28,6 +28,7 @@
   - Run `dev context <feature>` before exploring files; it deterministically returns requirements, verified entry points, design tokens, tests, and critical historical invariants without wasting AI context.
   - Run `dev impact` and `dev verify changed` to analyze changes and execute minimal, evidence-reusing verification (use `dev verify changed -Shadow` periodically or on risky changes to audit impact selection against omitted suites).
   - Whenever adding, moving, or deleting tests or feature source paths, update `tools/dev/features.json` / `tools/dev/feature_contexts.json` and run `dev registry --refresh` + `dev registry --validate` (enforced by CI via `tools/test_registry_sync.py`).
+  - Save useful new regression tests permanently in Git, automate valuable recurring procedures, and improve TDAT rules/contexts/selectors whenever ordinary development exposes worthwhile gaps.
   - Distinguish runtime verification levels honestly: `dev runtime windows` runs isolated Flutter test-harness SQLite persistence checks, whereas `dev runtime windows -LiveApp` exercises real `Todorbit.exe` process launch, `FlutterDriver` UI interaction, and process restart; `dev runtime android` reports `BLOCKED` unless an authorized 16 KiB emulator and candidate APK are present.
   - Run `dev screenshot <scenario>` for offscreen UI layout checks across viewports (1080p, compact, 320dp mobile, 150% text scale).
   - Run `dev cleanup --dry-run` to inspect and clean disposable profiles and ephemeral logs safely.

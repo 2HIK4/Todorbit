@@ -49,7 +49,7 @@ Todorbit enforces a clean 4-tier layer structure to keep the codebase modular, t
 
 ## Verification & Testing Standards
 
-Before submitting changes, contributors must execute verification matched to the risk boundary of the modification (see `docs/TESTING.md`):
+Before submitting changes, contributors must use the [Developer Automation Toolkit](docs/DEVELOPER_AUTOMATION_TOOLKIT.md) (`.\dev doctor`, `.\dev context <feature>`, `.\dev verify changed`, `.\dev registry --refresh` / `--validate`) and execute verification matched to the risk boundary of the modification (see `docs/TESTING.md`):
 
 1. **Level 1 (Fast Verification)**:
    - Formatting check: `dart format --output=none --set-exit-if-changed <paths>`
