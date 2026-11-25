@@ -145,10 +145,59 @@ class TestImpactBehavior(unittest.TestCase):
         self.assertEqual(res["SelectedTests"], ["tools/dev/check-docs.py"])
 
     def test_auto_branch_baseline_detection(self):
-        """When explicit files are not provided, impact analysis detects modified files on feature branch."""
-        res = self._run_impact()
-        self.assertGreater(res["ChangedFilesCount"], 0, "Should detect branch or working tree changes")
-        self.assertGreater(res["SelectedTestsCount"], 0, "Should select affected tests")
+        """Auto-detection captures committed branch diffs plus staged, unstaged, deleted, renamed, and untracked changes."""
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix="todorbit_git_impact_") as tmpdir:
+            repo = Path(tmpdir)
+            def git(*args):
+                proc = subprocess.run(["git", *args], cwd=repo, capture_output=True, text=True, check=True)
+                return proc.stdout
+
+            git("init", "-b", "main")
+            git("config", "user.email", "tdat-test@example.com")
+            git("config", "user.name", "TDAT Test")
+            (repo / "base_keep.txt").write_text("keep\n", encoding="utf-8")
+            (repo / "to_delete.txt").write_text("del\n", encoding="utf-8")
+            (repo / "old_name.txt").write_text("ren\n", encoding="utf-8")
+            (repo / "unstaged.txt").write_text("v1\n", encoding="utf-8")
+            git("add", ".")
+            git("commit", "-m", "init main")
+
+            git("checkout", "-b", "feature/test-branch")
+            (repo / "committed_feature.txt").write_text("branch commit\n", encoding="utf-8")
+            git("add", "committed_feature.txt")
+            git("commit", "-m", "feature commit")
+
+            (repo / "staged.txt").write_text("staged\n", encoding="utf-8")
+            git("add", "staged.txt")
+            (repo / "unstaged.txt").write_text("v2\n", encoding="utf-8")
+            (repo / "to_delete.txt").unlink()
+            git("mv", "old_name.txt", "new_name.txt")
+            (repo / "untracked_dir").mkdir()
+            (repo / "untracked_dir" / "untracked.txt").write_text("new\n", encoding="utf-8")
+
+            script = f"""
+            $ErrorActionPreference = 'Stop'
+            Import-Module '{REPO_ROOT}/tools/dev/modules/Impact.psm1' -Force -DisableNameChecking
+            $files = @(Get-ChangedRepositoryFiles)
+            Write-Output ($files | ConvertTo-Json -Compress)
+            """
+            proc = subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script],
+                capture_output=True, text=True, cwd=str(repo),
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            detected = set(json.loads(proc.stdout.strip()))
+            for expected in [
+                "committed_feature.txt",
+                "staged.txt",
+                "unstaged.txt",
+                "to_delete.txt",
+                "old_name.txt",
+                "new_name.txt",
+                "untracked_dir/untracked.txt",
+            ]:
+                self.assertIn(expected, detected, f"Missing git change type {expected} in {detected}")
 
     def test_verification_shadow_mode(self):
         """Specifying -Shadow generates shadow comparison output with candidate metrics."""
