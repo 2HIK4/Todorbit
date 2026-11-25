@@ -1,5 +1,18 @@
 # Persistent test run ledger
 
+## Targeted UI Defect & TDAT Refinement Verification (2026-11-25)
+
+Implementation branch `fix/ui-and-tdat-refinement-2026-11-25` (`D:\AI_Projects\life_manager_ui_review`), Flutter 3.47.7, Dart 3.13.5, Windows 11 x64.
+
+| Invocation / purpose | Source / artifact | Result | Notes / limits |
+| --- | --- | --- | --- |
+| `.\dev.ps1 self-test`, `test_dev_verify.py`, `.\dev.ps1 registry --validate`, `check-docs.py`, `test_lab` before-captures | `bd48f9b` | PASS (`81.1s` 18/18, `27.7s` 11/11, `227` suites, 0 doc errors, `39.4s` 15 PNGs) | `.buildlog/lab/before/` readable Roboto + MaterialIcons baseline captured |
+| `.\dev.ps1 registry --refresh` / `--validate`, `test_registry_sync.py`, `test_architecture_boundaries.py`, `check-docs.py` | UI fix tree + `test/ui_refinement_fixes_test.dart` | PASS (`228` suites, 4/4, 39/39 in `0.55s`, 0 doc errors) | Enforces `features.json`/`feature_contexts.json` sync & clean architecture boundaries |
+| `dart.bat format --output=none --set-exit-if-changed` (13 Dart files) + full `flutter.bat analyze --no-pub` | Final formatted UI diff | PASS (`0.69s` 0 changed; `39.4s` 0 issues) | Zero format/analyzer issues across full repo |
+| 12 targeted Flutter UI/visual suites (`--concurrency=1` in 4 sequential groups) + `test/lab_render_test.dart` after-captures | Final formatted UI diff | PASS (`26.0s` 20/20, `51.3s` 25/25, `66.8s` 24/24, `45.3s` 11/11, `29.0s` 15 PNGs) | Includes new regression cases in `ui_refinement_fixes_test.dart`, `app_task_row_test.dart`, `theme_customization_test.dart`, `mobile_workspace_test.dart`; `.buildlog/lab/after/` visually inspected |
+| `.\dev.ps1 benchmark all` | Final formatted UI diff | PASS (`34.8s`; Dart suite `25.7s`) | Receipt `.buildlog/benchmarks/20261125_223439_all.json`; widget-test harness only |
+| Local host runtime blockers | Windows Developer Mode off; no 16 KiB emulator/APK | `BLOCKED` | Live `-LiveApp` Windows EXE UI/restart, Windows Profile GPU trace, Android 16 KiB emulator runtime, and physical DPI/accessibility remain unexecuted locally |
+
 ## Independent UI Review & TDAT Evaluation (2026-11-25)
 
 Review-only pass on isolated worktree `D:\AI_Projects\life_manager_ui_review` (`review/ui-tdat-eval-2026-11-25` at `8fc25a5`), Flutter 3.47.7, Dart 3.13.5, Windows 11 x64. Detailed findings in [Independent UI & TDAT Review](UI_TDAT_INDEPENDENT_REVIEW_2026_11_25.md).

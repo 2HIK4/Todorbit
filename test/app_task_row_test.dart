@@ -37,10 +37,7 @@ void main() {
         ? TodorbitThemeTokens.dark()
         : TodorbitThemeTokens.light();
     return MaterialApp(
-      theme: ThemeData(
-        brightness: brightness,
-        extensions: [tokens],
-      ),
+      theme: ThemeData(brightness: brightness, extensions: [tokens]),
       home: MediaQuery(
         data: MediaQueryData(
           size: size,
@@ -48,10 +45,7 @@ void main() {
         ),
         child: Scaffold(
           body: Center(
-            child: SizedBox(
-              width: size.width,
-              child: child,
-            ),
+            child: SizedBox(width: size.width, child: child),
           ),
         ),
       ),
@@ -92,29 +86,29 @@ void main() {
       expect(tapped, isTrue);
     });
 
-    testWidgets('displays plan date, due date, subtasks, checklist, and priority', (
-      tester,
-    ) async {
-      final today = localDate(DateTime.now());
-      final task = createTask(
-        title: 'Complete feature',
-        priority: 3,
-        scheduledDate: today,
-        deadlineDate: today,
-      );
+    testWidgets(
+      'displays plan date, due date, subtasks, checklist, and priority',
+      (tester) async {
+        final today = localDate(DateTime.now());
+        final task = createTask(
+          title: 'Complete feature',
+          priority: 3,
+          scheduledDate: today,
+          deadlineDate: today,
+        );
 
-      await tester.pumpWidget(
-        buildHarness(
-          child: AppTaskRow(
-            task: task,
-            variant: AppTaskRowVariant.desktop,
-            subtaskProgress: const TaskProgress(completed: 2, total: 4),
-            checklistProgress: const TaskProgress(completed: 1, total: 3),
-            unmetPrerequisitesCount: 2,
-            unmetPrerequisitesSummary: 'Waiting for Task A, Task B',
+        await tester.pumpWidget(
+          buildHarness(
+            child: AppTaskRow(
+              task: task,
+              variant: AppTaskRowVariant.desktop,
+              subtaskProgress: const TaskProgress(completed: 2, total: 4),
+              checklistProgress: const TaskProgress(completed: 1, total: 3),
+              unmetPrerequisitesCount: 2,
+              unmetPrerequisitesSummary: 'Waiting for Task A, Task B',
+            ),
           ),
-        ),
-      );
+        );
 
         final localizedDay = const DefaultMaterialLocalizations()
             .formatShortDate(DateTime.parse(today));
@@ -141,10 +135,7 @@ void main() {
 
       await tester.pumpWidget(
         buildHarness(
-          child: AppTaskRow(
-            task: task,
-            variant: AppTaskRowVariant.desktop,
-          ),
+          child: AppTaskRow(task: task, variant: AppTaskRowVariant.desktop),
         ),
       );
 
@@ -155,26 +146,17 @@ void main() {
       expect(dueTextFinder, findsOneWidget);
 
       final textWidget = tester.widget<Text>(dueTextFinder);
-      expect(
-        textWidget.style?.color,
-        ThemeData.light().colorScheme.error,
-      );
+      expect(textWidget.style?.color, ThemeData.light().colorScheme.error);
     });
 
     testWidgets('renders completed state with lineThrough decoration', (
       tester,
     ) async {
-      final task = createTask(
-        title: 'Done task',
-        status: TaskStatus.completed,
-      );
+      final task = createTask(title: 'Done task', status: TaskStatus.completed);
 
       await tester.pumpWidget(
         buildHarness(
-          child: AppTaskRow(
-            task: task,
-            variant: AppTaskRowVariant.desktop,
-          ),
+          child: AppTaskRow(task: task, variant: AppTaskRowVariant.desktop),
         ),
       );
 
@@ -185,108 +167,146 @@ void main() {
   });
 
   group('AppTaskRow Mobile Variant', () {
-    testWidgets('renders mobile row with ListTile, minHeight 56, and subtitle', (
-      tester,
-    ) async {
-      final task = createTask(
-        title: 'Mobile task',
-        priority: 2,
-        status: TaskStatus.inProgress,
-      );
-      bool longPressed = false;
+    testWidgets(
+      'renders mobile row with ListTile, minHeight 56, and subtitle',
+      (tester) async {
+        final task = createTask(
+          title: 'Mobile task',
+          priority: 2,
+          status: TaskStatus.inProgress,
+        );
+        bool longPressed = false;
 
-      await tester.pumpWidget(
-        buildHarness(
-          size: const Size(360, 640),
-          child: AppTaskRow(
-            task: task,
-            variant: AppTaskRowVariant.mobile,
-            categoryName: 'Work',
-            projectName: 'Todorbit',
-            onLongPress: () => longPressed = true,
+        await tester.pumpWidget(
+          buildHarness(
+            size: const Size(360, 640),
+            child: AppTaskRow(
+              task: task,
+              variant: AppTaskRowVariant.mobile,
+              categoryName: 'Work',
+              projectName: 'Todorbit',
+              onLongPress: () => longPressed = true,
+            ),
           ),
-        ),
-      );
+        );
 
-      expect(find.text('Mobile task'), findsOneWidget);
-      expect(find.byType(ListTile), findsOneWidget);
+        expect(find.text('Mobile task'), findsOneWidget);
+        expect(find.byType(ListTile), findsOneWidget);
 
-      final renderBox = tester.renderObject<RenderBox>(find.byType(AppTaskRow));
-      expect(renderBox.size.height, greaterThanOrEqualTo(56.0));
+        final renderBox = tester.renderObject<RenderBox>(
+          find.byType(AppTaskRow),
+        );
+        expect(renderBox.size.height, greaterThanOrEqualTo(56.0));
 
-      // Subtitle contains priority, status, category, project separated by ·
-      expect(find.textContaining('Priority 2'), findsOneWidget);
-      expect(find.textContaining('In progress'), findsOneWidget);
-      expect(find.textContaining('Work'), findsOneWidget);
-      expect(find.textContaining('Todorbit'), findsOneWidget);
+        // Subtitle contains priority, status, category, project separated by ·
+        expect(find.textContaining('Priority 2'), findsOneWidget);
+        expect(find.textContaining('In progress'), findsOneWidget);
+        expect(find.textContaining('Work'), findsOneWidget);
+        expect(find.textContaining('Todorbit'), findsOneWidget);
 
-      // Long press triggers onLongPress
-      await tester.longPress(find.text('Mobile task'));
-      expect(longPressed, isTrue);
-    });
+        // Long press triggers onLongPress
+        await tester.longPress(find.text('Mobile task'));
+        expect(longPressed, isTrue);
+      },
+    );
 
-    testWidgets('mobile highlights overdue with warning amber icon and error text', (
-      tester,
-    ) async {
-      final yesterday = localDate(
-        DateTime.now().subtract(const Duration(days: 1)),
-      );
-      final task = createTask(
-        title: 'Overdue mobile task',
-        deadlineDate: yesterday,
-      );
+    testWidgets(
+      'mobile highlights overdue with warning amber icon and error text',
+      (tester) async {
+        final yesterday = localDate(
+          DateTime.now().subtract(const Duration(days: 1)),
+        );
+        final task = createTask(
+          title: 'Overdue mobile task',
+          deadlineDate: yesterday,
+        );
 
-      await tester.pumpWidget(
-        buildHarness(
-          size: const Size(360, 640),
-          child: AppTaskRow(
-            task: task,
-            variant: AppTaskRowVariant.mobile,
+        await tester.pumpWidget(
+          buildHarness(
+            size: const Size(360, 640),
+            child: AppTaskRow(task: task, variant: AppTaskRowVariant.mobile),
           ),
-        ),
-      );
+        );
 
-      // Warning amber icon with Overdue semantic label
-      final warningFinder = find.byWidgetPredicate(
-        (w) =>
-            w is Icon &&
-            w.icon == Icons.warning_amber_rounded &&
-            w.semanticLabel == 'Overdue',
-      );
-      expect(warningFinder, findsOneWidget);
+        // Warning amber icon with Overdue semantic label
+        final warningFinder = find.byWidgetPredicate(
+          (w) =>
+              w is Icon &&
+              w.icon == Icons.warning_amber_rounded &&
+              w.semanticLabel == 'Overdue',
+        );
+        expect(warningFinder, findsOneWidget);
 
-      // Overdue text in subtitle
-      expect(find.textContaining('Overdue · Due'), findsOneWidget);
-    });
+        // Overdue text in subtitle
+        expect(find.textContaining('Overdue · Due'), findsOneWidget);
+      },
+    );
 
-    testWidgets('adapts cleanly to narrow widths and 1.5x text scaling without overflow', (
-      tester,
-    ) async {
-      final task = createTask(
-        title:
-            'A very long task title that would definitely wrap onto multiple lines and test overflow safety in narrow layout mode',
-        priority: 3,
-        deadlineDate: localDate(DateTime.now()),
-      );
+    testWidgets(
+      'adapts cleanly to narrow widths and 1.5x text scaling without overflow',
+      (tester) async {
+        final task = createTask(
+          title: 'A very long task title that would definitely wrap onto multiple lines and test overflow safety in narrow layout mode',
+          priority: 3,
+          deadlineDate: localDate(DateTime.now()),
+        );
 
-      await tester.pumpWidget(
-        buildHarness(
-          size: const Size(320, 480),
-          textScaleFactor: 1.5,
-          child: AppTaskRow(
-            task: task,
-            variant: AppTaskRowVariant.mobile,
-            categoryName: 'Personal Projects',
-            hasAlarm: true,
-            trailingActions: const Icon(Icons.more_vert),
+        await tester.pumpWidget(
+          buildHarness(
+            size: const Size(320, 480),
+            textScaleFactor: 1.5,
+            child: AppTaskRow(
+              task: task,
+              variant: AppTaskRowVariant.mobile,
+              categoryName: 'Personal Projects',
+              hasAlarm: true,
+              trailingActions: const Icon(Icons.more_vert),
+            ),
           ),
-        ),
-      );
+        );
 
         expect(tester.takeException(), isNull);
         final title = find.textContaining('A very long task title');
         expect(tester.widget<Text>(title).maxLines, 4);
         expect(find.byIcon(Icons.more_vert), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'mobile honors showPlannedDate: false semantics, dims completed titles, and colors priority',
+      (tester) async {
+        final tomorrow = localDate(DateTime.now().add(const Duration(days: 1)));
+        final doneTask = createTask(
+          title: 'Completed mobile item',
+          status: TaskStatus.completed,
+          priority: 3,
+          scheduledDate: tomorrow,
+        );
+
+        await tester.pumpWidget(
+          buildHarness(
+            brightness: Brightness.dark,
+            size: const Size(360, 640),
+            child: AppTaskRow(
+              task: doneTask,
+              variant: AppTaskRowVariant.mobile,
+              showPlannedDate: false,
+            ),
+          ),
+        );
+
+        expect(find.textContaining('Planned '), findsNothing);
+        final titleWidget = tester.widget<Text>(
+          find.text('Completed mobile item'),
+        );
+        expect(titleWidget.semanticsLabel, contains('Planned '));
+        expect(titleWidget.style?.decoration, TextDecoration.lineThrough);
+        expect(
+          titleWidget.style?.color,
+          ThemeData(brightness: Brightness.dark).colorScheme.onSurfaceVariant,
+        );
+        final flagIcon = tester.widget<Icon>(find.byIcon(Icons.flag));
+        expect(flagIcon.color, TodorbitThemeTokens.dark().priorityHigh);
       },
     );
   });

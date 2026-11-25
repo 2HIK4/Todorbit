@@ -1,5 +1,35 @@
 # AI Review Queue
 
+## UI-REFINEMENT-TDAT-2026-11-25 — TDAT Infrastructure Fixes and Targeted UI Defect Fixes (2026-11-25)
+
+- **Scope & Addressed Requirements**:
+  - **TDAT Corrections (`bd48f9b`)**:
+    - Updated `tools/verify-windows-artifact.py` and `tools/dev/modules/Reliability.psm1` (`-ConfigOnly`, `-RequireArtifacts`) so `dev package` separates configuration validation from actual binary/APK inspection (`MISSING_ARTIFACTS` fails closed when 0 artifacts are audited unless `-ConfigOnly` is passed).
+    - Added `await loadReviewFonts()` and 4 visual scenarios (`task-details-dark`, `theme-dialog-compact`, `mobile-upcoming-320dp`, `calendar-week-dense-desktop`) to `test/lab_render_test.dart` so `dev screenshot` renders readable Roboto typography and Material icons.
+    - Extended `tools/dev/dev.ps1` with positional `$Target` (`Position=2`) so `dev verify feature <name>` and `dev verify platform <X>` work alongside `-Feature`/`-Platform`.
+    - Extended `tools/dev/modules/Doctor.psm1` to detect unprepared worktrees missing `.dart_tool/package_config.json` and repair via `flutter.bat pub get --enforce-lockfile`.
+    - Eliminated duplicate test lists in `tools/dev/feature_contexts.json` by deriving `Tests` from `tools/dev/features.json` in `tools/dev/modules/Harness.psm1`, fixed stale tokens (`AppSpacing.gap`/`AppLayout.minTapTarget = 48`), and enforced zero drift in `tools/test_registry_sync.py`.
+    - Optimized `tools/dev/test_evidence_cache_safety.py` and `tools/dev/test_impact_behavior.py` using persistent PowerShell worker processes (reducing test suite wall time without altering assertions).
+  - **Targeted UI Defect Fixes**:
+    - Removed hardcoded `#8B5CF6` from `TaskDetailsView`, adopted `TodorbitThemeTokens.colorForPriority`, prevented narrow `Work Log` header row overflow, and migrated `_addManualTime` to viewport/IME-safe `showAppModal` + `SingleChildScrollView` + `DialogActionBar`.
+    - Restored Android `Upcoming` planned-day grouping and `showPlannedDate` / semantic date parity in `MobileWorkspace` and `AppTaskRow._buildMobile`, colored priority badges with `TodorbitThemeTokens`, dimmed completed mobile task titles with `onSurfaceVariant`, enlarged Android subtask overflow buttons to `48 dp` (`AppLayout.minTapTarget`) with `bodyMedium` typography and priority tokens, and fixed the blank-query empty-search bug (`mobile_workspace.dart`).
+    - Updated desktop `_subtaskRow` priority flags to `TodorbitThemeTokens.colorForPriority` + filled `Icons.flag`, added a sidebar `Divider(height: 1)` above the pinned footer, and aligned `Workspace` leading insets (`Hidden tasks`, `Events`, Today shortcut chips) to `AppLayout.pageInsetH` (`20 dp`).
+    - Migrated `ThemeDialog` to responsive `AppModalShell` + `DialogActionBar` (moving Undo/Redo into the title row and the palette mode control into the scrollable list) and wired desktop JSON import/export through `WindowsSettingsFileDialog` (with injectable test callbacks and headless fallback).
+    - Aligned `HabitsView`, `GoalsView`, and `ReportsView` (`taskListMaxWidth`, `AppLayout.pageInsets`/`pageInsetH`, `headlineLarge`), styled `HabitsView._clear` confirm with `colorScheme.error`, and omitted redundant leading icons/full time-range clipping on narrow overlapping `CalendarWeekView` cards (`timeline_grid.dart`).
+- **Status**: Implemented and verified on `fix/ui-and-tdat-refinement-2026-11-25` in isolated worktree `D:\AI_Projects\life_manager_ui_review`; queued for Codex review.
+- **Verification Evidence (Observed after final edit)**:
+  - `dart.bat format --output=none --set-exit-if-changed` on 13 modified Dart files -> `0 changed` (`0.69s`).
+  - `flutter.bat analyze --no-pub` (full repo) -> `No issues found!` (`39.4s`).
+  - Targeted UI & visual Flutter suites (`--concurrency=1`):
+    - `test/ui_refinement_fixes_test.dart`, `test/app_task_row_test.dart`, `test/theme_customization_test.dart` -> `20/20` passed (`26.0s`).
+    - `test/mobile_workspace_test.dart` -> `25/25` passed (`51.3s`).
+    - `test/habits_widget_test.dart`, `test/goals_widget_test.dart`, `test/reports_widget_test.dart`, `test/workspace_test.dart`, `test/calendar_eval_visual_verification_test.dart` -> `24/24` passed (`66.8s`).
+    - `test/refinement_visual_test.dart`, `test/refinement_ui_test.dart`, `test/today_workspace_redesign_test.dart` -> `11/11` passed (`45.3s`).
+    - `test/lab_render_test.dart` (after captures in `.buildlog/lab/after/`) -> `15/15` passed (`29.0s`); key desktop and 320 dp PNGs visually inspected.
+  - `.\dev.ps1 benchmark all` -> passed (`34.8s`, receipt `.buildlog/benchmarks/20261125_223439_all.json`).
+  - `.\dev.ps1 self-test` (after TDAT commit edits) -> `18/18` passed (`81.1s`); `test_dev_verify.py` -> `11/11` passed (`27.7s`); `test_architecture_boundaries.py` -> `39/39` passed (`0.55s`); `test_registry_sync.py` -> `4/4` passed (`0.06s`); `check-docs.py` -> `0` errors.
+  - Remaining host blockers unchanged: local `dev runtime windows -LiveApp` (Windows Developer Mode off) and `dev runtime android` (no 16 KiB emulator/APK) remain `BLOCKED`.
+
 ## TDAT-SAFETY-GATE-01 — TDAT Final Safety Gate, CI Enforcement, and Runtime Reclassification (2026-11-25)
 
 - **Scope & Addressed Requirements**:

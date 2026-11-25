@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import '../shared/app_modal_shell.dart';
+import '../shared/app_spacing.dart';
+import '../shared/app_theme_tokens.dart';
+import '../shared/dialog_action_bar.dart';
 import 'planned_session_delete.dart';
-import '../shared/app_motion.dart';
 import '../shared/scroll_edge_fade.dart';
 import '../shared/status_snackbar.dart';
 import '../shared/task_date_label.dart';
@@ -89,85 +91,117 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
     var endsAt = now;
     var notes = '';
 
-    final result = await showDialog<bool>(
+    final result = await showAppModal<bool>(
       context: context,
-      animationStyle: AppMotion.style(context),
+      maxWidth: AppLayout.dialogDefaultWidth,
+      maxHeight: 420,
       builder: (dialogCtx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Add manual work time'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ListTile(
-                title: const Text('Start time'),
-                subtitle: Text(
-                  '${startsAt.toLocal().hour.toString().padLeft(2, '0')}:${startsAt.toLocal().minute.toString().padLeft(2, '0')}',
-                ),
-                trailing: const Icon(Icons.access_time),
-                onTap: () async {
-                  final picked = await showTimePicker(
-                    context: ctx,
-                    initialTime: TimeOfDay.fromDateTime(startsAt),
-                  );
-                  if (picked != null) {
-                    setDialogState(() {
-                      startsAt = DateTime(
-                        startsAt.year,
-                        startsAt.month,
-                        startsAt.day,
-                        picked.hour,
-                        picked.minute,
-                      );
-                      if (endsAt.isBefore(startsAt)) {
-                        endsAt = startsAt.add(const Duration(minutes: 30));
-                      }
-                    });
-                  }
-                },
+        builder: (ctx, setDialogState) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.section,
+                AppSpacing.section,
+                AppSpacing.section,
+                AppSpacing.related,
               ),
-              ListTile(
-                title: const Text('End time'),
-                subtitle: Text(
-                  '${endsAt.toLocal().hour.toString().padLeft(2, '0')}:${endsAt.toLocal().minute.toString().padLeft(2, '0')}',
-                ),
-                trailing: const Icon(Icons.access_time),
-                onTap: () async {
-                  final picked = await showTimePicker(
-                    context: ctx,
-                    initialTime: TimeOfDay.fromDateTime(endsAt),
-                  );
-                  if (picked != null) {
-                    setDialogState(() {
-                      endsAt = DateTime(
-                        endsAt.year,
-                        endsAt.month,
-                        endsAt.day,
-                        picked.hour,
-                        picked.minute,
-                      );
-                    });
-                  }
-                },
+              child: Text(
+                'Add manual work time',
+                style: Theme.of(ctx).textTheme.headlineSmall,
               ),
-              const SizedBox(height: 8),
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: 'Notes (optional)',
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (v) => notes = v,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogCtx, false),
-              child: const Text('Cancel'),
             ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogCtx, true),
-              child: const Text('Save'),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.section,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Start time'),
+                      subtitle: Text(
+                        '${startsAt.toLocal().hour.toString().padLeft(2, '0')}:${startsAt.toLocal().minute.toString().padLeft(2, '0')}',
+                      ),
+                      trailing: const Icon(Icons.access_time),
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: ctx,
+                          initialTime: TimeOfDay.fromDateTime(startsAt),
+                        );
+                        if (picked != null) {
+                          setDialogState(() {
+                            startsAt = DateTime(
+                              startsAt.year,
+                              startsAt.month,
+                              startsAt.day,
+                              picked.hour,
+                              picked.minute,
+                            );
+                            if (endsAt.isBefore(startsAt)) {
+                              endsAt = startsAt.add(
+                                const Duration(minutes: 30),
+                              );
+                            }
+                          });
+                        }
+                      },
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('End time'),
+                      subtitle: Text(
+                        '${endsAt.toLocal().hour.toString().padLeft(2, '0')}:${endsAt.toLocal().minute.toString().padLeft(2, '0')}',
+                      ),
+                      trailing: const Icon(Icons.access_time),
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: ctx,
+                          initialTime: TimeOfDay.fromDateTime(endsAt),
+                        );
+                        if (picked != null) {
+                          setDialogState(() {
+                            endsAt = DateTime(
+                              endsAt.year,
+                              endsAt.month,
+                              endsAt.day,
+                              picked.hour,
+                              picked.minute,
+                            );
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.gap),
+                    TextField(
+                      decoration: const InputDecoration(
+                        labelText: 'Notes (optional)',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (v) => notes = v,
+                    ),
+                    const SizedBox(height: AppSpacing.content),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.content),
+              child: DialogActionBar(
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogCtx, false),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(dialogCtx, true),
+                    child: const Text('Save'),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -331,8 +365,6 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
                         : 'Start Focus Session',
                   ),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF8B5CF6), // Purple accent
-                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 10,
@@ -370,39 +402,50 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
 
               // Priority Badge
               if (task.priority > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: task.priority == 3
-                        ? scheme.errorContainer
-                        : scheme.primaryContainer.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.flag_outlined,
-                        size: 14,
-                        color: task.priority == 3
-                            ? scheme.error
-                            : scheme.primary,
+                Builder(
+                  builder: (context) {
+                    final tokens =
+                        theme.extension<TodorbitThemeTokens>() ??
+                        (theme.brightness == Brightness.dark
+                            ? TodorbitThemeTokens.dark()
+                            : TodorbitThemeTokens.light());
+                    final priorityColor = tokens.colorForPriority(
+                      task.priority,
+                    );
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Priority ${task.priority}',
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: task.priority == 3
-                              ? scheme.onErrorContainer
-                              : scheme.onPrimaryContainer,
+                      decoration: BoxDecoration(
+                        color: priorityColor.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: priorityColor.withValues(alpha: 0.35),
                         ),
                       ),
-                    ],
-                  ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            task.priority >= 3
+                                ? Icons.flag
+                                : Icons.flag_outlined,
+                            size: 14,
+                            color: priorityColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Priority ${task.priority}',
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: priorityColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
 
               // Category Pill
@@ -577,13 +620,16 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
                 children: [
                   const Icon(Icons.history, size: 20),
                   const SizedBox(width: 10),
-                  Text(
-                    'Work Log',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
+                  Expanded(
+                    child: Text(
+                      'Work Log',
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   Text(
                     formatWorkClock(totalDuration),
                     style: theme.textTheme.labelMedium?.copyWith(

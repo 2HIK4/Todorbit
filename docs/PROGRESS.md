@@ -1,5 +1,11 @@
 # Progress
 
+## Targeted UI Defect & TDAT Refinement (2026-11-25)
+
+- **Branch & Structure**: Created `fix/ui-and-tdat-refinement-2026-11-25` in isolated worktree `D:\AI_Projects\life_manager_ui_review` from review commit `83f05bd`, separating toolkit commit `bd48f9b` from targeted application UI fixes.
+- **TDAT Improvements (`bd48f9b`)**: Hardened `dev package` against zero-artifact `PASS`, loaded Roboto + MaterialIcons fonts cleanly in `test/lab_render_test.dart`, added positional `$Target` support for `dev verify feature <name>`, added `.dart_tool/package_config.json` detection/repair to `dev doctor`, deduplicated `feature_contexts.json` tests from `features.json` with sync validation (`228` registered suites), and sped up TDAT Python cache/impact tests (`81.1s` vs `114.4s` self-test) without weakening checks.
+- **UI Defect Fixes**: Fixed legacy `#8B5CF6` and raw priority colors in `TaskDetailsView` + desktop `_subtaskRow`, migrated `_addManualTime` and `ThemeDialog` to responsive `AppModalShell` + `DialogActionBar` (with desktop `WindowsSettingsFileDialog` theme JSON import/export), restored Android `Upcoming` planned-day grouping/`showPlannedDate` semantics and `48 dp` subtask action targets, fixed blank-query empty search copy, added sidebar footer `Divider(height: 1)`, aligned `Workspace`/`HabitsView`/`GoalsView`/`ReportsView` spacing/headings/error accents, and shortened truncated time ranges on narrow overlapping Calendar cards. Inspected readable before/after PNGs in `.buildlog/lab/before/` and `.buildlog/lab/after/`. See [Test run ledger](TEST_RUN_LEDGER.md) and [AI Review Queue](AI_REVIEW_QUEUE.md).
+
 ## Independent UI Review & First Real-World TDAT Evaluation (2026-11-25)
 
 - **Baseline & Worktree**: Reviewed `feature/todorbit-beta27-refinement` (`8fc25a5`) in isolated review worktree `D:\AI_Projects\life_manager_ui_review` (`review/ui-tdat-eval-2026-11-25`). Zero production code modified; no visual baselines approved; no merges or releases performed.

@@ -5,6 +5,7 @@ import '../shared/app_section_heading.dart';
 import '../shared/app_spacing.dart';
 import '../shared/app_motion.dart';
 import '../shared/app_task_row.dart';
+import '../shared/app_theme_tokens.dart';
 import '../support/support_button.dart';
 import '../shared/item_filters.dart';
 import '../settings/sidebar_order_dialog.dart';
@@ -772,6 +773,10 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
           ? c.tasks
           : const [],
     );
+    final groupByPlannedDay =
+        c.view == WorkspaceView.upcoming &&
+        c.sort == TaskSort.schedule &&
+        (!searching || search.text.trim().isEmpty);
     final scopedEvents =
         {
               WorkspaceView.project,
@@ -983,26 +988,62 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
             if (tasks.isEmpty) {
               return TaskListEmptyState(
                 view: c.view,
-                filtered: c.activeFilter.isActive || searching,
+                filtered:
+                    c.activeFilter.isActive ||
+                    searching && search.text.trim().isNotEmpty,
               );
             }
             return AppSectionHeading('Tasks', detail: '${tasks.length}');
           }
-          final group = groups[index - taskStart];
-          return TaskListGroupView(
+          final groupIndex = index - taskStart;
+          final group = groups[groupIndex];
+          final plannedDay = groupByPlannedDay
+              ? group.tasks.first.scheduledDate
+              : null;
+          final previousDay = groupIndex == 0
+              ? null
+              : groups[groupIndex - 1].tasks.first.scheduledDate;
+          final sectionDate = plannedDay == null
+              ? null
+              : DateTime.tryParse(plannedDay);
+          final showRowPlannedDate = sectionDate == null;
+          return Column(
             key: ValueKey(group.key),
-            group: group,
-            items: tasks,
-            parents: c.taskParents,
-            row: (t) => mobileTaskRow(t, c),
-            subtaskRow: (t) => mobileSubtaskRow(t, c),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (sectionDate != null && plannedDay != previousDay)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.related),
+                  child: AppSectionHeading(
+                    MaterialLocalizations.of(context)
+                        .formatFullDate(sectionDate),
+                  ),
+                ),
+              TaskListGroupView(
+                key: ValueKey('group:${group.key}'),
+                group: group,
+                items: tasks,
+                parents: c.taskParents,
+                row: (t) => mobileTaskRow(
+                  t,
+                  c,
+                  showPlannedDate:
+                      showRowPlannedDate || t.scheduledDate != plannedDay,
+                ),
+                subtaskRow: (t) => mobileSubtaskRow(t, c),
+              ),
+            ],
           );
         },
       ),
     );
   }
 
-  Widget mobileTaskRow(LifeTask t, AppController c) {
+  Widget mobileTaskRow(
+    LifeTask t,
+    AppController c, {
+    bool showPlannedDate = true,
+  }) {
     final category = c.categories
         .where((v) => v.id == t.categoryId)
         .firstOrNull
@@ -1020,6 +1061,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
       timerState: c.activeTimer?.taskId == t.id ? c.activeTimer?.state : null,
       categoryName: category,
       projectName: project,
+      showPlannedDate: showPlannedDate,
       hasAlarm: hasAlarm,
       onTap: () => openTaskDetails(t),
       onLongPress: () => actions(t, c),
@@ -1035,6 +1077,11 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
   Widget mobileSubtaskRow(LifeTask t, AppController c) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final tokens =
+        theme.extension<TodorbitThemeTokens>() ??
+        (theme.brightness == Brightness.dark
+            ? TodorbitThemeTokens.dark()
+            : TodorbitThemeTokens.light());
     final done = t.status == TaskStatus.completed;
 
     return Material(
@@ -1056,7 +1103,7 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
               ),
               Icon(
                 Icons.subdirectory_arrow_right_rounded,
-                size: 16,
+                size: AppIconSize.inline,
                 color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
               ),
               const SizedBox(width: 6),
@@ -1065,17 +1112,30 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
                   t.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: done
-                      ? const TextStyle(
-                          fontSize: 14,
-                          decoration: TextDecoration.lineThrough,
-                        )
-                      : const TextStyle(fontSize: 14),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    decoration: done ? TextDecoration.lineThrough : null,
+                    color: done ? scheme.onSurfaceVariant : scheme.onSurface,
+                  ),
                 ),
               ),
+              if (t.priority > 0)
+                Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: Tooltip(
+                    message: 'Priority ${t.priority}',
+                    child: Icon(
+                      t.priority >= 3 ? Icons.flag : Icons.flag_outlined,
+                      size: AppIconSize.inline,
+                      color: tokens.colorForPriority(t.priority),
+                    ),
+                  ),
+                ),
               IconButton(
-                iconSize: 20,
-                visualDensity: VisualDensity.compact,
+                iconSize: AppIconSize.action,
+                constraints: const BoxConstraints(
+                  minWidth: AppLayout.minTapTarget,
+                  minHeight: AppLayout.minTapTarget,
+                ),
                 tooltip: 'Actions for ${t.title}',
                 icon: const Icon(Icons.more_vert),
                 onPressed: () => actions(t, c),

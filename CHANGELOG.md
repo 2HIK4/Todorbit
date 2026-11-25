@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Align `TaskDetailsView` focus and priority styling with active theme and
+  semantic priority tokens, and keep its manual work-time modal scrollable
+  above compact/mobile keyboards.
+- Group Android `Upcoming` tasks by planned day (matching desktop date
+  headings and accessible row context), color priority badges on mobile rows and
+  subtasks, dim completed mobile titles, and preserve `48 dp` Android subtask
+  action targets.
+- Make `ThemeDialog` adaptive on compact windows and when the keyboard is open,
+  and use the native desktop file picker for JSON theme import and export.
+- Separate the desktop sidebar scroll list from its pinned footer with a
+  divider, align `Workspace`, `Habits`, `Goals`, and `Reports` horizontal
+  insets/headings cleanly, style destructive habit log clear confirmation with
+  error emphasis, fix blank-query search empty state on mobile, and prevent
+  time-range clipping on narrow overlapping Calendar cards.
+
 ## 1.0.19-beta.28+51
 
 - Default dark appearance uses Graphite Neutral Silver, with saved palettes
