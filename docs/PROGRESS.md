@@ -3,7 +3,7 @@
 ## TDAT & Beta 28 Integration Candidate (2026-11-25)
 
 Combined `feature/todorbit-beta27-refinement` (`b600ea7`, Beta 28 experimental publication + Beta 27 UI/Calendar refinement) with `feature/todorbit-developer-toolkit` (`1035bf4`, TDAT & safety gate) on `integration/tdat-beta28`. Centralized test registry refreshed and validated across combined test suites (`227` suites); integration verification ledger and remaining deferred/blocked runtime gates recorded below.
-- Fixed CI shallow-clone test portability in `tools/dev/test_impact_behavior.py` (`853af4f`), passed remote `Lightweight CI` (`45655142273`) and `Android validation` (`45655141952`), diagnosed the lone `Windows checks` (`45655135608`) failure (`test/event_editor_layout_test.dart` hardcoded `DateTime(2026, 10, 25)` rolling outside `AppController`'s 30-day `eventWindowFrom` on `2026-11-25`) and updated it to a relative date, and reinforced permanent TDAT adoption rules in `AGENTS.md` and `CONTRIBUTING.md`.
+- Fixed CI shallow-clone test portability in `tools/dev/test_impact_behavior.py` (`853af4f`), diagnosed and fixed the lone `Windows checks` (`45655135608`) date-rollover failure in `test/event_editor_layout_test.dart` (`db1db0a`), reinforced permanent TDAT adoption rules in `AGENTS.md` and `CONTRIBUTING.md`, and passed all three GitHub Actions workflows on exact candidate `db1db0a`: `Lightweight CI` (`45661321438`), `Android validation` (`45661321128`), and `Windows checks` (`45661320360`), clearing PR #4 for history-preserving integration into `feature/todorbit-beta27-refinement`.
 
 ## Developer Automation Toolkit (TDAT) Final Safety Gate (2026-11-25)
 
