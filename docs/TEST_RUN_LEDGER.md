@@ -1,5 +1,17 @@
 # Persistent test run ledger
 
+## UI & TDAT Integration Review Verification (2026-11-26)
+
+Integration review of `fix/ui-and-tdat-refinement-2026-11-25` (`48da5b1` + review fixes) above `8fc25a5`, Flutter 3.47.7, Dart 3.13.5, Windows 11 x64.
+
+| Invocation / purpose | Source / artifact | Result | Notes / limits |
+| --- | --- | --- | --- |
+| `flutter.bat test --no-pub --concurrency=1 test/platform_customization_journeys_test.dart test/ui_refinement_fixes_test.dart` | Final edited `platform_customization_journeys_test.dart` & `ui_refinement_fixes_test.dart` | PASS (`25.8s`, 6/6) | Includes `'life_manager/file_dialog'` mock, `_addManualTime` `Save` + `TimeEntry`, `Start Focus Session` primary color, and narrow card `Tooltip`/`Semantics` checks |
+| Extended UI regression suites (`settings_ui_quality_test.dart`, `settings_hub_test.dart`, `secondary_surface_quality_test.dart`, `calendar_interactions_regression_test.dart`, `calendar_card_contrast_test.dart`, `prompt1_search_and_detail_presentation_test.dart`, `workspace_render_regression_test.dart`, `workspace_toolbar_test.dart`, `stage2_ui_regression_test.dart`, `populated_ui_journeys_test.dart`, `cancelled_event_readability_test.dart`) | `48da5b1` (`lib/` unchanged during review) | PASS (`77` + `25` tests) | Covers adjacent Settings, Workspace, Calendar, and modal keyboard regressions |
+| `dart format` + `flutter.bat analyze --no-pub` + `test/lab_render_test.dart` (after `MaterialType.canvas` wrapper fix) | Final edited `test/lab_render_test.dart`, `platform_customization_journeys_test.dart`, `ui_refinement_fixes_test.dart` | PASS (`0` changed, `7.0s` `0` issues, `25s` 15/15 PNGs) | `.buildlog/lab/after/calendar-week-dense-desktop.png` & `calendar-agenda-mobile.png` re-inspected; `calendar-agenda-mobile` 0 warnings |
+| `.\dev.ps1 self-test` + `test_dev_verify.py` + `test_registry_sync.py` + `test_architecture_boundaries.py` + `test_ci_workflows.py` + `test_process_invocation_safety.py` + `.\dev.ps1 registry --validate` + `check-docs.py` | Final edited TDAT & doc files | PASS (`62.4s` 18/18, `22.8s` 11/11, 4/4, 39/39, 5/5 [1 bash skip], 6/6, 228 suites, 0 doc errors) | Re-validated post-doc-edit Python/registry/docs checks |
+| Remote PR CI (`Lightweight CI`, `Windows checks`, `Android validation`), local `-LiveApp`, `runtime android`, physical device | Pending PR on `fix/ui-and-tdat-refinement-2026-11-25` | Deferred / Host-blocked | Local host still lacks Windows Developer Mode and 16 KiB emulator/APK; broad 92-suite regression delegated to PR CI |
+
 ## Targeted UI Defect & TDAT Refinement Verification (2026-11-25)
 
 Implementation branch `fix/ui-and-tdat-refinement-2026-11-25` (`D:\AI_Projects\life_manager_ui_review`), Flutter 3.47.7, Dart 3.13.5, Windows 11 x64.

@@ -64,8 +64,11 @@ void main() {
           matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
         ),
       );
-      final resolvedBg = focusButton.style?.backgroundColor?.resolve({});
+      final resolvedBg =
+          focusButton.style?.backgroundColor?.resolve({}) ??
+          theme.colorScheme.primary;
       expect(resolvedBg, isNot(const Color(0xFF8B5CF6)));
+      expect(resolvedBg, theme.colorScheme.primary);
 
       // Priority badge icon uses TodorbitThemeTokens.priorityHigh.
       final badgeIcon = tester.widget<Icon>(find.byIcon(Icons.flag));
@@ -83,7 +86,16 @@ void main() {
       await tester.tap(find.text('Add manual time'));
       await tester.pumpAndSettle();
       expect(find.text('Add manual work time'), findsOneWidget);
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Notes (optional)'),
+        'Manual review session',
+      );
       expect(find.text('Save').hitTestable(), findsOneWidget);
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      final entries = await controller.repository.timeEntries();
+      expect(entries, hasLength(1));
+      expect(entries.single.notes, 'Manual review session');
       expect(tester.takeException(), isNull);
     },
   );
@@ -218,6 +230,14 @@ void main() {
       expect(find.text('9:15 AM'), findsOneWidget);
       expect(find.text('9:30 AM'), findsOneWidget);
       expect(find.textContaining('9:15 AM –'), findsNothing);
+      expect(
+        find.bySemanticsLabel(RegExp(r'Design Sync Alpha, 9:15 AM – 10:45 AM')),
+        findsOneWidget,
+      );
+      expect(
+        find.byTooltip('Design Sync Alpha\n9:15 AM – 10:45 AM'),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     },
   );

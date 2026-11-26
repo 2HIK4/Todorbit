@@ -117,7 +117,16 @@ void main() {
                 : ThemePalette.dark,
           ),
           home: Scaffold(
-            body: RepaintBoundary(key: reviewCaptureKey, child: child),
+            body: RepaintBoundary(
+              key: reviewCaptureKey,
+              child: Material(
+                type: MaterialType.canvas,
+                color: brightness == Brightness.light
+                    ? ThemePalette.light['background']
+                    : ThemePalette.dark['background'],
+                child: child,
+              ),
+            ),
           ),
         ),
       ),
@@ -349,59 +358,62 @@ void main() {
       },
     );
 
-    testWidgets('task-details-dark: TaskDetailsView in dark Graphite Silver theme', (
-      tester,
-    ) async {
-      final task = (await controller.repository.tasks()).first;
-      await renderScenario(
-        tester: tester,
-        name: 'task-details-dark',
-        child: TaskDetailsView(
-          task: task,
-          onBack: () {},
-          onEdit: () {},
-          onStartFocus: () {},
-        ),
-        size: const Size(800, 720),
-        brightness: Brightness.dark,
-      );
-    });
+    testWidgets(
+      'task-details-dark: TaskDetailsView in dark Graphite Silver theme',
+      (tester) async {
+        final task = (await controller.repository.tasks()).first;
+        await renderScenario(
+          tester: tester,
+          name: 'task-details-dark',
+          child: TaskDetailsView(
+            task: task,
+            onBack: () {},
+            onEdit: () {},
+            onStartFocus: () {},
+          ),
+          size: const Size(800, 720),
+          brightness: Brightness.dark,
+        );
+      },
+    );
 
-    testWidgets('theme-dialog-compact: ThemeDialog on compact 360x640 viewport', (
-      tester,
-    ) async {
-      await renderScenario(
-        tester: tester,
-        name: 'theme-dialog-compact',
-        child: const Center(child: ThemeDialog()),
-        size: const Size(360, 640),
-        brightness: Brightness.dark,
-      );
-    });
+    testWidgets(
+      'theme-dialog-compact: ThemeDialog on compact 360x640 viewport',
+      (tester) async {
+        await renderScenario(
+          tester: tester,
+          name: 'theme-dialog-compact',
+          child: const Center(child: ThemeDialog()),
+          size: const Size(360, 640),
+          brightness: Brightness.dark,
+        );
+      },
+    );
 
-    testWidgets('mobile-upcoming-320dp: Mobile Upcoming at 320dp and 150% text', (
-      tester,
-    ) async {
-      final now = DateTime.now();
-      await controller.repository.addTask(
-        TaskDraft(
-          title: 'Prepare release handoff summary',
-          priority: 2,
-          scheduledDate: localDate(now.add(const Duration(days: 1))),
-          deadlineDate: localDate(now.add(const Duration(days: 2))),
-        ),
-      );
-      await controller.refresh();
-      controller.navigate(WorkspaceView.upcoming);
-      await renderScenario(
-        tester: tester,
-        name: 'mobile-upcoming-320dp',
-        child: MobileWorkspace(preferenceStore: mobileStore),
-        size: const Size(320, 800),
-        textScale: 1.5,
-        brightness: Brightness.dark,
-      );
-    });
+    testWidgets(
+      'mobile-upcoming-320dp: Mobile Upcoming at 320dp and 150% text',
+      (tester) async {
+        final now = DateTime.now();
+        await controller.repository.addTask(
+          TaskDraft(
+            title: 'Prepare release handoff summary',
+            priority: 2,
+            scheduledDate: localDate(now.add(const Duration(days: 1))),
+            deadlineDate: localDate(now.add(const Duration(days: 2))),
+          ),
+        );
+        await controller.refresh();
+        controller.navigate(WorkspaceView.upcoming);
+        await renderScenario(
+          tester: tester,
+          name: 'mobile-upcoming-320dp',
+          child: MobileWorkspace(preferenceStore: mobileStore),
+          size: const Size(320, 800),
+          textScale: 1.5,
+          brightness: Brightness.dark,
+        );
+      },
+    );
 
     testWidgets(
       'calendar-week-dense-desktop: Calendar week view with overlapping cards',

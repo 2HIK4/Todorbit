@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_manager/app/app_controller.dart';
@@ -50,6 +51,19 @@ void main() {
       ..writeAsStringSync(jsonEncode({...imported.toJson(), 'version': 999}));
     final output = File('${root.path}/export.json');
     final original = controller.customization.toJson();
+    String? nextFileDialogPath;
+    const fileDialogChannel = MethodChannel('life_manager/file_dialog');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(fileDialogChannel, (call) async {
+          if (call.method == 'openSettings' || call.method == 'saveSettings') {
+            return nextFileDialogPath;
+          }
+          return null;
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(fileDialogChannel, null),
+    );
 
     Future<void> finishWhen(bool Function() done) async {
       for (var attempt = 0; attempt < 100 && !done(); attempt++) {
@@ -63,6 +77,7 @@ void main() {
     }
 
     Future<void> transfer(String action, File file) async {
+      nextFileDialogPath = file.path;
       await tester.scrollUntilVisible(
         find.text(action),
         350,
@@ -74,16 +89,6 @@ void main() {
             .first,
       );
       await tester.tap(find.text(action));
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextFormField), file.path);
-      expect(
-        tester
-            .widget<TextFormField>(find.byType(TextFormField))
-            .controller!
-            .text,
-        file.path,
-      );
-      await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
     }
 
@@ -184,6 +189,7 @@ void main() {
       await tester.pumpAndSettle();
       await open();
       final closingExport = File('${root.path}/closed-export.json');
+      nextFileDialogPath = closingExport.path;
       // Keep the actual transfer future so disposal can race IO without a
       // timing-based sleep; pump fake microtasks while observing completion.
       final pendingExport =
@@ -191,10 +197,7 @@ void main() {
               as Future<void>;
       var exportFinished = false;
       pendingExport.then((_) => exportFinished = true);
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextFormField), closingExport.path);
-      await tester.tap(find.text('Continue'));
-      await tester.pumpAndSettle();
+      await tester.pump();
       await tester.pumpWidget(const SizedBox.shrink());
       await finishWhen(() => exportFinished);
       expect(
