@@ -1,6 +1,8 @@
+import '../shared/app_modal_shell.dart';
 import '../shared/app_motion.dart';
 import '../shared/app_section_heading.dart';
 import '../shared/app_spacing.dart';
+import '../shared/dialog_action_bar.dart';
 import '../shared/scroll_edge_fade.dart';
 
 import 'dart:convert';
@@ -8,6 +10,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show MissingPluginException;
 import 'package:life_manager/features/shared/anchored_select_field.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -20,9 +23,13 @@ import '../../domain/settings_history.dart';
 import '../shared/settings_history_scope.dart';
 import '../../platform/platform_resource_dialog.dart';
 import '../../platform/android/android_platform.dart';
+import 'windows_settings_file_dialog.dart';
 
 class ThemeDialog extends ConsumerStatefulWidget {
-  const ThemeDialog({super.key});
+  const ThemeDialog({super.key, this.chooseImport, this.chooseExport});
+
+  final Future<File?> Function()? chooseImport;
+  final Future<File?> Function()? chooseExport;
 
   @override
   ConsumerState<ThemeDialog> createState() => _ThemeDialogState();
@@ -156,13 +163,36 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
       }
       return;
     }
-    final path = await askText(
-      import ? 'Import theme JSON path' : 'Export theme JSON path',
-      maxLength: null,
-    );
-    if (!mounted || path == null || path.isEmpty) return;
+    File? file;
+    var usedPromptFallback = false;
     try {
-      final file = File(path);
+      final picker = import
+          ? (widget.chooseImport ??
+                const WindowsSettingsFileDialog().chooseImport)
+          : (widget.chooseExport ??
+                const WindowsSettingsFileDialog().chooseExport);
+      file = await picker();
+    } on MissingPluginException {
+      final path = await askText(
+        import ? 'Import theme JSON path' : 'Export theme JSON path',
+        maxLength: null,
+      );
+      if (path != null && path.isNotEmpty) {
+        file = File(path);
+        usedPromptFallback = true;
+      }
+    } on UnsupportedError {
+      final path = await askText(
+        import ? 'Import theme JSON path' : 'Export theme JSON path',
+        maxLength: null,
+      );
+      if (path != null && path.isNotEmpty) {
+        file = File(path);
+        usedPromptFallback = true;
+      }
+    }
+    if (!mounted || file == null) return;
+    try {
       if (import) {
         if (await file.length() > 65536) {
           throw const FormatException('Theme file is too large');
@@ -176,7 +206,7 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
           message = 'Theme imported. Save changes to apply it.';
         });
       } else {
-        if (await file.exists()) {
+        if (usedPromptFallback && await file.exists()) {
           throw const FormatException('File already exists');
         }
         await file.writeAsString(
@@ -207,56 +237,89 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
           if (palette.contrast(foreground, background) < 4.5)
             '${_label(foreground)} on ${_label(background).toLowerCase()}',
     ];
+    final mediaSize = MediaQuery.sizeOf(context);
+    final compactDialogPadding =
+        mediaSize.width < 420 || mediaSize.height < 560;
     return SettingsHistoryScope(
       undo: () => travel(false),
       redo: () => travel(true),
-      child: AlertDialog(
-        title: const Text('Customize Theme'),
-        content: SizedBox(
-          width: 560,
-          height: 560,
+      child: AppModalShell(
+        maxWidth: AppLayout.dialogWideWidth,
+        maxHeight: AppLayout.dialogMaxHeight,
+        minHeight: 220,
+        child: Padding(
+          padding: EdgeInsets.all(
+            compactDialogPadding ? AppSpacing.content : AppSpacing.section,
+          ),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              LayoutBuilder(
-                builder: (context, constraints) =>
-                    constraints.maxWidth <
-                        360 * MediaQuery.textScalerOf(context).scale(1)
-                    ? AnchoredSelectField<bool>(
-                        initialValue: dark,
-                        decoration: const InputDecoration(labelText: 'Palette'),
-                        items: const [
-                          DropdownMenuItem(
-                            value: false,
-                            child: Text('Light Mode'),
-                          ),
-                          DropdownMenuItem(
-                            value: true,
-                            child: Text('Dark Mode'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) setState(() => dark = value);
-                        },
-                      )
-                    : SegmentedButton<bool>(
-                        showSelectedIcon: false,
-                        segments: const [
-                          ButtonSegment(
-                            value: false,
-                            label: Text('Light Mode'),
-                          ),
-                          ButtonSegment(value: true, label: Text('Dark Mode')),
-                        ],
-                        selected: {dark},
-                        onSelectionChanged: (value) =>
-                            setState(() => dark = value.first),
-                      ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Customize Theme',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Undo setting (Ctrl+Z)',
+                    onPressed: history.canUndo ? () => travel(false) : null,
+                    icon: const Icon(Icons.undo),
+                  ),
+                  IconButton(
+                    tooltip: 'Redo setting (Ctrl+Shift+Z)',
+                    onPressed: history.canRedo ? () => travel(true) : null,
+                    icon: const Icon(Icons.redo),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.gap),
               Expanded(
                 child: FadingListView(
-                  padding: const EdgeInsets.only(top: 8, right: 8, bottom: 16),
+                  padding: const EdgeInsets.only(top: 4, right: 8, bottom: 16),
                   children: [
+                    LayoutBuilder(
+                      builder: (context, constraints) =>
+                          constraints.maxWidth <
+                              360 * MediaQuery.textScalerOf(context).scale(1)
+                          ? AnchoredSelectField<bool>(
+                              initialValue: dark,
+                              decoration: const InputDecoration(
+                                labelText: 'Palette',
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: false,
+                                  child: Text('Light Mode'),
+                                ),
+                                DropdownMenuItem(
+                                  value: true,
+                                  child: Text('Dark Mode'),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                if (value != null) setState(() => dark = value);
+                              },
+                            )
+                          : SegmentedButton<bool>(
+                              showSelectedIcon: false,
+                              segments: const [
+                                ButtonSegment(
+                                  value: false,
+                                  label: Text('Light Mode'),
+                                ),
+                                ButtonSegment(
+                                  value: true,
+                                  label: Text('Dark Mode'),
+                                ),
+                              ],
+                              selected: {dark},
+                              onSelectionChanged: (value) =>
+                                  setState(() => dark = value.first),
+                            ),
+                    ),
+                    const SizedBox(height: 12),
                     const AppSectionHeading('Palettes'),
                     if (dark)
                       AnchoredSelectField<ThemePalette>(
@@ -587,47 +650,43 @@ class _ThemeDialogState extends ConsumerState<ThemeDialog> {
                   ],
                 ),
               ),
+              if (message != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.gap),
+                  child: Semantics(liveRegion: true, child: Text(message!)),
+                ),
+              const SizedBox(height: AppSpacing.gap),
+              DialogActionBar(
+                children: [
+                  TextButton(
+                    onPressed: saving ? null : () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: saving
+                        ? null
+                        : () async {
+                            setState(() => saving = true);
+                            try {
+                              await ref
+                                  .read(appControllerProvider)
+                                  .saveCustomization(draft);
+                              if (context.mounted) Navigator.pop(context);
+                            } catch (error) {
+                              if (!mounted) return;
+                              setState(() {
+                                saving = false;
+                                message = 'Could not save theme: $error';
+                              });
+                            }
+                          },
+                    child: Text(saving ? 'Saving…' : 'Save changes'),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
-        actions: [
-          if (message != null)
-            Semantics(liveRegion: true, child: Text(message!)),
-          IconButton(
-            tooltip: 'Undo setting (Ctrl+Z)',
-            onPressed: history.canUndo ? () => travel(false) : null,
-            icon: const Icon(Icons.undo),
-          ),
-          IconButton(
-            tooltip: 'Redo setting (Ctrl+Shift+Z)',
-            onPressed: history.canRedo ? () => travel(true) : null,
-            icon: const Icon(Icons.redo),
-          ),
-          TextButton(
-            onPressed: saving ? null : () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: saving
-                ? null
-                : () async {
-                    setState(() => saving = true);
-                    try {
-                      await ref
-                          .read(appControllerProvider)
-                          .saveCustomization(draft);
-                      if (context.mounted) Navigator.pop(context);
-                    } catch (error) {
-                      if (!mounted) return;
-                      setState(() {
-                        saving = false;
-                        message = 'Could not save theme: $error';
-                      });
-                    }
-                  },
-            child: Text(saving ? 'Saving…' : 'Save changes'),
-          ),
-        ],
       ),
     );
   }

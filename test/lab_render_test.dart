@@ -15,10 +15,12 @@ import 'package:life_manager/features/calendar/calendar_view.dart';
 import 'package:life_manager/features/mobile/mobile_calendar.dart';
 import 'package:life_manager/features/mobile/mobile_workspace.dart';
 import 'package:life_manager/features/settings/settings_hub_dialog.dart';
+import 'package:life_manager/features/settings/theme_dialog.dart';
 import 'package:life_manager/features/shared/app_theme.dart';
 import 'package:life_manager/features/shared/app_task_row.dart';
 import 'package:life_manager/features/shared/app_modal_shell.dart';
 import 'package:life_manager/features/widget/native_widget_service.dart';
+import 'package:life_manager/features/workspace/task_details_view.dart';
 import 'package:life_manager/features/workspace/workspace.dart';
 
 import 'support/uiux_review_capture.dart';
@@ -28,6 +30,11 @@ void main() {
   late AppDatabase database;
   late AppController controller;
   late MobilePreferenceStore mobileStore;
+
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    await loadReviewFonts();
+  });
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('todorbit-lab-');
@@ -110,7 +117,16 @@ void main() {
                 : ThemePalette.dark,
           ),
           home: Scaffold(
-            body: RepaintBoundary(key: reviewCaptureKey, child: child),
+            body: RepaintBoundary(
+              key: reviewCaptureKey,
+              child: Material(
+                type: MaterialType.canvas,
+                color: brightness == Brightness.light
+                    ? ThemePalette.light['background']
+                    : ThemePalette.dark['background'],
+                child: child,
+              ),
+            ),
           ),
         ),
       ),
@@ -338,6 +354,91 @@ void main() {
         expect(
           find.text('Review Layout Responsive Breakpoints'),
           findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'task-details-dark: TaskDetailsView in dark Graphite Silver theme',
+      (tester) async {
+        final task = (await controller.repository.tasks()).first;
+        await renderScenario(
+          tester: tester,
+          name: 'task-details-dark',
+          child: TaskDetailsView(
+            task: task,
+            onBack: () {},
+            onEdit: () {},
+            onStartFocus: () {},
+          ),
+          size: const Size(800, 720),
+          brightness: Brightness.dark,
+        );
+      },
+    );
+
+    testWidgets(
+      'theme-dialog-compact: ThemeDialog on compact 360x640 viewport',
+      (tester) async {
+        await renderScenario(
+          tester: tester,
+          name: 'theme-dialog-compact',
+          child: const Center(child: ThemeDialog()),
+          size: const Size(360, 640),
+          brightness: Brightness.dark,
+        );
+      },
+    );
+
+    testWidgets(
+      'mobile-upcoming-320dp: Mobile Upcoming at 320dp and 150% text',
+      (tester) async {
+        final now = DateTime.now();
+        await controller.repository.addTask(
+          TaskDraft(
+            title: 'Prepare release handoff summary',
+            priority: 2,
+            scheduledDate: localDate(now.add(const Duration(days: 1))),
+            deadlineDate: localDate(now.add(const Duration(days: 2))),
+          ),
+        );
+        await controller.refresh();
+        controller.navigate(WorkspaceView.upcoming);
+        await renderScenario(
+          tester: tester,
+          name: 'mobile-upcoming-320dp',
+          child: MobileWorkspace(preferenceStore: mobileStore),
+          size: const Size(320, 800),
+          textScale: 1.5,
+          brightness: Brightness.dark,
+        );
+      },
+    );
+
+    testWidgets(
+      'calendar-week-dense-desktop: Calendar week view with overlapping cards',
+      (tester) async {
+        final now = DateTime.now();
+        for (var i = 1; i <= 3; i++) {
+          await controller.repository.addEvent(
+            EventDraft(
+              title: 'Studio Design Sync $i',
+              startsAt: DateTime(now.year, now.month, now.day, 9, i * 15),
+              endsAt: DateTime(now.year, now.month, now.day, 10, 30),
+            ),
+          );
+        }
+        await controller.refresh();
+        await renderScenario(
+          tester: tester,
+          name: 'calendar-week-dense-desktop',
+          child: CalendarView(
+            onTaskTap: (_) {},
+            onSmartReschedule: () {},
+            onAddTask: (_) {},
+          ),
+          size: const Size(1100, 760),
+          brightness: Brightness.dark,
         );
       },
     );

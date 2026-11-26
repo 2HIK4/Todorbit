@@ -303,7 +303,13 @@ class AppTaskRow extends StatelessWidget {
   }
 
   Widget _buildMobile(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final tokens =
+        theme.extension<TodorbitThemeTokens>() ??
+        (theme.brightness == Brightness.dark
+            ? TodorbitThemeTokens.dark()
+            : TodorbitThemeTokens.light());
     final done = task.status == TaskStatus.completed;
     final today = localDate(DateTime.now());
     final overdue =
@@ -320,7 +326,26 @@ class AppTaskRow extends StatelessWidget {
     }
 
     if (task.priority > 0) {
-      addPart(TextSpan(text: 'Priority ${task.priority}'));
+      final priorityColor = tokens.colorForPriority(task.priority);
+      addPart(
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 3),
+            child: Icon(
+              task.priority >= 3 ? Icons.flag : Icons.flag_outlined,
+              size: 13,
+              color: priorityColor,
+            ),
+          ),
+        ),
+      );
+      subtitleParts.add(
+        TextSpan(
+          text: 'Priority ${task.priority}',
+          style: TextStyle(color: priorityColor, fontWeight: FontWeight.w600),
+        ),
+      );
     }
     final status = switch (task.status) {
       TaskStatus.notStarted => null,
@@ -341,7 +366,7 @@ class AppTaskRow extends StatelessWidget {
         ),
       );
     }
-    if (task.scheduledDate != null) {
+    if (showPlannedDate && task.scheduledDate != null) {
       final formatted = taskDateLabel(context, task.scheduledDate!);
       addPart(TextSpan(text: 'Planned $formatted'));
     }
@@ -383,11 +408,15 @@ class AppTaskRow extends StatelessWidget {
           ),
           title: Text(
             task.title,
+            semanticsLabel: !showPlannedDate && task.scheduledDate != null
+                ? '${task.title}, Planned ${taskDateLabel(context, task.scheduledDate!)}'
+                : null,
             maxLines: 4,
             overflow: TextOverflow.ellipsis,
-            style: done
-                ? const TextStyle(decoration: TextDecoration.lineThrough)
-                : null,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              decoration: done ? TextDecoration.lineThrough : null,
+              color: done ? scheme.onSurfaceVariant : scheme.onSurface,
+            ),
           ),
           subtitle: subtitleParts.isEmpty
               ? null

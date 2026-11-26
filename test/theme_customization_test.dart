@@ -201,4 +201,92 @@ void main() {
       greaterThan(4.5),
     );
   });
+
+  testWidgets(
+    'ThemeDialog fits compact viewport with keyboard inset and uses file picker callbacks',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 640));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final tempDir = (await tester.runAsync(
+        () => Directory.systemTemp.createTemp('todorbit-theme-ui-'),
+      ))!;
+      addTearDown(() => tester.runAsync(() => tempDir.delete(recursive: true)));
+      final exportFile = File('${tempDir.path}/exported-theme.json');
+      final importFile = File('${tempDir.path}/imported-theme.json');
+      await tester.runAsync(
+        () => importFile.writeAsString(
+          jsonEncode(const ThemeCustomization(compact: true).toJson()),
+        ),
+      );
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      final controller = AppController(LifeRepository(database));
+      var importCalled = false;
+      var exportCalled = false;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appControllerProvider.overrideWith((ref) => controller)],
+          child: MaterialApp(
+            home: MediaQuery(
+              data: const MediaQueryData(
+                size: Size(360, 640),
+                viewInsets: EdgeInsets.only(bottom: 200),
+              ),
+              child: Scaffold(
+                resizeToAvoidBottomInset: false,
+                body: ThemeDialog(
+                  chooseImport: () async {
+                    importCalled = true;
+                    return importFile;
+                  },
+                  chooseExport: () async {
+                    exportCalled = true;
+                    return exportFile;
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Save changes').hitTestable(), findsOneWidget);
+
+      await tester.ensureVisible(find.byType(Scrollable).first);
+      await tester.scrollUntilVisible(
+        find.text('Export JSON'),
+        100,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('Export JSON'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await tester.pumpAndSettle();
+      expect(exportCalled, isTrue);
+      expect(await tester.runAsync(() => exportFile.exists()), isTrue);
+
+      await tester.ensureVisible(find.text('Import JSON'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Import JSON'));
+      for (
+        var i = 0;
+        i < 10 && find.textContaining('Theme imported').evaluate().isEmpty;
+        i++
+      ) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 50)),
+        );
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+      expect(importCalled, isTrue);
+      expect(find.textContaining('Theme imported'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    },
+  );
 }

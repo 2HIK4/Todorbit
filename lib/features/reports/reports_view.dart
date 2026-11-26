@@ -1,3 +1,4 @@
+import '../shared/app_spacing.dart';
 import '../shared/scroll_edge_fade.dart';
 
 import 'dart:math' as math;
@@ -117,206 +118,220 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
     final projectNames = {
       for (final project in controller.projects) project.id: project.name,
     };
-    return FadingListView(
-      padding: const EdgeInsets.fromLTRB(28, 26, 28, 30),
-      children: [
-        Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 16,
-          runSpacing: 8,
+    return Align(
+      alignment: AlignmentDirectional.topStart,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppLayout.taskListMaxWidth),
+        child: FadingListView(
+          padding: AppLayout.pageInsets,
           children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 16,
+              runSpacing: 8,
               children: [
-                Flexible(
-                  child: Text(
-                    'Statistics and reports',
-                    style: Theme.of(context).textTheme.headlineMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Semantics(
+                        header: true,
+                        child: Text(
+                          'Statistics and reports',
+                          style: Theme.of(context).textTheme.headlineLarge,
+                        ),
+                      ),
+                    ),
+                    const AboutViewButton(
+                      description: 'Review completed tasks and work over a selected date range. Choose a recent period or a custom range to compare daily activity.',
+                    ),
+                  ],
                 ),
-                const AboutViewButton(
-                  description: 'Review completed tasks and work over a selected date range. Choose a recent period or a custom range to compare daily activity.',
+                SizedBox(
+                  width: 170 * textScale,
+                  child: AnchoredSelectField<_Period>(
+                    key: ValueKey(period),
+                    initialValue: period,
+                    onChanged: (value) {
+                      if (value != null) _setPeriod(value);
+                    },
+                    items: const [
+                      DropdownMenuItem(
+                        value: _Period.week,
+                        child: Text('Last 7 days'),
+                      ),
+                      DropdownMenuItem(
+                        value: _Period.month,
+                        child: Text('Last 30 days'),
+                      ),
+                      DropdownMenuItem(
+                        value: _Period.quarter,
+                        child: Text('Last 90 days'),
+                      ),
+                      DropdownMenuItem(
+                        value: _Period.custom,
+                        child: Text('Custom range'),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
+            Text(
+              '${taskDateLabel(context, from)} – ${taskDateLabel(context, through)}'
+              ' · Local calendar days',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 18),
+            LayoutBuilder(
+              builder: (context, bounds) {
+                final preferred = 180.0 * math.max(1.0, textScale);
+                final width = bounds.maxWidth < preferred * 2 + 8
+                    ? bounds.maxWidth
+                    : preferred;
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _metric(
+                      'Completed tasks',
+                      '${report.completed}',
+                      'Actual completion date',
+                      Icons.task_alt_outlined,
+                      width,
+                    ),
+                    _metric(
+                      'Created tasks',
+                      '${report.created}',
+                      'Creation date',
+                      Icons.add_task_outlined,
+                      width,
+                    ),
+                    _metric(
+                      'Planned tasks',
+                      '${report.planned}',
+                      'Planned date, independent of completion',
+                      Icons.event_outlined,
+                      width,
+                    ),
+                    _metric(
+                      'Actual work',
+                      _duration(report.work),
+                      'Overlaps counted once',
+                      Icons.timer_outlined,
+                      width,
+                    ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Daily activity',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Completed tasks and confirmed work time. Archived tasks remain in history; Trash is excluded.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 8),
             SizedBox(
-              width: 170 * textScale,
-              child: AnchoredSelectField<_Period>(
-                key: ValueKey(period),
-                initialValue: period,
-                onChanged: (value) {
-                  if (value != null) _setPeriod(value);
+              height: math.min(430.0, report.days.length * 54.0),
+              child: FadingListView.builder(
+                itemCount: report.days.length,
+                itemBuilder: (context, index) {
+                  final day = report.days[report.days.length - index - 1];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: LayoutBuilder(
+                      builder: (context, bounds) {
+                        final bar = LinearProgressIndicator(
+                          value: day.completed / maxCompleted,
+                          minHeight: 8,
+                          borderRadius: BorderRadius.circular(5),
+                        );
+                        final summary =
+                            '${day.completed} done · ${_duration(day.work)}';
+                        final date = taskDateLabel(context, day.date);
+                        if (bounds.maxWidth < 420 || textScale > 1.3) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Wrap(
+                                alignment: WrapAlignment.spaceBetween,
+                                spacing: 12,
+                                children: [Text(date), Text(summary)],
+                              ),
+                              const SizedBox(height: 6),
+                              bar,
+                            ],
+                          );
+                        }
+                        return Row(
+                          children: [
+                            SizedBox(width: 96, child: Text(date)),
+                            Expanded(child: bar),
+                            const SizedBox(width: 10),
+                            SizedBox(
+                              width: 118,
+                              child: Text(summary, textAlign: TextAlign.end),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  );
                 },
-                items: const [
-                  DropdownMenuItem(
-                    value: _Period.week,
-                    child: Text('Last 7 days'),
-                  ),
-                  DropdownMenuItem(
-                    value: _Period.month,
-                    child: Text('Last 30 days'),
-                  ),
-                  DropdownMenuItem(
-                    value: _Period.quarter,
-                    child: Text('Last 90 days'),
-                  ),
-                  DropdownMenuItem(
-                    value: _Period.custom,
-                    child: Text('Custom range'),
-                  ),
-                ],
               ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Habits in range',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              report.habitDue == 0
+                  ? 'No scheduled habit days in this range.'
+                  : '${report.habitSuccess} successful of ${report.habitDue} due days '
+                        '(${(report.habitSuccess / report.habitDue * 100).round()}%). '
+                        '${report.habitRecorded} days recorded.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Completions by project',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            if (report.projects.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text('No completed tasks in this range.'),
+              ),
+            for (final project in report.projects)
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  project.projectId == null
+                      ? 'No project'
+                      : projectNames[project.projectId] ?? 'Former project',
+                ),
+                trailing: Text('${project.completed}'),
+              ),
+            const SizedBox(height: 14),
+            Text('Goals now', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 6),
+            Text(
+              '${report.currentCompletedGoals} completed of ${report.currentGoals} active goals. '
+              'This is the current state, independent of the report range.',
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],
         ),
-        Text(
-          '${taskDateLabel(context, from)} – ${taskDateLabel(context, through)}'
-          ' · Local calendar days',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        const SizedBox(height: 18),
-        LayoutBuilder(
-          builder: (context, bounds) {
-            final preferred = 180.0 * math.max(1.0, textScale);
-            final width = bounds.maxWidth < preferred * 2 + 8
-                ? bounds.maxWidth
-                : preferred;
-            return Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _metric(
-                  'Completed tasks',
-                  '${report.completed}',
-                  'Actual completion date',
-                  Icons.task_alt_outlined,
-                  width,
-                ),
-                _metric(
-                  'Created tasks',
-                  '${report.created}',
-                  'Creation date',
-                  Icons.add_task_outlined,
-                  width,
-                ),
-                _metric(
-                  'Planned tasks',
-                  '${report.planned}',
-                  'Planned date, independent of completion',
-                  Icons.event_outlined,
-                  width,
-                ),
-                _metric(
-                  'Actual work',
-                  _duration(report.work),
-                  'Overlaps counted once',
-                  Icons.timer_outlined,
-                  width,
-                ),
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 20),
-        Text('Daily activity', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 6),
-        Text(
-          'Completed tasks and confirmed work time. Archived tasks remain in history; Trash is excluded.',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: math.min(430.0, report.days.length * 54.0),
-          child: FadingListView.builder(
-            itemCount: report.days.length,
-            itemBuilder: (context, index) {
-              final day = report.days[report.days.length - index - 1];
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: LayoutBuilder(
-                  builder: (context, bounds) {
-                    final bar = LinearProgressIndicator(
-                      value: day.completed / maxCompleted,
-                      minHeight: 8,
-                      borderRadius: BorderRadius.circular(5),
-                    );
-                    final summary =
-                        '${day.completed} done · ${_duration(day.work)}';
-                    final date = taskDateLabel(context, day.date);
-                    if (bounds.maxWidth < 420 || textScale > 1.3) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Wrap(
-                            alignment: WrapAlignment.spaceBetween,
-                            spacing: 12,
-                            children: [Text(date), Text(summary)],
-                          ),
-                          const SizedBox(height: 6),
-                          bar,
-                        ],
-                      );
-                    }
-                    return Row(
-                      children: [
-                        SizedBox(width: 96, child: Text(date)),
-                        Expanded(child: bar),
-                        const SizedBox(width: 10),
-                        SizedBox(
-                          width: 118,
-                          child: Text(summary, textAlign: TextAlign.end),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 20),
-        Text('Habits in range', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 6),
-        Text(
-          report.habitDue == 0
-              ? 'No scheduled habit days in this range.'
-              : '${report.habitSuccess} successful of ${report.habitDue} due days '
-                    '(${(report.habitSuccess / report.habitDue * 100).round()}%). '
-                    '${report.habitRecorded} days recorded.',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 20),
-        Text(
-          'Completions by project',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        if (report.projects.isEmpty)
-          const Padding(
-            padding: EdgeInsets.only(top: 8),
-            child: Text('No completed tasks in this range.'),
-          ),
-        for (final project in report.projects)
-          ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            title: Text(
-              project.projectId == null
-                  ? 'No project'
-                  : projectNames[project.projectId] ?? 'Former project',
-            ),
-            trailing: Text('${project.completed}'),
-          ),
-        const SizedBox(height: 14),
-        Text('Goals now', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 6),
-        Text(
-          '${report.currentCompletedGoals} completed of ${report.currentGoals} active goals. '
-          'This is the current state, independent of the report range.',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-      ],
+      ),
     );
   }
 }

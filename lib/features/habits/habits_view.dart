@@ -86,6 +86,7 @@ class _HabitsViewState extends ConsumerState<HabitsView> {
       );
 
   Future<void> _clear(HabitEntry entry) async {
+    final scheme = Theme.of(context).colorScheme;
     final approved = await showDialog<bool>(
       context: context,
       animationStyle: AppMotion.style(context),
@@ -100,6 +101,10 @@ class _HabitsViewState extends ConsumerState<HabitsView> {
             child: const Text('Cancel'),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: scheme.error,
+              foregroundColor: scheme.onError,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Clear log'),
           ),
@@ -153,11 +158,10 @@ class _HabitsViewState extends ConsumerState<HabitsView> {
               : habit.archivedAt == null,
         )
         .toList();
-    return Center(
+    return Align(
+      alignment: AlignmentDirectional.topStart,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: AppLayout.workspaceMaxWidth,
-        ),
+        constraints: const BoxConstraints(maxWidth: AppLayout.taskListMaxWidth),
         child: ScrollEdgeFade(
           child: CustomScrollView(
             slivers: [
@@ -200,7 +204,12 @@ class _HabitsViewState extends ConsumerState<HabitsView> {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 10),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppLayout.pageInsetH,
+                        0,
+                        AppLayout.pageInsetH,
+                        10,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -265,9 +274,9 @@ class _HabitsViewState extends ConsumerState<HabitsView> {
               else
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.content,
+                    AppLayout.pageInsetH,
                     0,
-                    AppSpacing.content,
+                    AppLayout.pageInsetH,
                     AppSpacing.section,
                   ),
                   sliver: SliverList.builder(

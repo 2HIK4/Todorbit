@@ -19,6 +19,7 @@
 param(
     [Parameter(Position=0)][string]$Command = 'help',
     [Parameter(Position=1)][string]$Subcommand,
+    [Parameter(Position=2)][string]$Target,
     [switch]$Json,
     [switch]$Repair,
     [switch]$Force,
@@ -27,6 +28,8 @@ param(
     [switch]$Refresh,
     [switch]$Validate,
     [switch]$Resume,
+    [switch]$ConfigOnly,
+    [switch]$RequireArtifacts,
     [string]$Feature,
     [string[]]$ChangedPaths = @(),
     [string[]]$Tests = @(),
@@ -204,6 +207,12 @@ try {
         Ensure-TodorbitEnvironment
         $verifyScript = Join-Path $PSScriptRoot 'verify.ps1'
         $sub = if ($Subcommand) { $Subcommand.ToLowerInvariant() } else { 'quick' }
+        if ($sub -eq 'feature' -and -not $Feature -and $Target) {
+            $Feature = $Target
+        }
+        if ($sub -eq 'platform' -and ($Platform -eq 'None' -or -not $Platform) -and $Target) {
+            $Platform = $Target
+        }
         $targetMode = switch ($sub) {
             'quick' { 'Quick' }
             'feature' { 'Feature' }
@@ -504,7 +513,7 @@ try {
     'package' {
         if (Get-Command 'Invoke-PackageVerification' -ErrorAction SilentlyContinue) {
             $targetPlatform = if ($Platform -and $Platform -ne 'None') { $Platform } elseif ($Subcommand) { $Subcommand } else { 'All' }
-            Invoke-PackageVerification -Platform $targetPlatform -Json:$Json
+            Invoke-PackageVerification -Platform $targetPlatform -ConfigOnly:$ConfigOnly -RequireArtifacts:$RequireArtifacts -Json:$Json
         } else {
             throw "Reliability module not loaded."
         }

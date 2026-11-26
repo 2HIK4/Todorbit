@@ -6,6 +6,7 @@ corrupted records are purged, non-passing outcomes are never cached, and
 transitive dependencies invalidate cached receipts.
 """
 
+import base64
 import hashlib
 import json
 import os
@@ -13,6 +14,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import uuid
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -24,29 +26,79 @@ class TestEvidenceCacheSafety(unittest.TestCase):
         cls.test_dir = tempfile.mkdtemp(prefix="todorbit_evidence_test_")
         cls.evidence_dir = Path(cls.test_dir) / ".buildlog" / "evidence"
         cls.evidence_dir.mkdir(parents=True, exist_ok=True)
+        env = os.environ.copy()
+        env["TODORBIT_EVIDENCE_DIR"] = str(cls.evidence_dir)
+        bootstrap = (
+            "$ErrorActionPreference = 'Stop'; "
+            f"Import-Module '{REPO_ROOT}/tools/dev/modules/Evidence.psm1' -Force -DisableNameChecking; "
+            "while ($null -ne ($line = [Console]::In.ReadLine())) { "
+            "if ($line -eq '__EXIT__') { break } "
+            "$sep = $line.IndexOf(':'); "
+            "$tag = $line.Substring(0, $sep); "
+            "$code = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($line.Substring($sep + 1))); "
+            "$ok = 0; "
+            "try { & { $ErrorActionPreference = 'Stop'; Invoke-Expression $code } } catch { $ok = 1; [Console]::Out.WriteLine('__ERR__:' + $_.Exception.Message) } "
+            "[Console]::Out.WriteLine('__END_' + $tag + '__:' + $ok); "
+            "[Console]::Out.Flush() "
+            "}"
+        )
+        cls.ps_proc = subprocess.Popen(
+            ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", bootstrap],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            cwd=str(REPO_ROOT),
+            env=env,
+        )
 
     @classmethod
     def tearDownClass(cls):
+        proc = getattr(cls, "ps_proc", None)
+        if proc is not None:
+            try:
+                if proc.poll() is None:
+                    try:
+                        if proc.stdin:
+                            proc.stdin.write("__EXIT__\n")
+                            proc.stdin.flush()
+                        proc.wait(timeout=5)
+                    except Exception:
+                        proc.kill()
+                        proc.wait(timeout=5)
+            finally:
+                for pipe in (proc.stdin, proc.stdout):
+                    if pipe is not None:
+                        try:
+                            pipe.close()
+                        except Exception:
+                            pass
         shutil.rmtree(cls.test_dir, ignore_errors=True)
 
     def _run_ps_evidence_cmd(self, script_body: str) -> subprocess.CompletedProcess:
-        full_script = f"""
-        $ErrorActionPreference = 'Stop'
-        Import-Module '{REPO_ROOT}/tools/dev/modules/Evidence.psm1' -Force -DisableNameChecking
-        {script_body}
-        """
-        cmd = [
-            "powershell",
-            "-NoProfile",
-            "-NonInteractive",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            full_script,
-        ]
-        env = os.environ.copy()
-        env["TODORBIT_EVIDENCE_DIR"] = str(self.evidence_dir)
-        return subprocess.run(cmd, capture_output=True, text=True, cwd=str(REPO_ROOT), env=env)
+        if self.ps_proc.poll() is not None:
+            raise AssertionError(f"Persistent PowerShell worker exited unexpectedly with code {self.ps_proc.returncode}")
+        tag = uuid.uuid4().hex[:12]
+        encoded = base64.b64encode(script_body.encode("utf-8")).decode("ascii")
+        self.ps_proc.stdin.write(f"{tag}:{encoded}\n")
+        self.ps_proc.stdin.flush()
+        out_lines = []
+        rc = 1
+        end_prefix = f"__END_{tag}__:"
+        while True:
+            line = self.ps_proc.stdout.readline()
+            if not line:
+                return subprocess.CompletedProcess([], 1, "\n".join(out_lines), "\n".join(out_lines))
+            stripped = line.rstrip("\r\n")
+            if stripped.startswith(end_prefix):
+                rc = int(stripped[len(end_prefix):])
+                break
+            out_lines.append(stripped)
+        stdout = "\n".join(out_lines)
+        err_lines = [l for l in out_lines if l.startswith("__ERR__:")]
+        stderr = "\n".join(err_lines if err_lines else (out_lines if rc != 0 else []))
+        return subprocess.CompletedProcess([], rc, stdout, stderr)
 
     def test_passing_evidence_saved_and_retrieved(self):
         """Valid passing test outcome generates reusable evidence."""

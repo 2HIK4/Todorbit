@@ -7,6 +7,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY_PATH = ROOT / "tools" / "dev" / "registry.json"
+FEATURES_PATH = ROOT / "tools" / "dev" / "features.json"
+CONTEXTS_PATH = ROOT / "tools" / "dev" / "feature_contexts.json"
 
 INELIGIBLE_DART_PATTERN = re.compile(
     r"(runtime_workflow_journey_test\.dart|startup_recovery_journeys_test\.dart|"
@@ -50,6 +52,46 @@ class RegistrySyncTest(unittest.TestCase):
             if must_be_ineligible and entry.get("EvidenceReuse") != "Ineligible":
                 violations.append((path, entry.get("EvidenceReuse")))
         self.assertEqual(violations, [], f"Cache-ineligible tests marked eligible: {violations}")
+
+    def test_features_and_contexts_stay_synchronized(self):
+        features = json.loads(FEATURES_PATH.read_text(encoding="utf-8-sig"))
+        contexts = json.loads(CONTEXTS_PATH.read_text(encoding="utf-8-sig"))
+
+        self.assertEqual(
+            sorted(features.keys()),
+            sorted(contexts.keys()),
+            "features.json and feature_contexts.json must define identical feature keys",
+        )
+
+        duplicate_tests = [k for k, v in contexts.items() if "tests" in v]
+        self.assertEqual(
+            duplicate_tests,
+            [],
+            f"feature_contexts.json must derive tests from features.json instead of duplicating 'tests': {duplicate_tests}",
+        )
+
+        missing_paths = []
+        for feature, ctx in contexts.items():
+            for group_paths in ctx.get("entryPoints", {}).values():
+                for rel in group_paths:
+                    if not (ROOT / rel).exists():
+                        missing_paths.append(f"{feature} entryPoint: {rel}")
+            for rel in ctx.get("applicableSkills", []) + ctx.get("documentation", []):
+                if not (ROOT / rel).exists():
+                    missing_paths.append(f"{feature} ref: {rel}")
+        self.assertEqual(missing_paths, [], f"feature_contexts.json contains missing paths: {missing_paths}")
+
+        unregistered_feature_tests = []
+        for feature, group in features.items():
+            for rel in group.get("tests", []):
+                p = ROOT / rel
+                if p.is_file() and rel not in self.by_path:
+                    unregistered_feature_tests.append(f"{feature}: {rel}")
+        self.assertEqual(
+            unregistered_feature_tests,
+            [],
+            f"features.json references unregistered test files: {unregistered_feature_tests}",
+        )
 
 
 if __name__ == "__main__":

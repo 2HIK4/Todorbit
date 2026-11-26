@@ -42,6 +42,7 @@ import '../shared/app_modal_shell.dart';
 import '../shared/app_section_heading.dart';
 import '../shared/app_spacing.dart';
 import '../shared/app_task_row.dart';
+import '../shared/app_theme_tokens.dart';
 import '../shared/sync_status_button.dart';
 import '../contributors/contributors_view.dart';
 import '../templates/templates_dialog.dart';
@@ -1844,6 +1845,7 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                     ],
                   ),
           ),
+          const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
             child: PopupMenuButton<String>(
@@ -2262,7 +2264,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 ),
                 if (controller.hiddenStandardTasksCount > 0)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(28, 0, 24, 10),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppLayout.pageInsetH,
+                      0,
+                      AppLayout.pageInsetH,
+                      10,
+                    ),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
@@ -2301,7 +2308,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   WorkspaceView.saved,
                 }.contains(controller.view))
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(28, 0, 24, 12),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppLayout.pageInsetH,
+                      0,
+                      AppLayout.pageInsetH,
+                      12,
+                    ),
                     child: Text(
                       'Events: ${controller.eventWindowLabel}',
                       style: Theme.of(context).textTheme.bodySmall,
@@ -2310,7 +2322,12 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                 if (isToday &&
                     (todaySessions > 0 || overdueCount > 0 || goalsDueSoon))
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(28, 0, 24, 16),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppLayout.pageInsetH,
+                      0,
+                      AppLayout.pageInsetH,
+                      16,
+                    ),
                     child: Wrap(
                       spacing: 10,
                       runSpacing: 8,
@@ -2770,10 +2787,23 @@ class _WorkspaceState extends ConsumerState<Workspace> {
                   ),
                 ),
                 if (task.priority >= 2)
-                  Icon(
-                    Icons.flag_outlined,
-                    size: 16,
-                    color: task.priority == 3 ? scheme.error : scheme.primary,
+                  Builder(
+                    builder: (context) {
+                      final theme = Theme.of(context);
+                      final tokens =
+                          theme.extension<TodorbitThemeTokens>() ??
+                          (theme.brightness == Brightness.dark
+                              ? TodorbitThemeTokens.dark()
+                              : TodorbitThemeTokens.light());
+                      return Tooltip(
+                        message: 'Priority ${task.priority}',
+                        child: Icon(
+                          task.priority >= 3 ? Icons.flag : Icons.flag_outlined,
+                          size: AppIconSize.inline,
+                          color: tokens.colorForPriority(task.priority),
+                        ),
+                      );
+                    },
                   ),
                 if (task.isOpen)
                   IconButton(

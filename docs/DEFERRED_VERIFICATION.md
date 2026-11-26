@@ -1,5 +1,10 @@
 # Deferred Verification Backlog
 
+## UI & TDAT Integration Review PR Gates (2026-11-26)
+
+- **Broad Regression & Platform CI (`fix/ui-and-tdat-refinement-2026-11-25` PR -> `feature/todorbit-beta27-refinement`)**: Full 92-suite `dev verify changed` fan-out and multi-platform build/emulator gates (`Lightweight CI`, `Windows checks`, `Android validation`) remain deferred to remote GitHub Actions PR workflows.
+- **Host-Blocked Runtimes & Physical Acceptance**: Local `dev runtime windows -LiveApp` (Windows Developer Mode off), `dev runtime android` (missing API 36 16 KiB emulator/APK), and physical Windows/Android DPI, mouse/touch, TalkBack/Narrator, and installer checks remain open on this host.
+
 ## TDAT Safety Gate & Host-Blocked Runtime Checks (2026-11-25)
 
 - **Windows live application process launch/UI/restart (`dev runtime windows -LiveApp -BuildLiveApp`)**: `BLOCKED` on this local Windows 11 host because Windows Developer Mode (symlink support) is disabled (`Building with plugins requires symlink support`). Run on a Developer-Mode-enabled Windows machine or supply a prebuilt driver-enabled `Todorbit.exe`.

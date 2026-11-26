@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -109,6 +110,51 @@ class VerifyTest(unittest.TestCase):
                 self.assertIn('expected warning', result.stdout)
                 if code:
                     self.assertIn('(17)', result.stderr)
+
+    @unittest.skipUnless(os.name == 'nt', 'Tests Windows PowerShell dev.ps1 CLI routing')
+    def test_dev_verify_feature_positional_and_named_match(self):
+        dev = str(ROOT / 'tools/dev/dev.ps1')
+        pos = subprocess.run(
+            [SHELL, '-NoProfile', '-NonInteractive', '-File', dev, 'verify', 'feature', 'settings-ui', '-Plan'],
+            cwd=ROOT, capture_output=True, text=True,
+        )
+        named = subprocess.run(
+            [SHELL, '-NoProfile', '-NonInteractive', '-File', dev, 'verify', 'feature', '-Feature', 'settings-ui', '-Plan'],
+            cwd=ROOT, capture_output=True, text=True,
+        )
+        self.assertEqual(pos.returncode, 0, pos.stderr + pos.stdout)
+        self.assertEqual(named.returncode, 0, named.stderr + named.stdout)
+        self.assertEqual(json.loads(pos.stdout), json.loads(named.stdout))
+
+    @unittest.skipUnless(os.name == 'nt', 'Tests Windows PowerShell dev.ps1 package gate')
+    def test_dev_package_rejects_zero_artifacts_without_config_only(self):
+        dev = str(ROOT / 'tools/dev/dev.ps1')
+        if (ROOT / 'build/windows/x64/runner/Release').exists():
+            return
+        res = subprocess.run(
+            [SHELL, '-NoProfile', '-NonInteractive', '-File', dev, 'package', 'Windows'],
+            cwd=ROOT, capture_output=True, text=True,
+        )
+        self.assertNotEqual(res.returncode, 0)
+        self.assertIn('MISSING_ARTIFACTS', res.stdout)
+        cfg = subprocess.run(
+            [SHELL, '-NoProfile', '-NonInteractive', '-File', dev, 'package', 'Windows', '-ConfigOnly'],
+            cwd=ROOT, capture_output=True, text=True,
+        )
+        self.assertEqual(cfg.returncode, 0, cfg.stderr + cfg.stdout)
+
+        win_script = str(ROOT / 'tools/verify-windows-artifact.py')
+        standalone = subprocess.run(
+            [sys.executable, win_script],
+            cwd=ROOT, capture_output=True, text=True,
+        )
+        self.assertNotEqual(standalone.returncode, 0)
+        self.assertEqual(json.loads(standalone.stdout)['artifact_status'], 'MISSING_ARTIFACTS')
+        standalone_cfg = subprocess.run(
+            [sys.executable, win_script, '--config-only'],
+            cwd=ROOT, capture_output=True, text=True,
+        )
+        self.assertEqual(standalone_cfg.returncode, 0, standalone_cfg.stderr + standalone_cfg.stdout)
 
 
 if __name__ == '__main__':

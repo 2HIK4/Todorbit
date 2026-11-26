@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:life_manager/features/shared/app_theme.dart';
+import 'package:life_manager/features/shared/app_theme_tokens.dart';
 import 'package:life_manager/domain/appearance.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -609,7 +610,10 @@ void main() {
           expect(add.hitTestable(), findsOneWidget);
           await tester.tap(add);
           await tester.pumpAndSettle();
-          expect(find.byKey(const ValueKey('task-title-field')), findsOneWidget);
+          expect(
+            find.byKey(const ValueKey('task-title-field')),
+            findsOneWidget,
+          );
         }
         expect(tester.takeException(), isNull);
       } finally {
@@ -640,4 +644,66 @@ void main() {
       },
     );
   }
+
+  testWidgets(
+    'Upcoming groups by planned day, subtask targets stay >=48dp with priority token, and blank search shows normal empty state',
+    (tester) async {
+      try {
+        final tomorrow = DateTime.now().add(const Duration(days: 1));
+        final parent = await controller.repository.addTask(
+          TaskDraft(
+            title: 'Parent planned task',
+            scheduledDate: localDate(tomorrow),
+          ),
+        );
+        await controller.repository.addSubtask(
+          parent,
+          TaskDraft(
+            title: 'Subtask urgent item',
+            priority: 3,
+            scheduledDate: localDate(tomorrow),
+          ),
+        );
+        await controller.refresh();
+        await open(tester, size: const Size(360, 760), dark: true);
+        controller.navigate(WorkspaceView.upcoming);
+        await tester.pumpAndSettle();
+
+        final expectedHeader = MaterialLocalizations.of(
+          tester.element(find.byType(MobileWorkspace)),
+        ).formatFullDate(tomorrow);
+        expect(find.text(expectedHeader), findsOneWidget);
+
+        // Subtask priority icon uses priorityHigh token and action target >= 48dp.
+        final subtaskFlag = tester.widget<Icon>(find.byIcon(Icons.flag));
+        expect(subtaskFlag.color, TodorbitThemeTokens.dark().priorityHigh);
+        final actionBtn = find.byTooltip('Actions for Subtask urgent item');
+        expect(tester.getSize(actionBtn).width, greaterThanOrEqualTo(48));
+        expect(tester.getSize(actionBtn).height, greaterThanOrEqualTo(48));
+
+        // Scoped view with event + active search with empty query should NOT show empty-search copy.
+        final cat = await controller.repository.addCategory('Empty Cat');
+        final now = DateTime.now();
+        await controller.repository.addEvent(
+          EventDraft(
+            title: 'Scoped cat event',
+            startsAt: now,
+            endsAt: now.add(const Duration(hours: 1)),
+            categoryId: cat.id,
+          ),
+        );
+        await controller.refresh();
+        await tester.tap(find.byTooltip('Search tasks and events'));
+        await tester.pumpAndSettle();
+        controller.navigate(WorkspaceView.category, id: cat.id);
+        await tester.pumpAndSettle();
+        expect(find.text('No tasks here yet'), findsOneWidget);
+        expect(find.text('No matching tasks'), findsNothing);
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.binding.setSurfaceSize(null);
+      }
+    },
+  );
 }

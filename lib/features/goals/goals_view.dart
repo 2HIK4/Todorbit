@@ -205,11 +205,10 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
     final goals = controller.goals
         .where((item) => item.archived == showArchived)
         .toList();
-    return Center(
+    return Align(
+      alignment: AlignmentDirectional.topStart,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: AppLayout.workspaceMaxWidth,
-        ),
+        constraints: const BoxConstraints(maxWidth: AppLayout.taskListMaxWidth),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -258,9 +257,9 @@ class _GoalsViewState extends ConsumerState<GoalsView> {
                     )
                   : FadingListView.builder(
                       padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.content,
+                        AppLayout.pageInsetH,
                         0,
-                        AppSpacing.content,
+                        AppLayout.pageInsetH,
                         AppSpacing.section,
                       ),
                       itemCount: goals.length,

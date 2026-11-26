@@ -885,6 +885,11 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
       );
     }
 
+    final showLeadingIcon = itemWidth >= 105;
+    final compactTimeStr =
+        '${isContinuation ? '← ' : ''}$startTimeStr${continuesNextDay ? ' →' : ''}';
+    final displayedTimeStr = itemWidth < 130 ? compactTimeStr : timeRangeStr;
+
     return ClipRect(
       child: SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
@@ -894,14 +899,16 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
           children: [
             Row(
               children: [
-                Icon(
-                  item.kind == CalendarItemKind.event
-                      ? iconForKey(item.iconName, Icons.event_outlined)
-                      : Icons.schedule,
-                  size: 12,
-                  color: accent,
-                ),
-                const SizedBox(width: 4),
+                if (showLeadingIcon) ...[
+                  Icon(
+                    item.kind == CalendarItemKind.event
+                        ? iconForKey(item.iconName, Icons.event_outlined)
+                        : Icons.schedule,
+                    size: 12,
+                    color: accent,
+                  ),
+                  const SizedBox(width: 4),
+                ],
                 Expanded(
                   child: Text(
                     item.title,
@@ -934,7 +941,7 @@ class _TimelineDayColumnState extends State<TimelineDayColumn> {
             if (placement.height >= 42) ...[
               const SizedBox(height: 1),
               Text(
-                timeRangeStr,
+                displayedTimeStr,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelSmall

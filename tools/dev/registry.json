@@ -1,14 +1,14 @@
 {
     "Version":  "2.0.0",
-    "GeneratedAt":  "2026-11-25T01:05:42.7324662+03:00",
-    "TotalTests":  227,
+    "GeneratedAt":  "2026-11-25T21:59:29.5896765+03:00",
+    "TotalTests":  228,
     "Metrics":  {
-                    "TotalExecutableSuites":  227,
-                    "DartUnitAndWidgetSuites":  212,
+                    "TotalExecutableSuites":  228,
+                    "DartUnitAndWidgetSuites":  213,
                     "IntegrationSuites":  3,
                     "ToolTestSuites":  12,
                     "SupportHelperFiles":  15,
-                    "EstimatedIndividualTestCases":  1234
+                    "EstimatedIndividualTestCases":  1248
                 },
     "SupportHelpers":  [
                            "test/seed_isolated_calendar_profile.dart",
@@ -3680,6 +3680,26 @@
                                     ],
                       "EvidenceReuse":  "Eligible",
                       "Description":  "Automated Flutter test suite: uiux03_transfer_test",
+                      "Prerequisites":  [
+                                            "flutter_sdk",
+                                            "pub_get"
+                                        ]
+                  },
+                  {
+                      "Id":  "test:ui_refinement_fixes_test",
+                      "Type":  "flutter_test",
+                      "Path":  "test/ui_refinement_fixes_test.dart",
+                      "Command":  "flutter test --no-pub --reporter=expanded test/ui_refinement_fixes_test.dart",
+                      "Tier":  "Level1_Fast",
+                      "Features":  [
+                                       "task-lists"
+                                   ],
+                      "Platforms":  [
+                                        "Windows",
+                                        "Android"
+                                    ],
+                      "EvidenceReuse":  "Eligible",
+                      "Description":  "Automated Flutter test suite: ui_refinement_fixes_test",
                       "Prerequisites":  [
                                             "flutter_sdk",
                                             "pub_get"
