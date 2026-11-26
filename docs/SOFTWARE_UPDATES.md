@@ -1,7 +1,8 @@
 # Windows software updates
 
-> [Beta 28](TODORBIT_BETA_28_CANDIDATE.md) records the current Experimental
-> prerelease, installed and portable discovery, and upgrade verification limits.
+> [Beta 29](TODORBIT_BETA_29_CANDIDATE.md) records the current Experimental
+> prerelease, installed and portable discovery, and upgrade verification limits
+> (superseding [Beta 28](TODORBIT_BETA_28_CANDIDATE.md)).
 > [Release](RELEASE.md) owns the current preparation sequence. The earlier dated
 > results below apply to their recorded packages.
 

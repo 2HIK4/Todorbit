@@ -1,0 +1,86 @@
+{
+  "releaseId": 459136042,
+  "commit": "bd9d3375d03964377110943eb7b7a0acd0acc691",
+  "draft": false,
+  "prerelease": true,
+  "assets": [
+    {
+      "id": 794965361,
+      "name": "ANDROID-RELEASE-NOTES.md",
+      "size": 1739,
+      "sha256": "ae1f16dfaaa58a5a7a07dc5c199d739dbdf9474a67f000bfdd19401ee7dfdcee",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.29/ANDROID-RELEASE-NOTES.md"
+    },
+    {
+      "id": 794965365,
+      "name": "ANDROID-SHA256SUMS.txt",
+      "size": 532,
+      "sha256": "9be9b7d6a2a5b896fd5862ec25c8cf760bcc5389071624b90eb10fa9dc5d33fd",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.29/ANDROID-SHA256SUMS.txt"
+    },
+    {
+      "id": 794963038,
+      "name": "Todorbit-1.0.19-beta.29-android-arm64.apk",
+      "size": 27062295,
+      "sha256": "0048fe965f186bdead28d6f217ff52b3bef548d15dff42d6d76791a81c427077",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.29/Todorbit-1.0.19-beta.29-android-arm64.apk"
+    },
+    {
+      "id": 794963030,
+      "name": "Todorbit-1.0.19-beta.29-android-universal.apk",
+      "size": 54713043,
+      "sha256": "722ecd4f27b31d73460464d38b461170f14c5b8ed6ecdb425d42e20c28f0e340",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.29/Todorbit-1.0.19-beta.29-android-universal.apk"
+    },
+    {
+      "id": 794965249,
+      "name": "Todorbit-1.0.19-beta.29-android-update.json",
+      "size": 880,
+      "sha256": "6e21f211eaba795e03e2c2d131e058c6267463e74df450dc1753cc2ab14c0312",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.29/Todorbit-1.0.19-beta.29-android-update.json"
+    },
+    {
+      "id": 794963056,
+      "name": "Todorbit-1.0.19-beta.29-android-x64.apk",
+      "size": 28645811,
+      "sha256": "bec185a1fc49ebd8031bcc35ad1d0728477cbc621911aa9c8fa338a387ad7f84",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.29/Todorbit-1.0.19-beta.29-android-x64.apk"
+    },
+    {
+      "id": 794962989,
+      "name": "Todorbit-1.0.19-beta.29-SHA256SUMS.txt",
+      "size": 221,
+      "sha256": "e901d892942bf112bc4d5a34a32061544708fe9ff3424865b233a72a3c925554",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.29/Todorbit-1.0.19-beta.29-SHA256SUMS.txt"
+    },
+    {
+      "id": 794962992,
+      "name": "Todorbit-1.0.19-beta.29-win-x64-portable.zip",
+      "size": 65505502,
+      "sha256": "261c5ba655b58c98cf70aaafee09b8a535494dccf2cb099ed64db0768d75f850",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.29/Todorbit-1.0.19-beta.29-win-x64-portable.zip"
+    },
+    {
+      "id": 794962976,
+      "name": "Todorbit-1.0.19-beta.29-win-x64-portable.zip.sha256",
+      "size": 112,
+      "sha256": "85e752e75aeda8b5c4c1faf6f17b8e2981ddd98a614f8a21183e634d6bdf4c43",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.29/Todorbit-1.0.19-beta.29-win-x64-portable.zip.sha256"
+    },
+    {
+      "id": 794962987,
+      "name": "Todorbit-1.0.19-beta.29-win-x64-setup.exe",
+      "size": 48090441,
+      "sha256": "996ebf518f189d8e660c80d06e4b58c13600185b0d43caf57ed11d54deb0373d",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.29/Todorbit-1.0.19-beta.29-win-x64-setup.exe"
+    },
+    {
+      "id": 794962978,
+      "name": "Todorbit-1.0.19-beta.29-win-x64-setup.exe.sha256",
+      "size": 109,
+      "sha256": "bf9839b2057d20a477660a3f26233719073c0cee74f26b5b2c9d96cf3ee177f1",
+      "url": "https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.29/Todorbit-1.0.19-beta.29-win-x64-setup.exe.sha256"
+    }
+  ],
+  "anonymousLinksVerified": true
+}

@@ -139,7 +139,37 @@ db.close()
     $widgetSettings.PSObject.Properties.Remove('launchAtSignIn')
     $widgetSettings | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $settings
   }
-  [void]$app.CloseMainWindow()
+  $closeHelper = @'
+using System;
+using System.Text;
+using System.Runtime.InteropServices;
+public static class TodorbitPortableWindowClose {
+  public delegate bool EnumProc(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc cb, IntPtr l);
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll")] public static extern int GetClassName(IntPtr h, StringBuilder sb, int max);
+  [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint msg, IntPtr w, IntPtr l);
+  public static bool CloseRunner(int pid) {
+    bool sent = false;
+    EnumWindows((h, l) => {
+      uint wpid = 0;
+      GetWindowThreadProcessId(h, out wpid);
+      if (wpid == (uint)pid) {
+        var cls = new StringBuilder(64);
+        GetClassName(h, cls, 64);
+        if (cls.ToString() == "FLUTTER_RUNNER_WIN32_WINDOW") {
+          PostMessage(h, 0x0010, IntPtr.Zero, IntPtr.Zero);
+          sent = true;
+        }
+      }
+      return true;
+    }, IntPtr.Zero);
+    return sent;
+  }
+}
+'@
+  Add-Type -TypeDefinition $closeHelper -ErrorAction SilentlyContinue
+  if (-not [TodorbitPortableWindowClose]::CloseRunner($app.Id)) { [void]$app.CloseMainWindow() }
   if (-not $app.WaitForExit(15000)) { throw 'Disposable main app did not close.' }
   if (-not $helper.WaitForExit(120000)) { throw 'Helper did not finish.' }
   $receipt = Get-Content -LiteralPath $result -Raw

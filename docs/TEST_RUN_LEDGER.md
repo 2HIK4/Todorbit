@@ -1,5 +1,18 @@
 # Persistent test run ledger
 
+## Beta 29 release candidate (2026-11-26)
+
+Exact candidate `bd9d3375d03964377110943eb7b7a0acd0acc691` (`1.0.19-beta.29+52`, Schema 29), Flutter 3.47.7, Dart 3.13.5.
+
+| Invocation / purpose | Source / artifact | Result | Notes / limits |
+| --- | --- | --- | --- |
+| `Windows checks` (`45777666379`) | `bd9d3375d03964377110943eb7b7a0acd0acc691` / artifact `15099180683` | PASS | Full Dart analysis & serial Flutter tests, TDAT safety/registry/docs checks, Release & portable builds (`1.0.19.52`, enabled Drive receipt), CRT gates, native writer/sync barriers, `TodorbitWidget.exe --self-test`, Inno Setup installer & checksums |
+| `Android validation` (`45777673011`) | `bd9d3375d03964377110943eb7b7a0acd0acc691` | PASS | Android static analysis, mobile Flutter suites, `test_prepare_android_release.py`, debug APK validation, API 35 KVM emulator workflow |
+| Local signed Android build + `:app:testGithubReleaseUnitTest` + `prepare-android-release.py --apk-only` | `Todorbit-redesign-source/release/android-candidate` | PASS | Verified universal/arm64/x64 APKs, 16 KiB ELF/ZIP alignment, signer `00226dad...`, `minSdk=26`, monotonic `versionCode=52 > 51`, manifest & sums |
+| Windows artifact audit + `tools/test-portable-update.ps1` (Beta 28 → Beta 29) | Portable ZIP `261c5ba...` vs Beta 28 `fb1e0d3...` | PASS | PE `1.0.19.52`, 43-entry portable ZIP, sidecar/manifest SHA-256 match, isolated portable swap/restart/task/settings integrity (updated window lookup to target `FLUTTER_RUNNER_WIN32_WINDOW`) |
+| `Android 16 KiB artifact runtime` (`45784257387`) | Artifact `15100555302` (draft asset `794963056` upgrading `788858244`) | PASS | API 36 `PAGE_SIZE=16384`; retained synthetic task and Calendar Month selection across build 51 → 52 upgrade; `1,350 ms` cold upgraded startup; zero crashes/ANRs |
+| Anonymous 11-asset check + `test/published_update_discovery_test.dart` | GitHub release `459136042` / `TODORBIT_BETA_29_PUBLICATION_ASSETS.json` | PASS (`1/1`) | All 11 public links/digests & `android-update.json` byte equality verified; Experimental selected `v1.0.19-beta.29` (52) on Windows setup/portable & Android ARM64/x64; Stable excluded |
+
 ## UI & TDAT Integration Review Verification (2026-11-26)
 
 Integration review of `fix/ui-and-tdat-refinement-2026-11-25` (`48da5b1` + review fixes) above `8fc25a5`, Flutter 3.47.7, Dart 3.13.5, Windows 11 x64.

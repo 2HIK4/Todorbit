@@ -2,13 +2,16 @@
 
 ## Current status
 
+**[v1.0.19-beta.29](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.29)**
+is the current Windows x64 and Android experimental prerelease, build 52, Schema
+29. Its tag points to `bd9d3375d03964377110943eb7b7a0acd0acc691`. See the
+[Beta 29 verification record](TODORBIT_BETA_29_CANDIDATE.md) for exact-source
+CI, package identity, signed 16 KiB and Windows portable upgrades, public asset
+verification, and the remaining manual acceptance steps. The prior
 **[v1.0.19-beta.28](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.28)**
-is the Windows x64 and Android experimental prerelease, build 51, Schema 29.
-Its tag points to `21bae9a3407d6e23b82408f36a6e75b286187d64`. See the
-[Beta 28 verification record](TODORBIT_BETA_28_CANDIDATE.md) for exact-source
-CI, package identity, signed 16 KiB and Windows portable upgrades, and the
-remaining manual acceptance steps. Stable and earlier releases retain their
-classification and assets.
+checkpoint (`21bae9a3407d6e23b82408f36a6e75b286187d64`, build 51) is preserved in
+[its verification record](TODORBIT_BETA_28_CANDIDATE.md). Stable and earlier
+releases retain their classification and assets.
 
 ## Historical Beta 22 checkpoint
 

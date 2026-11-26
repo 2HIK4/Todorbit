@@ -32,29 +32,30 @@ widgets use the selected palette when available.
 The [Beta 27 refinement receipt](docs/BETA_27_REFINEMENT.md) records the desktop
 task-list layout, graphite appearance, and isolated Calendar comparison.
 The [follow-up polish](docs/BETA_27_POLISH_IMPLEMENTATION.md) adds dark palette
-choices and depth to the Calendar frame measurements. Beta 28 uses the
-approved Graphite Neutral Silver dark default. Existing saved colors stay
-available through Appearance. See the [Beta 28 notes](docs/TODORBIT_BETA_28_RELEASE_NOTES.md).
+choices and depth to the Calendar frame measurements. Beta 29 builds on Beta 28's
+approved Graphite Neutral Silver dark default with targeted UI alignment,
+responsive theme/manual-time modals, Android `Upcoming` day-grouping parity,
+and narrow Calendar card refinements. See the [Beta 29 notes](docs/TODORBIT_BETA_29_RELEASE_NOTES.md).
 
 ## Android beta installation
 
-The production-signed Android Beta 28 supports Android 8.0+ with universal,
-ARM64 and x86-64 APKs. Existing production-signed Beta 27 users can select
-Experimental in Settings → Software Updates. For a manual download, verify
-the published SHA-256. Back up existing data before changing builds. See the
-[Beta 28 downloads](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.28),
+The production-signed Android Beta 29 (`1.0.19-beta.29+52`) supports Android
+8.0+ with universal, ARM64 and x86-64 APKs. Existing production-signed Beta 28
+users can select Experimental in Settings → Software Updates. For a manual
+download, verify the published SHA-256. Back up existing data before changing
+builds. See the [Beta 29 downloads](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.29),
 [phone signing and backup testing](docs/ANDROID_BETA_2_PHONE_TESTING.md),
 [sync setup](docs/GOOGLE_DRIVE_SYNC.md) and the
-[Beta 28 verification record](docs/TODORBIT_BETA_28_CANDIDATE.md).
+[Beta 29 verification record](docs/TODORBIT_BETA_29_CANDIDATE.md).
 
 ## Windows installation
 
-Todorbit Beta 28 is an Experimental Windows x64 release. Windows 11 is the main
+Todorbit Beta 29 is an Experimental Windows x64 release. Windows 11 is the main
 test platform. Windows 10 acceptance is limited. Download the unsigned installer
 or portable ZIP and compare it with the published SHA-256. Run the installer or
 extract the whole portable ZIP and run `Todorbit.exe`. Keep the executable,
 companion, DLLs and `data` folder together. The packages require neither Flutter
-nor Visual Studio. [Beta 28 downloads](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.28)
+nor Visual Studio. [Beta 29 downloads](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.29)
 
 The portable ZIP does **not** store data beside the executable. Each extracted portable location uses its own `%APPDATA%\TodoPilot\portable-<location-id>` profile; copying or moving the extracted folder selects a new empty profile. An installer fresh profile uses `%APPDATA%\TodoPilot\life_manager.sqlite`. This legacy path remains stable through the rename. An older `%APPDATA%\Life Manager` database is never selected just because it exists; on first launch Todorbit offers a reviewed, explicit import. Upgrading an installed TodoPilot retains its existing profile and settings. Export/import data through Settings > Backups & Cloud before moving a portable folder, and do not delete either profile folder.
 

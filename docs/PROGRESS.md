@@ -1,5 +1,10 @@
 # Progress
 
+## Beta 29 experimental publication (2026-11-26)
+
+- **Version & Source**: Published [`v1.0.19-beta.29`](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.29) (`1.0.19-beta.29+52`, Schema 29) as the Experimental Windows x64 and Android prerelease targeting `bd9d3375d03964377110943eb7b7a0acd0acc691` on `feature/todorbit-beta27-refinement` (preserving `main`, `Stable`, and previous tags).
+- **Receipts**: Passed exact-source Windows CI (`45777666379`) and Android CI (`45777673011`), audited all Windows/Android identities and checksums, passed isolated Beta 28 → Beta 29 Windows portable swap/restart (`tools/test-portable-update.ps1`, hardened for `FLUTTER_RUNNER_WIN32_WINDOW` targeting), passed official API 36 16 KiB in-place upgrade (`45784257387`), verified all 11 anonymous assets ([publication manifest](TODORBIT_BETA_29_PUBLICATION_ASSETS.json)), and passed `test/published_update_discovery_test.dart` (`Experimental` only). See [Beta 29 candidate receipt](TODORBIT_BETA_29_CANDIDATE.md) and [Test run ledger](TEST_RUN_LEDGER.md).
+
 ## UI & TDAT Independent Integration Review (2026-11-26)
 
 - **Integration Review (`fix/ui-and-tdat-refinement-2026-11-25`)**: Audited `83f05bd`, `bd48f9b`, and `48da5b1` plus before/after screenshots under `.buildlog/lab/before/` and `.buildlog/lab/after/`. Verified Beta 28 palette/token preservation, UI behavior, and TDAT fixes.

@@ -1,5 +1,16 @@
 # Deferred Verification Backlog
 
+## Beta 29 experimental acceptance (2026-11-26)
+
+The [Beta 29 candidate receipt](TODORBIT_BETA_29_CANDIDATE.md) closes exact-source
+Windows and Android CI, local production Android signing, PE/archive/checksum
+audits, isolated Beta 28 → Beta 29 portable handoff, official API 36 16 KiB
+signed in-place upgrade (`build 51 → 52`), and public asset/updater discovery.
+Physical Windows/Android DPI, input, TalkBack/Narrator assistive output,
+registered Windows installer upgrade on an isolated test machine, Android device
+install UI/OEM behavior, and separately authorized two-client Drive tests remain
+manual acceptance steps. Exclude the owner's personal profile and Windows Sandbox.
+
 ## UI & TDAT Integration Review PR Gates (2026-11-26)
 
 - **Resolved Remote CI (`fix/ui-and-tdat-refinement-2026-11-25` @ `a23c825`, merged in PR #5 @ `aa9cdf8`)**: **Lightweight CI** (`45758321789`), **Android validation** (`45758321859`, including API 35 KVM emulator), and **Windows checks** (`45758673278`, covering full Flutter analysis/tests, all TDAT safety suites, Release/portable builds, native self-test, installer, and checksums) all passed on `a23c825`, covering the full 92-suite impact scope remotely.
