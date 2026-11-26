@@ -2,8 +2,8 @@
 
 ## UI & TDAT Integration Review PR Gates (2026-11-26)
 
-- **Broad Regression & Platform CI (`fix/ui-and-tdat-refinement-2026-11-25` PR -> `feature/todorbit-beta27-refinement`)**: Full 92-suite `dev verify changed` fan-out and multi-platform build/emulator gates (`Lightweight CI`, `Windows checks`, `Android validation`) remain deferred to remote GitHub Actions PR workflows.
-- **Host-Blocked Runtimes & Physical Acceptance**: Local `dev runtime windows -LiveApp` (Windows Developer Mode off), `dev runtime android` (missing API 36 16 KiB emulator/APK), and physical Windows/Android DPI, mouse/touch, TalkBack/Narrator, and installer checks remain open on this host.
+- **Resolved Remote CI (`fix/ui-and-tdat-refinement-2026-11-25` @ `a23c825`, merged in PR #5 @ `aa9cdf8`)**: **Lightweight CI** (`45758321789`), **Android validation** (`45758321859`, including API 35 KVM emulator), and **Windows checks** (`45758673278`, covering full Flutter analysis/tests, all TDAT safety suites, Release/portable builds, native self-test, installer, and checksums) all passed on `a23c825`, covering the full 92-suite impact scope remotely.
+- **Host-Blocked Runtimes & Physical Acceptance**: Local `dev runtime windows -LiveApp` (Windows Developer Mode off), `dev runtime android` (missing local API 36 16 KiB emulator/APK), and physical Windows/Android DPI, mouse/touch, TalkBack/Narrator, registered installer, and authorized two-client Drive checks remain open until release/manual acceptance.
 
 ## TDAT Safety Gate & Host-Blocked Runtime Checks (2026-11-25)
 

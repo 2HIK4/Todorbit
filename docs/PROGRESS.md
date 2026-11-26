@@ -4,7 +4,7 @@
 
 - **Integration Review (`fix/ui-and-tdat-refinement-2026-11-25`)**: Audited `83f05bd`, `bd48f9b`, and `48da5b1` plus before/after screenshots under `.buildlog/lab/before/` and `.buildlog/lab/after/`. Verified Beta 28 palette/token preservation, UI behavior, and TDAT fixes.
 - **Defects Repaired**: Fixed `test/platform_customization_journeys_test.dart` (`MethodChannel('life_manager/file_dialog')` mock), strengthened assertions in `test/ui_refinement_fixes_test.dart`, replaced `ColoredBox` with `Material(type: MaterialType.canvas)` in `test/lab_render_test.dart` (0 warnings across all 15 renders), hardened standalone `tools/verify-windows-artifact.py --config-only` + `tools/test_dev_verify.py`, isolated persistent PowerShell worker scopes/pipes in `test_evidence_cache_safety.py` and `test_impact_behavior.py`, and added execution hygiene / widget-test I/O rules to existing skills.
-- **Status**: Archived `UI-REFINEMENT-TDAT-2026-11-25` to [AI Review History](AI_REVIEW_HISTORY.md), recorded post-fix verification in [Test run ledger](TEST_RUN_LEDGER.md), and prepared branch PR targeting `feature/todorbit-beta27-refinement` (`8fc25a5`). Full PR CI and physical/runtime gates remain tracked in [Deferred verification](DEFERRED_VERIFICATION.md).
+- **Status**: Archived `UI-REFINEMENT-TDAT-2026-11-25` to [AI Review History](AI_REVIEW_HISTORY.md), passed all three remote CI workflows (`45758321789`, `45758321859`, `45758673278`) on `a23c825`, received visual acceptance approval, and merged PR #5 cleanly into `feature/todorbit-beta27-refinement` (`aa9cdf8`). Physical/manual acceptance gates remain in [Deferred verification](DEFERRED_VERIFICATION.md).
 
 ## Targeted UI Defect & TDAT Refinement (2026-11-25)
 

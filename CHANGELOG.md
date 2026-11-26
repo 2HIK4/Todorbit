@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.19-beta.29+52
 
 - Align `TaskDetailsView` focus and priority styling with active theme and
   semantic priority tokens, and keep its manual work-time modal scrollable
@@ -16,6 +16,9 @@
   insets/headings cleanly, style destructive habit log clear confirmation with
   error emphasis, fix blank-query search empty state on mobile, and prevent
   time-range clipping on narrow overlapping Calendar cards.
+- Harden TDAT packaging verification (`verify-windows-artifact.py --config-only`
+  / fail-closed `MISSING_ARTIFACTS`), offscreen font loading, worktree doctor
+  checks, feature context deduplication, and test isolation.
 
 ## 1.0.19-beta.28+51
 
