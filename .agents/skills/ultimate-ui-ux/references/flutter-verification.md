@@ -110,6 +110,22 @@ Use bounded `pump` durations for finite transitions; `pumpAndSettle` can time ou
 on spinners/timers or hide extra frames. Do not swallow overflow errors or use
 arbitrary long sleeps to make a flaky test pass. Stabilize the cause/fixture.
 
+### Widget-test `FakeAsync`, file I/O and platform channel rules
+
+- **`dart:io` inside `testWidgets` requires `tester.runAsync`**: Calling `Directory.createTemp`,
+  `File.writeAsString`, `File.readAsString`, `File.exists`, or `Directory.delete` directly inside
+  `testWidgets` executes under `FakeAsync` and can hang indefinitely or leave unawaited futures.
+  Always wrap OS file/directory calls in `tester.runAsync(...)` (including teardown cleanup). When
+  widget handlers chain multiple OS futures (e.g. `file.length()` then `file.readAsString()`),
+  alternate bounded `tester.runAsync(...)` delays with `tester.pump()` in a finite condition loop
+  (like `finishWhen`) so each stage completes cleanly.
+- **Verify exact widget text and mock platform channels before scrolling/tapping**: Confirm exact
+  button/heading text in source before calling `scrollUntilVisible(...)` (non-existent finders force
+  all `maxScrolls` drag cycles). When testing widgets that call native channels such as
+  `MethodChannel('life_manager/file_dialog')`, register a mock handler via
+  `TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger` or inject the test callback
+  instead of letting unmocked channel awaits stall `pumpAndSettle()`.
+
 ## 4. Accessibility checks
 
 With the existing test harness, enable semantics (`tester.ensureSemantics()`;

@@ -176,6 +176,18 @@ def verify_portable_archive(zip_path):
     }
 
 def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Verify Windows installer config and compiled PE binaries."
+    )
+    parser.add_argument(
+        "--config-only",
+        action="store_true",
+        help="Exit 0 when config passes and zero artifacts are present (unless any present artifact failed).",
+    )
+    args = parser.parse_args()
+
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     iss_path = os.path.join(repo_root, "installer", "life_manager.iss")
 
@@ -217,7 +229,11 @@ def main():
     }
 
     print(json.dumps(report, indent=2))
-    sys.exit(0 if config_passed and (artifacts_inspected == 0 or artifacts_passed) else 1)
+    if args.config_only:
+        ok = config_passed and (artifacts_inspected == 0 or artifacts_passed)
+    else:
+        ok = overall_passed
+    sys.exit(0 if ok else 1)
 
 if __name__ == "__main__":
     main()

@@ -97,10 +97,10 @@ tools/dev/
   ├── dev.ps1                   # Unified CLI entrypoint and command router
   ├── features.json             # Feature-to-file and feature-to-test mapping
   ├── feature_contexts.json     # Curated AI feature context packs (23 features; tests derived from features.json)
-  ├── registry.json             # Centralized test registry (234 test suites)
+  ├── registry.json             # Centralized test registry (228 test suites)
   ├── generate_fixture.py       # Deterministic SQLite fixture generator
   ├── check-docs.py             # Documentation link and cross-reference validator
-  ├── test_toolkit_self.ps1     # 11-point automated self-test suite
+  ├── test_toolkit_self.ps1     # 18-point automated self-test suite
   └── modules/
         ├── Doctor.psm1         # Environment audit, toolchain resolution, RAM/disk contention
         ├── Session.psm1        # Atomic file locks (.buildlog/locks/) and safe cleanup

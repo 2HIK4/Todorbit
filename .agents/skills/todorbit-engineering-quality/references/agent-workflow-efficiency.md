@@ -89,7 +89,24 @@ When diagnosing architectural friction or multi-file bugs, use targeted structur
 - **Treat Special Cases as Design Signals**:
   - One-off `if` branches for single callers, swallowed exceptions, or arbitrary sleep/retry delays are architectural warnings that an underlying lifecycle, transaction, or domain concept is missing. Diagnose and fix the root model rather than adding more one-off branches.
 
-### Strict Todorbit Safety Constraints:
+- **Strict Todorbit Safety Constraints**:
 - **NO Repository-Wide Refactoring in One Pass**: Never execute untargeted repository-wide refactoring workflows. Refactor only the bounded subsystem under active authorized modification.
 - **NO Test Deletion**: Never delete existing tests, assertions, or fixtures under the guise of "cleanup". Tests are non-negotiable regression safety nets.
 - **Zero Data Loss & Safe Migrations**: Structural changes must never compromise SQLite forward migrations (Schema 29), monotonic CAS revision tokens, or user data preservation.
+
+---
+
+## 6. Execution Hygiene: Diagnostics, Retries, Workers & Host Batching
+
+1. **Diagnose Before Retrying (No Broad Batch Restarts)**:
+   - When a multi-suite command fails or stalls, immediately isolate the single failing test case (`flutter.bat test <file_test.dart> --plain-name "<name>" --no-pub --concurrency=1`) and capture the full stack/exception log before editing or re-running any broader suite.
+   - Never restart a 3–5 minute multi-suite batch until the isolated reproducer passes cleanly.
+2. **Avoid Redundant Polling Loops**:
+   - After launching a background command (`run_command`), use appropriate timeouts / `NotificationTimeoutSeconds` and wait for system completion notifications (or inspect logs only after meaningful intervals) rather than issuing rapid status polls.
+3. **16 GB RAM Batch Sizing & Explicit Windows Executables**:
+   - Always invoke `flutter.bat` and `dart.bat` (never extensionless `flutter`/`dart` or missing `dart.exe` paths).
+   - Keep `flutter.bat test --no-pub --concurrency=1` batches small (typically 1–4 suites per invocation) when free RAM is near 1.5 GB so compiler isolates do not exhaust memory before test execution.
+4. **Preserve Diagnostic Assertions & Honest Coverage**:
+   - Never relax assertions or drop failure diagnostics during debugging retries. Always verify affected sibling consumers beyond the first targeted batch (or run `dev verify feature <name>`).
+5. **Persistent Test Worker Isolation**:
+   - When optimizing repeated subprocess checks with a persistent worker (e.g. Python `unittest` + PowerShell), wrap each invocation in an isolated child scope (`& { $ErrorActionPreference = 'Stop'; Invoke-Expression $code }`), merge/drain `stderr` (`subprocess.STDOUT`) to avoid pipe deadlocks, verify worker liveness, and close pipes cleanly in `tearDownClass`.

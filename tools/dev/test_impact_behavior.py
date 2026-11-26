@@ -28,7 +28,7 @@ class TestImpactBehavior(unittest.TestCase):
             "$tag = $line.Substring(0, $sep); "
             "$code = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($line.Substring($sep + 1))); "
             "$ok = 0; "
-            "try { Invoke-Expression $code } catch { $ok = 1; [Console]::Out.WriteLine('__ERR__:' + $_.Exception.Message) } "
+            "try { & { $ErrorActionPreference = 'Stop'; Invoke-Expression $code } } catch { $ok = 1; [Console]::Out.WriteLine('__ERR__:' + $_.Exception.Message) } "
             "[Console]::Out.WriteLine('__END_' + $tag + '__:' + $ok); "
             "[Console]::Out.Flush() "
             "}"
@@ -37,7 +37,7 @@ class TestImpactBehavior(unittest.TestCase):
             ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", bootstrap],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
             encoding="utf-8",
             cwd=str(REPO_ROOT),
@@ -45,15 +45,29 @@ class TestImpactBehavior(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        if getattr(cls, "ps_proc", None) and cls.ps_proc.poll() is None:
+        proc = getattr(cls, "ps_proc", None)
+        if proc is not None:
             try:
-                cls.ps_proc.stdin.write("__EXIT__\n")
-                cls.ps_proc.stdin.flush()
-                cls.ps_proc.wait(timeout=5)
-            except Exception:
-                cls.ps_proc.kill()
+                if proc.poll() is None:
+                    try:
+                        if proc.stdin:
+                            proc.stdin.write("__EXIT__\n")
+                            proc.stdin.flush()
+                        proc.wait(timeout=5)
+                    except Exception:
+                        proc.kill()
+                        proc.wait(timeout=5)
+            finally:
+                for pipe in (proc.stdin, proc.stdout):
+                    if pipe is not None:
+                        try:
+                            pipe.close()
+                        except Exception:
+                            pass
 
     def _run_impact(self, explicit_files: list[str] = None, extra_flags: list[str] = None) -> dict:
+        if self.ps_proc.poll() is not None:
+            raise AssertionError(f"Persistent PowerShell worker exited unexpectedly with code {self.ps_proc.returncode}")
         files_arg = ""
         if explicit_files is not None:
             quoted_files = ", ".join(f"'{f}'" for f in explicit_files)

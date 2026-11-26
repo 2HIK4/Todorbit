@@ -40,7 +40,7 @@ function Invoke-PackageVerification {
     if ($Platform -eq 'Windows' -or $Platform -eq 'All') {
         $winScript = Join-Path $repoRoot 'tools\verify-windows-artifact.py'
         if (Test-Path -LiteralPath $winScript) {
-            $winRaw = & $pythonExe $winScript
+            $winRaw = & $pythonExe $winScript --config-only
             $winExit = $LASTEXITCODE
             $winObj = $winRaw | ConvertFrom-Json
             $results['Windows'] = $winObj

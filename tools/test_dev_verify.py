@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -141,6 +142,19 @@ class VerifyTest(unittest.TestCase):
             cwd=ROOT, capture_output=True, text=True,
         )
         self.assertEqual(cfg.returncode, 0, cfg.stderr + cfg.stdout)
+
+        win_script = str(ROOT / 'tools/verify-windows-artifact.py')
+        standalone = subprocess.run(
+            [sys.executable, win_script],
+            cwd=ROOT, capture_output=True, text=True,
+        )
+        self.assertNotEqual(standalone.returncode, 0)
+        self.assertEqual(json.loads(standalone.stdout)['artifact_status'], 'MISSING_ARTIFACTS')
+        standalone_cfg = subprocess.run(
+            [sys.executable, win_script, '--config-only'],
+            cwd=ROOT, capture_output=True, text=True,
+        )
+        self.assertEqual(standalone_cfg.returncode, 0, standalone_cfg.stderr + standalone_cfg.stdout)
 
 
 if __name__ == '__main__':
