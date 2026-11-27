@@ -2,7 +2,7 @@
 
 Open [GitHub Releases](https://github.com/2HIK4/Todorbit/releases) and choose
 the experimental pre-release you want to install (currently
-[Beta 29 (`v1.0.19-beta.29`)](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.29)).
+[Beta 30 (`v1.0.19-beta.30`)](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.30)).
 Its **Assets** list includes the available packages and SHA-256 checksums. Back
 up your current profile before upgrading and keep any passphrase you need for
 recovery.

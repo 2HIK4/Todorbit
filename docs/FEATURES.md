@@ -2,7 +2,7 @@
 
 [Home](../README.md) · [Architecture](ARCHITECTURE.md) · Architecture Map (`docs/ARCHITECTURE_MAP.md` on `feature/todorbit-beta27-refinement`) · [Platform Support](PLATFORM_SUPPORT.md) · [Contributing](../CONTRIBUTING.md)
 
-This document catalogues every implemented user-facing capability and meaningful subfeature in Todorbit, audited directly against source files, native adapters, automated tests, and published Beta 29 documentation.
+This document catalogues every implemented user-facing capability and meaningful subfeature in Todorbit, audited directly against source files, native adapters, automated tests, and published Beta 30 documentation.
 
 ---
 
@@ -13,9 +13,7 @@ To avoid inflating feature counts through arbitrary button-level subdivisions:
 1. **Feature Areas (`15`)** group related user workflows across productivity, scheduling, platform widgets, personalization, data safety, and distribution.
 2. **Verified Features (`54`)** represent distinct end-to-end user-facing capabilities backed by a dedicated UI/platform entry point and domain/persistence or native contract (`lib/features/`, `lib/domain/`, `lib/data/`, `android/`, or `experiments/widget-shell-probe/`).
 3. **Subfeatures & Modes** are enumerated inside each capability row rather than split into separate rows.
-4. **Release Status** explicitly separates:
-   - **Shipped (Beta 29)**: Included in published [`v1.0.19-beta.29`](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.29) (`bd9d337`, SQLite schema `29`).
-   - **Beta 30 candidate**: Implemented and verified on `feature/todorbit-beta27-refinement`, pending owner approval before publication (no new release has been published yet).
+4. **Release Status** explicitly tracks shipped experimental capabilities through [`v1.0.19-beta.30`](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.30) (`253f4ed`, SQLite schema `29`).
 
 ---
 
@@ -23,22 +21,22 @@ To avoid inflating feature counts through arbitrary button-level subdivisions:
 
 | # | Feature Area | Verified Features | Platforms | Status Summary |
 | --- | --- | --- | --- | --- |
-| 1 | Task Management, Structure & Composition | 6 | Windows, Android | Shipped (Beta 29) |
-| 2 | Workspace Views, Navigation & Search | 5 | Windows, Android (1 desktop-only) | Shipped (Beta 29) + PR #3 search/touch fixes |
-| 3 | Calendar, Fixed Events & Smart Rescheduling | 5 | Windows, Android | Shipped (Beta 29) |
-| 4 | Focus Timers, Time Tracking & Reports | 4 | Windows, Android | Shipped (Beta 29) |
-| 5 | Habits & Goals | 2 | Windows, Android | Shipped (Beta 29) |
-| 6 | Recurring Schedules & Progressive Plans | 2 | Windows, Android | Shipped (Beta 29) |
-| 7 | Reminders, Native Alarms & Notifications | 3 | Windows, Android | Shipped (Beta 29) |
-| 8 | Task Resources, Attachments & Shared Files Inbox | 3 | Windows, Android | Shipped (Beta 29) |
-| 9 | Windows Native Desktop Widgets | 5 | Windows | Shipped + 2 Beta 30 candidate improvements |
-| 10 | Android Home-Screen Launcher Widgets | 2 | Android | Shipped (Beta 29) |
-| 11 | Appearance, Themes, Layout & Hotkeys | 4 | Windows, Android (Hotkeys Windows) | Shipped + 1 Beta 30 candidate (`Hotkeys` embedded) |
-| 12 | Local Data Safety, Backups & Settings Transfer | 4 | Windows, Android | Shipped (Beta 29) + rollback retention fix |
-| 13 | Google Drive Backup & Incremental Sync | 4 | Windows, Android | Experimental (Beta 29) |
-| 14 | Privacy, App Lock & Attribution Governance | 2 | Windows, Android | Shipped (Beta 29) |
-| 15 | In-App Software Updates & Contributor Tooling | 3 | Windows, Android | Shipped (Beta 29) |
-| **Total** | **15 Feature Areas** | **54** | **Cross-platform** | **51 Shipped (Beta 29) / 3 Beta 30 Candidate Upgrades** |
+| 1 | Task Management, Structure & Composition | 6 | Windows, Android | Shipped (Beta 30) |
+| 2 | Workspace Views, Navigation & Search | 5 | Windows, Android (1 desktop-only) | Shipped (Beta 30) |
+| 3 | Calendar, Fixed Events & Smart Rescheduling | 5 | Windows, Android | Shipped (Beta 30) |
+| 4 | Focus Timers, Time Tracking & Reports | 4 | Windows, Android | Shipped (Beta 30) |
+| 5 | Habits & Goals | 2 | Windows, Android | Shipped (Beta 30) |
+| 6 | Recurring Schedules & Progressive Plans | 2 | Windows, Android | Shipped (Beta 30) |
+| 7 | Reminders, Native Alarms & Notifications | 3 | Windows, Android | Shipped (Beta 30) |
+| 8 | Task Resources, Attachments & Shared Files Inbox | 3 | Windows, Android | Shipped (Beta 30) |
+| 9 | Windows Native Desktop Widgets | 5 | Windows | Shipped (Beta 30) |
+| 10 | Android Home-Screen Launcher Widgets | 2 | Android | Shipped (Beta 30) |
+| 11 | Appearance, Themes, Layout & Hotkeys | 4 | Windows, Android (Hotkeys Windows) | Shipped (Beta 30) |
+| 12 | Local Data Safety, Backups & Settings Transfer | 4 | Windows, Android | Shipped (Beta 30) |
+| 13 | Google Drive Backup & Incremental Sync | 4 | Windows, Android | Experimental (Beta 30) |
+| 14 | Privacy, App Lock & Attribution Governance | 2 | Windows, Android | Shipped (Beta 30) |
+| 15 | In-App Software Updates & Contributor Tooling | 3 | Windows, Android | Shipped (Beta 30) |
+| **Total** | **15 Feature Areas** | **54** | **Cross-platform** | **54 Shipped in Experimental Beta 30 (`v1.0.19-beta.30`)** |
 
 ---
 
@@ -134,8 +132,8 @@ To avoid inflating feature counts through arbitrary button-level subdivisions:
 | --- | --- | --- | --- | --- | --- | --- |
 | **F31** | **Explorer-Hosted Native Tasks Widget (`LifeManagerWidget`)**<br>Independent Tasks HWND attached cleanly behind windows on Windows Explorer desktop; top/side/bottom views bar (`Today`, `All Tasks`, `Upcoming`), date navigation stepper, inline Quick Add bar, compact task editor, keyboard navigation & UIA accessibility | View, complete, and quickly capture tasks directly from your Windows desktop without keeping the main Flutter window open. | Windows | Shipped (Beta 29) | `experiments/widget-shell-probe/NativeDesktopWidgetHost.cs`, `WidgetAccessibility.cs`, `docs/windows-widget.md`, `--lifecycle-self-test`, `--self-test` | Requires Explorer shell (`WorkerW`/`Progman`) on Windows; Win11 tested primarily, Win10 acceptance limited. |
 | **F32** | **Explorer-Hosted Native Calendar Widget (`CalendarWidget`)**<br>Month grid with multi-dot busy indicators, interactive splitter resize (`calendarSplit`), date stepper (`WidgetDateNavigation`), combined Events & Planned Tasks agenda pane | Keep your monthly overview and daily time-ordered agenda pinned side-by-side or stacked on the desktop. | Windows | Shipped (Beta 29) | `experiments/widget-shell-probe/CalendarWidget.cs`, `CalendarWidgetLayout.cs`, `CalendarWidgetSelfTest.cs` | Agenda displays local SQLite projections; editing full recurring exceptions opens main app. |
-| **F33** | **Theme-Matched Widget Surfaces, Transparency & Backdrop Contrast Lift**<br>Automatic dark/light/custom Flutter palette sync (`theme.json`), per-surface opacity (`0–100%`), border/radius presets (`Default`, `Minimal`, `Compact`, `Comfortable`, `Agenda Focus`, `Calendar Focus`, `Transparent`, up to 30 custom presets), directional light-theme glyph lift (`(0,1)+(1,1)` stroke shadow) | Read translucent light or dark desktop widgets clearly across light, dark, and mixed-color wallpapers without blurry rectangular boxes behind text. | Windows | Shipped + **Beta 30 candidate** upgrade (directional contrast lift, translucent hover blend & Light-theme ink contrast fixes) | `experiments/widget-shell-probe/WidgetSurfaces.cs`, `WidgetText.cs`, `lib/domain/widget_presets.dart`, `--capture-matrix` offscreen visual matrix | Physical Explorer wallpaper/Win+D/multi-DPI live check relies on Windows desktop manual QA; automated `--capture-matrix` covers composite wallpapers offscreen. |
-| **F34** | **Continuous Smooth Pixel Widget Scrolling (`WidgetScrollAxis`)**<br>16 ms ease-out smooth wheel interpolation honoring OS `MouseWheelScrollLines` and `SPI_GETCLIENTAREAANIMATION`, fractional pixel offsets, synchronized scrollbar drag/thumb geometry, accessibility scroll actions, zero-paint idle gate (`idle_paints_250ms=0`) | Scroll fluidly past partially clipped task and agenda items with high-precision wheels or trackpads while consuming zero paint cycles once settled idle. | Windows | **Beta 30 candidate** | `experiments/widget-shell-probe/WidgetScrollAxis.cs`, `NativeDesktopWidgetHost.cs`, `CalendarWidget.cs`, `Program.cs` (`--scroll-benchmark`) | Windows widget only (Flutter widgets already use smooth pixel physics). |
+| **F33** | **Theme-Matched Widget Surfaces, Transparency & Backdrop Contrast Lift**<br>Automatic dark/light/custom Flutter palette sync (`theme.json`), per-surface opacity (`0–100%`), border/radius presets (`Default`, `Minimal`, `Compact`, `Comfortable`, `Agenda Focus`, `Calendar Focus`, `Transparent`, up to 30 custom presets), directional light-theme glyph lift (`(0,1)+(1,1)` stroke shadow) | Read translucent light or dark desktop widgets clearly across light, dark, and mixed-color wallpapers without blurry rectangular boxes behind text. | Windows | Shipped (Beta 30) | `experiments/widget-shell-probe/WidgetSurfaces.cs`, `WidgetText.cs`, `lib/domain/widget_presets.dart`, `--capture-matrix` offscreen visual matrix | Physical Explorer wallpaper/Win+D/multi-DPI live check relies on Windows desktop manual QA; automated `--capture-matrix` covers composite wallpapers offscreen. |
+| **F34** | **Continuous Smooth Pixel Widget Scrolling (`WidgetScrollAxis`)**<br>16 ms ease-out smooth wheel interpolation honoring OS `MouseWheelScrollLines` and `SPI_GETCLIENTAREAANIMATION`, fractional pixel offsets, synchronized scrollbar drag/thumb geometry, accessibility scroll actions, zero-paint idle gate (`idle_paints_250ms=0`) | Scroll fluidly past partially clipped task and agenda items with high-precision wheels or trackpads while consuming zero paint cycles once settled idle. | Windows | Shipped (Beta 30) | `experiments/widget-shell-probe/WidgetScrollAxis.cs`, `NativeDesktopWidgetHost.cs`, `CalendarWidget.cs`, `Program.cs` (`--scroll-benchmark`) | Windows widget only (Flutter widgets already use smooth pixel physics). |
 | **F35** | **Dual-Widget Live Preview Editor IPC & Layout Lock**<br>In-app `WidgetSettingsPage` live appearance editor synced over named pipe / IPC (`--preview-editor`), independent visibility toggles, position/size memory, and `layoutLocked` pin protection | Customize widget surfaces, colors, split ratios, and navigation styles in real time with undo/redo before applying, and lock position to prevent accidental drags. | Windows | Shipped (Beta 29) | `lib/features/settings/widget_settings_page.dart`, `lib/features/widget/native_widget_service.dart`, `experiments/widget-shell-probe/WidgetPreview.cs` | Standalone live preview IPC targets the Windows companion binary. |
 
 ---
@@ -156,7 +154,7 @@ To avoid inflating feature counts through arbitrary button-level subdivisions:
 | **F38** | **System / Light / Dark Modes & Built-In Presets**<br>6 curated dark presets (**Graphite Neutral Silver** default, **Graphite Violet**, **Graphite Amber**, **Graphite Sage**, **Beta 27 Teal**, **Dusk**) + crisp teal **Light** palette; per-token `ColorPickerDialog` customization across 9 semantic color keys | Switch between neutral dark surfaces, signature accents, or custom palettes with real-time WCAG luminance contrast validation inside `ThemeDialog`. | Windows, Android | Shipped (Beta 29) | `lib/domain/appearance.dart`, `lib/features/settings/theme_dialog.dart`, `lib/features/shared/app_theme.dart` | Presets customize colors; typography uses platform Segoe UI / Roboto defaults. |
 | **F39** | **Non-Executable Validated Theme JSON (`version: 1`)**<br>Strict color-only JSON import/export (`theme_json.dart`), custom author/profile attribution separate from official `contributors.json`, `SettingsHistory` undo/redo | Share custom color themes safely as static JSON data files without arbitrary code execution risks. | Windows, Android | Shipped (Beta 29) | `lib/domain/theme_json.dart`, `docs/THEMING.md`, `test/theme_json_test.dart` | Rejects executable rules or non-v1 schemas. |
 | **F40** | **Workspace Density, Typography Scaling & Motion Controls**<br>Compact density toggle, text scale multiplier, reduced motion (`reducedMotion` honoring OS reduce-motion), adjustable sidebar width (`sidebarWidth`), opening screen, calendar default view, side-panel vs full-page task details | Tailor information density, panel proportions, and animation comfort to 1080p desktops, compact 800×600 windows, or 320dp phones. | Windows, Android | Shipped (Beta 29) | `lib/domain/appearance.dart`, `lib/features/settings/task_view_settings_dialog.dart`, `sidebar_order_dialog.dart`, `test/lab_render_test.dart` | `sidebarWidth` and split details apply to desktop wide layouts. |
-| **F41** | **Keyboard Shortcuts & Embedded Settings > Hotkeys Editor**<br>10 configurable global `Ctrl+`/`Ctrl+Shift+` bindings (`newTask`, `quickSearch`, `advancedSearch`, `today`, `allTasks`, `calendar`, `anytime`, `settings`, `focus`, `refresh`), live search filter, interactive key capture with conflict detection (`Escape` cancel, `Tab` traversal), custom presets (save, duplicate, rename, delete, `Reset all`), calendar canvas shortcut reference | Configure every desktop shortcut inline inside **Settings > Hotkeys** without modal nesting, manage named presets, and inspect calendar shortcuts in place. | Windows | Shipped defaults + **Beta 30 candidate** embedded **Settings > Hotkeys** editor | `lib/domain/hotkeys.dart`, `lib/features/settings/hotkeys_dialog.dart` (`HotkeysEditorView` + standalone `HotkeysDialog`), `test/hotkeys_test.dart`, `test/settings_hub_test.dart` | Reserved OS/editing keys (`Ctrl+C/V/X/A/Z/Y`, `Ctrl+Shift+Z`) cannot be bound; desktop only. |
+| **F41** | **Keyboard Shortcuts & Embedded Settings > Hotkeys Editor**<br>10 configurable global `Ctrl+`/`Ctrl+Shift+` bindings (`newTask`, `quickSearch`, `advancedSearch`, `today`, `allTasks`, `calendar`, `anytime`, `settings`, `focus`, `refresh`), live search filter, interactive key capture with conflict detection (`Escape` cancel, `Tab` traversal), custom presets (save, duplicate, rename, delete, `Reset all`), calendar canvas shortcut reference | Configure every desktop shortcut inline inside **Settings > Hotkeys** without modal nesting, manage named presets, and inspect calendar shortcuts in place. | Windows | Shipped (Beta 30) | `lib/domain/hotkeys.dart`, `lib/features/settings/hotkeys_dialog.dart` (`HotkeysEditorView` + standalone `HotkeysDialog`), `test/hotkeys_test.dart`, `test/settings_hub_test.dart` | Reserved OS/editing keys (`Ctrl+C/V/X/A/Z/Y`, `Ctrl+Shift+Z`) cannot be bound; desktop only. |
 
 ---
 
