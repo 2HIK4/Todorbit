@@ -283,9 +283,19 @@ try {
             # Run Python checks first (bounded static/tooling gates)
             if ($pythonTestsToRun.Count -gt 0 -and -not $Plan) {
                 $pyExe = Resolve-TodorbitTool 'python'
+                $pySource = (& git -C $repoRoot rev-parse HEAD).Trim()
+                $pyDiff = (& git -C $repoRoot status --porcelain) -join ';'
+                $pyDiffBody = (& git -C $repoRoot diff HEAD --) -join "`n"
+                $pyScopeRaw = "$pySource|$((@($existingChanged) | Sort-Object) -join ',')|$pyDiff|$pyDiffBody"
+                $pySha = [Security.Cryptography.SHA256]::Create()
+                try {
+                    $pyScopeSig = ([BitConverter]::ToString($pySha.ComputeHash([Text.UTF8Encoding]::new($false).GetBytes($pyScopeRaw)))).Replace('-', '').ToLowerInvariant()
+                } finally {
+                    $pySha.Dispose()
+                }
                 $pyCheckpoint = if ($Resume) { Get-VerificationCheckpoint -Name 'changed_python_checkpoint.json' } else { $null }
                 $pyCompleted = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-                if ($pyCheckpoint -and $pyCheckpoint.Completed) {
+                if ($pyCheckpoint -and $pyCheckpoint.Source -eq $pySource -and $pyCheckpoint.ScopeSignature -eq $pyScopeSig -and $pyCheckpoint.Completed) {
                     foreach ($ck in $pyCheckpoint.Completed) { $null = $pyCompleted.Add([string]$ck) }
                 }
                 foreach ($pyTest in $pythonTestsToRun) {
@@ -309,6 +319,8 @@ try {
                     $null = $pyCompleted.Add($pyTest)
                     $null = Save-VerificationCheckpoint -Name 'changed_python_checkpoint.json' -Checkpoint ([pscustomobject]@{
                         Timestamp = (Get-Date -Format 'o')
+                        Source = $pySource
+                        ScopeSignature = $pyScopeSig
                         Completed = @($pyCompleted)
                     })
                 }

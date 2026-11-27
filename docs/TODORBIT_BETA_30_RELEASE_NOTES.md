@@ -7,8 +7,8 @@
 ## Summary of Candidate Improvements
 
 ### Windows Native Desktop Widgets (`TodorbitWidget.exe`)
-- **Readable Translucent Light & Dark Rendering**: Replaces the 4-way white backdrop halo with a directional `(0, 1) + (1, 1)` contrast lift (`WidgetText.cs`), fixes synthetic surface mutation and opaque hover blends in `WidgetSurfaces.cs`, and keeps Light theme ink clearly legible over light, dark, and mixed wallpapers without blurry halos.
-- **Smooth Continuous Pixel Scrolling (`WidgetScrollAxis`)**: Implements 16 ms eased pixel scrolling across both Tasks and Calendar widgets via a shared `WidgetScrollAxis` helper, honoring OS `MouseWheelScrollLines` and `SPI_GETCLIENTAREAANIMATION` reduced-motion settings, synchronizing thumb drag geometry and UIA accessibility scrolling, and guaranteeing zero repaints once idle (`idle_paints_250ms = 0` measured in `--scroll-benchmark`).
+- **Readable Translucent Light & Dark Rendering**: Replaces the 4-way white backdrop halo with a directional `(0, 1) + (1, 1)` contrast lift (`WidgetText.cs`), aligns `"taskRow"` underlay contrast composition with `"content"` / `palette.Row`, fixes synthetic surface mutation and opaque hover blends in `WidgetSurfaces.cs`, and keeps Light theme ink clearly legible over light, dark, and mixed wallpapers without blurry halos.
+- **Smooth Continuous Pixel Scrolling (`WidgetScrollAxis`)**: Implements 16 ms eased pixel scrolling across both Tasks and Calendar widgets via a shared `WidgetScrollAxis` helper, resets Tasks scroll on `DateToday` and midnight rollover, honoring OS `MouseWheelScrollLines` and `SPI_GETCLIENTAREAANIMATION` reduced-motion settings, synchronizing thumb drag geometry and UIA accessibility scrolling, and guaranteeing zero repaints once idle (`idle_paints_250ms = 0` measured in `--scroll-benchmark`).
 - **Agenda Scroll & Cleanup Hardening**: Fixes the Calendar agenda scroll viewport bottom bound so final rows never clip and ensures `WmDestroy` disposes timers and child popups cleanly.
 
 ### Embedded Settings & Input UX

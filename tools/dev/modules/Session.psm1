@@ -440,7 +440,6 @@ function Stop-RepoSubprocessTree {
         }
     }
 
-    [array]::Reverse($tree.ToArray()) | Out-Null
     $reversed = @($tree.ToArray())
     [array]::Reverse($reversed)
     foreach ($targetPid in $reversed) {
@@ -502,6 +501,7 @@ function Invoke-BoundedProcess {
     $psi.WorkingDirectory = $WorkingDirectory
     $psi.UseShellExecute = $false
     $psi.CreateNoWindow = $true
+    $psi.RedirectStandardInput = $true
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
 
@@ -567,6 +567,7 @@ function Invoke-BoundedProcess {
         if (-not $proc.Start()) {
             throw "Failed to start process: $launchExe"
         }
+        try { $proc.StandardInput.Close() } catch {}
         $proc.BeginOutputReadLine()
         $proc.BeginErrorReadLine()
 
@@ -610,12 +611,14 @@ function Invoke-BoundedProcess {
                 [System.Threading.Monitor]::Exit($logWriter)
             }
         } else {
-            # Allow async readers up to 2s to drain final buffered lines after WaitForExit returns true
-            $proc.WaitForExit()
+            # Bound post-exit async stream drain so surviving grandchildren inheriting pipes cannot hang forever
+            try { $null = $proc.WaitForExit(2000) } catch {}
             $exitCode = $proc.ExitCode
         }
     } finally {
         $sw.Stop()
+        try { $proc.CancelOutputRead() } catch {}
+        try { $proc.CancelErrorRead() } catch {}
         Start-Sleep -Milliseconds 100
         Unregister-Event -SourceIdentifier $outSub.Name -ErrorAction SilentlyContinue
         Unregister-Event -SourceIdentifier $errSub.Name -ErrorAction SilentlyContinue

@@ -1102,7 +1102,7 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     switch (target) {
       case HitTarget.DatePrevious: MoveSelectedDate(-1); break;
       case HitTarget.DateNext: MoveSelectedDate(1); break;
-      case HitTarget.DateToday: selectedDate = DateTime.Today; RefreshTasks(); break;
+      case HitTarget.DateToday: selectedDate = DateTime.Today; ResetTaskScroll(); RefreshTasks(); break;
       case HitTarget.Refresh:
         RefreshTasks();
         break;

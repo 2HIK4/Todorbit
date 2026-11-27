@@ -214,6 +214,26 @@ void main() {
           controller.hotkeys.bindings[HotkeyAction.newTask]!.display,
           'Ctrl+N',
         );
+
+        // Keyboard-only capture: Ctrl+J, Tab past Cancel onto Save, then Enter commits.
+        await tester.tap(find.byTooltip('Change Create new task'));
+        await tester.pumpAndSettle();
+        await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+        await tester.sendKeyDownEvent(LogicalKeyboardKey.keyJ);
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.keyJ);
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+        await tester.pump();
+        expect(find.textContaining('Ctrl+J'), findsOneWidget);
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pumpAndSettle();
+        expect(find.textContaining('reserved'), findsNothing);
+        expect(
+          controller.hotkeys.bindings[HotkeyAction.newTask]!.display,
+          'Ctrl+J',
+        );
       } finally {
         await tester.pumpWidget(const SizedBox.shrink());
         await database.close();

@@ -71,6 +71,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m unittest discover -s tools/dev -p test_session_locking_safety.py 2>&1 | Tee-Object .buildlog/verification/windows-tdat-session.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m unittest discover -s tools -p test_tdat_watchdog.py 2>&1 | Tee-Object .buildlog/verification/windows-tdat-watchdog.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m unittest discover -s tools -p test_public_readiness_hygiene.py 2>&1 | Tee-Object .buildlog/verification/windows-public-hygiene.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Check public OAuth configuration and packaging gates
         shell: pwsh
         run: ./tools/test-google-drive-release-config.ps1

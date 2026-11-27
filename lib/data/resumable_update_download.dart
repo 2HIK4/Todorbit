@@ -203,7 +203,8 @@ class ResumableUpdateDownload {
           );
         }
         if (response.headers.value(HttpHeaders.contentEncodingHeader)
-            case final String encoding when encoding != 'identity') {
+            case final String encoding
+            when encoding.trim().toLowerCase() != 'identity') {
           throw StateError('Unexpected update content encoding.');
         }
         if (response.contentLength >= 0 &&

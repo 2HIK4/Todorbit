@@ -3,7 +3,7 @@
 ## Post-Beta 29 Candidate & Recovery Remaining Gates (2026-11-27)
 
 - **Android 16 KiB Emulator Runtime (`.\dev runtime android`)**: `BLOCKED` locally (`emulator-5554` offline; persisted in `.buildlog/verify/android-runtime/latest.json`). Remains verified via GitHub Actions `Android validation` & `Android 16 KiB runtime` workflows on candidate pushes/releases.
-- **Full Unbatched Flutter Test Sweep (`flutter test`)**: `18` targeted Flutter suites (`195` tests across Group A, PR #3 recovery, and DB/concurrency) plus native Windows release self-tests/benchmarks and `.\dev runtime windows` / `-LiveApp` passed locally after code edits; remaining unaltered test files in `test/` await the GitHub Actions CI matrix upon push.
+- **Full Unbatched Flutter Test Sweep (`flutter test`)**: `18` targeted Flutter suites (`195` tests across Group A, PR #3 recovery, and DB/concurrency) plus native Windows release self-tests/benchmarks and `.\dev runtime windows` / `-LiveApp` passed locally after code edits; remaining unaltered test files in `test/` require the dispatched `windows-ci.yml` / `manual-verification.yml` GitHub Actions workflows (as automatic push/PR `ci.yml` runs the critical subset only).
 - **Physical Multi-Monitor / Multi-DPI Desktop Widget & Touch Acceptance**: Physical live Windows 11 wallpaper appearance across light/dark/mixed backgrounds, mouse-wheel/precision-trackpad smoothness, Narrator/TalkBack assistive readout, and physical Android device checks require manual owner acceptance prior to approving Beta 30 release publication (exclude personal profile and Windows Sandbox).
 
 ## Post-Beta 29 Widget Rendering, Pixel Scroll & Settings > Hotkeys Acceptance (2026-11-26)

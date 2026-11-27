@@ -1,5 +1,16 @@
 # Persistent test run ledger
 
+## Final Adversarial Review Fixes, Isolated Release Candidate & Post-Fix Verification (2026-11-27)
+
+Repo worktree on `feature/todorbit-beta27-refinement` above `f4de457`, Flutter 3.47.7, Dart 3.13.5, .NET 10 Release build.
+
+| Invocation / purpose | Source / artifact | Result | Notes / limits |
+| --- | --- | --- | --- |
+| Isolated Release build + CRT copy/validation (`tools/test-windows-crt.ps1`) | `build/windows/x64/runner/Release/Todorbit.exe` & `TodorbitWidget.exe` | PASS (`114.77s`, `0` warnings/errors) | Rebuilt after adversarial review edits; Microsoft-signed CRT DLLs staged and verified |
+| `tools/dev/native-self-test.ps1 -IncludeLifecycle -IncludeBenchmark` + `--capture-matrix .buildlog/widget-acceptance` | Rebuilt Release `TodorbitWidget.exe` | PASS (`83` PNGs) | `--self-test`, `--lifecycle-self-test` (two-widget HWND lifecycle), `--scroll-benchmark` (`avg_preview_frame_ms=34.83`, `settle_ms=437`, `paints_during_scroll=12`, `idle_paints_250ms=0`, `working_set_mb=69.5`) |
+| `dart format` + `flutter analyze --no-pub` + `flutter test` (`hotkeys_test`, `resumable_update_download_test`, `mobile_workspace_test`) | Post-review edited Dart files | PASS (`41.52s` analyze `0` issues; `43/43` tests in `67.5s`) | Includes new keyboard `Ctrl+J` -> `Tab` -> `Save` capture regression test in `test/hotkeys_test.dart` |
+| Python TDAT/watchdog/CI/hygiene/boundary/docs/website batch (`10` checks) | Post-review scripts, workflows & docs | PASS (`test_tdat_watchdog` `3/3`, `test_dev_verify` `11/11`, `test_ci_workflows` `4/5` 1 skip, `test_registry_sync` `4/4`, `test_public_readiness_hygiene` `4/4`, `test_workspace_paths` `2/2`, `test_process_invocation_safety` `6/6`, `test_architecture_boundaries` `39/39`, `check-docs.py` `0` errors, `website/verify.py` `3` pages) | All Python/workflow/doc suites verified after final code and workflow edits |
+
 ## Recovery, Bounded Verification, TDAT Watchdog & Public Docs (2026-11-27)
 
 Worktree `C:\Users\User\.codex\worktrees\todorbit-beta27-refinement\Todorbit-redesign-source` on `feature/todorbit-beta27-refinement` above `81a05f7` (Beta 29 `bd9d337`), Flutter 3.47.7, Dart 3.13.5, .NET 10 Release build.

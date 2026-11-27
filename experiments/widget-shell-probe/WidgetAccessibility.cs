@@ -38,7 +38,7 @@ internal sealed partial class NativeDesktopWidgetHost
             if (settings.View == WidgetTaskView.Today) {
               items.Add(new("Previous day", DatePrevious, () => MoveSelectedDate(-1)));
               items.Add(new("Next day", DateNext, () => MoveSelectedDate(1)));
-              items.Add(new($"{selectedDate:D}. Return to today", DateToday, () => { selectedDate=DateTime.Today; RefreshTasks(); }));
+              items.Add(new($"{selectedDate:D}. Return to today", DateToday, () => { selectedDate=DateTime.Today; ResetTaskScroll(); RefreshTasks(); }));
             }
             foreach (var view in VisibleViews) items.Add(new(ViewLabel(view), ViewRect(view), () => SetView(view), view == settings.View));
             for (var i = 0; i < tasks.Count; i++)

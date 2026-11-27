@@ -108,11 +108,21 @@ try {
   New-Item -ItemType Directory -Path $logRoot -Force | Out-Null
   $results = [Collections.Generic.List[object]]::new()
   $source = (& git rev-parse HEAD).Trim()
-  $dirty = [bool](& git status --porcelain)
-  $checkpointName = "checkpoint_$($Mode.ToLowerInvariant())$(if ($Feature) { "_$Feature" }).json"
+  $porcelain = @(& git status --porcelain)
+  $dirty = [bool]$porcelain
+  $diffText = (& git diff HEAD --) -join "`n"
+  $rawScope = "$source|$Mode|$Feature|$Platform|$(@($ChangedPaths) -join ',')|$(@($Tests) -join ',')|$($porcelain -join ';')|$diffText"
+  $sha = [Security.Cryptography.SHA256]::Create()
+  try {
+    $scopeBytes = [Text.UTF8Encoding]::new($false).GetBytes($rawScope)
+    $scopeSignature = ([BitConverter]::ToString($sha.ComputeHash($scopeBytes))).Replace('-', '').ToLowerInvariant()
+  } finally {
+    $sha.Dispose()
+  }
+  $checkpointName = "checkpoint_$($Mode.ToLowerInvariant())$(if ($Feature) { "_$Feature" })_$($Platform.ToLowerInvariant()).json"
   $priorCheckpoint = if ($Resume) { Get-VerificationCheckpoint -Name $checkpointName } else { $null }
   $completedKeys = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-  if ($priorCheckpoint -and $priorCheckpoint.Source -eq $source -and $priorCheckpoint.Completed) {
+  if ($priorCheckpoint -and $priorCheckpoint.Source -eq $source -and $priorCheckpoint.ScopeSignature -eq $scopeSignature -and $priorCheckpoint.Completed) {
     foreach ($ck in $priorCheckpoint.Completed) { $null = $completedKeys.Add([string]$ck) }
   }
   $executedSuites = [Collections.Generic.List[string]]::new()
@@ -185,7 +195,7 @@ try {
       $srcPaths = @($ChangedPaths | Where-Object { $_ -and (Test-Path -LiteralPath (Join-Path $repo ($_.Replace('/','\')))) -and $_ -notmatch '\.md$' -and $_ -notmatch '^docs/' })
       $unitFp = Get-TestCompositeFingerprint -TestPath $unit.suiteTarget -SourcePaths $srcPaths -Arguments '--no-pub --concurrency=1 --reporter=expanded'
       $cached = Get-EvidenceRecord -Fingerprint $unitFp.CompositeFingerprint
-      if ($cached -or ($Resume -and $completedKeys.Contains($unit.stepKey))) {
+      if ($cached) {
         $reusedSuites.Add($unit.suiteTarget)
         Write-Output "[REUSED] $($unit.suiteTarget) ($($unitFp.CompositeFingerprint.Substring(0,8)))"
         continue
@@ -201,7 +211,7 @@ try {
     Write-Output "$($unit.tool) $($unit.arguments -join ' ')"
 
     $unitTimeout = if ($unit.tool -match 'powershell' -or ($unit.suiteTarget -and $unit.suiteTarget -eq 'test')) { [math]::Max($TimeoutSeconds, 600) } elseif ($unit.tool -eq 'git' -or $unit.tool -eq 'dart') { 90 } else { $TimeoutSeconds }
-    $unitIdle = [math]::Min($unitTimeout, $InactivityTimeoutSeconds)
+    $unitIdle = if ($unit.tool -match 'powershell' -or ($unit.suiteTarget -and $unit.suiteTarget -eq 'test')) { [math]::Max($InactivityTimeoutSeconds, 300) } else { [math]::Min($unitTimeout, $InactivityTimeoutSeconds) }
 
     $attempt = 0
     $runRes = $null
@@ -248,8 +258,10 @@ try {
       $null = Save-VerificationCheckpoint -Name $checkpointName -Checkpoint ([pscustomobject]@{
         Timestamp = (Get-Date -Format 'o')
         Source = $source
+        ScopeSignature = $scopeSignature
         Mode = $Mode
         Feature = $Feature
+        Platform = $Platform
         Completed = @($completedKeys)
       })
     } else {

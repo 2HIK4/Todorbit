@@ -105,6 +105,7 @@ class _HotkeysEditorViewState extends ConsumerState<HotkeysEditorView> {
       key == LogicalKeyboardKey.metaRight;
 
   KeyEventResult _capture(FocusNode node, KeyEvent event) {
+    if (!captureFocus.hasPrimaryFocus) return KeyEventResult.ignored;
     if (event is! KeyDownEvent) return KeyEventResult.handled;
     if (event.logicalKey == LogicalKeyboardKey.tab) {
       return KeyEventResult.ignored;

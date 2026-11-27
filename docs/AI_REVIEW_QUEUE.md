@@ -1,5 +1,16 @@
 # AI Review Queue
 
+## FINAL-ADVERSARIAL-REVIEW-BETA30-CANDIDATE — Post-Recovery Independent Review & Release Readiness (2026-11-27)
+
+- **Reviewer**: Independent read-only research subagent (`12343420-e948-4dc8-95d5-4fe1e3bfd5bc`) across `f121cd6`, `452bc98`, and `f4de457`.
+- **Addressed Defects**:
+  - `WidgetText.cs` (`ComposedSurface("taskRow")` added `"content"` underlay and `palette.Row` fallback).
+  - `NativeDesktopWidgetHost.cs`, `CalendarWidget.cs`, `WidgetAccessibility.cs` (Tasks `DateToday`, midnight `AdvanceToday`, and UIA `"Return to today"` reset scroll state cleanly).
+  - `hotkeys_dialog.dart` & `hotkeys_test.dart` (`captureFocus.hasPrimaryFocus` guard so keyboard `Tab` -> `Save`/`Cancel` activates cleanly).
+  - `mobile_workspace.dart` & `resumable_update_download.dart` (trimmed + `location`-inclusive mobile search and case-insensitive `Content-Encoding` check).
+  - `Session.psm1`, `verify.ps1`, `dev.ps1`, `.github/workflows/ci.yml`, `windows-ci.yml`, `docs/DEFERRED_VERIFICATION.md` (stdin closure + bounded `WaitForExit(2000)`, working-tree scope-signature `-Resume` validation, CI parity, and accurate deferred-gate wording).
+- **Status**: Verified post-fix via Release rebuild, `native-self-test.ps1` + `--capture-matrix` (`83` PNGs), Dart format/analyze/regression tests (`43/43`), and `10` Python/doc/website suites; CI workflows dispatched on GitHub Actions; ready for manual Windows visual acceptance and owner PR #6 approval (`Stable` untouched, Beta 30 not published).
+
 ## RECOVERY-BETA30-READINESS-01 — Recovery, Bounded TDAT Watchdog, Verified Widget/Hotkeys Candidate & PR #6 (2026-11-27)
 
 - **Scope & Addressed Requirements**:

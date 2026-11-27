@@ -47,7 +47,7 @@ internal sealed partial class NativeDesktopWidgetHost
         selectedDate = DateTime.Today;
         if (calendarMonth.Year == previous.Year && calendarMonth.Month == previous.Month)
             calendarMonth = new(selectedDate.Year, selectedDate.Month, 1);
-        ResetAgendaScroll();
+        if (calendar) ResetAgendaScroll(); else ResetTaskScroll();
     }
     private RectangleF CalendarControl(int index) => index switch
     {

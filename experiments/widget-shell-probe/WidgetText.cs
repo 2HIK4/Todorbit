@@ -14,11 +14,11 @@ internal sealed partial class NativeDesktopWidgetHost
         }
         Add("shell", palette.Background);
         if (name == "shell") return result;
-        if (name is "calendarCell" or "selectedDate" or "selectedToday" or "today") Add("content", palette.Panel);
+        if (name is "taskRow" or "calendarCell" or "selectedDate" or "selectedToday" or "today") Add("content", palette.Panel);
         if (name is "selectedDate" or "selectedToday" or "today") Add("calendarCell", palette.Panel);
         if (name is "navigationButton" or "selectedNavigation") Add("navigation", palette.Background);
         if (name == "selectedToday") { Add("selectedDate", palette.Accent); Add("today", palette.Accent); }
-        else Add(name, name is "selectedDate" or "today" or "selectedNavigation" ? palette.Accent : name is "header" or "navigation" ? palette.Background : palette.Panel);
+        else Add(name, name == "taskRow" ? palette.Row : name is "selectedDate" or "today" or "selectedNavigation" ? palette.Accent : name is "header" or "navigation" ? palette.Background : palette.Panel);
         return result;
     }
     private bool NeedsTextBacking(string surface, Color candidate)

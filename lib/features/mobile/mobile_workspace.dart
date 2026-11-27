@@ -599,15 +599,16 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
         ),
     ];
     final theme = Theme.of(context);
-    final searchStyle = theme.textTheme.bodyMedium!;
+    final searchStyle = theme.textTheme.bodyMedium;
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: !searching,
         toolbarHeight: searching
             ? math.max(
                 kToolbarHeight,
-                MediaQuery.textScalerOf(context).scale(searchStyle.fontSize!) *
-                        (searchStyle.height ?? 1.5) +
+                MediaQuery.textScalerOf(context)
+                            .scale(searchStyle?.fontSize ?? 14) *
+                        (searchStyle?.height ?? 1.5) +
                     4 * AppSpacing.small,
               )
             : null,
@@ -750,22 +751,21 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
     final isToday = c.view == WorkspaceView.today;
     final now = DateTime.now();
     final today = localDate(now);
+    final needle = search.text.trim().toLowerCase();
     final tasks = c.visibleTasks
         .where(
           (t) =>
-              search.text.isEmpty ||
-              '${t.title} ${t.notes}'.toLowerCase().contains(
-                search.text.toLowerCase(),
-              ),
+              needle.isEmpty ||
+              '${t.title} ${t.notes}'.toLowerCase().contains(needle),
         )
         .toList();
     final groups = projectTaskList(
       tasks,
       c.taskParents,
-      groupRecurrence: c.view == WorkspaceView.all && search.text.isEmpty,
+      groupRecurrence: c.view == WorkspaceView.all && needle.isEmpty,
       relatedOccurrences:
           c.view == WorkspaceView.all &&
-              search.text.isEmpty &&
+              needle.isEmpty &&
               !c.activeFilter.isActive
           ? c.tasks
           : const [],
@@ -773,22 +773,22 @@ class _MobileWorkspaceState extends ConsumerState<MobileWorkspace> {
     final groupByPlannedDay =
         c.view == WorkspaceView.upcoming &&
         c.sort == TaskSort.schedule &&
-        (!searching || search.text.trim().isEmpty);
+        (!searching || needle.isEmpty);
     final scopedEvents =
         {
               WorkspaceView.project,
               WorkspaceView.category,
               WorkspaceView.saved,
             }.contains(c.view) ||
-            searching && search.text.trim().isNotEmpty
+            searching && needle.isNotEmpty
         ? c.filteredEvents
               .where(
                 (e) =>
                     !e.cancelled &&
-                    (search.text.isEmpty ||
-                        '${e.title} ${e.notes} ${c.categories.where((v) => v.id == e.categoryId).firstOrNull?.name ?? ''} ${c.projects.where((v) => v.id == e.projectId).firstOrNull?.name ?? ''}'
+                    (needle.isEmpty ||
+                        '${e.title} ${e.notes} ${e.location} ${c.categories.where((v) => v.id == e.categoryId).firstOrNull?.name ?? ''} ${c.projects.where((v) => v.id == e.projectId).firstOrNull?.name ?? ''}'
                             .toLowerCase()
-                            .contains(search.text.toLowerCase())),
+                            .contains(needle)),
               )
               .toList()
         : <FixedEvent>[];
