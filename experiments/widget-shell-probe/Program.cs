@@ -133,6 +133,17 @@ if (args is ["--self-test"]) {
   }
   return;
 }
+if (args is ["--scroll-benchmark"]) {
+  ApplicationConfiguration.Initialize();
+  LifeManagerWidgetSelfTest.RunScrollBenchmark();
+  return;
+}
+if (args is ["--capture-matrix", var matrixDir]) {
+  ApplicationConfiguration.Initialize();
+  LifeManagerWidgetSelfTest.CaptureWidgetPreviews(matrixDir);
+  LifeManagerWidgetSelfTest.CaptureExtendedRuntimeMatrix(matrixDir);
+  return;
+}
 if (args is ["--preview-editor"] or ["--preview-editor", "--light"]) {
   ApplicationConfiguration.Initialize();
   LifeManagerWidgetSelfTest.PreviewEditor(args.Contains("--light"));
@@ -470,6 +481,10 @@ internal static class Native {
   [DllImport("user32.dll")]
   [return: MarshalAs(UnmanagedType.Bool)]
   internal static extern bool ShowWindow(nint window, int command);
+
+  [DllImport("user32.dll")]
+  [return: MarshalAs(UnmanagedType.Bool)]
+  internal static extern bool SystemParametersInfo(uint uiAction, uint uiParam, out bool pvParam, uint fWinIni);
 
   [DllImport("user32.dll", CharSet = CharSet.Unicode)]
   private static extern int GetClassName(nint window, StringBuilder name, int maxLength);

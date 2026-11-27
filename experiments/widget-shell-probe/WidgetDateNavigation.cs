@@ -12,7 +12,7 @@ internal sealed partial class NativeDesktopWidgetHost {
     if (delta < 0 && selectedDate.Year <= 1 || delta > 0 && selectedDate.Year >= 9998) return;
     selectedDate = selectedDate.AddDays(delta);
     calendarMonth = new(selectedDate.Year, selectedDate.Month, 1);
-    scrollOffset = 0; agendaOffset = 0;
+    ResetScrollState();
     RefreshTasks();
   }
   private void DrawDateNavigation(Graphics graphics, Font font) {

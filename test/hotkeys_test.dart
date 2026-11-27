@@ -14,6 +14,7 @@ import 'test_privacy.dart';
 
 import 'package:life_manager/data/appearance_preference_store.dart';
 import 'package:life_manager/domain/hotkeys.dart';
+import 'package:life_manager/features/settings/hotkeys_dialog.dart';
 
 void main() {
   testWidgets('configured Settings shortcut opens a real dialog', (
@@ -58,11 +59,12 @@ void main() {
       expect(find.text('Hotkeys'), findsWidgets);
       await tester.tap(find.text('Hotkeys').first);
       await tester.pumpAndSettle();
-      expect(find.text('Edit hotkeys'), findsOneWidget);
-      await tester.tap(find.text('Edit hotkeys'));
-      await tester.pumpAndSettle();
+      expect(find.text('Edit hotkeys'), findsNothing);
       expect(find.byTooltip('Save as new preset'), findsOneWidget);
       expect(find.byTooltip('Duplicate preset'), findsOneWidget);
+      expect(find.text('Search shortcuts or groups'), findsOneWidget);
+      expect(find.text('Reset all'), findsOneWidget);
+      expect(find.text('Calendar shortcuts'), findsOneWidget);
       expect(
         tester
             .widget<IconButton>(
@@ -157,6 +159,65 @@ void main() {
         expect(renamed.delete('Planning').activePreset, 'Default');
       } finally {
         await directory.delete(recursive: true);
+      }
+    },
+  );
+
+  testWidgets(
+    'HotkeysDialog and HotkeysEditorView handle Escape, standalone Reset all, and modifier-only keys',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1280, 800));
+      final database = AppDatabase(NativeDatabase.memory());
+      final controller = AppController(LifeRepository(database));
+      await controller.setHotkeys(
+        HotkeyPreferences().withBinding(
+          HotkeyAction.newTask,
+          const HotkeyBinding('T'),
+        ),
+      );
+      await controller.refresh();
+      try {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appControllerProvider.overrideWith((ref) => controller),
+              privacyOverride,
+            ],
+            child: const MaterialApp(home: Scaffold(body: HotkeysDialog())),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('Change Create new task'));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('Press a new combination'), findsOneWidget);
+
+        // Standalone Ctrl press must not immediately display a reserved-key error.
+        await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+        await tester.pump();
+        expect(find.textContaining('reserved'), findsNothing);
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+
+        // Escape cancels recording and dismisses the capture banner.
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pumpAndSettle();
+        expect(find.textContaining('Press a new combination'), findsNothing);
+
+        // Re-open capture and trigger standalone HotkeysDialog "Reset all"; banner clears.
+        await tester.tap(find.byTooltip('Change Create new task'));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('Press a new combination'), findsOneWidget);
+        await tester.tap(find.text('Reset all'));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('Press a new combination'), findsNothing);
+        expect(
+          controller.hotkeys.bindings[HotkeyAction.newTask]!.display,
+          'Ctrl+N',
+        );
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await database.close();
+        await tester.binding.setSurfaceSize(null);
       }
     },
   );

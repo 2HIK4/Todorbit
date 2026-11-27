@@ -90,12 +90,19 @@ internal sealed class AppearanceSettingsStore {
       Save(migrated);
       return migrated;
     }
-    try {
-      return JsonSerializer.Deserialize<AppearanceSettings>(
-        File.ReadAllText(Path), JsonOptions) ?? new AppearanceSettings();
-    } catch (JsonException) {
-      return new AppearanceSettings();
+    for (var attempt = 0; attempt < 3; attempt++) {
+      try {
+        return JsonSerializer.Deserialize<AppearanceSettings>(
+          File.ReadAllText(Path), JsonOptions) ?? new AppearanceSettings();
+      } catch (JsonException) {
+        return new AppearanceSettings();
+      } catch (IOException) when (attempt < 2) {
+        Thread.Sleep(25);
+      } catch (IOException) {
+        return new AppearanceSettings();
+      }
     }
+    return new AppearanceSettings();
   }
 
   internal void Save(AppearanceSettings settings) {

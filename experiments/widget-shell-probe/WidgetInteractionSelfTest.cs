@@ -89,5 +89,151 @@ internal sealed partial class NativeDesktopWidgetHost
         textHost.DrawText(graphics, "Wednesday", font, ink, new RectangleF(8, 8, 140, 28), surface: "shell");
         if (image.GetPixel(8, 8).A != 0)
             throw new InvalidOperationException("Text protection painted an opaque label rectangle.");
+
+        // Light theme translucent selectedNavigation & selectedToday must pick white ink on dark teal accent, not black ink.
+        var lightTranslucent = new WidgetConfiguration();
+        lightTranslucent.Surface("shell").Opacity = 20;
+        lightTranslucent.Surface("content").Opacity = 35;
+        lightTranslucent.Surface("selectedNavigation").Opacity = 30;
+        lightTranslucent.Surface("selectedDate").Opacity = 30;
+        using var lightHost = new NativeDesktopWidgetHost(repository, lightTranslucent, false, new Size(376, 460), WidgetPalette.Light);
+        var navInk = lightHost.SurfaceText("selectedNavigation");
+        var dateInk = lightHost.SurfaceText("selectedToday");
+        if (lightTranslucent.Surfaces.ContainsKey("selectedToday"))
+            throw new InvalidOperationException("SurfaceText(\"selectedToday\") mutated configuration.Surfaces.");
+        if (navInk.R < 220 || navInk.G < 220 || navInk.B < 220 || dateInk.R < 220 || dateInk.G < 220 || dateInk.B < 220)
+            throw new InvalidOperationException("Light theme translucent accent surface selected dark text instead of crisp white.");
+
+        // Ultra-low (5%) accent opacity on translucent Light underlay must not falsely force opaque accent white text.
+        lightTranslucent.Surface("selectedNavigation").Opacity = 5;
+        var lowOpacityNav = lightHost.SurfaceText("selectedNavigation");
+        if (lowOpacityNav.R > 80 || lowOpacityNav.G > 80 || lowOpacityNav.B > 80)
+            throw new InvalidOperationException("5% accent opacity override wrongly selected white text on translucent light surface.");
+
+        // Continuous pixel scrolling on Tasks widget: fractional wheel deltas scroll smoothly & clip hit testing.
+        for (var i = 0; i < 16; i++) repository.AddTask($"Scrollable task {i}", DateTime.Today);
+        using var scrollHost = new NativeDesktopWidgetHost(repository, new WidgetConfiguration(), false, new Size(376, 460), WidgetPalette.Dark);
+        if (scrollHost.MaxTaskScrollPixels <= 0)
+            throw new InvalidOperationException("Expected populated task list to overflow viewport.");
+        scrollHost.ScrollWheelAt(new PointF(scrollHost.TaskArea.X + 20, scrollHost.TaskArea.Y + 20), -30, scrollLinesOverride: 3, reducedMotionOverride: true);
+        if (Math.Abs(scrollHost.taskScrollPixels - 12f) > 0.1f)
+            throw new InvalidOperationException($"Expected 12px continuous scroll on delta=-30 (3 lines), got {scrollHost.taskScrollPixels}.");
+        // Verify custom OS MouseWheelScrollLines (1 line and -1 page scroll)
+        scrollHost.ScrollWheelAt(new PointF(scrollHost.TaskArea.X + 20, scrollHost.TaskArea.Y + 20), -120, scrollLinesOverride: 1, reducedMotionOverride: true);
+        if (Math.Abs(scrollHost.taskScrollPixels - 28f) > 0.1f)
+            throw new InvalidOperationException($"Expected +16px on 1-line OS wheel preference, got {scrollHost.taskScrollPixels}.");
+        // Task 0 is partially scrolled above TaskViewport.Top; hitting above TaskViewport.Top must never hit Task 0.
+        var aboveViewport = new PointF(scrollHost.TaskArea.X + 40, scrollHost.TaskArea.Y + 1);
+        if (scrollHost.HitTest(aboveViewport).Target == HitTarget.TaskRow)
+            throw new InvalidOperationException("Clipped task row above TaskViewport leaked hit testing.");
+
+        // Partially visible row (< 4px remaining in viewport) + focus ring must never throw ArgumentException.
+        var tinyClipOffset = scrollHost.TaskRowRect(0).Height - 2f + 28f;
+        scrollHost.ScrollByPixels(tinyClipOffset);
+        using (var focusBmp = new Bitmap(376, 460))
+        using (var focusG = Graphics.FromImage(focusBmp))
+        {
+            var smallBounds = new RectangleF(10, 10, 100, 2);
+            DrawRoundedRectangle(focusG, Pens.White, smallBounds, 4);
+            var actions = scrollHost.AccessibleActions();
+            if (actions.Count < 16)
+                throw new InvalidOperationException("Offscreen task items must remain reachable in AccessibleActions.");
+        }
+
+        // Scroll to bottom, then verify SetView resets scroll to top cleanly.
+        scrollHost.ScrollByPixels(10000f);
+        if (Math.Abs(scrollHost.taskScrollPixels - scrollHost.MaxTaskScrollPixels) > 0.5f)
+            throw new InvalidOperationException("Task scroll did not clamp cleanly to MaxTaskScrollPixels.");
+        scrollHost.SetView(WidgetTaskView.All);
+        if (scrollHost.taskScrollPixels != 0f)
+            throw new InvalidOperationException("SetView did not reset continuous task scroll to 0.");
+
+        // Offscreen UIA/Tab focus must scroll the target row into TaskViewport.
+        scrollHost.SetView(WidgetTaskView.Today);
+        scrollHost.ScrollTaskRowIntoView(scrollHost.tasks.Count - 1);
+        var lastRow = scrollHost.TaskRowRect(scrollHost.tasks.Count - 1);
+        if (lastRow.Bottom > scrollHost.TaskViewport.Bottom + 0.5f)
+            throw new InvalidOperationException("ScrollTaskRowIntoView failed to bring offscreen row into viewport.");
+    }
+}
+
+internal static partial class LifeManagerWidgetSelfTest
+{
+    internal static void RunScrollBenchmark()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), "todorbit-scroll-bench-" + Guid.NewGuid());
+        Directory.CreateDirectory(tempRoot);
+        try
+        {
+            var dbPath = Path.Combine(tempRoot, "bench.sqlite");
+            CreateDatabase(dbPath);
+            using var repo = LifeManagerWidgetRepository.OpenForTest(dbPath);
+            for (var i = 0; i < 60; i++) repo.AddTask($"Benchmark task {i:00}", DateTime.Today);
+
+            // Measure offscreen continuous scroll frame cost across 60 frames
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var hostConfig = new WidgetConfiguration();
+            for (var frame = 0; frame < 60; frame++)
+            {
+                using var bmp = NativeDesktopWidgetHost.RenderPreview(repo, hostConfig, false, new Size(376, 460), WidgetPalette.Dark, 1f);
+            }
+            sw.Stop();
+            var avgFrameMs = sw.Elapsed.TotalMilliseconds / 60.0;
+
+            // Measure live host wheel responsiveness & idle timer behavior (WindowsFormsSynchronizationContext)
+            using var profile = new WidgetTestProfile(Path.Combine(tempRoot, "profile"));
+            var settingsStore = new WidgetSettingsStore();
+            var settings = new WidgetSettings { View = WidgetTaskView.Today };
+            NativeDesktopWidgetHost? liveHost = null;
+            try
+            {
+                liveHost = new NativeDesktopWidgetHost(repo, null, WidgetPalette.Dark, settings, settingsStore, diagnosticsEnabled: true, unexpectedDestroy: () => { }, exit: () => { });
+            }
+            catch (InvalidOperationException)
+            {
+                liveHost = null;
+            }
+            var timerField = typeof(NativeDesktopWidgetHost).GetField("scrollAnimationTimer", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var proc = System.Diagnostics.Process.GetCurrentProcess();
+            var cpuBefore = proc.TotalProcessorTime;
+            if (liveHost != null)
+            {
+                var timer = (System.Windows.Forms.Timer?)timerField!.GetValue(liveHost);
+                var wheelPos = new PointF(180f, 220f);
+                var paintsBefore = liveHost.PaintCount;
+                // Smooth wheel scroll (animated on HWND)
+                liveHost.ScrollWheelAt(wheelPos, -120, scrollLinesOverride: 3, reducedMotionOverride: false);
+                var activeDuringScroll = timer?.Enabled == true;
+                var settleSw = System.Diagnostics.Stopwatch.StartNew();
+                while (timer?.Enabled == true && settleSw.ElapsedMilliseconds < 2000)
+                {
+                    Application.DoEvents();
+                    Thread.Sleep(4);
+                }
+                settleSw.Stop();
+                var paintsDuringScroll = liveHost.PaintCount - paintsBefore;
+                var idleAfterSettle = timer?.Enabled == false;
+                var paintsAtSettle = liveHost.PaintCount;
+                Thread.Sleep(250);
+                Application.DoEvents();
+                var idlePaints250ms = liveHost.PaintCount - paintsAtSettle;
+                var stillIdle = timer?.Enabled == false;
+                var cpuDeltaMs = (proc.TotalProcessorTime - cpuBefore).TotalMilliseconds;
+                var memMb = proc.WorkingSet64 / (1024.0 * 1024.0);
+                Console.WriteLine($"LIVE_HWND_SCROLL: avg_preview_frame_ms={avgFrameMs:F2} active_during_scroll={activeDuringScroll} settle_ms={settleSw.ElapsedMilliseconds} paints_during_scroll={paintsDuringScroll} idle_after_settle={idleAfterSettle} still_idle_250ms={stillIdle} idle_paints_250ms={idlePaints250ms} cpu_ms={cpuDeltaMs:F2} working_set_mb={memMb:F1}");
+                liveHost.Dispose();
+                if (!activeDuringScroll || !idleAfterSettle || !stillIdle || idlePaints250ms != 0)
+                    throw new InvalidOperationException($"Live HWND scroll timer/idle check failed: idlePaints250ms={idlePaints250ms}");
+            }
+            else
+            {
+                Console.WriteLine($"OFFSCREEN_SCROLL_ONLY: avg_preview_frame_ms={avgFrameMs:F2} working_set_mb={proc.WorkingSet64 / (1024.0 * 1024.0):F1}");
+            }
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            Directory.Delete(tempRoot, true);
+        }
     }
 }

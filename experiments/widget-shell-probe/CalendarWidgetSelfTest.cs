@@ -33,22 +33,33 @@ internal sealed partial class NativeDesktopWidgetHost
         if(calendar.selectedDate != new DateTime(2026,12,31)) throw new InvalidOperationException("Previous day did not return across year boundary.");
         calendar.calendarMonth = new DateTime(2026, 10, 1); calendar.LoadCalendar();
         var selectedIndex = (new DateTime(2026, 10, 26) - calendar.CalendarGridStart).Days;
-        calendar.agendaOffset = 2;
-        if (!calendar.CalendarClick(Center(calendar.CalendarCell(selectedIndex))) || calendar.selectedDate != new DateTime(2026, 10, 26) || calendar.agendaOffset != 0)
+        calendar.agendaScrollPixels = 72;
+        if (!calendar.CalendarClick(Center(calendar.CalendarCell(selectedIndex))) || calendar.selectedDate != new DateTime(2026, 10, 26) || calendar.agendaScrollPixels != 0)
             throw new InvalidOperationException("Date selection does not reset and update the selected-day agenda.");
         if (!calendar.SelectedAgenda.Any(item => item.Kind == "Task") || !calendar.SelectedAgenda.Any(item => item.Kind == "Session") || !calendar.SelectedAgenda.Any(item => item.Kind == "Event"))
             throw new InvalidOperationException("Selected-day agenda lost the distinction among planned tasks, sessions and events.");
         calendar.calendarItems = Enumerable.Range(0, 20).Select(i => calendar.SelectedAgenda.First() with { Title = $"Item {i}" }).ToArray();
         if (calendar.SelectedAgenda.Length != 20) throw new InvalidOperationException("Agenda items were truncated.");
         calendar.Scroll(100);
-        if (calendar.agendaOffset != 20 - calendar.AgendaVisibleRows) throw new InvalidOperationException("Agenda cannot scroll to its final item.");
+        if (Math.Abs(calendar.agendaScrollPixels - calendar.MaxAgendaScrollPixels) > 0.5f) throw new InvalidOperationException("Agenda cannot scroll to its final pixel bound.");
+        var lastAgendaRow = calendar.AgendaRowBounds(calendar.SelectedAgenda.Length - 1);
+        if (lastAgendaRow.Bottom > calendar.AgendaViewport.Bottom + 0.5f) throw new InvalidOperationException("Final scrolled agenda item is clipped past AgendaViewport.Bottom.");
         calendar.Scroll(-100);
-        if (calendar.agendaOffset != 0) throw new InvalidOperationException("Agenda cannot return to its first item.");
-        calendar.ScrollAt(Center(calendar.CalendarGrid), 1);
-        if (calendar.agendaOffset != 0) throw new InvalidOperationException("Wheel over the grid scrolled the agenda.");
-        calendar.ScrollAt(Center(calendar.AgendaRect), 1);
-        if (calendar.agendaOffset != 1 || calendar.selectedDate != new DateTime(2026,10,26))
-            throw new InvalidOperationException("Agenda wheel did not scroll independently of date selection.");
+        if (calendar.agendaScrollPixels != 0) throw new InvalidOperationException("Agenda cannot return to its first item.");
+        calendar.ScrollWheelAt(Center(calendar.CalendarGrid), -120);
+        if (calendar.agendaScrollPixels != 0) throw new InvalidOperationException("Wheel over the grid scrolled the agenda.");
+        calendar.ScrollWheelAt(Center(calendar.AgendaRect), -30);
+        if (Math.Abs(calendar.agendaScrollPixels - 12f) > 0.1f || calendar.selectedDate != new DateTime(2026, 10, 26))
+            throw new InvalidOperationException("Agenda wheel did not scroll smoothly by continuous pixels independently of date selection.");
+        calendar.ScrollWheelAt(Center(calendar.AgendaRect), 15);
+        if (Math.Abs(calendar.agendaScrollPixels - 6f) > 0.1f)
+            throw new InvalidOperationException("Fractional reverse wheel delta did not scroll by exact pixels.");
+        calendar.ScrollByPixels(10f);
+        var partialRowHit = calendar.CalendarHitTest(new PointF(calendar.AgendaRowBounds(1).X + 8, calendar.AgendaViewport.Top + 4));
+        if (partialRowHit.Target != HitTarget.CalendarAgenda)
+            throw new InvalidOperationException("Scrolled partial agenda row could not be hit-tested inside viewport.");
+        if (calendar.CalendarHitTest(new PointF(calendar.AgendaRect.X + 12, calendar.AgendaRect.Y + 12)).Target == HitTarget.CalendarAgenda)
+            throw new InvalidOperationException("Scrolled agenda leaked hit testing into its pinned header.");
         calendar.calendarMonth = new DateTime(2026, 2, 1); calendar.calendarWeekStart = 7;
         if (calendar.CalendarWeeks != 4) throw new InvalidOperationException("Four-week month geometry failed.");
         calendar.calendarMonth = new DateTime(2026, 8, 1);

@@ -24,9 +24,10 @@ internal sealed partial class NativeDesktopWidgetHost
     private bool NeedsTextBacking(string surface, Color candidate)
     {
         var composed = ComposedSurface(surface);
+        if (composed.A >= 245) return false;
         var onDark = Blend(Color.Black, composed, composed.A / 255f);
         var onLight = Blend(Color.White, composed, composed.A / 255f);
-        return composed.A < 90 || WidgetEditorStyle.Contrast(candidate, onDark) < 4.5 || WidgetEditorStyle.Contrast(candidate, onLight) < 4.5;
+        return composed.A < 140 || WidgetEditorStyle.Contrast(candidate, onDark) < 4.5 || WidgetEditorStyle.Contrast(candidate, onLight) < 4.5;
     }
     private void DrawText(Graphics graphics, string text, Font font, Brush ink,
         RectangleF bounds, StringFormat? format = null, string surface = "content")
@@ -39,17 +40,30 @@ internal sealed partial class NativeDesktopWidgetHost
             else graphics.DrawString(text, font, ink, bounds, format);
             return;
         }
-        // A restrained halo follows the glyphs instead of painting opaque label
-        // rectangles. Surface opacity stays exactly as configured.
+        // Restrained directional drop shadow (light text) or subtle soft glow (dark text)
+        // preserves glyph stems on layered transparent surfaces without opaque boxes or heavy outlines.
         using var defaultFormat = new StringFormat();
         var actual = format ?? defaultFormat;
         var foreground = ink is SolidBrush brush ? brush.Color : palette.Foreground;
-        var haloColor = WidgetEditorStyle.Contrast(foreground, Color.Black) >= WidgetEditorStyle.Contrast(foreground, Color.White) ? Color.Black : Color.White;
-        using var halo = new SolidBrush(Color.FromArgb((int)(180 * candidate.A / 255f), haloColor));
-        foreach (var offset in new[] { new PointF(-1, 0), new PointF(1, 0), new PointF(0, -1), new PointF(0, 1) })
+        var alphaScale = candidate.A / 255f;
+        var lightInk = WidgetEditorStyle.Contrast(foreground, Color.Black) >= WidgetEditorStyle.Contrast(foreground, Color.White);
+        if (lightInk)
         {
-            var shadow = bounds; shadow.Offset(offset);
-            graphics.DrawString(text, font, halo, shadow, actual);
+            using var primaryShadow = new SolidBrush(Color.FromArgb((int)(135 * alphaScale), Color.Black));
+            using var softShadow = new SolidBrush(Color.FromArgb((int)(60 * alphaScale), Color.Black));
+            var drop = bounds; drop.Offset(0, 1);
+            graphics.DrawString(text, font, primaryShadow, drop, actual);
+            var diagonal = bounds; diagonal.Offset(1, 1);
+            graphics.DrawString(text, font, softShadow, diagonal, actual);
+        }
+        else
+        {
+            using var primaryLift = new SolidBrush(Color.FromArgb((int)(96 * alphaScale), Color.White));
+            using var softLift = new SolidBrush(Color.FromArgb((int)(44 * alphaScale), Color.White));
+            var drop = bounds; drop.Offset(0, 1);
+            graphics.DrawString(text, font, primaryLift, drop, actual);
+            var diagonal = bounds; diagonal.Offset(1, 1);
+            graphics.DrawString(text, font, softLift, diagonal, actual);
         }
         using var readable = new SolidBrush(foreground);
         graphics.DrawString(text, font, readable, bounds, actual);

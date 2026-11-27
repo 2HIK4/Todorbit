@@ -7,12 +7,14 @@ internal sealed partial class NativeDesktopWidgetHost
     private DateTime selectedDate = DateTime.Today;
     private IReadOnlyList<WidgetCalendarItem> calendarItems = [];
     private int calendarWeekStart = 7;
-    private int agendaOffset;
+    private readonly WidgetScrollAxis agendaScroll = new();
+    internal float agendaScrollPixels { get => agendaScroll.Pixels; private set { agendaScroll.Pixels = value; agendaScroll.TargetPixels = value; } }
     private bool splittingCalendar;
     private RectangleF CalendarDivider => new(CalendarGrid.X,CalendarGrid.Bottom,CalendarGrid.Width,CalendarWidgetLayout.Gap);
     private void UpdateCalendarSplit(PointF point) {
       var available = AgendaRect.Bottom - CalendarGrid.Top - CalendarWidgetLayout.Gap;
       configuration.CalendarSplit = Math.Clamp((point.Y - CalendarGrid.Top) / Math.Max(1,available),.2f,.8f);
+      ClampAgendaScroll();
       Present("calendar-split",updateNow:false);
     }
     private int CalendarWeeks => Math.Max(4, (int)Math.Ceiling(((calendarMonth - CalendarGridStart).Days + DateTime.DaysInMonth(calendarMonth.Year, calendarMonth.Month)) / 7d));
@@ -22,9 +24,17 @@ internal sealed partial class NativeDesktopWidgetHost
         new SizeF(LogicalClientWidth, LogicalClientHeight), CalendarTop, configuration.TextScale, CalendarWeeks, configuration.CalendarSplit);
     private RectangleF CalendarGrid => CalendarLayout.Grid;
     private RectangleF AgendaRect => CalendarLayout.Agenda;
+    private RectangleF AgendaViewport => new(AgendaRect.X, AgendaRect.Y + 35, AgendaRect.Width, Math.Max(0, AgendaRect.Height - 38));
+    private float AgendaContentHeight => SelectedAgenda.Length * CalendarLayout.RowHeight + 1f;
+    private float MaxAgendaScrollPixels => WidgetScrollAxis.MaxFor(AgendaViewport.Height, AgendaContentHeight);
+    private void ClampAgendaScroll() => agendaScroll.Clamp(AgendaViewport.Height, AgendaContentHeight);
     private RectangleF CalendarCell(int index) => CalendarLayout.Cell(index);
     private int AgendaVisibleRows => CalendarLayout.VisibleAgendaRows;
-    private RectangleF AgendaRowBounds(int index) => CalendarLayout.AgendaRow(index);
+    private RectangleF AgendaRowBounds(int index) {
+      var row = CalendarLayout.AgendaRow(index);
+      row.Y -= agendaScroll.Pixels;
+      return row;
+    }
     private DateTime CalendarGridStart => CalendarWidgetDates.GridStart(calendarMonth, calendarWeekStart);
     private RectangleF MonthPrevious => new(16, CalendarTop, 32, 32);
     private RectangleF MonthNext => new(LogicalClientWidth - 48, CalendarTop, 32, 32);
@@ -37,7 +47,7 @@ internal sealed partial class NativeDesktopWidgetHost
         selectedDate = DateTime.Today;
         if (calendarMonth.Year == previous.Year && calendarMonth.Month == previous.Month)
             calendarMonth = new(selectedDate.Year, selectedDate.Month, 1);
-        agendaOffset = 0;
+        ResetAgendaScroll();
     }
     private RectangleF CalendarControl(int index) => index switch
     {
@@ -47,10 +57,17 @@ internal sealed partial class NativeDesktopWidgetHost
     {
         for (var i = 0; i < 5; i++) if (CalendarControl(i).Contains(point)) return (HitTarget.CalendarControl, i);
         for (var i = 0; i < CalendarDays; i++) if (CalendarCell(i).Contains(point)) return (HitTarget.CalendarDate, i);
-        var agenda = SelectedAgenda;
-        for (var i = 0; i < AgendaVisibleRows; i++)
-            if (AgendaRowBounds(i).Contains(point) && i + agendaOffset < agenda.Length)
-                return (HitTarget.CalendarAgenda, i + agendaOffset);
+        if (AgendaViewport.Contains(point))
+        {
+            var agenda = SelectedAgenda;
+            for (var i = 0; i < agenda.Length; i++)
+            {
+                var row = AgendaRowBounds(i);
+                if (row.Bottom <= AgendaViewport.Top) continue;
+                if (row.Top >= AgendaViewport.Bottom) break;
+                if (row.Contains(point)) return (HitTarget.CalendarAgenda, i);
+            }
+        }
         return (HitTarget.None, -1);
     }
     private void ShowCalendarTooltip(HitTarget target, int index)
@@ -68,7 +85,8 @@ internal sealed partial class NativeDesktopWidgetHost
         }
         else if (target == HitTarget.CalendarAgenda && index >= 0 && index < SelectedAgenda.Length)
         {
-            var item = SelectedAgenda[index]; bounds = AgendaRowBounds(index - agendaOffset);
+            var item = SelectedAgenda[index]; bounds = RectangleF.Intersect(AgendaRowBounds(index), AgendaViewport);
+            if (bounds.IsEmpty) return;
             label = $"{item.Title}\n{AgendaMetadata(item)}";
         }
         else return;
@@ -199,32 +217,33 @@ internal sealed partial class NativeDesktopWidgetHost
         else if (item.Kind == "Session") { g.DrawEllipse(pen, bounds); g.DrawLine(pen, bounds.X + bounds.Width / 2, bounds.Y + 2, bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2); }
         else { using var brush = new SolidBrush(color); g.FillEllipse(brush, bounds); }
     }
+    private RectangleF AgendaScrollTrack => new(AgendaRect.Right - 7, AgendaRect.Y + 38, 3, Math.Max(20, AgendaRect.Height - 44));
     private void DrawCalendarAgenda(Graphics g, Font font, Font small, StringFormat ellipsis)
     {
         PaintSurface(g, "agenda", AgendaRect, palette.Panel);
         using var text = new SolidBrush(SurfaceText("agenda"));
         using var muted = new SolidBrush(SurfaceText("agenda", true));
         var items = SelectedAgenda;
-        agendaOffset = Math.Clamp(agendaOffset, 0, Math.Max(0, items.Length - AgendaVisibleRows));
-        var overflow = items.Length > AgendaVisibleRows;
+        ClampAgendaScroll();
+        var maxScroll = MaxAgendaScrollPixels;
+        var overflow = maxScroll > 0.5f;
         DrawText(g, selectedDate.ToString("ddd, d MMM"), small, text,
             new RectangleF(AgendaRect.X + 8, AgendaRect.Y + 4, AgendaRect.Width - 16, 26), ellipsis, "agenda");
         if (overflow)
         {
-            var track = new RectangleF(AgendaRect.Right - 7, AgendaRect.Y + 38, 3, AgendaRect.Height - 44);
-            using var rail = new SolidBrush(Color.FromArgb(80, palette.Border));
-            FillRoundedRectangle(g, rail, track, 2);
-            var thumbHeight = Math.Max(14, track.Height * AgendaVisibleRows / items.Length);
-            var offset = (track.Height - thumbHeight) * agendaOffset / Math.Max(1, items.Length - AgendaVisibleRows);
-            using var thumb = new SolidBrush(SurfaceText("agenda", true));
-            FillRoundedRectangle(g, thumb, new RectangleF(track.X, track.Y + offset, 3, thumbHeight), 2);
+            DrawScrollbar(g, AgendaScrollTrack, AgendaViewport.Height, AgendaContentHeight, agendaScroll, "agenda");
         }
         using (var divider = new Pen(Color.FromArgb(90, palette.Border)))
             g.DrawLine(divider, AgendaRect.X + 8, AgendaRect.Y + 32, AgendaRect.Right - 8, AgendaRect.Y + 32);
-        for (var i = 0; i < Math.Min(AgendaVisibleRows, items.Length - agendaOffset); i++)
+        var clipState = g.Save();
+        g.SetClip(AgendaViewport);
+        var rowHeight = CalendarLayout.RowHeight;
+        var first = Math.Max(0, (int)Math.Floor(agendaScroll.Pixels / rowHeight));
+        var last = Math.Min(items.Length - 1, (int)Math.Floor((agendaScroll.Pixels + AgendaViewport.Height) / rowHeight));
+        for (var i = first; i <= last; i++)
         {
-            var item = items[i + agendaOffset]; var row = AgendaRowBounds(i);
-            if (hoverTarget == HitTarget.CalendarAgenda && hoverTask == i + agendaOffset)
+            var item = items[i]; var row = AgendaRowBounds(i);
+            if (hoverTarget == HitTarget.CalendarAgenda && hoverTask == i)
             {
                 using var fill = new SolidBrush(Color.FromArgb(28, palette.Accent)); var hit = row; hit.Inflate(0, -1); FillRoundedRectangle(g, fill, hit, 6);
             }
@@ -239,7 +258,8 @@ internal sealed partial class NativeDesktopWidgetHost
             DrawText(g, item.Title, itemFont, text, new RectangleF(row.X + 21, row.Y, row.Width - 24, row.Height * .55f), ellipsis, "agenda");
             DrawText(g, AgendaMetadata(item), small, muted, new RectangleF(row.X + 21, row.Y + row.Height * .52f, row.Width - 24, row.Height * .45f), ellipsis, "agenda");
         }
-        if (items.Length == 0) DrawText(g, "Nothing scheduled", small, muted, AgendaRowBounds(0), ellipsis, "agenda");
+        if (items.Length == 0) DrawText(g, "Nothing scheduled", small, muted, CalendarLayout.AgendaRow(0), ellipsis, "agenda");
+        g.Restore(clipState);
     }
     private bool CalendarClick(PointF point)
     {
@@ -249,12 +269,12 @@ internal sealed partial class NativeDesktopWidgetHost
         if (MonthPrevious.Contains(point) || MonthNext.Contains(point))
         {
             if (calendarMonth.Year <= 1 && MonthPrevious.Contains(point) || calendarMonth.Year >= 9998 && MonthNext.Contains(point)) return true;
-            calendarMonth = calendarMonth.AddMonths(MonthPrevious.Contains(point) ? -1 : 1); selectedDate = calendarMonth; agendaOffset = 0; RefreshTasks(); return true;
+            calendarMonth = calendarMonth.AddMonths(MonthPrevious.Contains(point) ? -1 : 1); selectedDate = calendarMonth; ResetAgendaScroll(); RefreshTasks(); return true;
         }
-        if (MonthToday.Contains(point)) { selectedDate = DateTime.Today; calendarMonth = new(selectedDate.Year, selectedDate.Month, 1); agendaOffset = 0; RefreshTasks(); return true; }
+        if (MonthToday.Contains(point)) { selectedDate = DateTime.Today; calendarMonth = new(selectedDate.Year, selectedDate.Month, 1); ResetAgendaScroll(); RefreshTasks(); return true; }
         for (var i = 0; i < CalendarDays; i++) if (CalendarCell(i).Contains(point))
         {
-            selectedDate = CalendarGridStart.AddDays(i); agendaOffset = 0; Present("calendar-date"); return true;
+            selectedDate = CalendarGridStart.AddDays(i); ResetAgendaScroll(); Present("calendar-date"); return true;
         }
         var hit = CalendarHitTest(point);
         if (hit.Target == HitTarget.CalendarAgenda)

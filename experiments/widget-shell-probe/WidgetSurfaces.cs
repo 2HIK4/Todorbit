@@ -43,11 +43,39 @@ internal sealed partial class NativeDesktopWidgetHost
     }
     private Color SurfaceText(string name, bool secondary = false)
     {
-        var s = configuration.Surface(name);
+        var s = configuration.Surface(name == "selectedToday" ? "selectedDate" : name);
         var hex = secondary ? s.PlaceholderColor : s.TextColor;
         var candidate = hex != null && System.Text.RegularExpressions.Regex.IsMatch(hex, "^#[0-9a-fA-F]{6}$") ? ColorTranslator.FromHtml(hex) : secondary ? palette.Muted : palette.Foreground;
         var fill = ComposedSurface(name);
         var background = Blend(palette.Background, fill, fill.A / 255f);
+        if (name is "selectedNavigation" or "selectedDate" or "selectedToday" or "today")
+        {
+            // When an accent control sits on a translucent widget, do not wash its own hue out
+            // with palette.Background (white in Light theme) before picking foreground contrast.
+            var underlay = ComposedSurface(name == "selectedNavigation" ? "navigation" : "calendarCell");
+            Color ownSurface;
+            double ownAlpha;
+            if (name == "selectedToday")
+            {
+                var sd = configuration.Surface("selectedDate").Resolve(palette.Accent);
+                var td = configuration.Surface("today").Resolve(palette.Accent);
+                var sa = sd.A / 255d;
+                var ta = td.A / 255d;
+                ownAlpha = sa + ta * (1d - sa);
+                ownSurface = td.A > 0 ? Blend(sd, td, td.A / 255f) : sd;
+            }
+            else
+            {
+                ownSurface = s.Resolve(palette.Accent);
+                ownAlpha = ownSurface.A / 255d;
+            }
+            // Do not insert a synthetic "selectedToday" key into configuration.Surfaces,
+            // and only override on meaningful own opacity (>= ~25%) over a translucent underlay.
+            if (underlay.A < 180 && ownAlpha >= 0.25d)
+            {
+                background = Color.FromArgb(255, ownSurface);
+            }
+        }
         // Explicit text colors/alpha are independent from surface opacity.
         // Choose once against the composed surface, rather than first choosing
         // against opaque accent and then conditionally correcting that choice.

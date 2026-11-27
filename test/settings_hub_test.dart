@@ -85,6 +85,12 @@ void main() {
       expect(sectionPicker.hitTestable(), findsOneWidget);
       await tester.tap(sectionPicker);
       await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(MenuItemButton, 'Hotkeys'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Save as new preset'), findsOneWidget);
+      expect(find.text('Search shortcuts or groups'), findsOneWidget);
+      await tester.tap(sectionPicker);
+      await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(MenuItemButton, 'Task Preferences'));
       await tester.pumpAndSettle();
       expect(find.text('Task display and defaults'), findsOneWidget);

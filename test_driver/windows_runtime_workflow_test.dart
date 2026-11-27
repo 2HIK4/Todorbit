@@ -13,6 +13,23 @@ void main() {
 
   setUpAll(() async {
     driver = await FlutterDriver.connect(timeout: const Duration(seconds: 45));
+    // app.main() opens SQLite and preferences asynchronously before runApp().
+    final deadline = DateTime.now().add(const Duration(seconds: 35));
+    while (true) {
+      try {
+        await driver.waitFor(
+          find.text('New task'),
+          timeout: const Duration(seconds: 10),
+        );
+        break;
+      } catch (e) {
+        if (!e.toString().contains('No root widget is attached') ||
+            DateTime.now().isAfter(deadline)) {
+          rethrow;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+      }
+    }
   });
 
   tearDownAll(() async {

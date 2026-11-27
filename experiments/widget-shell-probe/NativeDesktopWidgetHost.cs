@@ -496,7 +496,10 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
   private readonly Action exit;
   private IReadOnlyList<WidgetTask> tasks = [];
   private float scale = 1f;
-  private int scrollOffset;
+  private readonly WidgetScrollAxis taskScroll = new();
+  internal float taskScrollPixels => taskScroll.Pixels;
+  private readonly System.Windows.Forms.Timer? scrollAnimationTimer;
+  private bool draggingScrollbar;
   private HitTarget hoverTarget = HitTarget.None;
   private HitTarget pressedTarget = HitTarget.None;
   private int pressedIndex = -1;
@@ -550,6 +553,8 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     Reposition();
     settingsStore.Save(settings);
     diagnostics.Snapshot(Handle, "native-handle-created");
+    scrollAnimationTimer = new System.Windows.Forms.Timer { Interval = 16 };
+    scrollAnimationTimer.Tick += (_, _) => StepScrollAnimation();
     RefreshTasks();
   }
 
@@ -593,21 +598,29 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
         message.Result = 0;
         return;
       case WmLeftButtonUp:
-        var released = HitTest(LogicalPoint(message.LParam));
+        var releasePoint = LogicalPoint(message.LParam);
+        if (draggingScrollbar) {
+          draggingScrollbar = false;
+          Native.ReleaseCapture();
+          message.Result = 0;
+          return;
+        }
+        var released = HitTest(releasePoint);
         var activate = released.Target == pressedTarget && released.TaskIndex == pressedIndex;
         pressedTarget = HitTarget.None;
         if (dragging || resizing || splittingCalendar) EndMoveOrResize();
-        else if (activate) Click(LogicalPoint(message.LParam));
+        else if (activate) Click(releasePoint);
         message.Result = 0;
         return;
       case WmCaptureChanged:
+        if (draggingScrollbar) draggingScrollbar = false;
         if (dragging || resizing || splittingCalendar) EndMoveOrResize();
         break;
       case WmMouseWheel:
         var delta = unchecked((short)((message.WParam.ToInt64() >> 16) & 0xFFFF));
         var wheelPoint = new Native.Point { X = unchecked((short)(message.LParam.ToInt64() & 0xFFFF)), Y = unchecked((short)((message.LParam.ToInt64() >> 16) & 0xFFFF)) };
         Native.ScreenToClient(Handle, ref wheelPoint);
-        ScrollAt(new PointF(wheelPoint.X / scale, wheelPoint.Y / scale), delta > 0 ? -1 : 1);
+        ScrollWheelAt(new PointF(wheelPoint.X / scale, wheelPoint.Y / scale), delta);
         message.Result = 0;
         return;
       case WmDisplayChange:
@@ -619,19 +632,23 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
         Present("dpi-changed");
         break;
       case WmSize:
+        ClampTaskScroll();
+        ClampAgendaScroll();
         PositionQuickAdd();
         if (!dragging && !resizing) Present("size-changed", updateNow: false);
         break;
       case WmDestroy:
         if (!disposed) {
           disposed = true;
-          diagnostics.Dispose();
+          CleanupResources();
           unexpectedDestroy();
         }
         break;
     }
     base.WndProc(ref message);
   }
+
+  internal int PaintCount { get; private set; }
 
   private void PaintWindow() {
     var paintDc = Native.BeginPaint(Handle, out var paint);
@@ -645,12 +662,15 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
 
   private void RenderLayer() {
     if (Handle == 0 || !Native.GetWindowRect(Handle, out var bounds)) return;
+    PaintCount++;
     var size = new Size(bounds.Right - bounds.Left, bounds.Bottom - bounds.Top);
     if (size.Width < 1 || size.Height < 1) return;
     using var bitmap = new Bitmap(size.Width, size.Height,
       System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
     using (var graphics = Graphics.FromImage(bitmap)) {
       graphics.Clear(Color.Transparent);
+      graphics.CompositingMode = CompositingMode.SourceOver;
+      graphics.CompositingQuality = CompositingQuality.HighQuality;
       graphics.SmoothingMode = SmoothingMode.AntiAlias;
       graphics.TextRenderingHint =
         System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
@@ -740,12 +760,16 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
       DrawText(graphics,emptyText,
         bodyFont, muted, emptyBounds, emptyFormat);
     } else {
-      var end = Math.Min(tasks.Count, scrollOffset + VisibleTaskRows);
-      for (var index = scrollOffset; index < end; index++) {
-        DrawTask(graphics, tasks[index], index,
-          index - scrollOffset, taskFont);
+      ClampTaskScroll();
+      var clipState = graphics.Save();
+      graphics.SetClip(TaskViewport);
+      var first = Math.Max(0, (int)Math.Floor((taskScroll.Pixels - 7f) / TaskRowHeight));
+      var last = Math.Min(tasks.Count - 1, (int)Math.Floor((taskScroll.Pixels + TaskViewport.Height) / TaskRowHeight));
+      for (var index = first; index <= last; index++) {
+        DrawTask(graphics, tasks[index], index, taskFont);
       }
-      if (tasks.Count > VisibleTaskRows) DrawScrollIndicator(graphics);
+      graphics.Restore(clipState);
+      if (TaskScrollbarVisible) DrawScrollbar(graphics, TaskScrollTrack, TaskArea.Height, TotalTaskContentHeight, taskScroll, "content");
     }
 
     PaintSurface(graphics, "input", AddRect, palette.Panel);
@@ -771,15 +795,21 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
   }
 
   private void DrawTask(Graphics graphics, WidgetTask task,
-      int taskIndex, int visibleIndex, Font font) {
-    var row = TaskRowRect(visibleIndex);
-    PaintSurface(graphics, "taskRow",row,palette.Row);
+      int taskIndex, Font font) {
+    var row = TaskRowRect(taskIndex);
+    var rowSurface = configuration.Surface("taskRow");
+    PaintSurface(graphics, "taskRow", row, palette.Row);
+    if (rowSurface.Color == null && !rowSurface.Border && rowSurface.Opacity > 0) {
+      using var subtleBorder = new Pen(Color.FromArgb(Math.Min(48, Math.Max(14, rowSurface.Opacity * 48 / 100)), palette.Border), 1);
+      var inset = row; inset.Inflate(-0.5f, -0.5f);
+      DrawRoundedRectangle(graphics, subtleBorder, inset, rowSurface.Radius);
+    }
     if ((hoverTarget == HitTarget.TaskRow || hoverTarget == HitTarget.TaskCheckbox) &&
         hoverTask == taskIndex) {
       using var hover = new SolidBrush(configuration.Surface("taskHover").Resolve(palette.Accent));
-      FillRoundedRectangle(graphics, hover, row, 6);
+      FillRoundedRectangle(graphics, hover, row, rowSurface.Radius);
     }
-    var box = CheckboxRect(visibleIndex);
+    var box = CheckboxRect(taskIndex);
     using var boxPen = new Pen(palette.AccentBorder, 1.5f);
     graphics.DrawRectangle(boxPen, box.X, box.Y, box.Width, box.Height);
     if (hoverTarget == HitTarget.TaskCheckbox && hoverTask == taskIndex) {
@@ -792,31 +822,45 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
       Trimming = StringTrimming.EllipsisCharacter,
       FormatFlags = StringFormatFlags.NoWrap,
     };
-    DrawText(graphics,task.Title, font, textBrush,
+    DrawText(graphics, task.Title, font, textBrush,
       new RectangleF(row.X + 38, row.Y + 3, row.Width - 48, row.Height - 6),
-      format,"taskRow");
+      format, "taskRow");
   }
 
-  private void DrawScrollIndicator(Graphics graphics) {
-    var track = new RectangleF(TaskArea.Right - 6, TaskArea.Top + 8,
-      3, Math.Max(20, TaskArea.Height - 16));
-    using var background = new SolidBrush(palette.Border);
+  private void DrawScrollbar(Graphics graphics, RectangleF track, float viewportHeight, float contentHeight, WidgetScrollAxis axis, string surface) {
+    using var background = new SolidBrush(Color.FromArgb(80, palette.Border));
     FillRoundedRectangle(graphics, background, track, 2);
-    var thumbHeight = Math.Max(14,
-      track.Height * VisibleTaskRows / tasks.Count);
-    var maxOffset = Math.Max(1, tasks.Count - VisibleTaskRows);
-    var top = track.Top + (track.Height - thumbHeight) * scrollOffset / maxOffset;
-    using var thumb = new SolidBrush(palette.Accent);
-    FillRoundedRectangle(graphics, thumb,
-      new RectangleF(track.X, top, track.Width, thumbHeight), 2);
+    var thumb = axis.ThumbRect(viewportHeight, contentHeight, track);
+    using var thumbBrush = new SolidBrush(SurfaceText(surface, true));
+    FillRoundedRectangle(graphics, thumbBrush, thumb, 2);
   }
 
   private void DrawIconButton(Graphics graphics, RectangleF bounds,
       HeaderIcon icon, bool hovered) {
-    var color = pressedTarget == HitTarget.Open ? Blend(palette.Row,palette.Accent,0.4f) : hovered ? Blend(palette.Row, palette.Accent, 0.24f) : palette.Panel;
+    var shellAlpha = (int)configuration.Surface("shell").Resolve(palette.Background).A;
+    var baseFill = shellAlpha < 180
+      ? Color.FromArgb(Math.Max(90, shellAlpha), palette.Panel)
+      : palette.Panel;
+    var color = pressedTarget == HitTarget.Open
+      ? Blend(baseFill, palette.Accent, 0.4f)
+      : hovered
+        ? Blend(baseFill, palette.Accent, 0.24f)
+        : baseFill;
+    if (shellAlpha < 180) {
+      var targetAlpha = (hovered || pressedTarget == HitTarget.Open) ? Math.Max(140, shellAlpha) : baseFill.A;
+      color = Color.FromArgb(targetAlpha, color);
+    }
     using var brush = new SolidBrush(color);
     FillRoundedRectangle(graphics, brush, bounds, 6);
-    using var pen = new Pen(palette.Foreground, 1.7f) {
+    if (shellAlpha < 180) {
+      using var outline = new Pen(Color.FromArgb(95, palette.Border), 1);
+      var inset = bounds; inset.Inflate(-0.5f, -0.5f);
+      DrawRoundedRectangle(graphics, outline, inset, 6);
+    }
+    var iconInk = WidgetEditorStyle.Contrast(palette.Foreground, Blend(palette.Background, color, color.A / 255f)) >= 4.5
+      ? palette.Foreground
+      : SurfaceText("header");
+    using var pen = new Pen(iconInk, 1.7f) {
       StartCap = LineCap.Round, EndCap = LineCap.Round,
     };
     var centerX = bounds.X + bounds.Width / 2;
@@ -841,10 +885,16 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     foreach (var view in VisibleViews) {
       var bounds = ViewRect(view);
       var selected = settings.View == view;
-      if (!selected) PaintSurface(graphics, "navigationButton", bounds, palette.Panel);
-      if (selected || hoverTarget == ViewTarget(view)) {
-        using var brush = new SolidBrush(selected ? configuration.Surface("selectedNavigation").Resolve(palette.Accent) : Blend(palette.Panel,palette.Accent,0.24f));
-        FillRoundedRectangle(graphics, brush, bounds, configuration.Surface("navigationButton").Radius);
+      if (selected) {
+        PaintSurface(graphics, "selectedNavigation", bounds, palette.Accent, palette.Accent);
+      } else {
+        PaintSurface(graphics, "navigationButton", bounds, palette.Panel);
+        if (hoverTarget == ViewTarget(view)) {
+          var navAlpha = (int)configuration.Surface("navigationButton").Resolve(palette.Panel).A;
+          var blendedHover = Blend(palette.Panel, palette.Accent, 0.24f);
+          using var hoverBrush = new SolidBrush(Color.FromArgb(Math.Max(48, navAlpha), blendedHover));
+          FillRoundedRectangle(graphics, hoverBrush, bounds, configuration.Surface("navigationButton").Radius);
+        }
       }
       using var text = new SolidBrush(selected ? SurfaceText("selectedNavigation") : SurfaceText("navigationButton"));
       using var format = CenterFormat();
@@ -867,6 +917,7 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
   }
 
   private void MouseMove(PointF point) {
+    if (draggingScrollbar) { UpdateScrollbarDrag(point); return; }
     if (splittingCalendar) { UpdateCalendarSplit(point); return; }
     if (dragging || resizing || splittingCalendar) {
       ContinueMoveOrResize();
@@ -953,6 +1004,9 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     openTooltip.Hide(this);
     if (calendar && CalendarDivider.Contains(point) && !configuration.LayoutLocked) {
       splittingCalendar = true; Native.SetCapture(Handle); return;
+    }
+    if (!privacy.IsLocked() && TryBeginScrollbarDrag(point)) {
+      draggingScrollbar = true; Native.SetCapture(Handle); return;
     }
     (pressedTarget, pressedIndex) = HitTest(point);
     Present("pressed");
@@ -1098,14 +1152,16 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     if (ViewRect(WidgetTaskView.Inbox).Contains(point)) return (HitTarget.ViewInbox, -1);
     if (ViewRect(WidgetTaskView.All).Contains(point)) return (HitTarget.ViewAll, -1);
     if (ViewRect(WidgetTaskView.Upcoming).Contains(point)) return (HitTarget.ViewUpcoming, -1);
-    var end = Math.Min(tasks.Count, scrollOffset + VisibleTaskRows);
-    for (var index = scrollOffset; index < end; index++) {
-      var visibleIndex = index - scrollOffset;
-      if (CheckboxHitRect(visibleIndex).Contains(point)) {
-        return (HitTarget.TaskCheckbox, index);
-      }
-      if (TaskRowRect(visibleIndex).Contains(point)) {
-        return (HitTarget.TaskRow, index);
+    if (TaskViewport.Contains(point)) {
+      var first = Math.Max(0, (int)Math.Floor((taskScroll.Pixels - 7f) / TaskRowHeight));
+      var last = Math.Min(tasks.Count - 1, (int)Math.Floor((taskScroll.Pixels + TaskViewport.Height) / TaskRowHeight));
+      for (var index = first; index <= last; index++) {
+        if (CheckboxHitRect(index).Contains(point)) {
+          return (HitTarget.TaskCheckbox, index);
+        }
+        if (TaskRowRect(index).Contains(point)) {
+          return (HitTarget.TaskRow, index);
+        }
       }
     }
     return (HitTarget.None, -1);
@@ -1122,8 +1178,8 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     }
     if (calendar && !privacy.IsLocked()) ShowCalendarTooltip(target,task);
     if (!calendar && !privacy.IsLocked() && target == HitTarget.TaskRow && task >= 0 && task < tasks.Count) {
-      var row = TaskRowRect(task - scrollOffset);
-      openTooltip.Show(tasks[task].Title, this, new Point(Pixel((int)row.X), Pixel((int)row.Bottom + 4)), 3000);
+      var row = RectangleF.Intersect(TaskRowRect(task), TaskViewport);
+      if (!row.IsEmpty) openTooltip.Show(tasks[task].Title, this, new Point(Pixel((int)row.X), Pixel((int)row.Bottom + 4)), 3000);
     }
     foreach(var view in VisibleViews) if(target==ViewTarget(view)) {
       var r=ViewRect(view); openTooltip.Show(ViewLabel(view),this,new Point(Pixel((int)r.X),Pixel((int)r.Bottom+4)),3000);
@@ -1139,18 +1195,120 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     Present("hover-changed", updateNow: false);
   }
 
+  private void StopScrollTimer() => scrollAnimationTimer?.Stop();
+
+  private void ResetTaskScroll() {
+    taskScroll.Reset();
+    if (!calendar) StopScrollTimer();
+  }
+
+  private void ResetAgendaScroll() {
+    agendaScroll.Reset();
+    if (calendar) StopScrollTimer();
+  }
+
+  private void ResetScrollState() {
+    taskScroll.Reset();
+    agendaScroll.Reset();
+    StopScrollTimer();
+  }
+
+  private void RefreshHoverAfterScroll() {
+    openTooltip.Hide(this);
+    if (!pointerInside || Handle == 0 || !Native.GetCursorPos(out var cursor)) return;
+    if (!Native.ScreenToClient(Handle, ref cursor)) return;
+    var logical = new PointF(cursor.X / scale, cursor.Y / scale);
+    var (target, task) = HitTest(logical);
+    SetHover(target, task);
+  }
+
+  private static bool IsReducedMotionPreferred() {
+    if (!SystemInformation.UIEffectsEnabled) return true;
+    try {
+      if (Native.SystemParametersInfo(0x1042, 0, out var animationsEnabled, 0) && !animationsEnabled) return true;
+    } catch { }
+    return false;
+  }
+
+  internal static float WheelDetentPixels(int scrollLines, float viewportHeight, float rowHeight) {
+    if (scrollLines == -1) return Math.Max(rowHeight, viewportHeight * 0.9f);
+    var effective = scrollLines <= 0 ? 3 : scrollLines;
+    // Standard Windows default (3 lines) yields 48 logical pixels per 120-unit detent.
+    return effective * 16f;
+  }
+
+  private bool TryBeginScrollbarDrag(PointF point) {
+    var hasScroll = calendar ? MaxAgendaScrollPixels > 0.5f : TaskScrollbarVisible;
+    if (!hasScroll) return false;
+    var track = calendar ? AgendaScrollTrack : TaskScrollTrack;
+    var hit = new RectangleF(track.X - 6, track.Y, track.Width + 10, track.Height);
+    if (!hit.Contains(point)) return false;
+    UpdateScrollbarDrag(point);
+    return true;
+  }
+
+  private void UpdateScrollbarDrag(PointF point) {
+    var track = calendar ? AgendaScrollTrack : TaskScrollTrack;
+    if (track.Height <= 0f) return;
+    var ratio = Math.Clamp((point.Y - track.Top) / track.Height, 0f, 1f);
+    var changed = calendar
+      ? agendaScroll.JumpToFraction(ratio, AgendaViewport.Height, AgendaContentHeight)
+      : taskScroll.JumpToFraction(ratio, TaskArea.Height, TotalTaskContentHeight);
+    if (!changed) return;
+    StopScrollTimer();
+    RefreshHoverAfterScroll();
+    Present(calendar ? "agenda-scroll" : "task-scroll", updateNow: false);
+  }
+
   private void Scroll(int direction) {
-    if (calendar) { agendaOffset = Math.Clamp(agendaOffset+direction, 0, Math.Max(0, SelectedAgenda.Length-AgendaVisibleRows)); Present("agenda-scroll"); return; }
-    if (tasks.Count <= VisibleTaskRows) return;
-    var maximum = Math.Max(0, tasks.Count - VisibleTaskRows);
-    var next = Math.Clamp(scrollOffset + direction, 0, maximum);
-    if (next == scrollOffset) return;
-    scrollOffset = next;
-    Present("task-scroll", updateNow: false);
+    var step = calendar ? CalendarLayout.RowHeight : TaskRowHeight;
+    ScrollByPixels(direction * step, animate: false);
   }
 
   private void ScrollAt(PointF point, int direction) {
     if (!calendar || AgendaRect.Contains(point)) Scroll(direction);
+  }
+
+  internal void ScrollWheelAt(PointF point, int wheelDelta, int? scrollLinesOverride = null, bool? reducedMotionOverride = null) {
+    if (calendar && !AgendaRect.Contains(point)) return;
+    if (wheelDelta == 0) return;
+    var lines = scrollLinesOverride ?? SystemInformation.MouseWheelScrollLines;
+    var viewportHeight = calendar ? AgendaViewport.Height : TaskViewport.Height;
+    var rowHeight = calendar ? CalendarLayout.RowHeight : TaskRowHeight;
+    var detentPixels = WheelDetentPixels(lines, viewportHeight, rowHeight);
+    var deltaPixels = -wheelDelta / 120f * detentPixels;
+    // Small deltas come from high-precision touchpads / smooth wheels: apply immediately with zero lag.
+    // Reduced-motion Windows preference also disables smooth timer easing.
+    var reducedMotion = reducedMotionOverride ?? IsReducedMotionPreferred();
+    var animate = !reducedMotion && Math.Abs(wheelDelta) >= 60 && scrollAnimationTimer != null && Handle != 0;
+    ScrollByPixels(deltaPixels, animate);
+  }
+
+  internal void ScrollByPixels(float deltaPixels, bool animate = false) {
+    if (privacy.IsLocked()) { StopScrollTimer(); return; }
+    var axis = calendar ? agendaScroll : taskScroll;
+    var max = calendar ? MaxAgendaScrollPixels : MaxTaskScrollPixels;
+    axis.AddDelta(deltaPixels, max, animate && scrollAnimationTimer != null && Handle != 0, out var changed, out var startTimer);
+    if (startTimer) {
+      scrollAnimationTimer?.Start();
+      return;
+    }
+    if (!changed) return;
+    StopScrollTimer();
+    RefreshHoverAfterScroll();
+    Present(calendar ? "agenda-scroll" : "task-scroll", updateNow: false);
+  }
+
+  private void StepScrollAnimation() {
+    if (Handle == 0 || disposed || privacy.IsLocked() || !Native.IsWindowVisible(Handle)) {
+      StopScrollTimer();
+      return;
+    }
+    var axis = calendar ? agendaScroll : taskScroll;
+    axis.Step(out var settled);
+    if (settled) StopScrollTimer();
+    RefreshHoverAfterScroll();
+    Present(calendar ? "agenda-scroll" : "task-scroll", updateNow: false);
   }
 
   internal void RefreshFromDatabase() => RefreshTasks();
@@ -1162,6 +1320,7 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     if (locked) {
       tasks = [];
       calendarItems = [];
+      ResetScrollState();
       openTooltip.Hide(this);
       quickAdd?.Close();
       statusText = "Locked";
@@ -1202,6 +1361,7 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     settings.View = value;
     settingsStore.Save(settings);
     quickAdd?.Close();
+    ResetTaskScroll();
     RefreshTasks();
   }
 
@@ -1214,6 +1374,7 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
 
   internal void Hide(bool persist = true) {
     openTooltip.Hide(this);
+    StopScrollTimer();
     configuration = WidgetConfiguration.Load(calendar,settings);
     if(persist && configuration.Enabled) { configuration.Enabled = false; configuration.Save(calendar); }
     RestorePreviewIfActive();
@@ -1237,8 +1398,8 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     RunAction(() => {
       if (calendar) LoadCalendar();
       else tasks = repository.LoadTasks(settings.View == WidgetTaskView.Today ? selectedDate : DateTime.Now, settings.View);
-      scrollOffset = Math.Min(scrollOffset,
-        Math.Max(0, tasks.Count - VisibleTaskRows));
+      ClampTaskScroll();
+      ClampAgendaScroll();
       statusText = $"Updated {DateTime.Now:h:mm tt}";
     });
     Present("tasks-refreshed");
@@ -1354,6 +1515,8 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
     settings.X = x;
     settings.Y = y;
     settingsStore.Save(settings);
+    ClampTaskScroll();
+    ClampAgendaScroll();
     PositionQuickAdd();
   }
 
@@ -1447,14 +1610,32 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
   private int Pixel(int logical) => (int)Math.Round(logical * scale);
   internal float TooltipScale => scale;
 
-  private RectangleF TaskRowRect(int visibleIndex) =>
-    new(TaskArea.X + 7, TaskArea.Y + 7 + visibleIndex * TaskRowHeight, TaskArea.Width - 14, TaskRowHeight - 5);
+  private RectangleF TaskViewport =>
+    new(TaskArea.X + 4, TaskArea.Y + 4, Math.Max(0, TaskArea.Width - 8), Math.Max(0, TaskArea.Height - 8));
 
-  private RectangleF CheckboxRect(int visibleIndex) =>
-    new(TaskArea.X + 17, TaskArea.Y + 7 + (TaskRowHeight-5-18)/2 + visibleIndex * TaskRowHeight, 18, 18);
+  private float TotalTaskContentHeight => tasks.Count == 0 ? 0f : tasks.Count * TaskRowHeight + 9f;
 
-  private RectangleF CheckboxHitRect(int visibleIndex) {
-    var row = TaskRowRect(visibleIndex);
+  private float MaxTaskScrollPixels => WidgetScrollAxis.MaxFor(TaskArea.Height, TotalTaskContentHeight);
+
+  private bool TaskScrollbarVisible => MaxTaskScrollPixels > 0.5f;
+
+  private void ClampTaskScroll() => taskScroll.Clamp(TaskArea.Height, TotalTaskContentHeight);
+
+  private RectangleF TaskScrollTrack =>
+    new(TaskArea.Right - 6, TaskArea.Top + 8, 3, Math.Max(20, TaskArea.Height - 16));
+
+  private RectangleF TaskScrollThumb =>
+    taskScroll.ThumbRect(TaskArea.Height, TotalTaskContentHeight, TaskScrollTrack);
+
+  private RectangleF TaskRowRect(int taskIndex) =>
+    new(TaskArea.X + 7, TaskArea.Y + 7 + taskIndex * TaskRowHeight - taskScroll.Pixels,
+      TaskArea.Width - (TaskScrollbarVisible ? 20 : 14), TaskRowHeight - 5);
+
+  private RectangleF CheckboxRect(int taskIndex) =>
+    new(TaskArea.X + 17, TaskArea.Y + 7 + (TaskRowHeight - 5 - 18) / 2 + taskIndex * TaskRowHeight - taskScroll.Pixels, 18, 18);
+
+  private RectangleF CheckboxHitRect(int taskIndex) {
+    var row = TaskRowRect(taskIndex);
     return new RectangleF(row.X, row.Y, 36, row.Height);
   }
 
@@ -1555,7 +1736,9 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
 
   private static void FillRoundedRectangle(
       Graphics graphics, Brush brush, RectangleF bounds, float radius) {
-    radius = Math.Clamp(radius, 0, Math.Min(bounds.Width, bounds.Height)/2);
+    if (bounds.Width <= 0f || bounds.Height <= 0f) return;
+    var maxRadius = Math.Max(0f, Math.Min(bounds.Width, bounds.Height) / 2f);
+    radius = Math.Clamp(radius, 0f, maxRadius);
     if (radius < 0.5f) { graphics.FillRectangle(brush, bounds); return; }
     using var path = new GraphicsPath();
     var diameter = radius * 2;
@@ -1570,7 +1753,9 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
 
   private static void DrawRoundedRectangle(
       Graphics graphics, Pen pen, RectangleF bounds, float radius) {
-    radius = Math.Clamp(radius, 0, Math.Min(bounds.Width, bounds.Height)/2);
+    if (bounds.Width <= 0f || bounds.Height <= 0f) return;
+    var maxRadius = Math.Max(0f, Math.Min(bounds.Width, bounds.Height) / 2f);
+    radius = Math.Clamp(radius, 0f, maxRadius);
     if (radius < 0.5f) { graphics.DrawRectangle(pen,bounds.X,bounds.Y,bounds.Width,bounds.Height); return; }
     using var path = new GraphicsPath();
     var diameter = radius * 2;
@@ -1589,16 +1774,23 @@ internal sealed partial class NativeDesktopWidgetHost : NativeWindow, IDisposabl
       (int)(first.G + (second.G - first.G) * amount),
       (int)(first.B + (second.B - first.B) * amount));
 
-  public void Dispose() {
-    if (disposed) return;
-    disposed = true;
+  private void CleanupResources() {
+    scrollAnimationTimer?.Stop();
+    scrollAnimationTimer?.Dispose();
     quickAdd?.Close();
     quickAdd?.Dispose();
     contextMenu?.Dispose();
     openTooltip.Dispose();
     quickAdd = null;
+    contextMenu = null;
     diagnostics.Snapshot(Handle, "native-host-disposing");
     diagnostics.Dispose();
+  }
+
+  public void Dispose() {
+    if (disposed) return;
+    disposed = true;
+    CleanupResources();
     if (Handle != 0) DestroyHandle();
   }
 

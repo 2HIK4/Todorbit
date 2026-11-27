@@ -87,6 +87,7 @@ void main() {
     required Size size,
     double textScale = 1.0,
     Brightness brightness = Brightness.light,
+    Future<void> Function(WidgetTester)? afterPump,
   }) async {
     const activation = MethodChannel('life_manager/activation');
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -133,6 +134,10 @@ void main() {
     );
 
     await tester.pumpAndSettle();
+    if (afterPump != null) {
+      await afterPump(tester);
+      await tester.pumpAndSettle();
+    }
 
     // Verify zero RenderFlex overflows or unhandled render tree errors
     expect(
@@ -438,6 +443,103 @@ void main() {
             onAddTask: (_) {},
           ),
           size: const Size(1100, 760),
+          brightness: Brightness.dark,
+        );
+      },
+    );
+
+    testWidgets(
+      'settings-hotkeys-desktop: Embedded Hotkeys pane in dark desktop Settings',
+      (tester) async {
+        await renderScenario(
+          tester: tester,
+          name: 'settings-hotkeys-desktop',
+          child: SettingsHubDialog(
+            nativeWidget: NativeWidgetService(
+              widgetExecutable: 'unavailable.exe',
+            ),
+            showDataProfile: () {},
+          ),
+          size: const Size(1000, 720),
+          brightness: Brightness.dark,
+          afterPump: (t) async {
+            await t.tap(find.text('Hotkeys').first);
+          },
+        );
+      },
+    );
+
+    testWidgets(
+      'settings-hotkeys-narrow: Embedded Hotkeys pane at 720x680 @ 1.5x text light theme',
+      (tester) async {
+        await renderScenario(
+          tester: tester,
+          name: 'settings-hotkeys-narrow',
+          child: SettingsHubDialog(
+            nativeWidget: NativeWidgetService(
+              widgetExecutable: 'unavailable.exe',
+            ),
+            showDataProfile: () {},
+          ),
+          size: const Size(720, 680),
+          textScale: 1.5,
+          brightness: Brightness.light,
+          afterPump: (t) async {
+            await t.tap(find.byKey(const ValueKey('settings-section-picker')));
+            await t.pumpAndSettle();
+            await t.tap(find.text('Hotkeys').last);
+          },
+        );
+      },
+    );
+
+    testWidgets(
+      'workspace-today-dark: Desktop Today workspace in dark Graphite Silver theme',
+      (tester) async {
+        final now = DateTime.now();
+        await controller.repository.addTask(
+          TaskDraft(
+            title: 'Finalize desktop widget pixel scrolling',
+            priority: 2,
+            scheduledDate: localDate(now),
+          ),
+        );
+        await controller.repository.addTask(
+          TaskDraft(
+            title: 'Audit Hotkeys keyboard capture & presets',
+            priority: 1,
+            scheduledDate: localDate(now),
+            deadlineDate: localDate(now.add(const Duration(days: 2))),
+          ),
+        );
+        await controller.refresh();
+        await renderScenario(
+          tester: tester,
+          name: 'workspace-today-dark',
+          child: const Workspace(),
+          size: const Size(1280, 760),
+          brightness: Brightness.dark,
+        );
+      },
+    );
+
+    testWidgets(
+      'mobile-today-dark: Android Today workspace in dark Graphite Silver theme',
+      (tester) async {
+        final now = DateTime.now();
+        await controller.repository.addTask(
+          TaskDraft(
+            title: 'Review mobile launcher widget sync',
+            priority: 2,
+            scheduledDate: localDate(now),
+          ),
+        );
+        await controller.refresh();
+        await renderScenario(
+          tester: tester,
+          name: 'mobile-today-dark',
+          child: MobileWorkspace(preferenceStore: mobileStore),
+          size: const Size(390, 844),
           brightness: Brightness.dark,
         );
       },

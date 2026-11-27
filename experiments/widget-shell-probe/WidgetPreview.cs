@@ -14,13 +14,17 @@ internal sealed partial class NativeDesktopWidgetHost
     }
     /// Offscreen renderer: no HWND, Explorer attachment, focus or startup registration.
     internal static Bitmap RenderPreview(LifeManagerWidgetRepository repository,
-        WidgetConfiguration config, bool calendar, Size size, WidgetPalette palette, float scale = 1)
+        WidgetConfiguration config, bool calendar, Size size, WidgetPalette palette, float scale = 1, float initialScrollPixels = 0f)
     {
         using var host = new NativeDesktopWidgetHost(repository, config, calendar, size, palette);
         host.ValidateLayout();
+        if (initialScrollPixels > 0f) host.ScrollByPixels(initialScrollPixels);
         var bitmap = new Bitmap((int)(size.Width * scale), (int)(size.Height * scale), System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
         using var g = Graphics.FromImage(bitmap);
-        g.Clear(Color.Transparent); g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.Clear(Color.Transparent);
+        g.CompositingMode = CompositingMode.SourceOver;
+        g.CompositingQuality = CompositingQuality.HighQuality;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
         g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
         g.ScaleTransform(scale, scale);
         host.PaintSurface(g, "shell", new RectangleF(0.5f, 0.5f, size.Width - 1, size.Height - 1), palette.Background);

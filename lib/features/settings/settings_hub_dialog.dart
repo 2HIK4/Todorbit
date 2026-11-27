@@ -250,12 +250,7 @@ class _SettingsHubDialogState extends ConsumerState<SettingsHubDialog> {
             ),
           ],
         ),
-        _SettingsPage.hotkeys => _action(
-          'Edit hotkeys',
-          'Search, change bindings, resolve conflicts, and manage presets',
-          Icons.keyboard_outlined,
-          () => _open(const HotkeysDialog()),
-        ),
+        _SettingsPage.hotkeys => const HotkeysEditorView(embedded: true),
         _SettingsPage.tasks => Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

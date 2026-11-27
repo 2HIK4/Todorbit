@@ -45,11 +45,18 @@ internal static partial class LifeManagerWidgetSelfTest
                 bitmap.Save(Path.Combine(output, $"compact-{position}-{mode}-{header}.png"));
             }
             foreach (var calendar in new[] { false, true })
+            foreach (var light in new[] { false, true })
             {
                 var transparent = new WidgetConfiguration();
                 foreach (var layer in transparent.Surfaces.Values) layer.Opacity = 0;
-                using var image = NativeDesktopWidgetHost.RenderPreview(repo, transparent, calendar, new Size(376, 460), WidgetPalette.Dark);
-                image.Save(Path.Combine(output, $"{(calendar ? "calendar" : "tasks")}-transparent.png"));
+                transparent.Surface("shell").Opacity = 20;
+                transparent.Surface("content").Opacity = 35;
+                transparent.Surface("navigationButton").Opacity = 70;
+                transparent.Surface("selectedNavigation").Opacity = 30;
+                transparent.Surface("selectedDate").Opacity = 30;
+                transparent.Surface("agenda").Opacity = 15;
+                using var image = NativeDesktopWidgetHost.RenderPreview(repo, transparent, calendar, new Size(376, 460), light ? WidgetPalette.Light : WidgetPalette.Dark);
+                image.Save(Path.Combine(output, $"{(calendar ? "calendar" : "tasks")}-{(light ? "light" : "dark")}-transparent.png"));
             }
             foreach (var mode in new[] { "unified" })
             foreach (var light in new[] { false, true })
@@ -64,6 +71,113 @@ internal static partial class LifeManagerWidgetSelfTest
         {
             Environment.SetEnvironmentVariable("APPDATA", previous);
             SqliteConnection.ClearAllPools(); Directory.Delete(profile, true);
+        }
+    }
+
+    internal static void CaptureExtendedRuntimeMatrix(string output)
+    {
+        output = Path.GetFullPath(output);
+        Directory.CreateDirectory(output);
+        var profile = Path.Combine(Path.GetTempPath(), "todorbit-matrix-" + Guid.NewGuid());
+        Directory.CreateDirectory(profile);
+        using var scope = new WidgetTestProfile(profile);
+        try
+        {
+            var dbPath = Path.Combine(profile, "matrix.sqlite");
+            CreateDatabase(dbPath);
+            using var repo = LifeManagerWidgetRepository.OpenForTest(dbPath);
+            foreach (var title in new[]
+            {
+                "Prepare quarterly release notes",
+                "Review Windows widget contrasts",
+                "Verify continuous wheel scroll clipping",
+                "Test embedded Settings > Hotkeys search",
+                "Audit SQLite clock rollback snapshot",
+                "Reconcile open-source PR #3 checklist",
+                "Validate Android 16 KiB upgrade APK",
+                "Update README and Docs catalogue"
+            })
+            {
+                repo.AddTask(title, DateTime.Today);
+            }
+
+            void CompositeWallpaper(Bitmap fg, string wallpaperKind, string outPath)
+            {
+                using var canvas = new Bitmap(fg.Width, fg.Height);
+                using var g = Graphics.FromImage(canvas);
+                if (wallpaperKind == "light")
+                {
+                    using var b = new System.Drawing.Drawing2D.LinearGradientBrush(
+                        new Rectangle(0, 0, fg.Width, fg.Height),
+                        Color.FromArgb(236, 243, 250), Color.FromArgb(214, 228, 242), 45f);
+                    g.FillRectangle(b, 0, 0, fg.Width, fg.Height);
+                }
+                else if (wallpaperKind == "dark")
+                {
+                    using var b = new System.Drawing.Drawing2D.LinearGradientBrush(
+                        new Rectangle(0, 0, fg.Width, fg.Height),
+                        Color.FromArgb(20, 18, 28), Color.FromArgb(14, 24, 34), 45f);
+                    g.FillRectangle(b, 0, 0, fg.Width, fg.Height);
+                }
+                else
+                {
+                    using var b = new System.Drawing.Drawing2D.LinearGradientBrush(
+                        new Rectangle(0, 0, fg.Width, fg.Height),
+                        Color.FromArgb(40, 54, 85), Color.FromArgb(224, 114, 68), 35f);
+                    g.FillRectangle(b, 0, 0, fg.Width, fg.Height);
+                }
+                g.DrawImage(fg, 0, 0, fg.Width, fg.Height);
+                canvas.Save(outPath);
+            }
+
+            // 1. Light/Dark translucent over Light, Dark, and Mixed wallpapers
+            var translucent = new WidgetConfiguration();
+            foreach (var layer in translucent.Surfaces.Values) layer.Opacity = 0;
+            translucent.Surface("shell").Opacity = 20;
+            translucent.Surface("content").Opacity = 35;
+            translucent.Surface("navigationButton").Opacity = 70;
+            translucent.Surface("selectedNavigation").Opacity = 35;
+            translucent.Surface("selectedDate").Opacity = 35;
+            translucent.Surface("agenda").Opacity = 20;
+
+            foreach (var light in new[] { false, true })
+            foreach (var cal in new[] { false, true })
+            foreach (var wp in new[] { "light", "dark", "mixed" })
+            {
+                using var fg = NativeDesktopWidgetHost.RenderPreview(
+                    repo, translucent, cal, new Size(376, 460), light ? WidgetPalette.Light : WidgetPalette.Dark);
+                CompositeWallpaper(fg, wp, Path.Combine(output,
+                    $"matrix-{(cal ? "calendar" : "tasks")}-{(light ? "light" : "dark")}-wp-{wp}.png"));
+            }
+
+            // 2. Extreme transparency (0% shell + 0% content vs 100% opaque custom accent)
+            var zeroGlass = new WidgetConfiguration();
+            foreach (var layer in zeroGlass.Surfaces.Values) layer.Opacity = 0;
+            zeroGlass.Surface("selectedNavigation").Opacity = 85;
+            using (var zeroBmp = NativeDesktopWidgetHost.RenderPreview(repo, zeroGlass, false, new Size(376, 460), WidgetPalette.Light))
+            {
+                CompositeWallpaper(zeroBmp, "dark", Path.Combine(output, "matrix-tasks-light-0pct-darkwp.png"));
+            }
+
+            // 3. Continuous scroll sequence (0px, 18px partial, 42px partial, 140px bottom)
+            var scrollCfg = new WidgetConfiguration();
+            foreach (var (stepName, px) in new[] { ("00-top", 0f), ("01-18px", 18f), ("02-42px", 42f), ("03-bottom", 240f) })
+            {
+                using var bmp = NativeDesktopWidgetHost.RenderPreview(repo, scrollCfg, false, new Size(376, 460), WidgetPalette.Dark, 1f, initialScrollPixels: px);
+                bmp.Save(Path.Combine(output, $"matrix-scroll-{stepName}.png"));
+            }
+
+            // 4. Resized 460x620 @ 150% DPI Light & Dark
+            foreach (var light in new[] { false, true })
+            {
+                using var resized = NativeDesktopWidgetHost.RenderPreview(repo, new WidgetConfiguration(), false, new Size(460, 620), light ? WidgetPalette.Light : WidgetPalette.Dark, 1.5f);
+                resized.Save(Path.Combine(output, $"matrix-tasks-{(light ? "light" : "dark")}-resized-150.png"));
+            }
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            Directory.Delete(profile, true);
         }
     }
     private static void Require(bool condition, string message)

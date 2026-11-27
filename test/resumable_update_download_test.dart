@@ -245,6 +245,41 @@ void main() {
     expect(await File('${target.path}.part').exists(), isFalse);
   });
 
+  test(
+    'a damaged full-length partial restarts without sending a range',
+    () async {
+      await seed(count: bytes.length, corrupt: true, validator: '"old"');
+      final ranges = <String?>[];
+      final validators = <String?>[];
+      server.listen((request) async {
+        final range = request.headers.value(HttpHeaders.rangeHeader);
+        ranges.add(range);
+        validators.add(request.headers.value(HttpHeaders.ifRangeHeader));
+        if (range != null) {
+          request.response.statusCode = HttpStatus.requestedRangeNotSatisfiable;
+        } else {
+          request.response.add(bytes);
+        }
+        await request.response.close();
+      });
+
+      final progress = <int>[];
+      final notices = <String>[];
+      final file = await download(
+        progress: (done, _) => progress.add(done),
+        state: notices.add,
+      );
+
+      expect(ranges, [null]);
+      expect(validators, [null]);
+      expect(progress.first, 0);
+      expect(notices.first, contains('restarting from zero'));
+      expect(await file.readAsBytes(), bytes);
+      expect(await File('${target.path}.part').exists(), isFalse);
+      expect(await File('${target.path}.part.json').exists(), isFalse);
+    },
+  );
+
   test('different asset digest cannot reuse old prefix', () async {
     await seed();
     final metadata = File('${target.path}.part.json');

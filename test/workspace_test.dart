@@ -11,11 +11,77 @@ import 'package:life_manager/data/life_repository.dart';
 import 'package:life_manager/domain/models.dart';
 import 'package:life_manager/domain/recurrence.dart';
 import 'package:life_manager/domain/saved_views.dart';
+import 'package:life_manager/features/calendar/event_editor.dart';
 import 'package:life_manager/features/workspace/series_editor.dart';
 import 'package:life_manager/features/workspace/task_editor.dart';
 import 'package:life_manager/main.dart';
 
 void main() {
+  testWidgets('sidebar search opens events and protects the current draft', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    final database = AppDatabase(NativeDatabase.memory());
+    final repository = LifeRepository(database);
+    final controller = AppController(repository);
+    final start = DateUtils.dateOnly(DateTime.now())
+        .add(const Duration(days: 2, hours: 10));
+    try {
+      for (final title in ['Review agenda', 'Discuss proposals']) {
+        await repository.addEvent(
+          EventDraft(
+            title: title,
+            notes: 'Planning briefing',
+            startsAt: start,
+            endsAt: start.add(const Duration(hours: 1)),
+          ),
+        );
+      }
+      await controller.refresh();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appControllerProvider.overrideWith((ref) => controller),
+            privacyOverride,
+          ],
+          child: const LifeManagerApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Search'),
+        '  BRIEFING  ',
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Review agenda'));
+      await tester.pumpAndSettle();
+      final editor = find.byType(EventEditor);
+      expect(tester.widget<EventEditor>(editor).event!.title, 'Review agenda');
+      final field = find.descendant(
+        of: editor,
+        matching: find.widgetWithText(TextField, 'Title *'),
+      );
+      await tester.enterText(field, 'Unsubmitted agenda');
+
+      await tester.tap(find.text('Discuss proposals'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Keep editing'));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.widget<TextField>(field).controller!.text,
+        'Unsubmitted agenda',
+      );
+      expect(tester.widget<EventEditor>(editor).event!.title, 'Review agenda');
+      expect(tester.takeException(), isNull);
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await database.close();
+      await tester.binding.setSurfaceSize(null);
+    }
+  });
+
   testWidgets('view information opens and closes from its icon', (
     tester,
   ) async {
@@ -608,43 +674,49 @@ void main() {
       expect(conflicts.map((t) => t.id).toSet(), equals({'task-a', 'task-b'}));
     });
 
-    test('returns empty when all prerequisites are scheduled earlier or completed', () {
-      final conflicts = TaskEditor.findPrerequisiteConflicts(
-        currentTask: currentTask,
-        targetScheduledDate: '2026-11-25',
-        dependencies: [
-          TaskDependency(taskId: 'current-task', prerequisiteId: 'task-a'),
-          TaskDependency(taskId: 'current-task', prerequisiteId: 'task-c'),
-          TaskDependency(taskId: 'current-task', prerequisiteId: 'task-d'),
-        ],
-        allTasks: allTasks,
-      );
+    test(
+      'returns empty when all prerequisites are scheduled earlier or completed',
+      () {
+        final conflicts = TaskEditor.findPrerequisiteConflicts(
+          currentTask: currentTask,
+          targetScheduledDate: '2026-11-25',
+          dependencies: [
+            TaskDependency(taskId: 'current-task', prerequisiteId: 'task-a'),
+            TaskDependency(taskId: 'current-task', prerequisiteId: 'task-c'),
+            TaskDependency(taskId: 'current-task', prerequisiteId: 'task-d'),
+          ],
+          allTasks: allTasks,
+        );
 
-      expect(conflicts, isEmpty);
-    });
+        expect(conflicts, isEmpty);
+      },
+    );
   });
 
   group('AppController visibleTasks memoization', () {
-    test('reuses cached visibleTasks within unchanged notification cycle', () async {
-      final database = AppDatabase(NativeDatabase.memory());
-      final repository = LifeRepository(database);
-      final controller = AppController(repository);
-      await controller.refresh();
+    test(
+      'reuses cached visibleTasks within unchanged notification cycle',
+      () async {
+        final database = AppDatabase(NativeDatabase.memory());
+        final repository = LifeRepository(database);
+        final controller = AppController(repository);
+        await controller.refresh();
 
-      final firstRead = controller.visibleTasks;
-      final secondRead = controller.visibleTasks;
-      expect(identical(firstRead, secondRead), isTrue);
+        final firstRead = controller.visibleTasks;
+        final secondRead = controller.visibleTasks;
+        expect(identical(firstRead, secondRead), isTrue);
 
-      // Mutating view/filter invalidates cache
-      controller.navigate(WorkspaceView.all);
-      final thirdRead = controller.visibleTasks;
-      expect(identical(firstRead, thirdRead), isFalse);
+        // Mutating view/filter invalidates cache
+        controller.navigate(WorkspaceView.all);
+        final thirdRead = controller.visibleTasks;
+        expect(identical(firstRead, thirdRead), isFalse);
 
-      final fourthRead = controller.visibleTasks;
-      expect(identical(thirdRead, fourthRead), isTrue);
+        final fourthRead = controller.visibleTasks;
+        expect(identical(thirdRead, fourthRead), isTrue);
 
-      await database.close();
-    });
+        await database.close();
+      },
+    );
 
     test('protects cache from caller mutation via unmodifiable list', () async {
       final database = AppDatabase(NativeDatabase.memory());
@@ -667,57 +739,63 @@ void main() {
       await database.close();
     });
 
-    test('invalidates cache when tasks property is assigned directly', () async {
-      final database = AppDatabase(NativeDatabase.memory());
-      final repository = LifeRepository(database);
-      final controller = AppController(repository);
-      await controller.refresh();
+    test(
+      'invalidates cache when tasks property is assigned directly',
+      () async {
+        final database = AppDatabase(NativeDatabase.memory());
+        final repository = LifeRepository(database);
+        final controller = AppController(repository);
+        await controller.refresh();
 
-      final initial = controller.visibleTasks;
-      controller.tasks = [
-        LifeTask(
-          id: 'new-direct-task',
-          title: 'Direct Task',
+        final initial = controller.visibleTasks;
+        controller.tasks = [
+          LifeTask(
+            id: 'new-direct-task',
+            title: 'Direct Task',
+            notes: '',
+            status: TaskStatus.notStarted,
+            priority: 1,
+            createdAt: DateTime.now().toUtc(),
+            updatedAt: DateTime.now().toUtc(),
+            scheduledDate: localDate(DateTime.now()),
+          ),
+        ];
+
+        final afterDirectSet = controller.visibleTasks;
+        expect(identical(initial, afterDirectSet), isFalse);
+        expect(afterDirectSet.any((t) => t.id == 'new-direct-task'), isTrue);
+
+        await database.close();
+      },
+    );
+
+    test(
+      'memoizes filteredTasks when active and protects against mutation',
+      () async {
+        final database = AppDatabase(NativeDatabase.memory());
+        final repository = LifeRepository(database);
+        final controller = AppController(repository);
+        await controller.refresh();
+
+        controller.setFilter(const TaskFilter(text: 'Search'));
+        final firstFiltered = controller.filteredTasks;
+        final secondFiltered = controller.filteredTasks;
+        expect(identical(firstFiltered, secondFiltered), isTrue);
+
+        final dummyTask = LifeTask(
+          id: 'dummy',
+          title: 'Dummy',
           notes: '',
           status: TaskStatus.notStarted,
           priority: 1,
           createdAt: DateTime.now().toUtc(),
           updatedAt: DateTime.now().toUtc(),
-          scheduledDate: localDate(DateTime.now()),
-        ),
-      ];
+        );
+        expect(() => firstFiltered.add(dummyTask), throwsUnsupportedError);
 
-      final afterDirectSet = controller.visibleTasks;
-      expect(identical(initial, afterDirectSet), isFalse);
-      expect(afterDirectSet.any((t) => t.id == 'new-direct-task'), isTrue);
-
-      await database.close();
-    });
-
-    test('memoizes filteredTasks when active and protects against mutation', () async {
-      final database = AppDatabase(NativeDatabase.memory());
-      final repository = LifeRepository(database);
-      final controller = AppController(repository);
-      await controller.refresh();
-
-      controller.setFilter(const TaskFilter(text: 'Search'));
-      final firstFiltered = controller.filteredTasks;
-      final secondFiltered = controller.filteredTasks;
-      expect(identical(firstFiltered, secondFiltered), isTrue);
-
-      final dummyTask = LifeTask(
-        id: 'dummy',
-        title: 'Dummy',
-        notes: '',
-        status: TaskStatus.notStarted,
-        priority: 1,
-        createdAt: DateTime.now().toUtc(),
-        updatedAt: DateTime.now().toUtc(),
-      );
-      expect(() => firstFiltered.add(dummyTask), throwsUnsupportedError);
-
-      await database.close();
-    });
+        await database.close();
+      },
+    );
 
     test('checkDateRollover notifies listeners and invalidates cache when date advances', () async {
       final database = AppDatabase(NativeDatabase.memory());
