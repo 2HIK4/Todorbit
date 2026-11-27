@@ -1,12 +1,10 @@
-# Todorbit privacy disclosure — release candidate
+# Todorbit privacy disclosure
 
-Prepared 2026-10-26 for owner review and hosting on the verified production
-application domain. The owner-approved public website policy is now at
-https://2hik4.github.io/Todorbit/privacy.html; its OAuth domain eligibility is
-unresolved. This repository document is not evidence of Google approval.
-Google Drive is enabled as an experimental feature in the owner-approved
-v1.0.13 pre-release. Branding verification and full public OAuth policy compliance
-remain unresolved; compatibility with every account is not promised.
+This disclosure describes the experimental Windows and Android builds. The
+[website privacy policy](https://2hik4.github.io/Todorbit/privacy.html) is
+deployed separately. Google Drive Sync and encrypted snapshot backup require
+a compatible account. Branding verification, OAuth domain eligibility and
+broad public OAuth compliance remain unresolved.
 
 ## Local information
 
@@ -27,13 +25,14 @@ Google processes these requests under its own policies.
 
 Todorbit reads the connected account's permission identifier and, when
 available, email address or display name to show the account and prevent
-accidental account changes. Your browser handles Google sign-in; Todorbit
-does not receive your Google password. Access and refresh tokens remain in
-Windows-protected device storage, associated with the selected local profile.
-They are not included in exported settings or backups.
+accidental account changes. Google handles sign-in through the browser on
+Windows and the system sign-in flow on Android. Todorbit does not receive your
+Google password. Saved credentials use platform-protected storage for the
+selected local profile. Settings exports and backups exclude credentials.
 
-A full backup contains all SQLite records and shareable personalization. That
-can include private tasks, notes, event details, history, archived/deleted
+A full backup contains all SQLite records, including managed attachment
+bytes, and shareable personalization. That can include private tasks,
+notes, event details, history, archived/deleted
 records, and paths referencing external files. **External file contents are
 not included.** Settings-only backup contains the selected supported settings
 categories, without planner database records. Device-only privacy/PIN policy,
@@ -51,13 +50,48 @@ remain on the device separately from the encrypted cloud object.
 The app transfers Google user data directly between your device and Google's
 API. It does not send backup content or Google account data to a Todorbit
 server, advertisers, or AI training services. The implementation uses Google
-user data only to provide and protect the backup/restore feature. There is
+user data only to provide and protect backup/restore and explicitly enabled sync. There is
 no human access to cloud content through a Todorbit service.
+
+## Optional Google Drive synchronization
+
+Settings > Sync enables incremental synchronization with the same Google account
+and `drive.appdata` scope. New workspaces default to
+**Standard Sync**, which uploads readable planner JSON without Todorbit client-side
+encryption or an additional password. Google Drive's transport and storage
+protections apply; this mode is not end-to-end encrypted. The payload includes
+portable planner records/history, managed attachment bytes and compatible
+preferences. External paths, device permissions, widget placement/IDs, privacy
+credentials, workspace secrets and OAuth tokens do not sync.
+
+For a new workspace, **Private Encrypted Sync** encrypts operations on the device
+with a random AES-256-GCM key. An Argon2id-derived passphrase key encrypts that
+workspace key for cloud recovery; only the authenticated encrypted wrapper is
+uploaded. Plaintext passphrases, workspace keys and recovery codes are not uploaded.
+Google receives ciphertext and non-content operational metadata such as
+workspace/device/batch IDs, protocol/schema/mode, object time and size. Protected
+profile storage retains the unlocked key. Either the passphrase or separately
+saved random recovery code unlocks new private data on another device. Losing all
+decryption credentials can make encrypted history unrecoverable.
+
+Legacy encrypted workspaces retain their original code-based recovery and format.
+Existing workspace mode conversion and passphrase changes remain unavailable.
+
+Disabling Automatic Sync stops scheduled exchange; explicit Sync Now remains
+available. OS scheduling, network access, app lock and authorization constrain
+background exchange. See the sync guide (`docs/GOOGLE_DRIVE_SYNC.md` on `feature/todorbit-beta27-refinement`) and
+implementation limits (`docs/SYNC_OPTIONAL_ENCRYPTION.md` on `feature/todorbit-beta27-refinement`).
+
+Sync history is retained without automatic cloud pruning, including competing
+and deleted-record revisions needed for recovery. Disconnecting or disabling
+sync does not delete that history or its local key. App-data deletion through
+Google's controls can affect both sync and independent cloud snapshots. Keep a
+verified recoverable copy before deleting cloud application data.
 
 ## Retention, deletion and revocation
 
 Cloud snapshots remain until you delete them; Todorbit does not automatically
-prune them. In Settings > Backups & Cloud, connect the intended account, inspect
+prune them. In the backup settings, connect the intended account, inspect
 the backup history, and choose Delete for each unwanted snapshot. Confirming
 deletion permanently removes that snapshot. Keep another recoverable copy.
 

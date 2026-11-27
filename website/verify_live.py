@@ -1,4 +1,5 @@
 """Anonymous public deployment checks. Does not change hosting or Google state."""
+from argparse import ArgumentParser
 from concurrent.futures import ThreadPoolExecutor
 from hashlib import sha256
 from html.parser import HTMLParser
@@ -9,6 +10,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent / "dist"
 BASE = "https://2hik4.github.io/Todorbit/"
+RELEASE_BASE = "https://github.com/2HIK4/Todorbit/releases"
 REPO = "https://api.github.com/repos/2HIK4/Todorbit"
 HEADERS = {"User-Agent": "Todorbit-website-deployment-check", "Accept": "*/*"}
 
@@ -42,24 +44,80 @@ class Links(HTMLParser):
             self.external.add(href)
 
 
+def latest_coordinated_release(releases):
+    published_betas = (r for r in releases if r["prerelease"] and not r["draft"])
+    for release in sorted(published_betas, key=lambda r: r["published_at"], reverse=True):
+        tag = release["tag_name"]
+        version = tag.removeprefix("v")
+        checksums = {
+            f"Todorbit-{version}-SHA256SUMS.txt": [
+                f"Todorbit-{version}-win-x64-setup.exe",
+                f"Todorbit-{version}-win-x64-portable.zip",
+            ],
+            "ANDROID-SHA256SUMS.txt": [f"Todorbit-{version}-android-universal.apk"],
+        }
+        assets = {asset["name"]: asset for asset in release["assets"]}
+        required = set(checksums).union(*checksums.values())
+        if required <= assets.keys():
+            return tag, checksums, assets
+    raise AssertionError("No published pre-release with both Windows and Android packages and checksums")
+
+
 def main():
-    assert request(BASE) == (ROOT / "index.html").read_bytes().replace(b"\r\n", b"\n")
-    files = sorted(p for p in ROOT.rglob("*") if p.is_file())
+    parser = ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--preview",
+        action="store_true",
+        help="Check local preview links and published SHA-256 assets without comparing live deployed bytes.",
+    )
+    args = parser.parse_args()
+
     links = Links()
     for page in ROOT.glob("*.html"):
         links.feed(page.read_text(encoding="utf-8"))
     releases = json.loads(request(REPO + "/releases?per_page=100"))
-    latest = max((r for r in releases if not r["draft"]), key=lambda r: r["published_at"])
-    download_links = {link for link in links.external if "/releases/download/" in link}
-    assert len(download_links) == 2, "Expected installer and portable downloads"
-    assets = {asset["browser_download_url"] for asset in latest["assets"]}
-    assert download_links <= assets, "Downloads do not belong to latest public release"
+    tag, checksums, assets = latest_coordinated_release(releases)
+    packages = [name for names in checksums.values() for name in names]
+    required_names = [*packages, *checksums]
+    expected_links = {assets[name]["browser_download_url"] for name in required_names}
+    download_links = {link for link in links.external if link.startswith(RELEASE_BASE + "/download/")}
+    assert download_links == expected_links, f"Update the website's package and checksum links to {tag}"
+    assert RELEASE_BASE + "/tag/" + tag in links.external, f"Link to the release notes for {tag}"
+    for filename, platform_packages in checksums.items():
+        body = request(assets[filename]["browser_download_url"]).decode("utf-8")
+        entries = (line.split(maxsplit=1) for line in body.splitlines() if line.strip())
+        hashes = {name: digest for digest, name in entries}
+        for name in platform_packages:
+            assert "sha256:" + hashes[name] == assets[name]["digest"], f"Checksum metadata differs for {name}"
+
+    file_hashes = []
+    blob_prefix = "https://github.com/2HIK4/Todorbit/blob/main/"
+    repo_root = ROOT.parent.parent
+    remote_links = set()
+    for url in sorted(links.external):
+        if args.preview and url.startswith(blob_prefix):
+            rel = url.removeprefix(blob_prefix).split("#", 1)[0]
+            assert (repo_root / rel).exists(), f"Missing local target for preview link: {rel}"
+        else:
+            remote_links.add(url)
     with ThreadPoolExecutor(max_workers=6) as pool:
-        hashes = list(pool.map(check_file, files))
-        list(pool.map(lambda url: request(url, "HEAD"), sorted(links.external)))
-    print(json.dumps({"base": BASE, "public_release": latest["tag_name"],
-                      "files": hashes, "external_links": len(links.external),
-                      "result": "PASS", "rendered_browser_qa": "UNVERIFIED"}, indent=2))
+        if not args.preview:
+            assert request(BASE) == (ROOT / "index.html").read_bytes().replace(b"\r\n", b"\n"), (
+                "The live homepage differs from this checkout. Use --preview before approved deployment."
+            )
+            files = sorted(p for p in ROOT.rglob("*") if p.is_file())
+            file_hashes = list(pool.map(check_file, files))
+        list(pool.map(lambda url: request(url, "HEAD"), sorted(remote_links)))
+    print(json.dumps({
+        "mode": "preview" if args.preview else "published",
+        "base": BASE,
+        "public_prerelease": tag,
+        "files": file_hashes,
+        "external_links": len(links.external),
+        "packages_with_matching_sha256_metadata": packages,
+        "result": "PASS",
+        "rendered_browser_qa": "UNVERIFIED",
+    }, indent=2))
 
 
 if __name__ == "__main__":
