@@ -18,17 +18,10 @@ tested configurations.
   Encrypted`) and AES-256-GCM encrypted cloud backups. Each has its own
   [recovery requirements](GOOGLE_DRIVE_SYNC.md).
 
-## Stabilization & Beta 30 priorities
+## Post-Beta 30 priorities
 
-- Validate Windows desktop widget Light/Dark wallpaper translucency, pixel
-  scrolling feel, multi-monitor DPI scaling, and embedded Settings > Hotkeys
-  keyboard UX on live builds.
-- Expand physical keyboard/focus, screen-reader (`Narrator` / `TalkBack`),
-  registered installer upgrade, and Android OEM/Share Sheet acceptance.
-- Exercise interrupted restore, offline reconnect, mixed-version sync, and
-  two-client Drive recovery on authorized test accounts.
-- Reconcile and publish public GitHub documentation (`README.md`, feature
-  catalogue, architecture docs) and `2hik4.github.io/Todorbit` website updates.
+- Expand physical keyboard/focus across multi-display setups, screen-reader (`Narrator` / `TalkBack`), registered installer upgrade, and Android OEM/Share Sheet acceptance.
+- Exercise interrupted restore, offline reconnect, mixed-version sync, and two-client Drive recovery on authorized test accounts.
 
 See [Deferred verification](DEFERRED_VERIFICATION.md) for open acceptance gates
 and [Contributor tasks](CONTRIBUTOR_TASKS.md) for bounded ways to help.

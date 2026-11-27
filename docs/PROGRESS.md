@@ -1,5 +1,15 @@
 # Progress
 
+## Beta 30 Experimental Publication & Website Rollout (2026-11-28)
+
+- **Exact-Source Verification on `253f4ed` (`1.0.19-beta.30+53`)**:
+  - `windows-ci.yml` ([`46066659736`](https://github.com/2HIK4/Todorbit/actions/runs/46066659736)) **completed/success** (full Dart analysis, full serial Flutter tests, TDAT/watchdog/hygiene checks, Windows Release build with `GOOGLE_DRIVE_RELEASE_CONFIG`, CRT gate, `39`-file portable ZIP PE `1.0.19-beta.30+53` / `1.0.19.53`, native sync writer, background sync barriers, `--self-test`, Inno Setup installer `setup.exe`, checksums).
+  - `tools/test-portable-update.ps1` (`Beta 29 -> Beta 30`) **PASS** (`19.22s`, helper swap, automatic restart, SQLite/profile retention).
+  - `android-ci.yml` ([`46066664484`](https://github.com/2HIK4/Todorbit/actions/runs/46066664484)) **completed/success** (`android` & `android-workflow` emulator).
+  - Local signed Android APKs + Play AAB (`release/android-beta30`) **PASS** (`:app:testGithubReleaseUnitTest`, `16 KiB` ELF/ZIP alignment, `prepare-android-release.py`).
+  - `android-16k-runtime.yml` ([`46068388702`](https://github.com/2HIK4/Todorbit/actions/runs/46068388702)) **completed/success**: `pageSize: 16384`, API 36 in-place upgrade (`build 52 -> 53`) retaining tasks & Calendar Month (`2,128 ms` cold upgraded startup, zero crashes/ANRs).
+- **Published Experimental Release (`v1.0.19-beta.30`)**: Published release `461064408` (`prerelease=true`, `latest=false`, `targetCommitish=253f4ed560018bfbb9acc9f1e110c823c77041d1`) with `11/11` anonymously verified public assets (`docs/TODORBIT_BETA_30_PUBLICATION_ASSETS.json`), passed live `test/published_update_discovery_test.dart` (`Experimental` `52 -> 53`, `Stable` excluded), recorded [Beta 30 Candidate Receipt](TODORBIT_BETA_30_CANDIDATE.md), and updated `README.md`, `docs/FEATURES.md` (`54/54`), `docs/OPEN_SOURCE_EVIDENCE.md`, `website/dist/index.html`, and `main` docs-only website rollout (`Stable` untouched).
+
 ## Beta 30 Release Preparation & Owner Visual Acceptance (2026-11-27)
 
 - **Owner Visual Acceptance Recorded**: Owner tested the isolated Windows Release candidate (`build/windows/x64/runner/Release`) and approved desktop widget Light/Dark rendering, continuous pixel scrolling, and the embedded `Settings > Hotkeys` editor. *(Physical multi-monitor/DPI variations, Narrator/TalkBack assistive output, and real two-client Drive sync remain deferred manual gates; Beta 29 checks do not substitute for Beta 30 exact-artifact gates.)*

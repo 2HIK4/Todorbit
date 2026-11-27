@@ -80,9 +80,9 @@ Deep dives: [Architecture](docs/ARCHITECTURE.md) · [Architecture Map](docs/ARCH
 
 | Channel / Line | Version / Commit | SQLite / Sync | Notes |
 | --- | --- | --- | --- |
-| **Latest Public Prerelease** | [`v1.0.19-beta.29`](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.29) (`bd9d337`) | Schema `29` / Protocol `2` | Windows x64 installer (`setup.exe`), portable ZIP, and production-signed Android APKs (`universal`, `arm64`, `x86-64`). |
-| **Development Branch (`HEAD`)** | `feature/todorbit-beta27-refinement` (`1.0.19-beta.29+52` line, Beta 30 candidate prep) | Schema `29` / Protocol `2` | Adds Windows widget translucent Light/Dark contrast fixes, 16 ms smooth pixel scrolling, embedded **Settings > Hotkeys**, and PR #3 open-source hardening. **Not yet published as a new release.** |
-| **Public Default (`main`)** | Protected release/website anchor | — | Documentation & website updates target `main` cleanly without modifying Stable binaries or triggering unauthorized Pages deployments. |
+| **Latest Public Prerelease** | [`v1.0.19-beta.30`](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.30) (`253f4ed`) | Schema `29` / Protocol `2` | Windows x64 installer (`setup.exe`), portable ZIP, and production-signed Android APKs (`universal`, `arm64`, `x86-64`) with desktop widget contrast/pixel-scroll fixes, embedded **Settings > Hotkeys**, and PR #3 hardening. |
+| **Development Branch (`HEAD`)** | `feature/todorbit-beta27-refinement` (`1.0.19-beta.30+53` line) | Schema `29` / Protocol `2` | Active Experimental release and stabilization branch (`Stable` remains separate). |
+| **Public Default (`main`)** | Protected release/website anchor | — | Documentation & website updates target `main` cleanly without modifying Stable binaries or merging experimental app code. |
 
 - **Disclosures**: Windows binaries are unsigned (Windows 11 primary; Windows 10 limited). Google Drive OAuth branding verification and broad public compliance remain unresolved (disabled by default in source builds until OAuth parameters are supplied). Trademark review remains open ([docs/NAMING_REVIEW.md](docs/NAMING_REVIEW.md)).
 - **Verifiable Public Snapshot**: Metrics, CI workflow links (`Windows checks`, `Android validation`, and `16 KiB PAGE_SIZE=16384` upgrade check), and download counts without fabrication are tracked in [docs/OPEN_SOURCE_EVIDENCE.md](docs/OPEN_SOURCE_EVIDENCE.md).
@@ -93,13 +93,13 @@ Deep dives: [Architecture](docs/ARCHITECTURE.md) · [Architecture Map](docs/ARCH
 
 ### Windows (x64)
 
-1. Download the installer or portable ZIP from [`v1.0.19-beta.29`](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.29) and compare the `Todorbit-1.0.19-beta.29-SHA256SUMS.txt` checksum.
+1. Download the installer or portable ZIP from [`v1.0.19-beta.30`](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.30) and compare the `Todorbit-1.0.19-beta.30-SHA256SUMS.txt` checksum.
 2. Run the installer, or extract the **entire** portable ZIP (`Todorbit.exe`, `TodorbitWidget.exe`, DLLs, `data/`) and launch `Todorbit.exe`.
 3. **Profile isolation**: Portable folders use `%APPDATA%\TodoPilot\portable-<location-id>`; moving the folder picks a different profile, so export a backup from **Settings > Backups & Cloud** first. See [docs/INSTALLATION.md](docs/INSTALLATION.md).
 
 ### Android 8.0+ (Beta)
 
-1. Download `Todorbit-1.0.19-beta.29-android-universal.apk` (or architecture-specific `arm64`/`x64`) and verify `ANDROID-SHA256SUMS.txt`.
+1. Download `Todorbit-1.0.19-beta.30-android-universal.apk` (or architecture-specific `arm64`/`x64`) and verify `ANDROID-SHA256SUMS.txt`.
 2. Existing production-signed installs can check **Settings > Software Updates** (Pre-release channel) for native signature-verified in-app updates ([docs/ANDROID_UPDATES.md](docs/ANDROID_UPDATES.md)).
 
 ---

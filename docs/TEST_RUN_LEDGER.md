@@ -1,5 +1,18 @@
 # Persistent test run ledger
 
+## Beta 30 Publication & Exact-Source Verification (`253f4ed`, `1.0.19-beta.30+53`, 2026-11-28)
+
+Exact candidate `253f4ed560018bfbb9acc9f1e110c823c77041d1` on `feature/todorbit-beta27-refinement`.
+
+| Invocation / purpose | Source / artifact | Result | Notes / limits |
+| --- | --- | --- | --- |
+| `Windows checks` (`windows-ci.yml` `46066659736`) | `253f4ed` / `windows-release-candidate` | PASS (`completed/success`) | Full analysis/tests, TDAT/watchdog/hygiene, Release (`googleDriveEnabled: true`), CRT, portable ZIP (`1.0.19.53`), native sync writer, background barriers, `--self-test`, Inno Setup `setup.exe`, checksums |
+| `Android validation` (`android-ci.yml` `46066664484`) | `253f4ed` | PASS (`completed/success`) | Static analysis, 9 Android/mobile tests, `test_prepare_android_release.py`, debug APK validation, API 35 KVM emulator run |
+| Local signed Android build (`build-android.ps1` + `:app:testGithubReleaseUnitTest` + `prepare-android-release.py`) | `release/android-beta30` | PASS (`273.85s` + `151.79s` + `193.67s` + `60.56s`) | Universal/ARM64/x64 APKs + Play AAB, `16 KiB` alignment, `minSdk=26`, `versionCode 53 > 52`, signer `00226dad...` |
+| `Android 16 KiB artifact runtime` (`46068388702`) | Draft x64 asset `802058300` (`2f63cec...`) upgrading `794963056` (`bec185a...`) | PASS (`15231583650`) | `pageSize: 16384`; retained synthetic tasks & Calendar Month across `52 -> 53`; `2,128 ms` cold upgraded startup, zero crashes/ANRs |
+| `tools/test-portable-update.ps1` (`Beta 29 -> Beta 30`) | `7421ca6...` upgrading `261c5ba...` | PASS (`19.22s`) | Helper swap, automatic restart, SQLite integrity & isolated profile retention |
+| Anonymous `11`-asset audit + `test/published_update_discovery_test.dart` | GitHub release `461064408` / `TODORBIT_BETA_30_PUBLICATION_ASSETS.json` | PASS (`11/11` + `1/1`) | Experimental selects `v1.0.19-beta.30` (`53`) on Windows & Android ARM64/x64; `Stable` excludes it |
+
 ## Beta 30 Owner Visual Acceptance & Release Candidate Bump (`1.0.19-beta.30+53`, 2026-11-27)
 
 | Invocation / purpose | Source / artifact | Result | Notes / limits |

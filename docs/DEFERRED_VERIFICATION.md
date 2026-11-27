@@ -1,5 +1,9 @@
 # Deferred Verification Backlog
 
+## Beta 30 Remaining Physical / Multi-Client Gates (2026-11-28)
+
+The [Beta 30 candidate receipt](TODORBIT_BETA_30_CANDIDATE.md) closes exact-source Windows (`46066659736`) and Android (`46066664484`) CI, owner visual acceptance of the isolated Windows candidate (desktop widget Light/Dark rendering, continuous pixel scrolling, embedded Settings > Hotkeys), signed Android packaging, isolated Beta 29 → Beta 30 Windows portable upgrade, official API 36 `16 KiB` in-place upgrade (`46068388702`, `52 → 53`), and live Experimental updater/asset verification (`461064408`). Physical multi-monitor DPI variations, `Win+D` across displays, Narrator/TalkBack assistive output, physical registered installer upgrade on an isolated test machine, physical Android device/OEM flows, and separately authorized two-client live Google Drive sync tests remain open manual gates (exclude personal profile and Windows Sandbox).
+
 ## Post-Beta 29 Candidate & Recovery Remaining Gates (2026-11-27)
 
 - **Android 16 KiB Pre-Publication Draft APK Runtime (`android-16k-runtime.yml`)**: Beta 29 run [`45784257387`](https://github.com/2HIK4/Todorbit/actions/runs/45784257387) covers Beta 29 (`bd9d337`) only and does **not** certify Beta 30. Prior to publishing Beta 30, build signed APKs via `android-release.yml` on the bumped Beta 30 candidate, attach them to an unpublished **draft** GitHub release, and dispatch `android-16k-runtime.yml` with the exact Beta 30 x64 APK `asset_id` + `sha256` (and Beta 29 previous asset) to verify in-place upgrade retention cleanly. Local `.\dev runtime android` remains `BLOCKED` (`emulator-5554` offline; persisted in `.buildlog/verify/android-runtime/latest.json`).
