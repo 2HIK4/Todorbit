@@ -1,5 +1,14 @@
 # Persistent test run ledger
 
+## PR #6 Deployment, Live Website Audit & Candidate `10588a5` CI Snapshot (2026-11-27)
+
+| Invocation / purpose | Source / artifact | Result | Notes / limits |
+| --- | --- | --- | --- |
+| PR #6 merge (`docs/public-readme-website-beta29` @ `a197e59` -> `main` @ `adcb880`) | `https://github.com/2HIK4/Todorbit/pull/6` | MERGED | Zero non-doc changes; pre-existing `event_editor_layout_test.dart:81` on `main` confirmed unrelated |
+| GitHub Pages deploy (`pages.yml`, `publish_approved=true`) & `python website/verify_live.py` | Run [`46065232969`](https://github.com/2HIK4/Todorbit/actions/runs/46065232969) / `https://2hik4.github.io/Todorbit/` | PASS | `validate` & `deploy` `success`; `mode=published`, 9 files SHA-256 matched, 16 external links + 37 live `main` doc/asset links verified |
+| `Windows checks` (`windows-ci.yml`) for `10588a5` | Run [`46062228284`](https://github.com/2HIK4/Todorbit/actions/runs/46062228284) | IN PROGRESS | Steps 1–8 (`Analyze Dart`) passed; step 9 (`Run Flutter tests`) active at ledger snapshot |
+| `Android validation` (`android-ci.yml`) for `10588a5` | Run [`46062232852`](https://github.com/2HIK4/Todorbit/actions/runs/46062232852) | PARTIAL / IN PROGRESS | `android` job (`140728458819`) passed (`analyze`, 9 Android/mobile tests, debug APK verify); `android-workflow` failed once on DDS startup and is rerunning (`140728456880`) |
+
 ## Final Adversarial Review Fixes, Isolated Release Candidate & Post-Fix Verification (2026-11-27)
 
 Repo worktree on `feature/todorbit-beta27-refinement` above `f4de457`, Flutter 3.47.7, Dart 3.13.5, .NET 10 Release build.

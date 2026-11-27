@@ -113,4 +113,6 @@ When diagnosing architectural friction or multi-file bugs, use targeted structur
 6. **Watchdogs, ADB Isolation & Checkpointed Resume**:
    - Never combine Flutter unit/widget suites, native Windows tests, `-LiveApp`, and `dev runtime android` into one unbounded workflow.
    - Use TDAT (`dev verify changed -Resume`, `verify.ps1 -Resume`) so individual suites run under `Invoke-BoundedProcess` timeouts (`180s` total / `120s` idle), reuse valid 4-fingerprint evidence, checkpoint after every suite, retry transient `sqlite3.dll` repo-worker locks at most once (`<= 1`), and run `adb` probes strictly under `15s` bounds (`dev runtime android`) so forked ADB daemons cannot stall unrelated tasks.
+7. **GitHub Pages Redeploys (`pages.yml`)**:
+   - Never use `gh run rerun --failed` on `.github/workflows/pages.yml` `deploy` failures: re-running `actions/upload-pages-artifact` in the same workflow run creates a second `github-pages` artifact and causes `actions/deploy-pages` to abort (`Multiple artifacts named "github-pages"`). Dispatch a fresh `pages.yml` run (`publish_approved=true` after owner approval) instead.
    - When terminating stalled processes, scope strictly to confirmed descendants or processes inside the active repository (`Stop-RepoSubprocessTree`) and never touch external/production Todorbit installations.

@@ -23,8 +23,15 @@
 
 ---
 
+## Android 16 KiB Pre-Publication Verification Plan
+
+- Beta 29's passing `16 KiB` run ([`45784257387`](https://github.com/2HIK4/Todorbit/actions/runs/45784257387)) verifies Beta 29 (`bd9d337`) only and is **not** evidence for Beta 30.
+- Before publishing Beta 30 Android artifacts, dispatch `.github/workflows/android-release.yml` (`Prepare signed Android candidate (no publication)`) against the exact Beta 30 source tag/commit (with bumped Beta 30 version/code in `pubspec.yaml`), attach the signed universal/ARM64/x64 APKs to an **unpublished draft** GitHub release (or approved temporary release asset), and dispatch `.github/workflows/android-16k-runtime.yml` with the exact Beta 30 `app-x86_64-github-release.apk` `asset_id` + `sha256` and Beta 29's `previous_asset_id` / `previous_sha256` (`788858244` line -> Beta 29 x64 asset -> Beta 30) to confirm `16 KiB` in-place upgrade retention before flipping the release public.
+
+---
+
 ## Remaining Manual Release Gates Before Publication
 
-- Physical Explorer wallpaper (`Light`, `Dark`, mixed photo), extreme `0%`/`100%` transparency, `Win+D`, live display-DPI scaling, and multi-monitor visual sign-off on Windows 11.
-- Physical Android API 26–36 device/emulator `16 KiB` upgrade run (`block_52 -> candidate`) if an Android release artifact is built.
-- Explicit maintainer approval before tagging a release or dispatching `.github/workflows/pages.yml`.
+- Physical Explorer wallpaper (`Light`, `Dark`, mixed photo), extreme `0%`/`100%` transparency, `Win+D`, live display-DPI scaling, and multi-monitor visual sign-off on Windows 11 using the isolated launcher `.buildlog/windows-acceptance/launch-isolated.ps1`.
+- Completion of `windows-ci.yml` / `android-ci.yml` plus the Beta 30 exact-APK `android-16k-runtime.yml` draft-asset upgrade run above.
+- Explicit maintainer approval before tagging/publishing `v1.0.19-beta.30` (`Stable` remains untouched).

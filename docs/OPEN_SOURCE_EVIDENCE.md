@@ -35,7 +35,7 @@ acceptance gates are recorded in [Open-source readiness](OPEN_SOURCE_READINESS.m
 | Beta 29 Windows setup downloads (`Todorbit-1.0.19-beta.29-win-x64-setup.exe`) | 3 |
 | Beta 29 Windows portable ZIP downloads (`Todorbit-1.0.19-beta.29-win-x64-portable.zip`) | 2 |
 | Beta 29 Android APK downloads (`universal` + `arm64` + `x64`) | 7 (2 universal, 2 arm64, 3 x64) |
-| Public pull requests | 6 from the repository owner (3 merged: #1, #4, #5; 3 open: #2, #3, #6) |
+| Public pull requests | 6 from the repository owner (4 merged: #1, #4, #5, #6; 2 open: #2, #3) |
 
 Sources: [Beta 29 release API](https://api.github.com/repos/2HIK4/Todorbit/releases/tags/v1.0.19-beta.29),
 [all releases](https://github.com/2HIK4/Todorbit/releases), and
@@ -48,4 +48,4 @@ are unknown.
 
 - Prioritize the reliability, accessibility, and multi-monitor/device manual acceptance gates in [Deferred verification](DEFERRED_VERIFICATION.md) and [Roadmap](ROADMAP.md).
 - Onboard community contributors cleanly using [CONTRIBUTING.md](../CONTRIBUTING.md), [Contributor tasks](CONTRIBUTOR_TASKS.md), and the [TDAT engineering toolkit](DEVELOPER_AUTOMATION_TOOLKIT.md).
-- Synchronize the public default branch (`main`) and [GitHub Pages site](https://2hik4.github.io/Todorbit/) documentation without modifying Stable application binaries until owner release approval.
+- Public default branch (`main`, synchronized via [PR #6](https://github.com/2HIK4/Todorbit/pull/6)) and [GitHub Pages site](https://2hik4.github.io/Todorbit/) (deployed via [`46065232969`](https://github.com/2HIK4/Todorbit/actions/runs/46065232969)) are live without modifying Stable application binaries until owner release approval.
