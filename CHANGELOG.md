@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (Beta 30 candidate - feature/todorbit-beta27-refinement)
+## 1.0.19-beta.30+53
 
 - Fix Windows native Tasks & Calendar widget Light/Dark translucent contrast (`WidgetSurfaces.cs`, `WidgetText.cs` including `"taskRow"` underlay parity), hover alpha blending, and Tasks/Calendar `DateToday` & midnight scroll reset, eliminating boxy halos behind text over dark and mixed wallpapers.
 - Implement continuous 16 ms eased pixel scrolling across both native Windows widgets (`WidgetScrollAxis`) honoring OS wheel-line settings and reduced-motion preferences with verified zero idle repaints (`idle_paints_250ms=0`) and clean `WmDestroy` timer/popup disposal.

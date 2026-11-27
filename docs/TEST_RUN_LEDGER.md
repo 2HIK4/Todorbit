@@ -1,5 +1,14 @@
 # Persistent test run ledger
 
+## Beta 30 Owner Visual Acceptance & Release Candidate Bump (`1.0.19-beta.30+53`, 2026-11-27)
+
+| Invocation / purpose | Source / artifact | Result | Notes / limits |
+| --- | --- | --- | --- |
+| Owner isolated Windows Release visual acceptance | Isolated `build/windows/x64/runner/Release` (`10588a5`) | APPROVED | Verified desktop widget light/dark theme rendering, smooth continuous scrolling, and embedded `Settings > Hotkeys`; excludes unrelated Narrator/TalkBack, hardware DPI, or two-client Drive sync gates |
+| `android-ci.yml` (`10588a5`) | Run [`46062232852`](https://github.com/2HIK4/Todorbit/actions/runs/46062232852) | PASS (`completed/success`) | Both `android` (`140728458819`) and `android-workflow` KVM emulator rerun (`140728456880`) passed cleanly |
+| `windows-ci.yml` (`10588a5`) | Run [`46062228284`](https://github.com/2HIK4/Todorbit/actions/runs/46062228284) | PROGRESS (`17/21` steps passed at bump) | Passed Dart analysis, full serial Flutter suite, TDAT/watchdog/hygiene checks, Release build, CRT gates, portable ZIP, and native sync writer; exact Beta 30 source CI follows on `1.0.19-beta.30+53` |
+| `check-docs.py`, `test_prepare_android_release.py` (`14/14`), `test_public_readiness_hygiene.py` (`4/4`), `git diff --check` | `1.0.19-beta.30+53` bump | PASS | Verified version bump, docs routing, and public hygiene cleanly |
+
 ## PR #6 Deployment, Live Website Audit & Candidate `10588a5` CI Snapshot (2026-11-27)
 
 | Invocation / purpose | Source / artifact | Result | Notes / limits |

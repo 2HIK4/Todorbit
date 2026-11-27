@@ -1,5 +1,11 @@
 # Progress
 
+## Beta 30 Release Preparation & Owner Visual Acceptance (2026-11-27)
+
+- **Owner Visual Acceptance Recorded**: Owner tested the isolated Windows Release candidate (`build/windows/x64/runner/Release`) and approved desktop widget Light/Dark rendering, continuous pixel scrolling, and the embedded `Settings > Hotkeys` editor. *(Physical multi-monitor/DPI variations, Narrator/TalkBack assistive output, and real two-client Drive sync remain deferred manual gates; Beta 29 checks do not substitute for Beta 30 exact-artifact gates.)*
+- **Version Bump & Metadata (`1.0.19-beta.30+53`)**: Bumped `pubspec.yaml` and `experiments/widget-shell-probe/widget-shell-probe.csproj` to `1.0.19-beta.30+53` (SQLite schema `29`, Sync protocol `2`), promoted `CHANGELOG.md` (`## 1.0.19-beta.30+53`), and finalized `docs/TODORBIT_BETA_30_RELEASE_NOTES.md`.
+- **`10588a5` CI Evidence**: `android-ci.yml` (`46062232852`) completed **`success`** across both `android` and `android-workflow` emulator jobs; `windows-ci.yml` (`46062228284`) passed Dart analysis, full Flutter tests, TDAT/watchdog/hygiene suites, Release build, CRT validation, portable packaging, and native sync writer checks before Beta 30 exact-source CI dispatch.
+
 ## PR #6 Merge, Public Website Deployment, CI Tracking & Data Isolation Audit (2026-11-27)
 
 - **Public Documentation & Website Deployment (`main` @ `adcb880`)**: Confirmed PR #6 ([`2HIK4/Todorbit#6`](https://github.com/2HIK4/Todorbit/pull/6)) touched strictly the `29` documentation, template, synthetic screenshot, and static website files (with no branch protection rules on `main` and pre-existing `test/event_editor_layout_test.dart` baseline failure unrelated). Merged PR #6 (`--merge`), deployed `https://2hik4.github.io/Todorbit/` cleanly via fresh `pages.yml` run [`46065232969`](https://github.com/2HIK4/Todorbit/actions/runs/46065232969) (`validate` & `deploy` both `success`), verified `python website/verify_live.py` (`mode=published`, `PASS`, all `9` files SHA-256 matched + `16` external links), and verified `27 + 4 + 6` live relative links on `main`.
