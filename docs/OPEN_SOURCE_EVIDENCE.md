@@ -35,7 +35,7 @@ Test run ledger (`docs/TEST_RUN_LEDGER.md` on `feature/todorbit-beta27-refinemen
 | Beta 29 Windows setup downloads (`Todorbit-1.0.19-beta.29-win-x64-setup.exe`) | 3 |
 | Beta 29 Windows portable ZIP downloads (`Todorbit-1.0.19-beta.29-win-x64-portable.zip`) | 2 |
 | Beta 29 Android APK downloads (`universal` + `arm64` + `x64`) | 7 (2 universal, 2 arm64, 3 x64) |
-| Public pull requests | 5 from the repository owner (3 merged: #1, #4, #5; 2 open: #2, #3) |
+| Public pull requests | 6 from the repository owner (3 merged: #1, #4, #5; 3 open: #2, #3, #6) |
 
 Sources: [Beta 29 release API](https://api.github.com/repos/2HIK4/Todorbit/releases/tags/v1.0.19-beta.29),
 [all releases](https://github.com/2HIK4/Todorbit/releases), and
