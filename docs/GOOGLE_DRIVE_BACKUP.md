@@ -1,16 +1,18 @@
 # Google Drive backup and restore
 
-Public release status: **BLOCKED — held at the production OAuth gate**.
-The 2026-10-25 owner-configured debug acceptance below remains valid historical
-evidence for the unchanged backup format and recovery flows. It does not prove
-ordinary-user access from a distributed application.
+Todorbit's experimental Windows and Android downloads offer optional
+encrypted Google Drive backups. Use **Settings > Backups & Cloud** on Windows or **Settings > Backups and Google Drive** on Android to
+connect a compatible Google account and create a full SQLite snapshot or a
+settings-only backup. Windows uses Google's browser authorization. Android
+uses Google's sign-in flow. Published packages supply the platform's app
+configuration. Account and organization policy can affect availability.
+Branding verification and broad public OAuth acceptance remain unresolved.
 
-The release candidate supports bundled public Desktop client configuration.
-Ordinary users will only click **Connect Google Drive**, complete Google's
-system-browser authorization, and return to Todorbit; they do not create Cloud
-projects, enter IDs or import JSON. Release builds hide developer configuration
-controls. Until production access and packaged acceptance pass, connection is
-explicitly unavailable; local backup and settings JSON transfer remain usable.
+Backups are independent from [incremental Sync](GOOGLE_DRIVE_SYNC.md).
+Keep the passphrase for every encrypted snapshot you want to recover.
+Local backups and settings export remain available offline. Review the source
+and destination before approving a full restore, which replaces the local
+database after preserving a Before Restore copy.
 
 ## Production setup — publisher only
 
@@ -42,11 +44,9 @@ Official references: [desktop OAuth](https://developers.google.com/identity/prot
 [Drive scopes](https://developers.google.com/workspace/drive/api/guides/api-specific-auth),
 [production policy](https://developers.google.com/identity/protocols/oauth2/production-readiness/policy-compliance).
 
-The prepared [privacy disclosure](PRIVACY.md) describes data, deletion and
-revocation. It still needs owner review/hosting on the verified app domain and
-entry in Google Auth Platform. No Google project publishing or verification is
-claimed. Android authorization, OneDrive and automatic synchronization remain
-unimplemented.
+See the [privacy disclosure](PRIVACY.md) for data handling, deletion and
+revocation. The developer build configuration and the public package are
+separate. Google branding and domain verification remain publisher tasks.
 
 ## Developer-only isolated testing
 
@@ -85,10 +85,10 @@ See [clean packaged acceptance](GOOGLE_DRIVE_RELEASE_READINESS.md#required-packa
   versioned JSON and have no database content. Selective import and named
   hotkey merging reuse SettingsTransferDialog.
 - Task-resource references are database records. **External linked file contents
-  are not bundled**; existing Windows paths may need relinking on another
-  device. Todorbit does not currently manage a portable attachment store.
-  The package itself adds no machine-specific path. Privacy/PIN policy,
-  OAuth credentials, widget position/startup/layout-lock, update preferences
+  are not bundled**. Existing Windows paths may need relinking on another
+  device. Managed attachment bytes are stored in SQLite and included in a
+  full snapshot. Privacy/PIN policy, OAuth credentials, widget position and
+  startup/layout-lock controls, update preferences
   and other device-local files are not packaged. The full SQLite snapshot
   does contain personal records and existing resource paths, inside encryption.
 - Format 1 is platform-independent UTF-8 JSON. Its encrypted manifest has
@@ -108,10 +108,10 @@ See [clean packaged acceptance](GOOGLE_DRIVE_RELEASE_READINESS.md#required-packa
   encrypted object; settings JSON has the existing 256 KiB limit. Oversized
   snapshots fail explicitly and remain available as verified local backups.
   No compression/extraction paths are accepted.
-- Windows token storage uses flutter_secure_storage's platform protection;
-  records are keyed by a hash of the active profile's database path and stay
-  outside portable backups. Cloud account identity is checked on connect and
-  refresh. A different account requires explicit disconnect first. Download
+- Saved account credentials use platform-protected storage scoped to the
+  active profile and stay outside portable backups. Cloud account identity is
+  checked on connect and refresh. A different account requires explicit
+  disconnect first. Download
   and delete reject stale objects from another connected account.
 - Upload uses unique files, resumable 1 MiB chunks and bounded network waits.
   It confirms server size/MD5, downloads the stored object back, verifies
@@ -182,11 +182,11 @@ left untouched. No production Todorbit profile or installation was changed.
 
 Network interruption, offline/quota errors, revoked access, OAuth cancellation,
 account switching, tampering and future schema/version gates were verified
-with mocks/isolated automated tests; real account switching, real quota failure,
-physical DPI/resizing, Release GUI and Android remain **UNVERIFIED**. Several
-Flutter Driver timing/serialization errors required retrying scoped interactions
-and restarting a disposable driver process; these are not Google/app PASS
-evidence. Final runtime inspection found no application errors.
+with mocks and isolated automated tests. Real account switching, quota failure,
+physical DPI/resizing, Release GUI and Android were outside that run. Several
+Flutter Driver timing and serialization errors required retrying scoped
+interactions and restarting a disposable driver process. Final runtime
+inspection found no application errors.
 
 Repeat this procedure for another OAuth deployment or platform:
 
@@ -213,7 +213,8 @@ Repeat this procedure for another OAuth deployment or platform:
    data remain recoverable. Disconnect and verify cloud files remain after
    reconnecting. Do not use a production Todorbit profile.
 
-Do not label Google Drive PASS until real sign-in, upload, download and restore
-have all passed. The owner completed test-account consent in Google's browser.
-Cloud Console ownership, OAuth publishing and production deployment remain
-owner actions; no production Todorbit data or public release was changed.
+In this historical run the owner completed test-account consent in Google's
+browser. Use a fresh acceptance receipt for the exact build to establish
+real sign-in, upload, download and restore coverage. See
+[private Google Drive acceptance](GOOGLE_DRIVE_PRIVATE_ACCEPTANCE.md) for
+later scoped evidence and remaining limits.

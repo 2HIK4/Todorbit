@@ -22,6 +22,7 @@ Treat rules by their strict level of authority:
    - **Forward-Compatible Migrations**: Schema alterations MUST be forward-migrated through explicit Drift migrations and verified in `MigrationGate`.
    - **CAS Task Concurrency**: All task writes MUST advance `updated_at` beyond the predecessor timestamp and check revision concurrency tokens via SQL compare-and-swap (CAS).
    - **Profile Isolation**: Never execute tests or debug builds against real production `%APPDATA%\TodoPilot` or personal accounts. Always use isolated, disposable profiles.
+   - **Portable Workspace & Worktree Verification**: Never assume a hardcoded directory or outdated workstation checkout path is current. Always resolve the active repository root via `git rev-parse --show-toplevel`, run `.\dev doctor` (which checks worktree isolation and `tools/test_workspace_paths.py`), and keep active configs, skills, and scripts repository-relative.
    - **Atomic Multi-Record Mutations**: Operations touching multiple records or tables MUST execute inside an explicit SQLite transaction.
 
 2. **Recommended Engineering Practices (Strong Defaults)**:

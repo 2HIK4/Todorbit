@@ -15,8 +15,8 @@ and reuse its shared controls in the Windows and Android entry points.
 For Inbox, scoped lists, grouping, and row presentation, see the
 [task-list entry points](ARCHITECTURE_MAP.md) and the `task-lists` check group.
 
-Use [storage maintenance](STORAGE_MAINTENANCE.md) for artifact retention and safe
-manual cleanup. Ignored build/log directories can contain profiles and release
+Use [TDAT storage cleanup](DEVELOPER_AUTOMATION_TOOLKIT.md) for artifact retention and safe
+manual cleanup (`.\dev cleanup --dry-run`). Ignored build/log directories can contain profiles and release
 evidence; inspect their contents before removing generated outputs.
 
 If this machine cannot create Flutter plugin symlinks, the optional local

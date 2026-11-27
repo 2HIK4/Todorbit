@@ -1,8 +1,21 @@
 # Contributing to Todorbit
 
-Open an issue to discuss larger behavior changes, then make a focused pull request. Keep Windows desktop behavior, Android parity, and existing data compatibility intact. Preserve the optional Drive snapshot integration and incremental sync; new cloud services, synchronization, accounts, telemetry and executable theme plugins require an explicit product decision. Never use production data in tests.
+Welcome! Todorbit is an open-source, local-first planner for Windows and Android. Start with the [contributor task list](docs/CONTRIBUTOR_TASKS.md) or open an issue through [GitHub Issues](https://github.com/2HIK4/Todorbit/issues/new/choose) to discuss larger behavior changes before making a focused pull request. Keep Windows desktop behavior, Android parity, and existing data compatibility intact. Preserve the optional Drive snapshot integration and incremental sync; new cloud services, synchronization, accounts, telemetry and executable theme plugins require an explicit product decision. Never use production data in tests.
 
-Start with [Development](docs/DEVELOPMENT.md) for toolchain and isolated-profile setup, [Architecture](docs/ARCHITECTURE.md) for subsystem realities, and [Testing](docs/TESTING.md) for verification matched to the changed boundary. Run focused checks while editing; broaden at integration/release checkpoints. Markdown-only edits need link/path review and `git diff --check`, not application builds. Report GUI behavior you have not physically verified as pending. [Codex workflow](docs/CODEX_WORKFLOW.md) covers branches, safe handling of uncommitted work, and handoffs; [Release](docs/RELEASE.md) owns publishing gates. Publishing requires an explicit request.
+### Quick Onboarding Checklist
+
+1. Browse implemented capabilities in [Features](docs/FEATURES.md) and locate entry points in [Architecture Map](docs/ARCHITECTURE_MAP.md).
+2. Read [Development](docs/DEVELOPMENT.md) (including the [Windows plugin workaround](docs/DEVELOPMENT.md#windows-plugin-links) and disposable-profile setup), [Android setup](docs/ANDROID_SETUP.md#run-on-a-disposable-emulator), [Architecture](docs/ARCHITECTURE.md), and [Testing](docs/TESTING.md).
+3. Note that the public default branch can lag the experimental release line. For a reported bug, identify the installed version and its source tag on [GitHub Releases](https://github.com/2HIK4/Todorbit/releases) before selecting a base branch.
+4. Bootstrap and check your environment from the repository root:
+   ```powershell
+   flutter.bat pub get --enforce-lockfile
+   .\dev doctor
+   .\dev context <feature>
+   ```
+5. Keep changes local to a focused branch (`feature/`, `fix/`, `docs/`), verify with `.\dev verify changed`, and check `git diff --check`.
+
+Run focused checks while editing; broaden at integration/release checkpoints. Markdown-only edits need link/path review (`python tools/dev/check-docs.py` and `python -m unittest tools/test_workspace_paths.py`) and `git diff --check`, not application builds. Report GUI behavior you have not physically verified as pending. [Codex workflow](docs/CODEX_WORKFLOW.md) covers branches, safe handling of uncommitted work, and handoffs; [Release](docs/RELEASE.md) owns publishing gates. Publishing requires an explicit request.
 
 ---
 

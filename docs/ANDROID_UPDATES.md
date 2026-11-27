@@ -42,13 +42,15 @@ GitHub response size/timeouts are bounded, checks are cached for ten minutes wit
 ETag revalidation, and rate limits prevent immediate repeated requests. Metadata
 downloads are SHA-256 checked before parsing. Incomplete Android assets show an
 actionable error. No compatible release yields a clear current-version message.
-No first public Android release exists merely because this implementation does.
+The public GitHub APK is distributed on the experimental channel. See
+[platform support](PLATFORM_SUPPORT.md) for the current release and ABI list.
 
 ## Download and install
 
 1. Check for updates and review notes.
-2. Download Update. Storage is checked for download plus staging space. Cancel
-   interrupts the request; failed/partial downloads are removed. Retry is explicit.
+2. Choose Download Update. The updater checks storage for download and staging.
+   Pause or a network interruption can leave bytes bound to that exact release.
+   Use Resume download to continue, or Discard saved download to remove them.
 3. A complete size/digest match is followed by native verification with AOSP's
    `ApkVerifier` and PackageManager metadata. Checks cover APK signature integrity,
    exact installed signing certificate set, package name, expected higher code,
@@ -65,9 +67,10 @@ No first public Android release exists merely because this implementation does.
 
 APK files live in `cacheDir/update-apks/`; only that directory is exposed by the
 non-exported update provider, with temporary read permission. Valid downloads are
-reused after rechecking their digest/signature. Partial files are cleared on the
-next check/download; files older than seven days are removed on app startup or
-update settings use. Android can evict cache at any time; redownload if necessary.
+reused after rechecking their digest and signature. A new update check can
+reuse the bound partial for the selected release. Android can evict cached
+bytes at any time; a missing partial starts a fresh download. The downloader
+verifies the complete size and SHA-256 before handing the APK to native checks.
 
 ## GitHub versus Google Play
 
@@ -85,7 +88,8 @@ artifact. Public publishing is a separate owner decision.
 ## Acceptance
 
 Unit/widget checks cover parsing, channels, source identity, checksums, partial
-cleanup, cancellation, cache reuse, errors, mobile large text and Play separation.
+retention and discard, interrupted transfers, cache reuse, errors, large text
+and Play separation.
 Use the disposable-emulator procedure in [signing and releases](ANDROID_RELEASE.md)
 to establish actual installation/data persistence. Mocked permission/installer
 results and a successful APK build do not establish physical-phone acceptance.

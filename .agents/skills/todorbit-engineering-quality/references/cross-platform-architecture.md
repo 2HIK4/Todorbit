@@ -47,8 +47,9 @@ Windows desktop functionality relies on two main components:
 
 ### Windows Native Rules:
 - **DPI Awareness**: All native GDI+/DirectWrite drawing must use `LogicalToDeviceUnits` or scale against current monitor DPI (`PerMonitorV2`).
-- **Theme Synchronization**: Palette colors (accent, surface, text) are shared via `%APPDATA%\TodoPilot\widgets.json`. Native widgets must react to theme file changes without process restart.
-- **Self-Test Verification**: Run `dotnet run --project experiments/widget-shell-probe -- --self-test` to verify native widget geometry and GDI resources.
+- **Theme Synchronization & Translucent Contrast**: Palette colors (accent, surface, text) are shared via `%APPDATA%\TodoPilot\widgets.json`. Native widgets must react to theme file changes without process restart, preserve surface alpha in hover/selection blends without mutating configuration maps, and avoid symmetric 4-way white halos in `WidgetText`.
+- **Smooth Pixel Scrolling & Idle Timer Hygiene**: Share `WidgetScrollAxis` between Tasks and Calendar widgets, honor `MouseWheelScrollLines` and `SPI_GETCLIENTAREAANIMATION`, keep offscreen rows accessible via keyboard/UIA, and guarantee the 16 ms animation timer stops cleanly when settled (`0` idle repaints) and disposes cleanly in `WmDestroy`.
+- **Self-Test Verification**: Run `.\tools\dev\native-self-test.ps1 -Executable experiments/widget-shell-probe/bin/Release/net10.0-windows/TodorbitWidget.exe -IncludeLifecycle -IncludeBenchmark` (and `--capture-matrix` for wallpaper theme contrast) to verify native widget geometry, scroll quiescence, and GDI resource disposal.
 
 ---
 
@@ -97,7 +98,7 @@ Google Drive and Smart Sync require platform-specific OAuth authentication:
 
 ### Windows Release Packaging Gate:
 - Windows release builds must embed an active Google Drive release configuration.
-- `tools/google-drive-release-config.ps1` resolves the configuration via `Resolve-GoogleDriveReleaseConfigPath` (checking `$env:TODORBIT_GOOGLE_DRIVE_CONFIG` and `D:\AI_Projects\Secrets\TodorbitPrivate-drive-enabled-20261106-ab9a4087\drive-build.json`).
+- `tools/google-drive-release-config.ps1` resolves the configuration via `Resolve-GoogleDriveReleaseConfigPath` (checking explicit `-ConfigPath`, `$env:TODORBIT_GOOGLE_DRIVE_CONFIG`, a machine-local maintainer secrets override when building from the primary checkout, and finally repo-relative `config/google-drive.json`).
 - `Assert-GoogleDriveReleaseBundle` verifies that `googleDriveEnabled: true` in the output `todorbit-build.json` metadata. Packaging scripts (`build-windows-release.ps1`, `installer/build-installer.ps1`, `tools/build-portable.ps1`) fail immediately if `googleDriveEnabled` is false, unless `-AllowDisabledDrive` is explicitly passed for test builds.
 - This gate prevents accidental deployment of disabled cloud integration builds where users see "Google Drive is unavailable in this build".
 

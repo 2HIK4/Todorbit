@@ -1,5 +1,33 @@
 # Persistent test run ledger
 
+## Recovery, Bounded Verification, TDAT Watchdog & Public Docs (2026-11-27)
+
+Worktree `C:\Users\User\.codex\worktrees\todorbit-beta27-refinement\Todorbit-redesign-source` on `feature/todorbit-beta27-refinement` above `81a05f7` (Beta 29 `bd9d337`), Flutter 3.47.7, Dart 3.13.5, .NET 10 Release build.
+
+| Invocation / purpose | Source / artifact | Result | Notes / limits |
+| --- | --- | --- | --- |
+| `flutter.bat analyze --no-pub` & `dart.exe format --output=none --set-exit-if-changed` (13 changed Dart files) | Full Dart codebase / modified Dart files | PASS (`49.1s`, `0` issues; `0` format changes) | Full repo static analysis clean post-edits |
+| Targeted Group A suites (`hotkeys_test`, `settings_hub_test`, `settings_ui_quality_test`, `secondary_surface_quality_test`, `widget_configuration_test`, `widget_edit_session_test`, `native_widget_service_test`, `widget_settings_page_test`, `theme_customization_test`, `window_theme_test`) | Working tree (`feature/todorbit-beta27-refinement`) | PASS (`87/87`, `01:46`) | Directly verified Settings > Hotkeys embedding, widget config/edit, and theme changes |
+| PR #3 recovery suites (`backup_service_test`, `resumable_update_download_test`, `workspace_test`, `mobile_workspace_test`) | Working tree (`feature/todorbit-beta27-refinement`) | PASS (`68/68`, `02:33`) | Directly observed all 68 cases complete; zero orphaned workers |
+| DB initialization & concurrency suites (`database_initialization_test`, `repository_test`, `migration_gate_test`, `task_revision_concurrency_test`) | Working tree (`feature/todorbit-beta27-refinement`) | PASS (`22/22` `97.54s` + `18/18` `31.62s`) | Bounded via `Invoke-BoundedProcess` (`dart.exe` on `PATH`) |
+| `tools/dev/native-self-test.ps1 -Executable .../TodorbitWidget.exe -IncludeLifecycle -IncludeBenchmark` | `experiments/widget-shell-probe/bin/Release/net10.0-windows/TodorbitWidget.exe` | PASS (`rc=0`) | `--self-test`, `--lifecycle-self-test` (two-widget native lifecycle), and `--scroll-benchmark` (`avg_preview_frame_ms=33.60`, `settle_ms=369`, `paints_during_scroll=12`, `idle_paints_250ms=0`, `working_set_mb=67.7`) |
+| `.\dev screenshot all` & live `Todorbit.exe` FlutterDriver Hotkeys walkthrough | `test/lab_render_test.dart` & isolated `.buildlog/live-hotkeys-profile` | PASS (`19/19` PNGs; `rc=0`, `34s`) | Visually inspected `settings-hotkeys-narrow.png` (`720x680`) and 5 live runtime PNGs (`live-today-workspace`, `live-settings-hotkeys-desktop`, `live-settings-hotkeys-recording`, `live-settings-hotkeys-preset`, `live-calendar-workspace`) |
+| `.\dev runtime windows` & `.\dev runtime windows -LiveApp` | `.buildlog/verify/profile-journeys/...` & `windows-live-runtime/...` | PASS (`35.2s`, `27.28s`) | LiveApp Session 1 = `0`, Session 2 = `0` |
+| `.\dev runtime android` | `.buildlog/verify/android-runtime/latest.json` | BLOCKED (`emulator-5554` offline) | Persistent blocker receipt written (`OnlineEmulators: []`); local 16 KiB emulator check deferred to CI/emulator host |
+| `python -m unittest discover -s tools -p test_tdat_watchdog.py -v` & `test_dev_verify.py` + docs/website/hygiene/registry Python checks | Active repo tree (after `.bat`/`.cmd` quoting fix in `Session.psm1`) | PASS (`3/3` `28.27s`; `11/11` `35.14s`) | `test_tdat_watchdog.py`, `test_dev_verify.py`, `test_registry_sync.py`, `test_public_readiness_hygiene.py`, `test_workspace_paths.py`, `website/verify.py`, `tools/dev/check-docs.py`, and `git diff --check` |
+| `website/verify_live.py --preview` & public PR #6 (`docs/public-readme-website-beta29` -> `main`) | GitHub PR #6 (`e8aadd9`) | PASS (`16` links + SHA-256) | Verified `v1.0.19-beta.29` release links/checksums and HTTP 200 across GitHub/Pages URLs |
+
+## Post-Beta 29 Widget Theme/Scroll, Embedded Hotkeys, Docs & Hygiene (2026-11-26)
+
+Worktree `C:\Users\User\.codex\worktrees\todorbit-beta27-refinement\Todorbit-redesign-source` on `feature/todorbit-beta27-refinement` above `81a05f7`, Flutter 3.47.7, Dart 3.13.5, .NET Release build.
+
+| Invocation / purpose | Source / artifact | Result | Notes / limits |
+| --- | --- | --- | --- |
+| `dotnet build` & `--self-test` + `--capture-widgets .buildlog/widget-fixed` | `experiments/widget-shell-probe/*.cs` | PASS | 0 build warnings/errors; all native persistence, accent-contrast, pixel-scroll & hit-test clip assertions passed; dark-backdrop composites inspected |
+| `python -m unittest tools/test_workspace_paths.py ...` (7 Python test files) + `tools/dev/check-docs.py` + `website/verify.py` + `dev registry --validate` | Active repo tree | PASS (`82` ran, `1` skipped) | 1 bash-only CI workflow test skipped on Windows (`test_ci_workflows.py`); `229` TDAT test suites validated; 0 doc errors; 3 website pages verified |
+| `flutter.bat analyze --no-pub lib test/hotkeys_test.dart ...` & `flutter.bat test --no-pub --concurrency=1` (9 suites) | Final Dart diff (`hotkeys_dialog.dart` formatted & re-verified) | PASS (`82/82`) | Covers `hotkeys_test.dart`, `settings_hub_test.dart`, `settings_ui_quality_test.dart`, `secondary_surface_quality_test.dart`, `widget_*`, `theme_customization_test.dart`, `window_theme_test.dart` |
+| Live desktop widget wallpaper visual acceptance, physical scroll feel & host-blocked `-LiveApp`/`runtime android` | Windows 11 host | Deferred / Manual | Offscreen previews do not prove real desktop wallpaper rendering, physical mouse/trackpad scroll cadence, or Windows Developer-Mode/Android emulator gates |
+
 ## Beta 29 release candidate (2026-11-26)
 
 Exact candidate `bd9d3375d03964377110943eb7b7a0acd0acc691` (`1.0.19-beta.29+52`, Schema 29), Flutter 3.47.7, Dart 3.13.5.

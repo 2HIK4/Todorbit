@@ -1,26 +1,23 @@
 # Android development
 
-The production-signed [Android beta 2 is public](ANDROID_BETA_2_PUBLICATION.md):
-`1.0.19-beta.2` (25), Android 8.0+ on ARM64/x86-64. See
-[phone installation and Windows backup testing](ANDROID_PHONE_BETA_TESTING.md).
-Windows/Android cloud restoration remains unverified under the owner's scoped
-first-beta deferral; this is not a Stable or Play release.
+Todorbit distributes an experimental, production-signed Android APK on GitHub
+(`universal`, `arm64`, `x86-64`). See [installation](INSTALLATION.md) and
+[platform support](PLATFORM_SUPPORT.md) for current distribution, SHA-256
+verification, and release status. Android shares Windows' SQLite schema 29,
+repository, recurrence/scheduling rules, controller, backup codec, and theme
+palettes.
 
-Android work lives on `feature/android-mobile`. It shares schema 28, the
-repository, recurrence/scheduling rules, controller, backup codec and theme
-palettes with Windows. Android screens live under `lib/features/mobile/`;
-Android adapters under `lib/platform/android/`. Windows IPC, updater and native
-widget source remain independent. Android now has separate GitHub and Play
-update providers; see [Android updates](ANDROID_UPDATES.md), [Drive/OAuth](ANDROID_GOOGLE_DRIVE.md)
-and [signing/release preparation](ANDROID_RELEASE.md).
+Android screens live under `lib/features/mobile/` and Android adapters under
+`lib/platform/android/`. Windows IPC, updater, and the .NET 10 desktop widget
+companion stay separate. Android uses dedicated GitHub and Play update
+providers; see [Android updates](ANDROID_UPDATES.md),
+[Drive/OAuth](ANDROID_GOOGLE_DRIVE.md), [Android setup](ANDROID_SETUP.md), and
+[signing/release preparation](ANDROID_RELEASE.md).
 
-The previous Android scaffold used the unpublished example identifier
-`com.example.life_manager`. The development application identity is
-`io.github.hik4.todorbit`; retain it and a durable signing identity before any
-public Android distribution. Android minimum API is 26 (Android 8), target and
-compile API 36 (Android 16). The installed Flutter 3.47.7/Dart 3.13.5 toolchain
-is retained; no Windows toolchain upgrade is needed. Build, signing, OAuth,
-installation and manual acceptance instructions are in [Android setup](ANDROID_SETUP.md).
+The development and release application identifier is `io.github.hik4.todorbit`
+(minSdk 26 / Android 8.0+, target & compile API 36 / Android 16). Exact Beta 29
+CI, local signing, and API 36 16 KiB emulator upgrade receipts live in
+[Beta 29 Candidate Receipt](TODORBIT_BETA_29_CANDIDATE.md).
 
 ## Feature inventory and acceptance matrix
 

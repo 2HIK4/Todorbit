@@ -1,9 +1,41 @@
 # Roadmap
 
-1. **Usable foundation:** SQLite migration, category/project/task CRUD, Today and core lists, details editor, sorting/filtering, themes, tests, Windows build. Complete only when persistence across restart is checked.
-2. **Widget feasibility:** integrate a minimal native Windows companion, investigate desktop attachment and `Win + D`, document observed behavior and risks.
-3. **Scheduling:** day/week/month calendar, events and sessions, recurrence, dependencies/sequences, deterministic Smart Reschedule, preview/history/restore and edge-case tests.
-4. **Advanced productivity:** habits, goals, timer, templates, search/saved views, statistics, attachments and bulk actions.
-5. **Reliability and integration:** tray/widget completion where feasible, reminders, backups, Trash, privacy, import/export, accessibility, packaging, performance tests.
+Todorbit is in experimental release development on Windows and Android. See
+[Platform support](PLATFORM_SUPPORT.md) for current distribution, caveats, and
+tested configurations.
 
-Each stage preserves a working main app. Do not present later-stage navigation as functional until its storage and interactions exist.
+## Available now
+
+- Local task and project planning, subtasks/checklists/dependencies, recurring
+  tasks and events, interactive Day/Week/Month Calendar, habits, goals,
+  progressive plans, templates, focus timers, reports, archive, and trash.
+- Smart Reschedule previews with user review before applying schedule changes.
+- Embedded **Settings > Hotkeys** shortcut customization, system/light/dark
+  themes with JSON import/export, local SQLite snapshots, Explorer-hosted
+  Windows desktop widgets (continuous pixel scrolling, surface translucency),
+  Android launcher widgets, and Android Share Sheet inbox.
+- Optional experimental Google Drive synchronization (`Standard` & `Private
+  Encrypted`) and AES-256-GCM encrypted cloud backups. Each has its own
+  [recovery requirements](GOOGLE_DRIVE_SYNC.md).
+
+## Stabilization & Beta 30 priorities
+
+- Validate Windows desktop widget Light/Dark wallpaper translucency, pixel
+  scrolling feel, multi-monitor DPI scaling, and embedded Settings > Hotkeys
+  keyboard UX on live builds.
+- Expand physical keyboard/focus, screen-reader (`Narrator` / `TalkBack`),
+  registered installer upgrade, and Android OEM/Share Sheet acceptance.
+- Exercise interrupted restore, offline reconnect, mixed-version sync, and
+  two-client Drive recovery on authorized test accounts.
+- Reconcile and publish public GitHub documentation (`README.md`, feature
+  catalogue, architecture docs) and `2hik4.github.io/Todorbit` website updates.
+
+See [Deferred verification](DEFERRED_VERIFICATION.md) for open acceptance gates
+and [Contributor tasks](CONTRIBUTOR_TASKS.md) for bounded ways to help.
+
+## Longer-term research
+
+Evaluate small reusable modules with stable contracts and tests (see
+[Reuse assessment](REUSABLE_COMPONENTS.md)). Public plugin APIs, additional
+platforms, and non-Drive sync providers require separate design and maintenance
+commitments. The roadmap makes no fixed delivery-date guarantees.

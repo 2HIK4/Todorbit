@@ -168,9 +168,19 @@ light inner stroke at native 16–24 px title-bar sizes.
   actions. Shared Files names and metadata wrap at phone widths. Make
   category-empty feedback distinct from an empty library.
 - Match fallback native widget roles to the Flutter defaults. Published
-  palettes take precedence. Android measures rows using the pixel rounding
-  of the native layout and preserves access to the heading and date
+  palettes take precedence. Keep translucent surface alpha intact across hover
+  and selection blends without mutating saved configuration dictionaries, and
+  use directional contrast lift rather than symmetric 4-way haloes behind light
+  glyphs on dark wallpapers. Share continuous pixel scroll smoothing via
+  `WidgetScrollAxis` while honoring OS wheel/reduced-motion settings and halting
+  animation timers cleanly once idle. Android measures rows using the pixel
+  rounding of the native layout and preserves access to the heading and date
   controls in compact Calendar widgets.
+- Embed `HotkeysEditorView` directly inside `Settings > Hotkeys` while preserving
+  standalone `HotkeysDialog` callers on shared `HotkeyPreferences` logic. During
+  shortcut capture, keep `Tab` traversal intact, restore row trigger focus on
+  `Escape` / cancellation, ignore bare modifier presses, and clear stale
+  capture banners when external presets reset.
 
 ## Cross-surface presentation
 

@@ -1,28 +1,83 @@
-# Install Todorbit on Windows
+# Install Todorbit
 
-Todorbit v1.0.17 is a free, MIT-licensed Windows x64 pre-release. Windows 11 is the main development and test platform; Windows 10 and installed upgrade/uninstall behavior still need direct acceptance. The packages are unsigned. Download from the [public GitHub release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.17), then compare SHA-256 with its published `SHA256SUMS.txt`.
+Open [GitHub Releases](https://github.com/2HIK4/Todorbit/releases) and choose
+the experimental pre-release you want to install (currently
+[Beta 29 (`v1.0.19-beta.29`)](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.29)).
+Its **Assets** list includes the available packages and SHA-256 checksums. Back
+up your current profile before upgrading and keep any passphrase you need for
+recovery.
 
-## Installer
+| Platform | Choose this download |
+| --- | --- |
+| Windows x64 | `Todorbit-<version>-win-x64-setup.exe` or `Todorbit-<version>-win-x64-portable.zip` |
+| Android 8.0+ on ARM64 or x86-64 | `Todorbit-<version>-android-universal.apk` (or ABI-specific `android-arm64.apk` / `android-x64.apk`) |
 
-Run the matching `Todorbit-<version>-win-x64-setup.exe`. It installs for the current Windows user under `%LOCALAPPDATA%\Programs\Life Manager` (a stable legacy path), creates a Start menu shortcut, and optionally creates a desktop shortcut. Its stable installer AppId preserves upgrade identity. The app stores new installed-user data under `%APPDATA%\TodoPilot`, outside the program directory. The uninstaller is designed to leave data in place. These installed behaviors need direct verification in a disposable Windows user or VM before public release.
+## Verify the download
 
-An unrelated `%APPDATA%\Life Manager` database is not opened automatically on a fresh install. If the app offers a legacy import, review it explicitly; canceling leaves the old database in place. An upgrade of a registered older TodoPilot install can retain the legacy profile through an installer marker. Before approving a schema upgrade, inspect the offered backup. Never remove an old profile until its data has been verified in the new installation.
+Use the checksum for the exact filename you downloaded (`SHA256SUMS.txt` for
+Windows and `ANDROID-SHA256SUMS.txt` for Android).
 
-## Portable ZIP
+```powershell
+Get-FileHash -Algorithm SHA256 -LiteralPath '<path-to-downloaded-file>'
+```
 
-Extract `Todorbit-<version>-win-x64-portable.zip` completely, even when the destination path contains spaces. Launch `Todorbit.exe` inside the `Todorbit` folder. Keep the entire folder together, including `TodorbitWidget.exe`, DLLs, `data`, and `PORTABLE-MODE`.
+On a system with `sha256sum`, use `sha256sum "<path-to-downloaded-file>"`.
+Open the package only if its SHA-256 matches the release entry.
 
-Portable data is **not inside the extracted folder**. Each extraction location selects a distinct `%APPDATA%\TodoPilot\portable-<location-id>` profile. Reopening the same folder selects the same profile. Moving, renaming, or re-extracting to a different path selects a different profile; this can look like missing data. To upgrade a portable copy safely:
+## Windows
 
-1. In the old copy, use Backups to export and keep a verified SQLite backup outside both application folders. Note the active profile path shown in Settings > Data profile.
-2. Close the app and widget. Keep the old extracted folder and its profile as a rollback copy.
-3. Extract the new ZIP to a new folder. Use the app's reviewed Import SQLite flow to bring in the export. Verify tasks, settings, themes, and attachments before discarding the old folder.
-4. If replacing files **in the exact same folder**, preserve its path and `PORTABLE-MODE`, and keep the old folder copy until verification. The location-keyed data profile should remain selected; confirm it in Settings > Data profile.
+Windows 11 is the primary test platform. Windows 10 acceptance is limited.
+The Windows installer and portable ZIP are unsigned, so Windows SmartScreen may
+show an unknown-publisher prompt. Both packages bundle the Flutter runtime and
+the .NET 10 `TodorbitWidget.exe` companion; no SDKs are needed to run them.
 
-External file links store paths, not file contents. Managed attachments are included in verified database exports.
+### Installer
 
-## Widget and troubleshooting
+Run the verified setup file and follow the prompts. It installs for the
+current user under `%LOCALAPPDATA%\Programs\Life Manager` by default and
+creates a Start menu shortcut. The installed app stores data outside the
+program directory in `%APPDATA%\TodoPilot`.
 
-The native widget starts from the app's Windows widget control or its own executable in the complete bundle. It may remain running after the main window closes. Right-click it for appearance and layout controls. Its desktop attachment depends on Explorer behavior and needs target-system testing.
+If Todorbit offers to import an older `%APPDATA%\Life Manager` profile, review
+the source and destination first; canceling leaves old files in place. Keep
+old profiles and backups until you verify your records in the upgraded
+installation.
 
-If Todorbit shows an empty profile after moving a portable folder, inspect Settings > Data profile and reopen the original folder or use the reviewed import. If an upgrade or restore is refused, retain the database and backups; do not delete them to make the app start. App lock is UI privacy only and does not encrypt the SQLite file. See [release preparation](RELEASE.md) and [acceptance status](ACCEPTANCE.md).
+### Portable ZIP
+
+Extract the complete ZIP and run `Todorbit.exe` inside the extracted folder.
+Keep the folder intact, including `TodorbitWidget.exe`, DLLs, `data`, and
+`PORTABLE-MODE`.
+
+Portable data lives in `%APPDATA%\TodoPilot\portable-<location-id>`. Moving or
+extracting the portable folder to a different path selects a distinct profile.
+To upgrade or move a portable copy safely:
+
+1. In the old copy, open **Settings > Privacy & Data** to inspect the active
+   profile path and export a verified SQLite backup outside both folders.
+2. Close Todorbit and the native widget. Keep the old folder as a rollback copy.
+3. Extract the new ZIP. If extracting to a new path, import the verified
+   backup through Todorbit's reviewed SQLite import flow (or replace files in
+   the exact same path while preserving `PORTABLE-MODE`).
+4. Verify your tasks, settings, and managed attachments before discarding old copies.
+
+Show the native Tasks or Calendar desktop widget from the sidebar or **Settings > Widget**;
+it can remain running in the tray after the main window closes. Right-click any
+widget for quick view, opacity, layout lock, and theme controls.
+
+## Android
+
+1. Download and verify the production-signed APK from the release.
+2. Open the APK. Grant your browser/file manager install permission if prompted
+   (you can disable that permission afterward).
+3. You can use Todorbit completely offline without signing in. Tasks and
+   Calendar launcher widgets are available through your Android launcher, and
+   other apps can share files directly into Todorbit's **Shared Inbox**.
+
+Upgrades require an APK signed with the same publisher key. GitHub builds also
+support in-app update checking/downloading with native `ApkVerifier` checks.
+Always export a backup before uninstalling on Android, because uninstalling
+removes app-private storage.
+
+See [Platform support](PLATFORM_SUPPORT.md), [Privacy disclosure](PRIVACY.md),
+and [Deferred verification](DEFERRED_VERIFICATION.md) for current platform limits.

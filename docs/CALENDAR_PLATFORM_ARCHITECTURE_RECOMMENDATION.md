@@ -10,8 +10,8 @@
 ## 1. Executive Summary & Context
 
 During the Beta 16 baseline audit, an essential architectural separation was identified:
-- The desktop shell ([`lib/features/workspace/workspace.dart:1456`](file:///d:/AI_Projects/life_manager/lib/features/workspace/workspace.dart#L1456)) mounts `CalendarView`, hosting the redesigned interactive timeline canvas (Day/Week/Month views with 15-minute snapping, collision lanes, edge resizing, cross-day drag, and zoom transitions).
-- The Android shell ([`lib/main.dart:918`](file:///d:/AI_Projects/life_manager/lib/main.dart#L918) -> [`lib/features/mobile/mobile_workspace.dart:401`](file:///d:/AI_Projects/life_manager/lib/features/mobile/mobile_workspace.dart#L401)) unconditionally mounts `MobileCalendar`, a separate touch-oriented agenda with a 54px cell day grid and vertical card lists.
+- The desktop shell ([`lib/features/workspace/workspace.dart`](../lib/features/workspace/workspace.dart)) mounts `CalendarView`, hosting the redesigned interactive timeline canvas (Day/Week/Month views with 15-minute snapping, collision lanes, edge resizing, cross-day drag, and zoom transitions).
+- The Android shell ([`lib/main.dart`](../lib/main.dart) -> [`lib/features/mobile/mobile_workspace.dart`](../lib/features/mobile/mobile_workspace.dart)) unconditionally mounts `MobileCalendar`, a separate touch-oriented agenda with a 54px cell day grid and vertical card lists.
 
 **Key Finding**: Desktop interactive calendar features introduced in Beta 15 and refined in Beta 16 are **NOT exposed to production Android users**. Mobile touch enhancements in `CalendarMonthView` (e.g. `LongPressDraggable` on mobile platforms from commit `e70c7f4`) currently execute only in widget test environments or when desktop viewports inject mobile theme tokens.
 

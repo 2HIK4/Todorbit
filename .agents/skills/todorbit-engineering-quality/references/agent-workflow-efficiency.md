@@ -110,3 +110,7 @@ When diagnosing architectural friction or multi-file bugs, use targeted structur
    - Never relax assertions or drop failure diagnostics during debugging retries. Always verify affected sibling consumers beyond the first targeted batch (or run `dev verify feature <name>`).
 5. **Persistent Test Worker Isolation**:
    - When optimizing repeated subprocess checks with a persistent worker (e.g. Python `unittest` + PowerShell), wrap each invocation in an isolated child scope (`& { $ErrorActionPreference = 'Stop'; Invoke-Expression $code }`), merge/drain `stderr` (`subprocess.STDOUT`) to avoid pipe deadlocks, verify worker liveness, and close pipes cleanly in `tearDownClass`.
+6. **Watchdogs, ADB Isolation & Checkpointed Resume**:
+   - Never combine Flutter unit/widget suites, native Windows tests, `-LiveApp`, and `dev runtime android` into one unbounded workflow.
+   - Use TDAT (`dev verify changed -Resume`, `verify.ps1 -Resume`) so individual suites run under `Invoke-BoundedProcess` timeouts (`180s` total / `120s` idle), reuse valid 4-fingerprint evidence, checkpoint after every suite, retry transient `sqlite3.dll` repo-worker locks at most once (`<= 1`), and run `adb` probes strictly under `15s` bounds (`dev runtime android`) so forked ADB daemons cannot stall unrelated tasks.
+   - When terminating stalled processes, scope strictly to confirmed descendants or processes inside the active repository (`Stop-RepoSubprocessTree`) and never touch external/production Todorbit installations.

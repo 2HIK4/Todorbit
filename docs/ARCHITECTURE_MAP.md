@@ -1,7 +1,8 @@
 # Feature entry points
 
-Read this index first, then only the relevant source and tests. [Architecture](ARCHITECTURE.md)
-owns lifecycle and boundary details; [Testing](TESTING.md) owns acceptance gates.
+Read this index first, then only the relevant source and tests. [Features](FEATURES.md)
+lists every user-facing capability, [Architecture](ARCHITECTURE.md) owns lifecycle and
+boundary details, and [Testing](TESTING.md) owns acceptance gates.
 Paths are repository relative. `tools/dev/features.json` owns runnable host-test groups.
 
 | Feature | Presentation / entry | Logic and persistence | Start with these tests / group |
@@ -21,7 +22,8 @@ Paths are repository relative. `tools/dev/features.json` owns runnable host-test
 | Windows updates | `lib/features/settings/software_updates_page.dart` | `lib/data/software_update_service.dart`, `lib/data/update_helper_launcher.dart`, `tools/update-helper.ps1` | `test/software_update_service_test.dart`, `test/update_helper_launcher_test.dart`; `windows-updates` |
 | Android launcher widgets | `lib/features/mobile/mobile_settings.dart`, `lib/platform/android/android_surfaces.dart` | `AndroidSurfaces.kt` in the native main directory above; bounded read-only projections and device preferences; `lib/platform/android/android_widget_action.dart` routes authenticated commands through the shared controller | `test/android_platform_test.dart`, `test/android_widget_action_test.dart`; `tools/test-android-widgets.ps1` and on-device placement/reboot/update acceptance |
 | Windows widgets | `lib/features/widget/native_widget_service.dart`, `lib/features/settings/widget_settings_page.dart` | `lib/data/widget_configuration_store.dart`; `experiments/widget-shell-probe/Program.cs`, `LifeManagerWidget.cs`, `CalendarWidget.cs` | `test/native_widget_service_test.dart`; `widgets`; packaged native self-test/manual checklist |
-| Settings and recovery presentation | Windows `settings_hub_dialog.dart`, Android `mobile_settings.dart`; shared Sync, backup, privacy and theme forms | Existing profile stores, SyncController, BackupService and PrivacyManager | `settings-ui`; native widget and live cloud checks are separate |
+| Settings and recovery presentation | Windows `settings_hub_dialog.dart`, Android `mobile_settings.dart`; shared Sync, backup, privacy, hotkeys and theme forms | Existing profile stores, SyncController, BackupService and PrivacyManager | `settings-ui`; native widget and live cloud checks are separate |
+| Hotkeys and shortcuts | `lib/features/settings/hotkeys_dialog.dart` (`HotkeysEditorView` embedded in Settings + `HotkeysDialog`), `lib/features/workspace/workspace.dart` | `lib/domain/hotkeys.dart`, `lib/data/appearance_preference_store.dart` | `test/hotkeys_test.dart`, `test/settings_hub_test.dart`; `hotkeys` |
 | Preferences / portable settings | `lib/features/settings/settings_hub_dialog.dart`, `settings_transfer.dart` in that directory | Profile stores in `lib/data/`; controller coordinates changes | `test/settings_transfer_test.dart`, `test/profile_isolation_test.dart`; `settings` |
 | SQLite / startup / restore | `lib/main.dart` | `lib/data/app_database.dart`, `migration_gate.dart`, `backup_service.dart`, `profile_fingerprint.dart` in that directory | `test/database_initialization_test.dart`, `test/migration_gate_test.dart`; `database` |
 

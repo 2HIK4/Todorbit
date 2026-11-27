@@ -1,5 +1,16 @@
 # Deferred Verification Backlog
 
+## Post-Beta 29 Candidate & Recovery Remaining Gates (2026-11-27)
+
+- **Android 16 KiB Emulator Runtime (`.\dev runtime android`)**: `BLOCKED` locally (`emulator-5554` offline; persisted in `.buildlog/verify/android-runtime/latest.json`). Remains verified via GitHub Actions `Android validation` & `Android 16 KiB runtime` workflows on candidate pushes/releases.
+- **Full Unbatched Flutter Test Sweep (`flutter test`)**: `18` targeted Flutter suites (`195` tests across Group A, PR #3 recovery, and DB/concurrency) plus native Windows release self-tests/benchmarks and `.\dev runtime windows` / `-LiveApp` passed locally after code edits; remaining unaltered test files in `test/` await the GitHub Actions CI matrix upon push.
+- **Physical Multi-Monitor / Multi-DPI Desktop Widget & Touch Acceptance**: Physical live Windows 11 wallpaper appearance across light/dark/mixed backgrounds, mouse-wheel/precision-trackpad smoothness, Narrator/TalkBack assistive readout, and physical Android device checks require manual owner acceptance prior to approving Beta 30 release publication (exclude personal profile and Windows Sandbox).
+
+## Post-Beta 29 Widget Rendering, Pixel Scroll & Settings > Hotkeys Acceptance (2026-11-26)
+
+- **Windows Desktop Widget Live Wallpaper Visual Acceptance**: Confirm Light/Dark opaque and translucent widget text, active `Today` / `selectedToday` pills, task row separation, and tray/open icons on real Windows 11 light and dark wallpapers (`--self-test` and offscreen `.buildlog/widget-fixed/` renders passed, but live Explorer-parented `UpdateLayeredWindow` compositing requires manual visual sign-off).
+- **Continuous Pixel Scroll Feel & Embedded Settings > Hotkeys**: Confirm physical mouse-wheel and precision-trackpad smooth scroll easing (`16ms` timer, scrollbar drag, clipped agenda/task viewports) and live Settings > Hotkeys keyboard recording/contrast on the running desktop shell.
+
 ## Beta 29 experimental acceptance (2026-11-26)
 
 The [Beta 29 candidate receipt](TODORBIT_BETA_29_CANDIDATE.md) closes exact-source

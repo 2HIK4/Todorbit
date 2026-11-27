@@ -44,7 +44,8 @@ python tools/verify-android-artifact.py build/app/outputs/flutter-apk/app-github
 
 The APK includes arm64 and x86-64. Debug signing uses the local Android debug
 keystore and is **not production signing**. The Android application ID is
-`io.github.hik4.todorbit`; minimum API 26, target API 36, version 1.0.18/code 19.
+`io.github.hik4.todorbit`; minimum API 26, target API 36. The app version and
+version code come from `pubspec.yaml`.
 Do not change identity or reuse a disposable key for public distribution.
 `-Mode Profile` also uses development signing and enables profiling; it is not
 a production release. The default `Debug` build supports hot reload.
@@ -57,6 +58,25 @@ CMake and Ninja directories on the **build process's** PATH; neither is a shared
 source setting. SDK CMake 3.22.1 remains the normal CI setup. Keep Kotlin
 incremental compilation disabled while checkout and Pub cache use different
 drives; moving the cache is a separate owner choice, not a build fix.
+
+## Run on a disposable emulator
+
+Create a dedicated Android virtual device using an API 26+ image with a
+supported ABI (ARM64 or x86-64). Start it without a personal Google account
+and select its exact ID from `flutter devices`.
+
+```powershell
+flutter devices
+flutter run --flavor github -d emulator-5554
+```
+
+Replace `emulator-5554` with the ID of your disposable device. The debug
+flavor uses the same application ID as the public APK and a development
+signing key. Use a clean emulator to keep signature checks and app-private
+data isolated. For device-level tests, follow
+[Android acceptance](ANDROID_ACCEPTANCE.md).
+
+## Production builds
 
 For production, place `android/key.properties` locally (ignored by Git), pointing
 to a durable keystore outside the repository:
@@ -111,7 +131,7 @@ limitations are in [the acceptance record](ANDROID_ACCEPTANCE.md). The older
 `android-deliverables` and `android-update-deliverables` directories contain
 historical artifacts. See [finalization acceptance](ANDROID_FINALIZATION.md).
 
-On this workstation, from `D:\AI_Projects\life_manager`:
+From the Todorbit repository root:
 
 ```powershell
 $adb = "$env:LOCALAPPDATA\Android\sdk\platform-tools\adb.exe"

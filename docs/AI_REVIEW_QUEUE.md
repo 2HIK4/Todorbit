@@ -1,5 +1,23 @@
 # AI Review Queue
 
+## RECOVERY-BETA30-READINESS-01 — Recovery, Bounded TDAT Watchdog, Verified Widget/Hotkeys Candidate & PR #6 (2026-11-27)
+
+- **Scope & Addressed Requirements**:
+  - Recovered stalled verification sessions (`task-1061`, `task-1140`), traced root cause to `adb fork-server` inherited pipe handles and fixed `.bat`/`.cmd` quoting in `Invoke-BoundedProcess` (`Session.psm1`), bounded `adb` probe + blocker receipts (`Runtime.psm1`, `Diagnostics.psm1`), suite checkpoints with `-Resume` (`verify.ps1`, `dev.ps1`), and `tools/test_tdat_watchdog.py` (`3/3`).
+  - Completed bounded runtime & targeted suite verification on `feature/todorbit-beta27-refinement`: `flutter analyze` (`0` issues), Group A (`87/87`), PR #3 recovery (`68/68`), DB/concurrency (`40/40`), Release widget `--self-test` / `--lifecycle-self-test` / `--scroll-benchmark`, live `Todorbit.exe` Hotkeys driver walkthrough, `.\dev runtime windows` (`PASS`), `.\dev runtime windows -LiveApp` (`PASS`), `.\dev runtime android` (`BLOCKED` cleanly recorded), plus public docs-only [PR #6](https://github.com/2HIK4/Todorbit/pull/6) toward `main`.
+  - Documented verified capability audit (`docs/FEATURES.md`, `15` areas, `54` capabilities `F01..F54`), draft `docs/TODORBIT_BETA_30_RELEASE_NOTES.md`, and `CHANGELOG.md` without publishing Beta 30 or modifying `Stable`.
+- **Status**: Verified and committed cleanly for owner visual acceptance and GitHub Actions full CI execution (`Stable` untouched; Beta 30 not published). Remaining physical multi-monitor/DPI wallpaper inspection and Android 16 KiB emulator checks remain tracked in [Deferred Verification](DEFERRED_VERIFICATION.md).
+
+## WIDGET-THEME-SCROLL-HOTKEYS-DOCS-01 — Windows Widget Theme/Pixel-Scroll, Embedded Hotkeys, Open-Source Docs & Workspace Hygiene (2026-11-26)
+
+- **Scope & Addressed Requirements**:
+  - Windows desktop widget Light/Dark + translucent rendering fixes (`WidgetText.cs`, `WidgetSurfaces.cs`, `WidgetPreview.cs`, `WidgetSettings.cs`, `NativeDesktopWidgetHost.cs`, `CalendarWidget.cs`).
+  - Continuous pixel-based scrolling (Tasks & Calendar agenda) with viewport `SetClip`, clipped hit-testing/tooltips/UIA, fractional wheel accumulation, scrollbar thumb drag, and 16ms animated easing (`NativeDesktopWidgetHost.cs`, `CalendarWidget.cs`, `WidgetDateNavigation.cs`, `WidgetAccessibility.cs`).
+  - Embedded responsive `HotkeysEditorView` directly in `SettingsHubDialog` while preserving standalone `HotkeysDialog` (`lib/features/settings/hotkeys_dialog.dart`, `lib/features/settings/settings_hub_dialog.dart`).
+  - Portable workspace path cleanup & CI/doctor guard (`tools/test_workspace_paths.py`, `tools/dev/modules/Doctor.psm1`, `tools/dev/modules/Impact.psm1`, `.github/workflows/ci.yml`, `.vscode/settings.json`, skills/docs).
+  - Open-source documentation expansion (`docs/FEATURES.md`, `README.md`, `CONTRIBUTING.md`, `docs/ARCHITECTURE_MAP.md`, `.github/ISSUE_TEMPLATE/feature_request.md`, `website/dist/index.html`) and TDAT `"hotkeys"` feature context + `229`-suite registry sync.
+- **Status**: Implemented and verified via automated native `--self-test`, offscreen light/dark/translucent captures, Flutter analyzer/suites (`82/82` targeted tests), Python TDAT/hygiene tests (`82` ran, `1` bash skip on Windows), `website/verify.py`, and `check-docs.py`; queued for visual acceptance & Codex review (`Stable`/`main` untouched; no release published).
+
 ## TDAT-SAFETY-GATE-01 — TDAT Final Safety Gate, CI Enforcement, and Runtime Reclassification (2026-11-25)
 
 - **Scope & Addressed Requirements**:

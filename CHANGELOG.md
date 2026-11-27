@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased (Beta 30 candidate - feature/todorbit-beta27-refinement)
+
+- Fix Windows native Tasks & Calendar widget Light/Dark translucent contrast and hover alpha blending (`WidgetSurfaces.cs`, `WidgetText.cs`), eliminating boxy halos behind text over dark and mixed wallpapers.
+- Implement continuous 16 ms eased pixel scrolling across both native Windows widgets (`WidgetScrollAxis`) honoring OS wheel-line settings and reduced-motion preferences with verified zero idle repaints (`idle_paints_250ms=0`) and clean `WmDestroy` timer/popup disposal.
+- Embed the complete Hotkeys editor (`HotkeysEditorView`) directly inside **Settings > Hotkeys** (with search, conflict detection, preset duplication/renaming/resetting, `Tab`/`Escape` focus handling, and standalone `HotkeysDialog` parity).
+- Reconcile open-source readiness fixes from PR #3: clock-rollback snapshot retention (`BackupService`), damaged partial updater restarts (`ResumableUpdateDownload`), desktop sidebar non-cancelled event search (`Workspace`), 48 dp mobile search targets (`MobileWorkspace`), and architecture export/adaptor checks (`tools/test_architecture_boundaries.py`).
+- Upgrade `README.md`, `docs/FEATURES.md` (`54` traced features), `docs/OPEN_SOURCE_EVIDENCE.md`, `docs/OPEN_SOURCE_READINESS.md`, `website/dist/`, and `website/verify_live.py --preview` (staged for `main` in PR #6); harden TDAT (`Doctor.psm1` detached-HEAD/`-C` checks, `Runtime.psm1` plugin junction automation, `tools/test_public_readiness_hygiene.py`) and unblock live `Todorbit.exe` verification (`.\dev runtime windows -LiveApp`).
+
 ## 1.0.19-beta.29+52
 
 - Align `TaskDetailsView` focus and priority styling with active theme and
