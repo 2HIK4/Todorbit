@@ -940,5 +940,44 @@
     "fixtures": [
       "typical"
     ]
+  },
+  "hotkeys": {
+    "summary": "Configurable desktop keyboard shortcuts, conflict validation, named preset management, and the embedded Settings > Hotkeys editor.",
+    "primaryRequirements": [
+      "Embed the full Hotkeys editor directly inside Settings > Hotkeys while keeping HotkeysDialog compatible for standalone callers.",
+      "Preserve Ctrl-based shortcut validation, reserved OS/editing key protection, conflict detection, and named preset persistence."
+    ],
+    "entryPoints": {
+      "presentation": [
+        "lib/features/settings/hotkeys_dialog.dart",
+        "lib/features/settings/settings_hub_dialog.dart",
+        "lib/features/workspace/workspace.dart"
+      ],
+      "domainAndPersistence": [
+        "lib/domain/hotkeys.dart",
+        "lib/data/appearance_preference_store.dart"
+      ]
+    },
+    "architectureBoundaries": [
+      "Hotkey preferences persist in appearance-settings.json via AppearancePreferenceStore and AppController.setHotkeys.",
+      "Embedded Settings pane must adapt cleanly at desktop and compact/enlarged-text widths without nested scroll conflicts."
+    ],
+    "designSystemTokens": [
+      "AnchoredSelectField, AppRadius.control, SettingsHelperText, Theme.of(context).colorScheme."
+    ],
+    "historicalInvariants": [
+      "Default preset cannot be renamed or deleted; editing Default branches cleanly to Custom."
+    ],
+    "applicableSkills": [
+      ".agents/skills/ultimate-ui-ux/SKILL.md",
+      ".agents/skills/todorbit-regression/SKILL.md"
+    ],
+    "documentation": [
+      "docs/FEATURES.md",
+      "docs/ARCHITECTURE_MAP.md"
+    ],
+    "fixtures": [
+      "typical"
+    ]
   }
 }

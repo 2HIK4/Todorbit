@@ -4,6 +4,10 @@
 $ErrorActionPreference = 'Stop'
 
 function Get-RepoRoot {
+    $cwdTop = (& git rev-parse --show-toplevel 2>$null)
+    if ($cwdTop -and $LASTEXITCODE -eq 0) {
+        return (Resolve-Path ($cwdTop | Out-String).Trim()).Path
+    }
     return (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 }
 
@@ -23,8 +27,10 @@ function Get-ChangedRepositoryFiles {
     )
     $changed = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 
+    $repoRoot = Get-RepoRoot
+
     # 1. Unstaged, staged, untracked (-uall), deleted, and renamed git changes
-    $statusLines = & git status --porcelain -uall 2>$null
+    $statusLines = & git -C $repoRoot status --porcelain -uall 2>$null
     if ($statusLines) {
         foreach ($line in $statusLines) {
             if ($line.Length -ge 4) {
@@ -52,18 +58,27 @@ function Get-ChangedRepositoryFiles {
     $targetBaseline = $BaselineRef
     if (-not $targetBaseline) {
         try {
-            $upstream = (& git rev-parse --abbrev-ref '@{u}' 2>$null)
+            $upstream = (& git -C $repoRoot rev-parse --abbrev-ref '@{u}' 2>$null)
             if ($upstream -and $LASTEXITCODE -eq 0) {
-                $targetBaseline = $upstream.Trim()
+                $targetBaseline = ($upstream | Out-String).Trim()
             }
         } catch {}
 
         if (-not $targetBaseline) {
-            foreach ($candidate in @('feature/todorbit-ui-redesign-2', 'origin/main', 'main')) {
+            try {
+                $symHead = (& git -C $repoRoot symbolic-ref --short refs/remotes/origin/HEAD 2>$null)
+                if ($symHead -and $LASTEXITCODE -eq 0) {
+                    $mb = (& git -C $repoRoot merge-base HEAD ($symHead | Out-String).Trim() 2>$null)
+                    if ($mb -and $LASTEXITCODE -eq 0) { $targetBaseline = ($mb | Out-String).Trim() }
+                }
+            } catch {}
+        }
+        if (-not $targetBaseline) {
+            foreach ($candidate in @('origin/main', 'main', 'HEAD~1')) {
                 try {
-                    $mb = (& git merge-base HEAD $candidate 2>$null)
+                    $mb = (& git -C $repoRoot merge-base HEAD $candidate 2>$null)
                     if ($mb -and $LASTEXITCODE -eq 0) {
-                        $targetBaseline = $mb.Trim()
+                        $targetBaseline = ($mb | Out-String).Trim()
                         break
                     }
                 } catch {}
@@ -72,7 +87,7 @@ function Get-ChangedRepositoryFiles {
     }
 
     if ($targetBaseline -and $targetBaseline -ne 'HEAD') {
-        $diffFiles = & git diff --name-only "$targetBaseline...HEAD" 2>$null
+        $diffFiles = & git -C $repoRoot diff --name-only "$targetBaseline...HEAD" 2>$null
         if ($diffFiles) {
             foreach ($df in $diffFiles) {
                 $dfClean = ConvertFrom-GitPorcelainPath $df

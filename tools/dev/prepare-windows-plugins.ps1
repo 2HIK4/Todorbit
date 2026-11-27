@@ -13,7 +13,10 @@ foreach ($plugin in $plugins) {
   $link = Join-Path $directory $plugin.name
   if (Test-Path -LiteralPath $link) {
     $item = Get-Item -LiteralPath $link
-    if (!$item.LinkType -or [IO.Path]::GetFullPath([string]$item.Target[0]).TrimEnd('\','/') -ne $target) {
+    # PowerShell versions expose Target as either a string or a collection.
+    $linkTargets = @($item.Target)
+    if (!$item.LinkType -or $linkTargets.Count -ne 1 -or !$linkTargets[0] -or
+        [IO.Path]::GetFullPath([string]$linkTargets[0]).TrimEnd('\','/') -ne $target) {
       throw "Existing plugin path differs: $link. Inspect it; this helper never deletes or replaces paths."
     }
   } else {

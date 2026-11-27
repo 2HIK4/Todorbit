@@ -90,6 +90,12 @@ function Invoke-WindowsRuntimeAutomation {
             $env:LOCALAPPDATA = $local
             $env:TODORBIT_RUNTIME_SENTINEL = "TDAT Runtime Restart Sentinel $stamp"
 
+            # Prepare NTFS plugin junctions cleanly when building on hosts without Windows Developer Mode.
+            $preparePlugins = Join-Path $repoRoot 'tools\dev\prepare-windows-plugins.ps1'
+            if ((Test-Path -LiteralPath $preparePlugins) -and ($BuildLiveApp -or -not (Test-Path -LiteralPath $absBinary))) {
+                try { & $preparePlugins | Out-Null } catch {}
+            }
+
             # Session 1: Build/launch driver-enabled Todorbit.exe, create task via real FlutterDriver UI interaction, exit process
             $env:TODORBIT_RUNTIME_PHASE = 'create'
             $drive1Args = @('drive', '--no-pub', '--suppress-analytics', '-d', 'windows', '--target', 'test_driver/driver_main.dart', '--driver', 'test_driver/windows_runtime_workflow_test.dart')
@@ -319,17 +325,36 @@ function Invoke-AndroidRuntimeAutomation {
             MissingRequirements = @('adb.exe')
             Resolution = 'Configure ANDROID_HOME with platform-tools and launch an authorized API 36 16 KiB emulator.'
         }
+        if (Get-Command 'Save-RuntimeBlockerReceipt' -ErrorAction SilentlyContinue) {
+            $null = Save-RuntimeBlockerReceipt -Category 'android-runtime' -Receipt $blockedResult
+        }
         if ($Json) { return ($blockedResult | ConvertTo-Json -Depth 4) }
         Write-Host "ANDROID RUNTIME AUTOMATION: BLOCKED ($($blockedResult.Reason))" -ForegroundColor Yellow
         return $blockedResult
     }
 
     $onlineEmulators = @()
+    $adbProbeStalled = $false
+    $adbProbeReason = ''
     try {
-        $adbLines = & $adbExe devices 2>$null
-        foreach ($line in $adbLines) {
-            if ($line -match '^(emulator-\d+)\s+device\b') {
-                $onlineEmulators += $Matches[1]
+        if (Get-Command 'Invoke-BoundedProcess' -ErrorAction SilentlyContinue) {
+            $probe = Invoke-BoundedProcess -FilePath $adbExe -Arguments @('devices') -WorkingDirectory $repoRoot -TimeoutSeconds 15 -InactivityTimeoutSeconds 10 -RepoRoot $repoRoot
+            if ($probe.TimedOut -or $probe.Stalled) {
+                $adbProbeStalled = $true
+                $adbProbeReason = "adb devices $($probe.Status.ToLowerInvariant()) after $($probe.DurationSeconds)s"
+            } elseif ($probe.Output) {
+                foreach ($line in ($probe.Output -split "`r?`n")) {
+                    if ($line -match '^(emulator-\d+)\s+device\b') {
+                        $onlineEmulators += $Matches[1]
+                    }
+                }
+            }
+        } else {
+            $adbLines = & $adbExe devices 2>$null
+            foreach ($line in $adbLines) {
+                if ($line -match '^(emulator-\d+)\s+device\b') {
+                    $onlineEmulators += $Matches[1]
+                }
             }
         }
     } catch {}
@@ -341,12 +366,21 @@ function Invoke-AndroidRuntimeAutomation {
     $detectedPageSize = 'unknown'
     $detectedApi = 'unknown'
 
-    if (-not $deviceOnline) {
+    if ($adbProbeStalled) {
+        $missingRequirements.Add("ADB daemon probe did not finish cleanly ($adbProbeReason)")
+    } elseif (-not $deviceOnline) {
         $missingRequirements.Add("Online emulator '$targetDevice' (detected: $(if ($onlineEmulators.Count) { $onlineEmulators -join ', ' } else { 'none' }))")
     } else {
         try {
-            $detectedPageSize = (& $adbExe -s $targetDevice shell getconf PAGE_SIZE 2>$null).Trim()
-            $detectedApi = (& $adbExe -s $targetDevice shell getprop ro.build.version.sdk 2>$null).Trim()
+            if (Get-Command 'Invoke-BoundedProcess' -ErrorAction SilentlyContinue) {
+                $pg = Invoke-BoundedProcess -FilePath $adbExe -Arguments @('-s', $targetDevice, 'shell', 'getconf', 'PAGE_SIZE') -WorkingDirectory $repoRoot -TimeoutSeconds 10 -InactivityTimeoutSeconds 8 -RepoRoot $repoRoot
+                $ap = Invoke-BoundedProcess -FilePath $adbExe -Arguments @('-s', $targetDevice, 'shell', 'getprop', 'ro.build.version.sdk') -WorkingDirectory $repoRoot -TimeoutSeconds 10 -InactivityTimeoutSeconds 8 -RepoRoot $repoRoot
+                if ($pg.Status -eq 'PASS' -and $pg.Output) { $detectedPageSize = $pg.Output.Trim() }
+                if ($ap.Status -eq 'PASS' -and $ap.Output) { $detectedApi = $ap.Output.Trim() }
+            } else {
+                $detectedPageSize = (& $adbExe -s $targetDevice shell getconf PAGE_SIZE 2>$null).Trim()
+                $detectedApi = (& $adbExe -s $targetDevice shell getprop ro.build.version.sdk 2>$null).Trim()
+            }
         } catch {}
         if ($detectedPageSize -ne '16384') {
             $missingRequirements.Add("16 KiB emulator page size (detected PAGE_SIZE=$detectedPageSize on $targetDevice API $detectedApi; 16384 required)")
@@ -376,6 +410,9 @@ function Invoke-AndroidRuntimeAutomation {
             VerifiedSimulatedFallback = 'Host unit/widget/offscreen checks do not establish physical Android or 16 KiB emulator runtime.'
         }
 
+        if (Get-Command 'Save-RuntimeBlockerReceipt' -ErrorAction SilentlyContinue) {
+            $null = Save-RuntimeBlockerReceipt -Category 'android-runtime' -Receipt $blockedResult
+        }
         if ($Json) {
             return ($blockedResult | ConvertTo-Json -Depth 4)
         }

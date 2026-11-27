@@ -87,44 +87,107 @@ function Save-FailureRecord {
         [Parameter(Mandatory=$true)][string]$TestPath,
         [Parameter(Mandatory=$true)][string]$Command,
         [string]$RawLog = '',
-        [string]$LogFile = ''
+        [string]$LogFile = '',
+        [ValidateSet('FAIL','TIMEOUT','STALLED','BLOCKED','LOCKED')][string]$Status = 'FAIL',
+        [object]$Diagnostics = $null
     )
 
     $repoRoot = Get-RepoRoot
     $failuresDir = Get-FailuresDir
     $failureId = "fail-" + (Get-Date -Format 'yyyyMMdd-HHmmss-ffff')
 
-    $diagnostics = Extract-FailureDiagnostics -LogContent $RawLog -TestPath $TestPath
+    $extracted = Extract-FailureDiagnostics -LogContent $RawLog -TestPath $TestPath
 
-    # Create self-contained reproduction command and script
     $reproCmd = "$Command"
-    if ($diagnostics.FailedTests.Count -gt 0) {
-        $firstName = $diagnostics.FailedTests[0]
-        # Quote test name for reproduction targeting
+    if ($extracted.FailedTests.Count -gt 0) {
+        $firstName = $extracted.FailedTests[0]
         $reproCmd = "$Command --name `"$firstName`""
     }
 
     $failureData = [pscustomobject]@{
         FailureId = $failureId
         Timestamp = (Get-Date -Format 'o')
+        Status = $Status
         TestPath = $TestPath
         Command = $Command
         ReproductionCommand = $reproCmd
-        FailedTests = $diagnostics.FailedTests
-        Errors = $diagnostics.Errors
-        StackTrace = $diagnostics.StackTrace
+        FailedTests = $extracted.FailedTests
+        Errors = $extracted.Errors
+        StackTrace = $extracted.StackTrace
+        Diagnostics = $Diagnostics
         LogFile = $LogFile
     }
 
     $recordFile = Join-Path $failuresDir "$failureId.json"
-    $json = $failureData | ConvertTo-Json -Depth 5
-    [IO.File]::WriteAllText($recordFile, $json, [Text.Encoding]::UTF8)
+    $json = $failureData | ConvertTo-Json -Depth 6
+    [IO.File]::WriteAllText($recordFile, $json, [Text.UTF8Encoding]::new($false))
 
     # Also update 'last_failure.json' symlink/pointer
     $lastFile = Join-Path $failuresDir 'last_failure.json'
-    [IO.File]::WriteAllText($lastFile, $json, [Text.Encoding]::UTF8)
+    [IO.File]::WriteAllText($lastFile, $json, [Text.UTF8Encoding]::new($false))
 
     return $failureData
+}
+
+function Save-RuntimeBlockerReceipt {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)][string]$Category,
+        [Parameter(Mandatory=$true)][object]$Receipt
+    )
+    $verifyDir = Join-Path (Get-RepoRoot) ".buildlog\verify\$Category"
+    if (-not (Test-Path -LiteralPath $verifyDir)) {
+        New-Item -ItemType Directory -Force -Path $verifyDir | Out-Null
+    }
+    $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+    $runDir = Join-Path $verifyDir "$stamp-$([guid]::NewGuid().ToString('N').Substring(0,8))"
+    New-Item -ItemType Directory -Force -Path $runDir | Out-Null
+    $json = $Receipt | ConvertTo-Json -Depth 6
+    [IO.File]::WriteAllText((Join-Path $runDir 'result.json'), $json, [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $verifyDir 'latest.json'), $json, [Text.UTF8Encoding]::new($false))
+    return (Join-Path $runDir 'result.json')
+}
+
+function Get-VerificationCheckpointPath {
+    param([string]$Name = 'latest_checkpoint.json')
+    $dir = Join-Path (Get-RepoRoot) '.buildlog\verify'
+    if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+    return (Join-Path $dir $Name)
+}
+
+function Save-VerificationCheckpoint {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)][object]$Checkpoint,
+        [string]$Name = 'latest_checkpoint.json'
+    )
+    $path = Get-VerificationCheckpointPath -Name $Name
+    $tmp = "$path.tmp.$([Guid]::NewGuid().ToString('N'))"
+    $json = $Checkpoint | ConvertTo-Json -Depth 6
+    [IO.File]::WriteAllText($tmp, $json, [Text.UTF8Encoding]::new($false))
+    Move-Item -LiteralPath $tmp -Destination $path -Force
+    return $path
+}
+
+function Get-VerificationCheckpoint {
+    [CmdletBinding()]
+    param([string]$Name = 'latest_checkpoint.json')
+    $path = Get-VerificationCheckpointPath -Name $Name
+    if (Test-Path -LiteralPath $path) {
+        try {
+            return (Get-Content -LiteralPath $path -Raw -ErrorAction Stop | ConvertFrom-Json)
+        } catch {}
+    }
+    return $null
+}
+
+function Clear-VerificationCheckpoint {
+    [CmdletBinding()]
+    param([string]$Name = 'latest_checkpoint.json')
+    $path = Get-VerificationCheckpointPath -Name $Name
+    if (Test-Path -LiteralPath $path) {
+        Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Get-LastFailure {
@@ -184,4 +247,4 @@ function New-VerificationReceipt {
     return $receipt
 }
 
-Export-ModuleMember -Function Extract-FailureDiagnostics, Save-FailureRecord, Get-LastFailure, New-VerificationReceipt, Sanitize-LogContent
+Export-ModuleMember -Function Extract-FailureDiagnostics, Save-FailureRecord, Get-LastFailure, New-VerificationReceipt, Sanitize-LogContent, Save-RuntimeBlockerReceipt, Save-VerificationCheckpoint, Get-VerificationCheckpoint, Clear-VerificationCheckpoint

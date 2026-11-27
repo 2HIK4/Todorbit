@@ -21,5 +21,6 @@
   "reports": {"paths": ["lib/features/reports", "lib/data/reports_repository.dart", "lib/domain/reports.dart"], "tests": ["test/reports_test.dart", "test/reports_widget_test.dart"]},
   "templates": {"paths": ["lib/features/templates", "lib/data/template_repository.dart", "lib/domain/templates.dart"], "tests": ["test/template_repository_test.dart", "test/templates_widget_test.dart", "test/template_journeys_test.dart"]},
   "scheduling": {"paths": ["lib/features/scheduling", "lib/data/life_repository.dart", "lib/domain/scheduling_engine.dart", "lib/domain/scheduling_models.dart"], "tests": ["test/scheduling_repository_test.dart", "test/scheduling_engine_test.dart", "test/prompt4_smart_reschedule_test.dart", "test/smart_reschedule_widget_test.dart"]},
-  "trash": {"paths": ["lib/features/workspace/trash_dialog.dart", "lib/data/trash_repository.dart", "lib/domain/trash.dart"], "tests": ["test/trash_repository_test.dart", "test/trash_widget_test.dart"]}
+  "trash": {"paths": ["lib/features/workspace/trash_dialog.dart", "lib/data/trash_repository.dart", "lib/domain/trash.dart"], "tests": ["test/trash_repository_test.dart", "test/trash_widget_test.dart"]},
+  "hotkeys": {"paths": ["lib/domain/hotkeys.dart", "lib/features/settings/hotkeys_dialog.dart", "lib/features/settings/settings_hub_dialog.dart"], "tests": ["test/hotkeys_test.dart", "test/settings_hub_test.dart"]}
 }

@@ -75,10 +75,11 @@ jobs:
       - name: Validate workflow routing and failure contracts
         run: python -m unittest discover -s tools -p test_ci_workflows.py 2>&1 | tee .buildlog/ci/workflow-contracts.log
 
-      - name: Validate TDAT test registry and process invocation safety
+      - name: Validate TDAT test registry, workspace paths, and process invocation safety
         run: |
           python -m unittest discover -s tools -p test_registry_sync.py 2>&1 | tee .buildlog/ci/tdat-registry.log
           python -m unittest discover -s tools -p test_process_invocation_safety.py 2>&1 | tee -a .buildlog/ci/tdat-registry.log
+          python -m unittest discover -s tools -p test_workspace_paths.py 2>&1 | tee -a .buildlog/ci/tdat-registry.log
 
       - name: Validate architecture boundaries and dependency direction
         run: python -m unittest discover -s tools -p test_architecture_boundaries.py 2>&1 | tee .buildlog/ci/architecture-boundaries.log

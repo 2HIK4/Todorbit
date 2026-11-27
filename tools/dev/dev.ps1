@@ -280,43 +280,42 @@ try {
                 Write-Host "Impact analysis: $($reusedTests.Count) reused, $($dartTestsToRun.Count) Dart suite(s) + $($pythonTestsToRun.Count) Python check(s) to execute." -ForegroundColor White
             }
 
-            # Run Python checks first (fast static/tooling gates)
+            # Run Python checks first (bounded static/tooling gates)
             if ($pythonTestsToRun.Count -gt 0 -and -not $Plan) {
                 $pyExe = Resolve-TodorbitTool 'python'
-                foreach ($pyTest in $pythonTestsToRun) {
-                    $sw = [Diagnostics.Stopwatch]::StartNew()
-                    Write-Host "Running Python check: $pyTest" -ForegroundColor Cyan
-                    $pyOutput = ''
-                    $pyCode = 0
-                    Push-Location $repoRoot
-                    try {
-                        $ErrorActionPreference = 'Continue'
-                        if ($pyTest -match 'check-docs\.py$') {
-                            $pyOutput = ((& $pyExe $pyTest 2>&1 | ForEach-Object { $_.ToString() }) -join "`n")
-                        } else {
-                            $pyDir = Split-Path -Parent $pyTest
-                            $pyName = Split-Path -Leaf $pyTest
-                            $pyOutput = ((& $pyExe -m unittest discover -s $pyDir -p $pyName 2>&1 | ForEach-Object { $_.ToString() }) -join "`n")
-                        }
-                        $pyCode = $LASTEXITCODE
-                    } finally {
-                        $ErrorActionPreference = 'Stop'
-                        Pop-Location
-                    }
-                    $sw.Stop()
-                    $executedChecks.Add($pyTest)
-                    if ($pyCode -ne 0) {
-                        $failedChecks.Add($pyTest)
-                        Write-Host $pyOutput -ForegroundColor Red
-                        if (Get-Command 'Save-FailureRecord' -ErrorAction SilentlyContinue) {
-                            $null = Save-FailureRecord -TestPath $pyTest -Command "python $pyTest" -RawLog $pyOutput
-                        }
-                        throw "Python verification failed for $pyTest (exit $pyCode)."
-                    }
+                $pyCheckpoint = if ($Resume) { Get-VerificationCheckpoint -Name 'changed_python_checkpoint.json' } else { $null }
+                $pyCompleted = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+                if ($pyCheckpoint -and $pyCheckpoint.Completed) {
+                    foreach ($ck in $pyCheckpoint.Completed) { $null = $pyCompleted.Add([string]$ck) }
                 }
+                foreach ($pyTest in $pythonTestsToRun) {
+                    if ($Resume -and $pyCompleted.Contains($pyTest)) {
+                        $reusedTests.Add($pyTest)
+                        Write-Host " [RESUMED-SKIP] $pyTest" -ForegroundColor Cyan
+                        continue
+                    }
+                    Write-Host "Running Python check: $pyTest" -ForegroundColor Cyan
+                    $pyArgs = if ($pyTest -match 'check-docs\.py$') { @($pyTest) } else { @('-m', 'unittest', 'discover', '-s', (Split-Path -Parent $pyTest), '-p', (Split-Path -Leaf $pyTest)) }
+                    $pyRes = Invoke-BoundedProcess -FilePath $pyExe -Arguments $pyArgs -WorkingDirectory $repoRoot -TimeoutSeconds 120 -InactivityTimeoutSeconds 90 -RepoRoot $repoRoot
+                    $executedChecks.Add($pyTest)
+                    if ($pyRes.ExitCode -ne 0) {
+                        $failedChecks.Add($pyTest)
+                        Write-Host $pyRes.Output -ForegroundColor Red
+                        if (Get-Command 'Save-FailureRecord' -ErrorAction SilentlyContinue) {
+                            $null = Save-FailureRecord -TestPath $pyTest -Command "python $pyTest" -RawLog $pyRes.Output -LogFile $pyRes.LogFile -Status $pyRes.Status -Diagnostics $pyRes.Diagnostics
+                        }
+                        throw "Python verification $($pyRes.Status) for $pyTest (exit $($pyRes.ExitCode))."
+                    }
+                    $null = $pyCompleted.Add($pyTest)
+                    $null = Save-VerificationCheckpoint -Name 'changed_python_checkpoint.json' -Checkpoint ([pscustomobject]@{
+                        Timestamp = (Get-Date -Format 'o')
+                        Completed = @($pyCompleted)
+                    })
+                }
+                Clear-VerificationCheckpoint -Name 'changed_python_checkpoint.json'
             }
 
-            # Run Dart checks via verify.ps1 and persist passing receipts
+            # Run Dart checks via bounded, checkpointed verify.ps1 and persist passing receipts
             if ($dartTestsToRun.Count -gt 0) {
                 $existingDartChanged = @($existingChanged | Where-Object { $_ -match '\.dart$' })
                 $verifyChangedPaths = if ($existingDartChanged.Count -gt 0) { $existingDartChanged } else { @($dartTestsToRun.ToArray()) }
@@ -325,37 +324,23 @@ try {
                     ChangedPaths = $verifyChangedPaths
                     Tests = @($dartTestsToRun.ToArray())
                     Platform = $Platform
+                    TimeoutSeconds = 180
+                    InactivityTimeoutSeconds = 120
+                    MaxRetries = 1
                 }
                 if ($Plan) { $verifyArgs['Plan'] = $true }
+                if ($Resume) { $verifyArgs['Resume'] = $true }
                 $dartSw = [Diagnostics.Stopwatch]::StartNew()
                 try {
                     & $verifyScript @verifyArgs
                 } catch {
                     $dartSw.Stop()
                     foreach ($dt in $dartTestsToRun) { $failedChecks.Add($dt) }
-                    $verifyDir = Join-Path $repoRoot '.buildlog\verify'
-                    $latestLogDir = Get-ChildItem -LiteralPath $verifyDir -Directory -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-                    $logContent = if ($latestLogDir) {
-                        (Get-ChildItem -LiteralPath $latestLogDir.FullName -Filter '*.log' -File | Sort-Object Name | Select-Object -Last 1 | Get-Content -Raw -ErrorAction SilentlyContinue)
-                    } else { $_.Exception.Message }
-                    if (Get-Command 'Save-FailureRecord' -ErrorAction SilentlyContinue) {
-                        $null = Save-FailureRecord -TestPath ($dartTestsToRun -join ' ') -Command "flutter test $execArgsString $($dartTestsToRun -join ' ')" -RawLog $logContent
-                    }
                     throw
                 }
                 $dartSw.Stop()
-
-                if (-not $Plan) {
-                    $perTestDur = if ($dartTestsToRun.Count -gt 0) { [math]::Round($dartSw.Elapsed.TotalSeconds / $dartTestsToRun.Count, 2) } else { 0.0 }
-                    foreach ($dt in $dartTestsToRun) {
-                        $executedChecks.Add($dt)
-                        $savedRec = Save-EvidenceRecord -TestPath $dt -SourcePaths $nonDocChanged -Outcome 'PASS' -DurationSeconds $perTestDur -Arguments $execArgsString -PreRunFingerprint $preRunFingerprints[$dt] -ForceFresh:$Force
-                        if ($savedRec.CacheSkippedReason) {
-                            Write-Host " [CACHE SKIPPED] $dt ($($savedRec.CacheSkippedReason))" -ForegroundColor Yellow
-                        } else {
-                            Write-Host " [CACHED] $dt ($($savedRec.Fingerprint.Substring(0,8)))" -ForegroundColor DarkCyan
-                        }
-                    }
+                foreach ($dt in $dartTestsToRun) {
+                    $executedChecks.Add($dt)
                 }
             }
 
@@ -388,6 +373,7 @@ try {
         }
         if ($Feature) { $verifyArgs['Feature'] = $Feature }
         if ($Plan) { $verifyArgs['Plan'] = $true }
+        if ($Resume) { $verifyArgs['Resume'] = $true }
 
         & $verifyScript @verifyArgs
     }

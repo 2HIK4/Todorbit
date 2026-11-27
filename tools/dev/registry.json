@@ -1,14 +1,14 @@
 {
     "Version":  "2.0.0",
-    "GeneratedAt":  "2026-11-25T21:59:29.5896765+03:00",
-    "TotalTests":  228,
+    "GeneratedAt":  "2026-11-27T17:18:08.4377109+03:00",
+    "TotalTests":  231,
     "Metrics":  {
-                    "TotalExecutableSuites":  228,
+                    "TotalExecutableSuites":  231,
                     "DartUnitAndWidgetSuites":  213,
                     "IntegrationSuites":  3,
-                    "ToolTestSuites":  12,
+                    "ToolTestSuites":  15,
                     "SupportHelperFiles":  15,
-                    "EstimatedIndividualTestCases":  1248
+                    "EstimatedIndividualTestCases":  1266
                 },
     "SupportHelpers":  [
                            "test/seed_isolated_calendar_profile.dart",
@@ -1379,7 +1379,7 @@
                       "Command":  "flutter test --no-pub --reporter=expanded test/hotkeys_test.dart",
                       "Tier":  "Level1_Fast",
                       "Features":  [
-                                       "shared"
+                                       "hotkeys"
                                    ],
                       "Platforms":  [
                                         "Windows",
@@ -2545,7 +2545,8 @@
                       "Tier":  "Level1_Fast",
                       "Features":  [
                                        "settings-ui",
-                                       "settings"
+                                       "settings",
+                                       "hotkeys"
                                    ],
                       "Platforms":  [
                                         "Windows",
@@ -4487,6 +4488,26 @@
                                         ]
                   },
                   {
+                      "Id":  "tool:test_public_readiness_hygiene",
+                      "Type":  "python_test",
+                      "Path":  "tools/test_public_readiness_hygiene.py",
+                      "Command":  "python -m unittest discover -s tools -p test_public_readiness_hygiene.py",
+                      "Tier":  "Level1_Fast",
+                      "Features":  [
+                                       "architecture",
+                                       "dev-tools"
+                                   ],
+                      "Platforms":  [
+                                        "Windows",
+                                        "Host"
+                                    ],
+                      "EvidenceReuse":  "Ineligible",
+                      "Description":  "Developer tool/architecture test: test_public_readiness_hygiene",
+                      "Prerequisites":  [
+                                            "python"
+                                        ]
+                  },
+                  {
                       "Id":  "tool:test_registry_sync",
                       "Type":  "python_test",
                       "Path":  "tools/test_registry_sync.py",
@@ -4507,6 +4528,26 @@
                                         ]
                   },
                   {
+                      "Id":  "tool:test_tdat_watchdog",
+                      "Type":  "python_test",
+                      "Path":  "tools/test_tdat_watchdog.py",
+                      "Command":  "python -m unittest discover -s tools -p test_tdat_watchdog.py",
+                      "Tier":  "Level1_Fast",
+                      "Features":  [
+                                       "architecture",
+                                       "dev-tools"
+                                   ],
+                      "Platforms":  [
+                                        "Windows",
+                                        "Host"
+                                    ],
+                      "EvidenceReuse":  "Ineligible",
+                      "Description":  "Developer tool/architecture test: test_tdat_watchdog",
+                      "Prerequisites":  [
+                                            "python"
+                                        ]
+                  },
+                  {
                       "Id":  "tool:test_windows_sandbox_prepare",
                       "Type":  "python_test",
                       "Path":  "tools/test_windows_sandbox_prepare.py",
@@ -4522,6 +4563,26 @@
                                     ],
                       "EvidenceReuse":  "Ineligible",
                       "Description":  "Developer tool/architecture test: test_windows_sandbox_prepare",
+                      "Prerequisites":  [
+                                            "python"
+                                        ]
+                  },
+                  {
+                      "Id":  "tool:test_workspace_paths",
+                      "Type":  "python_test",
+                      "Path":  "tools/test_workspace_paths.py",
+                      "Command":  "python -m unittest discover -s tools -p test_workspace_paths.py",
+                      "Tier":  "Level1_Fast",
+                      "Features":  [
+                                       "architecture",
+                                       "dev-tools"
+                                   ],
+                      "Platforms":  [
+                                        "Windows",
+                                        "Host"
+                                    ],
+                      "EvidenceReuse":  "Ineligible",
+                      "Description":  "Developer tool/architecture test: test_workspace_paths",
                       "Prerequisites":  [
                                             "python"
                                         ]

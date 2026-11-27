@@ -9,8 +9,8 @@ function Ensure-TodorbitEnvironment {
     # Flutter SDK auto-discovery and session PATH configuration
     $flutterCandidates = @(
         'C:\VScode\flutter\bin',
-        'C:\Users\User\Documents\Codex\Todorbit-flutter-git\bin'
-    )
+        $(if ($env:USERPROFILE) { Join-Path $env:USERPROFILE 'Documents\Codex\Todorbit-flutter-git\bin' })
+    ) | Where-Object { $_ }
     $hasFlutter = $null -ne (Get-Command 'flutter' -ErrorAction SilentlyContinue)
     if (-not $hasFlutter) {
         foreach ($cand in $flutterCandidates) {
@@ -308,21 +308,104 @@ function Invoke-TodorbitDoctor {
         Detail = $diskDetail
     })
 
-    # 5. Git Isolation & Worktree Safety
-    $currentBranch = (& git branch --show-current 2>$null).Trim()
-    $currentCommit = (& git rev-parse --short HEAD 2>$null).Trim()
-    $worktrees = & git worktree list 2>$null
-    $isIsolated = $true
+    # 5. Git Isolation, Root Discovery & Worktree Hygiene
+    $rawBranch = (& git -C $repoRoot branch --show-current 2>$null)
+    $currentBranch = if ($rawBranch) { ($rawBranch | Out-String).Trim() } else { '(detached HEAD)' }
+    $rawCommit = (& git -C $repoRoot rev-parse --short HEAD 2>$null)
+    $currentCommit = if ($rawCommit) { ($rawCommit | Out-String).Trim() } else { '(unknown)' }
+    $gitTopLevel = (& git -C $repoRoot rev-parse --show-toplevel 2>$null)
+    $worktreeLines = @(& git -C $repoRoot worktree list --porcelain 2>$null)
+    $isolationStatus = 'OK'
     $isolationDetail = "Worktree: $repoRoot | Branch: $currentBranch | Commit: $currentCommit"
-    if ($worktrees -match 'todorbit-ui-redesign') {
-        $isolationDetail += " | Codex UI Redesign worktree detected and isolated."
+    $resolvedRepoRoot = [IO.Path]::GetFullPath($repoRoot)
+
+    if ($gitTopLevel) {
+        $resolvedGitTop = [IO.Path]::GetFullPath(($gitTopLevel | Out-String).Trim())
+        if ($resolvedGitTop -ine $resolvedRepoRoot) {
+            $isolationStatus = 'WARNING'
+            $warnings.Add("Repo root ($resolvedRepoRoot) differs from Git top-level ($resolvedGitTop).")
+        }
+    }
+
+    $prunableWorktrees = @()
+    $newerWorktreePaths = @()
+    $currentWtPath = $null
+    $currentWtBranch = $null
+    $currentWtHead = $null
+    $currentWtPrunable = $false
+    foreach ($wtLine in ($worktreeLines + @(''))) {
+        if ([string]::IsNullOrWhiteSpace($wtLine)) {
+            if ($currentWtPath) {
+                if ($currentWtPrunable -or -not (Test-Path -LiteralPath $currentWtPath)) {
+                    $prunableWorktrees += $currentWtPath
+                } elseif ([IO.Path]::GetFullPath($currentWtPath) -ine $resolvedRepoRoot -and $currentWtHead) {
+                    $null = & git -C $repoRoot merge-base --is-ancestor HEAD $currentWtHead 2>$null
+                    $headIsAncestorOfOther = ($LASTEXITCODE -eq 0)
+                    $null = & git -C $repoRoot merge-base --is-ancestor $currentWtHead HEAD 2>$null
+                    $otherIsAncestorOfHead = ($LASTEXITCODE -eq 0)
+                    if ($headIsAncestorOfOther -and -not $otherIsAncestorOfHead -and $currentWtBranch) {
+                        $newerWorktreePaths += "$currentWtPath ($currentWtBranch)"
+                    }
+                }
+            }
+            $currentWtPath = $null
+            $currentWtBranch = $null
+            $currentWtHead = $null
+            $currentWtPrunable = $false
+            continue
+        }
+        if ($wtLine -match '^worktree\s+(.+)$') { $currentWtPath = [IO.Path]::GetFullPath($Matches[1].Trim()) }
+        elseif ($wtLine -match '^HEAD\s+([0-9a-fA-F]+)$') { $currentWtHead = $Matches[1].Trim() }
+        elseif ($wtLine -match '^branch\s+refs/heads/(.+)$') { $currentWtBranch = $Matches[1].Trim() }
+        elseif ($wtLine -match '^prunable') { $currentWtPrunable = $true }
+    }
+
+    if ($prunableWorktrees.Count -gt 0) {
+        $isolationStatus = 'WARNING'
+        $warnings.Add("Missing/prunable Git worktree path(s) detected: $($prunableWorktrees -join ', '). Verify active checkout before editing.")
+    }
+    if ($newerWorktreePaths.Count -gt 0) {
+        $isolationStatus = 'WARNING'
+        $warnings.Add("Ahead descendant worktree(s) exist while running from '$repoRoot': $($newerWorktreePaths -join '; '). Confirm intended worktree.")
     }
     $checks.Add([pscustomobject]@{
         Category = 'Git'
         Name = 'Worktree and Branch Isolation'
-        Status = 'OK'
+        Status = $isolationStatus
         Detail = $isolationDetail
     })
+
+    # 5b. Workspace Path Hygiene (detect stale hardcoded workspace paths in active config/tools/skills)
+    $pathCheckScript = Join-Path $repoRoot 'tools\test_workspace_paths.py'
+    $pythonExe = $null
+    try { $pythonExe = Resolve-TodorbitTool 'python' } catch {}
+    if ((Test-Path -LiteralPath $pathCheckScript) -and $pythonExe) {
+        Push-Location $repoRoot
+        try {
+            $ErrorActionPreference = 'Continue'
+            $pathAuditOut = & $pythonExe -m unittest tools/test_workspace_paths.py 2>&1
+            $pathAuditExit = $LASTEXITCODE
+            $ErrorActionPreference = 'Stop'
+        } finally {
+            Pop-Location
+        }
+        if ($pathAuditExit -eq 0) {
+            $checks.Add([pscustomobject]@{
+                Category = 'Workspace'
+                Name = 'Portable Path Hygiene'
+                Status = 'OK'
+                Detail = 'Active config, skills, tools, and core docs are free of stale hardcoded workspace paths.'
+            })
+        } else {
+            $checks.Add([pscustomobject]@{
+                Category = 'Workspace'
+                Name = 'Portable Path Hygiene'
+                Status = 'WARNING'
+                Detail = 'Stale hardcoded workspace paths detected. Run: python -m unittest tools/test_workspace_paths.py'
+            })
+            $warnings.Add('Stale hardcoded workspace paths found in active config/docs/skills (run tools/test_workspace_paths.py).')
+        }
+    }
 
     # 6. Active Build & Contention Check
     $competingProcs = Get-Process -Name 'flutter', 'dart', 'gradle', 'MSBuild' -ErrorAction SilentlyContinue |
