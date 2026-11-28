@@ -29,7 +29,7 @@ class Page(HTMLParser):
             assert all(key in attrs for key in ("alt", "width", "height")), "Image accessibility/layout metadata missing"
         for key in ("href", "src"):
             if key in attrs:
-                self.links.append((tag, attrs[key]))
+                self.links.append((tag, attrs.get("rel"), attrs[key]))
 
 
 pages = {p.resolve(): Page(p) for p in ROOT.glob("*.html")}
@@ -38,8 +38,10 @@ for source, page in pages.items():
     html = source.read_text(encoding="utf-8")
     assert '<html lang="en">' in html and 'name="viewport"' in html
     assert "Content-Security-Policy" in html and "#main" in html
-    for tag, href in page.links:
+    for tag, rel, href in page.links:
         url = urlsplit(href)
+        if tag == "link" and rel == "canonical" and href == "https://2hik4.github.io/Todorbit/" and source.name == "index.html":
+            continue
         if url.scheme:
             assert url.scheme in {"https", "mailto"}, f"Unsafe URL: {href}"
             assert tag == "a", f"External resource: {href}"

@@ -1,50 +1,28 @@
 # Todorbit open-source evidence
 
-Snapshot recorded on **2026-11-27 (UTC+03:00)**. This document summarizes
-publicly verifiable evidence of Todorbit's engineering maturity and distribution
-without inventing user counts, telemetry, or adoption metrics.
+Snapshot taken **November 28, 2026**. Todorbit is an independently maintained, MIT-licensed local-first planner for Windows x64 and Android. The [feature catalogue](FEATURES.md), [platform support](PLATFORM_SUPPORT.md), and [contributor guide](../CONTRIBUTING.md) describe the product and where to work on it.
 
-## Product and distribution
+## Source and releases
 
-Todorbit is an independently maintained, MIT-licensed cross-platform planner
-for Windows x64 (`Workspace` + native .NET 10 Explorer-hosted
-`TodorbitWidget.exe`) and Android API 26+ (`MobileWorkspace` + `RemoteViews`
-home-screen widgets).
-[Beta 30 (`v1.0.19-beta.30`)](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.30)
-ships Windows x64 and Android ARM64/x86-64/universal packages from source
-[`253f4ed`](https://github.com/2HIK4/Todorbit/commit/253f4ed560018bfbb9acc9f1e110c823c77041d1)
-on SQLite schema 29. See [Platform support](PLATFORM_SUPPORT.md) and the full
-[Feature catalogue](FEATURES.md). Optional Google Drive Sync and AES-256-GCM
-cloud backups remain experimental.
+- [Beta 30](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.30) is an Experimental prerelease from [commit `253f4ed`](https://github.com/2HIK4/Todorbit/commit/253f4ed560018bfbb9acc9f1e110c823c77041d1), build 53, SQLite schema 29, and sync protocol 2.
+- The hosted [Windows run](https://github.com/2HIK4/Todorbit/actions/runs/46066659736), [Android run](https://github.com/2HIK4/Todorbit/actions/runs/46066664484), and [Android 16 KiB upgrade run](https://github.com/2HIK4/Todorbit/actions/runs/46068388702) passed for the Beta 30 source. The 16 KiB run exercised a synthetic Beta 29 to Beta 30 state-preserving upgrade. An unrelated Beta 26 job was skipped.
+- The November 28 audit downloaded all 11 attached Beta 30 files and matched their computed SHA-256 digests to GitHub metadata. The two Windows binaries and three Android APKs also matched their platform checksum manifests. All three APKs used the same signing certificate as the Beta 29 ARM64 sample and passed the available APK/ELF 16 KiB static checks. Windows app and setup binaries were unsigned.
+- The [publication receipt](https://github.com/2HIK4/Todorbit/blob/60a6fd6efa724d6541f3e847d1525ecfa78adaf7/docs/TODORBIT_BETA_30_CANDIDATE.md) and [acceptance backlog](https://github.com/2HIK4/Todorbit/blob/60a6fd6efa724d6541f3e847d1525ecfa78adaf7/docs/DEFERRED_VERIFICATION.md) record the tested behavior and remaining physical-device, live Drive, and manual checks.
 
-The verified automated CI baseline on `253f4ed` includes:
-- [Windows checks (`46066659736`)](https://github.com/2HIK4/Todorbit/actions/runs/46066659736): full Dart analysis & serial Flutter tests, TDAT safety/watchdog/hygiene/registry/docs checks, Windows Release build (`googleDriveEnabled: true`), Microsoft-signed CRT packaging gate, portable ZIP (`1.0.19.53`), native sync writer/background barriers, `TodorbitWidget.exe --self-test`, Inno Setup installer compilation, and SHA-256 checksums.
-- [Android validation (`46066664484`)](https://github.com/2HIK4/Todorbit/actions/runs/46066664484): static analysis, mobile Flutter suites, release verification (`test_prepare_android_release.py`), APK validation, and API 35 KVM emulator run.
-- [Android 16 KiB runtime (`46068388702`)](https://github.com/2HIK4/Todorbit/actions/runs/46068388702): API 36 `PAGE_SIZE=16384` in-place upgrade (`build 52 -> 53`) retaining synthetic planner state across upgrade.
-
-Exact Beta 30 asset digests, portable upgrade verification, and open physical/manual
-acceptance gates are recorded in Beta 30 candidate receipt (`docs/TODORBIT_BETA_30_CANDIDATE.md` on `feature/todorbit-beta27-refinement`),
-Test run ledger (`docs/TEST_RUN_LEDGER.md` on `feature/todorbit-beta27-refinement`), and Deferred verification (`docs/DEFERRED_VERIFICATION.md` on `feature/todorbit-beta27-refinement`).
-
-## Public activity (verified via GitHub API on 2026-11-27 / 2026-11-28 UTC+03:00)
+## Public activity
 
 | Measure | Observed |
 | --- | --- |
-| Published GitHub releases | 44 (no Stable release published yet; `/releases/latest` returns 404) |
-| Beta 29 Windows setup downloads (`Todorbit-1.0.19-beta.29-win-x64-setup.exe`) | 11 |
-| Beta 29 Windows portable ZIP downloads (`Todorbit-1.0.19-beta.29-win-x64-portable.zip`) | 28 |
-| Beta 29 Android APK downloads (`universal` + `arm64` + `x64`) | 7+ (prior Beta 29 line prior to Beta 30 publication) |
-| Public pull requests | 6 from the repository owner (4 merged: #1, #4, #5, #6; 2 open: #2, #3) |
+| Public repository creation | October 20, 2026 |
+| Published GitHub releases | 42 Experimental prereleases. The Stable latest-release API returned 404. |
+| Uploaded Windows and Android binaries across releases | 129 executable, APK, or ZIP assets |
+| Cumulative downloads across those binary assets | 501 at observation, including possible repeat downloads and maintainer verification |
+| Beta 30 binary downloads | Windows installer 3, portable ZIP 3, Android ARM64 2, universal 3, x86-64 3 |
+| Public contribution history | One GitHub-attributed contributor. Four merged PRs authored by the maintainer and zero external merged PR authors at observation. |
+| Community Standards | GitHub API reported 100%. Three issue templates are present on the default branch. The API did not return an issue-template link. |
 
-Sources: [Beta 30 release API](https://api.github.com/repos/2HIK4/Todorbit/releases/tags/v1.0.19-beta.30),
-[all releases](https://github.com/2HIK4/Todorbit/releases), and
-[pull requests](https://github.com/2HIK4/Todorbit/pulls?q=is%3Apr). GitHub asset
-download counters include maintainer verification checks and repeat fetches;
-Todorbit collects zero analytics or user telemetry, so distinct active users
-are unknown.
+Counts come from [public release metadata](https://api.github.com/repos/2HIK4/Todorbit/releases?per_page=100), [repository metadata](https://api.github.com/repos/2HIK4/Todorbit), [contributors](https://github.com/2HIK4/Todorbit/graphs/contributors), [pull requests](https://github.com/2HIK4/Todorbit/pulls?q=is%3Apr), and [Community Standards](https://github.com/2HIK4/Todorbit/community). Downloads are file requests. Distinct users and active usage are unknown.
 
-## Next public milestones
+## Engineering and contribution
 
-- Prioritize the reliability, accessibility, and multi-monitor/device manual acceptance gates in Deferred verification (`docs/DEFERRED_VERIFICATION.md` on `feature/todorbit-beta27-refinement`) and [Roadmap](ROADMAP.md).
-- Onboard community contributors cleanly using [CONTRIBUTING.md](../CONTRIBUTING.md), [Contributor tasks](CONTRIBUTOR_TASKS.md), and the TDAT engineering toolkit (`docs/DEVELOPER_AUTOMATION_TOOLKIT.md` on `feature/todorbit-beta27-refinement`).
-- Public default branch (`main`, synchronized via [PR #6](https://github.com/2HIK4/Todorbit/pull/6)) and [GitHub Pages site](https://2hik4.github.io/Todorbit/) (deployed via [`46065232969`](https://github.com/2HIK4/Todorbit/actions/runs/46065232969)) are live without modifying Stable application binaries until owner release approval.
+The tagged [architecture map](https://github.com/2HIK4/Todorbit/blob/v1.0.19-beta.30/docs/ARCHITECTURE_MAP.md) and [TDAT guide](https://github.com/2HIK4/Todorbit/blob/v1.0.19-beta.30/docs/DEVELOPER_AUTOMATION_TOOLKIT.md) describe source boundaries, test selection, and disposable fixtures. See the [test ledger](https://github.com/2HIK4/Todorbit/blob/60a6fd6efa724d6541f3e847d1525ecfa78adaf7/docs/TEST_RUN_LEDGER.md) for published receipts. The [contributor tasks](CONTRIBUTOR_TASKS.md) and [roadmap](ROADMAP.md) identify where outside testing and engineering work can help.

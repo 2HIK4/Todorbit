@@ -79,8 +79,8 @@ Existing workspace mode conversion and passphrase changes remain unavailable.
 
 Disabling Automatic Sync stops scheduled exchange; explicit Sync Now remains
 available. OS scheduling, network access, app lock and authorization constrain
-background exchange. See the sync guide (`docs/GOOGLE_DRIVE_SYNC.md` on `feature/todorbit-beta27-refinement`) and
-implementation limits (`docs/SYNC_OPTIONAL_ENCRYPTION.md` on `feature/todorbit-beta27-refinement`).
+background exchange. See [the sync guide](https://github.com/2HIK4/Todorbit/blob/v1.0.19-beta.30/docs/GOOGLE_DRIVE_SYNC.md) and
+[implementation limits](https://github.com/2HIK4/Todorbit/blob/v1.0.19-beta.30/docs/SYNC_OPTIONAL_ENCRYPTION.md).
 
 Sync history is retained without automatic cloud pruning, including competing
 and deleted-record revisions needed for recovery. Disconnecting or disabling

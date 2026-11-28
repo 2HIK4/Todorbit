@@ -1,4 +1,6 @@
-# Product
+# Historical product brief
+
+For the released Todorbit product, see the [feature catalogue](FEATURES.md) and [platform support](PLATFORM_SUPPORT.md). The original brief below predates Android and Drive Sync.
 
 Life Manager organizes tasks, schedules, projects, habits, goals, and work time locally on Windows. It remains useful offline without accounts or cloud services. Windows is the initial target; Android and synchronization are future work.
 

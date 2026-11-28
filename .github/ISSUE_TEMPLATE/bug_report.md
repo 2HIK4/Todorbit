@@ -29,4 +29,4 @@ Include the exact error text if it contains no private information.
 Share only redacted logs or screenshots with synthetic data. Keep databases,
 backups, task text, personal file paths, account details, tokens, and recovery
 secrets private. Send security vulnerabilities privately through
-[SECURITY.md](../../SECURITY.md).
+[the security policy](https://github.com/2HIK4/Todorbit/security/policy).

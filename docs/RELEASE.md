@@ -1,5 +1,18 @@
 # Windows v1.0 release preparation
 
+## Public presentation after a release
+
+The current Windows and Android release process and evidence live in the
+[Experimental release guide](https://github.com/2HIK4/Todorbit/blob/feature/todorbit-beta27-refinement/docs/RELEASE.md).
+This branch carries the older Windows source and the public website.
+
+For an approved release, update the public README, feature catalogue, platform
+matrix, installation guide, and website from the tagged source. Verify
+published package names and checksums, use a synthetic profile for screenshots,
+and run the [website preview checks](../website/README.md) before requesting
+deployment. Once the maintainer publishes Pages, verify its anonymous public
+URLs from the deployed commit.
+
 ## Current status
 
 As checked on 2026-10-28, the latest public release is the Windows x64

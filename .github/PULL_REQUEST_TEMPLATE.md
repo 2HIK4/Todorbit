@@ -1,18 +1,13 @@
 ## Change
 
-Describe the user-visible behavior or maintenance improvement and link any
-related issue. Note which platforms (`Workspace`, `MobileWorkspace`,
-`TodorbitWidget`, Android native) and data boundaries are affected.
+Describe the user-visible behavior or maintenance improvement. Link the relevant issue and name the affected platforms, data boundaries, and target branch.
 
 ## Verification
 
-List TDAT/Flutter/native commands and observed results (`dev doctor`,
-`dev verify changed`, analyzer, Python boundary/workspace-hygiene checks, or
-manual acceptance still pending).
+List commands and results, including any skipped checks. For public documentation and Pages, follow the [contributor guide](https://github.com/2HIK4/Todorbit/blob/main/CONTRIBUTING.md). For app changes, use TDAT and the Experimental testing guide.
 
-- [ ] Verified impacted boundaries per [Testing](../docs/TESTING.md) and TDAT (`docs/DEVELOPER_AUTOMATION_TOOLKIT.md` on `feature/todorbit-beta27-refinement`).
-- [ ] Passed `python tools/test_architecture_boundaries.py`, `python tools/test_workspace_paths.py`, and `python tools/dev/check-docs.py`.
-- [ ] Used disposable profiles/synthetic data only; no personal databases, paths, or credentials included.
+- [ ] Updated applicable release notes, feature catalogue, platform limits, or public guides.
+- [ ] Checked any effects on stored data, backups, sync, and platform behavior.
+- [ ] Used disposable profiles and fictional records. Logs and screenshots contain no private information.
 
-For UI/widget changes, include synthetic screenshots or tested dimensions,
-themes, wallpaper contrast, and input methods when practical.
+For visual changes, include screenshots or record the tested viewport, theme, and input method.

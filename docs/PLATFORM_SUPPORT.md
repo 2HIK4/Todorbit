@@ -1,35 +1,45 @@
 # Todorbit platform support
 
-This matrix describes the
-[1.0.19-beta.30 public pre-release](https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.30) (`253f4ed`, build `53`) on SQLite schema 29. The
-features marked **Included** are available in the experimental build.
-**Experimental** marks cloud features whose availability and recovery depend
-on configuration, account access, and the chosen mode. See the
-[installation guide](INSTALLATION.md) and full
-[feature catalogue](FEATURES.md) for details.
+This matrix describes [Experimental Beta 30][release] (build 53, SQLite schema
+29). The [feature catalogue](FEATURES.md) links to the released source and tests
+for each capability. See [Install Todorbit](INSTALLATION.md) for packages,
+checksums, and upgrade instructions.
 
-| Feature | Windows x64 | Android 8.0+ ARM64 / x86-64 |
+| Capability | Windows x64 | Android 8.0+ (ARM64 or x86-64) |
 | --- | --- | --- |
-| Offline planner | Included. Tasks, projects, recurrence, habits, goals, templates, plans, archive/trash, search, focus timers, and reports. | Included through the touch-oriented `MobileWorkspace` shell. |
-| Calendar and Smart Reschedule | Included. Day, week, and month timeline grid with drag/resize/zoom and reviewed Smart Reschedule proposals. | Included. Touch date picker and agenda with day/week/month filtering plus Smart Reschedule review. |
-| Hotkeys and keyboard navigation | Included. Embedded **Settings > Hotkeys** editor, conflict checks, and named presets. | Not applicable (touch navigation). |
-| Local snapshots and restore | Included. Reviewed SQLite export, import, restore, and selective settings transfer. | Included. Uses Android's system file picker for external backup files and selective settings transfer. |
-| Google Drive incremental Sync | Experimental. Standard or Private Encrypted Sync (`SyncEngine`, protocol 2). Windows companion provides background opportunities while running. | Experimental. Standard or Private Encrypted Sync. Android WorkManager controls background job timing. |
-| Encrypted Google Drive snapshots | Experimental. Full and settings-only AES-256-GCM snapshots with passphrase recovery. | Experimental. Uses the same encrypted backup format and a compatible Google account. |
-| Light/dark themes and theme JSON | Included. Graphite Neutral Silver default dark palette plus custom theme JSON import/export and native widget palettes. | Included in mobile appearance settings. |
-| Desktop / home-screen widgets | Included. Native Explorer-hosted Tasks and Calendar desktop widgets (`TodorbitWidget.exe`) with smooth pixel scrolling and per-surface styling. | Included. Tasks and Calendar launcher `RemoteViews` widgets. |
-| Shared files inbox | Included via managed file attachments & external file links in `TaskDetailsView`. | Included. Native `ShareReceiverActivity` ingestion into Shared Inbox (`ACTION_SEND` / `ACTION_SEND_MULTIPLE`). |
-| Software updates | Included. GitHub release discovery, SHA-256 verification, and installer/portable updates. | Included in the GitHub APK build with native `ApkVerifier` / PackageManager checks. |
+| Offline planner | Tasks, projects, built-in and custom views, recurrence, templates, habits, goals, focus timers, work logs, and reports. | Shared planner in touch-oriented screens. The task menu can duplicate core fields. |
+| Calendar and Smart Reschedule | Day, Week, and Month calendar views. Day and Week have a time grid with drag, resize, zoom, and undo. Preview and approve rescheduling changes. | Day, Week, and Month selection with a touch agenda and shared Smart Reschedule review. |
+| Keyboard shortcuts | Embedded Hotkeys editor with presets and conflict checks. | Touch-oriented navigation. |
+| Themes and appearance | System, Light, and Dark modes, color presets, theme JSON, text/density settings, and native widget customization. | System, Light, and Dark modes, color presets, theme JSON, and touch layout settings. Launcher widget appearance follows supported system settings. |
+| Attachments and links | Managed attachments and external file, folder, and web links. External paths are device-local. | Managed attachments and web links. Files shared from compatible Android apps can go to the Shared Files Inbox. |
+| Widgets | Explorer-hosted Tasks and Calendar widgets with layout, styling, keyboard navigation, and a shared background companion. | Home-screen Tasks and Calendar widgets with cached date browsing and app-mediated task actions. Behavior varies by launcher. |
+| Reminders and alarms | Local notifications and native alarms through the background companion. | Local notifications and alarms subject to notification and exact-alarm permissions and battery policies. |
+| Local backups and portability | SQLite snapshot export/import, reviewed restore, selective settings transfer, and a portable ZIP. | SQLite snapshot export/import and settings transfer through the Android file picker. The active profile uses app-private storage. |
+| App Lock | Optional PIN to hide the app and widget content. | Optional PIN. Supported devices can use Android biometric unlock from API 28 and device credentials from API 30. |
+| Google Drive backup | Optional experimental encrypted snapshots. Recovery needs the backup passphrase. | Same format and recovery requirements. Google authorization requires a supported device and account. |
+| Google Drive Sync | Optional experimental Standard or Private Encrypted Sync. The companion provides background opportunities while running. | Same modes. Android schedules background opportunities subject to device policy. |
+| Software updates | GitHub release discovery, SHA-256 checks, and installer or portable update handoff. | GitHub APK discovery and ABI, package, version, and signing certificate verification before Android’s install handoff. |
 
-Windows 11 is the primary test platform. Windows 10 acceptance is limited.
-The public Android build uses GitHub APK distribution; Google Play publishing
-remains separate, and the repository's iOS scaffold is outside the supported
-distribution.
+Windows 11 is the primary desktop test platform. Windows 10 acceptance is
+limited. The Windows packages are unsigned. Android builds are distributed
+as signed GitHub APKs. Google Play publishing is separate. Windows ARM64
+native packages, 32-bit Android packages, and iOS, macOS, Linux, and web app
+distribution are outside the current support scope.
 
-For Beta 30 exact-source receipts see
-Beta 30 Candidate Receipt (`docs/TODORBIT_BETA_30_CANDIDATE.md` on `feature/todorbit-beta27-refinement`). Physical Windows
-keyboard/focus/multi-monitor DPI behavior, live wallpaper visual acceptance,
-Android multi-file Share Sheet/OEM behaviors, and two-client live Drive tests
-remain recorded in deferred verification (`docs/DEFERRED_VERIFICATION.md` on `feature/todorbit-beta27-refinement`). For Sync
-and backup account requirements, see Sync setup (`docs/GOOGLE_DRIVE_SYNC.md` on `feature/todorbit-beta27-refinement`) and
-[backup and restore](GOOGLE_DRIVE_BACKUP.md).
+The planner works offline without a Todorbit account. Local SQLite and local
+snapshots are plaintext unless protected by the operating system. App Lock
+hides planner content in the interface. Optional Drive backup and Sync require
+an enabled build and Google authorization. Standard Sync uses readable JSON.
+Private Encrypted Sync encrypts data on the device and has its own recovery
+credentials. [Privacy](PRIVACY.md) · [Drive Sync][sync] · [Drive backup](GOOGLE_DRIVE_BACKUP.md)
+
+The [Beta 30 verification record][receipt] identifies the exact CI and
+isolated runtime checks, including an Android 16 KiB upgrade. Physical Windows
+multi-monitor and assistive technology coverage, Android launcher and
+multi-file Share Sheet behavior, and live two-client Drive exchange are
+tracked in [deferred verification][backlog].
+
+[release]: https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.30
+[sync]: https://github.com/2HIK4/Todorbit/blob/253f4ed560018bfbb9acc9f1e110c823c77041d1/docs/GOOGLE_DRIVE_SYNC.md
+[receipt]: https://github.com/2HIK4/Todorbit/blob/60a6fd6efa724d6541f3e847d1525ecfa78adaf7/docs/TODORBIT_BETA_30_CANDIDATE.md
+[backlog]: https://github.com/2HIK4/Todorbit/blob/60a6fd6efa724d6541f3e847d1525ecfa78adaf7/docs/DEFERRED_VERIFICATION.md
