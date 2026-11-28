@@ -53,8 +53,7 @@ Portable data lives in `%APPDATA%\TodoPilot\portable-<location-id>`. Moving or
 extracting the portable folder to a different path selects a distinct profile.
 To upgrade or move a portable copy safely:
 
-1. In the old copy, open **Settings > Privacy & Data** to inspect the active
-   profile path and export a verified SQLite backup outside both folders.
+1. In the old copy, check the active profile under **Settings > Privacy & Data > Data profile**. Then open **Settings > Backups & Cloud**, expand **Local backup actions & history**, and choose **Export SQLite**. Save the verified backup outside both folders.
 2. Close Todorbit and the native widget. Keep the old folder as a rollback copy.
 3. Extract the new ZIP. If extracting to a new path, import the verified
    backup through Todorbit's reviewed SQLite import flow (or replace files in
