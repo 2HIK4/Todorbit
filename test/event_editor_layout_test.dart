@@ -19,6 +19,7 @@ void main() {
       await repo.addCategory('Class');
       final controller = AppController(repo);
       await controller.refresh();
+      final now = DateTime.now();
       try {
         await tester.pumpWidget(
           ProviderScope(
@@ -33,7 +34,7 @@ void main() {
                       width: 500,
                       height: 630,
                       child: EventEditor(
-                        initialDay: DateTime(2026, 10, 25),
+                        initialDay: DateTime(now.year, now.month, now.day),
                         onClose: () {},
                       ),
                     ),
