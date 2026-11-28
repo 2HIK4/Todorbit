@@ -12,6 +12,7 @@ import re
 import shutil
 import subprocess
 import urllib.request
+import zipfile
 
 
 def _ensure_android_tools_on_path():
@@ -64,6 +65,19 @@ def minimum_sdk(badging):
     if len(values) != 1:
         raise ValueError('Expected exactly one APK minimum SDK declaration')
     return int(values[0])
+
+
+def verify_project_notices(file):
+    prefix = 'base/' if file.suffix.lower() == '.aab' else ''
+    asset = prefix + 'assets/flutter_assets/THIRD_PARTY_NOTICES.md'
+    expected = Path(__file__).resolve().parents[1] / 'THIRD_PARTY_NOTICES.md'
+    with zipfile.ZipFile(file) as archive:
+        try:
+            bundled = archive.read(asset)
+        except KeyError as error:
+            raise ValueError(f'{file.name} is missing the project third-party notice') from error
+    if bundled.replace(b'\r\n', b'\n') != expected.read_bytes().replace(b'\r\n', b'\n'):
+        raise ValueError(f'{file.name} contains an outdated project third-party notice')
 
 
 def verify_apk(file, version, code, expected, expected_abis):
@@ -187,6 +201,9 @@ def main():
         if not fingerprint or fingerprint[1].replace(':', '').lower() != expected:
             raise ValueError('AAB certificate differs from the approved production identity')
         print(verify_bundle(args.aab, args.version, args.version_code))
+    for artifact in [args.apk, *(file for _, file, _ in splits), args.aab]:
+        if artifact:
+            verify_project_notices(artifact)
     if args.version_code <= published_floor():
         raise ValueError('Android version code must exceed every published stable/pre-release code')
     if not args.notes.read_text(encoding='utf-8').strip():
@@ -212,11 +229,12 @@ def main():
     manifest_path.write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
     shutil.copyfile(args.notes, args.output / 'ANDROID-RELEASE-NOTES.md')
     files = [args.output / name for name in (apk_name, manifest_path.name, 'ANDROID-RELEASE-NOTES.md')] + split_files
-    if args.aab:
-        files.append(args.output / aab_name)
     (args.output / 'ANDROID-SHA256SUMS.txt').write_text(''.join(f'{sha256(f)}  {f.name}\n' for f in files), encoding='utf-8')
-    for file in files:
-        assert sha256(file) in (args.output / 'ANDROID-SHA256SUMS.txt').read_text()
+    if args.aab:
+        bundle_path = args.output / aab_name
+        (args.output / 'ANDROID-PLAY-SHA256SUMS.txt').write_text(
+            f'{sha256(bundle_path)}  {bundle_path.name}\n', encoding='utf-8',
+        )
     print(f'Prepared verified, unpublished Android {args.version} ({args.version_code}) in {args.output}')
 
 

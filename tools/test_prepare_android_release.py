@@ -7,6 +7,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
+import zipfile
 
 spec = importlib.util.spec_from_file_location('prepare_android', __file__.replace('test_prepare_android_release.py', 'prepare-android-release.py'))
 release = importlib.util.module_from_spec(spec)
@@ -86,12 +87,34 @@ class ApkVariantTests(unittest.TestCase):
             self.verify(signer='b' * 64)
 
 
+class CandidateNoticeTests(unittest.TestCase):
+    def test_requires_current_notice_in_apk_and_bundle(self):
+        with tempfile.TemporaryDirectory() as folder:
+            notice = Path(release.__file__).resolve().parents[1] / 'THIRD_PARTY_NOTICES.md'
+            for suffix, prefix in (('apk', ''), ('aab', 'base/')):
+                with self.subTest(suffix=suffix):
+                    package = Path(folder) / f'test.{suffix}'
+                    with zipfile.ZipFile(package, 'w') as artifact:
+                        artifact.writestr('unrelated.txt', 'test fixture')
+                    with self.assertRaisesRegex(ValueError, 'missing'):
+                        release.verify_project_notices(package)
+                    with zipfile.ZipFile(package, 'w') as artifact:
+                        artifact.writestr(prefix + 'assets/flutter_assets/THIRD_PARTY_NOTICES.md', 'old notice')
+                    with self.assertRaisesRegex(ValueError, 'outdated'):
+                        release.verify_project_notices(package)
+                    with zipfile.ZipFile(package, 'w') as artifact:
+                        artifact.write(notice, prefix + 'assets/flutter_assets/THIRD_PARTY_NOTICES.md')
+                    release.verify_project_notices(package)
+
+
 class ApkOnlyPreparationTests(unittest.TestCase):
     def test_apk_only_retains_gates_and_emits_only_github_assets(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             apk, notes, output = root/'test.apk', root/'notes.md', root/'output'
-            apk.write_bytes(b'synthetic artifact')
+            with zipfile.ZipFile(apk, 'w') as artifact:
+                notice = Path(release.__file__).resolve().parents[1] / 'THIRD_PARTY_NOTICES.md'
+                artifact.write(notice, 'assets/flutter_assets/THIRD_PARTY_NOTICES.md')
             notes.write_text('Experimental test notes', encoding='utf-8')
             argv = ['prepare', '--apk', str(apk), '--apk-only', '--version', '1.0.19-beta.10',
                     '--version-code', '33', '--certificate-sha256', 'a' * 64,
@@ -107,6 +130,28 @@ class ApkOnlyPreparationTests(unittest.TestCase):
             self.assertEqual(manifest['apks'][0]['sha256'], release.sha256(apk))
             self.assertEqual(len(list(output.iterdir())), 4)
             self.assertFalse(list(output.glob('*.aab')))
+
+    def test_play_candidate_checksum_stays_separate_from_github_manifest(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            apk, bundle = root / 'test.apk', root / 'test.aab'
+            notes, output = root / 'notes.md', root / 'output'
+            notice = Path(release.__file__).resolve().parents[1] / 'THIRD_PARTY_NOTICES.md'
+            for artifact, prefix in ((apk, ''), (bundle, 'base/')):
+                with zipfile.ZipFile(artifact, 'w') as archive:
+                    archive.write(notice, prefix + 'assets/flutter_assets/THIRD_PARTY_NOTICES.md')
+            notes.write_text('Experimental test notes', encoding='utf-8')
+            argv = ['prepare', '--apk', str(apk), '--aab', str(bundle), '--version', '1.0.19-beta.10',
+                    '--version-code', '33', '--certificate-sha256', 'a' * 64,
+                    '--notes', str(notes), '--output', str(output)]
+            with patch('sys.argv', argv), patch.object(release, 'verify_apk', return_value=['arm64-v8a', 'x86_64']), \
+                    patch.object(release, 'verify_bundle'), patch.object(release, 'published_floor', return_value=32), \
+                    patch.object(release, 'run', side_effect=['', 'jar verified.', 'SHA256: ' + 'a' * 64]), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                release.main()
+            self.assertNotIn('.aab', (output / 'ANDROID-SHA256SUMS.txt').read_text())
+            self.assertEqual((output / 'ANDROID-PLAY-SHA256SUMS.txt').read_text().split(),
+                             [release.sha256(bundle), 'Todorbit-1.0.19-beta.10-android-play.aab'])
 
     def test_existing_default_still_requires_aab(self):
         with patch('sys.argv', ['prepare', '--apk', 'test.apk', '--version', '1.0.19-beta.10',

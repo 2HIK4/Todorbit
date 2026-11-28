@@ -73,6 +73,7 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
   assets:
+    - THIRD_PARTY_NOTICES.md
     - assets/contributors.json
     - assets/app_icon.png
     - assets/todorbit_brand_mark.png

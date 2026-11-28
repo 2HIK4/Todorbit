@@ -53,6 +53,13 @@
 - Reuse the existing maintainer-approved Android signer for updates. Verify the certificate against the prior published APK, and run the official 16 KiB gate on the actual candidate with synthetic data and preferences.
 - Do not publish a release unless explicitly requested. Preserve version synchronization, CI, installer, updater and checksum gates in [release preparation](docs/RELEASE.md). Documentation-only work needs no version bump or package rebuild.
 
+## Public release and documentation checks
+
+- The public entry points are the default-branch README, documentation index, and GitHub Pages site. Route current app source and a reviewed release to their own branch or immutable tag.
+- When behavior or platform support changes, update the feature catalogue, affected guides, changelog or release notes, and verification evidence together. Identify the source, automated tests, and any independently observed runtime result.
+- Before requesting a public documentation or website PR, reconcile downloads and checksum files with published assets, verify the served page and Markdown destinations, and label screenshots with their release and capture method. Use isolated synthetic records and preserve signing, privacy, and Experimental disclosures.
+- Keep a published checksum manifest scoped to downloadable assets. Store checksums for unpublished candidates in their own build receipts.
+
 ## Skills and documentation routing
 
 - Any backend, domain, data persistence, SQLite/Drift migration, synchronization, encryption, native Windows/.NET or Android/Kotlin interop, background alarms, lifecycle, memory/CPU performance, or architectural code work MUST route to the canonical [Todorbit Engineering Quality](.agents/skills/todorbit-engineering-quality/SKILL.md): read it before modifying architecture or persistence logic and apply its data-safety (zero data loss, forward migrations, CAS concurrency tokens), 16GB host resource limits, root-cause diagnosis, and context-efficiency rules.

@@ -6,7 +6,7 @@ building an APK does not establish production acceptance or authorize publishing
 ## Toolchain and builds
 
 Use Flutter 3.47.7 / Dart 3.13.5, JDK 21, Android API 36, build-tools 36.0.0,
-NDK 28.2.13676358, the checked-in AGP/Kotlin versions and Gradle 9.3.1. The
+NDK 28.2.13676358, AGP 9.1.0, Kotlin 2.4.21 and Gradle 9.3.1. The Kotlin build plugin includes the vendor fix for [CVE-2026-53914](https://github.com/advisories/GHSA-r937-wjx7-w2jp). The
 wrapper uses the smaller binary distribution with its official SHA-256 pinned.
 Kotlin incremental compilation is disabled: the retained Kotlin toolchain's
 relocatable cache fails when the Windows checkout and Pub cache are on different
