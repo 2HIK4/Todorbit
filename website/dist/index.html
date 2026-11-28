@@ -8,7 +8,18 @@
   <meta name="theme-color" content="#171420" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#f8f7fc" media="(prefers-color-scheme: light)">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'">
-  <title>Todorbit — A little space for everything you plan.</title>
+  <title>Todorbit – Local-first planner for Windows and Android</title>
+  <link rel="canonical" href="https://2hik4.github.io/Todorbit/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Todorbit">
+  <meta property="og:title" content="Todorbit – Local-first planner for Windows and Android">
+  <meta property="og:description" content="Organize tasks, calendars, habits, goals, and focus time in a free planner that works offline.">
+  <meta property="og:url" content="https://2hik4.github.io/Todorbit/">
+  <meta property="og:image" content="https://2hik4.github.io/Todorbit/assets/todorbit-social.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Todorbit wordmark and Windows Today workspace with fictional planner records.">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="./assets/orbit.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./assets/site.css">
 </head>
@@ -23,7 +34,7 @@
       <p class="eyebrow"><span class="orbit-dot" aria-hidden="true"></span> Your day, in your orbit.</p>
       <div class="hero-copy">
         <h1 id="hero-title">A little space for<br>everything you <em>plan.</em></h1>
-        <div class="hero-aside"><p>Tasks, interactive calendars, habits, goals, focus timers, and native widgets. Local-first on Windows and Android, with zero telemetry.</p><a class="button" href="#download">Download Beta 30 <span aria-hidden="true">↗</span></a><p class="fine">Free &amp; open source (MIT) · Windows x64 &amp; Android 8.0+</p></div>
+        <div class="hero-aside"><p>Tasks, interactive calendars, habits, goals, focus timers, and native widgets. Free and open source for Windows and Android. The everyday planner works offline without an account.</p><a class="button" href="#download">Download Beta 30 <span aria-hidden="true">↗</span></a><p class="fine">Experimental prerelease · Windows x64 · Android 8.0+</p></div>
       </div>
       <div class="figure-pair">
         <figure class="app-figure">
@@ -44,13 +55,13 @@
         <p class="eyebrow">A place for the whole picture</p>
         <h2 id="features-title">Plan the work.<br>Leave room for life.</h2>
         <p>Keep a deadline separate from a planned day. See fixed events alongside tasks. Record what you actually worked on.</p>
-        <p><a class="text-link" href="https://github.com/2HIK4/Todorbit/blob/main/docs/FEATURES.md">Explore the 54-feature catalogue <span aria-hidden="true">↗</span></a></p>
+        <p><a class="text-link" href="https://github.com/2HIK4/Todorbit/blob/main/docs/FEATURES.md">Explore the feature catalogue <span aria-hidden="true">↗</span></a></p>
       </div>
       <div class="feature-list">
-        <article><span class="number">01</span><div><h3>Give every task a place.</h3><p>Categories, two-level projects, subtasks, named checklist groups, task dependencies, templates, recurring series with progressive step plans, Quick Search, and saved views.</p></div></article>
-        <article><span class="number">02</span><div><h3>See your day in context.</h3><p>Day, Week, and Month time-grids on Windows with cursor-anchored zoom and drag-resize, plus touch agendas on Android. Preview deterministic Smart Reschedule plans before applying.</p></div></article>
-        <article><span class="number">03</span><div><h3>Make progress visible.</h3><p>Track habits and quantitative milestones, run Stopwatch, Countdown, or Pomodoro focus timers, attach files offline or via Android's Shared Inbox, and inspect local reports.</p></div></article>
-        <article><span class="number">04</span><div><h3>Keep it close. Make it yours.</h3><p>Independent Explorer-hosted Windows Tasks &amp; Calendar widgets and Android launcher widgets keep your day in sight. Customize palettes, surface transparency, and keyboard shortcuts.</p></div></article>
+        <article><div><h3>Give every task a place.</h3><p>Categories, two-level projects, subtasks, named checklist groups, task dependencies, templates, recurring series with progressive step plans, Quick Search, and saved views.</p></div></article>
+        <article><div><h3>See your day in context.</h3><p>Use Day, Week, and Month calendar views on Windows and the touch agenda on Android. Preview Smart Reschedule changes before applying them.</p></div></article>
+        <article><div><h3>Make progress visible.</h3><p>Track habits and quantitative milestones, run Stopwatch, Countdown, or Pomodoro focus timers, attach files offline or via Android's Shared Inbox, and inspect local reports.</p></div></article>
+        <article><div><h3>Keep it close. Make it yours.</h3><p>Independent Explorer-hosted Windows Tasks &amp; Calendar widgets and Android launcher widgets keep your day in sight. Customize palettes, surface transparency, and keyboard shortcuts.</p></div></article>
       </div>
     </section>
 
@@ -59,7 +70,7 @@
         <div>
           <p class="eyebrow">Your plans are personal</p>
           <h2 id="data-title">Local by default.<br>Recovery by design.</h2>
-          <p>Todorbit works offline without accounts or analytics. Your planner lives in a local SQLite database with forward-only schema migrations, local snapshots, reviewed restore flows, and an optional privacy PIN.</p>
+          <p>Todorbit stores your planner and managed attachments on your device. Local snapshots work offline. The optional PIN locks the app interface. Use operating-system protections for storage encryption.</p>
           <a class="text-link" href="./privacy.html">Read the privacy policy <span aria-hidden="true">↗</span></a>
         </div>
         <div class="data-details">
@@ -69,17 +80,16 @@
           <p>Export or selectively import supported personalization—including themes, hotkey presets, navigation order, and widget layouts—without touching database records or credentials.</p>
           <aside class="status-note">
             <p class="eyebrow">Google Drive · experimental backup &amp; sync</p>
-            <p>Experimental builds include optional AES-256-GCM Google Drive snapshot backups and incremental cross-device Sync (`Standard Sync` readable JSON default or `Private Encrypted Sync` wrapped with Argon2id) using hidden <code>drive.appdata</code> storage.</p>
-            <p>Google branding verification and full public OAuth policy compliance remain unresolved, so no Google approval or universal account compatibility is claimed. Keep verified local backups before testing Sync.</p>
+            <p>Configured Experimental builds support client-encrypted Google Drive backups. Standard Sync sends planner changes without client-side encryption. Private Encrypted Sync encrypts changes on the device and requires a passphrase or recovery code to add another device.</p>
+            <p>Public Google OAuth approval and compatibility across accounts remain unverified. Keep a verified local backup before testing Sync.</p>
           </aside>
         </div>
       </div>
     </section>
 
     <section class="download-section wrap" id="download" aria-labelledby="download-title" tabindex="-1">
-      <p class="eyebrow">A calmer place to start</p>
       <div class="download-heading">
-        <h2 id="download-title">Meet your next<br>everyday companion.</h2>
+        <h2 id="download-title">Download Todorbit</h2>
         <p><a href="https://github.com/2HIK4/Todorbit/releases/tag/v1.0.19-beta.30">v1.0.19-beta.30 release notes</a> · Experimental pre-release · MIT license</p>
       </div>
       <nav class="download-jump" aria-label="Download platforms">
@@ -90,12 +100,12 @@
       <div class="download-platforms">
         <article class="download-platform" aria-labelledby="download-windows">
           <h3 id="download-windows" tabindex="-1">Windows x64</h3>
-          <p>Windows 11 is the primary test platform. Windows 10 acceptance is limited; packages are unsigned.</p>
+          <p>Windows 11 is the primary test platform. Windows 10 testing is limited. Packages are unsigned and may trigger an unknown publisher warning.</p>
           <div class="download-actions">
             <a class="button" href="https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.30/Todorbit-1.0.19-beta.30-win-x64-setup.exe">Windows installer <span aria-hidden="true">↓</span></a>
             <a class="button secondary" href="https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.30/Todorbit-1.0.19-beta.30-win-x64-portable.zip">Portable ZIP <span aria-hidden="true">↓</span></a>
           </div>
-          <p>Extract the full portable ZIP together (`Todorbit.exe`, `TodorbitWidget.exe`, DLLs, `data/`). Moving a portable folder selects a separate profile.</p>
+          <p>Extract the full portable ZIP, then open <code>Todorbit.exe</code>. Moving the extracted folder selects a separate data profile.</p>
           <a class="text-link" href="https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.30/Todorbit-1.0.19-beta.30-SHA256SUMS.txt">Windows SHA-256 checksums</a>
         </article>
         <article class="download-platform" aria-labelledby="download-android">
@@ -104,7 +114,7 @@
           <div class="download-actions">
             <a class="button" href="https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.30/Todorbit-1.0.19-beta.30-android-universal.apk">Android APK <span aria-hidden="true">↓</span></a>
           </div>
-          <p>Upgrades require a build signed with the same publisher key. GitHub builds verify AOSP signatures natively before launching Android's installer.</p>
+          <p>After verifying the checksum, open the APK and allow your browser or file manager to install it if Android asks. In-place upgrades require the same signing key.</p>
           <a class="text-link" href="https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.30/ANDROID-SHA256SUMS.txt">Android SHA-256 checksums</a>
         </article>
       </div>
@@ -120,14 +130,14 @@
         <h2 id="support-title">A question, an idea,<br>a contribution?</h2>
       </div>
       <div>
-        <p>Todorbit is created by Hussam Alkhatib and open to contributors. Explore the 4-layer architecture, run the TDAT (`.\dev`) test harness, check starter tasks, or open a pull request.</p>
+        <p>Todorbit is created and maintained by Hussam Alkhatib. The contributor guide points to the current app source and explains how to run checks or contribute to the website.</p>
         <div class="support-links">
           <a href="https://github.com/2HIK4/Todorbit">Source &amp; CI on GitHub <span aria-hidden="true">↗</span></a>
           <a href="https://github.com/2HIK4/Todorbit/blob/main/CONTRIBUTING.md">Contributing guide <span aria-hidden="true">↗</span></a>
           <a href="https://github.com/2HIK4/Todorbit/issues">Report an issue or request a feature <span aria-hidden="true">↗</span></a>
-          <a href="mailto:hussamalkhatib24@gmail.com">Email the maintainer <span aria-hidden="true">↗</span></a>
+          <a href="https://github.com/2HIK4/Todorbit/blob/main/SECURITY.md">Private security reporting <span aria-hidden="true">↗</span></a>
         </div>
-        <p class="fine">Keep private databases, credentials and backup passphrases out of public issues. Report security concerns by email.</p>
+        <p class="fine">Keep private databases, credentials and backup passphrases out of public issues.</p>
       </div>
     </section>
   </main>
