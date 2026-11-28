@@ -1,5 +1,10 @@
 # Changelog
 
+For current Windows and Android Experimental releases, see the
+[GitHub release notes](https://github.com/2HIK4/Todorbit/releases) and
+[Beta 30 source changelog](https://github.com/2HIK4/Todorbit/blob/v1.0.19-beta.30/CHANGELOG.md).
+The entries below describe the earlier application source on this branch.
+
 ## 1.0.18+19
 
 - Restore enabled Tasks and Calendar widgets when opening Todorbit, including after updates and temporary widget closure. Closing a widget no longer disables its saved setting.

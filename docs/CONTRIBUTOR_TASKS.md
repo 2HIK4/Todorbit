@@ -1,43 +1,31 @@
 # Contributor tasks
 
-Check [open issues](https://github.com/2HIK4/Todorbit/issues?q=is%3Aissue+is%3Aopen)
-before starting. Each task uses a disposable profile, synthetic records, and a
-focused PR. See [Contributing](../CONTRIBUTING.md) for setup and TDAT commands.
+Check [open issues](https://github.com/2HIK4/Todorbit/issues?q=is%3Aissue+is%3Aopen) before starting. Use disposable profiles and fictional records. The [contributor guide](../CONTRIBUTING.md) explains which branch to use and what to verify.
 
 ## Document a high-contrast theme example
 
-Good first issue. Start with [Theming](THEMING.md), the
-JSON validator (`lib/domain/theme_json.dart` on `feature/todorbit-beta27-refinement`), and
-[theme customization tests](../test/theme_customization_test.dart).
+Some users need stronger text and control contrast. Start with the [theme guide](https://github.com/2HIK4/Todorbit/blob/v1.0.19-beta.30/docs/THEMING.md), [theme validator](https://github.com/2HIK4/Todorbit/blob/v1.0.19-beta.30/lib/domain/theme_json.dart), and [theme tests](https://github.com/2HIK4/Todorbit/blob/v1.0.19-beta.30/test/theme_customization_test.dart).
 
-- Provide an importable version 1 theme example with labeled light and dark
-  palettes. Confirm both import in a disposable profile.
-- Include the measured contrast for primary and secondary text on their
-  backgrounds. Record the build and screen where the theme was reviewed.
-- Describe the import and switch-back steps. Keep the official contributor
-  registry and built-in palette behavior unchanged.
+- Provide a version 1 theme with labeled light and dark palettes. Import both in a disposable profile and measure primary and secondary text contrast.
+- Record the tested build and screens, and describe import and switch-back steps. Preserve the built-in palettes and attribution registry.
 
-## Verify the Android launcher widget resizing journey
+## Verify Android launcher widget resizing
 
-Help wanted for contributors with a spare phone or an isolated emulator.
-Start with the Android feature inventory (`docs/ANDROID.md` on `feature/todorbit-beta27-refinement`) and
-acceptance record (`docs/ANDROID_ACCEPTANCE.md` on `feature/todorbit-beta27-refinement`).
+Different launchers give widgets different space. Start with the [Android guide](https://github.com/2HIK4/Todorbit/blob/v1.0.19-beta.30/docs/ANDROID.md) and [acceptance checklist](https://github.com/2HIK4/Todorbit/blob/v1.0.19-beta.30/docs/ANDROID_ACCEPTANCE.md).
 
-- Create synthetic tasks and events. Place both widgets, then resize each to
-  the launcher's minimum and back to the initial size.
-- Check date controls, labels, and deep links before and after rotation or a
-  launcher restart. Record launcher, OS, package version, and which steps passed.
-- File a focused report for any verified clipping or incorrect link. Include a
-  redacted image or exact dimensions if available.
+- Place both widgets on a spare phone or a disposable emulator. Resize to the launcher's minimum and back. Check date controls, labels, and links after rotation or launcher restart.
+- Record launcher, OS, release, and checked steps. Report reproducible clipping or broken links with fictional screenshots or exact dimensions.
 
-## Verify Windows multi-monitor DPI widget attachment
+## Verify Windows widget attachment across monitor scales
 
-Help wanted on multi-monitor Windows setups. Start with the
-[Windows widget checklist](windows-widget.md) and
-deferred verification backlog (`docs/DEFERRED_VERIFICATION.md` on `feature/todorbit-beta27-refinement`).
+Scaling can affect readability and input when Explorer hosts a widget. Start with the [Windows widget guide](https://github.com/2HIK4/Todorbit/blob/v1.0.19-beta.30/docs/windows-widget.md) and [deferred checks](https://github.com/2HIK4/Todorbit/blob/60a6fd6efa724d6541f3e847d1525ecfa78adaf7/docs/DEFERRED_VERIFICATION.md).
 
-- Test Explorer-hosted Tasks and Calendar widgets across primary and secondary
-  displays with mixed DPI scaling (`100%`, `125%`, `150%`, `200%`).
-- Verify wallpaper translucency contrast in both Light and Dark themes and
-  continuous pixel scrolling feel using a mouse wheel and precision trackpad.
-- Record display scales, Windows build, and any clipping or blur findings.
+- Move both widgets across mixed-DPI displays. Check clarity and input at the scales you can test. Check light and dark wallpaper contrast and scrolling with a mouse or trackpad.
+- Record Windows build, display scales, and any reproducible clipping, blur, or interaction issue.
+
+## Check the public website with a keyboard and screen reader
+
+Browser smoke checks cover some accessibility behavior. Use the [site preview instructions](../website/README.md), then test the download and policy paths using a keyboard and an available screen reader.
+
+- Make sure you can reach downloads and legal pages, tell Windows and Android assets apart, and identify the Experimental notice without relying on color.
+- Repeat in a narrow viewport or at larger zoom. Record browser, screen reader, width or zoom, expected behavior, and any barrier. Link to the specific element or section.

@@ -14,8 +14,8 @@ recovery.
 
 ## Verify the download
 
-Use the checksum for the exact filename you downloaded (`SHA256SUMS.txt` for
-Windows and `ANDROID-SHA256SUMS.txt` for Android).
+Use the checksum for the exact filename you downloaded.
+[Windows checksums](https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.30/Todorbit-1.0.19-beta.30-SHA256SUMS.txt) · [Android checksums](https://github.com/2HIK4/Todorbit/releases/download/v1.0.19-beta.30/ANDROID-SHA256SUMS.txt). The Android manifest also lists a Play build artifact for which GitHub provides no download.
 
 ```powershell
 Get-FileHash -Algorithm SHA256 -LiteralPath '<path-to-downloaded-file>'
@@ -80,4 +80,16 @@ Always export a backup before uninstalling on Android, because uninstalling
 removes app-private storage.
 
 See [Platform support](PLATFORM_SUPPORT.md), [Privacy disclosure](PRIVACY.md),
-and Deferred verification (`docs/DEFERRED_VERIFICATION.md` on `feature/todorbit-beta27-refinement`) for current platform limits.
+and the [recorded Beta 30 platform limits](https://github.com/2HIK4/Todorbit/blob/60a6fd6efa724d6541f3e847d1525ecfa78adaf7/docs/DEFERRED_VERIFICATION.md).
+
+## Troubleshooting
+
+| Symptom | What to check |
+| --- | --- |
+| Windows shows an unknown publisher | Confirm the download came from the release assets and compare its SHA-256. Windows packages are unsigned. |
+| The portable app opens with an empty list | Check the active data profile path. A different extraction folder selects a different profile. Reopen the original copy or restore from its verified backup. |
+| Android refuses an update | Check the ABI, OS version, and signing lineage. Use the same publisher's build for an in-place update. Export a backup before considering uninstalling. |
+| The updater offers no release | Check the Pre-release channel and compare with [GitHub Releases](https://github.com/2HIK4/Todorbit/releases). GitHub's Stable latest endpoint has no current release. |
+| Restore does not show the expected records | Keep the existing and Before Restore copies. Verify the source file and current profile path before making another restore attempt. |
+
+[Back to documentation](README.md)

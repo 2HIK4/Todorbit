@@ -6,6 +6,13 @@ Todorbit version, platform, behavior, and likely impact. Use disposable data
 for any reproduction. Keep private databases, credentials, recovery keys, and
 reproduction details out of public issues.
 
+## Supported releases
+
+Please identify the exact package or commit in your report. The maintained public
+download is the [Experimental prerelease](docs/INSTALLATION.md). The Experimental
+branch contains current app development. The default branch includes an older
+Windows source snapshot.
+
 ## Data protection
 
 - The local SQLite database and local recovery copies are readable by the
@@ -16,7 +23,7 @@ reproduction details out of public issues.
 - [Drive snapshots](docs/GOOGLE_DRIVE_BACKUP.md) are encrypted locally with
   AES-256-GCM before upload. Restored data and local review copies are stored
   as unencrypted local files.
-- Standard Sync (`docs/GOOGLE_DRIVE_SYNC.md` on `feature/todorbit-beta27-refinement`) uses Google Drive's transport and
+- [Standard Sync](https://github.com/2HIK4/Todorbit/blob/v1.0.19-beta.30/docs/GOOGLE_DRIVE_SYNC.md) uses Google Drive's transport and
   storage protections and uploads planner operations without client-side
   encryption. Private Encrypted Sync encrypts those operations on the device
   with an Argon2id-protected workspace key and requires the workspace

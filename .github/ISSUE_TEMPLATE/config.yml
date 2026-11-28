@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Installation and recovery
+    url: https://github.com/2HIK4/Todorbit/blob/main/docs/INSTALLATION.md
+    about: Find download, checksum, upgrade, and recovery instructions.
+  - name: Report a security vulnerability privately
+    url: https://github.com/2HIK4/Todorbit/security/policy
+    about: Use the maintainer's private reporting instructions for security issues.

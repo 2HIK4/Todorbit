@@ -1,6 +1,6 @@
 # Todorbit open-source readiness & PR #3 reconciliation
 
-## Reconciliation Summary (2026-11-27)
+## Historical reconciliation (2026-11-27)
 
 Open-source preparation work originally staged in
 [PR #3 (`codex/todorbit-readiness`, commit `25097d3`)](https://github.com/2HIK4/Todorbit/pull/3)
@@ -17,7 +17,7 @@ file against `feature/todorbit-beta27-refinement` (`81a05f7`, Beta 29+):
 - **Added / Restored**: `.github/ISSUE_TEMPLATE/documentation.md`, `docs/CONTRIBUTOR_TASKS.md`, `docs/PLATFORM_SUPPORT.md`, `docs/REUSABLE_COMPONENTS.md`, `docs/OPEN_SOURCE_EVIDENCE.md`, `docs/OPEN_SOURCE_READINESS.md` (alongside the new [Feature catalogue](FEATURES.md)).
 - **Updated for Beta 29+ & TDAT**: `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `.github/ISSUE_TEMPLATE/bug_report.md`, `.github/ISSUE_TEMPLATE/feature_request.md`, `.github/PULL_REQUEST_TEMPLATE.md`, `docs/INSTALLATION.md`, `docs/ROADMAP.md`, `docs/ARCHITECTURE_MAP.md`, `docs/DEFERRED_VERIFICATION.md`, and `website/dist/` + `website/verify_live.py`.
 
-## Repository Protection Boundaries
+## Release and deployment boundaries at the time
 
 - `main` (`a6d36dc`), `Stable` tags, SQLite schema `29`, Sync protocol `2`, and release tags (`v1.0.19-beta.29`, etc.) remain untouched by readiness edits.
 - GitHub Pages deployment (`https://2hik4.github.io/Todorbit/`) is gated in `.github/workflows/pages.yml` on `main` + `workflow_dispatch` (`publish_approved=true`) and requires owner PR review / workflow approval.

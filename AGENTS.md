@@ -2,8 +2,8 @@
 
 ## Scope and safety
 
-- Todorbit is a local-first Flutter productivity app targeting Windows 10/11; Windows 11 is the primary test platform. Keep the Android scaffold intact; no Android UI now.
-- Optional Google Drive snapshot backup/restore already exists. Preserve it; do not introduce synchronization, new cloud services, accounts or telemetry without a product decision.
+- The current public Experimental Todorbit planner supports Windows x64 and Android. This default branch contains older Windows app source alongside the public documentation and site. See [Contributing](CONTRIBUTING.md#choose-your-base) for source and release routing.
+- Preserve the existing behavior of this branch, including optional Drive snapshots and local planner data. The published Experimental build has its own optional Sync scope and evidence in the [feature catalogue](docs/FEATURES.md).
 - Preserve tasks, events, preferences, backups and widget configurations. Never reset/delete data as an error fallback. Use compatible forward migrations and transactions for multi-record edits.
 - Keep planned dates, deadlines, sessions, actual work and fixed events separate. Never auto-complete or silently reschedule tasks.
 - Public brand is Todorbit. Preserve `%APPDATA%\TodoPilot`, legacy `%APPDATA%\Life Manager` compatibility, native IPC names and installer AppId until a reviewed migration exists.
@@ -26,6 +26,14 @@
 - Native painting, shell attachment, input, DPI or menu changes require native Release/self-test plus the relevant [manual widget checklist](docs/windows-widget.md). Automated tests do not prove physical Windows behavior; report unobserved behavior accurately.
 - Review diffs and run `git diff --check`. Do not commit builds, caches, secrets, credentials or machine-specific settings.
 - Do not publish a release unless explicitly requested. Preserve version synchronization, CI, installer, updater and checksum gates in [release preparation](docs/RELEASE.md). Documentation-only work needs no version bump or package rebuild.
+
+## Public presentation maintenance
+
+- Update the feature catalogue, platform matrix, relevant user guides, and changelog or release notes together when release behavior changes. Tie claims to source, tests, and separately labeled runtime evidence.
+- Link each release claim to a specific public tag or commit. Distinguish the current Experimental release, app development, the older default-branch source, and the Stable update channel.
+- For public Markdown run python tools/dev/check-docs.py. For Pages changes run python website/verify.py and check the served preview on narrow and wide viewports, both themes, keyboard navigation, and affected download paths.
+- Use isolated synthetic records for screenshot captures. Label runtime and offscreen captures and record their provenance. Preserve signing, OAuth, data-storage, and platform limitations in public copy.
+- Reconcile release and checksum links against published assets before requesting deployment. Keep website publication under the existing maintainer workflow.
 
 ## Skills and documentation routing
 
