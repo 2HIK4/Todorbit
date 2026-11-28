@@ -87,7 +87,10 @@ signature, native alignment and checksums, and emits:
   individually validated with `--arm64-apk` / `--x64-apk` and added to metadata
 - `Todorbit-<version>-android-play.aab`
 - `Todorbit-<version>-android-update.json`
-- `ANDROID-SHA256SUMS.txt`, `ANDROID-RELEASE-NOTES.md`
+- `ANDROID-SHA256SUMS.txt` covers the APKs, update metadata, and Android notes intended for GitHub.
+- `ANDROID-PLAY-SHA256SUMS.txt` covers the Play bundle for the separate candidate and stays with that candidate.
+
+The preparation check also verifies the exact project third-party notice inside each package. Use a fresh candidate output directory so files from an earlier build cannot be mistaken for the current candidate.
 
 These are unpublished Actions artifacts retained 14 days; artifact access follows
 the repository's Actions permissions and is not made private by environment
